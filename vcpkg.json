@@ -1,0 +1,9 @@
+{
+  "name": "forge-conductor-windows",
+  "version-string": "0.8.0",
+  "description": "Forge Conductor for Windows. nlohmann-json is also vendored under third_party for offline VS builds.",
+  "builtin-baseline": "c26fe8a0665b52ce97a1b9a0161e13afb2d10632",
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}

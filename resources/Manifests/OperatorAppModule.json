@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.1",
+  "manifestTemplateVersion": "1.1",
+  "moduleID": "com.forge.module.app.operator",
+  "displayName": "Operator",
+  "moduleVersion": {"major": 0, "minor": 8, "patch": 0, "prerelease": null},
+  "moduleType": "app",
+  "supportedPlatforms": ["Windows"],
+  "minForsettiVersion": {"major": 0, "minor": 2, "patch": 0, "prerelease": null},
+  "maxForsettiVersion": null,
+  "capabilitiesRequested": ["toolbar_items", "view_injection", "event_publishing"],
+  "iapProductID": null,
+  "entryPoint": "OperatorAppModule",
+  "defaultModuleRole": "ui",
+  "runtimeRequirements": {
+    "io": [],
+    "ui": {
+      "controlSchemeID": "operator.controls",
+      "layoutID": "operator.layout",
+      "themeIDs": [],
+      "viewIDs": ["Rig", "Mcp", "Agents", "Tools", "Feed", "Diagnostics", "Manager"],
+      "slotIDs": ["appShell"],
+      "toolbarItemIDs": [],
+      "routeIDs": [],
+      "pointerIDs": []
+    },
+    "dataIsolation": {"mode": "private_to_module", "ownedStoreIDs": [], "requiredDefaultRoles": []}
+  }
+}
