@@ -262,7 +262,7 @@ bool ComfyControl::ensureReachable(bool startIfNeeded, std::string& error) {
         {"-s", settings_.mainPy().string(), "--listen", "127.0.0.1", "--port", std::to_string(port)},
         settings_.comfyRoot);
     store_.saveProcess(kOwnedComfyId, "comfyui", identity);
-    for (int i = 0; i < 40; ++i) {
+    for (int i = 0; i < 120; ++i) {
         if (client_.trySystemStats(stats)) {
             return true;
         }

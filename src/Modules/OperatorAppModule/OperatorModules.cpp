@@ -31,7 +31,7 @@ Runtime::ModuleManifest makeManifest(
     manifest.manifestTemplateVersion = Runtime::ManifestTemplateVersion::V1_1;
     manifest.moduleID = id;
     manifest.displayName = name;
-    manifest.moduleVersion = {0, 1, 0, std::nullopt};
+    manifest.moduleVersion = {0, 8, 0, std::nullopt};
     manifest.moduleType = type;
     manifest.entryPoint = entry;
     manifest.capabilitiesRequested = std::move(capabilities);

@@ -889,7 +889,7 @@ void OperatorSurface::render(const SurfaceFrame& frame) {
                 my += 22;
             }
             pushY(setH + 12);
-            g.panel(D2D1::RectF(x, y, x + contentW, y + 88), L"▸ NOTES", L"Windows 0.1.0", kMuted);
+            g.panel(D2D1::RectF(x, y, x + contentW, y + 88), L"▸ NOTES", L"Windows 0.8.0", kMuted);
             g.text(g.bodyFont.Get(), D2D1::RectF(x + 16, y + 40, x + contentW - 16, y + 78),
                 L"Start/Stop/Restart the headless manager. Login registers a per-user Task Scheduler job. "
                 L"Deploy lives on the LM Studio MCP tab. Diagnostics export is on Diagnostics.",

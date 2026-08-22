@@ -81,9 +81,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     const bool headless = mode == L"--headless-manager";
     auto options = makeLaunchOptions(serve || headless);
 
+    std::unique_ptr<Forge::Platform::InstanceLock> instanceLock;
     if (!serve && !headless) {
-        Forge::Platform::InstanceLock lock(L"Local\\ForgeConductor.Operator");
-        if (!lock.isPrimary()) {
+        instanceLock = std::make_unique<Forge::Platform::InstanceLock>(L"Local\\ForgeConductor.Operator");
+        if (!instanceLock->isPrimary()) {
             MessageBoxW(
                 nullptr,
                 L"Forge Conductor is already running.",

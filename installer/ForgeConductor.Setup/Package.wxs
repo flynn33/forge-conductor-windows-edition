@@ -4,7 +4,7 @@
   <Package
       Name="Forge Conductor"
       Manufacturer="Jim Daley"
-      Version="0.1.0"
+      Version="0.8.0"
       UpgradeCode="A81B2C3D-1001-4A01-8001-000000000040"
       Scope="perMachine">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Forge Conductor is already installed." />

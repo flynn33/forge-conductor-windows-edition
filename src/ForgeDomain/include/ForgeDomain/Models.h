@@ -230,7 +230,7 @@ struct SystemMetrics final {
 
 struct TelemetrySnapshot final {
     SystemMetrics system;
-    std::string version{"0.1.0"};
+    std::string version{"0.8.0"};
     std::string product{"Forge-Conductor"};
     std::int32_t pid{0};
     bool primaryAlive{false};

@@ -83,7 +83,7 @@ void writePlugin(
         {"name", name},
         {"displayName", name},
         {"runner", "mcpBridge"},
-        {"version", "0.1.0"},
+        {"version", "0.8.0"},
     };
     writeJson(dir / "manifest.json", manifest);
     writeJson(dir / "mcp-bridge-config.json", serverEntry(exe, role, home, deployment));

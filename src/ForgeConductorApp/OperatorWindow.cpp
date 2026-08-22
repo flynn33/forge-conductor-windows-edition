@@ -114,6 +114,10 @@ int OperatorWindow::run() {
         MessageBoxW(hwnd_, L"Direct2D failed to start. Check GPU drivers.", L"Forge Conductor", MB_OK | MB_ICONERROR);
         return 1;
     }
+    try {
+        services_.store().presencePrune(30);
+    } catch (...) {
+    }
     render();
     SetTimer(hwnd_, kTimer, 50, nullptr);
 

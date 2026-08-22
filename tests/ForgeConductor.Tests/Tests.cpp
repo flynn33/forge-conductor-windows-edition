@@ -4,6 +4,7 @@
 #include "ForgeComfy/ComfyControl.h"
 #include "ForgeDomain/Version.h"
 #include "ForgeLmStudio/LmStudioDeploy.h"
+#include "ForgeManager/ManagerController.h"
 #include "ForgeMcp/McpServer.h"
 #include "ForgeOrchestration/ForgeServices.h"
 #include "ForgeOrchestration/ToolRouter.h"
@@ -11,12 +12,14 @@
 #include "ForgePersistence/AppPaths.h"
 #include "ForgePlatform/HttpClient.h"
 #include "ForgePlatform/HttpUrl.h"
+#include "ForgePlatform/InstanceLock.h"
 #include "ForgeRuntime/CapabilityPolicy.h"
 #include "ForgeRuntime/ManifestLoader.h"
 #include "ForgeRuntime/SemVer.h"
 
 #include <nlohmann/json.hpp>
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -142,7 +145,7 @@ int main() {
 
     const auto v = Forge::Runtime::SemVer::parse("0.8.0");
     expect(v.major == 0 && v.minor == 8 && v.patch == 0, "semver_parse");
-    expect(std::string(Forge::Domain::kVersion) == "0.1.0", "product_version");
+    expect(std::string(Forge::Domain::kVersion) == "0.8.0", "product_version");
 
     Forge::Runtime::DefaultCommunicationGuard guard;
     expect(!guard.allow("", "x"), "guard_empty");
@@ -213,6 +216,16 @@ int main() {
         const auto loaded = loader.loadDirectory(manifests.string());
         expect(loaded.size() >= 7, "manifests_loaded");
         expect(loaded.front().isSchemaValid(), "manifest_schema");
+    }
+
+    {
+        const auto id = Forge::Domain::makeUuid();
+        std::wstring wide = L"Local\\ForgeConductor.TestLock.";
+        wide.append(id.begin(), id.end());
+        Forge::Platform::InstanceLock first(wide);
+        expect(first.isPrimary(), "instance_lock_primary");
+        Forge::Platform::InstanceLock second(wide);
+        expect(!second.isPrimary(), "instance_lock_secondary");
     }
 
     expect(Forge::Platform::isLoopbackHost("127.0.0.1"), "loopback_ipv4");
@@ -337,6 +350,54 @@ int main() {
     expect(comfyList.find("fs_read") == std::string::npos, "mcp_comfy_hides_fs");
     const auto primaryList = server.handleLine(R"({"jsonrpc":"2.0","id":3,"method":"tools/list"})");
     expect(primaryList.find("fs_read") != std::string::npos, "mcp_primary_keeps_fs");
+
+    if (const char* liveDeployEnv = std::getenv("FORGE_LIVE_DEPLOY"); liveDeployEnv && std::string(liveDeployEnv) == "1") {
+        std::filesystem::path exe = std::filesystem::current_path() / "ForgeConductor.exe";
+        if (!std::filesystem::exists(exe)) {
+            exe = std::filesystem::path("D:/Projects/Forge-Conductor-Windows/out/Debug/x64/ForgeConductorApp/ForgeConductor.exe");
+        }
+        Forge::LmStudio::LmStudioDeployService liveDeploy(Forge::Persistence::AppPaths(std::nullopt), exe);
+        const auto report = liveDeploy.deploy();
+        expect(report.ok, "live_deploy_ok");
+        const auto status = liveDeploy.status();
+        expect(status.ok, "live_deploy_status");
+        expect(std::filesystem::exists(liveDeploy.mcpJsonPath()), "live_mcp_json");
+    }
+
+    if (const char* liveMgrEnv = std::getenv("FORGE_LIVE_MANAGER"); liveMgrEnv && std::string(liveMgrEnv) == "1") {
+        std::filesystem::path exe = std::filesystem::path(
+            "D:/Projects/Forge-Conductor-Windows/out/Debug/x64/ForgeConductorApp/ForgeConductor.exe");
+        const auto mgrHome = tempHome();
+        Forge::Persistence::AppPaths mgrPaths(mgrHome);
+        mgrPaths.ensureLayout();
+        Forge::Manager::ManagerController manager(mgrPaths, exe);
+        manager.start();
+        expect(manager.isRunning(), "live_manager_start");
+        manager.setStartWithWindows(true);
+        expect(manager.startWithWindows(), "live_manager_login_on");
+        manager.setStartWithWindows(false);
+        expect(!manager.startWithWindows(), "live_manager_login_off");
+        manager.stop();
+        expect(!manager.isRunning(), "live_manager_stop");
+        std::error_code mgrEc;
+        std::filesystem::remove_all(mgrHome, mgrEc);
+    }
+
+    if (const char* liveComfyEnv = std::getenv("FORGE_LIVE_COMFY"); liveComfyEnv && std::string(liveComfyEnv) == "1") {
+        const auto liveHome = tempHome();
+        Forge::Persistence::AppPaths livePaths(liveHome);
+        livePaths.ensureLayout();
+        auto ctrl = Forge::Comfy::ComfyControl::create(livePaths);
+        auto livePrep = ctrl->call("comfy_prepare_video", R"({"prompt":"a lantern over black water","start_comfy":true})");
+        expect(livePrep.ok, "live_prepare_video");
+        expect(livePrep.payload["result"].find("next_steps") != std::string::npos, "live_prepare_next_steps");
+        expect(livePrep.payload["result"].find("\"submitted\":false") != std::string::npos, "live_prepare_not_submitted");
+        auto session = ctrl->lastPrepareSession();
+        expect(session.has_value(), "live_prepare_session");
+        ctrl->call("comfy_system", R"({"action":"stop"})");
+        std::error_code liveEc;
+        std::filesystem::remove_all(liveHome, liveEc);
+    }
 
     app->shutdown();
     std::error_code ec;

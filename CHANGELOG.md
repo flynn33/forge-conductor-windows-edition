@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- Product version is 0.8.0 in the binary, MCP serverInfo, plugin manifests, WiX package, and MSI filename
+- MCP smoke uses a temp `FORGE_CONDUCTOR_HOME` and also checks the `comfy` role
+- Operator single-instance lock is held for the life of the GUI (second launch no longer opens another window)
+- Operator GUI prunes MCP presence older than 30 seconds on startup so leftover smoke heartbeats do not look live
+
 ### Added
 
 - Native `ForgeComfy` library and `comfy-control` LM Studio plugin (`FORGE_MCP_ROLE=comfy`)
