@@ -62,7 +62,16 @@ void AppPaths::ensureLayout() const {
   "dashboard": { "host": "127.0.0.1", "port": 7788, "refresh_interval_sec": 8 },
   "manager": { "auto_restart": true, "watchdog_interval_sec": 3, "open_browser_on_start": false },
   "mcp": { "role": "primary" },
-  "sessions": { "idle_ttl_sec": 14400 }
+  "sessions": { "idle_ttl_sec": 14400 },
+  "comfy": {
+    "enabled": true,
+    "execution_policy": "prepare_only",
+    "transport": "loopback",
+    "base_url": "http://127.0.0.1:8188",
+    "comfy_root": "A:\\ComfyUI\\ComfyUI_windows_portable\\ComfyUI",
+    "comfy_python": "A:\\ComfyUI\\ComfyUI_windows_portable\\python_embeded\\python.exe",
+    "comfy_output": "A:\\ComfyUI\\ComfyUI_windows_portable\\ComfyUI\\output"
+  }
 }
 )";
         std::ofstream stream(configJSON(), std::ios::binary);

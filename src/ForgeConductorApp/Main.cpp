@@ -10,6 +10,7 @@
 #include "ForgeHost/HostBootstrap.h"
 #include "ForgeHost/LaunchOptions.h"
 #include "ForgeRuntime/ServiceContainer.h"
+#include "ForgeComfy/ComfyControl.h"
 #include "ForgeLmStudio/LmStudioDeploy.h"
 #include "ForgeManager/ManagerController.h"
 #include "ForgeMcp/McpServer.h"
@@ -55,6 +56,7 @@ Forge::Host::HostBundle bootProduct(const std::shared_ptr<Forge::Host::LaunchOpt
         "com.forge.module.mcp",
         "com.forge.module.telemetry",
         "com.forge.module.lmstudio",
+        "com.forge.module.comfy",
         "com.forge.module.manager",
         "com.forge.module.app.operator",
     };
@@ -97,12 +99,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         auto telemetry = host.services->get<Forge::Telemetry::TelemetryService>();
         auto lmStudio = host.services->get<Forge::LmStudio::LmStudioDeployService>();
         auto manager = host.services->get<Forge::Manager::ManagerController>();
-        if (!services || !telemetry || !lmStudio || !manager) {
+        auto comfy = host.services->get<Forge::Comfy::ComfyControl>();
+        if (!services || !telemetry || !lmStudio || !manager || !comfy) {
             throw std::runtime_error("Host activated but required services were not registered");
         }
 
         if (serve) {
-            Forge::Mcp::McpServer server(*services);
+            Forge::Mcp::McpServer server(*services, "primary", comfy.get());
             const int code = server.runStdio();
             host.runtime->shutdown();
             return code;
@@ -117,7 +120,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
             return 0;
         }
 
-        const int code = Forge::App::runOperatorGui(instance, *services, *telemetry, *lmStudio, *manager);
+        const int code = Forge::App::runOperatorGui(instance, *services, *telemetry, *lmStudio, *manager, comfy.get());
         host.runtime->shutdown();
         return code;
     } catch (const std::exception& ex) {

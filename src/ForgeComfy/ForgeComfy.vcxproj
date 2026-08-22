@@ -6,9 +6,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{A81B2C3D-1001-4A01-8001-000000000002}</ProjectGuid>
+    <ProjectGuid>{A81B2C3D-1001-4A01-8001-00000000000D}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>ForgePlatform</RootNamespace>
+    <RootNamespace>ForgeComfy</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -26,17 +26,27 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
+  </ImportGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\ForgePlatform\HttpClient.h" />
-    <ClInclude Include="include\ForgePlatform\HttpUrl.h" />
-    <ClInclude Include="include\ForgePlatform\InstanceLock.h" />
-    <ClInclude Include="include\ForgePlatform\WinPaths.h" />
+    <ClInclude Include="include\ForgeComfy\ComfyClient.h" />
+    <ClInclude Include="include\ForgeComfy\ComfyControl.h" />
+    <ClInclude Include="include\ForgeComfy\ComfyProcess.h" />
+    <ClInclude Include="include\ForgeComfy\ComfySettings.h" />
+    <ClInclude Include="include\ForgeComfy\ComfyStore.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\HttpClient.cpp" />
-    <ClCompile Include="src\HttpUrl.cpp" />
-    <ClCompile Include="src\InstanceLock.cpp" />
-    <ClCompile Include="src\WinPaths.cpp" />
+    <ClCompile Include="src\ComfyClient.cpp" />
+    <ClCompile Include="src\ComfyControl.cpp" />
+    <ClCompile Include="src\ComfyProcess.cpp" />
+    <ClCompile Include="src\ComfySettings.cpp" />
+    <ClCompile Include="src\ComfyStore.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

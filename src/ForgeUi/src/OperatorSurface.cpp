@@ -703,7 +703,7 @@ void OperatorSurface::render(const SurfaceFrame& frame) {
             g.button(D2D1::RectF(x + 324, y + 42, x + 474, y + 76), L"Prune presence", SurfaceHit::PrunePresence,
                 c(0.25f, 0.18f, 0.16f));
             g.text(g.microFont.Get(), D2D1::RectF(x + 490, y + 48, x + contentW - 16, y + 72),
-                L"Install LM Studio  →  Deploy  →  chat with MCP on", kMuted);
+                L"Install LM Studio  →  Deploy  →  enable forge + comfy-control", kMuted);
             pushY(100);
             const auto bannerTint = frame.pluginOk ? kGreen : kAmber;
             g.panel(D2D1::RectF(x, y, x + contentW, y + 78), L"▸ CONNECTION",
@@ -711,8 +711,9 @@ void OperatorSurface::render(const SurfaceFrame& frame) {
             g.text(g.labelFont.Get(), D2D1::RectF(x + 14, y + 40, x + contentW - 14, y + 58),
                 frame.pluginOk ? L"LM Studio connection deployed" : L"Not fully deployed to LM Studio", bannerTint);
             g.text(g.bodyFont.Get(), D2D1::RectF(x + 14, y + 56, x + contentW - 14, y + 74),
-                frame.pluginStatus.empty() ? L"Deploy writes primary + failover mcp.json and plugin dirs."
-                                           : frame.pluginStatus.c_str(),
+                frame.pluginStatus.empty()
+                    ? L"Deploy writes primary, failover, and comfy-control mcp.json plus plugin dirs."
+                    : frame.pluginStatus.c_str(),
                 kMuted);
             pushY(90);
             const float cardH = 124.0f;
@@ -743,6 +744,21 @@ void OperatorSurface::render(const SurfaceFrame& frame) {
                 ++i;
             }
             pushY(48.0f + static_cast<float>(mcpRows) * (cardH + 10) + 16);
+            const auto policyTint = frame.comfyPrepareOnly ? kAmber : kGreen;
+            const float nextH = 72.0f + 18.0f * static_cast<float>(frame.comfyNextSteps.size());
+            g.panel(D2D1::RectF(x, y, x + contentW, y + nextH), L"▸ COMFYUI VIDEO",
+                frame.comfyPrepareOnly ? L"PREPARE-ONLY" : L"FULL", policyTint);
+            g.text(g.bodyFont.Get(), D2D1::RectF(x + 14, y + 40, x + contentW - 14, y + 62),
+                frame.comfyUserMessage.empty()
+                    ? L"Deploy comfy-control, then ask LM Studio to prepare video. GPU submit is blocked on this machine."
+                    : frame.comfyUserMessage.c_str(),
+                frame.comfyReady ? kGreen : kMuted);
+            float ny = y + 64;
+            for (const auto& step : frame.comfyNextSteps) {
+                g.text(g.microFont.Get(), D2D1::RectF(x + 18, ny, x + contentW - 16, ny + 16), step.c_str(), kText);
+                ny += 18;
+            }
+            pushY(nextH + 16);
         } else if (frame.tab == SurfaceTab::Agents) {
             const float cardH = 128.0f;
             const float cardW = (contentW - 28) / 3.0f;

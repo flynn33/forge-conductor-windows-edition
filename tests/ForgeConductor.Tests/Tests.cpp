@@ -1,19 +1,29 @@
 // Copyright 2026 Jim Daley
 // SPDX-License-Identifier: Apache-2.0
 
+#include "ForgeComfy/ComfyControl.h"
 #include "ForgeDomain/Version.h"
+#include "ForgeLmStudio/LmStudioDeploy.h"
 #include "ForgeMcp/McpServer.h"
 #include "ForgeOrchestration/ForgeServices.h"
 #include "ForgeOrchestration/ToolRouter.h"
 #include "ForgeOrchestration/PdfWriter.h"
 #include "ForgePersistence/AppPaths.h"
+#include "ForgePlatform/HttpClient.h"
+#include "ForgePlatform/HttpUrl.h"
 #include "ForgeRuntime/CapabilityPolicy.h"
 #include "ForgeRuntime/ManifestLoader.h"
 #include "ForgeRuntime/SemVer.h"
 
+#include <nlohmann/json.hpp>
+
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -46,6 +56,84 @@ std::filesystem::path findAgents() {
     }
     return {};
 }
+
+class ScriptedHttp final : public Forge::Platform::IHttpClient {
+public:
+    struct Exchange {
+        std::string method;
+        std::string pathContains;
+        int status{200};
+        std::string body;
+    };
+    std::vector<Exchange> exchanges;
+    std::vector<std::string> seen;
+
+    Forge::Platform::HttpResponse request(
+        const std::string& method,
+        const std::string& url,
+        const std::string& jsonBody) override {
+        seen.push_back(method + " " + url);
+        (void)jsonBody;
+        Forge::Platform::HttpResponse response;
+        if (exchanges.empty()) {
+            response.status = 500;
+            response.error = "unexpected " + method + " " + url;
+            return response;
+        }
+        const auto expected = exchanges.front();
+        exchanges.erase(exchanges.begin());
+        if (method != expected.method || url.find(expected.pathContains) == std::string::npos) {
+            response.status = 500;
+            response.error = "mismatch, got " + method + " " + url;
+            return response;
+        }
+        response.status = expected.status;
+        response.body = expected.body;
+        return response;
+    }
+};
+
+class FakeLauncher final : public Forge::Comfy::IProcessLauncher {
+public:
+    Forge::Comfy::ProcessIdentity last;
+    int starts{0};
+    Forge::Comfy::ProcessIdentity start(
+        const std::filesystem::path& executable,
+        const std::vector<std::string>&,
+        const std::filesystem::path& workingDirectory) override {
+        ++starts;
+        last.pid = 4242;
+        last.executable = executable.string();
+        last.commandLine = executable.string();
+        last.createTime = 1001;
+        last.workingDirectory = workingDirectory;
+        return last;
+    }
+};
+
+class FakeInspector final : public Forge::Comfy::IProcessInspector {
+public:
+    Forge::Comfy::ProcessIdentity live;
+    bool reuse{false};
+    std::optional<Forge::Comfy::ProcessIdentity> snapshot(std::int32_t pid) const override {
+        auto copy = live;
+        copy.pid = pid;
+        if (reuse) {
+            copy.createTime = live.createTime + 1;
+        }
+        return copy;
+    }
+    bool terminate(const Forge::Comfy::ProcessIdentity& identity) override {
+        const auto current = snapshot(identity.pid);
+        if (!current) {
+            return false;
+        }
+        if (identity.createTime != 0 && current->createTime != identity.createTime) {
+            throw std::runtime_error("process identity reused");
+        }
+        return true;
+    }
+};
 
 } // namespace
 
@@ -127,9 +215,133 @@ int main() {
         expect(loaded.front().isSchemaValid(), "manifest_schema");
     }
 
+    expect(Forge::Platform::isLoopbackHost("127.0.0.1"), "loopback_ipv4");
+    expect(Forge::Platform::isLoopbackHost("localhost"), "loopback_name");
+    expect(!Forge::Platform::isLoopbackHost("8.8.8.8"), "not_loopback");
+    expect(Forge::Platform::validateLoopbackHttpBaseUrl("http://127.0.0.1:8188/") == "http://127.0.0.1:8188",
+        "base_url_strip");
+    bool threw = false;
+    try {
+        const auto rejected = Forge::Platform::validateLoopbackHttpBaseUrl("http://192.168.1.5:8188");
+        (void)rejected;
+    } catch (...) {
+        threw = true;
+    }
+    expect(threw, "reject_lan_url");
+
+    const auto lmHome = tempHome();
+    const auto fakeExe = home / "ForgeConductor.exe";
+    {
+        std::ofstream out(fakeExe, std::ios::binary);
+        out << "x";
+    }
+    Forge::LmStudio::LmStudioDeployService deploy(paths, fakeExe, lmHome);
+    auto deployReport = deploy.deploy();
+    expect(deployReport.ok, "deploy_ok");
+    const auto mcpPath = lmHome / "mcp.json";
+    nlohmann::json mcpJson;
+    {
+        std::ifstream in(mcpPath);
+        in >> mcpJson;
+    }
+    expect(mcpJson["mcpServers"].contains("forge-conductor"), "deploy_primary");
+    expect(mcpJson["mcpServers"].contains("forge-conductor-fallback"), "deploy_fallback");
+    expect(mcpJson["mcpServers"].contains("comfy-control"), "deploy_comfy");
+    expect(mcpJson.dump().find("controller.token") == std::string::npos, "deploy_no_token");
+    expect(std::filesystem::exists(lmHome / "extensions" / "plugins" / "mcp" / "comfy-control" / "manifest.json"),
+        "deploy_comfy_plugin");
+    auto deployStatus = deploy.status();
+    expect(deployStatus.ok, "deploy_status_ok");
+    mcpJson["mcpServers"]["unrelated"] = {{"command", "echo"}};
+    {
+        std::ofstream out(mcpPath);
+        out << mcpJson.dump(2);
+    }
+    deploy.deploy();
+    {
+        std::ifstream in(mcpPath);
+        in >> mcpJson;
+    }
+    expect(mcpJson["mcpServers"].contains("unrelated"), "deploy_preserves_unrelated");
+
+    auto http = std::make_shared<ScriptedHttp>();
+    http->exchanges = {
+        {"GET", "/api/system_stats", 200, R"({"system":{"os":"win"}})"},
+        {"GET", "/api/object_info", 200, R"({"LoadImage":{"input":{"required":{}}},"UNETLoader":{"input":{"required":{}}}})"},
+        {"GET", "/api/system_stats", 200, R"({"system":{"os":"win"}})"},
+        {"GET", "/api/object_info", 200, R"({"LoadImage":{"input":{"required":{}}},"UNETLoader":{"input":{"required":{}}}})"},
+    };
+    auto launcher = std::make_shared<FakeLauncher>();
+    auto inspector = std::make_shared<FakeInspector>();
+    Forge::Comfy::ComfySettings settings;
+    settings.executionPolicy = "prepare_only";
+    settings.comfyRoot = home / "missing-comfy";
+    settings.comfyPython = home / "missing-python.exe";
+    Forge::Comfy::ComfyControl comfy(paths, settings, http, launcher, inspector);
+    auto missingDoctor = comfy.doctor();
+    expect(!missingDoctor.ok, "comfy_doctor_missing_root");
+
+    const auto comfyRoot = home / "ComfyUI";
+    std::filesystem::create_directories(comfyRoot / "user" / "default" / "workflows");
+    {
+        std::ofstream out(comfyRoot / "main.py");
+        out << "print('ok')\n";
+        std::ofstream wf(comfyRoot / "user" / "default" / "workflows" / "02_Mythic_I2V_Wan22_5B.json");
+        wf << R"({"nodes":[]})";
+        std::ofstream py(home / "python.exe", std::ios::binary);
+        py << "x";
+    }
+    settings.comfyRoot = comfyRoot;
+    settings.comfyPython = home / "python.exe";
+    http->exchanges = {
+        {"GET", "/api/system_stats", 200, R"({"system":{"os":"win"}})"},
+        {"GET", "/api/object_info", 200,
+            R"({"LoadImage":{},"UNETLoader":{},"WanImageToVideo":{}})"},
+        {"GET", "/api/system_stats", 200, R"({"system":{"os":"win"}})"},
+        {"GET", "/api/object_info", 200,
+            R"({"LoadImage":{},"UNETLoader":{},"WanImageToVideo":{}})"},
+    };
+    Forge::Comfy::ComfyControl live(paths, settings, http, launcher, inspector);
+    auto prep = live.call("comfy_prepare_video", R"({"prompt":"a lantern over water","start_comfy":true})");
+    expect(prep.ok, "prepare_video_ok");
+    expect(prep.payload["result"].find("next_steps") != std::string::npos, "prepare_has_next_steps");
+    expect(prep.payload["result"].find("\"submitted\":false") != std::string::npos, "prepare_not_submitted");
+    expect(live.lastPrepareSession().has_value(), "prepare_session_persisted");
+    auto exec = live.call("comfy_workflow", R"({"action":"execute","arguments":{"workflow_id":"x"}})");
+    expect(!exec.ok && exec.code == "prepare_only", "execute_rejected");
+    auto simple = live.call("comfy_render_simple", R"({"prompt":"nope"})");
+    expect(!simple.ok && simple.code == "prepare_only", "render_simple_omitted_rejected");
+    auto vram = live.call("comfy_system", R"({"action":"vram_acquire"})");
+    expect(!vram.ok && vram.code == "prepare_only", "vram_rejected");
+
+    Forge::Comfy::ProcessIdentity owned;
+    owned.pid = 4242;
+    owned.executable = settings.comfyPython.string();
+    owned.createTime = 1001;
+    inspector->live = owned;
+    inspector->reuse = true;
+    bool reuseThrew = false;
+    try {
+        inspector->terminate(owned);
+    } catch (...) {
+        reuseThrew = true;
+    }
+    expect(reuseThrew, "pid_reuse_refused");
+
+    Forge::Mcp::McpServer comfyServer(*app, "comfy", &live);
+    const auto comfyInit = comfyServer.handleLine(
+        R"({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}})");
+    expect(comfyInit.find("comfy-control") != std::string::npos, "mcp_comfy_name");
+    const auto comfyList = comfyServer.handleLine(R"({"jsonrpc":"2.0","id":2,"method":"tools/list"})");
+    expect(comfyList.find("comfy_prepare_video") != std::string::npos, "mcp_comfy_prepare_tool");
+    expect(comfyList.find("fs_read") == std::string::npos, "mcp_comfy_hides_fs");
+    const auto primaryList = server.handleLine(R"({"jsonrpc":"2.0","id":3,"method":"tools/list"})");
+    expect(primaryList.find("fs_read") != std::string::npos, "mcp_primary_keeps_fs");
+
     app->shutdown();
     std::error_code ec;
     std::filesystem::remove_all(home, ec);
+    std::filesystem::remove_all(lmHome, ec);
 
     std::cout << g_passed << " passed, " << g_failed << " failed\n";
     return g_failed == 0 ? 0 : 1;

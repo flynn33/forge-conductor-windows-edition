@@ -9,7 +9,7 @@ ForgeConductor.exe (WinUI 3 + DirectX)
         → ForgeHost
             → ForgePlatform → ForgeRuntime
         → feature libraries (Domain, Persistence, Orchestration, Mcp,
-           Telemetry, LmStudio, Manager, GaugeKit, Ui)
+           Telemetry, LmStudio, Comfy, Manager, GaugeKit, Ui)
 ```
 
 - `ForgeRuntime` is portable C++20. No Windows headers.
@@ -32,3 +32,11 @@ ForgeConductor.exe (WinUI 3 + DirectX)
 ## Dashboard
 
 Native Direct3D 11 + HLSL gauges. No browser surface.
+
+## ComfyUI control
+
+`ForgeComfy` is a native C++ service module (`com.forge.module.comfy`). Deploy writes a third LM Studio mcpBridge plugin, `comfy-control`, that runs `ForgeConductor.exe serve` with `FORGE_MCP_ROLE=comfy`.
+
+That role exposes prepare-only Comfy tools (`comfy_prepare_video`, `comfy_system`, `comfy_nodes`, `comfy_workflow`). It talks to loopback ComfyUI over WinHTTP, records state in `comfy.sqlite`, and never `POST`s `/prompt` while `execution_policy` is `prepare_only`.
+
+Python `lmstudio-comfy-control` remains a behavioral spec, not a runtime. Remote ComfyUI transport is configured as `comfy.transport` but `remote` is rejected until implemented.

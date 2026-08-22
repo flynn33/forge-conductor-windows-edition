@@ -47,6 +47,14 @@ public:
     void stop(Runtime::IForgeModuleContext& context) override;
 };
 
+class ComfyModule final : public Runtime::IForgeModule {
+public:
+    Runtime::ModuleDescriptor descriptor() const override;
+    Runtime::ModuleManifest manifest() const override;
+    void start(Runtime::IForgeModuleContext& context) override;
+    void stop(Runtime::IForgeModuleContext& context) override;
+};
+
 class ManagerModule final : public Runtime::IForgeModule {
 public:
     Runtime::ModuleDescriptor descriptor() const override;

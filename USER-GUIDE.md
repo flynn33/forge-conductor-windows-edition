@@ -13,14 +13,15 @@ You never need a command prompt.
 3. First launch creates `%USERPROFILE%\.forge-conductor`.
 4. Open the **Diagnostics** page and confirm Doctor is green.
 5. Open **LM Studio MCP** and click **Deploy to LM Studio**.
-6. In LM Studio, enable **forge-conductor** and **forge-conductor-fallback** on a new chat.
+6. In LM Studio, enable **forge-conductor**, **forge-conductor-fallback**, and **comfy-control** on a new chat.
+7. Ask the model to prepare a video. It will set up ComfyUI and tell you the next steps. It will **not** render on this machine while the chat model holds the GPU.
 
 ## Surfaces
 
 | Page | What it is |
 |---|---|
 | FORGE RIG | Live CPU / RAM / GPU / disk instrument panel |
-| LM Studio MCP | Deploy, plugin status |
+| LM Studio MCP | Deploy, plugin status, ComfyUI prepare-only next steps |
 | Agents | Specialist playbooks |
 | Tools | The 34 MCP tools |
 | Live Feed | Recent tool audit |

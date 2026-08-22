@@ -4,6 +4,7 @@
 #include "OperatorWindow.h"
 
 #include "ForgeDomain/Version.h"
+#include "ForgeComfy/ComfyControl.h"
 #include "ForgeLmStudio/LmStudioDeploy.h"
 #include "ForgeManager/ManagerController.h"
 #include "ForgeOrchestration/ForgeServices.h"
@@ -71,12 +72,14 @@ OperatorWindow::OperatorWindow(
     Orchestration::ForgeServices& services,
     Telemetry::TelemetryService& telemetry,
     LmStudio::LmStudioDeployService& lmStudio,
-    Manager::ManagerController& manager)
+    Manager::ManagerController& manager,
+    Comfy::ComfyControl* comfy)
     : instance_(instance)
     , services_(services)
     , telemetry_(telemetry)
     , lmStudio_(lmStudio)
-    , manager_(manager) {}
+    , manager_(manager)
+    , comfy_(comfy) {}
 
 OperatorWindow::~OperatorWindow() = default;
 
@@ -208,7 +211,7 @@ void OperatorWindow::onClick(int x, int y) {
     case Ui::SurfaceHit::TabManager: setTab(Ui::SurfaceTab::Manager); break;
     case Ui::SurfaceHit::Deploy: {
         const auto report = lmStudio_.deploy();
-        notice_ = report.ok ? L"Deployed primary + fallback." : L"Deploy failed.";
+        notice_ = report.ok ? L"Deployed primary, fallback, and comfy-control." : L"Deploy failed.";
         break;
     }
     case Ui::SurfaceHit::RefreshMcp:
@@ -288,12 +291,18 @@ Ui::SurfaceFrame OperatorWindow::buildFrame() const {
     frame.cpuHistory = cpuHist_;
     frame.ramHistory = ramHist_;
     frame.gpuHistory = gpuHist_;
-    frame.mcpAlive = snapshot.primaryAlive || snapshot.fallbackAlive;
+    bool comfyAlive = false;
+    for (const auto& presence : snapshot.presence) {
+        if (presence.hostKind == "mcp-stdio-comfy") {
+            comfyAlive = true;
+        }
+    }
+    frame.mcpAlive = snapshot.primaryAlive || snapshot.fallbackAlive || comfyAlive;
     frame.managerAlive = manager_.isRunning();
     frame.startWithWindows = manager_.startWithWindows();
     frame.orchOk = doctor.ok;
-    frame.liveMcp = (snapshot.primaryAlive ? 1 : 0) + (snapshot.fallbackAlive ? 1 : 0);
-    frame.configuredMcp = 2;
+    frame.liveMcp = (snapshot.primaryAlive ? 1 : 0) + (snapshot.fallbackAlive ? 1 : 0) + (comfyAlive ? 1 : 0);
+    frame.configuredMcp = 3;
     frame.serveCount = frame.liveMcp;
     frame.agentCount = static_cast<int>(services_.catalog().all().size());
     frame.toolCount = static_cast<int>(services_.tools().toolNames().size());
@@ -434,8 +443,11 @@ Ui::SurfaceFrame OperatorWindow::buildFrame() const {
         snapshot.primaryAlive ? L"heartbeat present" : L"LM Studio starts on demand");
     addMcp(L"forge-conductor-fallback", L"fallback · stdio", snapshot.fallbackAlive,
         snapshot.fallbackAlive ? L"failover live" : L"redundancy idle");
+    addMcp(L"comfy-control", L"comfy · stdio", comfyAlive,
+        comfyAlive ? L"ComfyUI plugin live" : L"prepare-only video setup");
     for (const auto& presence : snapshot.presence) {
-        if (presence.hostKind != "mcp-stdio" && presence.hostKind != "mcp-stdio-fallback") {
+        if (presence.hostKind != "mcp-stdio" && presence.hostKind != "mcp-stdio-fallback"
+            && presence.hostKind != "mcp-stdio-comfy") {
             Ui::SurfaceMcpCard extra;
             extra.label = widen(presence.hostKind);
             extra.role = L"presence";
@@ -509,6 +521,25 @@ Ui::SurfaceFrame OperatorWindow::buildFrame() const {
             for (const auto& check : doctor.checks) {
                 frame.diagnostics.push_back(Ui::SurfaceRow{
                     widen(check.name), check.ok ? L"info" : L"error", widen(check.detail)});
+            }
+        }
+        if (comfy_) {
+            const auto comfyDoctor = comfy_->doctor();
+            for (const auto& check : comfyDoctor.checks) {
+                frame.diagnostics.push_back(Ui::SurfaceRow{
+                    L"comfy." + widen(check.name), check.ok ? L"info" : L"error", widen(check.detail)});
+            }
+        }
+    }
+
+    if (comfy_) {
+        frame.comfyPrepareOnly = true;
+        if (const auto session = comfy_->lastPrepareSession()) {
+            frame.comfyReady = session->ready;
+            frame.comfyPrepareOnly = session->executionPolicy != "full";
+            frame.comfyUserMessage = widen(session->userMessage);
+            for (const auto& step : session->nextSteps) {
+                frame.comfyNextSteps.push_back(widen(step));
             }
         }
     }
@@ -601,8 +632,9 @@ int runOperatorGui(
     Orchestration::ForgeServices& services,
     Telemetry::TelemetryService& telemetry,
     LmStudio::LmStudioDeployService& lmStudio,
-    Manager::ManagerController& manager) {
-    OperatorWindow window(instance, services, telemetry, lmStudio, manager);
+    Manager::ManagerController& manager,
+    Comfy::ComfyControl* comfy) {
+    OperatorWindow window(instance, services, telemetry, lmStudio, manager, comfy);
     return window.run();
 }
 

@@ -14,6 +14,7 @@ public:
 
     [[nodiscard]] const std::filesystem::path& home() const noexcept { return home_; }
     [[nodiscard]] std::filesystem::path storeSQLite() const { return home_ / "store.sqlite"; }
+    [[nodiscard]] std::filesystem::path comfySQLite() const { return home_ / "comfy.sqlite"; }
     [[nodiscard]] std::filesystem::path configJSON() const { return home_ / "config.json"; }
     [[nodiscard]] std::filesystem::path auditJSONL() const { return home_ / "audit.jsonl"; }
     [[nodiscard]] std::filesystem::path agentsDir() const { return home_ / "agents"; }

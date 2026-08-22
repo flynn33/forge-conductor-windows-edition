@@ -136,6 +136,26 @@ struct DoctorReport final {
     std::vector<DoctorCheck> checks;
 };
 
+struct ComfyToolSpec final {
+    std::string name;
+    std::string description;
+    std::string inputSchemaJson;
+};
+
+struct PrepareSession final {
+    std::string id;
+    std::string createdAt;
+    bool ready{false};
+    std::string executionPolicy;
+    std::string comfyUrl;
+    std::vector<std::string> workflowIds;
+    std::vector<std::string> workflowFiles;
+    std::vector<std::string> missingNodes;
+    std::string userMessage;
+    std::vector<std::string> nextSteps;
+    std::string resultJson;
+};
+
 struct AppConfig final {
     std::string logLevel{"info"};
     std::vector<std::string> allowedRoots;

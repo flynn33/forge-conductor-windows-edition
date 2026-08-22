@@ -53,6 +53,7 @@
       <Component Id="ManLm" Directory="ManifestsFolder" Guid="A81B2C3D-1001-4A01-8001-000000000064"><File Source="..\..\resources\Manifests\LmStudioModule.json" /></Component>
       <Component Id="ManMgr" Directory="ManifestsFolder" Guid="A81B2C3D-1001-4A01-8001-000000000065"><File Source="..\..\resources\Manifests\ManagerModule.json" /></Component>
       <Component Id="ManOp" Directory="ManifestsFolder" Guid="A81B2C3D-1001-4A01-8001-000000000066"><File Source="..\..\resources\Manifests\OperatorAppModule.json" /></Component>
+      <Component Id="ManComfy" Directory="ManifestsFolder" Guid="A81B2C3D-1001-4A01-8001-000000000067"><File Source="..\..\resources\Manifests\ComfyModule.json" /></Component>
     </ComponentGroup>
     <Component Id="StartMenuShortcut" Directory="AppMenuFolder" Guid="A81B2C3D-1001-4A01-8001-000000000042">
       <Shortcut

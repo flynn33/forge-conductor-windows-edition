@@ -15,7 +15,7 @@ This is a **GUI application**. There is no operator CLI. Open **Forge Conductor*
 
 - Native dashboard (Direct3D 11 gauges) — not a browser
 - 34 MCP tools for LM Studio over stdio
-- Deploy to LM Studio from the **LM Studio MCP** page
+- Deploy to LM Studio from the **LM Studio MCP** page (forge-conductor, fallback, and comfy-control)
 - Doctor, agents, tools, live feed, manager — all in the app
 - Per-user MSI install / uninstall
 

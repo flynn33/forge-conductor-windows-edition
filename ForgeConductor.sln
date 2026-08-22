@@ -22,6 +22,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForgeTelemetry", "src\Forge
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForgeLmStudio", "src\ForgeLmStudio\ForgeLmStudio.vcxproj", "{A81B2C3D-1001-4A01-8001-000000000009}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForgeComfy", "src\ForgeComfy\ForgeComfy.vcxproj", "{A81B2C3D-1001-4A01-8001-00000000000D}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForgeManager", "src\ForgeManager\ForgeManager.vcxproj", "{A81B2C3D-1001-4A01-8001-00000000000A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForgeGaugeKit", "src\ForgeGaugeKit\ForgeGaugeKit.vcxproj", "{A81B2C3D-1001-4A01-8001-00000000000B}"
@@ -78,6 +80,10 @@ Global
 		{A81B2C3D-1001-4A01-8001-000000000009}.Debug|x64.Build.0 = Debug|x64
 		{A81B2C3D-1001-4A01-8001-000000000009}.Release|x64.ActiveCfg = Release|x64
 		{A81B2C3D-1001-4A01-8001-000000000009}.Release|x64.Build.0 = Release|x64
+		{A81B2C3D-1001-4A01-8001-00000000000D}.Debug|x64.ActiveCfg = Debug|x64
+		{A81B2C3D-1001-4A01-8001-00000000000D}.Debug|x64.Build.0 = Debug|x64
+		{A81B2C3D-1001-4A01-8001-00000000000D}.Release|x64.ActiveCfg = Release|x64
+		{A81B2C3D-1001-4A01-8001-00000000000D}.Release|x64.Build.0 = Release|x64
 		{A81B2C3D-1001-4A01-8001-00000000000A}.Debug|x64.ActiveCfg = Debug|x64
 		{A81B2C3D-1001-4A01-8001-00000000000A}.Debug|x64.Build.0 = Debug|x64
 		{A81B2C3D-1001-4A01-8001-00000000000A}.Release|x64.ActiveCfg = Release|x64

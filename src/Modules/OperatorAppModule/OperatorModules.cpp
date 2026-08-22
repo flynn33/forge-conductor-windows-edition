@@ -7,6 +7,7 @@
 #include "ForgePersistence/AppPaths.h"
 #include "ForgeRuntime/Logger.h"
 #include "ForgeRuntime/ServiceContainer.h"
+#include "ForgeComfy/ComfyControl.h"
 #include "ForgeLmStudio/LmStudioDeploy.h"
 #include "ForgeManager/ManagerController.h"
 #include "ForgeOrchestration/ForgeServices.h"
@@ -134,6 +135,20 @@ void LmStudioModule::start(Runtime::IForgeModuleContext& context) {
 }
 void LmStudioModule::stop(Runtime::IForgeModuleContext&) {}
 
+Runtime::ModuleDescriptor ComfyModule::descriptor() const { return manifest().descriptor(); }
+Runtime::ModuleManifest ComfyModule::manifest() const {
+    return makeManifest("com.forge.module.comfy", "ComfyUI", Runtime::ModuleType::Service,
+        "ComfyModule", {Runtime::Capability::Diagnostics});
+}
+void ComfyModule::start(Runtime::IForgeModuleContext& context) {
+    auto app = context.services().get<Orchestration::ForgeServices>();
+    if (!app) {
+        throw std::runtime_error("Comfy module requires orchestration");
+    }
+    context.services().add(Comfy::ComfyControl::create(app->paths()));
+}
+void ComfyModule::stop(Runtime::IForgeModuleContext&) {}
+
 Runtime::ModuleDescriptor ManagerModule::descriptor() const { return manifest().descriptor(); }
 Runtime::ModuleManifest ManagerModule::manifest() const {
     return makeManifest("com.forge.module.manager", "Manager", Runtime::ModuleType::Service,
@@ -182,6 +197,7 @@ void registerAllModules(Runtime::ModuleRegistry& registry) {
     registry.add("McpModule", [] { return std::make_shared<McpModule>(); });
     registry.add("TelemetryModule", [] { return std::make_shared<TelemetryModule>(); });
     registry.add("LmStudioModule", [] { return std::make_shared<LmStudioModule>(); });
+    registry.add("ComfyModule", [] { return std::make_shared<ComfyModule>(); });
     registry.add("ManagerModule", [] { return std::make_shared<ManagerModule>(); });
     registry.add("OperatorAppModule", [] { return std::make_shared<OperatorAppModule>(); });
 }

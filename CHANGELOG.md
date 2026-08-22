@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Native `ForgeComfy` library and `comfy-control` LM Studio plugin (`FORGE_MCP_ROLE=comfy`)
+- Prepare-only video setup: start/discover ComfyUI, import/validate API graphs, `comfy_prepare_video` next steps
+- Deploy writes primary, fallback, and `comfy-control` mcpBridge plugins
+- WinHTTP loopback client and `comfy.sqlite` under the Forge home
+
 ## [0.8.0] — 2026-08-15
 
 First Windows native release. Behavioral parity with Forge Conductor macOS 0.8.0.

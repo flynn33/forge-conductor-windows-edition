@@ -49,8 +49,12 @@ std::map<std::string, std::string> flatten(const nlohmann::json& value) {
 
 } // namespace
 
-McpServer::McpServer(Orchestration::ForgeServices& services, std::string role)
+McpServer::McpServer(
+    Orchestration::ForgeServices& services,
+    std::string role,
+    Domain::IComfyControl* comfy)
     : services_(services)
+    , comfy_(comfy)
     , clientID_(Domain::ClientID::generate())
     , role_(std::move(role)) {
     if (const char* env = std::getenv("FORGE_MCP_ROLE"); env && *env) {
@@ -75,7 +79,9 @@ void McpServer::refreshPresence() {
 #else
         const std::int32_t pid = 0;
 #endif
-        const auto hostKind = role_ == "fallback" ? "mcp-stdio-fallback" : "mcp-stdio";
+        const auto hostKind = role_ == "fallback"
+            ? "mcp-stdio-fallback"
+            : (role_ == "comfy" ? "mcp-stdio-comfy" : "mcp-stdio");
         services_.store().presenceUpsert(clientID_.rawValue, hostKind, pid, services_.paths().home().string());
     } catch (...) {
     }
@@ -110,7 +116,9 @@ std::string McpServer::handleObject(const std::string& jsonText) {
             const auto requested = message.value("params", nlohmann::json::object())
                                        .value("protocolVersion", "");
             const auto negotiated = negotiateProtocolVersion(requested);
-            const auto serverName = role_ == "fallback" ? "forge-conductor-fallback" : "forge-conductor";
+            const auto serverName = role_ == "fallback"
+                ? "forge-conductor-fallback"
+                : (role_ == "comfy" ? "comfy-control" : "forge-conductor");
             nlohmann::json result;
             result["protocolVersion"] = negotiated;
             result["capabilities"] = {{"tools", {{"listChanged", false}}}};
@@ -122,22 +130,56 @@ std::string McpServer::handleObject(const std::string& jsonText) {
         }
         if (method == "tools/list") {
             nlohmann::json tools = nlohmann::json::array();
-            for (const auto& name : services_.tools().toolNames()) {
-                tools.push_back({
-                    {"name", name},
-                    {"description", name},
-                    {"inputSchema", {{"type", "object"}, {"additionalProperties", true}}},
-                });
+            if (role_ == "comfy") {
+                if (!comfy_) {
+                    return err(id, -32603, "comfy control is not registered").dump();
+                }
+                for (const auto& spec : comfy_->tools()) {
+                    nlohmann::json schema = {{"type", "object"}, {"additionalProperties", true}};
+                    try {
+                        schema = nlohmann::json::parse(spec.inputSchemaJson);
+                    } catch (...) {
+                    }
+                    tools.push_back({
+                        {"name", spec.name},
+                        {"description", spec.description},
+                        {"inputSchema", schema},
+                    });
+                }
+            } else {
+                for (const auto& name : services_.tools().toolNames()) {
+                    tools.push_back({
+                        {"name", name},
+                        {"description", name},
+                        {"inputSchema", {{"type", "object"}, {"additionalProperties", true}}},
+                    });
+                }
             }
             return ok(id, {{"tools", tools}}).dump();
         }
         if (method == "tools/call") {
             const auto params = message.value("params", nlohmann::json::object());
             const auto name = params.value("name", "");
-            const auto args = flatten(params.value("arguments", nlohmann::json::object()));
-            const auto result = services_.tools().call(name, args, clientID_);
+            Domain::ToolResult result;
+            if (role_ == "comfy") {
+                if (!comfy_) {
+                    return err(id, -32603, "comfy control is not registered").dump();
+                }
+                const auto arguments = params.value("arguments", nlohmann::json::object());
+                result = comfy_->call(name, arguments.dump());
+            } else {
+                const auto args = flatten(params.value("arguments", nlohmann::json::object()));
+                result = services_.tools().call(name, args, clientID_);
+            }
             nlohmann::json payload = {{"ok", result.ok}};
             for (const auto& [k, v] : result.payload) {
+                if (k == "result") {
+                    try {
+                        payload["result"] = nlohmann::json::parse(v);
+                        continue;
+                    } catch (...) {
+                    }
+                }
                 payload[k] = v;
             }
             if (!result.ok) {

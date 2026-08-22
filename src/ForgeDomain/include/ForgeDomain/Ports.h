@@ -113,4 +113,14 @@ public:
     virtual ~ILmStudioDeploy() = default;
 };
 
+class IComfyControl {
+public:
+    virtual DoctorReport status() = 0;
+    virtual DoctorReport doctor() = 0;
+    virtual std::vector<ComfyToolSpec> tools() const = 0;
+    virtual ToolResult call(const std::string& name, const std::string& argumentsJson) = 0;
+    virtual std::optional<PrepareSession> lastPrepareSession() const = 0;
+    virtual ~IComfyControl() = default;
+};
+
 } // namespace Forge::Domain

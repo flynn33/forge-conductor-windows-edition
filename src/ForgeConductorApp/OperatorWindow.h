@@ -16,6 +16,7 @@ namespace Forge::Orchestration { class ForgeServices; }
 namespace Forge::Telemetry { class TelemetryService; }
 namespace Forge::LmStudio { class LmStudioDeployService; }
 namespace Forge::Manager { class ManagerController; }
+namespace Forge::Comfy { class ComfyControl; }
 
 namespace Forge::App {
 
@@ -26,7 +27,8 @@ public:
         Orchestration::ForgeServices& services,
         Telemetry::TelemetryService& telemetry,
         LmStudio::LmStudioDeployService& lmStudio,
-        Manager::ManagerController& manager);
+        Manager::ManagerController& manager,
+        Comfy::ComfyControl* comfy = nullptr);
     ~OperatorWindow();
 
     int run();
@@ -47,6 +49,7 @@ private:
     Telemetry::TelemetryService& telemetry_;
     LmStudio::LmStudioDeployService& lmStudio_;
     Manager::ManagerController& manager_;
+    Comfy::ComfyControl* comfy_;
     Ui::OperatorSurface surface_;
     Ui::SurfaceTab tab_{Ui::SurfaceTab::Rig};
     std::wstring notice_;
@@ -61,6 +64,7 @@ int runOperatorGui(
     Orchestration::ForgeServices& services,
     Telemetry::TelemetryService& telemetry,
     LmStudio::LmStudioDeployService& lmStudio,
-    Manager::ManagerController& manager);
+    Manager::ManagerController& manager,
+    Comfy::ComfyControl* comfy = nullptr);
 
 } // namespace Forge::App

@@ -45,7 +45,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\ForgeRuntime\ForgeRuntime.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000001}</Project></ProjectReference>
+    <ProjectReference Include="..\..\src\ForgePlatform\ForgePlatform.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000002}</Project></ProjectReference>
     <ProjectReference Include="..\..\src\ForgeDomain\ForgeDomain.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000004}</Project></ProjectReference>
+    <ProjectReference Include="..\..\src\ForgeComfy\ForgeComfy.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-00000000000D}</Project></ProjectReference>
     <ProjectReference Include="..\..\src\ForgePersistence\ForgePersistence.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000005}</Project></ProjectReference>
     <ProjectReference Include="..\..\src\ForgeOrchestration\ForgeOrchestration.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000006}</Project></ProjectReference>
     <ProjectReference Include="..\..\src\ForgeMcp\ForgeMcp.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000007}</Project></ProjectReference>

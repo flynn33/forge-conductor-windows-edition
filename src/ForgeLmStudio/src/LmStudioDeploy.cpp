@@ -92,11 +92,18 @@ void writePlugin(
 
 } // namespace
 
-LmStudioDeployService::LmStudioDeployService(Persistence::AppPaths paths, std::filesystem::path executable)
+LmStudioDeployService::LmStudioDeployService(
+    Persistence::AppPaths paths,
+    std::filesystem::path executable,
+    std::optional<std::filesystem::path> lmStudioHome)
     : paths_(std::move(paths))
-    , executable_(std::move(executable)) {}
+    , executable_(std::move(executable))
+    , lmStudioHomeOverride_(std::move(lmStudioHome)) {}
 
 std::filesystem::path LmStudioDeployService::lmStudioHome() const {
+    if (lmStudioHomeOverride_) {
+        return *lmStudioHomeOverride_;
+    }
     return userProfile() / ".lmstudio";
 }
 
@@ -117,13 +124,16 @@ Domain::DoctorReport LmStudioDeployService::status() {
     const auto json = readJson(mcp);
     const bool registered = json.contains("mcpServers") &&
         json["mcpServers"].contains("forge-conductor") &&
-        json["mcpServers"].contains("forge-conductor-fallback");
+        json["mcpServers"].contains("forge-conductor-fallback") &&
+        json["mcpServers"].contains("comfy-control");
     check("mcp_json", registered, mcp.string());
     const auto plugins = home / "extensions" / "plugins" / "mcp";
     check("primary_plugin", std::filesystem::exists(plugins / "forge-conductor" / "manifest.json"),
         (plugins / "forge-conductor").string());
     check("fallback_plugin", std::filesystem::exists(plugins / "forge-conductor-fallback" / "manifest.json"),
         (plugins / "forge-conductor-fallback").string());
+    check("comfy_plugin", std::filesystem::exists(plugins / "comfy-control" / "manifest.json"),
+        (plugins / "comfy-control").string());
     return report;
 }
 
@@ -149,13 +159,15 @@ Domain::DoctorReport LmStudioDeployService::deploy() {
     }
     json["mcpServers"]["forge-conductor"] = serverEntry(executable_, "primary", forgeHome, deployment);
     json["mcpServers"]["forge-conductor-fallback"] = serverEntry(executable_, "fallback", forgeHome, deployment);
+    json["mcpServers"]["comfy-control"] = serverEntry(executable_, "comfy", forgeHome, deployment);
 
     const auto plugins = home / "extensions" / "plugins" / "mcp";
     writePlugin(plugins / "forge-conductor", "forge-conductor", executable_, "primary", forgeHome, deployment);
     writePlugin(plugins / "forge-conductor-fallback", "forge-conductor-fallback", executable_, "fallback", forgeHome, deployment);
+    writePlugin(plugins / "comfy-control", "comfy-control", executable_, "comfy", forgeHome, deployment);
     writeJson(mcpJsonPath(), json);
 
-    report.checks.push_back({"deploy", true, "Wrote primary + fallback (" + deployment + ")", true});
+    report.checks.push_back({"deploy", true, "Wrote primary + fallback + comfy-control (" + deployment + ")", true});
     report.checks.push_back({"mcp_json", true, mcpJsonPath().string(), true});
     return report;
 }

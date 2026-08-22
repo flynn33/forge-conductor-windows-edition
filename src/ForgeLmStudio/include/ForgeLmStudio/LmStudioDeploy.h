@@ -6,12 +6,16 @@
 #include "ForgePersistence/AppPaths.h"
 
 #include <filesystem>
+#include <optional>
 
 namespace Forge::LmStudio {
 
 class LmStudioDeployService final : public Domain::ILmStudioDeploy {
 public:
-    LmStudioDeployService(Persistence::AppPaths paths, std::filesystem::path executable);
+    LmStudioDeployService(
+        Persistence::AppPaths paths,
+        std::filesystem::path executable,
+        std::optional<std::filesystem::path> lmStudioHome = std::nullopt);
 
     Domain::DoctorReport status() override;
     Domain::DoctorReport deploy() override;
@@ -22,6 +26,7 @@ public:
 private:
     Persistence::AppPaths paths_;
     std::filesystem::path executable_;
+    std::optional<std::filesystem::path> lmStudioHomeOverride_;
 };
 
 } // namespace Forge::LmStudio

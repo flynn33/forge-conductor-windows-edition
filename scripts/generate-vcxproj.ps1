@@ -75,6 +75,8 @@ New-LibProject "ForgeTelemetry" "A81B2C3D-1001-4A01-8001-000000000008" "src\Forg
     (RelFiles "src\ForgeTelemetry" "*.h") (RelFiles "src\ForgeTelemetry" "*.cpp")
 New-LibProject "ForgeLmStudio" "A81B2C3D-1001-4A01-8001-000000000009" "src\ForgeLmStudio" `
     (RelFiles "src\ForgeLmStudio" "*.h") (RelFiles "src\ForgeLmStudio" "*.cpp")
+New-LibProject "ForgeComfy" "A81B2C3D-1001-4A01-8001-00000000000D" "src\ForgeComfy" `
+    (RelFiles "src\ForgeComfy" "*.h") (RelFiles "src\ForgeComfy" "*.cpp")
 New-LibProject "ForgeManager" "A81B2C3D-1001-4A01-8001-00000000000A" "src\ForgeManager" `
     (RelFiles "src\ForgeManager" "*.h") (RelFiles "src\ForgeManager" "*.cpp")
 New-LibProject "ForgeGaugeKit" "A81B2C3D-1001-4A01-8001-00000000000B" "src\ForgeGaugeKit" `

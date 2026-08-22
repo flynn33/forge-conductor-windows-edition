@@ -159,6 +159,10 @@ struct SurfaceFrame final {
     std::wstring pluginStatus;
     std::wstring homePath;
     std::wstring toolFilter;
+    bool comfyPrepareOnly{true};
+    bool comfyReady{false};
+    std::wstring comfyUserMessage;
+    std::vector<std::wstring> comfyNextSteps;
     std::vector<SurfaceOrchCard> orch;
     std::vector<SurfaceMcpCard> mcpCards;
     std::vector<SurfaceToolCard> tools;

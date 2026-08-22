@@ -57,6 +57,7 @@
     <ProjectReference Include="..\ForgeMcp\ForgeMcp.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000007}</Project></ProjectReference>
     <ProjectReference Include="..\ForgeTelemetry\ForgeTelemetry.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000008}</Project></ProjectReference>
     <ProjectReference Include="..\ForgeLmStudio\ForgeLmStudio.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-000000000009}</Project></ProjectReference>
+    <ProjectReference Include="..\ForgeComfy\ForgeComfy.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-00000000000D}</Project></ProjectReference>
     <ProjectReference Include="..\ForgeManager\ForgeManager.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-00000000000A}</Project></ProjectReference>
     <ProjectReference Include="..\ForgeGaugeKit\ForgeGaugeKit.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-00000000000B}</Project></ProjectReference>
     <ProjectReference Include="..\ForgeUi\ForgeUi.vcxproj"><Project>{A81B2C3D-1001-4A01-8001-00000000000C}</Project></ProjectReference>
