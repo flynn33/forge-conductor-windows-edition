@@ -101,6 +101,7 @@ set(FORGE_DOMAIN_SOURCES
     src/Domain/ProcessModels.cpp
     src/Domain/ProjectMemoryModels.cpp
     src/Domain/ResourcePolicy.cpp
+    src/Domain/SessionHostModels.cpp
     src/Domain/TelemetryModels.cpp
     src/Domain/ToolModels.cpp
 )
@@ -119,6 +120,7 @@ target_include_directories(ForgeConductor.Contracts INTERFACE
 set(FORGE_APPLICATION_SOURCES
     src/Application/AgentCatalog.cpp
     src/Application/AgentSessionService.cpp
+    src/Application/ContinuityAutomation.cpp
     src/Application/ContinuityCoordinator.cpp
     src/Application/LegacyContextContinuityService.cpp
     src/Application/LegacyMemoryService.cpp
@@ -222,9 +224,25 @@ target_link_libraries(ForgeConductor.Persistence.Windows PRIVATE
 forge_add_layer(ForgeConductor.NativeTools.Windows ForgeConductor::NativeTools.Windows
     ForgeConductor::Contracts
     ForgeConductor::Infrastructure.Windows)
+add_library(ForgeConductor.SessionHost.Core STATIC
+    src/SessionHost/ForgeNativeSessionHostAdapter.cpp
+    src/SessionHost/LocalLogicalSessionTransport.cpp
+)
 forge_add_layer(ForgeConductor.SessionHost.Core ForgeConductor::SessionHost.Core
     ForgeConductor::Application
-    ForgeConductor::Contracts)
+    ForgeConductor::Contracts
+    nlohmann_json::nlohmann_json)
+forge_configure_standard_target(ForgeConductor.SessionHost.Core)
+target_include_directories(ForgeConductor.SessionHost.Core PUBLIC
+    "${PROJECT_SOURCE_DIR}/include")
+
+add_library(ForgeNativeSessionHostPlugin SHARED
+    src/SessionHost/Plugin/ForgeNativeSessionHostPlugin.cpp)
+forge_configure_native_target(ForgeNativeSessionHostPlugin)
+target_include_directories(ForgeNativeSessionHostPlugin PUBLIC
+    "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(ForgeNativeSessionHostPlugin PRIVATE
+    ForgeConductor::SessionHost.Core)
 forge_add_layer(ForgeConductor.Mcp ForgeConductor::Mcp
     ForgeConductor::Application
     ForgeConductor::Contracts)
@@ -771,6 +789,50 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Continuity.CoordinatorTests PROPERTIES
         LABELS "T-UNIT;T-CONT;T-STRESS;G11"
+        TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.Continuity.AutomationTests
+        tests/Continuity/ContinuityAutomationTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Continuity.AutomationTests)
+    target_include_directories(
+        ForgeConductor.Continuity.AutomationTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Continuity.AutomationTests PRIVATE
+        ForgeConductor::Application)
+
+    add_test(
+        NAME ForgeConductor.Continuity.AutomationTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Continuity.AutomationTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Continuity.AutomationTests PROPERTIES
+        LABELS "T-UNIT;T-CONT;T-AUTO;G12"
+        TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.SessionHost.PluginSmokeTests
+        tests/SessionHost/NativeSessionHostPluginSmokeTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.SessionHost.PluginSmokeTests)
+    target_include_directories(
+        ForgeConductor.SessionHost.PluginSmokeTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.SessionHost.PluginSmokeTests PRIVATE
+        ForgeConductor::SessionHost.Core
+        ForgeConductor::Infrastructure.Windows)
+
+    add_test(
+        NAME ForgeConductor.SessionHost.PluginSmokeTests
+        COMMAND $<TARGET_FILE:ForgeConductor.SessionHost.PluginSmokeTests>
+            "$<TARGET_FILE:ForgeNativeSessionHostPlugin>"
+    )
+    set_tests_properties(
+        ForgeConductor.SessionHost.PluginSmokeTests PROPERTIES
+        LABELS "T-UNIT;T-CONT;T-ABI;G12"
         TIMEOUT 120
     )
 

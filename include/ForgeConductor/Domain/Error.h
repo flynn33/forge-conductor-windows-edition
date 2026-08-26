@@ -21,6 +21,7 @@ inline constexpr std::string_view Conflict = "conflict";
 inline constexpr std::string_view PayloadTooLarge = "payload_too_large";
 inline constexpr std::string_view LimitExceeded = "limit_exceeded";
 inline constexpr std::string_view DatabaseBusy = "database_busy";
+inline constexpr std::string_view RateLimited = "rate_limited";
 inline constexpr std::string_view StorageFull = "storage_full";
 inline constexpr std::string_view DeadlineExceeded = "deadline_exceeded";
 inline constexpr std::string_view Cancelled = "cancelled";

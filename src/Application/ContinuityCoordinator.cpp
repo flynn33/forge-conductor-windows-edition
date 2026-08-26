@@ -585,6 +585,35 @@ public:
             return propagate<Domain::HandoffResumeOutcome>(std::move(valid));
         }
 
+        // Resume is also the host-readiness proof. A native adapter may have
+        // reconstructed its durable ledger after the provider transport was
+        // restarted, so replay the exact canonical bootstrap through the
+        // adapter before publishing or reaffirming the active-session pointer.
+        // The adapter owns effect idempotency and must return the same exact
+        // acknowledgement binding.
+        auto bootstrapped = hostAdapter_.bootstrap(
+            session, *durable.value(), context);
+        if (!bootstrapped) {
+            return propagate<Domain::HandoffResumeOutcome>(
+                std::move(bootstrapped));
+        }
+        auto acknowledgement = hostAdapter_.awaitAcknowledgement(
+            session,
+            durable.value()->handoffId,
+            durable.value()->contentSha256,
+            context);
+        if (!acknowledgement) {
+            return propagate<Domain::HandoffResumeOutcome>(
+                std::move(acknowledgement));
+        }
+        valid = Domain::validateHandoffAcknowledgement(
+            operation,
+            *durable.value(),
+            acknowledgement.value());
+        if (!valid) {
+            return propagate<Domain::HandoffResumeOutcome>(std::move(valid));
+        }
+
         // Host reconciliation and the complete durable binding are proven
         // before either transition can seal the predecessor or publish the
         // active-session pointer.
