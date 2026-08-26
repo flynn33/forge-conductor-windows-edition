@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <stop_token>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -143,6 +145,136 @@ template <typename T, typename U>
     return std::move(parsed).value();
 }
 
+class SerializedOwnership final {
+public:
+    static constexpr std::size_t MaximumPendingOperations = 128U;
+
+    class Lease final {
+    public:
+        explicit Lease(SerializedOwnership& owner) noexcept : owner_{&owner} {}
+
+        Lease(const Lease&) = delete;
+        Lease& operator=(const Lease&) = delete;
+
+        Lease(Lease&& other) noexcept
+            : owner_{std::exchange(other.owner_, nullptr)}
+        {
+        }
+
+        Lease& operator=(Lease&&) = delete;
+
+        ~Lease()
+        {
+            if (owner_ != nullptr) {
+                owner_->release();
+            }
+        }
+
+    private:
+        SerializedOwnership* owner_{};
+    };
+
+    [[nodiscard]] Domain::Result<Lease> acquire(
+        const Domain::OperationContext& context,
+        const Contracts::IClock& clock,
+        const std::atomic_bool& shutdown) noexcept
+    {
+        bool queued{};
+        try {
+            std::unique_lock lock{mutex_};
+            auto valid = validateContext(context, clock, shutdown);
+            if (!valid) {
+                return propagate<Lease>(std::move(valid));
+            }
+            if ((active_ ? 1U : 0U) + waiting_ >=
+                MaximumPendingOperations) {
+                return failure<Lease>(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The native session-host serialized operation queue is full.");
+            }
+            if (!active_) {
+                active_ = true;
+                return Domain::Result<Lease>::success(Lease{*this});
+            }
+
+            ++waiting_;
+            queued = true;
+            std::stop_callback cancellationWake{
+                context.cancellation,
+                [this]() noexcept { condition_.notify_all(); }};
+            while (active_) {
+                valid = validateContext(context, clock, shutdown);
+                if (!valid) {
+                    --waiting_;
+                    queued = false;
+                    condition_.notify_all();
+                    return propagate<Lease>(std::move(valid));
+                }
+                if (condition_.wait_until(lock, context.deadline) ==
+                    std::cv_status::timeout) {
+                    --waiting_;
+                    queued = false;
+                    condition_.notify_all();
+                    return failure<Lease>(
+                        Domain::ErrorCodes::DeadlineExceeded,
+                        "The native session-host operation exceeded its deadline "
+                        "while waiting for serialized ownership.");
+                }
+            }
+            --waiting_;
+            queued = false;
+            valid = validateContext(context, clock, shutdown);
+            if (!valid) {
+                condition_.notify_all();
+                return propagate<Lease>(std::move(valid));
+            }
+            active_ = true;
+            return Domain::Result<Lease>::success(Lease{*this});
+        } catch (...) {
+            if (queued) {
+                try {
+                    std::lock_guard lock{mutex_};
+                    --waiting_;
+                    condition_.notify_all();
+                } catch (...) {
+                }
+            }
+            return failure<Lease>(
+                Domain::ErrorCodes::InternalFailure,
+                "The native session-host could not acquire serialized ownership.");
+        }
+    }
+
+    void wake() noexcept { condition_.notify_all(); }
+
+    void waitUntilIdle() noexcept
+    {
+        try {
+            std::unique_lock lock{mutex_};
+            condition_.wait(lock, [this]() noexcept {
+                return !active_ && waiting_ == 0U;
+            });
+        } catch (...) {
+        }
+    }
+
+private:
+    void release() noexcept
+    {
+        try {
+            std::lock_guard lock{mutex_};
+            active_ = false;
+            condition_.notify_all();
+        } catch (...) {
+        }
+    }
+
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    bool active_{};
+    std::size_t waiting_{};
+};
+
 } // namespace
 
 class ForgeNativeSessionHostAdapter::Impl final {
@@ -167,7 +299,13 @@ public:
         }
     }
 
-    [[nodiscard]] Domain::Result<void> ensureLoadedLocked(
+    [[nodiscard]] Domain::Result<SerializedOwnership::Lease> acquire(
+        const Domain::OperationContext& context) noexcept
+    {
+        return ownership.acquire(context, clock, shutdownRequested);
+    }
+
+    [[nodiscard]] Domain::Result<void> ensureLoadedOwned(
         const Domain::OperationContext& context)
     {
         if (loaded) {
@@ -186,7 +324,7 @@ public:
         return Domain::Result<void>::success();
     }
 
-    [[nodiscard]] Domain::Result<void> commitLocked(
+    [[nodiscard]] Domain::Result<void> commitOwned(
         const Domain::OperationContext& context)
     {
         auto valid = Domain::validateNativeSessionLedger(ledger);
@@ -202,7 +340,7 @@ public:
     }
 
     [[nodiscard]] std::vector<Domain::NativeSessionRecord>::iterator
-    findByKeyLocked(const Domain::IdempotencyKey& key)
+    findByKeyOwned(const Domain::IdempotencyKey& key)
     {
         return std::find_if(
             ledger.records.begin(), ledger.records.end(),
@@ -212,11 +350,47 @@ public:
     }
 
     [[nodiscard]] std::vector<Domain::NativeSessionRecord>::iterator
-    findBySessionLocked(const Domain::SessionId& id)
+    findBySessionOwned(const Domain::SessionId& id)
     {
         return std::find_if(
             ledger.records.begin(), ledger.records.end(),
             [&id](const auto& record) { return record.session.id == id; });
+    }
+
+    void rememberCancellation(const Domain::OperationId& operationId) noexcept
+    {
+        try {
+            std::lock_guard lock{cancellationMutex};
+            if (cancelledOperations.size() >= 256U &&
+                !cancelledOrder.empty()) {
+                cancelledOperations.erase(cancelledOrder.front());
+                cancelledOrder.pop_front();
+            }
+            if (cancelledOperations.insert(operationId.value()).second) {
+                cancelledOrder.push_back(operationId.value());
+            }
+        } catch (...) {
+        }
+        ownership.wake();
+    }
+
+    [[nodiscard]] bool isCancellationRemembered(
+        const Domain::OperationId& operationId) const noexcept
+    {
+        try {
+            std::lock_guard lock{cancellationMutex};
+            return cancelledOperations.contains(operationId.value());
+        } catch (...) {
+            return true;
+        }
+    }
+
+    [[nodiscard]] static bool isPendingOrOrphaned(
+        const Domain::HostSessionStatus status) noexcept
+    {
+        return status == Domain::HostSessionStatus::Creating ||
+            status == Domain::HostSessionStatus::Active ||
+            status == Domain::HostSessionStatus::Bootstrapping;
     }
 
     [[nodiscard]] Domain::Result<Domain::HostSession> create(
@@ -230,12 +404,16 @@ public:
             }
             Domain::SessionId logicalId = request.predecessorSessionId;
             {
-                std::lock_guard lock{mutex};
-                valid = ensureLoadedLocked(context);
+                auto serialized = acquire(context);
+                if (!serialized) {
+                    return propagate<Domain::HostSession>(
+                        std::move(serialized));
+                }
+                valid = ensureLoadedOwned(context);
                 if (!valid) {
                     return propagate<Domain::HostSession>(std::move(valid));
                 }
-                auto existing = findByKeyLocked(request.idempotencyKey);
+                auto existing = findByKeyOwned(request.idempotencyKey);
                 if (existing != ledger.records.end()) {
                     valid = Domain::validateHostSessionBinding(
                         existing->session, request);
@@ -296,7 +474,7 @@ public:
                         0U,
                         now,
                         now});
-                    valid = commitLocked(context);
+                    valid = commitOwned(context);
                     if (!valid) {
                         return propagate<Domain::HostSession>(std::move(valid));
                     }
@@ -332,19 +510,22 @@ public:
                 return propagate<Domain::HostSession>(std::move(valid));
             }
 
-            std::lock_guard lock{mutex};
-            valid = ensureLoadedLocked(context);
+            auto serialized = acquire(context);
+            if (!serialized) {
+                return propagate<Domain::HostSession>(std::move(serialized));
+            }
+            valid = ensureLoadedOwned(context);
             if (!valid) {
                 return propagate<Domain::HostSession>(std::move(valid));
             }
-            auto existing = findByKeyLocked(request.idempotencyKey);
+            auto existing = findByKeyOwned(request.idempotencyKey);
             if (existing == ledger.records.end() ||
                 existing->session.id != logicalId) {
                 return failure<Domain::HostSession>(
                     Domain::ErrorCodes::IntegrityFailure,
                     "The native session intent disappeared before provider publication.");
             }
-            if (cancelledOperations.contains(context.operationId.value()) ||
+            if (isCancellationRemembered(context.operationId) ||
                 context.isCancellationRequested()) {
                 transport.cancel(
                     context.operationId,
@@ -352,7 +533,7 @@ public:
                         provider.value().providerSessionId});
                 existing->session.status = Domain::HostSessionStatus::Cancelled;
                 existing->updatedAt = clock.utcNow();
-                static_cast<void>(commitLocked(context));
+                static_cast<void>(commitOwned(context));
                 return failure<Domain::HostSession>(
                     Domain::ErrorCodes::Cancelled,
                     "The native session was cancelled after provider creation.");
@@ -370,7 +551,7 @@ public:
             existing->session.status = Domain::HostSessionStatus::Active;
             existing->updatedAt = clock.utcNow();
             const auto published = existing->session;
-            valid = commitLocked(context);
+            valid = commitOwned(context);
             if (!valid) {
                 return propagate<Domain::HostSession>(std::move(valid));
             }
@@ -393,13 +574,17 @@ public:
                 return propagate<std::optional<Domain::HostSession>>(
                     std::move(valid));
             }
-            std::lock_guard lock{mutex};
-            valid = ensureLoadedLocked(context);
+            auto serialized = acquire(context);
+            if (!serialized) {
+                return propagate<std::optional<Domain::HostSession>>(
+                    std::move(serialized));
+            }
+            valid = ensureLoadedOwned(context);
             if (!valid) {
                 return propagate<std::optional<Domain::HostSession>>(
                     std::move(valid));
             }
-            const auto existing = findByKeyLocked(key);
+            const auto existing = findByKeyOwned(key);
             if (existing == ledger.records.end()) {
                 return Domain::Result<std::optional<Domain::HostSession>>::success(
                     std::nullopt);
@@ -462,12 +647,15 @@ public:
                 session.idempotencyKey};
             bool durableReady{};
             {
-                std::lock_guard lock{mutex};
-                valid = ensureLoadedLocked(context);
+                auto serialized = acquire(context);
+                if (!serialized) {
+                    return propagate<void>(std::move(serialized));
+                }
+                valid = ensureLoadedOwned(context);
                 if (!valid) {
                     return valid;
                 }
-                auto record = findBySessionLocked(session.id);
+                auto record = findBySessionOwned(session.id);
                 if (record == ledger.records.end()) {
                     return Domain::Result<void>::failure(Domain::makeError(
                         Domain::ErrorCodes::SessionNotFound,
@@ -506,7 +694,7 @@ public:
                     record->handoffId = handoff.handoffId;
                     record->handoffSha256 = handoff.contentSha256;
                     record->updatedAt = clock.utcNow();
-                    valid = commitLocked(context);
+                    valid = commitOwned(context);
                     if (!valid) {
                         return valid;
                     }
@@ -536,8 +724,11 @@ public:
                             "The recovered provider session differs from its durable binding."));
                     }
                 }
-                std::lock_guard lock{mutex};
-                auto record = findBySessionLocked(session.id);
+                auto serialized = acquire(context);
+                if (!serialized) {
+                    return propagate<void>(std::move(serialized));
+                }
+                auto record = findBySessionOwned(session.id);
                 if (record == ledger.records.end() ||
                     record->handoffId != handoff.handoffId ||
                     record->handoffSha256 != handoff.contentSha256) {
@@ -549,7 +740,7 @@ public:
                     Domain::HostSessionStatus::Bootstrapping;
                 record->ownerOperationId = context.operationId;
                 record->updatedAt = clock.utcNow();
-                valid = commitLocked(context);
+                valid = commitOwned(context);
                 if (!valid) {
                     return valid;
                 }
@@ -574,8 +765,11 @@ public:
                 return valid;
             }
 
-            std::lock_guard lock{mutex};
-            auto record = findBySessionLocked(session.id);
+            auto serialized = acquire(context);
+            if (!serialized) {
+                return propagate<void>(std::move(serialized));
+            }
+            auto record = findBySessionOwned(session.id);
             if (record == ledger.records.end() ||
                 record->handoffId != handoff.handoffId ||
                 record->handoffSha256 != handoff.contentSha256) {
@@ -584,14 +778,14 @@ public:
                     "The native bootstrap intent changed before acknowledgement."));
             }
             if (record->session.status == Domain::HostSessionStatus::Cancelled ||
-                cancelledOperations.contains(context.operationId.value()) ||
+                isCancellationRemembered(context.operationId) ||
                 context.isCancellationRequested()) {
                 transport.cancel(
                     context.operationId,
                     record->session.providerSessionId);
                 record->session.status = Domain::HostSessionStatus::Cancelled;
                 record->updatedAt = clock.utcNow();
-                static_cast<void>(commitLocked(context));
+                static_cast<void>(commitOwned(context));
                 return Domain::Result<void>::failure(Domain::makeError(
                     Domain::ErrorCodes::Cancelled,
                     "The native bootstrap was cancelled after provider acknowledgement."));
@@ -602,7 +796,7 @@ public:
             record->outputTokens =
                 static_cast<std::uint64_t>(response.value().outputTokens);
             record->updatedAt = clock.utcNow();
-            return commitLocked(context);
+            return commitOwned(context);
         } catch (...) {
             return Domain::Result<void>::failure(Domain::makeError(
                 Domain::ErrorCodes::InternalFailure,
@@ -622,13 +816,17 @@ public:
                 return propagate<Domain::HandoffAcknowledgement>(
                     std::move(valid));
             }
-            std::lock_guard lock{mutex};
-            valid = ensureLoadedLocked(context);
+            auto serialized = acquire(context);
+            if (!serialized) {
+                return propagate<Domain::HandoffAcknowledgement>(
+                    std::move(serialized));
+            }
+            valid = ensureLoadedOwned(context);
             if (!valid) {
                 return propagate<Domain::HandoffAcknowledgement>(
                     std::move(valid));
             }
-            const auto record = findBySessionLocked(session.id);
+            const auto record = findBySessionOwned(session.id);
             if (record == ledger.records.end() ||
                 record->session.status != Domain::HostSessionStatus::Ready ||
                 record->handoffId != handoffId ||
@@ -662,12 +860,16 @@ public:
             if (!valid) {
                 return propagate<Domain::HostSessionStatus>(std::move(valid));
             }
-            std::lock_guard lock{mutex};
-            valid = ensureLoadedLocked(context);
+            auto serialized = acquire(context);
+            if (!serialized) {
+                return propagate<Domain::HostSessionStatus>(
+                    std::move(serialized));
+            }
+            valid = ensureLoadedOwned(context);
             if (!valid) {
                 return propagate<Domain::HostSessionStatus>(std::move(valid));
             }
-            const auto record = findBySessionLocked(sessionId);
+            const auto record = findBySessionOwned(sessionId);
             if (record == ledger.records.end()) {
                 return failure<Domain::HostSessionStatus>(
                     Domain::ErrorCodes::SessionNotFound,
@@ -691,24 +893,70 @@ public:
             if (!valid) {
                 return propagate<Domain::HostRecoveryReport>(std::move(valid));
             }
+            Domain::HostRecoveryReport report{};
             std::vector<Domain::NativeSessionRecord> selected;
+            std::vector<std::pair<
+                Domain::OperationId,
+                std::optional<Domain::ProviderSessionId>>> cancellations;
             {
-                std::lock_guard lock{mutex};
-                valid = ensureLoadedLocked(context);
+                auto serialized = acquire(context);
+                if (!serialized) {
+                    return propagate<Domain::HostRecoveryReport>(
+                        std::move(serialized));
+                }
+                valid = ensureLoadedOwned(context);
                 if (!valid) {
                     return propagate<Domain::HostRecoveryReport>(
                         std::move(valid));
                 }
-                for (const auto& record : ledger.records) {
+                bool changed{};
+                for (auto& record : ledger.records) {
                     if ((!request.projectId ||
                          record.session.projectId == *request.projectId) &&
                         (!request.operationId ||
                          record.session.operationId == *request.operationId)) {
-                        selected.push_back(record);
+                        if (!request.cancelOrphans) {
+                            selected.push_back(record);
+                            continue;
+                        }
+
+                        ++report.inspected;
+                        if (record.session.status ==
+                            Domain::HostSessionStatus::Cancelled) {
+                            ++report.cancelled;
+                        } else if (isPendingOrOrphaned(
+                                       record.session.status)) {
+                            rememberCancellation(record.ownerOperationId);
+                            cancellations.emplace_back(
+                                record.ownerOperationId,
+                                record.session.providerSessionId);
+                            record.session.status =
+                                Domain::HostSessionStatus::Cancelled;
+                            record.updatedAt = clock.utcNow();
+                            ++report.cancelled;
+                            changed = true;
+                        }
+                        report.sessions.push_back(record.session);
+                    }
+                }
+                if (changed) {
+                    valid = commitOwned(context);
+                    if (!valid) {
+                        return propagate<Domain::HostRecoveryReport>(
+                            std::move(valid));
                     }
                 }
             }
-            Domain::HostRecoveryReport report{};
+
+            if (request.cancelOrphans) {
+                for (const auto& [operationId, providerSessionId] :
+                     cancellations) {
+                    transport.cancel(operationId, providerSessionId);
+                }
+                return Domain::Result<Domain::HostRecoveryReport>::success(
+                    std::move(report));
+            }
+
             report.sessions.reserve(selected.size());
             for (const auto& record : selected) {
                 ++report.inspected;
@@ -760,8 +1008,12 @@ public:
                 return propagate<Domain::NativeSessionHostHealth>(
                     std::move(valid));
             }
-            std::lock_guard lock{mutex};
-            valid = ensureLoadedLocked(context);
+            auto serialized = acquire(context);
+            if (!serialized) {
+                return propagate<Domain::NativeSessionHostHealth>(
+                    std::move(serialized));
+            }
+            valid = ensureLoadedOwned(context);
             if (!valid) {
                 return propagate<Domain::NativeSessionHostHealth>(
                     std::move(valid));
@@ -781,47 +1033,47 @@ public:
 
     void cancel(const Domain::OperationId& operationId) noexcept
     {
+        rememberCancellation(operationId);
+        transport.cancel(operationId, std::nullopt);
         try {
-            std::vector<std::optional<Domain::ProviderSessionId>> providers;
-            {
-                std::lock_guard lock{mutex};
-                if (cancelledOperations.size() >= 256U &&
-                    !cancelledOrder.empty()) {
-                    cancelledOperations.erase(cancelledOrder.front());
-                    cancelledOrder.pop_front();
-                }
-                if (cancelledOperations.insert(operationId.value()).second) {
-                    cancelledOrder.push_back(operationId.value());
-                }
-                const Domain::OperationContext context{
-                    operationId,
-                    clock.monotonicNow() + std::chrono::seconds{10},
-                    {},
-                    cancelCorrelationId()};
-                if (ensureLoadedLocked(context)) {
-                    for (auto& record : ledger.records) {
-                        if (record.ownerOperationId == operationId) {
-                            record.session.status =
-                                Domain::HostSessionStatus::Cancelled;
-                            record.updatedAt = clock.utcNow();
-                            providers.push_back(
-                                record.session.providerSessionId);
-                        }
-                    }
-                    if (!providers.empty()) {
-                        static_cast<void>(commitLocked(context));
-                    }
+            const Domain::OperationContext context{
+                operationId,
+                clock.monotonicNow() + std::chrono::seconds{10},
+                {},
+                cancelCorrelationId()};
+            auto serialized = acquire(context);
+            if (!serialized) {
+                return;
+            }
+            auto loadedResult = ensureLoadedOwned(context);
+            if (!loadedResult) {
+                return;
+            }
+            bool changed{};
+            for (auto& record : ledger.records) {
+                if (record.ownerOperationId == operationId &&
+                    record.session.status !=
+                        Domain::HostSessionStatus::Cancelled) {
+                    record.session.status =
+                        Domain::HostSessionStatus::Cancelled;
+                    record.updatedAt = clock.utcNow();
+                    changed = true;
                 }
             }
-            if (providers.empty()) {
-                transport.cancel(operationId, std::nullopt);
-            } else {
-                for (const auto& provider : providers) {
-                    transport.cancel(operationId, provider);
-                }
+            if (changed) {
+                static_cast<void>(commitOwned(context));
             }
         } catch (...) {
-            transport.cancel(operationId, std::nullopt);
+        }
+    }
+
+    void shutdown() noexcept
+    {
+        if (!shutdownRequested.exchange(true, std::memory_order_acq_rel)) {
+            ownership.wake();
+            transport.shutdown();
+            ownership.waitUntilIdle();
+            ledgerStore.shutdown();
         }
     }
 
@@ -831,7 +1083,8 @@ public:
     Contracts::IContinuityDocumentCodec& codec;
     Contracts::IUuidGenerator& uuidGenerator;
     Contracts::IClock& clock;
-    std::mutex mutex;
+    SerializedOwnership ownership;
+    mutable std::mutex cancellationMutex;
     Domain::NativeSessionLedger ledger;
     std::unordered_set<std::string> cancelledOperations;
     std::deque<std::string> cancelledOrder;
@@ -953,11 +1206,8 @@ void ForgeNativeSessionHostAdapter::cancel(
 
 void ForgeNativeSessionHostAdapter::shutdown() noexcept
 {
-    if (implementation_ &&
-        !implementation_->shutdownRequested.exchange(
-            true, std::memory_order_acq_rel)) {
-        implementation_->transport.shutdown();
-        implementation_->ledgerStore.shutdown();
+    if (implementation_) {
+        implementation_->shutdown();
     }
 }
 

@@ -51,4 +51,21 @@ public:
     virtual void shutdown() noexcept = 0;
 };
 
+// A logical successor may acknowledge a canonical handoff only after its
+// exact next action has been accepted by an execution owner. Implementations
+// must make schedule idempotent for a provider-session/handoff binding.
+class INativeLogicalContinuationScheduler {
+public:
+    virtual ~INativeLogicalContinuationScheduler() = default;
+
+    [[nodiscard]] virtual Domain::Result<void> schedule(
+        const Domain::NativeLogicalContinuation& continuation,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    virtual void cancel(
+        const Domain::ProviderSessionId& sessionId) noexcept = 0;
+
+    virtual void shutdown() noexcept = 0;
+};
+
 } // namespace ForgeConductor::Contracts

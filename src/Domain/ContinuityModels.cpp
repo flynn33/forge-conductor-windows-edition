@@ -227,6 +227,79 @@ Result<ContextBudget> estimateContextBudget(
         0.65);
 }
 
+Result<ContextBudget> resolveContextBudget(
+    const ContextBudgetSignals& signals,
+    const double checkpointReserveFraction,
+    const double rolloverReserveFraction)
+{
+    if (signals.capacity == 0U || signals.reserved >= signals.capacity) {
+        return Result<ContextBudget>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Context budget signal capacity and reserve are invalid."));
+    }
+
+    if (signals.providerOverflow) {
+        return evaluateContextBudget(
+            signals.capacity,
+            signals.capacity,
+            signals.reserved,
+            ContextBudgetSource::ProviderOverflow,
+            1.0,
+            checkpointReserveFraction,
+            rolloverReserveFraction);
+    }
+    if (signals.providerRemaining) {
+        if (*signals.providerRemaining > signals.capacity) {
+            return Result<ContextBudget>::failure(makeError(
+                ErrorCodes::InvalidRequest,
+                "Provider-reported remaining context exceeds model capacity."));
+        }
+        return evaluateContextBudget(
+            signals.capacity,
+            signals.capacity - *signals.providerRemaining,
+            signals.reserved,
+            ContextBudgetSource::ProviderRemaining,
+            1.0,
+            checkpointReserveFraction,
+            rolloverReserveFraction);
+    }
+    if (signals.providerUsed) {
+        return evaluateContextBudget(
+            signals.capacity,
+            *signals.providerUsed,
+            signals.reserved,
+            ContextBudgetSource::ProviderUsage,
+            1.0,
+            checkpointReserveFraction,
+            rolloverReserveFraction);
+    }
+    if (signals.configuredModelUsed) {
+        return evaluateContextBudget(
+            signals.capacity,
+            *signals.configuredModelUsed,
+            signals.reserved,
+            ContextBudgetSource::ConfiguredModelEstimate,
+            0.85,
+            checkpointReserveFraction,
+            rolloverReserveFraction);
+    }
+    if (signals.serializedBytes) {
+        const auto estimated = static_cast<std::uint64_t>(std::ceil(
+            static_cast<double>(*signals.serializedBytes) / 3.5));
+        return evaluateContextBudget(
+            signals.capacity,
+            estimated,
+            signals.reserved,
+            ContextBudgetSource::SerializedEstimate,
+            0.65,
+            checkpointReserveFraction,
+            rolloverReserveFraction);
+    }
+    return Result<ContextBudget>::failure(makeError(
+        ErrorCodes::InvalidRequest,
+        "No context budget signal is available."));
+}
+
 Result<void> validateContinuityHandoff(
     const ContinuityHandoff& handoff,
     const std::size_t encodedBytes)

@@ -11,10 +11,12 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsAtomicFileStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsConfigurationStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsDiagnosticSink.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsNativeSessionLedger.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUnicodeCanonicalizer.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
+#include "ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h"
 
 #include <memory>
 

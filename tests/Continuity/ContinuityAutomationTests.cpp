@@ -141,17 +141,33 @@ void requireError(
         true};
 }
 
-[[nodiscard]] Domain::ContextBudget budgetFor(
+[[nodiscard]] Domain::ContextBudgetSignals signalsFor(
     const Domain::ContextBudgetAction action)
 {
-    return Domain::ContextBudget{
+    std::optional<std::uint64_t> providerUsed;
+    bool providerOverflow{};
+    switch (action) {
+    case Domain::ContextBudgetAction::Normal:
+        providerUsed = 5'000U;
+        break;
+    case Domain::ContextBudgetAction::Checkpoint:
+        providerUsed = 7'500U;
+        break;
+    case Domain::ContextBudgetAction::Rollover:
+        providerUsed = 8'500U;
+        break;
+    case Domain::ContextBudgetAction::Emergency:
+        providerOverflow = true;
+        break;
+    }
+    return Domain::ContextBudgetSignals{
         10'000U,
-        7'500U,
         1'000U,
-        1'500U,
-        Domain::ContextBudgetSource::ProviderRemaining,
-        1.0,
-        action};
+        std::nullopt,
+        providerUsed,
+        std::nullopt,
+        std::nullopt,
+        providerOverflow};
 }
 
 [[nodiscard]] Domain::ContinuityOperation operationFor(
@@ -581,7 +597,7 @@ void normalAndCheckpointActionsAreNarrow()
 
     const auto normal = take(automation.observe(
         Domain::ContinuityAutomationObservation{
-            handoff, budgetFor(Domain::ContextBudgetAction::Normal)},
+            handoff, signalsFor(Domain::ContextBudgetAction::Normal)},
         operationContext(clock, 1U, "automation-normal")));
     REQUIRE(normal.action == Domain::ContextBudgetAction::Normal);
     REQUIRE(!normal.checkpointPersisted);
@@ -591,11 +607,11 @@ void normalAndCheckpointActionsAreNarrow()
     REQUIRE(coordinator.checkpointCalls() == 0U);
     REQUIRE(coordinator.rolloverCalls() == 0U);
     REQUIRE(coordinator.resumeCalls() == 0U);
-    REQUIRE(automation.trackedProjectCount() == 0U);
+    REQUIRE(automation.trackedProjectCount() == 1U);
 
     const auto checkpoint = take(automation.observe(
         Domain::ContinuityAutomationObservation{
-            handoff, budgetFor(Domain::ContextBudgetAction::Checkpoint)},
+            handoff, signalsFor(Domain::ContextBudgetAction::Checkpoint)},
         operationContext(clock, 2U, "automation-checkpoint")));
     REQUIRE(checkpoint.action == Domain::ContextBudgetAction::Checkpoint);
     REQUIRE(checkpoint.checkpointPersisted);
@@ -609,7 +625,7 @@ void normalAndCheckpointActionsAreNarrow()
 
     const auto replay = take(automation.observe(
         Domain::ContinuityAutomationObservation{
-            handoff, budgetFor(Domain::ContextBudgetAction::Checkpoint)},
+            handoff, signalsFor(Domain::ContextBudgetAction::Checkpoint)},
         operationContext(clock, 3U, "automation-checkpoint-replay")));
     REQUIRE(replay.operationId == checkpoint.operationId);
     REQUIRE(coordinator.checkpointCalls() == 2U);
@@ -627,7 +643,7 @@ void rolloverAndEmergencyActivateWithoutOperatorAction()
         Application::ContinuityAutomation automation{coordinator, clock};
         const auto handoff = handoffFor(identifier, now);
         const Domain::ContinuityAutomationObservation observation{
-            handoff, budgetFor(action)};
+            handoff, signalsFor(action)};
 
         const auto first = take(automation.observe(
             observation,
@@ -668,7 +684,7 @@ void bindingAndCoordinatorFailuresStopTheChain()
     const auto now = Domain::UtcTimePoint{1'800'000'000s};
     const auto handoff = handoffFor(20U, now);
     const Domain::ContinuityAutomationObservation observation{
-        handoff, budgetFor(Domain::ContextBudgetAction::Rollover)};
+        handoff, signalsFor(Domain::ContextBudgetAction::Rollover)};
 
     {
         Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
@@ -741,7 +757,7 @@ void cancellationDeadlineBudgetAndShutdownFailBeforeEffects()
     Application::ContinuityAutomation automation{coordinator, clock};
     const auto handoff = handoffFor(30U, now);
     const Domain::ContinuityAutomationObservation observation{
-        handoff, budgetFor(Domain::ContextBudgetAction::Checkpoint)};
+        handoff, signalsFor(Domain::ContextBudgetAction::Checkpoint)};
 
     std::stop_source cancellation;
     cancellation.request_stop();
@@ -761,8 +777,8 @@ void cancellationDeadlineBudgetAndShutdownFailBeforeEffects()
                 clock, 31U, "automation-expired", {}, true)),
         Domain::ErrorCodes::DeadlineExceeded);
 
-    auto invalidBudget = budgetFor(Domain::ContextBudgetAction::Checkpoint);
-    ++invalidBudget.remaining;
+    auto invalidBudget = signalsFor(Domain::ContextBudgetAction::Checkpoint);
+    invalidBudget.providerRemaining = invalidBudget.capacity + 1U;
     requireError(
         automation.observe(
             Domain::ContinuityAutomationObservation{handoff, invalidBudget},
@@ -796,7 +812,7 @@ void trackedProjectsAreCappedAt128()
         const auto result = automation.observe(
             Domain::ContinuityAutomationObservation{
                 handoffFor(1'000U + index, now),
-                budgetFor(Domain::ContextBudgetAction::Checkpoint)},
+                signalsFor(Domain::ContextBudgetAction::Checkpoint)},
             operationContext(
                 clock,
                 1'000U + index,
@@ -809,7 +825,7 @@ void trackedProjectsAreCappedAt128()
     const auto overflow = automation.observe(
         Domain::ContinuityAutomationObservation{
             handoffFor(2'000U, now),
-            budgetFor(Domain::ContextBudgetAction::Checkpoint)},
+            signalsFor(Domain::ContextBudgetAction::Checkpoint)},
         operationContext(clock, 2'000U, "automation-project-overflow"));
     requireError(overflow, Domain::ErrorCodes::LimitExceeded);
     REQUIRE(automation.trackedProjectCount() == 128U);
@@ -825,7 +841,7 @@ void sameProjectContentionIsImmediateAndShutdownCancelsActiveWork()
     Application::ContinuityAutomation automation{coordinator, clock};
     const auto handoff = handoffFor(40U, now);
     const Domain::ContinuityAutomationObservation observation{
-        handoff, budgetFor(Domain::ContextBudgetAction::Checkpoint)};
+        handoff, signalsFor(Domain::ContextBudgetAction::Checkpoint)};
     const auto firstContext = operationContext(
         clock, 40U, "automation-blocked-first");
     std::optional<Domain::Result<Domain::ContinuityAutomationOutcome>> first;
@@ -854,6 +870,156 @@ void sameProjectContentionIsImmediateAndShutdownCancelsActiveWork()
         Domain::ErrorCodes::TransportClosed);
 }
 
+void budgetSourcePrecedenceIsDeterministic()
+{
+    Domain::ContextBudgetSignals signals{
+        1'000U,
+        100U,
+        700U,
+        800U,
+        850U,
+        3'500U,
+        false};
+
+    auto budget = take(Domain::resolveContextBudget(signals));
+    REQUIRE(budget.source == Domain::ContextBudgetSource::ProviderRemaining);
+    REQUIRE(budget.used == 300U);
+    REQUIRE(budget.remaining == 600U);
+    REQUIRE(budget.action == Domain::ContextBudgetAction::Normal);
+
+    signals.providerRemaining.reset();
+    budget = take(Domain::resolveContextBudget(signals));
+    REQUIRE(budget.source == Domain::ContextBudgetSource::ProviderUsage);
+    REQUIRE(budget.action == Domain::ContextBudgetAction::Checkpoint);
+
+    signals.providerUsed.reset();
+    budget = take(Domain::resolveContextBudget(signals));
+    REQUIRE(
+        budget.source ==
+        Domain::ContextBudgetSource::ConfiguredModelEstimate);
+    REQUIRE(budget.action == Domain::ContextBudgetAction::Rollover);
+
+    signals.configuredModelUsed.reset();
+    budget = take(Domain::resolveContextBudget(signals));
+    REQUIRE(budget.source == Domain::ContextBudgetSource::SerializedEstimate);
+    REQUIRE(budget.action == Domain::ContextBudgetAction::Rollover);
+
+    signals.providerOverflow = true;
+    budget = take(Domain::resolveContextBudget(signals));
+    REQUIRE(budget.source == Domain::ContextBudgetSource::ProviderOverflow);
+    REQUIRE(budget.action == Domain::ContextBudgetAction::Emergency);
+
+    signals.providerOverflow = false;
+    signals.serializedBytes.reset();
+    requireError(
+        Domain::resolveContextBudget(signals),
+        Domain::ErrorCodes::InvalidRequest);
+}
+
+void progressAndTimePoliciesTriggerWithoutCallerSelectedActions()
+{
+    const auto now = Domain::UtcTimePoint{1'800'000'000s};
+    {
+        Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
+        ScriptedCoordinator coordinator;
+        const Domain::ContinuityAutomationPolicy policy{
+            2U, 4U, 3'600U, 7'200U, 0.20, 0.10};
+        Application::ContinuityAutomation automation{
+            coordinator, clock, policy};
+        const auto handoff = handoffFor(50U, now);
+        auto observation = Domain::ContinuityAutomationObservation{
+            handoff,
+            signalsFor(Domain::ContextBudgetAction::Normal),
+            1U,
+            false};
+
+        const auto first = take(automation.observe(
+            observation,
+            operationContext(clock, 50U, "automation-progress-first")));
+        REQUIRE(first.action == Domain::ContextBudgetAction::Normal);
+        REQUIRE(coordinator.checkpointCalls() == 0U);
+
+        const auto second = take(automation.observe(
+            observation,
+            operationContext(clock, 51U, "automation-progress-checkpoint")));
+        REQUIRE(second.action == Domain::ContextBudgetAction::Checkpoint);
+        REQUIRE(second.checkpointPersisted);
+        REQUIRE(coordinator.checkpointCalls() == 1U);
+
+        observation.completedProgressUnits = 2U;
+        const auto fourth = take(automation.observe(
+            observation,
+            operationContext(clock, 52U, "automation-progress-rollover")));
+        REQUIRE(fourth.action == Domain::ContextBudgetAction::Rollover);
+        REQUIRE(fourth.rolloverRequested);
+        REQUIRE(fourth.successorActivated);
+        REQUIRE(coordinator.checkpointCalls() == 2U);
+        REQUIRE(coordinator.rolloverCalls() == 1U);
+        REQUIRE(coordinator.resumeCalls() == 1U);
+    }
+
+    {
+        Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
+        ScriptedCoordinator coordinator;
+        const Domain::ContinuityAutomationPolicy policy{
+            1'000U, 2'000U, 10U, 20U, 0.20, 0.10};
+        Application::ContinuityAutomation automation{
+            coordinator, clock, policy};
+        const auto handoff = handoffFor(51U, now);
+        const Domain::ContinuityAutomationObservation observation{
+            handoff,
+            signalsFor(Domain::ContextBudgetAction::Normal),
+            0U,
+            false};
+
+        REQUIRE(take(automation.observe(
+                    observation,
+                    operationContext(clock, 53U, "automation-time-anchor")))
+                    .action == Domain::ContextBudgetAction::Normal);
+        clock.advance(10s);
+        REQUIRE(take(automation.observe(
+                    observation,
+                    operationContext(clock, 54U, "automation-time-checkpoint")))
+                    .action == Domain::ContextBudgetAction::Checkpoint);
+        clock.advance(10s);
+        const auto rollover = take(automation.observe(
+            observation,
+            operationContext(clock, 55U, "automation-time-rollover")));
+        REQUIRE(rollover.action == Domain::ContextBudgetAction::Rollover);
+        REQUIRE(rollover.successorActivated);
+    }
+
+    {
+        Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
+        ScriptedCoordinator coordinator;
+        const Domain::ContinuityAutomationPolicy invalid{
+            5U, 4U, 10U, 20U, 0.20, 0.10};
+        Application::ContinuityAutomation automation{
+            coordinator, clock, invalid};
+        requireError(
+            automation.observe(
+                Domain::ContinuityAutomationObservation{
+                    handoffFor(52U, now),
+                    signalsFor(Domain::ContextBudgetAction::Normal),
+                    1U,
+                    false},
+                operationContext(clock, 56U, "automation-invalid-policy")),
+            Domain::ErrorCodes::InvalidRequest);
+
+        auto oversized = Domain::ContinuityAutomationObservation{
+            handoffFor(53U, now),
+            signalsFor(Domain::ContextBudgetAction::Normal),
+            Domain::MaximumProgressUnitsPerObservation + 1U,
+            false};
+        Application::ContinuityAutomation bounded{coordinator, clock};
+        requireError(
+            bounded.observe(
+                oversized,
+                operationContext(clock, 57U, "automation-progress-bound")),
+            Domain::ErrorCodes::LimitExceeded);
+    }
+}
+
 } // namespace
 
 int main()
@@ -871,7 +1037,11 @@ int main()
         std::cout << "PASS continuity_automation.project_bound\n";
         sameProjectContentionIsImmediateAndShutdownCancelsActiveWork();
         std::cout << "PASS continuity_automation.contention_cancellation\n";
-        std::cout << "SUMMARY passed=6 failed=0 assertions="
+        budgetSourcePrecedenceIsDeterministic();
+        std::cout << "PASS continuity_automation.budget_source_precedence\n";
+        progressAndTimePoliciesTriggerWithoutCallerSelectedActions();
+        std::cout << "PASS continuity_automation.progress_time_policy\n";
+        std::cout << "SUMMARY passed=8 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

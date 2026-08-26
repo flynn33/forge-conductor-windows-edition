@@ -3,8 +3,11 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -16,6 +19,8 @@ namespace ForgeConductor::Application {
 namespace {
 
 constexpr std::size_t MaximumTrackedProjects = 128U;
+constexpr std::uint32_t MaximumConfiguredProgressInterval = 1'000'000U;
+constexpr std::uint32_t MaximumConfiguredTimeIntervalSeconds = 604'800U;
 
 template <typename T, typename U>
 [[nodiscard]] Domain::Result<T> propagate(Domain::Result<U>&& source)
@@ -91,6 +96,27 @@ template <typename T>
     return Domain::Result<void>::failure(Domain::makeError(
         Domain::ErrorCodes::InvalidRequest,
         "The continuity automation budget action is unsupported."));
+}
+
+[[nodiscard]] Domain::Result<void> validatePolicy(
+    const Domain::ContinuityAutomationPolicy& policy)
+{
+    if (policy.checkpointProgressInterval == 0U ||
+        policy.rolloverProgressInterval < policy.checkpointProgressInterval ||
+        policy.rolloverProgressInterval > MaximumConfiguredProgressInterval ||
+        policy.checkpointIntervalSeconds == 0U ||
+        policy.rolloverIntervalSeconds < policy.checkpointIntervalSeconds ||
+        policy.rolloverIntervalSeconds > MaximumConfiguredTimeIntervalSeconds ||
+        !std::isfinite(policy.checkpointReserveFraction) ||
+        !std::isfinite(policy.rolloverReserveFraction) ||
+        policy.rolloverReserveFraction <= 0.0 ||
+        policy.rolloverReserveFraction > policy.checkpointReserveFraction ||
+        policy.checkpointReserveFraction >= 1.0) {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The continuity automation trigger policy is invalid."));
+    }
+    return Domain::Result<void>::success();
 }
 
 [[nodiscard]] Domain::Result<void> validateCheckpointBinding(
@@ -211,8 +237,9 @@ class ContinuityAutomation::Impl final {
 public:
     Impl(
         Contracts::IContinuityCoordinator& coordinator,
-        Contracts::IClock& clock)
-        : coordinator_{coordinator}, clock_{clock}
+        Contracts::IClock& clock,
+        Domain::ContinuityAutomationPolicy policy)
+        : coordinator_{coordinator}, clock_{clock}, policy_{policy}
     {
         slots_.reserve(MaximumTrackedProjects);
     }
@@ -227,40 +254,61 @@ public:
                 return propagate<Domain::ContinuityAutomationOutcome>(
                     std::move(valid));
             }
-            valid = validateBudget(observation.budget);
+            valid = validatePolicy(policy_);
             if (!valid) {
                 return propagate<Domain::ContinuityAutomationOutcome>(
                     std::move(valid));
+            }
+            auto budgetResult = Domain::resolveContextBudget(
+                observation.budgetSignals,
+                policy_.checkpointReserveFraction,
+                policy_.rolloverReserveFraction);
+            if (!budgetResult) {
+                return propagate<Domain::ContinuityAutomationOutcome>(
+                    std::move(budgetResult));
+            }
+            auto budget = std::move(budgetResult).value();
+            valid = validateBudget(budget);
+            if (!valid) {
+                return propagate<Domain::ContinuityAutomationOutcome>(
+                    std::move(valid));
+            }
+            if (observation.completedProgressUnits >
+                Domain::MaximumProgressUnitsPerObservation) {
+                return failure<Domain::ContinuityAutomationOutcome>(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The continuity progress observation exceeds its bound.");
             }
 
             Domain::ContinuityAutomationOutcome outcome{
                 observation.handoff.project.projectId,
                 observation.handoff.handoffId,
-                observation.budget.action,
+                budget.action,
                 std::nullopt,
                 std::nullopt,
                 false,
                 false,
                 false};
-            if (observation.budget.action ==
-                Domain::ContextBudgetAction::Normal) {
-                return Domain::Result<
-                    Domain::ContinuityAutomationOutcome>::success(
-                        std::move(outcome));
-            }
-
             auto slotResult = slotFor(observation.handoff.project.projectId);
             if (!slotResult) {
                 return propagate<Domain::ContinuityAutomationOutcome>(
                     std::move(slotResult));
             }
             auto slot = std::move(slotResult).value();
-            std::unique_lock execution{slot->execution, std::try_to_lock};
-            if (!execution.owns_lock()) {
+            ProjectExecutionLease execution{*slot};
+            if (!execution.owns()) {
                 return failure<Domain::ContinuityAutomationOutcome>(
                     Domain::ErrorCodes::DatabaseBusy,
                     "Another continuity observation is active for this project.",
                     true);
+            }
+            const auto decision = triggerDecision(
+                *slot, observation, budget.action);
+            outcome.action = decision.action;
+            if (decision.action == Domain::ContextBudgetAction::Normal) {
+                return Domain::Result<
+                    Domain::ContinuityAutomationOutcome>::success(
+                        std::move(outcome));
             }
             valid = validateContext(context);
             if (!valid) {
@@ -289,8 +337,9 @@ public:
             }
             outcome.operationId = checkpoint.operation.operationId;
             outcome.checkpointPersisted = true;
-            if (observation.budget.action ==
+            if (decision.action ==
                 Domain::ContextBudgetAction::Checkpoint) {
+                recordCheckpoint(*slot, decision.observedAt);
                 return Domain::Result<
                     Domain::ContinuityAutomationOutcome>::success(
                         std::move(outcome));
@@ -343,6 +392,7 @@ public:
                     std::move(valid));
             }
             outcome.successorActivated = true;
+            recordRollover(*slot, decision.observedAt);
             return Domain::Result<
                 Domain::ContinuityAutomationOutcome>::success(
                     std::move(outcome));
@@ -415,9 +465,49 @@ private:
         }
 
         Domain::ProjectId projectId;
-        std::mutex execution;
+        std::atomic_bool executing{};
         std::mutex stateMutex;
         std::optional<Domain::OperationId> activeOperationId;
+        std::uint64_t progressCount{};
+        std::uint64_t lastCheckpointCount{};
+        std::uint64_t lastRolloverCount{};
+        std::optional<Domain::MonotonicTimePoint> firstObservedAt;
+        std::optional<Domain::MonotonicTimePoint> lastCheckpointAt;
+        std::optional<Domain::MonotonicTimePoint> lastRolloverAt;
+    };
+
+    class ProjectExecutionLease final {
+    public:
+        explicit ProjectExecutionLease(ProjectSlot& slot) noexcept
+            : slot_{slot}
+        {
+            bool expected = false;
+            owns_ = slot_.executing.compare_exchange_strong(
+                expected, true, std::memory_order_acq_rel);
+        }
+
+        ~ProjectExecutionLease() noexcept
+        {
+            if (owns_) {
+                slot_.executing.store(false, std::memory_order_release);
+            }
+        }
+
+        ProjectExecutionLease(const ProjectExecutionLease&) = delete;
+        ProjectExecutionLease& operator=(const ProjectExecutionLease&) = delete;
+        ProjectExecutionLease(ProjectExecutionLease&&) = delete;
+        ProjectExecutionLease& operator=(ProjectExecutionLease&&) = delete;
+
+        [[nodiscard]] bool owns() const noexcept { return owns_; }
+
+    private:
+        ProjectSlot& slot_;
+        bool owns_{};
+    };
+
+    struct TriggerDecision final {
+        Domain::ContextBudgetAction action;
+        Domain::MonotonicTimePoint observedAt;
     };
 
     class ActiveCall final {
@@ -446,6 +536,68 @@ private:
     private:
         ProjectSlot& slot_;
     };
+
+    [[nodiscard]] TriggerDecision triggerDecision(
+        ProjectSlot& slot,
+        const Domain::ContinuityAutomationObservation& observation,
+        const Domain::ContextBudgetAction budgetAction) const
+    {
+        const auto now = clock_.monotonicNow();
+        if (!slot.firstObservedAt) {
+            slot.firstObservedAt = now;
+        }
+        const auto maximum = (std::numeric_limits<std::uint64_t>::max)();
+        const auto increment =
+            static_cast<std::uint64_t>(observation.completedProgressUnits);
+        slot.progressCount = increment > maximum - slot.progressCount
+            ? maximum
+            : slot.progressCount + increment;
+
+        if (budgetAction !=
+            Domain::ContextBudgetAction::Normal) {
+            return TriggerDecision{budgetAction, now};
+        }
+
+        const auto rolloverAnchor = slot.lastRolloverAt.value_or(
+            *slot.firstObservedAt);
+        const auto checkpointAnchor = slot.lastCheckpointAt.value_or(
+            *slot.firstObservedAt);
+        const bool rolloverDue =
+            slot.progressCount - slot.lastRolloverCount >=
+                policy_.rolloverProgressInterval ||
+            now - rolloverAnchor >=
+                std::chrono::seconds{policy_.rolloverIntervalSeconds};
+        if (rolloverDue) {
+            return TriggerDecision{
+                Domain::ContextBudgetAction::Rollover, now};
+        }
+        const bool checkpointDue = observation.forceCheckpoint ||
+            slot.progressCount - slot.lastCheckpointCount >=
+                policy_.checkpointProgressInterval ||
+            now - checkpointAnchor >=
+                std::chrono::seconds{policy_.checkpointIntervalSeconds};
+        return TriggerDecision{
+            checkpointDue ? Domain::ContextBudgetAction::Checkpoint
+                          : Domain::ContextBudgetAction::Normal,
+            now};
+    }
+
+    static void recordCheckpoint(
+        ProjectSlot& slot,
+        const Domain::MonotonicTimePoint observedAt) noexcept
+    {
+        slot.lastCheckpointCount = slot.progressCount;
+        slot.lastCheckpointAt = observedAt;
+    }
+
+    static void recordRollover(
+        ProjectSlot& slot,
+        const Domain::MonotonicTimePoint observedAt) noexcept
+    {
+        recordCheckpoint(slot, observedAt);
+        slot.lastRolloverCount = slot.progressCount;
+        slot.lastRolloverAt = observedAt;
+    }
 
     [[nodiscard]] Domain::Result<void> validateContext(
         const Domain::OperationContext& context) const noexcept
@@ -503,6 +655,7 @@ private:
 
     Contracts::IContinuityCoordinator& coordinator_;
     Contracts::IClock& clock_;
+    const Domain::ContinuityAutomationPolicy policy_;
     std::atomic_bool shutdownRequested_{};
     mutable std::mutex slotsMutex_;
     std::vector<std::shared_ptr<ProjectSlot>> slots_;
@@ -510,8 +663,10 @@ private:
 
 ContinuityAutomation::ContinuityAutomation(
     Contracts::IContinuityCoordinator& coordinator,
-    Contracts::IClock& clock)
-    : implementation_{std::make_unique<Impl>(coordinator, clock)}
+    Contracts::IClock& clock,
+    Domain::ContinuityAutomationPolicy policy)
+    : implementation_{
+          std::make_unique<Impl>(coordinator, clock, std::move(policy))}
 {
 }
 

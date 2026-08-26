@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ForgeConductor/Contracts/IContinuityDocumentCodec.h"
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/INativeSessionHostServices.h"
 
@@ -10,8 +11,13 @@ namespace ForgeConductor::SessionHost {
 class LocalLogicalSessionTransport final
     : public Contracts::INativeSessionTransport {
 public:
-    explicit LocalLogicalSessionTransport(
-        std::shared_ptr<Contracts::IHasher> hasher);
+    LocalLogicalSessionTransport(
+        std::shared_ptr<Contracts::IHasher> hasher,
+        Contracts::IContinuityDocumentCodec& codec);
+    LocalLogicalSessionTransport(
+        std::shared_ptr<Contracts::IHasher> hasher,
+        Contracts::IContinuityDocumentCodec& codec,
+        Contracts::INativeLogicalContinuationScheduler& scheduler);
     ~LocalLogicalSessionTransport() noexcept override;
 
     LocalLogicalSessionTransport(const LocalLogicalSessionTransport&) = delete;

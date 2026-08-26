@@ -1,5 +1,6 @@
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsContinuityDocumentCodec.h"
+#include "ForgeConductor/SessionHost/BoundedLogicalContinuationQueue.h"
 #include "ForgeConductor/SessionHost/ForgeNativeSessionHostAdapter.h"
 #include "ForgeConductor/SessionHost/LocalLogicalSessionTransport.h"
 #include "Fakes/FoundationFakes.h"
@@ -9,6 +10,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -377,6 +379,184 @@ private:
     bool shutdown_{};
 };
 
+class RecordingContinuityDocumentCodec final
+    : public Contracts::IContinuityDocumentCodec {
+public:
+    explicit RecordingContinuityDocumentCodec(
+        Contracts::IContinuityDocumentCodec& inner) noexcept
+        : inner_{&inner}
+    {
+    }
+
+    [[nodiscard]] Domain::Result<Contracts::ContinuityDocument> encode(
+        const Domain::ContinuityHandoff& handoff,
+        const Domain::OperationContext& context) noexcept override
+    {
+        encodeCalls_.fetch_add(1U, std::memory_order_relaxed);
+        return inner_->encode(handoff, context);
+    }
+
+    [[nodiscard]] Domain::Result<Contracts::ContinuityDocument> decode(
+        const std::string_view canonicalUtf8,
+        const Domain::OperationContext& context) noexcept override
+    {
+        decodeCalls_.fetch_add(1U, std::memory_order_relaxed);
+        return inner_->decode(canonicalUtf8, context);
+    }
+
+    [[nodiscard]] std::size_t decodeCalls() const noexcept
+    {
+        return decodeCalls_.load(std::memory_order_relaxed);
+    }
+
+private:
+    Contracts::IContinuityDocumentCodec* inner_{};
+    std::atomic_size_t encodeCalls_{};
+    std::atomic_size_t decodeCalls_{};
+};
+
+class BlockingContinuationScheduler final
+    : public Contracts::INativeLogicalContinuationScheduler {
+public:
+    [[nodiscard]] Domain::Result<void> schedule(
+        const Domain::NativeLogicalContinuation& continuation,
+        const Domain::OperationContext& context) noexcept override
+    {
+        try {
+            std::unique_lock lock{mutex_};
+            if (shutdown_ || context.isCancellationRequested()) {
+                return cancelled();
+            }
+            if (context.isExpired(std::chrono::steady_clock::now())) {
+                return deadlineExceeded();
+            }
+            ++scheduleCalls_;
+            accepted_ = continuation;
+            scheduleEntered_ = true;
+            changed_.notify_all();
+            const auto released = changed_.wait_until(
+                lock,
+                context.deadline,
+                [&] {
+                    return releaseRequested_ || shutdown_ ||
+                           context.isCancellationRequested();
+                });
+            if (shutdown_ || context.isCancellationRequested()) {
+                return cancelled();
+            }
+            if (!released) {
+                return deadlineExceeded();
+            }
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The blocking scheduler failed safely."));
+        }
+    }
+
+    void cancel(
+        const Domain::ProviderSessionId& sessionId) noexcept override
+    {
+        try {
+            std::lock_guard lock{mutex_};
+            ++cancelCalls_;
+            if (accepted_ && accepted_->providerSessionId == sessionId) {
+                accepted_.reset();
+            }
+            changed_.notify_all();
+        } catch (...) {
+        }
+    }
+
+    void shutdown() noexcept override
+    {
+        try {
+            std::lock_guard lock{mutex_};
+            ++shutdownCalls_;
+            shutdown_ = true;
+            accepted_.reset();
+            changed_.notify_all();
+        } catch (...) {
+        }
+    }
+
+    [[nodiscard]] bool waitUntilScheduleEntered(
+        const std::chrono::milliseconds timeout) noexcept
+    {
+        try {
+            std::unique_lock lock{mutex_};
+            return changed_.wait_for(
+                lock, timeout, [this] { return scheduleEntered_; });
+        } catch (...) {
+            return false;
+        }
+    }
+
+    void release() noexcept
+    {
+        try {
+            std::lock_guard lock{mutex_};
+            releaseRequested_ = true;
+            changed_.notify_all();
+        } catch (...) {
+        }
+    }
+
+    [[nodiscard]] bool hasAcceptedWork() const noexcept
+    {
+        try {
+            std::lock_guard lock{mutex_};
+            return accepted_.has_value();
+        } catch (...) {
+            return false;
+        }
+    }
+
+    [[nodiscard]] std::size_t scheduleCalls() const noexcept
+    {
+        std::lock_guard lock{mutex_};
+        return scheduleCalls_;
+    }
+
+    [[nodiscard]] std::size_t cancelCalls() const noexcept
+    {
+        std::lock_guard lock{mutex_};
+        return cancelCalls_;
+    }
+
+    [[nodiscard]] std::size_t shutdownCalls() const noexcept
+    {
+        std::lock_guard lock{mutex_};
+        return shutdownCalls_;
+    }
+
+private:
+    [[nodiscard]] static Domain::Result<void> cancelled()
+    {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::Cancelled,
+            "The blocking scheduler was cancelled."));
+    }
+
+    [[nodiscard]] static Domain::Result<void> deadlineExceeded()
+    {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::DeadlineExceeded,
+            "The blocking scheduler exceeded its deadline."));
+    }
+
+    mutable std::mutex mutex_;
+    std::condition_variable changed_;
+    std::optional<Domain::NativeLogicalContinuation> accepted_;
+    std::size_t scheduleCalls_{};
+    std::size_t cancelCalls_{};
+    std::size_t shutdownCalls_{};
+    bool scheduleEntered_{};
+    bool releaseRequested_{};
+    bool shutdown_{};
+};
+
 struct AdapterFixture final {
     explicit AdapterFixture(
         const std::uint64_t firstUuid = 50'000U,
@@ -641,7 +821,7 @@ void retriesAreBoundedAndCreatingIntentRecovers()
         Domain::HostRecoveryRequest{
             request.projectId,
             request.operationId,
-            true},
+            false},
         operationContext(*fixture.clock, 12U, "native-recover-intent")));
     REQUIRE(recovered.inspected == 1U);
     REQUIRE(recovered.recovered == 1U);
@@ -654,6 +834,32 @@ void retriesAreBoundedAndCreatingIntentRecovers()
     REQUIRE(published.revision == 2U);
     REQUIRE(published.records.front().session.providerSessionId.has_value());
     REQUIRE(Domain::validateNativeSessionLedger(published));
+
+    AdapterFixture orphanFixture;
+    orphanFixture.transport.setRateLimitedAttempts(3U);
+    const auto orphanRequest = creationRequest(12U);
+    requireError(
+        orphanFixture.adapter.createSession(
+            orphanRequest,
+            operationContext(
+                *orphanFixture.clock, 13U, "native-orphan-create")),
+        Domain::ErrorCodes::RateLimited);
+    const auto cancelled = take(orphanFixture.adapter.recover(
+        Domain::HostRecoveryRequest{
+            orphanRequest.projectId,
+            orphanRequest.operationId,
+            true},
+        operationContext(
+            *orphanFixture.clock, 14U, "native-cancel-orphan")));
+    REQUIRE(cancelled.inspected == 1U);
+    REQUIRE(cancelled.recovered == 0U);
+    REQUIRE(cancelled.cancelled == 1U);
+    REQUIRE(cancelled.failed == 0U);
+    REQUIRE(cancelled.sessions.size() == 1U);
+    REQUIRE(cancelled.sessions.front().status ==
+            Domain::HostSessionStatus::Cancelled);
+    REQUIRE(orphanFixture.transport.cancelCalls() == 1U);
+    REQUIRE(orphanFixture.ledger.snapshot().revision == 2U);
 }
 
 void canonicalBootstrapValidationAndExactAcknowledgement()
@@ -865,7 +1071,9 @@ void localLogicalTransportReturnsAContinuationReceipt()
         Domain::UtcTimePoint{1'800'000'000s}, monotonic);
     auto hasher = std::make_shared<InfrastructureWindows::BCryptSha256Hasher>();
     InfrastructureWindows::WindowsContinuityDocumentCodec codec{hasher, clock};
-    SessionHost::LocalLogicalSessionTransport transport{hasher};
+    SessionHost::BoundedLogicalContinuationQueue continuationQueue{2U};
+    SessionHost::LocalLogicalSessionTransport transport{
+        hasher, codec, continuationQueue};
     const auto request = creationRequest(200U);
     const auto context = operationContext(
         *clock, 200U, "logical-create");
@@ -897,6 +1105,7 @@ void localLogicalTransportReturnsAContinuationReceipt()
         bootstrap,
         operationContext(*clock, 202U, "logical-bootstrap")));
     REQUIRE(!response.chunks.empty());
+    REQUIRE(continuationQueue.pendingCount() == 1U);
 
     // The continuation receipt, not the acknowledgement-shaped response,
     // proves that the canonical document was consumed and scheduled.
@@ -911,17 +1120,30 @@ void localLogicalTransportReturnsAContinuationReceipt()
     REQUIRE(receipt->command == "forge continue --exact");
     REQUIRE(receipt->successCondition ==
             "The successor reports the next action complete");
+    const auto scheduled = take(continuationQueue.takeNext(
+        operationContext(*clock, 204U, "logical-take-next")));
+    REQUIRE(scheduled.has_value());
+    REQUIRE(scheduled->providerSessionId == receipt->providerSessionId);
+    REQUIRE(scheduled->handoffId == receipt->handoffId);
+    REQUIRE(scheduled->action == receipt->action);
+    REQUIRE(scheduled->command == receipt->command);
+    REQUIRE(scheduled->successCondition == receipt->successCondition);
+    REQUIRE(continuationQueue.pendingCount() == 0U);
+    REQUIRE(!take(continuationQueue.takeNext(
+        operationContext(*clock, 205U, "logical-take-empty")))
+                 .has_value());
     REQUIRE(take(transport.query(
                 native.providerSessionId,
-                operationContext(*clock, 204U, "logical-query-ready"))) ==
+                operationContext(*clock, 206U, "logical-query-ready"))) ==
             Domain::HostSessionStatus::Ready);
 
     static_cast<void>(take(transport.bootstrap(
         bootstrap,
-        operationContext(*clock, 205U, "logical-bootstrap-replay"))));
+        operationContext(*clock, 207U, "logical-bootstrap-replay"))));
+    REQUIRE(continuationQueue.pendingCount() == 0U);
     const auto replay = take(transport.continuation(
         native.providerSessionId,
-        operationContext(*clock, 206U, "logical-continuation-replay")));
+        operationContext(*clock, 208U, "logical-continuation-replay")));
     REQUIRE(replay.has_value());
     REQUIRE(replay->sequence == 1U);
     REQUIRE(replay->action == receipt->action);
@@ -931,7 +1153,7 @@ void localLogicalTransportReturnsAContinuationReceipt()
         uuidText(22'222U));
     const auto otherDocument = take(codec.encode(
         otherHandoff,
-        operationContext(*clock, 207U, "logical-other-handoff")));
+        operationContext(*clock, 209U, "logical-other-handoff")));
     auto conflicting = bootstrap;
     conflicting.handoffId = otherDocument.handoff.handoffId;
     conflicting.handoffSha256 = otherDocument.handoff.contentSha256;
@@ -939,20 +1161,303 @@ void localLogicalTransportReturnsAContinuationReceipt()
     requireError(
         transport.bootstrap(
             conflicting,
-            operationContext(*clock, 208U, "logical-conflicting-handoff")),
+            operationContext(*clock, 210U, "logical-conflicting-handoff")),
         Domain::ErrorCodes::Conflict);
+    REQUIRE(continuationQueue.pendingCount() == 0U);
 
     transport.cancel(context.operationId, native.providerSessionId);
     REQUIRE(take(transport.query(
                 native.providerSessionId,
-                operationContext(*clock, 209U, "logical-query-cancelled"))) ==
+                operationContext(*clock, 211U, "logical-query-cancelled"))) ==
             Domain::HostSessionStatus::Cancelled);
     transport.shutdown();
     requireError(
         transport.continuation(
             native.providerSessionId,
-            operationContext(*clock, 210U, "logical-after-shutdown")),
+            operationContext(*clock, 212U, "logical-after-shutdown")),
         Domain::ErrorCodes::Cancelled);
+}
+
+void localLogicalTransportRejectsCanonicalAndBindingDefects()
+{
+    const auto monotonic = std::chrono::steady_clock::now();
+    auto clock = std::make_shared<Fakes::FakeClock>(
+        Domain::UtcTimePoint{1'800'000'000s}, monotonic);
+    auto hasher = std::make_shared<InfrastructureWindows::BCryptSha256Hasher>();
+    InfrastructureWindows::WindowsContinuityDocumentCodec strictCodec{
+        hasher, clock};
+    RecordingContinuityDocumentCodec injectedCodec{strictCodec};
+    SessionHost::BoundedLogicalContinuationQueue continuationQueue{4U};
+    SessionHost::LocalLogicalSessionTransport transport{
+        hasher, injectedCodec, continuationQueue};
+    const auto request = creationRequest(220U);
+    const auto native = take(transport.createSession(
+        request,
+        operationContext(*clock, 220U, "logical-defect-create")));
+    const auto successorId = parse<Domain::SessionId>(uuidText(50'220U));
+    const Domain::HostSession successor{
+        successorId,
+        request.projectId,
+        request.operationId,
+        request.predecessorSessionId,
+        request.idempotencyKey,
+        native.providerSessionId,
+        native.model,
+        Domain::HostSessionStatus::Active};
+    const auto handoff = handoffFor(
+        220U, request, successor, strictCodec, *clock);
+    const auto document = take(strictCodec.encode(
+        handoff,
+        operationContext(*clock, 221U, "logical-defect-encode")));
+    const Domain::NativeBootstrapRequest bootstrap{
+        request.operationId,
+        request.projectId,
+        successorId,
+        native.providerSessionId,
+        handoff.handoffId,
+        handoff.contentSha256,
+        document.canonicalUtf8};
+
+    auto noncanonical = bootstrap;
+    noncanonical.canonicalHandoffUtf8.insert(0U, " ");
+    requireError(
+        transport.bootstrap(
+            noncanonical,
+            operationContext(*clock, 222U, "logical-noncanonical")),
+        Domain::ErrorCodes::InvalidRequest);
+    REQUIRE(injectedCodec.decodeCalls() == 1U);
+    REQUIRE(continuationQueue.pendingCount() == 0U);
+
+    auto duplicateKey = bootstrap;
+    duplicateKey.canonicalHandoffUtf8.insert(
+        1U, "\"schema_version\":\"1.0\",");
+    requireError(
+        transport.bootstrap(
+            duplicateKey,
+            operationContext(*clock, 223U, "logical-duplicate-key")),
+        Domain::ErrorCodes::InvalidRequest);
+    REQUIRE(injectedCodec.decodeCalls() == 2U);
+    REQUIRE(continuationQueue.pendingCount() == 0U);
+
+    auto wrongSuccessor = bootstrap;
+    wrongSuccessor.successorSessionId =
+        parse<Domain::SessionId>(uuidText(50'221U));
+    requireError(
+        transport.bootstrap(
+            wrongSuccessor,
+            operationContext(*clock, 224U, "logical-wrong-successor")),
+        Domain::ErrorCodes::IntegrityFailure);
+    REQUIRE(injectedCodec.decodeCalls() == 3U);
+    REQUIRE(continuationQueue.pendingCount() == 0U);
+
+    static_cast<void>(take(transport.bootstrap(
+        bootstrap,
+        operationContext(*clock, 225U, "logical-defect-bootstrap"))));
+    REQUIRE(injectedCodec.decodeCalls() == 4U);
+    REQUIRE(continuationQueue.pendingCount() == 1U);
+
+    auto changedHandoff = handoff;
+    changedHandoff.nextActions.front().action =
+        "Run a different scheduled continuation";
+    const auto changedDocument = take(strictCodec.encode(
+        changedHandoff,
+        operationContext(*clock, 226U, "logical-changed-encode")));
+    REQUIRE(changedDocument.handoff.handoffId == handoff.handoffId);
+    REQUIRE(changedDocument.handoff.contentSha256 != handoff.contentSha256);
+    auto changedPayload = bootstrap;
+    changedPayload.handoffSha256 = changedDocument.handoff.contentSha256;
+    changedPayload.canonicalHandoffUtf8 = changedDocument.canonicalUtf8;
+    requireError(
+        transport.bootstrap(
+            changedPayload,
+            operationContext(*clock, 227U, "logical-changed-payload")),
+        Domain::ErrorCodes::Conflict);
+    REQUIRE(injectedCodec.decodeCalls() == 5U);
+    REQUIRE(continuationQueue.pendingCount() == 1U);
+}
+
+void boundedLogicalQueueRejectsInvalidReplayAndShutdown()
+{
+    Fakes::FakeClock clock{
+        Domain::UtcTimePoint{1'800'000'000s},
+        std::chrono::steady_clock::now()};
+    SessionHost::BoundedLogicalContinuationQueue queue{2U};
+    const Domain::NativeLogicalContinuation continuation{
+        parse<Domain::ProviderSessionId>("queue-provider-session"),
+        parse<Domain::ContinuityHandoffId>(uuidText(24'000U)),
+        1U,
+        "Run the queued continuation",
+        "forge continue --queued",
+        "The queued continuation completes"};
+
+    auto oversized = continuation;
+    oversized.action.assign(4U * 1024U + 1U, 'x');
+    requireError(
+        queue.schedule(
+            oversized,
+            operationContext(clock, 240U, "queue-oversized")),
+        Domain::ErrorCodes::PayloadTooLarge);
+    REQUIRE(queue.pendingCount() == 0U);
+
+    auto invalidUtf8 = continuation;
+    invalidUtf8.action.assign(1U, static_cast<char>(0xc3));
+    requireError(
+        queue.schedule(
+            invalidUtf8,
+            operationContext(clock, 241U, "queue-invalid-utf8")),
+        Domain::ErrorCodes::InvalidRequest);
+    REQUIRE(queue.pendingCount() == 0U);
+
+    auto invalidSequence = continuation;
+    invalidSequence.sequence = 0U;
+    requireError(
+        queue.schedule(
+            invalidSequence,
+            operationContext(clock, 242U, "queue-invalid-sequence")),
+        Domain::ErrorCodes::InvalidRequest);
+    REQUIRE(queue.pendingCount() == 0U);
+
+    take(queue.schedule(
+        continuation,
+        operationContext(clock, 243U, "queue-first")));
+    take(queue.schedule(
+        continuation,
+        operationContext(clock, 244U, "queue-exact-replay")));
+    REQUIRE(queue.pendingCount() == 1U);
+
+    auto changed = continuation;
+    changed.command = "forge continue --changed";
+    requireError(
+        queue.schedule(
+            changed,
+            operationContext(clock, 245U, "queue-changed-replay")),
+        Domain::ErrorCodes::Conflict);
+    REQUIRE(queue.pendingCount() == 1U);
+
+    const auto accepted = take(queue.takeNext(
+        operationContext(clock, 246U, "queue-take")));
+    REQUIRE(accepted.has_value());
+    REQUIRE(accepted->providerSessionId == continuation.providerSessionId);
+    REQUIRE(accepted->handoffId == continuation.handoffId);
+    REQUIRE(accepted->action == continuation.action);
+    REQUIRE(queue.pendingCount() == 0U);
+
+    take(queue.schedule(
+        continuation,
+        operationContext(clock, 247U, "queue-replay-after-take")));
+    REQUIRE(queue.pendingCount() == 0U);
+    REQUIRE(!take(queue.takeNext(
+        operationContext(clock, 248U, "queue-empty-after-replay")))
+                 .has_value());
+
+    queue.shutdown();
+    requireError(
+        queue.schedule(
+            continuation,
+            operationContext(clock, 249U, "queue-after-shutdown")),
+        Domain::ErrorCodes::Cancelled);
+    requireError(
+        queue.takeNext(
+            operationContext(clock, 250U, "queue-take-after-shutdown")),
+        Domain::ErrorCodes::Cancelled);
+}
+
+void logicalTransportShutdownWaitsForInFlightBootstrap()
+{
+    const auto monotonic = std::chrono::steady_clock::now();
+    auto clock = std::make_shared<Fakes::FakeClock>(
+        Domain::UtcTimePoint{1'800'000'000s}, monotonic);
+    auto hasher = std::make_shared<InfrastructureWindows::BCryptSha256Hasher>();
+    InfrastructureWindows::WindowsContinuityDocumentCodec codec{hasher, clock};
+    BlockingContinuationScheduler scheduler;
+    SessionHost::LocalLogicalSessionTransport transport{
+        hasher, codec, scheduler};
+    const auto request = creationRequest(260U);
+    const auto native = take(transport.createSession(
+        request,
+        operationContext(*clock, 260U, "logical-shutdown-create")));
+    const auto successorId = parse<Domain::SessionId>(uuidText(50'260U));
+    const Domain::HostSession successor{
+        successorId,
+        request.projectId,
+        request.operationId,
+        request.predecessorSessionId,
+        request.idempotencyKey,
+        native.providerSessionId,
+        native.model,
+        Domain::HostSessionStatus::Active};
+    const auto handoff = handoffFor(
+        260U, request, successor, codec, *clock);
+    const auto document = take(codec.encode(
+        handoff,
+        operationContext(*clock, 261U, "logical-shutdown-encode")));
+    const Domain::NativeBootstrapRequest bootstrap{
+        request.operationId,
+        request.projectId,
+        successorId,
+        native.providerSessionId,
+        handoff.handoffId,
+        handoff.contentSha256,
+        document.canonicalUtf8};
+
+    std::optional<Domain::Result<Domain::NativeBootstrapResponse>> result;
+    std::atomic_bool bootstrapReturned{};
+    std::jthread bootstrapWorker{[&] {
+        result.emplace(transport.bootstrap(
+            bootstrap,
+            operationContext(*clock, 262U, "logical-blocked-bootstrap")));
+        bootstrapReturned.store(true, std::memory_order_release);
+    }};
+    const auto entered = scheduler.waitUntilScheduleEntered(5s);
+
+    std::atomic_bool shutdownInvoked{};
+    std::atomic_bool shutdownReturned{};
+    std::jthread shutdownWorker{[&] {
+        shutdownInvoked.store(true, std::memory_order_release);
+        transport.shutdown();
+        shutdownReturned.store(true, std::memory_order_release);
+    }};
+
+    bool observedShutdownCancellation{};
+    const auto observationDeadline = std::chrono::steady_clock::now() + 5s;
+    while (std::chrono::steady_clock::now() < observationDeadline) {
+        if (!shutdownInvoked.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+            continue;
+        }
+        const auto status = transport.query(
+            native.providerSessionId,
+            operationContext(*clock, 263U, "logical-shutdown-probe"));
+        if (!status && status.error().code == Domain::ErrorCodes::Cancelled) {
+            observedShutdownCancellation = true;
+            break;
+        }
+        std::this_thread::yield();
+    }
+
+    const auto acceptedBeforeRelease = scheduler.hasAcceptedWork();
+    const auto schedulerShutdownBeforeRelease = scheduler.shutdownCalls();
+    const auto bootstrapReturnedBeforeRelease =
+        bootstrapReturned.load(std::memory_order_acquire);
+    const auto shutdownReturnedBeforeRelease =
+        shutdownReturned.load(std::memory_order_acquire);
+    scheduler.release();
+    bootstrapWorker.join();
+    shutdownWorker.join();
+
+    REQUIRE(entered);
+    REQUIRE(observedShutdownCancellation);
+    REQUIRE(acceptedBeforeRelease);
+    REQUIRE(schedulerShutdownBeforeRelease == 0U);
+    REQUIRE(!bootstrapReturnedBeforeRelease);
+    REQUIRE(!shutdownReturnedBeforeRelease);
+    REQUIRE(result.has_value());
+    requireError(*result, Domain::ErrorCodes::Cancelled);
+    REQUIRE(scheduler.scheduleCalls() == 1U);
+    REQUIRE(scheduler.cancelCalls() == 1U);
+    REQUIRE(scheduler.shutdownCalls() == 1U);
+    REQUIRE(shutdownReturned.load(std::memory_order_acquire));
+    REQUIRE(!scheduler.hasAcceptedWork());
 }
 
 } // namespace
@@ -976,7 +1481,13 @@ int main()
         std::cout << "PASS native_session_host.concurrent_projects\n";
         localLogicalTransportReturnsAContinuationReceipt();
         std::cout << "PASS native_session_host.logical_continuation_receipt\n";
-        std::cout << "SUMMARY passed=8 failed=0 assertions="
+        localLogicalTransportRejectsCanonicalAndBindingDefects();
+        std::cout << "PASS native_session_host.logical_binding_defects\n";
+        boundedLogicalQueueRejectsInvalidReplayAndShutdown();
+        std::cout << "PASS native_session_host.logical_queue_contract\n";
+        logicalTransportShutdownWaitsForInFlightBootstrap();
+        std::cout << "PASS native_session_host.logical_shutdown_race\n";
+        std::cout << "SUMMARY passed=11 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

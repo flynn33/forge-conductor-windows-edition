@@ -147,10 +147,12 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsContinuityDocumentCodec.cpp
     src/Infrastructure/Windows/WindowsDiagnosticSink.cpp
     src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp
+    src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
     src/Infrastructure/Windows/WindowsRuntimeDiagnostics.cpp
     src/Infrastructure/Windows/WindowsUnicodeCanonicalizer.cpp
     src/Infrastructure/Windows/WindowsUuidGenerator.cpp
+    src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp
     src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp
     src/Infrastructure/Windows/Detail/BoundedSerialExecutor.cpp
     src/Infrastructure/Windows/Detail/CommandLineBuilder.cpp
@@ -181,7 +183,8 @@ target_link_libraries(ForgeConductor.Infrastructure.Windows PRIVATE
     normaliz
     ntdll
     ole32
-    shell32)
+    shell32
+    winhttp)
 
 set(FORGE_PERSISTENCE_WINDOWS_SOURCES
     src/Persistence/Windows/DatabaseBackupCoordinator.cpp
@@ -225,6 +228,7 @@ forge_add_layer(ForgeConductor.NativeTools.Windows ForgeConductor::NativeTools.W
     ForgeConductor::Contracts
     ForgeConductor::Infrastructure.Windows)
 add_library(ForgeConductor.SessionHost.Core STATIC
+    src/SessionHost/BoundedLogicalContinuationQueue.cpp
     src/SessionHost/ForgeNativeSessionHostAdapter.cpp
     src/SessionHost/LocalLogicalSessionTransport.cpp
 )
@@ -277,6 +281,19 @@ add_executable(ForgeConductor::Cli ALIAS ForgeConductor.Cli)
 set_target_properties(ForgeConductor.Cli PROPERTIES OUTPUT_NAME "forge-conductor")
 forge_configure_native_target(ForgeConductor.Cli)
 target_link_libraries(ForgeConductor.Cli PRIVATE ForgeConductor::Application)
+
+add_executable(ForgeConductor.SessionHost
+    src/Hosts/SessionHost/SessionHostCompositionRoot.cpp
+    src/Hosts/SessionHost/SessionHostCompositionRoot.h
+    src/Hosts/SessionHost/main.cpp
+)
+add_executable(
+    ForgeConductor::SessionHost ALIAS ForgeConductor.SessionHost)
+forge_configure_native_target(ForgeConductor.SessionHost)
+target_link_libraries(ForgeConductor.SessionHost PRIVATE
+    ForgeConductor::Infrastructure.Windows
+    ForgeConductor::SessionHost.Core
+    nlohmann_json::nlohmann_json)
 
 add_executable(ForgeConductor.ForsettiHostSmoke
     tests/ForsettiHostSmoke/main.cpp
@@ -835,6 +852,110 @@ if(BUILD_TESTING)
         LABELS "T-UNIT;T-CONT;T-ABI;G12"
         TIMEOUT 120
     )
+
+    add_executable(ForgeConductor.SessionHost.AdapterTests
+        tests/SessionHost/NativeSessionHostAdapterTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.SessionHost.AdapterTests)
+    target_include_directories(
+        ForgeConductor.SessionHost.AdapterTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.SessionHost.AdapterTests PRIVATE
+        ForgeConductor::SessionHost.Core
+        ForgeConductor::Infrastructure.Windows)
+
+    add_test(
+        NAME ForgeConductor.SessionHost.AdapterTests
+        COMMAND $<TARGET_FILE:ForgeConductor.SessionHost.AdapterTests>
+    )
+    set_tests_properties(
+        ForgeConductor.SessionHost.AdapterTests PROPERTIES
+        LABELS "T-UNIT;T-CONT;T-STRESS;G12"
+        TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.SessionHost.WinHttpTransportTests
+        tests/SessionHost/WinHttpLocalModelSessionTransportTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.SessionHost.WinHttpTransportTests)
+    target_include_directories(
+        ForgeConductor.SessionHost.WinHttpTransportTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.SessionHost.WinHttpTransportTests PRIVATE
+        ForgeConductor::Infrastructure.Windows
+        ws2_32)
+
+    add_test(
+        NAME ForgeConductor.SessionHost.WinHttpTransportTests
+        COMMAND $<TARGET_FILE:ForgeConductor.SessionHost.WinHttpTransportTests>
+    )
+    set_tests_properties(
+        ForgeConductor.SessionHost.WinHttpTransportTests PROPERTIES
+        LABELS "T-UNIT;T-CONT;T-NET;T-STRESS;G12"
+        TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.SessionHost.LedgerTests
+        tests/SessionHost/WindowsNativeSessionLedgerTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.SessionHost.LedgerTests)
+    target_include_directories(
+        ForgeConductor.SessionHost.LedgerTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.SessionHost.LedgerTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+
+    add_test(
+        NAME ForgeConductor.SessionHost.LedgerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.SessionHost.LedgerTests>
+    )
+    set_tests_properties(
+        ForgeConductor.SessionHost.LedgerTests PROPERTIES
+        LABELS "T-UNIT;T-CONT;T-STORAGE;T-STRESS;G12"
+        TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.SessionHost.ContinuityEndToEndTests
+        tests/SessionHost/NativeSessionContinuityEndToEndTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.SessionHost.ContinuityEndToEndTests)
+    target_include_directories(
+        ForgeConductor.SessionHost.ContinuityEndToEndTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.SessionHost.ContinuityEndToEndTests PRIVATE
+        ForgeConductor::Infrastructure.Windows
+        ForgeConductor::SessionHost.Core)
+
+    add_test(
+        NAME ForgeConductor.SessionHost.ContinuityEndToEndTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.SessionHost.ContinuityEndToEndTests>
+    )
+    set_tests_properties(
+        ForgeConductor.SessionHost.ContinuityEndToEndTests PROPERTIES
+        LABELS "T-UNIT;T-CONT;T-STORAGE;G12"
+        TIMEOUT 120
+    )
+
+    foreach(session_host_command IN ITEMS
+            manifest health recover cancel-orphans self-test)
+        add_test(
+            NAME ForgeConductor.SessionHost.Command.${session_host_command}
+            COMMAND
+                $<TARGET_FILE:ForgeConductor.SessionHost>
+                --${session_host_command}
+        )
+        set_tests_properties(
+            ForgeConductor.SessionHost.Command.${session_host_command}
+            PROPERTIES
+            LABELS "T-INTEGRATION;T-CONT;G12"
+            TIMEOUT 60
+        )
+    endforeach()
 
     add_executable(ForgeConductor.Continuity.ProcessFixtureTests
         tests/Continuity/ContinuityCoordinatorProcessFixture.cpp)

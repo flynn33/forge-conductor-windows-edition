@@ -326,13 +326,13 @@ template <typename Identifier>
 
 [[nodiscard]] Json optionalTextJson(const std::optional<std::string>& value)
 {
-    return value ? Json{*value} : Json{nullptr};
+    return value ? Json(*value) : Json(nullptr);
 }
 
 template <typename Identifier>
 [[nodiscard]] Json optionalIdentifierJson(const std::optional<Identifier>& value)
 {
-    return value ? Json{value->value()} : Json{nullptr};
+    return value ? Json(value->value()) : Json(nullptr);
 }
 
 [[nodiscard]] Json recordDocument(const Domain::NativeSessionRecord& record)

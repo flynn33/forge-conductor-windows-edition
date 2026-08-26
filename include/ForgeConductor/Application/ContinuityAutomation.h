@@ -16,7 +16,8 @@ class ContinuityAutomation final
 public:
     ContinuityAutomation(
         Contracts::IContinuityCoordinator& coordinator,
-        Contracts::IClock& clock);
+        Contracts::IClock& clock,
+        Domain::ContinuityAutomationPolicy policy = {});
     ~ContinuityAutomation() noexcept override;
 
     ContinuityAutomation(const ContinuityAutomation&) = delete;

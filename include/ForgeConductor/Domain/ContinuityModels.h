@@ -224,6 +224,19 @@ struct ContextBudget final {
 
 using ContextBudgetStatus = ContextBudget;
 
+// All available context signals for one observation. The resolver chooses the
+// strongest trustworthy source in the architecture-defined order instead of
+// allowing a caller to accidentally prefer a lower-confidence estimate.
+struct ContextBudgetSignals final {
+    std::uint64_t capacity{};
+    std::uint64_t reserved{};
+    std::optional<std::uint64_t> providerRemaining;
+    std::optional<std::uint64_t> providerUsed;
+    std::optional<std::uint64_t> configuredModelUsed;
+    std::optional<std::size_t> serializedBytes;
+    bool providerOverflow{};
+};
+
 [[nodiscard]] Result<ContextBudget> evaluateContextBudget(
     std::uint64_t capacity,
     std::uint64_t used,
@@ -237,6 +250,11 @@ using ContextBudgetStatus = ContextBudget;
     std::uint64_t capacity,
     std::size_t serializedBytes,
     std::uint64_t reserved);
+
+[[nodiscard]] Result<ContextBudget> resolveContextBudget(
+    const ContextBudgetSignals& signals,
+    double checkpointReserveFraction = 0.20,
+    double rolloverReserveFraction = 0.10);
 
 struct HostCapabilities final {
     bool create{};

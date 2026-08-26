@@ -32,10 +32,16 @@ resumed without operator action.
   idempotency key and physical ID, and performs a distinct bootstrap effect only
   when transport state actually requires reconstruction.
 - The bootstrap transport receives the exact canonical handoff. The Forge-owned
-  logical transport decodes it, validates project and operation identity, and
-  schedules the first bounded next action before returning an acknowledgement.
-  Therefore acknowledgement means the logical successor accepted continuation
-  state; it is not a fabricated claim about another application's GUI.
+  logical transport delegates hostile-input parsing to the canonical continuity
+  codec, validates project, operation, predecessor, successor, digest, and next-
+  action identity, and schedules the first bounded next action before returning
+  an acknowledgement. Replay must match the same successor, digest, and
+  continuation payload. Therefore acknowledgement means the logical successor
+  accepted that exact continuation state; it is not a fabricated claim about
+  another application's GUI.
+- Logical transport shutdown closes admission, drains admitted operations, and
+  only then clears its continuation scheduler. A bootstrap that observes
+  shutdown cancels its provisional binding and cannot acknowledge cleared work.
 - The generic adapter remains transport-neutral. A Windows WinHTTP transport is
   used for configured local-model providers, and the Forge logical transport is
   a supported native fallback. P15 remains responsible for LM Studio discovery

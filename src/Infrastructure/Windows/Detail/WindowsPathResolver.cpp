@@ -1,14 +1,18 @@
 #include "WindowsPathResolver.h"
 
 #include "UniqueHandle.h"
+#include "UniqueCoTaskMemAllocation.h"
 #include "UtfConversion.h"
 #include "Win32Error.h"
 
+#include <ShlObj.h>
 #include <Windows.h>
+#include <appmodel.h>
 
 #include <algorithm>
 #include <cwchar>
 #include <cwctype>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -215,6 +219,83 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
     return value;
 }
 
+[[nodiscard]] bool isExpectedPackagedLocalAppDataRedirect(
+    const std::wstring_view requested,
+    const std::wstring_view opened) noexcept
+{
+    try {
+        PWSTR rawLocalAppData{};
+        const HRESULT folderResult = ::SHGetKnownFolderPath(
+            FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr,
+            &rawLocalAppData);
+        UniqueCoTaskMemAllocation<wchar_t> localAppDataOwner{
+            rawLocalAppData};
+        if (FAILED(folderResult) || rawLocalAppData == nullptr ||
+            *rawLocalAppData == L'\0') {
+            return false;
+        }
+        std::wstring localAppData{rawLocalAppData};
+        while (localAppData.size() > 3U &&
+               localAppData.back() == L'\\') {
+            localAppData.pop_back();
+        }
+        if (!equalPath(requested, localAppData) &&
+            !startsWithPath(requested, localAppData)) {
+            return false;
+        }
+
+        std::wstring packagePrefix{localAppData};
+        packagePrefix.append(L"\\Packages\\");
+        if (opened.size() <= packagePrefix.size() ||
+            ::CompareStringOrdinal(
+                opened.data(), static_cast<int>(packagePrefix.size()),
+                packagePrefix.data(), static_cast<int>(packagePrefix.size()),
+                TRUE) != CSTR_EQUAL) {
+            return false;
+        }
+        const auto familyEnd = opened.find(L'\\', packagePrefix.size());
+        if (familyEnd == std::wstring_view::npos) {
+            return false;
+        }
+        const auto openedFamily = opened.substr(
+            packagePrefix.size(), familyEnd - packagePrefix.size());
+        if (openedFamily.size() > PACKAGE_FAMILY_NAME_MAX_LENGTH ||
+            !isValidComponent(openedFamily)) {
+            return false;
+        }
+
+        UINT32 familyCharacters{};
+        const LONG lengthResult = ::GetCurrentPackageFamilyName(
+            &familyCharacters, nullptr);
+        if (lengthResult == ERROR_INSUFFICIENT_BUFFER &&
+            familyCharacters > 1U &&
+            familyCharacters <= PACKAGE_FAMILY_NAME_MAX_LENGTH + 1U) {
+            std::vector<wchar_t> family(familyCharacters, L'\0');
+            if (::GetCurrentPackageFamilyName(
+                    &familyCharacters, family.data()) != ERROR_SUCCESS ||
+                !equalPath(
+                    openedFamily,
+                    std::wstring_view{
+                        family.data(),
+                        static_cast<std::size_t>(familyCharacters - 1U)})) {
+                return false;
+            }
+        } else if (lengthResult != APPMODEL_ERROR_NO_PACKAGE) {
+            return false;
+        }
+
+        std::wstring expected{packagePrefix};
+        expected.append(openedFamily);
+        expected.append(L"\\LocalCache\\Local");
+        expected.append(requested.substr(localAppData.size()));
+        return equalPath(expected, opened);
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
 [[nodiscard]] Domain::Result<void> verifyOpenedHandle(const HANDLE handle,
                                                       const std::wstring_view path,
                                                       const bool mustBeDirectory) noexcept
@@ -275,7 +356,8 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
         }
         std::wstring opened =
             withoutExtendedPrefix(std::wstring{buffer.data(), static_cast<std::size_t>(written)});
-        if (!equalPath(path, opened))
+        if (!equalPath(path, opened) &&
+            !isExpectedPackagedLocalAppDataRedirect(path, opened))
         {
             return Domain::Result<void>::failure(
                 Domain::makeError(Domain::ErrorCodes::PathOutsideAuthority,

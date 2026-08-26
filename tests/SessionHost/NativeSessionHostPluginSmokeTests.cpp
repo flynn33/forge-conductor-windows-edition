@@ -2,6 +2,7 @@
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsContinuityDocumentCodec.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
+#include "ForgeConductor/SessionHost/BoundedLogicalContinuationQueue.h"
 #include "ForgeConductor/SessionHost/LocalLogicalSessionTransport.h"
 #include "ForgeConductor/SessionHost/PluginAbi.h"
 #include "Fakes/InMemoryNativeSessionLedger.h"
@@ -48,17 +49,87 @@ template <typename T>
     return std::move(result).value();
 }
 
+void take(Domain::Result<void> result)
+{
+    if (!result) {
+        throw std::runtime_error{
+            result.error().code + ": " + result.error().message};
+    }
+}
+
 template <typename T>
 [[nodiscard]] T parse(const std::string_view value)
 {
     return take(T::parse(value));
 }
 
+[[nodiscard]] Domain::ContinuityHandoff handoffFor(
+    const Domain::SessionCreationRequest& request,
+    const Domain::HostSession& successor,
+    Contracts::IContinuityDocumentCodec& codec,
+    const Contracts::IClock& clock,
+    const Domain::OperationContext& context)
+{
+    Domain::ContinuityHandoff handoff{
+        parse<Domain::ContinuityHandoffId>(
+            "55555555-5555-4555-8555-555555555555"),
+        request.operationId,
+        clock.utcNow(),
+        Domain::ContinuityProject{
+            request.projectId,
+            "Native plugin smoke project",
+            take(Domain::PathText::create("D:\\native-plugin-smoke")),
+            "main",
+            "0123456789abcdef",
+            {}},
+        Domain::ContinuitySession{
+            request.predecessorSessionId,
+            std::nullopt,
+            std::optional<std::string>{"predecessor-model"},
+            std::optional<std::string>{"native-plugin-smoke"}},
+        Domain::ContinuitySession{
+            successor.id,
+            successor.providerSessionId,
+            successor.model,
+            std::optional<std::string>{"native-plugin-smoke"}},
+        "Resume the native plugin successor",
+        {"Preserve exact plugin lifecycle bindings"},
+        Domain::ContinuityCurrentWork{
+            "P12",
+            "native-plugin-smoke",
+            "Complete the native plugin lifecycle",
+            {}},
+        {},
+        {{std::optional<std::string>{"plugin-lifecycle"},
+          "Bootstrap through the loaded DLL",
+          std::optional<std::string>{"active"}}},
+        {{"Use the versioned native ABI", std::nullopt}},
+        Domain::ContinuityValidation{{"G11"}, {"G12"}, {}},
+        {},
+        {},
+        {{1U,
+          "Continue the loaded native session",
+          "forge continue --plugin-smoke",
+          "The native plugin continuation is accepted"}},
+        Domain::ContinuityHostState{
+            parse<Domain::AdapterId>("forge.native-session-host"),
+            Domain::ContinuityState::SuccessorCreated,
+            "native-plugin-smoke",
+            {},
+            std::nullopt},
+        parse<Domain::Sha256Digest>(std::string(64U, 'a')),
+        true};
+    return take(codec.encode(handoff, context)).handoff;
+}
+
 class UniqueModule final {
 public:
     explicit UniqueModule(const std::filesystem::path& path)
         : value_{::LoadLibraryExW(
-              path.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)}
+              path.c_str(),
+              nullptr,
+              LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR |
+                  LOAD_LIBRARY_SEARCH_SYSTEM32)}
     {
         if (value_ == nullptr) {
             throw std::runtime_error{
@@ -113,7 +184,9 @@ void run(const std::filesystem::path& pluginPath)
     auto clock = std::make_shared<Infrastructure::SystemClock>();
     Infrastructure::WindowsUuidGenerator uuidGenerator;
     Infrastructure::WindowsContinuityDocumentCodec codec{hasher, clock};
-    SessionHost::LocalLogicalSessionTransport transport{hasher};
+    SessionHost::BoundedLogicalContinuationQueue continuationQueue{4U};
+    SessionHost::LocalLogicalSessionTransport transport{
+        hasher, codec, continuationQueue};
     SessionHost::NativeSessionHostPluginDependenciesV1 dependencies{};
     dependencies.ledger = &ledger;
     dependencies.transport = &transport;
@@ -158,6 +231,46 @@ void run(const std::filesystem::path& pluginPath)
     REQUIRE(replay.has_value());
     REQUIRE(replay->id == created.id);
     REQUIRE(replay->providerSessionId == created.providerSessionId);
+
+    const auto handoff = handoffFor(
+        request, created, codec, *clock, context);
+    take(adapter->bootstrap(created, handoff, context));
+    const auto acknowledgement = take(adapter->awaitAcknowledgement(
+        created,
+        handoff.handoffId,
+        handoff.contentSha256,
+        context));
+    REQUIRE(acknowledgement.handoffId == handoff.handoffId);
+    REQUIRE(acknowledgement.successorSessionId == created.id);
+    REQUIRE(acknowledgement.canonicalHandoffSha256 ==
+            handoff.contentSha256);
+    REQUIRE(take(adapter->query(created.id, context)) ==
+            Domain::HostSessionStatus::Ready);
+    REQUIRE(continuationQueue.pendingCount() == 1U);
+    const auto continuation = take(continuationQueue.takeNext(context));
+    REQUIRE(continuation.has_value());
+    REQUIRE(continuation->handoffId == handoff.handoffId);
+    REQUIRE(continuation->providerSessionId == created.providerSessionId);
+    REQUIRE(continuation->command == "forge continue --plugin-smoke");
+    REQUIRE(continuationQueue.pendingCount() == 0U);
+
+    const auto recovery = take(adapter->recover(
+        Domain::HostRecoveryRequest{
+            request.projectId, request.operationId, false},
+        context));
+    REQUIRE(recovery.inspected == 1U);
+    REQUIRE(recovery.recovered == 1U);
+    REQUIRE(recovery.failed == 0U);
+
+    adapter->cancel(context.operationId);
+    REQUIRE(take(adapter->query(created.id, Domain::OperationContext{
+                parse<Domain::OperationId>(
+                    "66666666-6666-4666-8666-666666666666"),
+                clock->monotonicNow() + std::chrono::seconds{30},
+                {},
+                parse<Domain::CorrelationId>(
+                    "native-plugin-smoke-cancelled-query")})) ==
+            Domain::HostSessionStatus::Cancelled);
 
     api.destroy(adapter);
     REQUIRE(ledger.isShutdown());
