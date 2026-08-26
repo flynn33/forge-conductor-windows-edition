@@ -1,0 +1,89 @@
+{
+  "edition": "windows",
+  "frameworkVersion": "0.2.0",
+  "supportedPlatforms": [
+    "Windows"
+  ],
+  "nativeLanguage": "C++20",
+  "nativeTools": [
+    "MSVC",
+    "CMake",
+    "CTest",
+    "PowerShell",
+    "vcpkg",
+    "Windows SDK"
+  ],
+  "publicProducts": [
+    "ForsettiCore",
+    "ForsettiPlatform",
+    "ForsettiHostTemplate"
+  ],
+  "manifest": {
+    "currentSchemaVersion": "1.1",
+    "currentTemplateVersion": "1.1",
+    "moduleTypes": [
+      "service",
+      "ui",
+      "app"
+    ],
+    "requiredFields": [
+      "schemaVersion",
+      "manifestTemplateVersion",
+      "moduleID",
+      "displayName",
+      "moduleVersion",
+      "moduleType",
+      "supportedPlatforms",
+      "minForsettiVersion",
+      "capabilitiesRequested",
+      "entryPoint",
+      "runtimeRequirements",
+      "maxForsettiVersion",
+      "iapProductID",
+      "defaultModuleRole"
+    ]
+  },
+  "capabilities": [
+    "networking",
+    "storage",
+    "secure_storage",
+    "file_export",
+    "crypto_utilities",
+    "telemetry",
+    "routing_overlay",
+    "toolbar_items",
+    "view_injection",
+    "ui_theme_mask",
+    "event_publishing",
+    "shared_database",
+    "authentication",
+    "diagnostics",
+    "api",
+    "security"
+  ],
+  "dependencyRules": {
+    "ForsettiCore": [
+      "depends_on:nothing_in_repository"
+    ],
+    "ForsettiPlatform": [
+      "depends_on:ForsettiCore"
+    ],
+    "ForsettiHostTemplate": [
+      "depends_on:ForsettiCore",
+      "depends_on:ForsettiPlatform"
+    ],
+    "ExampleModules": [
+      "depends_on:ForsettiCore",
+      "must_not_depend_on_each_other"
+    ],
+    "Samples": [
+      "may_compose_public_targets_only"
+    ]
+  },
+  "verificationCommands": [
+    "cmake --preset debug",
+    "cmake --build --preset debug",
+    "ctest --preset debug --output-on-failure",
+    ".\\Scripts\\verify-forsetti-guardrails.ps1"
+  ]
+}

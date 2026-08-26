@@ -1,0 +1,6 @@
+.forge-codex/instructions/governance/source/forsetti-agentic/README.md whitespace=-blank-at-eol
+.forge-codex/instructions/plans/feature-parity-matrix.tsv whitespace=-blank-at-eol
+.forge-codex/state/decisions/*.md whitespace=-blank-at-eof
+include/ForgeConductor/Domain/Utf8.h whitespace=-blank-at-eof
+include/ForgeConductor/Persistence/Windows/*.h whitespace=-blank-at-eof
+src/Persistence/Windows/Migrations/*.h whitespace=-blank-at-eof

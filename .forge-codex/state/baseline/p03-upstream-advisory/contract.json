@@ -1,0 +1,58 @@
+{
+    "schema_version":  "1.0",
+    "status":  "pass",
+    "mode":  "contract",
+    "validator":  {
+                      "name":  "forsetti_validate",
+                      "version":  "0.4.0"
+                  },
+    "invocation":  {
+                       "repo_root":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                       "mode":  "contract",
+                       "strict":  true,
+                       "contract_path":  "D:/GitHub/Forge-Conductor-Windows-Edition/.forge-codex/instructions/governance/PORT_TASK_CONTRACT.json",
+                       "project_context_path":  null,
+                       "edition_profile_path":  null,
+                       "manifest_path":  null,
+                       "changed_files_path":  null,
+                       "timestamp_utc":  "2026-08-25T10:12:09.9635909Z"
+                   },
+    "summary":  {
+                    "status":  "pass",
+                    "total":  2,
+                    "passed":  2,
+                    "request_changes":  0,
+                    "blocks":  0,
+                    "duration_ms":  309
+                },
+    "findings":  [
+                     {
+                         "rule_id":  "FAE-F001",
+                         "severity":  "info",
+                         "decision":  "pass",
+                         "status":  "pass",
+                         "message":  "Forsetti project context is complete.",
+                         "evidence":  [
+                                          "windows 0.2.0 Windows"
+                                      ],
+                         "remediation":  null,
+                         "remediation_hint":  null,
+                         "category":  "project-context",
+                         "path":  "D:/GitHub/Forge-Conductor-Windows-Edition/.forge-codex/instructions/governance/PORT_TASK_CONTRACT.json"
+                     },
+                     {
+                         "rule_id":  "FAE-C001",
+                         "severity":  "info",
+                         "decision":  "pass",
+                         "status":  "pass",
+                         "message":  "Task contract was inspected.",
+                         "evidence":  [
+                                          "D:/GitHub/Forge-Conductor-Windows-Edition/.forge-codex/instructions/governance/PORT_TASK_CONTRACT.json"
+                                      ],
+                         "remediation":  null,
+                         "remediation_hint":  null,
+                         "category":  "contract",
+                         "path":  "D:/GitHub/Forge-Conductor-Windows-Edition/.forge-codex/instructions/governance/PORT_TASK_CONTRACT.json"
+                     }
+                 ]
+}

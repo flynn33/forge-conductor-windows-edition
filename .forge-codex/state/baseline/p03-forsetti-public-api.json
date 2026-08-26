@@ -1,0 +1,2277 @@
+{
+    "schema_version":  1,
+    "inventory_id":  "P03-FORSETTI-WINDOWS-PUBLIC-API",
+    "framework_version":  "0.2.0",
+    "source_archive_sha256":  "3fc89cba058830a53a2e20bd015b3c89e13c77151ca63c0ec132d0dacef0204d",
+    "source_root":  ".forge-inputs/forsetti-framework/Forsetti-Framework-Windows-main",
+    "include_root":  ".forge-inputs/forsetti-framework/Forsetti-Framework-Windows-main/include",
+    "aggregate":  {
+                      "algorithm":  "sha256(UTF-8(header/path\u003cTAB\u003efile-sha256), LF-separated, ordinal-ignore-case path order, no final LF)",
+                      "headers":  34,
+                      "bytes":  81656,
+                      "lines":  2491,
+                      "sha256":  "e31c38c4569a67560696085c9ac060f6eac4ea067ed95af515355dc79435e4b3"
+                  },
+    "products":  [
+                     {
+                         "name":  "ForsettiCore",
+                         "headers":  24,
+                         "bytes":  65109,
+                         "lines":  1984
+                     },
+                     {
+                         "name":  "ForsettiPlatform",
+                         "headers":  5,
+                         "bytes":  9299,
+                         "lines":  275
+                     },
+                     {
+                         "name":  "ForsettiHostTemplate",
+                         "headers":  5,
+                         "bytes":  7248,
+                         "lines":  232
+                     }
+                 ],
+    "policy":  {
+                   "path":  ".forge-inputs/forsetti-framework/Forsetti-Framework-Windows-main/framework-policy.json",
+                   "sha256":  "2331dffd25a17356457cc64f9fce8fd4b8a8e92f758cea29a13dec44cac9e150",
+                   "interface_count":  25,
+                   "value_type_count":  19,
+                   "enum_count":  17
+               },
+    "consumption_boundary":  {
+                                 "allowed_include_prefixes":  [
+                                                                  "ForsettiCore/",
+                                                                  "ForsettiPlatform/",
+                                                                  "ForsettiHostTemplate/"
+                                                              ],
+                                 "app_module_allowed_include_prefixes":  [
+                                                                             "ForsettiCore/"
+                                                                         ],
+                                 "sealed_products":  [
+                                                         "ForsettiCore",
+                                                         "ForsettiPlatform",
+                                                         "ForsettiHostTemplate"
+                                                     ],
+                                 "framework_sources_may_be_modified":  false
+                             },
+    "headers":  [
+                    {
+                        "path":  "ForsettiCore/ActivationStore.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1385,
+                        "lines":  39,
+                        "sha256":  "fda9021c6424457c384663283092997731b25208185926407d83d96eea8d962a"
+                    },
+                    {
+                        "path":  "ForsettiCore/CapabilityPolicy.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1969,
+                        "lines":  57,
+                        "sha256":  "13b13b0d9966cff731bb442563df5ba174bd8ff893ebd7005877d8cac92eeffa"
+                    },
+                    {
+                        "path":  "ForsettiCore/CompatibilityChecker.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  2103,
+                        "lines":  79,
+                        "sha256":  "07cf620190616d50a00c263e49000b9d19f7d9608c35bfd8f6ac3f740d692c23"
+                    },
+                    {
+                        "path":  "ForsettiCore/DefaultModuleRoles.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1972,
+                        "lines":  68,
+                        "sha256":  "dca7c9fdfd1ee9992806e07a34d1889915eefa0ae6726133ab5f174eb1cc61f2"
+                    },
+                    {
+                        "path":  "ForsettiCore/EntitlementProviders.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1904,
+                        "lines":  51,
+                        "sha256":  "e6db317b68dbe5466afd46169529d8012a5b1d7030691b0a1282f1d598b2f9a2"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiContext.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  7703,
+                        "lines":  180,
+                        "sha256":  "7ce35872aa2b3c950e8a11fa42f5f2365590bd3fe289f492b114d83d2738eb28"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiEventBus.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  2026,
+                        "lines":  71,
+                        "sha256":  "e34da294e4912f33165e8851850a15c9c8ab94b7b9ca6dcfc27d3f1ff9b6d0c9"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiLogger.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1226,
+                        "lines":  48,
+                        "sha256":  "19db5961470c33e9c666d9ca9af73a83cb275e02e39f8c57c1dcc0bbea9c81cc"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiProtocols.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  2199,
+                        "lines":  61,
+                        "sha256":  "7b5ae10f232186f1958369c5021fd6d4c92e961333265fe3d8e72fbe9653f55d"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiRuntime.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1597,
+                        "lines":  52,
+                        "sha256":  "bd81a9866817624c85e41427be52c0d5ac5fda345083b10e81912d63a6e991fd"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  3666,
+                        "lines":  120,
+                        "sha256":  "cefa67b3a8cb785de9a2c038e796c392e223bfd9981ac72921db357c77f22b39"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiServices.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  2917,
+                        "lines":  109,
+                        "sha256":  "e0776abd915ffd0792e35d1302077fd42419fd7f4bde55a87e0a94ba234afb87"
+                    },
+                    {
+                        "path":  "ForsettiCore/ForsettiVersion.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  380,
+                        "lines":  16,
+                        "sha256":  "d79ef46a130f4fcac2b2f92968f12d5fd11ce4f676da7c7789eff22dcae8b2ca"
+                    },
+                    {
+                        "path":  "ForsettiCore/ManifestLoader.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1439,
+                        "lines":  49,
+                        "sha256":  "e4955f00b503213c32430dc222537e744ab9b5a6ef68cfc5b6b2174c6b39d570"
+                    },
+                    {
+                        "path":  "ForsettiCore/ModuleManager.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  5918,
+                        "lines":  162,
+                        "sha256":  "f617c23c0befeedfafd3e666fc45014386ca16570a504bd3ba8508c6cfe4cb70"
+                    },
+                    {
+                        "path":  "ForsettiCore/ModuleModels.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  3014,
+                        "lines":  118,
+                        "sha256":  "ae4ee5d8111b7b7eb4e1c59862f4672e39ed8534290403794fc2b958285d872b"
+                    },
+                    {
+                        "path":  "ForsettiCore/ModuleRegistration.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  4475,
+                        "lines":  124,
+                        "sha256":  "4317f66e9f96c97a4ca641f8cb76f6cfd27047716d057b554557bcfa76a8c1d3"
+                    },
+                    {
+                        "path":  "ForsettiCore/ModuleRegistry.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  2448,
+                        "lines":  77,
+                        "sha256":  "57f0bebbaf07dfdf1afe4ebf097ab4f805d3d8539589ad1f19d34a93c273475b"
+                    },
+                    {
+                        "path":  "ForsettiCore/ModuleRequirements.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  4018,
+                        "lines":  137,
+                        "sha256":  "a05607da1ec5511e3cff537ce2b3c494fc2bb6482c22f7872c0654a73e0bfb01"
+                    },
+                    {
+                        "path":  "ForsettiCore/ModuleRequirementValidator.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1364,
+                        "lines":  54,
+                        "sha256":  "ab06ac6ad75b421226159712a324220a99a9fa697213b321ee4b800dc44d7e4f"
+                    },
+                    {
+                        "path":  "ForsettiCore/SemVer.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1333,
+                        "lines":  45,
+                        "sha256":  "dd1adf4ca5730a185139557ae3334098386e829069ed48d57a862fc259ba10c8"
+                    },
+                    {
+                        "path":  "ForsettiCore/StaticModuleRegistry.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  480,
+                        "lines":  20,
+                        "sha256":  "e0aa8e25a4ddd2e3a9a0360bf572435122144072527563587119e9828ef43bf5"
+                    },
+                    {
+                        "path":  "ForsettiCore/UIModels.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  7817,
+                        "lines":  197,
+                        "sha256":  "fc3c806b400e77f6c6a9527ce5a54a7b576d041d86f2b49bfc7192659e3135a2"
+                    },
+                    {
+                        "path":  "ForsettiCore/UISurfaceManager.h",
+                        "product":  "ForsettiCore",
+                        "bytes":  1756,
+                        "lines":  50,
+                        "sha256":  "0c4a840650e4491b4b1167638a14f560d44d43a4c1e41aa9e6cdc456a6c8f100"
+                    },
+                    {
+                        "path":  "ForsettiHostTemplate/ForsettiHostBootstrap.h",
+                        "product":  "ForsettiHostTemplate",
+                        "bytes":  2025,
+                        "lines":  56,
+                        "sha256":  "83083eded3387541fbff847ebf3c26e54087f3c807f580ca7ae6710a5b6fc965"
+                    },
+                    {
+                        "path":  "ForsettiHostTemplate/ForsettiHostController.h",
+                        "product":  "ForsettiHostTemplate",
+                        "bytes":  1631,
+                        "lines":  47,
+                        "sha256":  "e2e39b80a0fc65839d269f9d3fa0b4fec96474d5ed8a4b89171dcd75ab3d8b4c"
+                    },
+                    {
+                        "path":  "ForsettiHostTemplate/ForsettiHostOverlayRouter.h",
+                        "product":  "ForsettiHostTemplate",
+                        "bytes":  968,
+                        "lines":  35,
+                        "sha256":  "25d4957ae7fc38952088f5eeebfed637c8dc8902764a848d11d447b0321bd94b"
+                    },
+                    {
+                        "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                        "product":  "ForsettiHostTemplate",
+                        "bytes":  1478,
+                        "lines":  52,
+                        "sha256":  "d714443e0c14ee7417ab1677679ec023b6650a2d24410136e571c87c9b37fd6e"
+                    },
+                    {
+                        "path":  "ForsettiHostTemplate/ForsettiSurfaceStateAdapter.h",
+                        "product":  "ForsettiHostTemplate",
+                        "bytes":  1146,
+                        "lines":  42,
+                        "sha256":  "5a23405c876e9141fba7c6630047449313b6838c742c868a33ebebe653e1b3db"
+                    },
+                    {
+                        "path":  "ForsettiPlatform/DefaultPlatformServices.h",
+                        "product":  "ForsettiPlatform",
+                        "bytes":  1112,
+                        "lines":  28,
+                        "sha256":  "4edf2f8da80408cff6252abcb29c85fdd6f860359bf763d01096775de6524c62"
+                    },
+                    {
+                        "path":  "ForsettiPlatform/EntitlementProviders.h",
+                        "product":  "ForsettiPlatform",
+                        "bytes":  823,
+                        "lines":  23,
+                        "sha256":  "d62b4ac7e0ea67d83f277b633e5534df75d7094a2c68c3ce651aeaa098e4663d"
+                    },
+                    {
+                        "path":  "ForsettiPlatform/ModuleRegistrationPlatform.h",
+                        "product":  "ForsettiPlatform",
+                        "bytes":  1131,
+                        "lines":  37,
+                        "sha256":  "1ddecf5b34c03250f4866ad86d2a1e69d78bc9efbe87ed9d871c2bcfa6295268"
+                    },
+                    {
+                        "path":  "ForsettiPlatform/PlatformServices.h",
+                        "product":  "ForsettiPlatform",
+                        "bytes":  3376,
+                        "lines":  87,
+                        "sha256":  "a91780ad39a2c2c79b553c3e50b0226a191f05887960d7aac91b2d92404f48c2"
+                    },
+                    {
+                        "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                        "product":  "ForsettiPlatform",
+                        "bytes":  2857,
+                        "lines":  100,
+                        "sha256":  "c97ec08c85d710bbba44dcd25b6ae78e37ba37bf71a091e21d693a2450c224b7"
+                    }
+                ],
+    "named_type_inventory":  {
+                                 "scope":  "All named class, struct, enum, and namespace-level alias declarations in the exact public-header set; duplicate forward/definition sites are consolidated by kind and name.",
+                                 "raw_declaration_sites":  149,
+                                 "unique_before_visibility_filter":  146,
+                                 "counts":  {
+                                                "total":  145,
+                                                "classes":  83,
+                                                "structs":  36,
+                                                "enums":  23,
+                                                "aliases":  3
+                                            },
+                                 "exclusions":  [
+                                                    {
+                                                        "kind":  "alias",
+                                                        "name":  "RegistryKey",
+                                                        "reason":  "private nested implementation alias; not a public named type",
+                                                        "declarations":  [
+                                                                             {
+                                                                                 "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                                 "line":  89
+                                                                             }
+                                                                         ]
+                                                    }
+                                                ],
+                                 "types":  [
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ActivationState",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ActivationStore.h",
+                                                                            "line":  16
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IActivationStore",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ActivationStore.h",
+                                                                            "line":  31
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "CapabilityPolicyDecision",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CapabilityPolicy.h",
+                                                                            "line":  15
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ICapabilityPolicy",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CapabilityPolicy.h",
+                                                                            "line":  23
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "AllowAllCapabilityPolicy",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CapabilityPolicy.h",
+                                                                            "line":  35
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "FixedCapabilityPolicy",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CapabilityPolicy.h",
+                                                                            "line":  45
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "CompatibilitySeverity",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                                            "line":  18
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "CompatibilityIssueCode",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                                            "line":  32
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "CompatibilityIssue",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                                            "line":  48
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "CompatibilityReport",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                                            "line":  56
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "CompatibilityChecker",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                                            "line":  66
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "DefaultModuleRoleResolutionError",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/DefaultModuleRoles.h",
+                                                                            "line":  18
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "DefaultModuleRoleException",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/DefaultModuleRoles.h",
+                                                                            "line":  24
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IDefaultModuleCatalog",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/DefaultModuleRoles.h",
+                                                                            "line":  34
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "DefaultModuleCatalog",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/DefaultModuleRoles.h",
+                                                                            "line":  44
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "DefaultModuleOrchestrator",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/DefaultModuleRoles.h",
+                                                                            "line":  57
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "AllowAllEntitlementProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/EntitlementProviders.h",
+                                                                            "line":  17
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "StaticEntitlementProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/EntitlementProviders.h",
+                                                                            "line":  32
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IOverlayRouter",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  23
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "NoopOverlayRouter",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  33
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IModuleCommunicationGuard",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  42
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ForsettiContextError",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  53
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiContextException",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  60
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "DefaultModuleCommunicationGuard",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  88
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiModuleContext",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  98
+                                                                        },
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                                            "line":  14
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiContext",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiContext.h",
+                                                                            "line":  119
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ForsettiEvent",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiEventBus.h",
+                                                                            "line":  18
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiEventBus",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiEventBus.h",
+                                                                            "line":  25
+                                                                        },
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiEventBus.h",
+                                                                            "line":  47
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "SubscriptionToken",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiEventBus.h",
+                                                                            "line":  27
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "InMemoryEventBus",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiEventBus.h",
+                                                                            "line":  56
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "LogLevel",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiLogger.h",
+                                                                            "line":  13
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiLogger",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiLogger.h",
+                                                                            "line":  30
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ConsoleLogger",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiLogger.h",
+                                                                            "line":  40
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiModule",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                                            "line":  19
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiUIModule",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                                            "line":  33
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiAppModule",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                                            "line":  43
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IEntitlementProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                                            "line":  51
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiRuntime",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiRuntime.h",
+                                                                            "line":  19
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IServiceProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                                                                            "line":  22
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ServiceContainer",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                                                                            "line":  38
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "CapabilityScopedServiceProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                                                                            "line":  53
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ScopedStorageService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                                                                            "line":  76
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ScopedSecureStorageService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                                                                            "line":  91
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ScopedFileExportService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                                                                            "line":  106
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "INetworkingService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  18
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IStorageService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  27
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ISecureStorageService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  36
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IFileExportService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  45
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ITelemetryService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  53
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ISharedDatabaseService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  61
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IAuthenticationService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  69
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IDiagnosticsService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  76
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IApiService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  84
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ISecurityService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  94
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ICryptoUtilitiesService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiServices.h",
+                                                                            "line":  102
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ForsettiVersion",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ForsettiVersion.h",
+                                                                            "line":  12
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ManifestLoaderError",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ManifestLoader.h",
+                                                                            "line":  18
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ManifestLoaderException",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ManifestLoader.h",
+                                                                            "line":  24
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ManifestLoader",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ManifestLoader.h",
+                                                                            "line":  37
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleManagerError",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleManager.h",
+                                                                            "line":  33
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ModuleManagerException",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleManager.h",
+                                                                            "line":  50
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ActivationRestoreFailure",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleManager.h",
+                                                                            "line":  60
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ActivationRestoreResult",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleManager.h",
+                                                                            "line":  67
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ModuleManager",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleManager.h",
+                                                                            "line":  82
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "Platform",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleModels.h",
+                                                                            "line":  19
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleType",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleModels.h",
+                                                                            "line":  36
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "Capability",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleModels.h",
+                                                                            "line":  50
+                                                                        },
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  15
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleDescriptor",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleModels.h",
+                                                                            "line":  77
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleManifest",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleModels.h",
+                                                                            "line":  91
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleRegistrationRecord",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  18
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IModuleRegistrationStore",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  38
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IManifestDigestProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  48
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IRegistrationClock",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  56
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "InMemoryModuleRegistrationStore",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  63
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "SystemRegistrationClock",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  75
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "Sha256ManifestDigestProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  80
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ModuleRegistrationService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistration.h",
+                                                                            "line":  86
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "alias",
+                                                   "name":  "ModuleFactory",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistry.h",
+                                                                            "line":  19
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleRegistryError",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistry.h",
+                                                                            "line":  23
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ModuleRegistryException",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistry.h",
+                                                                            "line":  28
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ModuleRegistry",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRegistry.h",
+                                                                            "line":  41
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ManifestTemplateVersion",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  17
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "DefaultModuleRole",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  22
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleIOKind",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  31
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleIOAccess",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  45
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleDataIsolationMode",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  54
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleIORequirement",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  86
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleUIRequirements",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  96
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleDataIsolation",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  109
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleRuntimeRequirements",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirements.h",
+                                                                            "line":  117
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleRequirementSeverity",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirementValidator.h",
+                                                                            "line":  15
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ModuleRequirementIssueCode",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirementValidator.h",
+                                                                            "line":  20
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleRequirementIssue",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirementValidator.h",
+                                                                            "line":  25
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleRequirementValidationResult",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirementValidator.h",
+                                                                            "line":  36
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ModuleRequirementValidator",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/ModuleRequirementValidator.h",
+                                                                            "line":  42
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "SemVer",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/SemVer.h",
+                                                                            "line":  16
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiStaticModuleRegistry",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/StaticModuleRegistry.h",
+                                                                            "line":  11
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ThemeToken",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  19
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ThemeMask",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  31
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "OverlayPresentation",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  42
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "BaseDestinationRef",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  55
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "NavigationPointer",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  66
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "BaseOverlayDestination",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  79
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ModuleOverlayDestination",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  83
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "alias",
+                                                   "name":  "OverlayDestination",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  88
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "OverlayRoute",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  103
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "OverlaySchema",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  117
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "NavigateAction",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  129
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "OpenOverlayAction",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  133
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "PublishEventAction",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  137
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "alias",
+                                                   "name":  "ToolbarAction",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  141
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ToolbarItemDescriptor",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  159
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ViewInjectionDescriptor",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  173
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "UIContributions",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UIModels.h",
+                                                                            "line":  187
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "UISurfaceManager",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiCore/UISurfaceManager.h",
+                                                                            "line":  16
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ForsettiHostBootstrapConfiguration",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostBootstrap.h",
+                                                                            "line":  26
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiHostBootstrap",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostBootstrap.h",
+                                                                            "line":  42
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiHostBootstrap",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostBootstrap.h",
+                                                                            "line":  50
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiHostController",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostController.h",
+                                                                            "line":  16
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiHostController",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostController.h",
+                                                                            "line":  27
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IForsettiHostOverlayRouter",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostOverlayRouter.h",
+                                                                            "line":  15
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiHostOverlayRouter",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostOverlayRouter.h",
+                                                                            "line":  21
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ForsettiHostStateKind",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                                            "line":  13
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "ForsettiHostLaunchStrategyKind",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                                            "line":  24
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ForsettiHostLaunchStrategy",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                                            "line":  30
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ForsettiHostStateSnapshot",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                                            "line":  39
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "ForsettiSurfaceStateSnapshot",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiSurfaceStateAdapter.h",
+                                                                            "line":  17
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IHostSurfaceStateSource",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiSurfaceStateAdapter.h",
+                                                                            "line":  26
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiSurfaceStateAdapter",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiHostTemplate/ForsettiSurfaceStateAdapter.h",
+                                                                            "line":  32
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "DefaultForsettiPlatformServices",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/DefaultPlatformServices.h",
+                                                                            "line":  17
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "RegistryModuleRegistrationStore",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/ModuleRegistrationPlatform.h",
+                                                                            "line":  16
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "CngSha256ManifestDigestProvider",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/ModuleRegistrationPlatform.h",
+                                                                            "line":  31
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "WinHttpNetworkingService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/PlatformServices.h",
+                                                                            "line":  16
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "RegistryStorageService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/PlatformServices.h",
+                                                                            "line":  26
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "DpapiSecureStorageService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/PlatformServices.h",
+                                                                            "line":  43
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "LocalFileExportService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/PlatformServices.h",
+                                                                            "line":  60
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "NoopTelemetryService",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/PlatformServices.h",
+                                                                            "line":  81
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "enum",
+                                                   "name":  "WindowsViewFactoryRegistryError",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  20
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "WindowsViewFactoryRegistryException",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  26
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "struct",
+                                                   "name":  "WindowsViewCreationContext",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  38
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IWindowsViewFactory",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  43
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IWindowsDispatcher",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  49
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "IWindowsViewFactoryRegistry",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  55
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ForsettiViewFactoryRegistry",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  73
+                                                                        }
+                                                                    ]
+                                               },
+                                               {
+                                                   "kind":  "class",
+                                                   "name":  "ImmediateWindowsDispatcher",
+                                                   "declarations":  [
+                                                                        {
+                                                                            "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                                            "line":  95
+                                                                        }
+                                                                    ]
+                                               }
+                                           ]
+                             },
+    "policy_symbols":  [
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiModule",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                   "line":  19
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiUIModule",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                   "line":  33
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiAppModule",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                   "line":  43
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiModuleContext",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiContext.h",
+                                                   "line":  98
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IEntitlementProvider",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiProtocols.h",
+                                                   "line":  51
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "ICapabilityPolicy",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/CapabilityPolicy.h",
+                                                   "line":  23
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IActivationStore",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ActivationStore.h",
+                                                   "line":  31
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiEventBus",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiEventBus.h",
+                                                   "line":  25
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IServiceProvider",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiServiceContainer.h",
+                                                   "line":  22
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiLogger",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiLogger.h",
+                                                   "line":  30
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IOverlayRouter",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiContext.h",
+                                                   "line":  23
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IModuleCommunicationGuard",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiContext.h",
+                                                   "line":  42
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "ISharedDatabaseService",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiServices.h",
+                                                   "line":  61
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IAuthenticationService",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiServices.h",
+                                                   "line":  69
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IDiagnosticsService",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiServices.h",
+                                                   "line":  76
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IApiService",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiServices.h",
+                                                   "line":  84
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "ISecurityService",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiServices.h",
+                                                   "line":  94
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "ICryptoUtilitiesService",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiServices.h",
+                                                   "line":  102
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiHostController",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiHostController.h",
+                                                   "line":  16
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiHostBootstrap",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiHostBootstrap.h",
+                                                   "line":  42
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IForsettiHostOverlayRouter",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiHostOverlayRouter.h",
+                                                   "line":  15
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IHostSurfaceStateSource",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiSurfaceStateAdapter.h",
+                                                   "line":  26
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IWindowsViewFactory",
+                               "declaration":  {
+                                                   "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                   "line":  43
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IWindowsViewFactoryRegistry",
+                               "declaration":  {
+                                                   "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                   "line":  55
+                                               }
+                           },
+                           {
+                               "kind":  "interfaces",
+                               "name":  "IWindowsDispatcher",
+                               "declaration":  {
+                                                   "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                   "line":  49
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "SemVer",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/SemVer.h",
+                                                   "line":  16
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ModuleManifest",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleModels.h",
+                                                   "line":  91
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ModuleRuntimeRequirements",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  117
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ModuleIORequirement",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  86
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ModuleUIRequirements",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  96
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ModuleDataIsolation",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  109
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ModuleDescriptor",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleModels.h",
+                                                   "line":  77
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ForsettiEvent",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiEventBus.h",
+                                                   "line":  18
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ActivationState",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ActivationStore.h",
+                                                   "line":  16
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "CompatibilityReport",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                   "line":  56
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "CompatibilityIssue",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                   "line":  48
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "UIContributions",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/UIModels.h",
+                                                   "line":  187
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ToolbarItemDescriptor",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/UIModels.h",
+                                                   "line":  159
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ViewInjectionDescriptor",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/UIModels.h",
+                                                   "line":  173
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "OverlaySchema",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/UIModels.h",
+                                                   "line":  117
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ForsettiHostStateSnapshot",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                   "line":  39
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ForsettiHostLaunchStrategy",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                   "line":  30
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "ForsettiSurfaceStateSnapshot",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiSurfaceStateAdapter.h",
+                                                   "line":  17
+                                               }
+                           },
+                           {
+                               "kind":  "valueTypes",
+                               "name":  "WindowsViewCreationContext",
+                               "declaration":  {
+                                                   "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                   "line":  38
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "Platform",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleModels.h",
+                                                   "line":  19
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ModuleType",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleModels.h",
+                                                   "line":  36
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "Capability",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleModels.h",
+                                                   "line":  50
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ManifestTemplateVersion",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  17
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "DefaultModuleRole",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  22
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ModuleIOKind",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  31
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ModuleIOAccess",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  45
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ModuleDataIsolationMode",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ModuleRequirements.h",
+                                                   "line":  54
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "LogLevel",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/ForsettiLogger.h",
+                                                   "line":  13
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "CapabilityPolicyDecision",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/CapabilityPolicy.h",
+                                                   "line":  15
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "CompatibilitySeverity",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/CompatibilityChecker.h",
+                                                   "line":  18
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ToolbarAction",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/UIModels.h",
+                                                   "line":  141
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "OverlayPresentation",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/UIModels.h",
+                                                   "line":  42
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "OverlayDestination",
+                               "declaration":  {
+                                                   "path":  "ForsettiCore/UIModels.h",
+                                                   "line":  88
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ForsettiHostStateKind",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                   "line":  13
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "ForsettiHostLaunchStrategyKind",
+                               "declaration":  {
+                                                   "path":  "ForsettiHostTemplate/ForsettiHostState.h",
+                                                   "line":  24
+                                               }
+                           },
+                           {
+                               "kind":  "enums",
+                               "name":  "WindowsViewFactoryRegistryError",
+                               "declaration":  {
+                                                   "path":  "ForsettiPlatform/WindowsViewFactoryRegistry.h",
+                                                   "line":  20
+                                               }
+                           }
+                       ]
+}

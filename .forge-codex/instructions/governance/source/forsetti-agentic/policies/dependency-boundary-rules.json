@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "id": "DEP-001",
+      "decision": "block",
+      "description": "Dependency direction must match the selected edition profile."
+    }
+  ]
+}

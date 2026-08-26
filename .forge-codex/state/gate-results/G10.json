@@ -1,0 +1,33 @@
+{
+  "gate_id": "G10",
+  "status": "passed",
+  "evaluated_at": "2026-08-26T15:12:14.7131044+00:00",
+  "role": "validator",
+  "acceptance": "Catalog and durable session lifecycle pass.",
+  "evidence": [
+    ".forge-codex/state/commands/20260826T150759366Z-a6e76721.json",
+    ".forge-codex/state/commands/20260826T150759366Z-a6e76721.stdout.txt",
+    ".forge-codex/state/commands/20260826T150759366Z-a6e76721.stderr.txt",
+    ".forge-codex/state/validator-reports/P10.json",
+    ".forge-codex/state/decisions/P10-001-bounded-deterministic-agent-catalog.md",
+    ".forge-codex/state/decisions/P10-002-atomic-durable-agent-run-lifecycle.md",
+    ".forge-codex/state/decisions/P10-003-agent-service-semantics-and-p14-boundary.md",
+    ".forge-codex/state/decisions/P10-004-abrupt-crash-and-concurrency-evidence.md",
+    "scripts/validation/Test-G10Agents.ps1",
+    "CMakeLists.txt",
+    "include/ForgeConductor/Domain/AgentModels.h",
+    "include/ForgeConductor/Contracts/IAgentServices.h",
+    "include/ForgeConductor/Application/AgentCatalog.h",
+    "src/Application/AgentCatalog.cpp",
+    "include/ForgeConductor/Application/AgentSessionService.h",
+    "src/Application/AgentSessionService.cpp",
+    "src/Infrastructure/Windows/WindowsAgentCompletionReportInspector.cpp",
+    "include/ForgeConductor/Persistence/Windows/WindowsAgentSessionRepository.h",
+    "src/Persistence/Windows/WindowsAgentSessionRepository.cpp",
+    "tests/Agents/AgentCatalogTests.cpp",
+    "tests/Agents/AgentSessionServiceTests.cpp",
+    "tests/Agents/AgentSessionRepositoryWindowsTests.cpp",
+    "tests/Agents/AgentSessionProcessFixture.cpp"
+  ],
+  "failures": []
+}

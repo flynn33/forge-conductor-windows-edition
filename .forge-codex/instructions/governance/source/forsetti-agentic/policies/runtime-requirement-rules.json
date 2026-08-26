@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "id": "RUNTIME-REQ-001",
+      "decision": "block",
+      "description": "Manifest template 1.1 modules must declare runtimeRequirements for I/O, UI, and data isolation."
+    }
+  ]
+}

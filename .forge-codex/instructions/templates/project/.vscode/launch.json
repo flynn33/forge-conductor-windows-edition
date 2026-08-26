@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Forge bootstrap",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}\\out\\build\\windows-msvc-debug\\forge-port-bootstrap.exe",
+      "cwd": "${workspaceFolder}",
+      "args": []
+    }
+  ]
+}

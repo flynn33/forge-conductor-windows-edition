@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-08-25T08:20:26.6888906+00:00",
+  "items": [
+    {
+      "id": "G00-package-source-integrity",
+      "type": "command",
+      "phase": "P00",
+      "gate": "G00",
+      "created_at": "2026-08-25T08:49:41.6669728+00:00",
+      "path": ".forge-codex/state/commands/20260825T084940220Z-231bcc83.json",
+      "sha256": "989ebecb06e17642f1e13daee35e6bbe4c068ec376452d744f770ee80720dda1",
+      "summary": "Installed package validator passed 191 manifested files and four immutable sources; copied archive sizes and SHA-256 values matched."
+    },
+    {
+      "id": "P00-governance-durable-state",
+      "type": "command",
+      "phase": "P00",
+      "gate": "G00",
+      "created_at": "2026-08-25T08:56:20.9285534+00:00",
+      "path": ".forge-codex/state/commands/20260825T085619787Z-27acc303.json",
+      "sha256": "a869bd9f57818023d85512c4ec000d5156ca30075f3fe01255e8ab833e3de3f8",
+      "summary": "Governing inputs, durable run state, and latest handoff checksum were independently verified."
+    },
+    {
+      "id": "G01-script-parse-ledger",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:50:12.1569237+00:00",
+      "path": ".forge-codex/state/commands/20260825T085010969Z-80373dfe.json",
+      "sha256": "e1d1bd79d1e454ec6fc2d21ab30a66f645f0dfa611adced128d186fb0fb12a2e",
+      "summary": "Common, Verify-Ledger, and Discover-Toolchain parsed without errors; the pre-validation ledger chain passed."
+    },
+    {
+      "id": "G01-toolchain-discovery",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:50:43.2426233+00:00",
+      "path": ".forge-codex/state/commands/20260825T085041796Z-2fd4db59.json",
+      "sha256": "af3f7a1d2f0d60eaade130c95fc7056d672245dc4c776f504dfe9d6509779bec",
+      "summary": "PowerShell 7 toolchain discovery completed and refreshed toolchain.json."
+    },
+    {
+      "id": "G01-package-restore",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:51:33.4908774+00:00",
+      "path": ".forge-codex/state/commands/20260825T085130930Z-9584b6ea.json",
+      "sha256": "78b68f2667bfa4fe1c0e21ce6c6317c76aeb1a573c5afa8dba457086c5ec7606",
+      "summary": "The exact selected VS 2022 MSBuild restored the pinned native ToolchainPackages probe."
+    },
+    {
+      "id": "G01-native-tools-vcpkg",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:53:24.2200996+00:00",
+      "path": ".forge-codex/state/commands/20260825T085322837Z-da714da7.json",
+      "sha256": "f868701036a4c3db12cde5042cc28b670d5a7bbaefaa5ac28885202150aec276",
+      "summary": "Required native tool paths and versions passed; vcpkg manifest baseline exactly matched checkout HEAD."
+    },
+    {
+      "id": "G01-sdk-pins",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:53:49.2322169+00:00",
+      "path": ".forge-codex/state/commands/20260825T085348047Z-1087ac24.json",
+      "sha256": "1ccc2d0a2f99231c866c0c5d29154c15d1d1d13b302dee30a47c5350123f0be8",
+      "summary": "Windows SDK, Windows App SDK, C++/WinRT, VS 2022, v143, and MSVC pins and paths passed."
+    },
+    {
+      "id": "G01-nuget-cache",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:54:50.1920003+00:00",
+      "path": ".forge-codex/state/commands/20260825T085448974Z-f667f9de.json",
+      "sha256": "ff97f80c5048adbb94d449a4738cd0cb664d7f5613de135d99f29845a2a56d5b",
+      "summary": "Exact Windows App SDK and C++/WinRT packages, restore success, clean cache log, and all expected package files passed."
+    },
+    {
+      "id": "G01-git-diff-check",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:55:23.3131814+00:00",
+      "path": ".forge-codex/state/commands/20260825T085522086Z-32d1b07b.json",
+      "sha256": "ce0d281692258b8442239b871105950c04b529b4fd043fedb22aa65caef87881",
+      "summary": "Git diff whitespace validation passed for nine tracked and untracked P00/P01 touched files."
+    },
+    {
+      "id": "G01-toolchain-state",
+      "type": "artifact",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:50:43.1236872+00:00",
+      "path": ".forge-codex/state/toolchain.json",
+      "sha256": "e1f7590fffbe070312e95a8529e0d8acbf83147f2ee8a7a85a659a1a320617a6",
+      "summary": "Canonical discovered Windows toolchain state with pins, selected paths, and recorded versions."
+    },
+    {
+      "id": "P00-P01-validator-report",
+      "type": "report",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T08:59:07.3786619+00:00",
+      "path": ".forge-codex/state/validator-reports/P00-P01.json",
+      "sha256": "a322eaee2dfc74501a76523a90f3f41c227af9413496ff5e9cdf6c97abc3df3c",
+      "summary": "Independent validator report passing P00/G00 and P01/G01 with evidence and scoped limitations."
+    },
+    {
+      "id": "G01-post-gate-ledger",
+      "type": "command",
+      "phase": "P01",
+      "gate": "G01",
+      "created_at": "2026-08-25T09:00:27.6092059+00:00",
+      "path": ".forge-codex/state/commands/20260825T090026442Z-59f380ef.json",
+      "sha256": "5ec73ee53bb40ab035361f63da68aa2bd109f14fa5d380b310bc798f5a4822d6",
+      "summary": "Post-gate ledger verification passed through the G00/P00/G01/P01 state events."
+    }
+  ]
+}

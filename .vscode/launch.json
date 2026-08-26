@@ -2,11 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Forge Conductor",
+      "name": "Forge Conductor CLI (Debug x64)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/out/Debug/x64/ForgeConductorApp/ForgeConductorApp.exe",
-      "cwd": "${workspaceFolder}"
+      "program": "${workspaceFolder}\\out\\build\\windows-msvc-x64\\bin\\Debug\\forge-conductor.exe",
+      "cwd": "${workspaceFolder}",
+      "args": [],
+      "preLaunchTask": "Forge: Build Debug x64"
+    },
+    {
+      "name": "Forsetti Host Smoke (Debug x64)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}\\out\\build\\windows-msvc-x64\\bin\\Debug\\ForgeConductor.ForsettiHostSmoke.exe",
+      "cwd": "${workspaceFolder}\\out\\build\\windows-msvc-x64\\bin\\Debug",
+      "args": [],
+      "preLaunchTask": "Forge: Build Debug x64"
     }
   ]
 }

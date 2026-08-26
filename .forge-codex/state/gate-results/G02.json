@@ -1,0 +1,29 @@
+{
+  "gate_id": "G02",
+  "status": "passed",
+  "evaluated_at": "2026-08-25T09:28:14.2675311+00:00",
+  "role": "validator",
+  "acceptance": "Feature, MCP, CLI, schema, persistence, telemetry, and test inventories are source-backed.",
+  "evidence": [
+    ".forge-codex/state/commands/20260825T091858417Z-abf16a0f.json",
+    ".forge-codex/state/commands/20260825T092119602Z-b504252d.json",
+    ".forge-inputs/archives/SOURCE-HASHES.json",
+    ".forge-inputs/source-roots.json",
+    ".forge-codex/instructions/plans/feature-parity-matrix.json",
+    ".forge-codex/instructions/plans/feature-parity-matrix.tsv",
+    ".forge-codex/instructions/plans/mcp-tool-parity.json",
+    ".forge-codex/state/baseline/p02-source-files.json",
+    ".forge-codex/state/baseline/p02-feature-inventory.json",
+    ".forge-codex/state/baseline/p02-ui-navigation-inventory.json",
+    ".forge-codex/state/baseline/p02-cli-process-inventory.json",
+    ".forge-codex/state/baseline/p02-mcp-semantic-inventory.json",
+    ".forge-codex/state/baseline/p02-schema-inventory.json",
+    ".forge-codex/state/baseline/p02-persistence-data-inventory.json",
+    ".forge-codex/state/baseline/p02-telemetry-dashboard-inventory.json",
+    ".forge-codex/state/baseline/p02-agent-inventory.json",
+    ".forge-codex/state/baseline/p02-test-fixture-inventory.json",
+    ".forge-codex/state/baseline/p02-archaeology-report.md",
+    ".forge-codex/state/validator-reports/P02.json"
+  ],
+  "failures": []
+}

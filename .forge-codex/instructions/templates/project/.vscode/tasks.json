@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Forge: Build Debug x64",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\scripts\\Build.ps1",
+        "-Configuration",
+        "Debug",
+        "-Architecture",
+        "x64"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ]
+    },
+    {
+      "label": "Forge: Test Debug x64",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\scripts\\Test.ps1",
+        "-Configuration",
+        "Debug",
+        "-Architecture",
+        "x64"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Forge: All Gates",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\scripts\\Run-All-Gates.ps1"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

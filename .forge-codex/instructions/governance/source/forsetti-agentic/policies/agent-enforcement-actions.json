@@ -1,0 +1,9 @@
+{
+  "actions": [
+    "pass",
+    "request_changes",
+    "block",
+    "escalate"
+  ],
+  "defaultOnAmbiguity": "block_or_escalate"
+}

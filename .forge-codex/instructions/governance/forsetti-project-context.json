@@ -1,0 +1,30 @@
+{
+  "repository_mode": "consumer_app_repo",
+  "forsetti_edition": "windows",
+  "target_platform": "Windows",
+  "framework_version": "0.2.0",
+  "edition_profile": "0.2.0",
+  "manifest_schema_version": "1.1",
+  "manifest_template_version": "1.1",
+  "deployment_pattern": "single_app_module",
+  "module_type": "app",
+  "module_id": "com.forsetti.app.forge-conductor-windows",
+  "capabilities_requested": [
+    "networking",
+    "storage",
+    "secure_storage",
+    "file_export",
+    "telemetry",
+    "routing_overlay",
+    "toolbar_items",
+    "view_injection",
+    "event_publishing",
+    "shared_database",
+    "diagnostics",
+    "api",
+    "security"
+  ],
+  "runtime_requirements_declared": true,
+  "uses_public_api_only": true,
+  "touches_framework_internals": false
+}

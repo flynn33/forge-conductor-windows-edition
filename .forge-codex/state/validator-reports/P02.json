@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "report_id": "P02-independent-validator",
+  "created_at": "2026-08-25T09:28:14.1705484+00:00",
+  "role": "validator",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "scope": [
+    "P02/G02"
+  ],
+  "decision": "pass",
+  "gate": "G02",
+  "acceptance": "Feature, MCP, CLI, schema, persistence, telemetry, and test inventories are source-backed.",
+  "measured_results": {
+    "immutable_archives": 4,
+    "extracted_source_files": 870,
+    "swift_files": 133,
+    "swift_lines": 33763,
+    "feature_rows_retained": 84,
+    "mcp_tools_exact": 53,
+    "ui_surfaces": 7,
+    "schema_families": 9,
+    "agent_manifests": 10,
+    "test_files": 31,
+    "xctest_methods": 274
+  },
+  "evidence": [
+    ".forge-codex/state/commands/20260825T091858417Z-abf16a0f.json",
+    ".forge-codex/state/commands/20260825T092119602Z-b504252d.json",
+    ".forge-inputs/archives/SOURCE-HASHES.json",
+    ".forge-inputs/source-roots.json",
+    ".forge-codex/instructions/plans/feature-parity-matrix.json",
+    ".forge-codex/instructions/plans/feature-parity-matrix.tsv",
+    ".forge-codex/instructions/plans/mcp-tool-parity.json",
+    ".forge-codex/state/baseline/p02-source-files.json",
+    ".forge-codex/state/baseline/p02-feature-inventory.json",
+    ".forge-codex/state/baseline/p02-ui-navigation-inventory.json",
+    ".forge-codex/state/baseline/p02-cli-process-inventory.json",
+    ".forge-codex/state/baseline/p02-mcp-semantic-inventory.json",
+    ".forge-codex/state/baseline/p02-schema-inventory.json",
+    ".forge-codex/state/baseline/p02-persistence-data-inventory.json",
+    ".forge-codex/state/baseline/p02-telemetry-dashboard-inventory.json",
+    ".forge-codex/state/baseline/p02-agent-inventory.json",
+    ".forge-codex/state/baseline/p02-test-fixture-inventory.json",
+    ".forge-codex/state/baseline/p02-archaeology-report.md",
+    ".forge-codex/state/validator-reports/P02.json"
+  ],
+  "failed_attempts": [
+    {
+      "path": ".forge-codex/state/commands/20260825T090826753Z-248250e5.json",
+      "cause": "Windows PowerShell child could not resolve the prior Get-FileHash-based helper.",
+      "resolution": "Hash helper was repaired and canonical generation later exited 0."
+    },
+    {
+      "path": ".forge-codex/state/commands/20260825T091213892Z-e3e6c5da.json",
+      "cause": "Generator encountered a PowerShell object-shape mismatch for the lines property.",
+      "resolution": "Generator was repaired and canonical generation later exited 0."
+    },
+    {
+      "path": ".forge-codex/state/commands/20260825T092548869Z-666a34ff.json",
+      "cause": "Supplemental validator probe contained invalid Where-Object spacing.",
+      "resolution": "Diagnostic only; canonical validator remained passing."
+    },
+    {
+      "path": ".forge-codex/state/commands/20260825T092613297Z-56b598bf.json",
+      "cause": "Supplemental source-set comparison omitted portable-path normalization.",
+      "resolution": "Read-only normalized comparison showed 870 disk paths, 870 indexed paths, 870 unique paths, and no differences."
+    }
+  ],
+  "observations": [
+    "The independent canonical validator re-hashed all four immutable archives, all 870 indexed source files, every feature/tool/schema/persistence/telemetry/agent anchor, and all 31 test/fixture files.",
+    "The hard-coded parity audit confirmed all 84 IDs remain in both JSON and TSV canonical plans and the baseline; the exact 53-name MCP set remains in the plan and source-backed baseline.",
+    "agent_run_status and project_memory.export are correctly classified as mutating in the regenerated source baseline.",
+    "The human-readable archaeology report contains PowerShell here-string escaping artifacts in its displayed archive hash and agent_run_status text. Machine-readable inventories contain the correct values and hashes, so this is non-blocking for G02 but should be repaired when the generator is next maintained."
+  ],
+  "limitations": [
+    "This validates the source-archaeology baseline only; it does not claim Windows implementation or runtime parity.",
+    "Source declarations and fixtures are inventory evidence, not proof that macOS or future Windows runtime flows execute successfully."
+  ],
+  "post_gate_ledger_validation": {
+    "record": ".forge-codex/state/commands/20260825T092822559Z-48e6b4eb.json",
+    "exit_code": 0,
+    "verified_events_before_record": 35,
+    "verified_events_after_record": 36,
+    "stdout": ".forge-codex/state/commands/20260825T092822559Z-48e6b4eb.stdout.txt",
+    "stdout_sha256": "ad1e2b0f84b3f80b61bde9f2e950d586547368dd670083dd3b81bb046edc8623",
+    "final_direct_verification": "Ledger validation passed: 36 event(s)."
+  }
+}

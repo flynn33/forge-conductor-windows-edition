@@ -1,0 +1,31 @@
+{
+  "gate_id": "G04",
+  "status": "passed",
+  "evaluated_at": "2026-08-25T10:52:00.8336951+00:00",
+  "role": "validator",
+  "acceptance": "Canonical Debug and Release x64 scaffold builds.",
+  "evidence": [
+    ".forge-codex/state/validator-reports/P04.json",
+    ".forge-codex/state/commands/20260825T103805619Z-3ff37eb5.json",
+    ".forge-codex/state/commands/20260825T104343298Z-d68312e0.json",
+    ".forge-codex/state/commands/20260825T104449284Z-6ee369a5.json",
+    ".forge-codex/state/commands/20260825T104528369Z-dad8ab5f.json",
+    ".forge-codex/state/commands/20260825T104638003Z-e859816b.json",
+    ".forge-codex/state/commands/20260825T104711737Z-dbcc2bed.json",
+    ".forge-codex/state/commands/20260825T104734523Z-5f942350.json",
+    "CMakeLists.txt",
+    "CMakePresets.json",
+    "cmake/ForgeForsettiExternal.cmake",
+    "cmake/ForsettiExternalPolicy.cmake",
+    "scripts/build.ps1",
+    "scripts/test.ps1",
+    "scripts/validation/Test-G04BuildScaffold.ps1",
+    "include/ForgeConductor/Contracts/IForgeApplicationLifecycle.h",
+    "include/ForgeConductor/ForsettiModule/ForgeConductorAppModule.h",
+    "src/ForsettiModule/ForgeConductorAppModule.cpp",
+    "src/Hosts/Cli/main.cpp",
+    "tests/ForsettiHostSmoke/main.cpp",
+    "src/ForgeConductor.ForsettiModule/Resources/ForsettiManifests/ForgeConductorAppModule.json"
+  ],
+  "failures": []
+}

@@ -1,0 +1,132 @@
+{
+    "schema_version":  1,
+    "top_level_fields":  [
+                             "system",
+                             "forge",
+                             "updated",
+                             "history",
+                             "runtime"
+                         ],
+    "required_contract_fields":  [
+                                     "system",
+                                     "forge",
+                                     "updated",
+                                     "history"
+                                 ],
+    "system_fields":  [
+                          "ts",
+                          "host",
+                          "platform",
+                          "arch",
+                          "cpu",
+                          "ram",
+                          "disk",
+                          "disk_io",
+                          "gpu",
+                          "processes",
+                          "power"
+                      ],
+    "forge_fields":  [
+                         "ts",
+                         "home",
+                         "runtime",
+                         "presence_count",
+                         "presence",
+                         "mcp_servers",
+                         "mcp_tools",
+                         "mcp_packs",
+                         "agents",
+                         "agent_sessions",
+                         "agents_summary",
+                         "jobs",
+                         "live_feed",
+                         "feed_stats",
+                         "orchestration",
+                         "mcp_load",
+                         "files",
+                         "audit_recent"
+                     ],
+    "known_contract_drift":  [
+                                 "Fixture omits power although the implementation emits it.",
+                                 "Fixture includes diagnostics although ForgeSnapshot.asDictionary does not emit it."
+                             ],
+    "windows_semantics":  "Unavailable and stale values must be explicit; placeholder zero values are forbidden.",
+    "placeholder_values_not_to_port":  [
+                                           "ram.swap_total=0",
+                                           "ram.swap_used=0",
+                                           "disk cumulative byte/op totals=0",
+                                           "gpu.shared_memory=true",
+                                           "gpu.processes=[]"
+                                       ],
+    "dashboard_routes":  {
+                             "telemetry":  [
+                                               "/static/*",
+                                               "/api/health",
+                                               "/api/live",
+                                               "/api/frame",
+                                               "/api/snapshot",
+                                               "/api/system",
+                                               "/api/forge",
+                                               "/ping",
+                                               "/api/stream?hz="
+                                           ],
+                             "operational_get":  [
+                                                     "/api/doctor",
+                                                     "/api/agents",
+                                                     "/api/sessions",
+                                                     "/api/audit",
+                                                     "/api/diagnostics"
+                                                 ],
+                             "operational_write":  [
+                                                       "/api/sessions/prune",
+                                                       "/api/sessions/close"
+                                                   ],
+                             "manager_get":  [
+                                                 "/api/manager/status",
+                                                 "/api/manager/settings"
+                                             ],
+                             "manager_write":  [
+                                                   "/api/manager/start",
+                                                   "/api/manager/stop",
+                                                   "/api/manager/restart",
+                                                   "/api/manager/shutdown",
+                                                   "/api/manager/settings"
+                                               ],
+                             "shell":  [
+                                           "/",
+                                           "/index.html",
+                                           "/control",
+                                           "/manager",
+                                           "/api/status"
+                                       ]
+                         },
+    "anchors":  [
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Telemetry/Models/TelemetryModels.swift",
+                        "symbol":  "TelemetryHealth",
+                        "line":  12,
+                        "bytes":  16814,
+                        "lines":  535,
+                        "sha256":  "34ae112218eef1e196d68a7164f8bbee33cd7a6b156d6ac861117d16ce9c4147"
+                    },
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Domain/ForgeSnapshot.swift",
+                        "symbol":  "ForgeSnapshot",
+                        "line":  11,
+                        "bytes":  17196,
+                        "lines":  492,
+                        "sha256":  "0ab04c9a01356d5f22703cf6c5976c05afc65abfedd76965bd0c37182454f4a7"
+                    },
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Dashboard/DashboardServer.swift",
+                        "symbol":  "DashboardBindResult",
+                        "line":  13,
+                        "bytes":  12639,
+                        "lines":  279,
+                        "sha256":  "055caca8d7535cca499badca7cdb6378ade81964824dd841d83a2e82bc15df0e"
+                    }
+                ]
+}

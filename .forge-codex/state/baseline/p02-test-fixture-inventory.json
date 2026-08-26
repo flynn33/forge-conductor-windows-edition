@@ -1,0 +1,1389 @@
+{
+    "schema_version":  1,
+    "counts":  {
+                   "files":  31,
+                   "unit_integration_methods":  269,
+                   "ui_methods":  5,
+                   "total_methods":  274
+               },
+    "evidence_rule":  "Source declarations are inventory evidence, not proof of runtime execution. Supplied P12 runtime evidence remains separately attributable.",
+    "files":  [
+                  {
+                      "path":  "Tests/ForgeConductorTests/AppConfigAndDoctorTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  4305,
+                      "lines":  93,
+                      "sha256":  "22ec70ab28624a2284a028a8843db66088319fc8bc7380af51d02390140f7aec",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testAppConfigRoundTripDictionary",
+                                          "line":  9
+                                      },
+                                      {
+                                          "symbol":  "testAppConfigApplySettingsPatch",
+                                          "line":  20
+                                      },
+                                      {
+                                          "symbol":  "testConfigStoreTypedModel",
+                                          "line":  29
+                                      },
+                                      {
+                                          "symbol":  "testDoctorModelTyped",
+                                          "line":  43
+                                      },
+                                      {
+                                          "symbol":  "testStatusSnapshotModel",
+                                          "line":  57
+                                      },
+                                      {
+                                          "symbol":  "testCPUFrequencyNonNilOnThisMac",
+                                          "line":  70
+                                      },
+                                      {
+                                          "symbol":  "testCPUFrequencyEstimatorClusterEffective",
+                                          "line":  78
+                                      },
+                                      {
+                                          "symbol":  "testManagerRuntimeIsolation",
+                                          "line":  92
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ContinuityCoordinatorTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  15765,
+                      "lines":  281,
+                      "sha256":  "a607d80104d3cc03849219b78c1cf4401ee9445af190a8155bb5d212794d8e71",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testLegacyAgentSnapshotAndMergeCollectionsStayBounded",
+                                          "line":  61
+                                      },
+                                      {
+                                          "symbol":  "testEveryTransitionCrashPointRecoversWithoutDuplicateSuccessor",
+                                          "line":  88
+                                      },
+                                      {
+                                          "symbol":  "testIdempotentReplayAndExactAcknowledgement",
+                                          "line":  136
+                                      },
+                                      {
+                                          "symbol":  "testBudgetSourcesAndHandoffSizeBound",
+                                          "line":  180
+                                      },
+                                      {
+                                          "symbol":  "testExternalMCPControlLifecycleAndSchemas",
+                                          "line":  201
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ContinuityTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  82407,
+                      "lines":  1734,
+                      "sha256":  "698660433a240038b6347258743f6eaca12e2232b5ca3e0f9557b8f2ddbc4d00",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testMemoryLayoutCreatedOnBootstrap",
+                                          "line":  21
+                                      },
+                                      {
+                                          "symbol":  "testCheckpointAndContextGetRoundTrip",
+                                          "line":  28
+                                      },
+                                      {
+                                          "symbol":  "testHandoffMarksResumeReadyAndSnapshotsAgents",
+                                          "line":  62
+                                      },
+                                      {
+                                          "symbol":  "testNewClientCheckpointPreservesAgentsUntilTheyReattach",
+                                          "line":  107
+                                      },
+                                      {
+                                          "symbol":  "testContextListAndGetById",
+                                          "line":  156
+                                      },
+                                      {
+                                          "symbol":  "testLatestHandoffUsesWriteOrderWhenTimestampsTie",
+                                          "line":  176
+                                      },
+                                      {
+                                          "symbol":  "testCheckpointUpdateRegeneratesDefaultResumeSeed",
+                                          "line":  232
+                                      },
+                                      {
+                                          "symbol":  "testCheckpointUpdatePreservesExplicitResumeSeed",
+                                          "line":  260
+                                      },
+                                      {
+                                          "symbol":  "testBudgetHandoffPreservesExplicitAndLegacyCustomResumeSeeds",
+                                          "line":  286
+                                      },
+                                      {
+                                          "symbol":  "testUnknownExplicitHandoffIDFailsWithoutMutation",
+                                          "line":  324
+                                      },
+                                      {
+                                          "symbol":  "testPacketDecoderRejectsUnsupportedOrCorruptIdentityMetadata",
+                                          "line":  351
+                                      },
+                                      {
+                                          "symbol":  "testPacketDecoderEnforcesJSONScalarAndContainerTypes",
+                                          "line":  387
+                                      },
+                                      {
+                                          "symbol":  "testMissingExplicitContextIDIsDistinguishedFromEmptyStore",
+                                          "line":  427
+                                      },
+                                      {
+                                          "symbol":  "testContinuityArgumentLimitsCannotOverflowAndSensitiveStateIsRedacted",
+                                          "line":  442
+                                      },
+                                      {
+                                          "symbol":  "testHandoffFinalizesCallingClientsOpenCheckpoint",
+                                          "line":  495
+                                      },
+                                      {
+                                          "symbol":  "testBudgetHandoffPreservesCallingClientsCheckpointState",
+                                          "line":  533
+                                      },
+                                      {
+                                          "symbol":  "testBudgetHandoffReusesRichResumeReadyPacket",
+                                          "line":  581
+                                      },
+                                      {
+                                          "symbol":  "testHandoffSnapshotsOnlyCallingClientsOpenAgents",
+                                          "line":  610
+                                      },
+                                      {
+                                          "symbol":  "testNewClientStatusReattachesOpenAgentSession",
+                                          "line":  640
+                                      },
+                                      {
+                                          "symbol":  "testConcurrentAgentReattachUsesAtomicOwnershipCompareAndSwap",
+                                          "line":  683
+                                      },
+                                      {
+                                          "symbol":  "testContinuitySurvivesAppRestartWithDurableProjections",
+                                          "line":  740
+                                      },
+                                      {
+                                          "symbol":  "testNewChatRecoversGoalAndAgentThenReattachesOverMCP",
+                                          "line":  813
+                                      },
+                                      {
+                                          "symbol":  "testStartupRepairsEveryMissingPacketProjection",
+                                          "line":  874
+                                      },
+                                      {
+                                          "symbol":  "testProjectionFailureKeepsAuthoritativeWriteAndRepairsOnRestart",
+                                          "line":  900
+                                      },
+                                      {
+                                          "symbol":  "testPointerWriteFailureRollsBackHandoffRow",
+                                          "line":  935
+                                      },
+                                      {
+                                          "symbol":  "testVersionThreeStoreMigratesWithoutLosingHandoff",
+                                          "line":  972
+                                      },
+                                      {
+                                          "symbol":  "testConcurrentVersionThreeMigrationIsIdempotent",
+                                          "line":  1042
+                                      },
+                                      {
+                                          "symbol":  "testConcurrentPrimaryAndFallbackWritesKeepProjectionsConsistent",
+                                          "line":  1081
+                                      },
+                                      {
+                                          "symbol":  "testPrimaryAndFallbackMCPProcessesShareContinuitySafely",
+                                          "line":  1122
+                                      },
+                                      {
+                                          "symbol":  "testConcurrentUpdatesToSamePacketPreserveDisjointFields",
+                                          "line":  1170
+                                      },
+                                      {
+                                          "symbol":  "testNarrativeOnlyCheckpointReplacesCurrentTaskProjection",
+                                          "line":  1216
+                                      },
+                                      {
+                                          "symbol":  "testContinuityToolsListed",
+                                          "line":  1235
+                                      },
+                                      {
+                                          "symbol":  "testBudgetLoopEventuallyRequiresHandoff",
+                                          "line":  1265
+                                      },
+                                      {
+                                          "symbol":  "testBudgetLoopSignalsExactlyAtSoftAndHardThresholds",
+                                          "line":  1300
+                                      },
+                                      {
+                                          "symbol":  "testAuthorizationDeniedLoopSignalsExactlyAtSoftAndHardThresholds",
+                                          "line":  1342
+                                      },
+                                      {
+                                          "symbol":  "testAuthorizationDeniedHardBudgetFailsClosedWhenPersistenceFails",
+                                          "line":  1400
+                                      },
+                                      {
+                                          "symbol":  "testDispatchFailuresRetainTheirErrorsAtSoftThreshold",
+                                          "line":  1451
+                                      },
+                                      {
+                                          "symbol":  "testHardBudgetBlocksWhenContinuityPersistenceFails",
+                                          "line":  1504
+                                      },
+                                      {
+                                          "symbol":  "testBudgetFingerprintDistinguishesFractionalArguments",
+                                          "line":  1549
+                                      },
+                                      {
+                                          "symbol":  "testAutoCheckpointDoesNotStealModelPacketIdentity",
+                                          "line":  1578
+                                      },
+                                      {
+                                          "symbol":  "testRuntimeAutoCheckpointPersistsWithoutModelCall",
+                                          "line":  1617
+                                      },
+                                      {
+                                          "symbol":  "testContextGetAdoptsWorkspaceForShellWithoutNewAgent",
+                                          "line":  1638
+                                      },
+                                      {
+                                          "symbol":  "testRuntimeHandoffBlocksProjectToolsUntilContextGet",
+                                          "line":  1667
+                                      },
+                                      {
+                                          "symbol":  "testReadOnlyHomePathIsAllowedWithoutAgentSession",
+                                          "line":  1715
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/CoreTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  25483,
+                      "lines":  537,
+                      "sha256":  "574d4a2b3a51d73240da36881ffbd32519b5382fd35c19a11804b0cab7f70f4e",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testBootstrapCreatesLayout",
+                                          "line":  23
+                                      },
+                                      {
+                                          "symbol":  "testDoctorPasses",
+                                          "line":  32
+                                      },
+                                      {
+                                          "symbol":  "testCatalogHasBuiltins",
+                                          "line":  40
+                                      },
+                                      {
+                                          "symbol":  "testAgentPlaybooksAreRobust",
+                                          "line":  53
+                                      },
+                                      {
+                                          "symbol":  "testRecommendDocs",
+                                          "line":  75
+                                      },
+                                      {
+                                          "symbol":  "testSessionLifecycleComplete",
+                                          "line":  83
+                                      },
+                                      {
+                                          "symbol":  "testSessionIncompleteSchemaWarns",
+                                          "line":  118
+                                      },
+                                      {
+                                          "symbol":  "testSupersedeClosesPriorOpen",
+                                          "line":  134
+                                      },
+                                      {
+                                          "symbol":  "testBindingRehydrateFromMemory",
+                                          "line":  148
+                                      },
+                                      {
+                                          "symbol":  "testPruneStaleClosesIdle",
+                                          "line":  161
+                                      },
+                                      {
+                                          "symbol":  "testForgeStatusTool",
+                                          "line":  178
+                                      },
+                                      {
+                                          "symbol":  "testFSWriteRead",
+                                          "line":  186
+                                      },
+                                      {
+                                          "symbol":  "testFSReadHonorsLineOffsetAndLength",
+                                          "line":  202
+                                      },
+                                      {
+                                          "symbol":  "testFSReadHandlesEmptyFileAndMaximumLength",
+                                          "line":  237
+                                      },
+                                      {
+                                          "symbol":  "testIdenticalToolCallLoopSoftHandoffThenHardBlock",
+                                          "line":  275
+                                      },
+                                      {
+                                          "symbol":  "testPDFWrite",
+                                          "line":  305
+                                      },
+                                      {
+                                          "symbol":  "testFilesystemToolRejectsPathOutsideWorkspaceRoots",
+                                          "line":  324
+                                      },
+                                      {
+                                          "symbol":  "testConfiguredWorkspaceRootAllowsFilesystemTool",
+                                          "line":  341
+                                      },
+                                      {
+                                          "symbol":  "testFilesystemToolRejectsSymlinkEscape",
+                                          "line":  361
+                                      },
+                                      {
+                                          "symbol":  "testActiveAgentForbiddenToolsAreEnforcedAtRouter",
+                                          "line":  382
+                                      },
+                                      {
+                                          "symbol":  "testShellRequiresExplicitAgentWorkspace",
+                                          "line":  403
+                                      },
+                                      {
+                                          "symbol":  "testAgentRunStartCannotCreateAuthorizationRoot",
+                                          "line":  417
+                                      },
+                                      {
+                                          "symbol":  "testShellIsDisabledUnlessTrustedConfigurationEnablesIt",
+                                          "line":  433
+                                      },
+                                      {
+                                          "symbol":  "testShellRejectsNonFiniteTimeoutWhenEnabled",
+                                          "line":  449
+                                      },
+                                      {
+                                          "symbol":  "testToolAuditRedactsFileContents",
+                                          "line":  467
+                                      },
+                                      {
+                                          "symbol":  "testAgentListTool",
+                                          "line":  482
+                                      },
+                                      {
+                                          "symbol":  "testMCPInitializeAndToolsList",
+                                          "line":  492
+                                      },
+                                      {
+                                          "symbol":  "testMCPToolCall",
+                                          "line":  518
+                                      },
+                                      {
+                                          "symbol":  "testISO8601RoundTrip",
+                                          "line":  538
+                                      },
+                                      {
+                                          "symbol":  "testAgentMarkdownParser",
+                                          "line":  546
+                                      },
+                                      {
+                                          "symbol":  "testCustomAgentOverridesBuiltin",
+                                          "line":  568
+                                      },
+                                      {
+                                          "symbol":  "testAuditDualWrite",
+                                          "line":  589
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/DashboardSecurityTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  4165,
+                      "lines":  96,
+                      "sha256":  "3e7b28dc9fb00e5bd407016ffb2005d9a9cc895a7fcd6d0527e4dfc110ed323b",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testParserRejectsMalformedAndOversizedLengths",
+                                          "line":  9
+                                      },
+                                      {
+                                          "symbol":  "testPolicyRejectsCrossOriginAndNonJSONMutations",
+                                          "line":  25
+                                      },
+                                      {
+                                          "symbol":  "testDashboardCannotInvokePrivilegedTools",
+                                          "line":  56
+                                      },
+                                      {
+                                          "symbol":  "testDashboardRejectsCrossOriginStateChange",
+                                          "line":  71
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/DashboardTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  5662,
+                      "lines":  103,
+                      "sha256":  "86d204f931cb5ff096f919a311404df7091704546bc7a3a8ab89795455d1f3df",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testDashboardStartsAndServesStatus",
+                                          "line":  9
+                                      },
+                                      {
+                                          "symbol":  "testDashboardIndexHTML",
+                                          "line":  30
+                                      },
+                                      {
+                                          "symbol":  "testControlSurfaceHasManagerControls",
+                                          "line":  93
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/Fixtures/telemetry_contract_keys.json",
+                      "kind":  "fixture",
+                      "bytes":  481,
+                      "lines":  34,
+                      "sha256":  "6856f9c0c0f4ba3fa30b9426ca16e3d9f0da793aa017f27c6e93698df2f76e7d",
+                      "methods":  [
+
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ForgeProcessEntryTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  2298,
+                      "lines":  58,
+                      "sha256":  "8acef891eb5d90328b0d6678a4c80c0454106ba63f6f570fb7d9e3a789bd615a",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testParseModeGUIWhenNoArgs",
+                                          "line":  9
+                                      },
+                                      {
+                                          "symbol":  "testParseModeServe",
+                                          "line":  14
+                                      },
+                                      {
+                                          "symbol":  "testParseModeManagerRun",
+                                          "line":  29
+                                      },
+                                      {
+                                          "symbol":  "testHomeOverride",
+                                          "line":  47
+                                      },
+                                      {
+                                          "symbol":  "testServeArgumentsConstant",
+                                          "line":  55
+                                      },
+                                      {
+                                          "symbol":  "testResolveBinaryPrefersExplicitPreferred",
+                                          "line":  59
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/G1G10AcceptanceTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  15474,
+                      "lines":  298,
+                      "sha256":  "0b58598df1736ccde91c8bc417c61f94a143ca926ca8d04540ae9c61dc70e752",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testG1G2G7_DeployPrimaryFailoverAndMCPSmoke",
+                                          "line":  93
+                                      },
+                                      {
+                                          "symbol":  "testG5_RealtimeEngineSustainedSampling",
+                                          "line":  164
+                                      },
+                                      {
+                                          "symbol":  "testG6_DiagnosticsExportContainsRequiredCategories",
+                                          "line":  197
+                                      },
+                                      {
+                                          "symbol":  "testG8_SecondDashboardBindFailsClosed",
+                                          "line":  225
+                                      },
+                                      {
+                                          "symbol":  "testG3_VersionAndReleaseDocumentsAreAligned",
+                                          "line":  269
+                                      },
+                                      {
+                                          "symbol":  "testG9_ResolvePrefersExplicitBinary",
+                                          "line":  298
+                                      },
+                                      {
+                                          "symbol":  "testG4_ProtocolsAreConcrete",
+                                          "line":  307
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/HTTPTestHelpers.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  2957,
+                      "lines":  78,
+                      "sha256":  "4f5d6e61240b16b9fd360871331f3e42430d49f9b30f67a5ccba6ddbd0e149c9",
+                      "methods":  [
+
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/LatestValueMailboxTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  4912,
+                      "lines":  115,
+                      "sha256":  "9d4007b7bff2d01d6d0a9b4870cb51c546a7c994b26f28735cb8b86c0bc7b737",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testProducerPressureUsesAtMostTwoLogicalSlotsAndConvergesToLatest",
+                                          "line":  8
+                                      },
+                                      {
+                                          "symbol":  "testStaleGenerationAndPostStopValuesNeverReachNewSubscriber",
+                                          "line":  43
+                                      },
+                                      {
+                                          "symbol":  "testStopClearsBufferedLatestDuringInFlightDelivery",
+                                          "line":  70
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/LifecycleOwnershipTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  3071,
+                      "lines":  74,
+                      "sha256":  "d0a824f6b53cfc5286d1eb590b4529bda446aba6074f2ff71b8ab4337c007809",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testManagerRuntimeCancelsOwnedDispatchSources",
+                                          "line":  10
+                                      },
+                                      {
+                                          "symbol":  "testManagerOwnerReleasesListenerAcrossTenCycles",
+                                          "line":  32
+                                      },
+                                      {
+                                          "symbol":  "testPortInspectionProcessAndPipeCompleteTenCycles",
+                                          "line":  57
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/LiveCollectorEvidenceTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  31634,
+                      "lines":  707,
+                      "sha256":  "4b0c4874a7dc3be5f90f93b08bd056aa8ccb62457ce084cd9fd232ba9599c80e",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testGPUCollectorSeesDeviceUtilizationWhenAvailable",
+                                          "line":  10
+                                      },
+                                      {
+                                          "symbol":  "testDiskIOCollectorProducesDeltaAfterTwoSamples",
+                                          "line":  26
+                                      },
+                                      {
+                                          "symbol":  "testTypedCardsFromLiveSnapshot",
+                                          "line":  42
+                                      },
+                                      {
+                                          "symbol":  "testProcessDiscoveryFindsLocalMCPBinariesWhenPresent",
+                                          "line":  62
+                                      },
+                                      {
+                                          "symbol":  "testProcessDiscoveryNeverClassifiesCCDT",
+                                          "line":  94
+                                      },
+                                      {
+                                          "symbol":  "testLMStudioMCPConfigStripsForeignProjects",
+                                          "line":  103
+                                      },
+                                      {
+                                          "symbol":  "testLegacyForgeServeLaunchersAreRemovedFromBinDir",
+                                          "line":  114
+                                      },
+                                      {
+                                          "symbol":  "testSwiftServeRegistrationShape",
+                                          "line":  130
+                                      },
+                                      {
+                                          "symbol":  "testLMStudioMCPBridgePluginLayoutIsWritten",
+                                          "line":  149
+                                      },
+                                      {
+                                          "symbol":  "testForgeSnapshotIncludesDiscoveredMCPServers",
+                                          "line":  199
+                                      },
+                                      {
+                                          "symbol":  "testFullSnapshotContractTwice",
+                                          "line":  226
+                                      },
+                                      {
+                                          "symbol":  "testAppBundleServeClassificationExcludesGUIAndManager",
+                                          "line":  250
+                                      },
+                                      {
+                                          "symbol":  "testPSFallbackPreservesAppBundleExecutableAndServeArgument",
+                                          "line":  288
+                                      },
+                                      {
+                                          "symbol":  "testMCPExternalCountIncludesBothStdioRolesAndExcludesModelBackends",
+                                          "line":  304
+                                      },
+                                      {
+                                          "symbol":  "testConnectorProcessIdentityRequiresExplicitValidRoleEvidence",
+                                          "line":  321
+                                      },
+                                      {
+                                          "symbol":  "testNativeProcessMetadataDecodesServeArgumentsAndFallbackRole",
+                                          "line":  346
+                                      },
+                                      {
+                                          "symbol":  "testUnknownLiveRoleDoesNotSuppressEitherConfiguredRole",
+                                          "line":  363
+                                      },
+                                      {
+                                          "symbol":  "testAssemblerOmitsLMStudioHostAndModelBackendCards",
+                                          "line":  389
+                                      },
+                                      {
+                                          "symbol":  "testLivePrimaryDoesNotSuppressFallbackConfigurationWithSharedCommand",
+                                          "line":  406
+                                      },
+                                      {
+                                          "symbol":  "testMatchingFallbackPresenceCorrectsUnknownLiveProcessRole",
+                                          "line":  426
+                                      },
+                                      {
+                                          "symbol":  "testRolePresencesCoalesceConfigurationsAndCorrelateBareAuditClientIDs",
+                                          "line":  459
+                                      },
+                                      {
+                                          "symbol":  "testPresenceClientIDNormalizationRetainsUnknownShapes",
+                                          "line":  505
+                                      },
+                                      {
+                                          "symbol":  "testReconciledPresenceCountExcludesStaleAndForeignRows",
+                                          "line":  532
+                                      },
+                                      {
+                                          "symbol":  "testPolicyAndMaintenanceOutcomesAreActivityButNotOperationalMCPErrors",
+                                          "line":  563
+                                      },
+                                      {
+                                          "symbol":  "testAuditOutcomeClassificationIsExactAndNonConflating",
+                                          "line":  659
+                                      },
+                                      {
+                                          "symbol":  "testGlobalUsageSummaryCountsOnlyErrorAsOperationalFailure",
+                                          "line":  676
+                                      },
+                                      {
+                                          "symbol":  "testOperationalErrorRateUsesAllEventsAsDenominator",
+                                          "line":  700
+                                      },
+                                      {
+                                          "symbol":  "testUsageAndToolCardSerializationExposeOutcomeCounts",
+                                          "line":  719
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/LMStudioConnectorReliabilityTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  12960,
+                      "lines":  272,
+                      "sha256":  "786fe26f30b24912537b0d497093a195596f57746cee77eda6f0454c6764179e",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testDeploymentVerifiesPrimaryAndFallbackBeforeAndAfterInstall",
+                                          "line":  23
+                                      },
+                                      {
+                                          "symbol":  "testFallbackIsPromotedWhenPrimaryDegradesAfterCommit",
+                                          "line":  37
+                                      },
+                                      {
+                                          "symbol":  "testRoleIdentityMismatchFailsBeforeInstallerMutation",
+                                          "line":  53
+                                      },
+                                      {
+                                          "symbol":  "testMalformedMCPConfigurationIsPreservedWithoutReplacingLivePlugins",
+                                          "line":  64
+                                      },
+                                      {
+                                          "symbol":  "testTransactionalInstallPreservesForeignServersAndWritesTypedRoles",
+                                          "line":  84
+                                      },
+                                      {
+                                          "symbol":  "testRepeatedDeploymentWritesNewRevisionToForceLMStudioReload",
+                                          "line":  127
+                                      },
+                                      {
+                                          "symbol":  "testConnectionStateModelsFailForwardPromotion",
+                                          "line":  147
+                                      },
+                                      {
+                                          "symbol":  "testHostActivationDistinguishesSynchronizedConfigFromLazyConnections",
+                                          "line":  170
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/MachHostMetricsTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  4436,
+                      "lines":  120,
+                      "sha256":  "8a80df933714f844b3e68d446118ce577b7ca5b0f6ff175bdb543f9222f81c0e",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testCPUCollectorHostProcessorInfoDeltas",
+                                          "line":  10
+                                      },
+                                      {
+                                          "symbol":  "testRAMCollectorHostStatistics64",
+                                          "line":  26
+                                      },
+                                      {
+                                          "symbol":  "testProcessCollectorLibprocNotPs",
+                                          "line":  33
+                                      },
+                                      {
+                                          "symbol":  "testMachTaskThreadSamplerSelf",
+                                          "line":  51
+                                      },
+                                      {
+                                          "symbol":  "testPowerSourcesCollectorIOKit",
+                                          "line":  60
+                                      },
+                                      {
+                                          "symbol":  "testDiskIONoSleepDelta",
+                                          "line":  70
+                                      },
+                                      {
+                                          "symbol":  "testGPUCollectorIORegistry",
+                                          "line":  78
+                                      },
+                                      {
+                                          "symbol":  "testSystemCollectorWiresAllSurfaces",
+                                          "line":  84
+                                      },
+                                      {
+                                          "symbol":  "testEngineAdvancesMachPath",
+                                          "line":  98
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ManagerTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  56977,
+                      "lines":  1297,
+                      "sha256":  "c3e810d9dec3f306a3ddf4307ccbf82004a9de8a3e3f4dcc87f6a37b27800ffa",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testManagerStartStopService",
+                                          "line":  134
+                                      },
+                                      {
+                                          "symbol":  "testManagerRuntimeThrottlesPresenceMaintenance",
+                                          "line":  173
+                                      },
+                                      {
+                                          "symbol":  "testManagerStartPrunesDeadStalePresence",
+                                          "line":  192
+                                      },
+                                      {
+                                          "symbol":  "testManagerSettingsPersist",
+                                          "line":  212
+                                      },
+                                      {
+                                          "symbol":  "testManagerRestartAPI",
+                                          "line":  241
+                                      },
+                                      {
+                                          "symbol":  "testDashboardClientAttachesToExistingManager",
+                                          "line":  259
+                                      },
+                                      {
+                                          "symbol":  "testPIDFileHelpers",
+                                          "line":  279
+                                      },
+                                      {
+                                          "symbol":  "testNormalizeSettingsPatch",
+                                          "line":  290
+                                      },
+                                      {
+                                          "symbol":  "testDashboardHTMLHasManagerControls",
+                                          "line":  312
+                                      },
+                                      {
+                                          "symbol":  "testInstallerBinaryPathAndAllowlist",
+                                          "line":  320
+                                      },
+                                      {
+                                          "symbol":  "testManagerArtifactStagingReplacesStaleBinaryFrameworkAndAppBundle",
+                                          "line":  335
+                                      },
+                                      {
+                                          "symbol":  "testManagerArtifactCopyFailurePreservesExistingInstallation",
+                                          "line":  357
+                                      },
+                                      {
+                                          "symbol":  "testManagerArtifactSigningFailurePreservesExistingInstallation",
+                                          "line":  375
+                                      },
+                                      {
+                                          "symbol":  "testManagerArtifactAppVerificationFailurePreservesExistingInstallation",
+                                          "line":  393
+                                      },
+                                      {
+                                          "symbol":  "testManagerArtifactCommitFailureRollsBackEarlierReplacements",
+                                          "line":  410
+                                      },
+                                      {
+                                          "symbol":  "testManagerArtifactTransactionCommitsCommandLinkWithArtifacts",
+                                          "line":  428
+                                      },
+                                      {
+                                          "symbol":  "testManagerCommandLinkCommitFailureRollsBackEntireArtifactTransaction",
+                                          "line":  462
+                                      },
+                                      {
+                                          "symbol":  "testProductionSignatureValidatorPreservesValidMachOAndAppMetadata",
+                                          "line":  502
+                                      },
+                                      {
+                                          "symbol":  "testProductionSignatureValidatorRepairsUnsignedMachOWithStableRuntimeIdentity",
+                                          "line":  548
+                                      },
+                                      {
+                                          "symbol":  "testProductionSignatureValidatorRepairsInvalidAdHocAppWithoutChangingNestedIdentity",
+                                          "line":  568
+                                      },
+                                      {
+                                          "symbol":  "testProductionSignatureValidatorRejectsInvalidCMSWithoutMutation",
+                                          "line":  604
+                                      },
+                                      {
+                                          "symbol":  "testSignatureInspectionErrorsAndAmbiguousMetadataFailClosed",
+                                          "line":  646
+                                      },
+                                      {
+                                          "symbol":  "testProductionSignatureValidatorPreservesValidTeamSignedAppWhenAvailable",
+                                          "line":  666
+                                      },
+                                      {
+                                          "symbol":  "testLaunchAgentLogRotationRetainsOnlyBoundedTailsInForgeHome",
+                                          "line":  686
+                                      },
+                                      {
+                                          "symbol":  "testLaunchAgentLogRotationBoundsAndPrunesArchivesWithoutCurrentContent",
+                                          "line":  714
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/MCPProtocolAndDiagnosticsTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  7444,
+                      "lines":  144,
+                      "sha256":  "bcfa3a7406317f6cb420771ef219b986e56e5244ffcb12e7829cd30678ec6629",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testStdioTransportWritesSpecCompliantNDJSON",
+                                          "line":  9
+                                      },
+                                      {
+                                          "symbol":  "testStreamReaderRejectsOversizedContentLengthBeforeReadingBody",
+                                          "line":  24
+                                      },
+                                      {
+                                          "symbol":  "testProtocolNegotiationEchoesLMStudioVersion",
+                                          "line":  37
+                                      },
+                                      {
+                                          "symbol":  "testDiagnosticExportJSONAndMarkdown",
+                                          "line":  57
+                                      },
+                                      {
+                                          "symbol":  "testDiagnosticLogRedactsPrivateFieldsBeforePersistenceAndExport",
+                                          "line":  84
+                                      },
+                                      {
+                                          "symbol":  "testRealtimeEngineIsContinuousNotTwoSecondSnapshot",
+                                          "line":  119
+                                      },
+                                      {
+                                          "symbol":  "testDeployServiceResolvesExecutable",
+                                          "line":  152
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/MemoryToolTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  12488,
+                      "lines":  279,
+                      "sha256":  "cc6fb5cce18ac243fae179f66535bfc6ffc173860e3935d240aa64fa815a821a",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testMemoryToolsAreRegistered",
+                                          "line":  21
+                                      },
+                                      {
+                                          "symbol":  "testMemorySetGetListSearchDeleteRoundTrip",
+                                          "line":  55
+                                      },
+                                      {
+                                          "symbol":  "testMemoryPersistsAcrossAppBootstrap",
+                                          "line":  115
+                                      },
+                                      {
+                                          "symbol":  "testAgentAndContinuitySystemKeysHiddenFromDefaultMemoryQueries",
+                                          "line":  138
+                                      },
+                                      {
+                                          "symbol":  "testTelemetrySeparatesMemoryAndContinuityToolPacks",
+                                          "line":  213
+                                      },
+                                      {
+                                          "symbol":  "testMemoryAvailableWithoutAgentSession",
+                                          "line":  229
+                                      },
+                                      {
+                                          "symbol":  "testMemoryAvailableDuringAgentSessionEvenIfNotInToolsPrimary",
+                                          "line":  240
+                                      },
+                                      {
+                                          "symbol":  "testInvalidKeyRejected",
+                                          "line":  260
+                                      },
+                                      {
+                                          "symbol":  "testForgeStatusIncludesMemoryCount",
+                                          "line":  272
+                                      },
+                                      {
+                                          "symbol":  "testTagFilterAndContentAlias",
+                                          "line":  285
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/NativeAppSmokeTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  2885,
+                      "lines":  54,
+                      "sha256":  "8e92f334a43155d6ec3006f3063a2e30588a279bdefd3a55adc9189ca9441433",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testNativeCompositionRootReadyForGUI",
+                                          "line":  11
+                                      },
+                                      {
+                                          "symbol":  "testAllAgentPlaybooksRequireCompletion",
+                                          "line":  50
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/NativeSessionHostPluginTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  12073,
+                      "lines":  240,
+                      "sha256":  "38368b530b8fcdc5f55aeda2dd5722f92f257717f521449ae8c89be23ea85af5",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testManifestRegistryAndCapabilities",
+                                          "line":  72
+                                      },
+                                      {
+                                          "symbol":  "testFullAutonomousRolloverPersistsOnlyCompactIdentifiers",
+                                          "line":  91
+                                      },
+                                      {
+                                          "symbol":  "testRateLimitRetryIdempotencyAndConcurrentProjects",
+                                          "line":  134
+                                      },
+                                      {
+                                          "symbol":  "testCancellationDeadlineMalformedAndStreamingBounds",
+                                          "line":  160
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/NativeTelemetryTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  2706,
+                      "lines":  55,
+                      "sha256":  "4b8fe5bdf994ebfb1a3eab1db20efc75920164e12da94cec6c4698a3af760181",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testNativeSnapshotContractWithoutNode",
+                                          "line":  9
+                                      },
+                                      {
+                                          "symbol":  "testProcessDiscoveryDoesNotCrash",
+                                          "line":  44
+                                      },
+                                      {
+                                          "symbol":  "testDoctorUsesNativeTelemetry",
+                                          "line":  51
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ProcessRunnerTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  6964,
+                      "lines":  174,
+                      "sha256":  "de91e6892a0f3a74ef56dec304163b82dd80b572ae66c0f7a496bbd834562fe4",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testNormalAndNonzeroExitStatuses",
+                                          "line":  13
+                                      },
+                                      {
+                                          "symbol":  "testLaunchFailureDoesNotPoisonTheNextRun",
+                                          "line":  25
+                                      },
+                                      {
+                                          "symbol":  "testTimeoutTerminatesChildAndReturnsConfirmedStatus",
+                                          "line":  37
+                                      },
+                                      {
+                                          "symbol":  "testTermIgnoringChildRequiresSIGKILL",
+                                          "line":  50
+                                      },
+                                      {
+                                          "symbol":  "testOutputIsCapturedConcurrentlyAndTruncatedPerStream",
+                                          "line":  62
+                                      },
+                                      {
+                                          "symbol":  "testCallerCannotRaiseTheOwnerOutputCeiling",
+                                          "line":  81
+                                      },
+                                      {
+                                          "symbol":  "testDirectChildExitDoesNotWaitForDescendantPipeEOF",
+                                          "line":  98
+                                      },
+                                      {
+                                          "symbol":  "testMalformedAndCapSplitUTF8PreserveReadableOutput",
+                                          "line":  118
+                                      },
+                                      {
+                                          "symbol":  "testParallelRunsRemainBoundedAndIndependent",
+                                          "line":  137
+                                      },
+                                      {
+                                          "symbol":  "testRapidExitNotificationsAreNotLostUnderLoad",
+                                          "line":  166
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ProductPathReliabilityTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  10501,
+                      "lines":  230,
+                      "sha256":  "22c775250f79ec50c73705319964cffe96324635f42e3f5f4915818a1edd31ea",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testInProcessMCPHandshakeToolsList",
+                                          "line":  10
+                                      },
+                                      {
+                                          "symbol":  "testForgeStatusToolCall",
+                                          "line":  54
+                                      },
+                                      {
+                                          "symbol":  "testRealtimeEngineMeasuredProgress",
+                                          "line":  79
+                                      },
+                                      {
+                                          "symbol":  "testPortGuardReportsFreeOnUnusedPort",
+                                          "line":  89
+                                      },
+                                      {
+                                          "symbol":  "testDiagnosticsCaptureDeploySmokeFailurePath",
+                                          "line":  100
+                                      },
+                                      {
+                                          "symbol":  "testProcessVerifierRejectsMissingContinuityTool",
+                                          "line":  123
+                                      },
+                                      {
+                                          "symbol":  "testProcessVerifierRejectsMissingMemoryTool",
+                                          "line":  145
+                                      },
+                                      {
+                                          "symbol":  "testProcessVerifierRejectsNonNDJSONPrefix",
+                                          "line":  167
+                                      },
+                                      {
+                                          "symbol":  "testProcessVerifierTimeoutIsBoundedForSilentChild",
+                                          "line":  190
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ProjectMemoryTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  16854,
+                      "lines":  287,
+                      "sha256":  "bd18ca203a6eb6a3e034052fc364f26d750b33800cbcfad0f7a280665129e924",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testToolConformanceIsAdditiveAndInitializeAdvertisesCapabilities",
+                                          "line":  28
+                                      },
+                                      {
+                                          "symbol":  "testProjectIsolationRedactionDeduplicationAndRestartDurability",
+                                          "line":  62
+                                      },
+                                      {
+                                          "symbol":  "testBatchPaginationUpdateConflictLinkAndTombstone",
+                                          "line":  99
+                                      },
+                                      {
+                                          "symbol":  "testPrivateKeyRejectedPayloadBoundsAndCacheBound",
+                                          "line":  161
+                                      },
+                                      {
+                                          "symbol":  "testIntegrityVersionFailurePreservesDatabaseAndExportChecksumIsVerified",
+                                          "line":  193
+                                      },
+                                      {
+                                          "symbol":  "testFallbackSearchAndCorruptDatabaseRecoveryArtifact",
+                                          "line":  233
+                                      },
+                                      {
+                                          "symbol":  "testDatabaseLockReturnsTypedBusyWithoutPartialWrite",
+                                          "line":  274
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/RealtimeStreamTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  8728,
+                      "lines":  179,
+                      "sha256":  "b38b4644e70d7e3b780322f906d9f9b9798f8393a2cec060b3cc720a5f077d51",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testHostStreamAdvancesWithoutSnapshotAPI",
+                                          "line":  11
+                                      },
+                                      {
+                                          "symbol":  "testTelemetryServicePublishesOnEverySample",
+                                          "line":  45
+                                      },
+                                      {
+                                          "symbol":  "testContinuousSSESendsMultipleEvents",
+                                          "line":  87
+                                      },
+                                      {
+                                          "symbol":  "testStreamHzParserUpgradesLegacyInterval",
+                                          "line":  178
+                                      },
+                                      {
+                                          "symbol":  "testHealthReportsContinuousMode",
+                                          "line":  186
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ReleaseStressTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  21454,
+                      "lines":  398,
+                      "sha256":  "d75f62bebd19fefe7b110eb000d75e9ea014d2316765dad87a0c046958dea3c3",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testDeterministicReleaseStressAndResourceBudgets",
+                                          "line":  12
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/ResourcePolicyTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  6383,
+                      "lines":  129,
+                      "sha256":  "65625e6160a4fbf2cc26d9b5b699a01b756b0969ca999d328d40dacb105307d9",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testPhysicalMemoryTiersMatchDeclaredAbsoluteCeilings",
+                                          "line":  9
+                                      },
+                                      {
+                                          "symbol":  "testMemoryPressureOnlyReducesOptionalRetention",
+                                          "line":  22
+                                      },
+                                      {
+                                          "symbol":  "testTelemetryPressureUpdatesEnforcedCapacity",
+                                          "line":  41
+                                      },
+                                      {
+                                          "symbol":  "testDiagnosticRingAndEveryDurableRoleLogRotateWithinLimits",
+                                          "line":  54
+                                      },
+                                      {
+                                          "symbol":  "testApplicationCompositionRootReleasesAcrossTenCycles",
+                                          "line":  92
+                                      },
+                                      {
+                                          "symbol":  "testSubscriberAndPerClientStateCapsAreEnforced",
+                                          "line":  104
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/RigParityTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  10175,
+                      "lines":  228,
+                      "sha256":  "951b7de30abff5646bf046ec48f04b3758066f056679d30ac0349e91c580395b",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testTelemetryHealthToneKeepsConfigurationAndUnknownOutOfFailureState",
+                                          "line":  10
+                                      },
+                                      {
+                                          "symbol":  "testOrchestrationPolicyTreatsConfiguredLMStudioIdleAsInformational",
+                                          "line":  29
+                                      },
+                                      {
+                                          "symbol":  "testOrchestrationPolicyStillWarnsWhenLMStudioIsNotConfigured",
+                                          "line":  45
+                                      },
+                                      {
+                                          "symbol":  "testManagerRequiresServiceOrHTTPEvidenceBeforeReportingReady",
+                                          "line":  60
+                                      },
+                                      {
+                                          "symbol":  "testSystemMetricsHasAllStripFields",
+                                          "line":  101
+                                      },
+                                      {
+                                          "symbol":  "testSnapshotContractAndHistoryMultiSeries",
+                                          "line":  124
+                                      },
+                                      {
+                                          "symbol":  "testForgePanelsPresentForRigUI",
+                                          "line":  144
+                                      },
+                                      {
+                                          "symbol":  "testRigPanelChecklistDocumented",
+                                          "line":  173
+                                      },
+                                      {
+                                          "symbol":  "testCPUCollectorPerCoreCount",
+                                          "line":  182
+                                      },
+                                      {
+                                          "symbol":  "testGPUCollectorMetalFlag",
+                                          "line":  191
+                                      },
+                                      {
+                                          "symbol":  "testSysStripModelFromSystem",
+                                          "line":  198
+                                      },
+                                      {
+                                          "symbol":  "testSysStripDistinguishesUnavailableGPUFromMeasuredZero",
+                                          "line":  205
+                                      },
+                                      {
+                                          "symbol":  "testHistoryPointSerializesUnavailableGPUAsJSONNull",
+                                          "line":  216
+                                      },
+                                      {
+                                          "symbol":  "testDiskIOCollectorReturnsFiniteRates",
+                                          "line":  232
+                                      },
+                                      {
+                                          "symbol":  "testManagerNodeStartStopInProcess",
+                                          "line":  242
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/RuntimeObservabilityTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  2516,
+                      "lines":  41,
+                      "sha256":  "90803ec1753268faee78ef755f8c859b33401d08ba083cd413439d3bc38625aa",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testRuntimeMetricsUseFixedKeysAndClampNonnegativeGauges",
+                                          "line":  8
+                                      },
+                                      {
+                                          "symbol":  "testRuntimeSnapshotDictionaryContainsOnlyNumericMetricMaps",
+                                          "line":  26
+                                      },
+                                      {
+                                          "symbol":  "testSignpostBoundariesAcceptStableNumericOperationIdentifiers",
+                                          "line":  39
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorTests/TelemetryContractTests.swift",
+                      "kind":  "unit_integration_test",
+                      "bytes":  2435,
+                      "lines":  46,
+                      "sha256":  "429ecc631bdac4fa7cf7e94ecc0bb572abdd6e7f0087161528de89a9951b8fa4",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testNativeSnapshotProducesContractKeys",
+                                          "line":  10
+                                      },
+                                      {
+                                          "symbol":  "testFixtureContractKeysFile",
+                                          "line":  36
+                                      }
+                                  ]
+                  },
+                  {
+                      "path":  "Tests/ForgeConductorUITests/ForgeConductorUITests.swift",
+                      "kind":  "ui_test",
+                      "bytes":  5378,
+                      "lines":  121,
+                      "sha256":  "d99a7287ae2809ce4cc2faf82151f6e443643c588528ae20efe8a98d545d19eb",
+                      "methods":  [
+                                      {
+                                          "symbol":  "testAppLaunchesAndShowsTitle",
+                                          "line":  36
+                                      },
+                                      {
+                                          "symbol":  "testSidebarTabsNavigate",
+                                          "line":  50
+                                      },
+                                      {
+                                          "symbol":  "testRefreshToolbarExists",
+                                          "line":  92
+                                      },
+                                      {
+                                          "symbol":  "testCollapsedNavigationCanBeRestored",
+                                          "line":  103
+                                      },
+                                      {
+                                          "symbol":  "testHundredGaugeNavigationCyclesQuiesce",
+                                          "line":  119
+                                      }
+                                  ]
+                  }
+              ]
+}

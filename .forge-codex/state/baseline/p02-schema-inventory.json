@@ -1,0 +1,158 @@
+{
+    "schema_version":  1,
+    "schemas":  [
+                    {
+                        "id":  "central_sqlite",
+                        "version":  5,
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift",
+                                              "symbol":  "StoreError",
+                                              "line":  12,
+                                              "bytes":  39463,
+                                              "lines":  936,
+                                              "sha256":  "a5c7ec5750be9c5342dbc9fe5c1adde8e6c5a1f57d3009681b5ac1fb751f5ca0"
+                                          },
+                        "tables":  [
+                                       "schema_version",
+                                       "memory_notes",
+                                       "agent_sessions",
+                                       "presence",
+                                       "audit_events",
+                                       "context_handoffs"
+                                   ]
+                    },
+                    {
+                        "id":  "project_sqlite",
+                        "version":  1,
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift",
+                                              "symbol":  "ProjectMemoryRepository",
+                                              "line":  9,
+                                              "bytes":  50277,
+                                              "lines":  923,
+                                              "sha256":  "0b6c85105b374a6275afccd735fc72b2938ddb38358753206a912aca606e9042"
+                                          },
+                        "tables":  [
+                                       "memory_records",
+                                       "memory_tags",
+                                       "memory_record_tags",
+                                       "memory_links",
+                                       "sessions",
+                                       "handoffs",
+                                       "artifacts",
+                                       "project_aliases",
+                                       "maintenance_state",
+                                       "event_journal",
+                                       "continuity_handoffs",
+                                       "rollover_operations",
+                                       "rollover_transitions",
+                                       "project_active_sessions"
+                                   ],
+                        "optional_virtual_tables":  [
+                                                        "memory_records_fts"
+                                                    ]
+                    },
+                    {
+                        "id":  "project_registry",
+                        "version":  1,
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/Application/ProjectMemoryService.swift",
+                                              "symbol":  "ProjectRegistryFile",
+                                              "line":  9,
+                                              "bytes":  29189,
+                                              "lines":  530,
+                                              "sha256":  "5110cc96c166761e4ff5c69051fa6ab412ad16bdc20935333ed59f98e25e92a8"
+                                          },
+                        "fields":  [
+                                       "id",
+                                       "displayName",
+                                       "repositoryIdentity",
+                                       "aliases",
+                                       "createdAt",
+                                       "updatedAt"
+                                   ]
+                    },
+                    {
+                        "id":  "legacy_handoff_packet",
+                        "version":  1,
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/Domain/HandoffPacket.swift",
+                                              "symbol":  "HandoffSource",
+                                              "line":  10,
+                                              "bytes":  13780,
+                                              "lines":  330,
+                                              "sha256":  "12dab4e7b7dce8dfb7a065539ccaaf1fa410e91c3e84b90445b50fd3b50a1982"
+                                          },
+                        "max_agent_snapshots":  128
+                    },
+                    {
+                        "id":  "continuity_handoff",
+                        "version":  "1.0",
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/Domain/ContinuityModels.swift",
+                                              "symbol":  "ContinuityState",
+                                              "line":  8,
+                                              "bytes":  16004,
+                                              "lines":  311,
+                                              "sha256":  "175dc875f5e2173194e296f1abfb8862bd7a2bfd5fc4bec15b369cb31271eff6"
+                                          },
+                        "encoded_max_bytes":  131072,
+                        "list_cap":  128
+                    },
+                    {
+                        "id":  "native_session_ledger",
+                        "version":  1,
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeNativeSessionHostPlugin/ForgeNativeSessionHostPlugin.swift",
+                                              "symbol":  "NativeHostPluginError",
+                                              "line":  11,
+                                              "bytes":  18325,
+                                              "lines":  372,
+                                              "sha256":  "12ec1e4eaae0a911948baa87115b95e44bcab42248136c99f1db30dc857b22d2"
+                                          },
+                        "record_cap":  4096
+                    },
+                    {
+                        "id":  "app_config",
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/Domain/AppConfig.swift",
+                                              "symbol":  "AppConfig",
+                                              "line":  11,
+                                              "bytes":  9065,
+                                              "lines":  199,
+                                              "sha256":  "8d8b1bac46609e6541599312860106337d8c4f60ade2b176ddcca291e211bd24"
+                                          }
+                    },
+                    {
+                        "id":  "lm_studio_mcp_config",
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift",
+                                              "symbol":  "LMStudioMCPPluginInstaller",
+                                              "line":  17,
+                                              "bytes":  21120,
+                                              "lines":  454,
+                                              "sha256":  "da120074ca73ff9310724ea314f4f8f976809558489c81a51a4ea0f35c0bc084"
+                                          }
+                    },
+                    {
+                        "id":  "mcp_json_rpc",
+                        "source_anchor":  {
+                                              "origin":  "macos_source",
+                                              "path":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                                              "symbol":  "MCPServer",
+                                              "line":  11,
+                                              "bytes":  27391,
+                                              "lines":  584,
+                                              "sha256":  "511d2b1f438ffd223263fff4ed6899cfddb0d7fc768212ee575061ca60141765"
+                                          }
+                    }
+                ]
+}

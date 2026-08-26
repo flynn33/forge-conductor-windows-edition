@@ -1,0 +1,1276 @@
+{
+    "schema_version":  1,
+    "source_version":  "0.9.0",
+    "expected_tool_count":  53,
+    "plan_sha256":  "5f071b8f8178f6c4101698c0e5921f5141823e9be1e1191f7ff781411a44b217",
+    "operation_counts":  {
+                             "status":  1,
+                             "read":  22,
+                             "write":  30
+                         },
+    "protocol":  {
+                     "input_framing":  [
+                                           "newline_json",
+                                           "content_length"
+                                       ],
+                     "output_framing":  "compact_newline_json",
+                     "versions":  [
+                                      "2025-11-25",
+                                      "2025-06-18",
+                                      "2025-03-26",
+                                      "2024-11-05"
+                                  ],
+                     "methods":  [
+                                     "initialize",
+                                     "ping",
+                                     "tools/list",
+                                     "tools/call",
+                                     "resources/list",
+                                     "prompts/list"
+                                 ],
+                     "empty_collections":  [
+                                               "resources",
+                                               "prompts"
+                                           ],
+                     "cancellation_id_capacity":  256,
+                     "error_codes":  [
+                                         -32600,
+                                         -32601,
+                                         -32800,
+                                         -32000
+                                     ]
+                 },
+    "bounds":  {
+                   "text_file_bytes":  2097152,
+                   "directory_entries":  1000,
+                   "glob_results":  500,
+                   "search_results":  200,
+                   "shell_timeout_seconds":  120,
+                   "shell_capture_bytes":  100000,
+                   "shell_stdout_bytes":  80000,
+                   "shell_stderr_bytes":  20000,
+                   "legacy_memory_key_bytes":  512,
+                   "legacy_memory_body_bytes":  524288,
+                   "legacy_memory_query_default":  50,
+                   "legacy_memory_query_max":  200,
+                   "project_title_bytes":  512,
+                   "project_summary_bytes":  4096,
+                   "project_body_bytes":  262144,
+                   "project_source_reference_bytes":  2048,
+                   "project_tag_count":  32,
+                   "project_tag_bytes":  128,
+                   "project_batch_count":  50,
+                   "project_batch_bytes":  1048576,
+                   "project_query_bytes":  4096,
+                   "project_page_default":  20,
+                   "project_page_max":  100,
+                   "project_response_default_bytes":  65536,
+                   "project_response_max_bytes":  262144,
+                   "open_project_lru":  8,
+                   "project_deadline_ms_max":  60000
+               },
+    "stable_project_errors":  [
+                                  "invalid_request",
+                                  "unsupported_version",
+                                  "project_not_found",
+                                  "project_scope_mismatch",
+                                  "record_not_found",
+                                  "conflict",
+                                  "payload_too_large",
+                                  "database_busy",
+                                  "storage_full",
+                                  "deadline_exceeded",
+                                  "cancelled",
+                                  "migration_failed",
+                                  "integrity_failure",
+                                  "redaction_rejected"
+                              ],
+    "anchors":  [
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                        "symbol":  "MCPServer",
+                        "line":  11,
+                        "bytes":  27391,
+                        "lines":  584,
+                        "sha256":  "511d2b1f438ffd223263fff4ed6899cfddb0d7fc768212ee575061ca60141765"
+                    },
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Application/ToolRouter.swift",
+                        "symbol":  "ToolRouter",
+                        "line":  10,
+                        "bytes":  18533,
+                        "lines":  433,
+                        "sha256":  "614e9ef0663b8e2a37eb02aa72b55717026aa7fcf84327e2641f3a24754cb190"
+                    }
+                ],
+    "tools":  [
+                  {
+                      "name":  "forge_status",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  1,
+                      "advertised_index":  17,
+                      "operation":  "status",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "agent_list",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  2,
+                      "advertised_index":  3,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "agent_get",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  3,
+                      "advertised_index":  2,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "agent_context",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  4,
+                      "advertised_index":  1,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "agent_recommend",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  5,
+                      "advertised_index":  4,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "agent_run_start",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  6,
+                      "advertised_index":  6,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "agent_run_status",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  7,
+                      "advertised_index":  7,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+                                                 "Plan said read; source can rehydrate/reattach and is mutating."
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "agent_run_complete",
+                      "pack":  "AgentToolPack",
+                      "plan_index":  8,
+                      "advertised_index":  5,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                            "symbol":  "AgentToolPack",
+                                            "line":  10,
+                                            "bytes":  4603,
+                                            "lines":  88,
+                                            "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_read",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  9,
+                      "advertised_index":  24,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_write",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  10,
+                      "advertised_index":  25,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_edit",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  11,
+                      "advertised_index":  19,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_list",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  12,
+                      "advertised_index":  21,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_glob",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  13,
+                      "advertised_index":  20,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_mkdir",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  14,
+                      "advertised_index":  22,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_delete",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  15,
+                      "advertised_index":  18,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "fs_move",
+                      "pack":  "FilesystemToolPack",
+                      "plan_index":  16,
+                      "advertised_index":  23,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                            "symbol":  "FilesystemToolPack",
+                                            "line":  10,
+                                            "bytes":  10445,
+                                            "lines":  209,
+                                            "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "git_status",
+                      "pack":  "GitToolPack",
+                      "plan_index":  17,
+                      "advertised_index":  30,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                                            "symbol":  "GitToolPack",
+                                            "line":  10,
+                                            "bytes":  2243,
+                                            "lines":  50,
+                                            "sha256":  "5f73162eeae9bad8dd7a2b6feb7e1cbb9ff27ec96176d5eee41bb2ebbcd03e80"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "git_diff",
+                      "pack":  "GitToolPack",
+                      "plan_index":  18,
+                      "advertised_index":  28,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                                            "symbol":  "GitToolPack",
+                                            "line":  10,
+                                            "bytes":  2243,
+                                            "lines":  50,
+                                            "sha256":  "5f73162eeae9bad8dd7a2b6feb7e1cbb9ff27ec96176d5eee41bb2ebbcd03e80"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "git_log",
+                      "pack":  "GitToolPack",
+                      "plan_index":  19,
+                      "advertised_index":  29,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                                            "symbol":  "GitToolPack",
+                                            "line":  10,
+                                            "bytes":  2243,
+                                            "lines":  50,
+                                            "sha256":  "5f73162eeae9bad8dd7a2b6feb7e1cbb9ff27ec96176d5eee41bb2ebbcd03e80"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "git_add",
+                      "pack":  "GitToolPack",
+                      "plan_index":  20,
+                      "advertised_index":  26,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                                            "symbol":  "GitToolPack",
+                                            "line":  10,
+                                            "bytes":  2243,
+                                            "lines":  50,
+                                            "sha256":  "5f73162eeae9bad8dd7a2b6feb7e1cbb9ff27ec96176d5eee41bb2ebbcd03e80"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "git_commit",
+                      "pack":  "GitToolPack",
+                      "plan_index":  21,
+                      "advertised_index":  27,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                                            "symbol":  "GitToolPack",
+                                            "line":  10,
+                                            "bytes":  2243,
+                                            "lines":  50,
+                                            "sha256":  "5f73162eeae9bad8dd7a2b6feb7e1cbb9ff27ec96176d5eee41bb2ebbcd03e80"
+                                        },
+                      "schema_class":  "legacy_permissive_object",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "search_text",
+                      "pack":  "SearchToolPack",
+                      "plan_index":  22,
+                      "advertised_index":  50,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift",
+                                            "symbol":  "SearchToolPack",
+                                            "line":  10,
+                                            "bytes":  1608,
+                                            "lines":  37,
+                                            "sha256":  "c13e5b592375c794fd229f980127202c2fff1a32345bfec3cab0252ef6d75233"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "pdf_write",
+                      "pack":  "DocsToolPack",
+                      "plan_index":  23,
+                      "advertised_index":  37,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
+                                            "symbol":  "DocsToolPack",
+                                            "line":  10,
+                                            "bytes":  2551,
+                                            "lines":  53,
+                                            "sha256":  "59cbcff5fc98ec0e595a62e9f8b81c0039d0e84ca28bbd8be9c7ca7a5188282e"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "pdf_from_file",
+                      "pack":  "DocsToolPack",
+                      "plan_index":  24,
+                      "advertised_index":  36,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
+                                            "symbol":  "DocsToolPack",
+                                            "line":  10,
+                                            "bytes":  2551,
+                                            "lines":  53,
+                                            "sha256":  "59cbcff5fc98ec0e595a62e9f8b81c0039d0e84ca28bbd8be9c7ca7a5188282e"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "shell_exec",
+                      "pack":  "ShellToolPack",
+                      "plan_index":  25,
+                      "advertised_index":  53,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift",
+                                            "symbol":  "ShellToolPack",
+                                            "line":  10,
+                                            "bytes":  2406,
+                                            "lines":  53,
+                                            "sha256":  "71139cc445bdb8897c6c4208ee6cc124372526807327f5c811a463dde72e598a"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "memory_set",
+                      "pack":  "MemoryToolPack",
+                      "plan_index":  26,
+                      "advertised_index":  35,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                                            "symbol":  "MemoryToolPack",
+                                            "line":  10,
+                                            "bytes":  8116,
+                                            "lines":  180,
+                                            "sha256":  "916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+                                                 "Advertised schema requires body; handler also accepts content or value."
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "memory_get",
+                      "pack":  "MemoryToolPack",
+                      "plan_index":  27,
+                      "advertised_index":  32,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                                            "symbol":  "MemoryToolPack",
+                                            "line":  10,
+                                            "bytes":  8116,
+                                            "lines":  180,
+                                            "sha256":  "916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "memory_list",
+                      "pack":  "MemoryToolPack",
+                      "plan_index":  28,
+                      "advertised_index":  33,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                                            "symbol":  "MemoryToolPack",
+                                            "line":  10,
+                                            "bytes":  8116,
+                                            "lines":  180,
+                                            "sha256":  "916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "memory_delete",
+                      "pack":  "MemoryToolPack",
+                      "plan_index":  29,
+                      "advertised_index":  31,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                                            "symbol":  "MemoryToolPack",
+                                            "line":  10,
+                                            "bytes":  8116,
+                                            "lines":  180,
+                                            "sha256":  "916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "memory_search",
+                      "pack":  "MemoryToolPack",
+                      "plan_index":  30,
+                      "advertised_index":  34,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                                            "symbol":  "MemoryToolPack",
+                                            "line":  10,
+                                            "bytes":  8116,
+                                            "lines":  180,
+                                            "sha256":  "916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "session_checkpoint",
+                      "pack":  "ContinuityToolPack",
+                      "plan_index":  31,
+                      "advertised_index":  51,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+                                            "symbol":  "ContinuityToolPack",
+                                            "line":  9,
+                                            "bytes":  2368,
+                                            "lines":  48,
+                                            "sha256":  "22a5aa47b76c023acfdbda5f7de405e9f31bbc8e67473f4b26f1274bd135fd94"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "session_handoff",
+                      "pack":  "ContinuityToolPack",
+                      "plan_index":  32,
+                      "advertised_index":  52,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+                                            "symbol":  "ContinuityToolPack",
+                                            "line":  9,
+                                            "bytes":  2368,
+                                            "lines":  48,
+                                            "sha256":  "22a5aa47b76c023acfdbda5f7de405e9f31bbc8e67473f4b26f1274bd135fd94"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "context_get",
+                      "pack":  "ContinuityToolPack",
+                      "plan_index":  33,
+                      "advertised_index":  8,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+                                            "symbol":  "ContinuityToolPack",
+                                            "line":  9,
+                                            "bytes":  2368,
+                                            "lines":  48,
+                                            "sha256":  "22a5aa47b76c023acfdbda5f7de405e9f31bbc8e67473f4b26f1274bd135fd94"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "context_list",
+                      "pack":  "ContinuityToolPack",
+                      "plan_index":  34,
+                      "advertised_index":  9,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+                                            "symbol":  "ContinuityToolPack",
+                                            "line":  9,
+                                            "bytes":  2368,
+                                            "lines":  48,
+                                            "sha256":  "22a5aa47b76c023acfdbda5f7de405e9f31bbc8e67473f4b26f1274bd135fd94"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.initialize",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  35,
+                      "advertised_index":  42,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+                                                 "Handler accepts path alias; advertised schema declares project_path only."
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.remember",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  36,
+                      "advertised_index":  45,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.remember_batch",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  37,
+                      "advertised_index":  46,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.search",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  38,
+                      "advertised_index":  47,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.get",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  39,
+                      "advertised_index":  40,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.update",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  40,
+                      "advertised_index":  49,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.forget",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  41,
+                      "advertised_index":  39,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.list_recent",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  42,
+                      "advertised_index":  44,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.link",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  43,
+                      "advertised_index":  43,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.export",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  44,
+                      "advertised_index":  38,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+                                                 "Plan said read; source writes an export artifact and is mutating."
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.import",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  45,
+                      "advertised_index":  41,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "project_memory.status",
+                      "pack":  "ProjectMemoryToolPack",
+                      "plan_index":  46,
+                      "advertised_index":  48,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                            "symbol":  "ProjectMemoryToolPack",
+                                            "line":  8,
+                                            "bytes":  16201,
+                                            "lines":  246,
+                                            "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "continuity.checkpoint",
+                      "pack":  "ContinuityLifecycleToolPack",
+                      "plan_index":  47,
+                      "advertised_index":  11,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                            "symbol":  "ContinuityLifecycleToolPack",
+                                            "line":  8,
+                                            "bytes":  5084,
+                                            "lines":  81,
+                                            "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "continuity.prepare_handoff",
+                      "pack":  "ContinuityLifecycleToolPack",
+                      "plan_index":  48,
+                      "advertised_index":  13,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                            "symbol":  "ContinuityLifecycleToolPack",
+                                            "line":  8,
+                                            "bytes":  5084,
+                                            "lines":  81,
+                                            "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "continuity.get_pending_handoff",
+                      "pack":  "ContinuityLifecycleToolPack",
+                      "plan_index":  49,
+                      "advertised_index":  12,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                            "symbol":  "ContinuityLifecycleToolPack",
+                                            "line":  8,
+                                            "bytes":  5084,
+                                            "lines":  81,
+                                            "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "continuity.acknowledge_handoff",
+                      "pack":  "ContinuityLifecycleToolPack",
+                      "plan_index":  50,
+                      "advertised_index":  10,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                            "symbol":  "ContinuityLifecycleToolPack",
+                                            "line":  8,
+                                            "bytes":  5084,
+                                            "lines":  81,
+                                            "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "continuity.resume",
+                      "pack":  "ContinuityLifecycleToolPack",
+                      "plan_index":  51,
+                      "advertised_index":  15,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                            "symbol":  "ContinuityLifecycleToolPack",
+                                            "line":  8,
+                                            "bytes":  5084,
+                                            "lines":  81,
+                                            "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "continuity.status",
+                      "pack":  "ContinuityLifecycleToolPack",
+                      "plan_index":  52,
+                      "advertised_index":  16,
+                      "operation":  "read",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                            "symbol":  "ContinuityLifecycleToolPack",
+                                            "line":  8,
+                                            "bytes":  5084,
+                                            "lines":  81,
+                                            "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  },
+                  {
+                      "name":  "continuity.request_rollover",
+                      "pack":  "ContinuityLifecycleToolPack",
+                      "plan_index":  53,
+                      "advertised_index":  14,
+                      "operation":  "write",
+                      "source_declared":  true,
+                      "source_anchor":  {
+                                            "origin":  "macos_source",
+                                            "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                            "symbol":  "ContinuityLifecycleToolPack",
+                                            "line":  8,
+                                            "bytes":  5084,
+                                            "lines":  81,
+                                            "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                        },
+                      "schema_class":  "explicit_or_pack_defined",
+                      "known_schema_drift":  [
+
+                                             ],
+                      "windows_status":  "not_started"
+                  }
+              ]
+}

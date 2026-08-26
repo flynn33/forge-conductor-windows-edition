@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "report_id": "P04-independent-validator",
+  "created_at": "2026-08-25T10:49:24.9962501+00:00",
+  "role": "validator",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "scope": [
+    "P04/G04"
+  ],
+  "decision": "pass",
+  "gate": "G04",
+  "acceptance": "Canonical Debug and Release x64 scaffold builds.",
+  "toolchain": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "architecture": "AMD64",
+    "generator": "Visual Studio 17 2022",
+    "visual_studio": "Visual Studio Build Tools 2022 17.14.37012.4",
+    "msbuild": "17.14.40.60911",
+    "platform_toolset": "v143 14.44.35207",
+    "compiler": "MSVC 19.44.35223.0",
+    "windows_sdk": "10.0.26100.0",
+    "cmake": "4.4.2",
+    "ctest": "4.4.2",
+    "vcpkg_baseline_and_checkout": "00c5775211f45cd08b37fce0484b4cb940e422ab",
+    "windows_app_sdk": "2.4.0",
+    "cppwinrt": "3.0.260818.1",
+    "configuration_runtime": "MSVC DLL CRT"
+  },
+  "measured_results": {
+    "canonical_g04_fail_closed_assertions": 214,
+    "forsetti_regression_fail_closed_assertions": 2142,
+    "configurations_built": [
+      "x64 Debug",
+      "x64 Release"
+    ],
+    "g04_ctest_executions": 4,
+    "g04_ctest_failures": 0,
+    "direct_cli_self_tests": 2,
+    "direct_forsetti_host_smokes": 2,
+    "required_artifacts_hashed": 14,
+    "x64_pe_images_verified": 4,
+    "generated_root_vcxproj_files": 11,
+    "declared_layer_targets": 9,
+    "sealed_forsetti_files": 171,
+    "sealed_forsetti_bytes": 723455,
+    "public_forsetti_headers": 34,
+    "canonical_manifest_copies_verified": 4,
+    "git_diff_check_exit_code": 0,
+    "pre_approval_ledger_events_verified": 60
+  },
+  "source_hashes": {
+    "CMakeLists.txt": "632222aa59ca31c2c9bd6e8340649065b4b86949d4238ee99c7660e502466252",
+    "CMakePresets.json": "24a98958b4e9819fe7716e1d19c6d48cbb2318e8d49741f20a451a0b8f3a4987",
+    "cmake/ForgeForsettiExternal.cmake": "bc11848c4810bcb68baf13df869bc83c207a8056ed36ea46adb7ab6f2ac4e08d",
+    "cmake/ForsettiExternalPolicy.cmake": "569b5ac337e249ab639d926f03193f47e27e07927c441735ab9a3e284d48090d",
+    "scripts/build.ps1": "feaebb4ecfce3a9d60d3d8138c0a9ecc9e21f7d2c0052d3fef41ab38f66b2bb8",
+    "scripts/test.ps1": "25f56c2e64ddb01f83c1201a33f0f53b294308483b316a42c655e552f80df4e8",
+    "scripts/validation/Test-G04BuildScaffold.ps1": "30c2640f82bfc0c3493a6aab2eb9b149c1471668ce90941fbee3987b5d86daa6",
+    "include/ForgeConductor/Contracts/IForgeApplicationLifecycle.h": "07b48d60b247a4cefbe9e0910330de587863de4927f3a6c6665b58e8fee2ab3e",
+    "include/ForgeConductor/ForsettiModule/ForgeConductorAppModule.h": "cd350ee38db2364878f471fd8856360893166226f7f33ee389a4eab3213fdeda",
+    "src/ForsettiModule/ForgeConductorAppModule.cpp": "bcdb27827a07be9218e9037d0bc9b109c8f956412137a9e3123df411eb6f9093",
+    "src/Hosts/Cli/main.cpp": "2db6eb25a3d8edd42cdf317270ebc60ca19b2bfdeb8acdc8245495d05fbf93ca",
+    "tests/ForsettiHostSmoke/main.cpp": "d5f090de1064413ac78b0b5ed8a65400947bc132a25f6e19857a1cfa2087cd15",
+    "canonical_and_mirror_manifest": "36221cb7e23c2e1ab170afb96f9254fb518e4ca1e8b1215e8a2216f8a3effed0",
+    "sealed_forsetti_tree": "cfc377fee173cddc515f18f9c28db58e10b468402a72541a1f0ad524a1073c28",
+    "forsetti_public_header_aggregate": "e31c38c4569a67560696085c9ac060f6eac4ea067ed95af515355dc79435e4b3"
+  },
+  "artifacts": [
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe",
+      "bytes": 66048,
+      "sha256": "a6bca7a637d736395575c7a500a74c3ad7afd1dcfd31724a8d3998907fbb13af",
+      "pe_machine": "0x8664"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.ForsettiHostSmoke.exe",
+      "bytes": 2844672,
+      "sha256": "e24536f08f1b3fb4b5ed52123f2f95cd4f24f100ea9bb4368615b232126403c7",
+      "pe_machine": "0x8664"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.ForsettiModule.lib",
+      "bytes": 2017070,
+      "sha256": "bbabc33a0b98f2705264895df30ab17e28a321c4f11bf172a0f15e54edb3c1c9"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/_deps/forsetti-framework/src/ForsettiCore/Debug/ForsettiCore.lib",
+      "bytes": 70593520,
+      "sha256": "2cab238a6c93d0dc45ef7512d57974509d8d0e360aef0e5b055d5b2e5e1b4c27"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/_deps/forsetti-framework/src/ForsettiPlatform/Debug/ForsettiPlatform.lib",
+      "bytes": 13208812,
+      "sha256": "ec2be6adc1cc78019facffc15e22a43c5706f4f519288cf0841093196b70674d"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/_deps/forsetti-framework/src/ForsettiHostTemplate/Debug/ForsettiHostTemplate.lib",
+      "bytes": 6334402,
+      "sha256": "04a8724a2fc7bd766ef725edf1d12af1ad6bbad20b209a9e9f4ec01afa2c5464"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForsettiManifests/ForgeConductorAppModule.json",
+      "bytes": 3457,
+      "sha256": "36221cb7e23c2e1ab170afb96f9254fb518e4ca1e8b1215e8a2216f8a3effed0"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/forge-conductor.exe",
+      "bytes": 14848,
+      "sha256": "638d962112cbb730777ecbadfc5f772f2fd2f17f137f23e56a9980b13b06b94e",
+      "pe_machine": "0x8664"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.ForsettiHostSmoke.exe",
+      "bytes": 562688,
+      "sha256": "89c5f326f97f034f4f124b845b19465cc5e2ac544104a48216016e0fcdbf4d33",
+      "pe_machine": "0x8664"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/lib/Release/ForgeConductor.ForsettiModule.lib",
+      "bytes": 1014400,
+      "sha256": "69dfe406b89fd6953ca5eb5f83f2aaa332fd26a06be3ef6a43a2572dbb2b2166"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/_deps/forsetti-framework/src/ForsettiCore/Release/ForsettiCore.lib",
+      "bytes": 34645048,
+      "sha256": "1cbb9d413a3ffc0253f5d5e1f38919602c0da939ec47c7665f643a11d17fc1"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/_deps/forsetti-framework/src/ForsettiPlatform/Release/ForsettiPlatform.lib",
+      "bytes": 6875898,
+      "sha256": "0699b3e4b0909994647d8e54d5b14e9854fc58810b03798b76cc8b13c6d596c6"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/_deps/forsetti-framework/src/ForsettiHostTemplate/Release/ForsettiHostTemplate.lib",
+      "bytes": 2876006,
+      "sha256": "dec759f0961f4f0bdc96ecf081b4ef59444312aa82127baec52c57be5ca71b75"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/ForsettiManifests/ForgeConductorAppModule.json",
+      "bytes": 3457,
+      "sha256": "36221cb7e23c2e1ab170afb96f9254fb518e4ca1e8b1215e8a2216f8a3effed0"
+    }
+  ],
+  "command_records": [
+    {
+      "id": "20260825T103805619Z-3ff37eb5",
+      "role": "builder",
+      "purpose": "canonical G04 build and test",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "2230d61e425b8f462feb13f6e6188a37bce9aa66a5d3cc459d227cc6752c3c8e",
+      "stdout_sha256": "ade0c10d71374ac02642172d5b020aa0e5b987183ef0eb6a3fea62e5bbd705e4",
+      "stderr_sha256": "ae52177b5c43cf7925166468faef320e70d0475f26971ce7f88a09c224d0e355"
+    },
+    {
+      "id": "20260825T104343298Z-d68312e0",
+      "role": "validator",
+      "purpose": "fresh canonical G04 build and test",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "952ec5db31295387cd16dcf924e5c2d242a150d178cb58152a727366ca54e51e",
+      "stdout_sha256": "1764ebbf43d5749a75631bdcab9d7dc4fabbfdddbaca3875cafe576e259d1f5e",
+      "stderr_sha256": "45ffbba88499a30f80cc63190940cd5d969b4976097afe13f32f2afcee97c523"
+    },
+    {
+      "id": "20260825T104449284Z-6ee369a5",
+      "role": "validator",
+      "purpose": "Forsetti architecture and public API regression",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "10a66d9961ab2e61a98c2a47ad5f6570d6f2fbd4dd90dc7b92d71ce88c7ee161",
+      "stdout_sha256": "8333e9b8f089742623247b3d79e1e4267ab37e5edefbdd795dd52505d2887f92",
+      "stderr_sha256": "517d87a86d8726628fd069a2528a933ac8b939beb6631770197c5f1124edcc41"
+    },
+    {
+      "id": "20260825T104528369Z-dad8ab5f",
+      "role": "validator",
+      "purpose": "direct Debug and Release CLI and HostTemplate smoke",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "74fc3242456f097985658b60e5607345d3e612a3b793913ea57ce05fae3903d1",
+      "stdout_sha256": "78825884059fb6dd875de7f81644511a52f2978bae2592f08157b64581f98606",
+      "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+    },
+    {
+      "id": "20260825T104638003Z-e859816b",
+      "role": "validator",
+      "purpose": "exact artifact hashes, sizes, x64 PE identity, and manifest equality",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "0cdbec0d8a6dceee9d1bbdf9608c29d32e5e7c3aa60d8e80af0a16124ddd91f4",
+      "stdout_sha256": "b0c9b85cb801f98fe67ac12bb1ece3700347ca3ece3b6bc3432d038af70e30a1",
+      "stderr_sha256": "2ce70d6c8c9ad6726c794690c8b14a2b83673648cac88edf4ff1acc50ec46348"
+    },
+    {
+      "id": "20260825T104711737Z-dbcc2bed",
+      "role": "validator",
+      "purpose": "git diff --check",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "2213bed189d71968053bb3f21f5f17b299a6cdec09461e80a78c1e0ab1d53764",
+      "stdout_sha256": "76b12873a1d7d121020089664c81dad223d829260a45636b4ba58168797dfe46",
+      "stderr_sha256": "81d68b8fc7bc40a5101236fbd9191058d7a1560950314bcf48029dd329300806"
+    },
+    {
+      "id": "20260825T104734523Z-5f942350",
+      "role": "validator",
+      "purpose": "pre-approval ledger integrity",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "e622c358d668cabfe35e1a4aa610efab14e0e44c28741e9222e0bf9626b6b77c",
+      "stdout_sha256": "ea4fe8416eadf87d969220ca12adf644237a70a821562adc8e2f10ebabc8b01f",
+      "stderr_sha256": "20c49ab91ec6bd2a0500e6478eaa15bfb642cfda4cb5b3c98a29377fddfe5a61"
+    }
+  ],
+  "evidence": [
+    ".forge-codex/state/commands/20260825T103805619Z-3ff37eb5.json",
+    ".forge-codex/state/commands/20260825T104343298Z-d68312e0.json",
+    ".forge-codex/state/commands/20260825T104449284Z-6ee369a5.json",
+    ".forge-codex/state/commands/20260825T104528369Z-dad8ab5f.json",
+    ".forge-codex/state/commands/20260825T104638003Z-e859816b.json",
+    ".forge-codex/state/commands/20260825T104711737Z-dbcc2bed.json",
+    ".forge-codex/state/commands/20260825T104734523Z-5f942350.json",
+    ".forge-codex/state/baseline/p03-forsetti-source-lock.json",
+    ".forge-codex/state/baseline/p03-forsetti-public-api.json",
+    "CMakeLists.txt",
+    "CMakePresets.json",
+    "cmake/ForgeForsettiExternal.cmake",
+    "cmake/ForsettiExternalPolicy.cmake",
+    "scripts/build.ps1",
+    "scripts/test.ps1",
+    "scripts/validation/Test-G04BuildScaffold.ps1",
+    "include/ForgeConductor/Contracts/IForgeApplicationLifecycle.h",
+    "include/ForgeConductor/ForsettiModule/ForgeConductorAppModule.h",
+    "src/ForsettiModule/ForgeConductorAppModule.cpp",
+    "src/Hosts/Cli/main.cpp",
+    "tests/ForsettiHostSmoke/main.cpp",
+    "src/ForgeConductor.ForsettiModule/Resources/ForsettiManifests/ForgeConductorAppModule.json",
+    "manifests/ForsettiManifests/forge-conductor.json"
+  ],
+  "independent_checks": [
+    "The builder record was independently re-hashed and reports exit 0 without timeout; its output ends with 214 fail-closed assertions and passing x64 Debug and Release G04 tests.",
+    "A fresh validator-role Record-Command rerun rebuilt the x64 Debug tree from a fresh configure, built Release, and passed both labeled G04 CTests in both configurations with zero failures.",
+    "The exact nine-layer CMake graph is one-way: Domain; Contracts to Domain; Application and Windows infrastructure to Contracts; persistence/native tools to Contracts plus infrastructure; session host/MCP to Application plus Contracts; composition alone closes over implementation layers and public Forsetti Platform/HostTemplate targets.",
+    "Generated Visual Studio projects use generator Visual Studio 17 2022, toolset v143, Windows SDK 10.0.26100.0, Debug MultiThreadedDebugDLL, and Release MultiThreadedDLL; no Forsetti example or demo target is registered or linked.",
+    "Forsetti is configured as a separately built immutable ExternalProject with no patch, update, install, test, or add_subdirectory merge; only Core, Platform, and HostTemplate public imported targets are exposed to the consumer.",
+    "The 2,142-assertion Forsetti regression validator re-hashed all 34 public headers and the sealed tree, scanned consumer sources for public include prefixes only, verified the one app-module identity and schema/template 1.1 manifest, and retained UP-001 through UP-014 truthfully.",
+    "The app module uses constructor injection, a single explicit ModuleRegistry registration function, final concrete type, idempotent lifecycle state transitions, boundary exception containment, exact descriptor/manifest equality, 13 declared capabilities, nine declared I/O requirements, and declared UI contributions.",
+    "Direct Debug and Release execution passed the CLI self-test, module/manifest/UI/lifecycle smoke, public HostTemplate discovery-only boot, and clean shutdown. The test also reproduced and labeled the known sealed-framework explicit-activation std::bad_any_cast regression without claiming activation success.",
+    "All fourteen required artifacts are non-empty and hashed; all four executables have x64 PE machine 0x8664; the Debug and Release staged manifests are byte-identical to both canonical manifest copies.",
+    "git diff --check exited 0. Its stderr contains only existing LF-to-CRLF working-copy conversion warnings, not whitespace errors.",
+    "The event ledger validated 60 chained events before the ledger-check record was appended and contained 61 events immediately afterward."
+  ],
+  "failed_attempts": [
+    {
+      "path": ".forge-codex/state/commands/20260825T104605300Z-b45f0808.json",
+      "record_sha256": "cbf33b4f2ecf82a0866ea1da4445df6688079ed13a02033ddf1eceafc3dc39b6",
+      "cause": "The supplemental artifact-hash probe used Get-FileHash inside the Windows PowerShell recorder host, where that cmdlet was unavailable.",
+      "resolution": "The read-only probe was rerun with the package Common.ps1 Get-FileSha256 helper as record 20260825T104638003Z-e859816b; all fourteen artifacts and manifest identities then passed. The canonical build/test validator was unaffected."
+    }
+  ],
+  "observations": [
+    "vcpkg's header-only package ABI probe reported the newest installed Visual Studio compiler, but CMake itself identified MSVC 19.44 from Visual Studio Build Tools 2022 and every generated consumer project was independently checked for v143 and SDK 10.0.26100.0.",
+    "The validator made no product or build-source edits. Its only writes before gate approval were command evidence, ledger events, and this validator report under .forge-codex/state."
+  ],
+  "limitations": [
+    "This report approves only the P04/G04 x64 Debug/Release repository and build scaffold. It does not claim ARM64 build execution, WinUI feature surfaces, the 53 MCP tools, product feature parity, resource budgets, security qualification, packaging, signing, installation, or release readiness.",
+    "Forsetti 0.2.0 explicit module activation remains blocked by the recorded CapabilityScopedServiceProvider storage std::bad_any_cast defect in sealed framework code. G04 proves public HostTemplate discovery-only boot and clean shutdown and does not claim successful explicit activation.",
+    "The four deterministic upstream ForsettiCoreTests failures recorded by P03 remain unresolved in sealed sources; G04 does not reinterpret those upstream failures as passes."
+  ],
+  "pre_gate_ledger_validation": {
+    "record": ".forge-codex/state/commands/20260825T104734523Z-5f942350.json",
+    "exit_code": 0,
+    "verified_events_before_record": 60,
+    "events_after_record": 61,
+    "stdout": ".forge-codex/state/commands/20260825T104734523Z-5f942350.stdout.txt",
+    "stdout_sha256": "ea4fe8416eadf87d969220ca12adf644237a70a821562adc8e2f10ebabc8b01f"
+  },
+  "post_gate_ledger_validation": {
+    "record": ".forge-codex/state/commands/20260825T105220450Z-827d41c0.json",
+    "record_sha256": "f8f1193a44e4028fe5b7504815a6f9cfe69ed92f67f1ec4c000e2998f994340b",
+    "exit_code": 0,
+    "verified_events_before_record": 63,
+    "verified_events_after_record": 64,
+    "stdout": ".forge-codex/state/commands/20260825T105220450Z-827d41c0.stdout.txt",
+    "stdout_sha256": "fe1643b80e458fcfda598cefff19a58f887729a8f304cdf44b603908df31fd98",
+    "final_direct_verification": "Ledger validation passed: 64 event(s).",
+    "final_event_hash": "f95e143384912ac36a533e35d23adcfd53c7927c4ca74bf0afdaf1bc7e8cc891",
+    "gate_result_sha256": "1227fd292ae1c8c87f60e33194f04a6f68507e2f938dcf4b7d447f100d27f143",
+    "run_state_sha256": "7a62a70470ec608bdd6707ae237b710e864f4b1b6e2b9e2de7f4e0b5e5d2ae2a"
+  }
+}

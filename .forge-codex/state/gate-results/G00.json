@@ -1,0 +1,16 @@
+{
+  "gate_id": "G00",
+  "status": "passed",
+  "evaluated_at": "2026-08-25T08:59:21.3327723+00:00",
+  "role": "validator",
+  "acceptance": "Package manifest and every immutable input hash pass.",
+  "evidence": [
+    ".forge-codex/state/commands/20260825T084940220Z-231bcc83.json",
+    ".forge-codex/state/commands/20260825T085619787Z-27acc303.json",
+    ".forge-inputs/archives/SOURCE-HASHES.json",
+    ".forge-codex/state/handoffs/20260825T082027055Z-5a8a372b.json",
+    ".forge-codex/state/evidence-index.json",
+    ".forge-codex/state/validator-reports/P00-P01.json"
+  ],
+  "failures": []
+}

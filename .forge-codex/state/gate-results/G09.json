@@ -1,0 +1,33 @@
+{
+  "gate_id": "G09",
+  "status": "passed",
+  "evaluated_at": "2026-08-26T13:15:13.4889421+00:00",
+  "role": "validator",
+  "acceptance": "All five legacy memory tools and migration compatibility pass.",
+  "evidence": [
+    ".forge-codex/state/commands/20260826T130426716Z-47017564.json",
+    ".forge-codex/state/commands/20260826T130702011Z-7c806395.json",
+    ".forge-codex/state/validator-reports/P09.json",
+    ".forge-codex/state/decisions/P09-001-legacy-memory-service-and-repository-boundary.md",
+    ".forge-codex/state/decisions/P09-002-legacy-memory-observable-semantics-and-bounds.md",
+    ".forge-codex/state/decisions/P09-003-central-store-ownership-migration-and-purge.md",
+    ".forge-codex/state/decisions/P09-004-unicode-canonical-tag-semantics.md",
+    "scripts/validation/Test-G09LegacyMemory.ps1",
+    "CMakeLists.txt",
+    "include/ForgeConductor/Domain/LegacyMemoryModels.h",
+    "include/ForgeConductor/Contracts/ILegacyMemoryRepository.h",
+    "include/ForgeConductor/Contracts/ILegacyMemoryService.h",
+    "include/ForgeConductor/Contracts/IUnicodeCanonicalizer.h",
+    "include/ForgeConductor/Application/LegacyMemoryService.h",
+    "src/Application/LegacyMemoryService.cpp",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsUnicodeCanonicalizer.h",
+    "src/Infrastructure/Windows/WindowsUnicodeCanonicalizer.cpp",
+    "include/ForgeConductor/Persistence/Windows/WindowsLegacyMemoryRepository.h",
+    "src/Persistence/Windows/WindowsLegacyMemoryRepository.cpp",
+    "tests/Infrastructure/WindowsUnicodeCanonicalizerTests.cpp",
+    "tests/LegacyMemory/LegacyMemoryApplicationTests.cpp",
+    "tests/LegacyMemory/LegacyMemoryRepositoryWindowsTests.cpp",
+    "tests/Persistence/Fixtures/central-v5.sql"
+  ],
+  "failures": []
+}

@@ -1,0 +1,8 @@
+{
+  "name": "forge-conductor-windows",
+  "version-string": "0.1.0",
+  "builtin-baseline": "REPLACE_WITH_RESOLVED_VCPKG_BASELINE",
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}

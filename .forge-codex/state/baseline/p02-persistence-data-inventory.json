@@ -1,0 +1,99 @@
+{
+    "schema_version":  1,
+    "home_layout_anchor":  {
+                               "origin":  "macos_source",
+                               "path":  "Sources/ForgeConductorCore/Infrastructure/AppPaths.swift",
+                               "symbol":  "AppPaths",
+                               "line":  10,
+                               "bytes":  4637,
+                               "lines":  79,
+                               "sha256":  "8375fd682538cb1ec52db0a8c15f2605f0aa31fffc2c974d3be40052c1e63ccf"
+                           },
+    "central_store":  {
+                          "file":  "store.sqlite",
+                          "schema_version":  5,
+                          "journal_mode":  "WAL",
+                          "foreign_keys":  true,
+                          "busy_timeout_ms":  3000,
+                          "backup":  "none",
+                          "integrity":  "none"
+                      },
+    "project_store":  {
+                          "pattern":  "Projects/\u003cuuid\u003e/memory.sqlite3",
+                          "user_version":  1,
+                          "journal_mode":  "WAL",
+                          "foreign_keys":  true,
+                          "synchronous":  "NORMAL",
+                          "busy_timeout_ms":  3000,
+                          "lru_capacity":  8,
+                          "backup":  "pre-migration",
+                          "backup_method":  "raw-file-copy",
+                          "backup_scope":  "main-database-file-only",
+                          "backup_wal_safe":  false,
+                          "integrity":  "quick_check"
+                      },
+    "durable_files":  [
+                          "config.json",
+                          "audit.jsonl",
+                          "Projects/registry.json",
+                          "Projects/\u003cuuid\u003e/project.json",
+                          "native-session-ledger.json",
+                          "mcp.json",
+                          "manifest.json",
+                          "mcp-bridge-config.json",
+                          "install-state.json"
+                      ],
+    "import_export":  {
+                          "checksummed":  true,
+                          "max_import_bytes":  33554432,
+                          "transactional":  true
+                      },
+    "default_config":  {
+                           "log_level":  "info",
+                           "allowed_roots":  [
+
+                                             ],
+                           "shell_enabled":  false,
+                           "shell_timeout_seconds":  30,
+                           "dashboard_host":  "127.0.0.1",
+                           "dashboard_port":  7788,
+                           "dashboard_refresh_seconds":  8,
+                           "manager_auto_restart":  true,
+                           "manager_watchdog_seconds":  3,
+                           "manager_open_browser":  false,
+                           "mcp_role":  "primary",
+                           "session_idle_ttl_seconds":  14400,
+                           "coordinator_enabled":  true,
+                           "coordinator_lease_seconds":  60,
+                           "coordinator_presence_seconds":  30
+                       },
+    "anchors":  [
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift",
+                        "symbol":  "StoreError",
+                        "line":  12,
+                        "bytes":  39463,
+                        "lines":  936,
+                        "sha256":  "a5c7ec5750be9c5342dbc9fe5c1adde8e6c5a1f57d3009681b5ac1fb751f5ca0"
+                    },
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift",
+                        "symbol":  "ProjectMemoryRepository",
+                        "line":  9,
+                        "bytes":  50277,
+                        "lines":  923,
+                        "sha256":  "0b6c85105b374a6275afccd735fc72b2938ddb38358753206a912aca606e9042"
+                    },
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Domain/AppConfig.swift",
+                        "symbol":  "AppConfig",
+                        "line":  11,
+                        "bytes":  9065,
+                        "lines":  199,
+                        "sha256":  "8d8b1bac46609e6541599312860106337d8c4f60ade2b176ddcca291e211bd24"
+                    }
+                ]
+}

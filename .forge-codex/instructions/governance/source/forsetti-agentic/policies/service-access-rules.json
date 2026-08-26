@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "id": "SERVICE-001",
+      "decision": "block",
+      "description": "Service access must be capability-scoped and declared in manifest requirements."
+    }
+  ]
+}

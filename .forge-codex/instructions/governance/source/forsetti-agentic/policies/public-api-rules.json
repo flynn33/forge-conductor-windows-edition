@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "id": "API-001",
+      "decision": "block",
+      "description": "Consumer code must use only public Forsetti contracts and must not patch framework internals."
+    }
+  ]
+}

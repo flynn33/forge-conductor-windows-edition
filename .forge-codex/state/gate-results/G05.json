@@ -1,0 +1,26 @@
+{
+  "gate_id": "G05",
+  "status": "passed",
+  "evaluated_at": "2026-08-25T15:36:09.6019479+00:00",
+  "role": "validator",
+  "acceptance": "Domain and interface tests pass with no platform leakage.",
+  "evidence": [
+    ".forge-codex/state/validator-reports/P05.json",
+    ".forge-codex/state/commands/20260825T153137206Z-fa6a7cbf.json",
+    ".forge-codex/state/commands/20260825T153339274Z-5218fb53.json",
+    "CMakeLists.txt",
+    "Directory.Build.props",
+    "scripts/build.ps1",
+    "scripts/test.ps1",
+    "scripts/validation/Test-G05DomainContracts.ps1",
+    "include/ForgeConductor/Domain/Domain.h",
+    "include/ForgeConductor/Contracts/Contracts.h",
+    "tests/Domain/DomainTests.cpp",
+    "tests/Contracts/main.cpp",
+    ".forge-codex/state/decisions/P05-001-typed-results-operation-context-and-authority.md",
+    ".forge-codex/state/decisions/P05-002-source-compatibility-and-windows-resource-bounds.md",
+    ".forge-codex/state/decisions/P05-003-executable-owned-composition-roots.md",
+    ".forge-codex/state/decisions/P05-004-interface-issued-capability-values.md"
+  ],
+  "failures": []
+}

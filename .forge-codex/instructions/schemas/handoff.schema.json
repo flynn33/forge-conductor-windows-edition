@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Forge Windows Codex continuity handoff",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "handoff_id",
+    "created_at",
+    "role",
+    "phase",
+    "summary",
+    "completed",
+    "open_work",
+    "next_actions",
+    "evidence",
+    "decisions",
+    "blockers",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "handoff_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "completed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "open_work": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repository_status": {
+      "type": "string"
+    },
+    "content_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "1.1",
+  "manifestTemplateVersion": "1.1",
+  "moduleID": "com.forsetti.app.forge-conductor-windows",
+  "displayName": "Forge Conductor",
+  "moduleVersion": {
+    "major": 0,
+    "minor": 9,
+    "patch": 0,
+    "prerelease": null
+  },
+  "moduleType": "app",
+  "supportedPlatforms": [
+    "Windows"
+  ],
+  "minForsettiVersion": {
+    "major": 0,
+    "minor": 2,
+    "patch": 0,
+    "prerelease": null
+  },
+  "maxForsettiVersion": {
+    "major": 0,
+    "minor": 2,
+    "patch": 0,
+    "prerelease": null
+  },
+  "capabilitiesRequested": [
+    "networking",
+    "storage",
+    "secure_storage",
+    "file_export",
+    "telemetry",
+    "routing_overlay",
+    "toolbar_items",
+    "view_injection",
+    "event_publishing",
+    "shared_database",
+    "diagnostics",
+    "api",
+    "security"
+  ],
+  "iapProductID": null,
+  "entryPoint": "ForgeConductorAppModule",
+  "defaultModuleRole": "ui",
+  "runtimeRequirements": {
+    "io": [
+      {
+        "requirementID": "forge.network.client",
+        "kind": "networking",
+        "access": "read_write",
+        "required": true
+      },
+      {
+        "requirementID": "forge.settings.storage",
+        "kind": "storage",
+        "access": "read_write",
+        "required": true
+      },
+      {
+        "requirementID": "forge.secrets.secure-storage",
+        "kind": "secure_storage",
+        "access": "read_write",
+        "required": true
+      },
+      {
+        "requirementID": "forge.data.export",
+        "kind": "file_export",
+        "access": "write",
+        "required": true
+      },
+      {
+        "requirementID": "forge.telemetry.events",
+        "kind": "telemetry",
+        "access": "emit",
+        "required": true
+      },
+      {
+        "requirementID": "forge.database.access",
+        "kind": "shared_database",
+        "access": "read_write",
+        "required": true
+      },
+      {
+        "requirementID": "forge.diagnostics.events",
+        "kind": "diagnostics",
+        "access": "emit",
+        "required": true
+      },
+      {
+        "requirementID": "forge.api.invoke",
+        "kind": "api",
+        "access": "execute",
+        "required": true
+      },
+      {
+        "requirementID": "forge.security.authorization",
+        "kind": "security",
+        "access": "execute",
+        "required": true
+      }
+    ],
+    "ui": {
+      "controlSchemeID": "forge-conductor.windows.controls.v1",
+      "layoutID": "forge-conductor.windows.shell.v1",
+      "themeIDs": [],
+      "viewIDs": [
+        "ForgeConductorShellView",
+        "ForgeConductorSettingsOverlayView",
+        "ForgeConductorResetConfirmationView",
+        "ForgeConductorPurgeConfirmationView"
+      ],
+      "slotIDs": [
+        "appShell"
+      ],
+      "toolbarItemIDs": [
+        "forge-conductor.toolbar.settings"
+      ],
+      "routeIDs": [
+        "forge-conductor.route.settings",
+        "forge-conductor.route.reset-project",
+        "forge-conductor.route.purge-all"
+      ],
+      "pointerIDs": []
+    },
+    "dataIsolation": {
+      "mode": "private_to_module",
+      "ownedStoreIDs": [
+        "forge-conductor.central",
+        "forge-conductor.project",
+        "forge-conductor.configuration",
+        "forge-conductor.manager-state",
+        "forge-conductor.session-ledger"
+      ],
+      "requiredDefaultRoles": []
+    }
+  }
+}

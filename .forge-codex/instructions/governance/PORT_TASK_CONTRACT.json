@@ -1,0 +1,145 @@
+{
+  "$schema": "./schemas/task-contract.schema.json",
+  "schema_version": "1.0",
+  "task_id": "FAE-TASK-2026-08-24-016",
+  "title": "Port Forge Conductor 0.9.0 to a native Windows 11 Forsetti application",
+  "date": "2026-08-24",
+  "initiating_request": "Create a comprehensive fail-forward autonomous Windows 11 port with installer, strict object-oriented C++20, native Windows technologies, Forsetti compliance, feature parity, no Python, and no automated-authorship attribution.",
+  "contract_authoring_role": "architect",
+  "acting_role": "builder",
+  "reviewer_role": "validator",
+  "release_review_role": "release_manager",
+  "documentation_review_role": "documentation_manager",
+  "required_advisory_reviewers": [],
+  "change_class": "feature",
+  "approval_class": "release-critical",
+  "governance_authorization": {
+    "required": false,
+    "authority": null,
+    "evidence": null
+  },
+  "forsetti_project_context": {
+    "repository_mode": "consumer_app_repo",
+    "forsetti_edition": "windows",
+    "target_platform": "Windows",
+    "framework_version": "0.2.0",
+    "edition_profile": "0.2.0",
+    "manifest_schema_version": "1.1",
+    "manifest_template_version": "1.1",
+    "deployment_pattern": "single_app_module",
+    "module_type": "app",
+    "module_id": "com.forsetti.app.forge-conductor-windows",
+    "capabilities_requested": [
+      "networking",
+      "storage",
+      "secure_storage",
+      "file_export",
+      "telemetry",
+      "routing_overlay",
+      "toolbar_items",
+      "view_injection",
+      "event_publishing",
+      "shared_database",
+      "diagnostics",
+      "api",
+      "security"
+    ],
+    "runtime_requirements_declared": true,
+    "uses_public_api_only": true,
+    "touches_framework_internals": false
+  },
+  "objective": "Deliver an installable, native Windows 11 Forge Conductor with complete macOS feature parity, autonomous project memory and continuity, bounded resource use, and independently validated release artifacts.",
+  "business_reason": "Provide a reliable Windows-native orchestration application for local models and agentic workflows while preserving Forsetti architecture and operation on machines with varied memory capacity.",
+  "scope": {
+    "in_scope": [
+      "new Forge-Conductor-Windows consumer repository",
+      "native C++20 domain, application, infrastructure, CLI, manager, MCP, session host, installer, tests, and WinUI 3 UI",
+      "Forsetti app module and manifest",
+      "macOS data migration/import",
+      "x64 and supported ARM64 packaging",
+      "documentation and release evidence"
+    ],
+    "out_of_scope": [
+      "modifying ForsettiCore, ForsettiPlatform, or ForsettiHostTemplate internals",
+      "adding Python to the Windows product",
+      "GUI automation of LM Studio or another model host",
+      "removing or stubbing current Forge Conductor features",
+      "changing Forsetti Agentic Edition governance"
+    ]
+  },
+  "required_outputs": [
+    "buildable Windows repository",
+    "native GUI, CLI, manager, MCP server, and session-host plugin",
+    "project memory and continuity",
+    "MSIX bundle, App Installer descriptor, and native setup bootstrapper",
+    "tests and profiling evidence",
+    "feature-parity evidence",
+    "operator and developer documentation"
+  ],
+  "documentation_impact": {
+    "readme_update": true,
+    "wiki_update": true,
+    "glossary_update": true,
+    "changelog_update": true,
+    "rationale": "A new platform edition and installer require complete product, architecture, setup, security, migration, and operational documentation."
+  },
+  "release_impact": "minor",
+  "validation_requirements": [
+    "Forsetti guardrails pass",
+    "Debug and Release builds pass",
+    "native tests pass",
+    "all 53 MCP tools pass contract tests",
+    "project memory and continuity pass multi-project and crash-recovery tests",
+    "UI automation passes",
+    "resource and leak gates pass",
+    "installer lifecycle passes",
+    "no-Python and no-attribution scans pass",
+    "independent validator session passes"
+  ],
+  "evidence_requirements": [
+    "command logs with exit codes and hashes",
+    "feature-parity matrix",
+    "MCP schema snapshots",
+    "test reports",
+    "ETW/WPR and memory evidence",
+    "installer logs",
+    "binary and package hashes",
+    "validator compliance report"
+  ],
+  "constraints": [
+    "Windows 11",
+    "native object-oriented C++20",
+    "WinUI 3 C++/WinRT",
+    "no Python",
+    "public Forsetti APIs only",
+    "no operator intervention during implementation and validation"
+  ],
+  "risks": [
+    "host APIs may not create GUI chats",
+    "Windows App SDK packaging/toolchain variation",
+    "LM Studio path/config variation",
+    "GPU counter availability varies by driver",
+    "release signing secrets may be unavailable"
+  ],
+  "escalation_triggers": [
+    "owner requirements directly contradict a Forsetti constitutional invariant",
+    "a required Microsoft SDK is legally unavailable",
+    "source archives fail integrity validation"
+  ],
+  "definition_of_done": [
+    "every hard gate passes",
+    "every parity row is passed with evidence",
+    "installer installs and launches on a clean Windows 11 user profile",
+    "autonomous continuity creates and resumes a successor logical session",
+    "resource budgets pass on the constrained profile",
+    "all release artifacts and documentation are present"
+  ],
+  "completion_summary_requirements": [
+    "complete file and artifact list",
+    "validation evidence",
+    "known issues",
+    "documentation status",
+    "release impact",
+    "scope compliance"
+  ]
+}

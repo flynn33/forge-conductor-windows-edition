@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "report_id": "P00-P01-independent-validator",
+  "created_at": "2026-08-25T08:59:07.3786619+00:00",
+  "role": "validator",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "scope": [
+    "P00/G00",
+    "P01/G01"
+  ],
+  "decision": "pass",
+  "decisions": [
+    {
+      "gate": "G00",
+      "decision": "pass",
+      "acceptance": "Package manifest and every immutable input hash pass."
+    },
+    {
+      "gate": "G01",
+      "decision": "pass",
+      "acceptance": "Required first-party tools are discovered/provisioned and versions recorded."
+    }
+  ],
+  "evidence": [
+    ".forge-codex/state/commands/20260825T084940220Z-231bcc83.json",
+    ".forge-codex/state/commands/20260825T085619787Z-27acc303.json",
+    ".forge-codex/state/commands/20260825T085010969Z-80373dfe.json",
+    ".forge-codex/state/commands/20260825T085041796Z-2fd4db59.json",
+    ".forge-codex/state/commands/20260825T085130930Z-9584b6ea.json",
+    ".forge-codex/state/commands/20260825T085322837Z-da714da7.json",
+    ".forge-codex/state/commands/20260825T085348047Z-1087ac24.json",
+    ".forge-codex/state/commands/20260825T085448974Z-f667f9de.json",
+    ".forge-codex/state/commands/20260825T085522086Z-32d1b07b.json",
+    ".forge-codex/state/toolchain.json",
+    ".forge-codex/state/probes/obj/project.assets.json",
+    ".forge-codex/state/probes/obj/project.nuget.cache",
+    ".forge-codex/state/evidence-index.json",
+    ".forge-codex/state/commands/20260825T090026442Z-59f380ef.json"
+  ],
+  "failed_attempts": [
+    {
+      "path": ".forge-codex/state/commands/20260825T084853265Z-309e0f88.json",
+      "cause": "The command recorder Windows PowerShell child could not resolve Get-FileHash.",
+      "resolution": "Reran the unchanged installed validator under PowerShell 7; package and all archive checks passed."
+    },
+    {
+      "path": ".forge-codex/state/commands/20260825T085418190Z-7d52411d.json",
+      "cause": "The validator check used a strict-mode-incompatible XML collection property accessor.",
+      "resolution": "Reran namespace-aware XML inspection; exact package restore and cache checks passed."
+    }
+  ],
+  "observations": [
+    "The authoritative instruction package remains external and is required to replay full package-manifest validation.",
+    "Common.ps1, Verify-Ledger.ps1, and Discover-Toolchain.ps1 intentionally differ from the authoritative intake package after P01 repairs/extensions; their parse and Git whitespace checks pass.",
+    "vcpkg.exe has no Windows file-version resource; CLI version output and the exact manifest baseline equals checkout HEAD are recorded instead.",
+    "Some successful command stderr files contain only CLIXML host/progress records or Git line-ending warnings; exit codes and stdout/stderr hashes were independently verified.",
+    "Pre-validator P01 command records use role architect; all acceptance checks were independently rerun and recorded under role validator."
+  ],
+  "limitations": [
+    "This report validates only P00/G00 and P01/G01; it does not claim a product build, feature parity, packaging, runtime behavior, or release readiness.",
+    "The repository contained extensive pre-existing unrelated deletions/modifications; validation was scoped to the named P00/P01 files and evidence."
+  ],
+  "post_gate_ledger_validation": {
+    "record": ".forge-codex/state/commands/20260825T090026442Z-59f380ef.json",
+    "exit_code": 0,
+    "verified_events": 25,
+    "stdout": ".forge-codex/state/commands/20260825T090026442Z-59f380ef.stdout.txt",
+    "stdout_sha256": "0cddc3fe1dc20e1462e497a621e3cea73ebfc7cc0ee1e7168caaf87d8560c79d"
+  }
+}

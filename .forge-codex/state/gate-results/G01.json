@@ -1,0 +1,25 @@
+{
+  "gate_id": "G01",
+  "status": "passed",
+  "evaluated_at": "2026-08-25T08:59:45.2946103+00:00",
+  "role": "validator",
+  "acceptance": "Required first-party tools are discovered/provisioned and versions recorded.",
+  "evidence": [
+    ".forge-codex/state/commands/20260825T085010969Z-80373dfe.json",
+    ".forge-codex/state/commands/20260825T085041796Z-2fd4db59.json",
+    ".forge-codex/state/commands/20260825T085130930Z-9584b6ea.json",
+    ".forge-codex/state/commands/20260825T085322837Z-da714da7.json",
+    ".forge-codex/state/commands/20260825T085348047Z-1087ac24.json",
+    ".forge-codex/state/commands/20260825T085448974Z-f667f9de.json",
+    ".forge-codex/state/commands/20260825T085522086Z-32d1b07b.json",
+    ".forge-codex/state/toolchain.json",
+    "vcpkg.json",
+    "Directory.Build.props",
+    ".forge-codex/state/probes/ToolchainPackages.vcxproj",
+    ".forge-codex/state/probes/obj/project.assets.json",
+    ".forge-codex/state/probes/obj/project.nuget.cache",
+    ".forge-codex/state/evidence-index.json",
+    ".forge-codex/state/validator-reports/P00-P01.json"
+  ],
+  "failures": []
+}

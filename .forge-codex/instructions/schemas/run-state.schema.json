@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Forge Windows autonomous run state",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "created_at",
+    "updated_at",
+    "status",
+    "active_role",
+    "active_phase",
+    "phases",
+    "gates"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "in_progress",
+        "completed",
+        "failed",
+        "blocked_external"
+      ]
+    },
+    "active_role": {
+      "enum": [
+        "architect",
+        "builder",
+        "validator",
+        "documentation_manager",
+        "release_manager"
+      ]
+    },
+    "active_phase": {
+      "type": "string",
+      "pattern": "^P\\d{2}$"
+    },
+    "session_number": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "phases": {
+      "type": "array"
+    },
+    "gates": {
+      "type": "array"
+    },
+    "latest_handoff": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "open_blockers": {
+      "type": "array"
+    },
+    "notes": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Forge Windows evidence item",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "phase",
+    "gate",
+    "created_at",
+    "path",
+    "sha256",
+    "summary"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "source",
+        "command",
+        "test",
+        "profile",
+        "installer",
+        "screenshot",
+        "decision",
+        "report",
+        "artifact"
+      ]
+    },
+    "phase": {
+      "type": "string"
+    },
+    "gate": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

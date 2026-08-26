@@ -2,18 +2,92 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build-debug",
+      "label": "Forge: Build Debug x64",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/build.ps1",
-      "args": ["-Configuration", "Debug"],
-      "group": { "kind": "build", "isDefault": true },
-      "problemMatcher": "$msCompile"
+      "command": "pwsh.exe",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\build.ps1",
+        "-Configuration",
+        "Debug",
+        "-Architecture",
+        "x64",
+        "-Parallel",
+        "${input:parallelJobs}"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ]
     },
     {
-      "label": "test",
+      "label": "Forge: Build Release x64",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/test.ps1",
-      "group": "test"
+      "command": "pwsh.exe",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\build.ps1",
+        "-Configuration",
+        "Release",
+        "-Architecture",
+        "x64",
+        "-Parallel",
+        "${input:parallelJobs}"
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$msCompile"
+      ]
+    },
+    {
+      "label": "Forge: Test Debug x64",
+      "type": "shell",
+      "command": "pwsh.exe",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\test.ps1",
+        "-Configuration",
+        "Debug",
+        "-Architecture",
+        "x64",
+        "-Label",
+        "G04"
+      ],
+      "dependsOn": "Forge: Build Debug x64",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Forge: Validate G04",
+      "type": "shell",
+      "command": "pwsh.exe",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\validation\\Test-G04BuildScaffold.ps1",
+        "-WorkspaceRoot",
+        "${workspaceFolder}",
+        "-Parallel",
+        "${input:parallelJobs}"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "parallelJobs",
+      "type": "promptString",
+      "description": "Maximum parallel build/test jobs",
+      "default": "8"
     }
   ]
 }

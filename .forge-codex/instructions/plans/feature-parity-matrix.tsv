@@ -1,0 +1,85 @@
+id	category	feature	behavior	macos_evidence	windows_acceptance	status	windows_files	tests	evidence	adr
+UI-001	UI	Seven-surface navigation	Persistent Forge Rig, LM Studio MCP, Agents, Tools, Feed, Diagnostics, Manager navigation	Sources/ForgeConductorApp/Views/AppSidebarView.swift	WinUI NavigationView with stable automation IDs	not_started				
+UI-002	UI	Navigation show/hide	Toolbar/menu command shows or hides navigation	Sources/ForgeConductorApp/Views/ContentView.swift	State persists per window and UI automation passes	not_started				
+UI-003	UI	Refresh controls	Manual refresh, auto-refresh, loading, updated timestamp	Sources/ForgeConductorApp/Views/ContentView.swift	No overlapping refresh; bounded cadence	not_started				
+UI-004	UI	Version/home/error status	Display version, home, and bounded user-visible errors	Sources/ForgeConductorApp/AppModel.swift	Accessible and nonblocking	not_started				
+UI-005	UI	Forge Rig	CPU/GPU/RAM/disk/LM Studio metrics and histories	Sources/ForgeConductorApp/Views/Rig/RigDashboardView.swift	Mapped fields verified against typed snapshots	not_started				
+UI-006	UI	LM Studio MCP surface	Primary/fallback, deployment, repair, health, revision status	Sources/ForgeConductorApp/Views/MCPServersView.swift	Transactional deployment and smoke	not_started				
+UI-007	UI	Agents surface	Catalog and run visibility	Sources/ForgeConductorApp/Views/AgentsView.swift	List/get/recommend/run flows	not_started				
+UI-008	UI	Tools surface	Tool catalog and authorization visibility	Sources/ForgeConductorApp/Views/ToolsView.swift	All 53 tools represented	not_started				
+UI-009	UI	Feed surface	Bounded live activity/audit feed	Sources/ForgeConductorApp/Views/LiveFeedView.swift	Ring-buffered and accessible	not_started				
+UI-010	UI	Diagnostics surface	Logs, doctor, exports, runtime diagnostics	Sources/ForgeConductorApp/Views/DiagnosticsView.swift	Redacted and bounded	not_started				
+UI-011	UI	Manager settings surface	Manager lifecycle, settings, startup, reset actions	Sources/ForgeConductorApp/Views/ManagerSettingsView.swift	Start/stop/restart/settings/reset pass	not_started				
+UI-012	UI	Desktop accessibility	Stable semantics and automation identifiers	Tests/ForgeConductorUITests	Native UI Automation suite passes	not_started				
+UI-013	UI	Theme/DPI/high contrast	Native adaptive rendering	Sources/ForgeConductorApp	100–300% DPI and high contrast pass	not_started				
+PROC-001	Process	GUI mode	No args launches GUI	Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift	Packaged app launches correctly	not_started				
+PROC-002	Process	MCP stdio mode	serve/mcp/mcp-serve starts stdio server	Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift	Protocol smoke under 1 second	not_started				
+PROC-003	Process	Manager run mode	manager run owns dashboard lifecycle	Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift	Single-owner manager	not_started				
+CLI-001	CLI	Install command	Install runtime layout without implicit host config	Sources/ForgeConductorCLI/ForgeConductorMain.swift	Idempotent install	not_started				
+CLI-002	CLI	LM Studio deploy command	Explicit deploy/install plugin	Sources/ForgeConductorCLI/ForgeConductorMain.swift	Foreign config preserved	not_started				
+CLI-003	CLI	Doctor/status/version/agents	Operational inspection commands	Sources/ForgeConductorCLI/ForgeConductorMain.swift	Stable text and JSON outputs	not_started				
+CLI-004	CLI	Manager lifecycle commands	start/stop/restart/status	Sources/ForgeConductorCLI/ForgeConductorMain.swift	Correct exit codes	not_started				
+MCP-001	MCP	JSON-RPC stdio	Newline-delimited compact JSON and unbuffered output	Sources/ForgeConductorCore/MCP/MCPServer.swift	Golden protocol tests	not_started				
+MCP-002	MCP	Exact 53-tool list	All canonical tools and schemas	Sources/ForgeConductorCore/Application/Tools	Exact semantic snapshot	not_started				
+MCP-003	MCP	Primary role	Independent server identity and health	Sources/ForgeConductorCore/MCP/MCPServer.swift	Role smoke	not_started				
+MCP-004	MCP	Fallback role	Independent fallback identity and health	Sources/ForgeConductorCore/MCP/MCPServer.swift	Role smoke	not_started				
+MCP-005	MCP	Transactional registration	Stage, backup, atomic commit, rollback	Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift	Fault-injection tests	not_started				
+MCP-006	MCP	Host revision synchronization	Deployment revision evidence	Sources/ForgeConductorCore/Telemetry/LMStudioDeployService.swift	Real host or fixture gate	not_started				
+MCP-007	MCP	Auto-heal	Detect and repair drift through typed boundary	Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift	Repair tests	not_started				
+MCP-008	MCP	Independent serve verifier	Initialize/tools-list smoke	Sources/ForgeConductorCore/MCP/MCPServeVerifier.swift	Primary/fallback verifier	not_started				
+TOOL-001	Tools	Filesystem tools	Read/write/edit/list/glob/mkdir/delete/move	Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift	Bounds and path auth	not_started				
+TOOL-002	Tools	Git tools	status/diff/log/add/commit	Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift	No shell composition	not_started				
+TOOL-003	Tools	Text search	Bounded recursive search	Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift	Native walker	not_started				
+TOOL-004	Tools	PDF tools	Write PDF and convert text file	Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift	Native PDF output	not_started				
+TOOL-005	Tools	Shell tool	Opt-in bounded shell execution	Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift	PowerShell/Job Object, disabled default	not_started				
+TOOL-006	Tools	Authorization	Workspace root and shell policy	Sources/ForgeConductorCore/Application/ToolAuthorizationService.swift	Negative security tests	not_started				
+TOOL-007	Tools	Audit	Sanitized args, status, duration, error	Sources/ForgeConductorCore/Infrastructure/AuditService.swift	Bounded retention	not_started				
+TOOL-008	Tools	Identical-call loop protection	Checkpoint and hard block repeated loops	Sources/ForgeConductorCore/Application/ToolRouter.swift	Deterministic tests	not_started				
+AGENT-001	Agents	Embedded catalog	Load built-in agent cards/playbooks	Sources/ForgeConductorCore/Application/AgentCatalog.swift	At least source-equivalent catalog	not_started				
+AGENT-002	Agents	Recommend agent	Task-to-agent recommendation	Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift	Deterministic fixtures	not_started				
+AGENT-003	Agents	Durable runs	Start/status/complete sessions	Sources/ForgeConductorCore/Application/AgentSessionService.swift	Crash/restart persistence	not_started				
+MEM-001	Memory	Legacy memory set/get/list/delete/search	Backward-compatible global memory tools	Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift	Schema/error parity	not_started				
+MEM-002	Memory	Memory bounds	Key/body/tag/query limits	Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift	Limit tests	not_started				
+PMEM-001	Project Memory	Multi-project identity	UUID, aliases, repository identity	Sources/ForgeConductorCore/Application/ProjectMemoryService.swift	No implicit newest-project selection	not_started				
+PMEM-002	Project Memory	Per-project database isolation	Separate project stores	Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift	Cross-project negative tests	not_started				
+PMEM-003	Project Memory	Initialize/remember/batch	Transactional writes and idempotency	Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift	Contract tests	not_started				
+PMEM-004	Project Memory	Search/get/recent	Deterministic bounded reads	Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift	Pagination/order tests	not_started				
+PMEM-005	Project Memory	Update/forget/link	Optimistic update, tombstone, typed link	Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift	Conflict/idempotency tests	not_started				
+PMEM-006	Project Memory	Export/import/status	Checksums, preview, health	Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift	Round-trip/corruption tests	not_started				
+PMEM-007	Project Memory	Redaction	Redact secrets/reject private keys	Sources/ForgeConductorCore/Application/ProjectMemoryService.swift	Security fixtures	not_started				
+PMEM-008	Project Memory	Reset from Settings/CLI	Per-project and global scoped reset	Owner requirement	Transactional reset evidence	not_started				
+CONT-001	Continuity	Legacy checkpoint/handoff/context tools	Backward-compatible handoff surface	Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift	Golden tests	not_started				
+CONT-002	Continuity	Lifecycle tools	Seven continuity.* tools	Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift	State-machine tests	not_started				
+CONT-003	Continuity	Automatic checkpoints	Progress/time-based persistence	Sources/ForgeConductorCore/Application/ContinuityAutomation.swift	Budget tests	not_started				
+CONT-004	Continuity	Automatic rollover	Context threshold creates successor	Sources/ForgeConductorCore/Application/ContinuityCoordinator.swift	End-to-end autonomous test	not_started				
+CONT-005	Continuity	Native session host plugin	Create/bootstrap/ack/cancel/recover	Sources/ForgeNativeSessionHostPlugin/ForgeNativeSessionHostPlugin.swift	Crash/idempotency tests	not_started				
+CONT-006	Continuity	Exact acknowledgment	Handoff/session/checksum match	Sources/ForgeConductorCore/Application/ContinuityCoordinator.swift	Wrong-ack negatives	not_started				
+CONT-007	Continuity	Project isolation	Per-project active operation/session	Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift	Concurrent projects	not_started				
+CONT-008	Continuity	Reset from Settings/CLI	Scoped continuity reset	Owner requirement	No memory loss when continuity-only	not_started				
+MGR-001	Manager	Single dashboard owner	GUI attaches, manager listens	Sources/ForgeConductorCore/Manager/ManagerNode.swift	Port collision tests	not_started				
+MGR-002	Manager	Startup installation	Per-user automatic manager start	Sources/ForgeConductorCore/Manager/ManagerInstaller.swift	Task registration tests	not_started				
+MGR-003	Manager	Watchdog/restart	Health, recovery, bounded restart	Sources/ForgeConductorCore/Manager/ManagerNode.swift	Fault injection	not_started				
+MGR-004	Manager	Typed client	GUI manager client	Sources/ForgeConductorCore/Manager/ManagerDashboardClient.swift	IPC compatibility	not_started				
+DASH-001	Dashboard	Loopback dashboard	Operational/manager/telemetry routes	Sources/ForgeConductorCore/Dashboard	Token-auth loopback tests	not_started				
+TEL-001	Telemetry	CPU metrics	Utilization/frequency availability	Sources/ForgeConductorCore/Telemetry/Collectors/CPUCollector.swift	Field mapping tests	not_started				
+TEL-002	Telemetry	GPU metrics	Utilization/memory/availability	Sources/ForgeConductorCore/Telemetry/Collectors/GPUCollector.swift	Driver fallback tests	not_started				
+TEL-003	Telemetry	RAM metrics	Used/available/pressure mapping	Sources/ForgeConductorCore/Telemetry/Collectors/RAMCollector.swift	Known-value tests	not_started				
+TEL-004	Telemetry	Disk metrics	Volume and I/O	Sources/ForgeConductorCore/Telemetry/Collectors	Mapping tests	not_started				
+TEL-005	Telemetry	Process metrics	LM Studio/Forge processes	Sources/ForgeConductorCore/Telemetry/Collectors/ProcessMetricsCollector.swift	Identity tests	not_started				
+TEL-006	Telemetry	Latest-value delivery	Bounded coalescing mailbox	Sources/ForgeConductorCore/Telemetry/LatestValueMailbox.swift	Queue depth never exceeds one	not_started				
+TEL-007	Telemetry	Bounded histories	Ring buffers/downsampling	Sources/ForgeConductorCore/Telemetry/Models	Stress tests	not_started				
+GFX-001	Rendering	Shared graphics resources	One device/factory/cache service	Sources/ForgeConductorApp/Metal/MetalGaugeResources.swift	No per-gauge device	not_started				
+GFX-002	Rendering	Render-on-demand	Visible/data-change bounded rendering	Sources/ForgeConductorApp/Metal	Idle GPU gate	not_started				
+GFX-003	Rendering	Device-loss recovery	Recreate shared graph	Windows requirement	Fault injection	not_started				
+DIAG-001	Diagnostics	Structured diagnostics	Categories, levels, bounded files, ETW	Sources/ForgeConductorCore/Infrastructure/DiagnosticLog.swift	Redaction/rotation tests	not_started				
+DIAG-002	Diagnostics	Runtime ownership snapshot	Tasks/timers/processes/queues/databases	Sources/ForgeConductorCore/Infrastructure/RuntimeObservability.swift	Shutdown zero-owner gate	not_started				
+SEC-001	Security	DPAPI secrets	Current-user protected secrets	Platform replacement	Round-trip and user-bound tests	not_started				
+SEC-002	Security	Process Job Objects	Timeout/cancel process tree	Sources/ForgeConductorCore/Infrastructure/ProcessRunner.swift	Child-tree kill test	not_started				
+SEC-003	Security	Authenticated IPC	Current-user named pipe and dashboard token	Windows requirement	Cross-user denial tests	not_started				
+DATA-001	Data	macOS import	Config/store/projects/handoffs/sessions	macOS data layout docs	Dry-run/rollback/idempotency	not_started				
+PKG-001	Packaging	MSIX package	Packaged WinUI app and executables	Owner requirement	Install on clean profile	not_started				
+PKG-002	Packaging	Native setup EXE	Install/repair/update/uninstall/purge	Owner requirement	Lifecycle suite	not_started				
+PKG-003	Packaging	Startup and CLI alias	Manager startup and execution alias	Owner requirement	Post-install smoke	not_started				
+PKG-004	Packaging	Upgrade/data preservation	Transactional upgrade	Owner requirement	Previous-version fixture	not_started				
+PKG-005	Packaging	x64/ARM64	x64 required, ARM64 when toolchain supports	Owner requirement	Build/package evidence	not_started				
+PKG-006	Packaging	No Python/no attribution	Scanners pass	Owner requirement	Hard gate	not_started				

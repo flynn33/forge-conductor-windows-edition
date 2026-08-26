@@ -1,0 +1,2343 @@
+{
+    "schema_version":  1,
+    "source_version":  "0.9.0",
+    "retained_feature_count":  84,
+    "original_plan_sha256":  "8d7056cd325917e69e7fa7309bdfbbb18d14bd6b8483e858557800da3de1a7dd",
+    "rule":  "All original feature IDs are retained. Target-only requirements identify their provenance explicitly.",
+    "features":  [
+                     {
+                         "id":  "UI-001",
+                         "category":  "UI",
+                         "feature":  "Seven-surface navigation",
+                         "behavior":  "Persistent Forge Rig, LM Studio MCP, Agents, Tools, Feed, Diagnostics, Manager navigation",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/AppSidebarView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/AppSidebarView.swift",
+                                                    "symbol":  "AppSidebarView",
+                                                    "line":  12,
+                                                    "bytes":  3292,
+                                                    "lines":  87,
+                                                    "sha256":  "9d933ba30296554590d075208c2a13494c5381d9ef1d3b51dca03c0901470f76"
+                                                }
+                                            ],
+                         "windows_acceptance":  "WinUI NavigationView with stable automation IDs",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-002",
+                         "category":  "UI",
+                         "feature":  "Navigation show/hide",
+                         "behavior":  "Toolbar/menu command shows or hides navigation",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/ContentView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/ContentView.swift",
+                                                    "symbol":  "ContentView",
+                                                    "line":  13,
+                                                    "bytes":  4533,
+                                                    "lines":  112,
+                                                    "sha256":  "5b82f404e411dea5969ddc2576899a3c8423d4bc5e720b8c607ea4d7cf1de0d8"
+                                                }
+                                            ],
+                         "windows_acceptance":  "State persists per window and UI automation passes",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-003",
+                         "category":  "UI",
+                         "feature":  "Refresh controls",
+                         "behavior":  "Manual refresh, auto-refresh, loading, updated timestamp",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/ContentView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/ContentView.swift",
+                                                    "symbol":  "ContentView",
+                                                    "line":  13,
+                                                    "bytes":  4533,
+                                                    "lines":  112,
+                                                    "sha256":  "5b82f404e411dea5969ddc2576899a3c8423d4bc5e720b8c607ea4d7cf1de0d8"
+                                                }
+                                            ],
+                         "windows_acceptance":  "No overlapping refresh; bounded cadence",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-004",
+                         "category":  "UI",
+                         "feature":  "Version/home/error status",
+                         "behavior":  "Display version, home, and bounded user-visible errors",
+                         "original_evidence":  "Sources/ForgeConductorApp/AppModel.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/AppModel.swift",
+                                                    "symbol":  "AppModel",
+                                                    "line":  19,
+                                                    "bytes":  25739,
+                                                    "lines":  582,
+                                                    "sha256":  "643b86a1f414bf4108465143bb902da0210f819f315e7490c5a6746bf7fe6e3e"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Accessible and nonblocking",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-005",
+                         "category":  "UI",
+                         "feature":  "Forge Rig",
+                         "behavior":  "CPU/GPU/RAM/disk/LM Studio metrics and histories",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/Rig/RigDashboardView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/Rig/RigDashboardView.swift",
+                                                    "symbol":  "RigDashboardView",
+                                                    "line":  12,
+                                                    "bytes":  31644,
+                                                    "lines":  634,
+                                                    "sha256":  "a4aff2f8f725ff71c407ae74f8438dbbf1599722e9bc6fa535ebd67c26c42ec7"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Mapped fields verified against typed snapshots",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-006",
+                         "category":  "UI",
+                         "feature":  "LM Studio MCP surface",
+                         "behavior":  "Primary/fallback, deployment, repair, health, revision status",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/MCPServersView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/MCPServersView.swift",
+                                                    "symbol":  "MCPServersView",
+                                                    "line":  14,
+                                                    "bytes":  9503,
+                                                    "lines":  215,
+                                                    "sha256":  "634eda76fb5e443fb12426c6655859e83c09e906a8bb3576370ff6425b5e9a40"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Transactional deployment and smoke",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-007",
+                         "category":  "UI",
+                         "feature":  "Agents surface",
+                         "behavior":  "Catalog and run visibility",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/AgentsView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/AgentsView.swift",
+                                                    "symbol":  "AgentsView",
+                                                    "line":  14,
+                                                    "bytes":  2787,
+                                                    "lines":  67,
+                                                    "sha256":  "792e81e7c25f088f3c232e06ea7bba139018f213c0ff3333527ef915c7558ab7"
+                                                }
+                                            ],
+                         "windows_acceptance":  "List/get/recommend/run flows",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-008",
+                         "category":  "UI",
+                         "feature":  "Tools surface",
+                         "behavior":  "Tool catalog and authorization visibility",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/ToolsView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/ToolsView.swift",
+                                                    "symbol":  "ToolsView",
+                                                    "line":  13,
+                                                    "bytes":  5934,
+                                                    "lines":  129,
+                                                    "sha256":  "976a954eab57134ac2b33883d986c801553726e1adb378d40d3a7144ae67c6cd"
+                                                }
+                                            ],
+                         "windows_acceptance":  "All 53 tools represented",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-009",
+                         "category":  "UI",
+                         "feature":  "Feed surface",
+                         "behavior":  "Bounded live activity/audit feed",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/LiveFeedView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/LiveFeedView.swift",
+                                                    "symbol":  "LiveFeedView",
+                                                    "line":  13,
+                                                    "bytes":  3171,
+                                                    "lines":  72,
+                                                    "sha256":  "1ab2e6f14066211ce6c6b95df6fbdbdb6dcce8897a6ca988436c7eddba9a9b5b"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Ring-buffered and accessible",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-010",
+                         "category":  "UI",
+                         "feature":  "Diagnostics surface",
+                         "behavior":  "Logs, doctor, exports, runtime diagnostics",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/DiagnosticsView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/DiagnosticsView.swift",
+                                                    "symbol":  "DiagnosticsView",
+                                                    "line":  11,
+                                                    "bytes":  5981,
+                                                    "lines":  127,
+                                                    "sha256":  "13cbc9c98d197f2493efd63855da7a29d292e8f8f9f56ea8d5b992f07c8243be"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Redacted and bounded",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-011",
+                         "category":  "UI",
+                         "feature":  "Manager settings surface",
+                         "behavior":  "Manager lifecycle, settings, startup, reset actions",
+                         "original_evidence":  "Sources/ForgeConductorApp/Views/ManagerSettingsView.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/ManagerSettingsView.swift",
+                                                    "symbol":  "ManagerSettingsView",
+                                                    "line":  11,
+                                                    "bytes":  5918,
+                                                    "lines":  113,
+                                                    "sha256":  "1d5eed3796033dc09f00874ae3e48f49cc7979f51f67421ba0078a0c219bfbc5"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Start/stop/restart/settings/reset pass",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-012",
+                         "category":  "UI",
+                         "feature":  "Desktop accessibility",
+                         "behavior":  "Stable semantics and automation identifiers",
+                         "original_evidence":  "Tests/ForgeConductorUITests",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Tests/ForgeConductorUITests/ForgeConductorUITests.swift",
+                                                    "symbol":  "ForgeConductorUITests",
+                                                    "line":  12,
+                                                    "bytes":  5378,
+                                                    "lines":  121,
+                                                    "sha256":  "d99a7287ae2809ce4cc2faf82151f6e443643c588528ae20efe8a98d545d19eb"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Native UI Automation suite passes",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "UI-013",
+                         "category":  "UI",
+                         "feature":  "Theme/DPI/high contrast",
+                         "behavior":  "Native adaptive rendering",
+                         "original_evidence":  "Sources/ForgeConductorApp",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/AppDeployController.swift",
+                                                    "symbol":  "AppDeployController",
+                                                    "line":  12,
+                                                    "bytes":  1046,
+                                                    "lines":  24,
+                                                    "sha256":  "872e4e08cdaf5f83f439456d691d7805ec8a2bf964a5dbef677b7ba0a422a160"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/AppModel.swift",
+                                                    "symbol":  "AppModel",
+                                                    "line":  19,
+                                                    "bytes":  25739,
+                                                    "lines":  582,
+                                                    "sha256":  "643b86a1f414bf4108465143bb902da0210f819f315e7490c5a6746bf7fe6e3e"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/AppTelemetryBinding.swift",
+                                                    "symbol":  "AppTelemetryBinding",
+                                                    "line":  14,
+                                                    "bytes":  5753,
+                                                    "lines":  132,
+                                                    "sha256":  "557e19d3ef5135b0fdd4ef5121a25d21a35c4c19ed678776564473cb136fb8cb"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/ForgeConductorApp.swift",
+                                                    "symbol":  "ForgeConductorMain",
+                                                    "line":  18,
+                                                    "bytes":  4613,
+                                                    "lines":  121,
+                                                    "sha256":  "4002c420e272c519a0f7b109ee99225ad3f320201cb8818f9b9b6f112b0f5f80"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/LoadTraceRenderer.swift",
+                                                    "symbol":  "LoadTraceRenderer",
+                                                    "line":  14,
+                                                    "bytes":  5093,
+                                                    "lines":  129,
+                                                    "sha256":  "2c08d052073e9c54de640524d43f9a2e6322658f371c2d172be368b322cb4ac3"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalGaugeKit.swift",
+                                                    "symbol":  "MetalGaugePalette",
+                                                    "line":  26,
+                                                    "bytes":  20292,
+                                                    "lines":  514,
+                                                    "sha256":  "dee9d7e533403cb935e0b14e5a901aee61b284ffd8b992e2141fa3edf2dadb57"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalGaugeResources.swift",
+                                                    "symbol":  "GaugeVertex",
+                                                    "line":  10,
+                                                    "bytes":  5128,
+                                                    "lines":  123,
+                                                    "sha256":  "03070d0e78f79bce568e73c7834c68bdf9b92581a5ac1297039b3c20476a5c4d"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalLoadChart.swift",
+                                                    "symbol":  "MetalLoadChart",
+                                                    "line":  11,
+                                                    "bytes":  1042,
+                                                    "lines":  26,
+                                                    "sha256":  "42474d73eefd108e0b522e30ad80dfd31c01dc4c2b351831814f57cb60c1056d"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalMeterView.swift",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  397,
+                                                    "lines":  7,
+                                                    "sha256":  "ddcb1018f5c435132eb6f5f5f4c7b7333615cfff58d4463c096b624a65fbafed"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MultiSeriesLoadRenderer.swift",
+                                                    "symbol":  "MultiSeriesLoadRenderer",
+                                                    "line":  15,
+                                                    "bytes":  7933,
+                                                    "lines":  199,
+                                                    "sha256":  "f09f7b2bc9be88309a181b0bcfec71fc46dec09ea4aa8cb7d9b20fc66d0037f2"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/AgentsView.swift",
+                                                    "symbol":  "AgentsView",
+                                                    "line":  14,
+                                                    "bytes":  2787,
+                                                    "lines":  67,
+                                                    "sha256":  "792e81e7c25f088f3c232e06ea7bba139018f213c0ff3333527ef915c7558ab7"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/AppSidebarView.swift",
+                                                    "symbol":  "AppSidebarView",
+                                                    "line":  12,
+                                                    "bytes":  3292,
+                                                    "lines":  87,
+                                                    "sha256":  "9d933ba30296554590d075208c2a13494c5381d9ef1d3b51dca03c0901470f76"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/ContentView.swift",
+                                                    "symbol":  "ContentView",
+                                                    "line":  13,
+                                                    "bytes":  4533,
+                                                    "lines":  112,
+                                                    "sha256":  "5b82f404e411dea5969ddc2576899a3c8423d4bc5e720b8c607ea4d7cf1de0d8"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/DiagnosticsView.swift",
+                                                    "symbol":  "DiagnosticsView",
+                                                    "line":  11,
+                                                    "bytes":  5981,
+                                                    "lines":  127,
+                                                    "sha256":  "13cbc9c98d197f2493efd63855da7a29d292e8f8f9f56ea8d5b992f07c8243be"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/LiveFeedView.swift",
+                                                    "symbol":  "LiveFeedView",
+                                                    "line":  13,
+                                                    "bytes":  3171,
+                                                    "lines":  72,
+                                                    "sha256":  "1ab2e6f14066211ce6c6b95df6fbdbdb6dcce8897a6ca988436c7eddba9a9b5b"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/ManagerSettingsView.swift",
+                                                    "symbol":  "ManagerSettingsView",
+                                                    "line":  11,
+                                                    "bytes":  5918,
+                                                    "lines":  113,
+                                                    "sha256":  "1d5eed3796033dc09f00874ae3e48f49cc7979f51f67421ba0078a0c219bfbc5"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/MCPServersView.swift",
+                                                    "symbol":  "MCPServersView",
+                                                    "line":  14,
+                                                    "bytes":  9503,
+                                                    "lines":  215,
+                                                    "sha256":  "634eda76fb5e443fb12426c6655859e83c09e906a8bb3576370ff6425b5e9a40"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/Rig/RigDashboardView.swift",
+                                                    "symbol":  "RigDashboardView",
+                                                    "line":  12,
+                                                    "bytes":  31644,
+                                                    "lines":  634,
+                                                    "sha256":  "a4aff2f8f725ff71c407ae74f8438dbbf1599722e9bc6fa535ebd67c26c42ec7"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/TelemetryDashboardView.swift",
+                                                    "symbol":  "TelemetryDashboardView",
+                                                    "line":  13,
+                                                    "bytes":  8685,
+                                                    "lines":  203,
+                                                    "sha256":  "f1e3b29a8ff7b84025534ed2e0d65e6856fc5707cba08e770e4338af26390e99"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Views/ToolsView.swift",
+                                                    "symbol":  "ToolsView",
+                                                    "line":  13,
+                                                    "bytes":  5934,
+                                                    "lines":  129,
+                                                    "sha256":  "976a954eab57134ac2b33883d986c801553726e1adb378d40d3a7144ae67c6cd"
+                                                }
+                                            ],
+                         "windows_acceptance":  "100â€“300% DPI and high contrast pass",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PROC-001",
+                         "category":  "Process",
+                         "feature":  "GUI mode",
+                         "behavior":  "No args launches GUI",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
+                                                    "symbol":  "ForgeProcessEntry",
+                                                    "line":  18,
+                                                    "bytes":  4185,
+                                                    "lines":  92,
+                                                    "sha256":  "2734eb8162375127b9afefd6556e41d3774dd77de362b7519188ffa3589b5a31"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Packaged app launches correctly",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PROC-002",
+                         "category":  "Process",
+                         "feature":  "MCP stdio mode",
+                         "behavior":  "serve/mcp/mcp-serve starts stdio server",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
+                                                    "symbol":  "ForgeProcessEntry",
+                                                    "line":  18,
+                                                    "bytes":  4185,
+                                                    "lines":  92,
+                                                    "sha256":  "2734eb8162375127b9afefd6556e41d3774dd77de362b7519188ffa3589b5a31"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Protocol smoke under 1 second",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PROC-003",
+                         "category":  "Process",
+                         "feature":  "Manager run mode",
+                         "behavior":  "manager run owns dashboard lifecycle",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
+                                                    "symbol":  "ForgeProcessEntry",
+                                                    "line":  18,
+                                                    "bytes":  4185,
+                                                    "lines":  92,
+                                                    "sha256":  "2734eb8162375127b9afefd6556e41d3774dd77de362b7519188ffa3589b5a31"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Single-owner manager",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CLI-001",
+                         "category":  "CLI",
+                         "feature":  "Install command",
+                         "behavior":  "Install runtime layout without implicit host config",
+                         "original_evidence":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                                                    "symbol":  "ForgeConductorMain",
+                                                    "line":  18,
+                                                    "bytes":  23870,
+                                                    "lines":  522,
+                                                    "sha256":  "9421b521e241ba5365af1b66039492c92ea720ebef9e89306e3d281a8a68800a"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Idempotent install",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CLI-002",
+                         "category":  "CLI",
+                         "feature":  "LM Studio deploy command",
+                         "behavior":  "Explicit deploy/install plugin",
+                         "original_evidence":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                                                    "symbol":  "ForgeConductorMain",
+                                                    "line":  18,
+                                                    "bytes":  23870,
+                                                    "lines":  522,
+                                                    "sha256":  "9421b521e241ba5365af1b66039492c92ea720ebef9e89306e3d281a8a68800a"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Foreign config preserved",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CLI-003",
+                         "category":  "CLI",
+                         "feature":  "Doctor/status/version/agents",
+                         "behavior":  "Operational inspection commands",
+                         "original_evidence":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                                                    "symbol":  "ForgeConductorMain",
+                                                    "line":  18,
+                                                    "bytes":  23870,
+                                                    "lines":  522,
+                                                    "sha256":  "9421b521e241ba5365af1b66039492c92ea720ebef9e89306e3d281a8a68800a"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Stable text and JSON outputs",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CLI-004",
+                         "category":  "CLI",
+                         "feature":  "Manager lifecycle commands",
+                         "behavior":  "start/stop/restart/status",
+                         "original_evidence":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                                                    "symbol":  "ForgeConductorMain",
+                                                    "line":  18,
+                                                    "bytes":  23870,
+                                                    "lines":  522,
+                                                    "sha256":  "9421b521e241ba5365af1b66039492c92ea720ebef9e89306e3d281a8a68800a"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Correct exit codes",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-001",
+                         "category":  "MCP",
+                         "feature":  "JSON-RPC stdio",
+                         "behavior":  "Newline-delimited compact JSON and unbuffered output",
+                         "original_evidence":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                                                    "symbol":  "MCPServer",
+                                                    "line":  11,
+                                                    "bytes":  27391,
+                                                    "lines":  584,
+                                                    "sha256":  "511d2b1f438ffd223263fff4ed6899cfddb0d7fc768212ee575061ca60141765"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Golden protocol tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-002",
+                         "category":  "MCP",
+                         "feature":  "Exact 53-tool list",
+                         "behavior":  "All canonical tools and schemas",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                                    "symbol":  "AgentToolPack",
+                                                    "line":  10,
+                                                    "bytes":  4603,
+                                                    "lines":  88,
+                                                    "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                                    "symbol":  "ContinuityLifecycleToolPack",
+                                                    "line":  8,
+                                                    "bytes":  5084,
+                                                    "lines":  81,
+                                                    "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+                                                    "symbol":  "ContinuityToolPack",
+                                                    "line":  9,
+                                                    "bytes":  2368,
+                                                    "lines":  48,
+                                                    "sha256":  "22a5aa47b76c023acfdbda5f7de405e9f31bbc8e67473f4b26f1274bd135fd94"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
+                                                    "symbol":  "DocsToolPack",
+                                                    "line":  10,
+                                                    "bytes":  2551,
+                                                    "lines":  53,
+                                                    "sha256":  "59cbcff5fc98ec0e595a62e9f8b81c0039d0e84ca28bbd8be9c7ca7a5188282e"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                                    "symbol":  "FilesystemToolPack",
+                                                    "line":  10,
+                                                    "bytes":  10445,
+                                                    "lines":  209,
+                                                    "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                                                    "symbol":  "GitToolPack",
+                                                    "line":  10,
+                                                    "bytes":  2243,
+                                                    "lines":  50,
+                                                    "sha256":  "5f73162eeae9bad8dd7a2b6feb7e1cbb9ff27ec96176d5eee41bb2ebbcd03e80"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                                                    "symbol":  "MemoryToolPack",
+                                                    "line":  10,
+                                                    "bytes":  8116,
+                                                    "lines":  180,
+                                                    "sha256":  "916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                                    "symbol":  "ProjectMemoryToolPack",
+                                                    "line":  8,
+                                                    "bytes":  16201,
+                                                    "lines":  246,
+                                                    "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift",
+                                                    "symbol":  "SearchToolPack",
+                                                    "line":  10,
+                                                    "bytes":  1608,
+                                                    "lines":  37,
+                                                    "sha256":  "c13e5b592375c794fd229f980127202c2fff1a32345bfec3cab0252ef6d75233"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift",
+                                                    "symbol":  "ShellToolPack",
+                                                    "line":  10,
+                                                    "bytes":  2406,
+                                                    "lines":  53,
+                                                    "sha256":  "71139cc445bdb8897c6c4208ee6cc124372526807327f5c811a463dde72e598a"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ToolArgHelpers.swift",
+                                                    "symbol":  "ToolArgHelpers",
+                                                    "line":  10,
+                                                    "bytes":  1629,
+                                                    "lines":  34,
+                                                    "sha256":  "d8d5dd898d39408f3807c8cce0d1fad6cdce0bd3caaa4b3c7924a817d0868bc6"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Exact semantic snapshot",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-003",
+                         "category":  "MCP",
+                         "feature":  "Primary role",
+                         "behavior":  "Independent server identity and health",
+                         "original_evidence":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                                                    "symbol":  "MCPServer",
+                                                    "line":  11,
+                                                    "bytes":  27391,
+                                                    "lines":  584,
+                                                    "sha256":  "511d2b1f438ffd223263fff4ed6899cfddb0d7fc768212ee575061ca60141765"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Role smoke",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-004",
+                         "category":  "MCP",
+                         "feature":  "Fallback role",
+                         "behavior":  "Independent fallback identity and health",
+                         "original_evidence":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/MCP/MCPServer.swift",
+                                                    "symbol":  "MCPServer",
+                                                    "line":  11,
+                                                    "bytes":  27391,
+                                                    "lines":  584,
+                                                    "sha256":  "511d2b1f438ffd223263fff4ed6899cfddb0d7fc768212ee575061ca60141765"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Role smoke",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-005",
+                         "category":  "MCP",
+                         "feature":  "Transactional registration",
+                         "behavior":  "Stage, backup, atomic commit, rollback",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift",
+                                                    "symbol":  "LMStudioMCPPluginInstaller",
+                                                    "line":  17,
+                                                    "bytes":  21120,
+                                                    "lines":  454,
+                                                    "sha256":  "da120074ca73ff9310724ea314f4f8f976809558489c81a51a4ea0f35c0bc084"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Fault-injection tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-006",
+                         "category":  "MCP",
+                         "feature":  "Host revision synchronization",
+                         "behavior":  "Deployment revision evidence",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/LMStudioDeployService.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/LMStudioDeployService.swift",
+                                                    "symbol":  "LMStudioDeployService",
+                                                    "line":  19,
+                                                    "bytes":  26800,
+                                                    "lines":  562,
+                                                    "sha256":  "5efceb87a91409f1f06eb7cac43652bddd860b41000c7b47ff3373fc3200a341"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Real host or fixture gate",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-007",
+                         "category":  "MCP",
+                         "feature":  "Auto-heal",
+                         "behavior":  "Detect and repair drift through typed boundary",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift",
+                                                    "symbol":  "LMStudioMCPPluginInstaller",
+                                                    "line":  17,
+                                                    "bytes":  21120,
+                                                    "lines":  454,
+                                                    "sha256":  "da120074ca73ff9310724ea314f4f8f976809558489c81a51a4ea0f35c0bc084"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Repair tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MCP-008",
+                         "category":  "MCP",
+                         "feature":  "Independent serve verifier",
+                         "behavior":  "Initialize/tools-list smoke",
+                         "original_evidence":  "Sources/ForgeConductorCore/MCP/MCPServeVerifier.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/MCP/MCPServeVerifier.swift",
+                                                    "symbol":  "MCPServeVerifier",
+                                                    "line":  12,
+                                                    "bytes":  11716,
+                                                    "lines":  267,
+                                                    "sha256":  "fa44f45992dd3f0479da03144a349549c703656e0c337e4b8fffcbf96501cfbd"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Primary/fallback verifier",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-001",
+                         "category":  "Tools",
+                         "feature":  "Filesystem tools",
+                         "behavior":  "Read/write/edit/list/glob/mkdir/delete/move",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+                                                    "symbol":  "FilesystemToolPack",
+                                                    "line":  10,
+                                                    "bytes":  10445,
+                                                    "lines":  209,
+                                                    "sha256":  "f7e8a042789f5f7bb5f9c5e708b0922d85ebbf44c8cb573fc67f97f905adddfb"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Bounds and path auth",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-002",
+                         "category":  "Tools",
+                         "feature":  "Git tools",
+                         "behavior":  "status/diff/log/add/commit",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+                                                    "symbol":  "GitToolPack",
+                                                    "line":  10,
+                                                    "bytes":  2243,
+                                                    "lines":  50,
+                                                    "sha256":  "5f73162eeae9bad8dd7a2b6feb7e1cbb9ff27ec96176d5eee41bb2ebbcd03e80"
+                                                }
+                                            ],
+                         "windows_acceptance":  "No shell composition",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-003",
+                         "category":  "Tools",
+                         "feature":  "Text search",
+                         "behavior":  "Bounded recursive search",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift",
+                                                    "symbol":  "SearchToolPack",
+                                                    "line":  10,
+                                                    "bytes":  1608,
+                                                    "lines":  37,
+                                                    "sha256":  "c13e5b592375c794fd229f980127202c2fff1a32345bfec3cab0252ef6d75233"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Native walker",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-004",
+                         "category":  "Tools",
+                         "feature":  "PDF tools",
+                         "behavior":  "Write PDF and convert text file",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
+                                                    "symbol":  "DocsToolPack",
+                                                    "line":  10,
+                                                    "bytes":  2551,
+                                                    "lines":  53,
+                                                    "sha256":  "59cbcff5fc98ec0e595a62e9f8b81c0039d0e84ca28bbd8be9c7ca7a5188282e"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Native PDF output",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-005",
+                         "category":  "Tools",
+                         "feature":  "Shell tool",
+                         "behavior":  "Opt-in bounded shell execution",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift",
+                                                    "symbol":  "ShellToolPack",
+                                                    "line":  10,
+                                                    "bytes":  2406,
+                                                    "lines":  53,
+                                                    "sha256":  "71139cc445bdb8897c6c4208ee6cc124372526807327f5c811a463dde72e598a"
+                                                }
+                                            ],
+                         "windows_acceptance":  "PowerShell/Job Object, disabled default",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-006",
+                         "category":  "Tools",
+                         "feature":  "Authorization",
+                         "behavior":  "Workspace root and shell policy",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ToolAuthorizationService.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ToolAuthorizationService.swift",
+                                                    "symbol":  "ToolAuthorizationDecision",
+                                                    "line":  13,
+                                                    "bytes":  12944,
+                                                    "lines":  276,
+                                                    "sha256":  "447a2bdc8907718371bea44a3381df293e1e0872e8826939d00a3e1db781991b"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Negative security tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-007",
+                         "category":  "Tools",
+                         "feature":  "Audit",
+                         "behavior":  "Sanitized args, status, duration, error",
+                         "original_evidence":  "Sources/ForgeConductorCore/Infrastructure/AuditService.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/AuditService.swift",
+                                                    "symbol":  "AuditService",
+                                                    "line":  10,
+                                                    "bytes":  3157,
+                                                    "lines":  90,
+                                                    "sha256":  "22b72bbdf747706c453aa21e9ac923ac4d1d7462c796543e52e479d8d90ea4da"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Bounded retention",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TOOL-008",
+                         "category":  "Tools",
+                         "feature":  "Identical-call loop protection",
+                         "behavior":  "Checkpoint and hard block repeated loops",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ToolRouter.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ToolRouter.swift",
+                                                    "symbol":  "ToolRouter",
+                                                    "line":  10,
+                                                    "bytes":  18533,
+                                                    "lines":  433,
+                                                    "sha256":  "614e9ef0663b8e2a37eb02aa72b55717026aa7fcf84327e2641f3a24754cb190"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Deterministic tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "AGENT-001",
+                         "category":  "Agents",
+                         "feature":  "Embedded catalog",
+                         "behavior":  "Load built-in agent cards/playbooks",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/AgentCatalog.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/AgentCatalog.swift",
+                                                    "symbol":  "AgentCatalog",
+                                                    "line":  10,
+                                                    "bytes":  21945,
+                                                    "lines":  390,
+                                                    "sha256":  "e5bb41f33660dba2a20fb97da0cb3df9147b6a4d40da0d2a760f650603ad3a48"
+                                                }
+                                            ],
+                         "windows_acceptance":  "At least source-equivalent catalog",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "AGENT-002",
+                         "category":  "Agents",
+                         "feature":  "Recommend agent",
+                         "behavior":  "Task-to-agent recommendation",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+                                                    "symbol":  "AgentToolPack",
+                                                    "line":  10,
+                                                    "bytes":  4603,
+                                                    "lines":  88,
+                                                    "sha256":  "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Deterministic fixtures",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "AGENT-003",
+                         "category":  "Agents",
+                         "feature":  "Durable runs",
+                         "behavior":  "Start/status/complete sessions",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/AgentSessionService.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/AgentSessionService.swift",
+                                                    "symbol":  "AgentSessionService",
+                                                    "line":  10,
+                                                    "bytes":  19831,
+                                                    "lines":  475,
+                                                    "sha256":  "9b9dc37ee186e5d195484fbabd1d5cef25f701675d1e60e082e18d06f9d0cb00"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Crash/restart persistence",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MEM-001",
+                         "category":  "Memory",
+                         "feature":  "Legacy memory set/get/list/delete/search",
+                         "behavior":  "Backward-compatible global memory tools",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+                                                    "symbol":  "MemoryToolPack",
+                                                    "line":  10,
+                                                    "bytes":  8116,
+                                                    "lines":  180,
+                                                    "sha256":  "916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Schema/error parity",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MEM-002",
+                         "category":  "Memory",
+                         "feature":  "Memory bounds",
+                         "behavior":  "Key/body/tag/query limits",
+                         "original_evidence":  "Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift",
+                                                    "symbol":  "StoreError",
+                                                    "line":  12,
+                                                    "bytes":  39463,
+                                                    "lines":  936,
+                                                    "sha256":  "a5c7ec5750be9c5342dbc9fe5c1adde8e6c5a1f57d3009681b5ac1fb751f5ca0"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Limit tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-001",
+                         "category":  "Project Memory",
+                         "feature":  "Multi-project identity",
+                         "behavior":  "UUID, aliases, repository identity",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ProjectMemoryService.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ProjectMemoryService.swift",
+                                                    "symbol":  "ProjectRegistryFile",
+                                                    "line":  9,
+                                                    "bytes":  29189,
+                                                    "lines":  530,
+                                                    "sha256":  "5110cc96c166761e4ff5c69051fa6ab412ad16bdc20935333ed59f98e25e92a8"
+                                                }
+                                            ],
+                         "windows_acceptance":  "No implicit newest-project selection",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-002",
+                         "category":  "Project Memory",
+                         "feature":  "Per-project database isolation",
+                         "behavior":  "Separate project stores",
+                         "original_evidence":  "Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift",
+                                                    "symbol":  "ProjectMemoryRepository",
+                                                    "line":  9,
+                                                    "bytes":  50277,
+                                                    "lines":  923,
+                                                    "sha256":  "0b6c85105b374a6275afccd735fc72b2938ddb38358753206a912aca606e9042"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Cross-project negative tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-003",
+                         "category":  "Project Memory",
+                         "feature":  "Initialize/remember/batch",
+                         "behavior":  "Transactional writes and idempotency",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                                    "symbol":  "ProjectMemoryToolPack",
+                                                    "line":  8,
+                                                    "bytes":  16201,
+                                                    "lines":  246,
+                                                    "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Contract tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-004",
+                         "category":  "Project Memory",
+                         "feature":  "Search/get/recent",
+                         "behavior":  "Deterministic bounded reads",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                                    "symbol":  "ProjectMemoryToolPack",
+                                                    "line":  8,
+                                                    "bytes":  16201,
+                                                    "lines":  246,
+                                                    "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Pagination/order tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-005",
+                         "category":  "Project Memory",
+                         "feature":  "Update/forget/link",
+                         "behavior":  "Optimistic update, tombstone, typed link",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                                    "symbol":  "ProjectMemoryToolPack",
+                                                    "line":  8,
+                                                    "bytes":  16201,
+                                                    "lines":  246,
+                                                    "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Conflict/idempotency tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-006",
+                         "category":  "Project Memory",
+                         "feature":  "Export/import/status",
+                         "behavior":  "Checksums, preview, health",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+                                                    "symbol":  "ProjectMemoryToolPack",
+                                                    "line":  8,
+                                                    "bytes":  16201,
+                                                    "lines":  246,
+                                                    "sha256":  "70e21d38ce0f0afed9472e6e2a7b9e15fc5c7cb28ef3254d6387af1e76cf60c2"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Round-trip/corruption tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-007",
+                         "category":  "Project Memory",
+                         "feature":  "Redaction",
+                         "behavior":  "Redact secrets/reject private keys",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ProjectMemoryService.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ProjectMemoryService.swift",
+                                                    "symbol":  "ProjectRegistryFile",
+                                                    "line":  9,
+                                                    "bytes":  29189,
+                                                    "lines":  530,
+                                                    "sha256":  "5110cc96c166761e4ff5c69051fa6ab412ad16bdc20935333ed59f98e25e92a8"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Security fixtures",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "PMEM-008",
+                         "category":  "Project Memory",
+                         "feature":  "Reset from Settings/CLI",
+                         "behavior":  "Per-project and global scoped reset",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/specifications/PROJECT_MEMORY_TOOL_CONTRACT.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1105,
+                                                    "lines":  19,
+                                                    "sha256":  "c18d8321b0784358aa576836920d4a1b2010c4da902fe2305791a809df3d3a5b"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Transactional reset evidence",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "CONT-001",
+                         "category":  "Continuity",
+                         "feature":  "Legacy checkpoint/handoff/context tools",
+                         "behavior":  "Backward-compatible handoff surface",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+                                                    "symbol":  "ContinuityToolPack",
+                                                    "line":  9,
+                                                    "bytes":  2368,
+                                                    "lines":  48,
+                                                    "sha256":  "22a5aa47b76c023acfdbda5f7de405e9f31bbc8e67473f4b26f1274bd135fd94"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Golden tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CONT-002",
+                         "category":  "Continuity",
+                         "feature":  "Lifecycle tools",
+                         "behavior":  "Seven continuity.* tools",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+                                                    "symbol":  "ContinuityLifecycleToolPack",
+                                                    "line":  8,
+                                                    "bytes":  5084,
+                                                    "lines":  81,
+                                                    "sha256":  "76e3b21f258fccb5a0a80ec75efc9c50528d951ebf2ca87caf8f44247a6ea28f"
+                                                }
+                                            ],
+                         "windows_acceptance":  "State-machine tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CONT-003",
+                         "category":  "Continuity",
+                         "feature":  "Automatic checkpoints",
+                         "behavior":  "Progress/time-based persistence",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ContinuityAutomation.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ContinuityAutomation.swift",
+                                                    "symbol":  "WorkspaceRootProviding",
+                                                    "line":  10,
+                                                    "bytes":  12989,
+                                                    "lines":  303,
+                                                    "sha256":  "7d6f200e5863b9724b11fbd8be455feb1aae092e81fb003e09aa31df89e28c11"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Budget tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CONT-004",
+                         "category":  "Continuity",
+                         "feature":  "Automatic rollover",
+                         "behavior":  "Context threshold creates successor",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ContinuityCoordinator.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ContinuityCoordinator.swift",
+                                                    "symbol":  "ContinuityCrashPoint",
+                                                    "line":  8,
+                                                    "bytes":  22444,
+                                                    "lines":  428,
+                                                    "sha256":  "11e112df156c841280c4456a933b606a9050bc0e22b5e79184836978fdfeebee"
+                                                }
+                                            ],
+                         "windows_acceptance":  "End-to-end autonomous test",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CONT-005",
+                         "category":  "Continuity",
+                         "feature":  "Native session host plugin",
+                         "behavior":  "Create/bootstrap/ack/cancel/recover",
+                         "original_evidence":  "Sources/ForgeNativeSessionHostPlugin/ForgeNativeSessionHostPlugin.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeNativeSessionHostPlugin/ForgeNativeSessionHostPlugin.swift",
+                                                    "symbol":  "NativeHostPluginError",
+                                                    "line":  11,
+                                                    "bytes":  18325,
+                                                    "lines":  372,
+                                                    "sha256":  "12ec1e4eaae0a911948baa87115b95e44bcab42248136c99f1db30dc857b22d2"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Crash/idempotency tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CONT-006",
+                         "category":  "Continuity",
+                         "feature":  "Exact acknowledgment",
+                         "behavior":  "Handoff/session/checksum match",
+                         "original_evidence":  "Sources/ForgeConductorCore/Application/ContinuityCoordinator.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Application/ContinuityCoordinator.swift",
+                                                    "symbol":  "ContinuityCrashPoint",
+                                                    "line":  8,
+                                                    "bytes":  22444,
+                                                    "lines":  428,
+                                                    "sha256":  "11e112df156c841280c4456a933b606a9050bc0e22b5e79184836978fdfeebee"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Wrong-ack negatives",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CONT-007",
+                         "category":  "Continuity",
+                         "feature":  "Project isolation",
+                         "behavior":  "Per-project active operation/session",
+                         "original_evidence":  "Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift",
+                                                    "symbol":  "ProjectMemoryRepository",
+                                                    "line":  9,
+                                                    "bytes":  50277,
+                                                    "lines":  923,
+                                                    "sha256":  "0b6c85105b374a6275afccd735fc72b2938ddb38358753206a912aca606e9042"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Concurrent projects",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "CONT-008",
+                         "category":  "Continuity",
+                         "feature":  "Reset from Settings/CLI",
+                         "behavior":  "Scoped continuity reset",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/CONTINUITY_AND_SESSION_HOST.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  3028,
+                                                    "lines":  71,
+                                                    "sha256":  "c6819e807940e108eaf46c1c81d0f092fdff8e0b66d79ed570eedfdbe8de856a"
+                                                }
+                                            ],
+                         "windows_acceptance":  "No memory loss when continuity-only",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "MGR-001",
+                         "category":  "Manager",
+                         "feature":  "Single dashboard owner",
+                         "behavior":  "GUI attaches, manager listens",
+                         "original_evidence":  "Sources/ForgeConductorCore/Manager/ManagerNode.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Manager/ManagerNode.swift",
+                                                    "symbol":  "ManagerServiceState",
+                                                    "line":  11,
+                                                    "bytes":  14901,
+                                                    "lines":  410,
+                                                    "sha256":  "31d3ac4e4887650f3dfffaa127bb7f3809ce1c25f821128d329bc182523aa9a8"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Port collision tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MGR-002",
+                         "category":  "Manager",
+                         "feature":  "Startup installation",
+                         "behavior":  "Per-user automatic manager start",
+                         "original_evidence":  "Sources/ForgeConductorCore/Manager/ManagerInstaller.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Manager/ManagerInstaller.swift",
+                                                    "symbol":  "ManagerArtifactKind",
+                                                    "line":  11,
+                                                    "bytes":  54033,
+                                                    "lines":  1292,
+                                                    "sha256":  "298e5f15eb4d0ac79983e3a49145344b47d39e164ab063f6216cc1f7461cfe18"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Task registration tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MGR-003",
+                         "category":  "Manager",
+                         "feature":  "Watchdog/restart",
+                         "behavior":  "Health, recovery, bounded restart",
+                         "original_evidence":  "Sources/ForgeConductorCore/Manager/ManagerNode.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Manager/ManagerNode.swift",
+                                                    "symbol":  "ManagerServiceState",
+                                                    "line":  11,
+                                                    "bytes":  14901,
+                                                    "lines":  410,
+                                                    "sha256":  "31d3ac4e4887650f3dfffaa127bb7f3809ce1c25f821128d329bc182523aa9a8"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Fault injection",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "MGR-004",
+                         "category":  "Manager",
+                         "feature":  "Typed client",
+                         "behavior":  "GUI manager client",
+                         "original_evidence":  "Sources/ForgeConductorCore/Manager/ManagerDashboardClient.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Manager/ManagerDashboardClient.swift",
+                                                    "symbol":  "ManagerDashboardClient",
+                                                    "line":  11,
+                                                    "bytes":  4104,
+                                                    "lines":  89,
+                                                    "sha256":  "cb6e7a523383a33b2065c2829d4a317b8eaeb241e9acd76f30a9151f960f3399"
+                                                }
+                                            ],
+                         "windows_acceptance":  "IPC compatibility",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "DASH-001",
+                         "category":  "Dashboard",
+                         "feature":  "Loopback dashboard",
+                         "behavior":  "Operational/manager/telemetry routes",
+                         "original_evidence":  "Sources/ForgeConductorCore/Dashboard",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Dashboard/DashboardHTML.swift",
+                                                    "symbol":  "DashboardHTML",
+                                                    "line":  12,
+                                                    "bytes":  19569,
+                                                    "lines":  452,
+                                                    "sha256":  "633d99084d90b2ccbf3b46d336f81d1d53267ce815cc12e9f3e305994a632d05"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Dashboard/DashboardHTTPRequest.swift",
+                                                    "symbol":  "DashboardHTTPRequest",
+                                                    "line":  11,
+                                                    "bytes":  7246,
+                                                    "lines":  154,
+                                                    "sha256":  "c77b002f3c1e0ae390e7a32e3ff5101d37a60816260783c736b277493692d391"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Dashboard/DashboardServer.swift",
+                                                    "symbol":  "DashboardBindResult",
+                                                    "line":  13,
+                                                    "bytes":  12639,
+                                                    "lines":  279,
+                                                    "sha256":  "055caca8d7535cca499badca7cdb6378ade81964824dd841d83a2e82bc15df0e"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Dashboard/HTTPResponder.swift",
+                                                    "symbol":  "HTTPResponder",
+                                                    "line":  12,
+                                                    "bytes":  12788,
+                                                    "lines":  343,
+                                                    "sha256":  "d5e64ce730bda8d3718d8365995e3e0a7a7d8d5a63f2f77a7ee25111708f9be7"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Dashboard/ManagerRoutes.swift",
+                                                    "symbol":  "ManagerRoutes",
+                                                    "line":  11,
+                                                    "bytes":  2454,
+                                                    "lines":  48,
+                                                    "sha256":  "4ed02b2a804bbd9255daa6e780655a732139ea2bfbe07d4285e125e6390e7ce4"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Dashboard/OperationalRoutes.swift",
+                                                    "symbol":  "OperationalRoutes",
+                                                    "line":  12,
+                                                    "bytes":  3964,
+                                                    "lines":  78,
+                                                    "sha256":  "3fe7b816c4b1f0ae327d7a208aae5fd8087b6908861cb0dfd8eb6149d0761f15"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Dashboard/TelemetryRoutes.swift",
+                                                    "symbol":  "TelemetryRoutes",
+                                                    "line":  11,
+                                                    "bytes":  5220,
+                                                    "lines":  100,
+                                                    "sha256":  "3f186a190594309c124ccc0ae8cfb134b1ea4f8f4e9abc25d2092af4b36cc43f"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Token-auth loopback tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TEL-001",
+                         "category":  "Telemetry",
+                         "feature":  "CPU metrics",
+                         "behavior":  "Utilization/frequency availability",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/Collectors/CPUCollector.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/CPUCollector.swift",
+                                                    "symbol":  "CPUCollector",
+                                                    "line":  17,
+                                                    "bytes":  8467,
+                                                    "lines":  196,
+                                                    "sha256":  "df7b189a9e49c59d1f8d7f2cf32c42c79e367e9dea92cadc6549562cfe97b8a4"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Field mapping tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TEL-002",
+                         "category":  "Telemetry",
+                         "feature":  "GPU metrics",
+                         "behavior":  "Utilization/memory/availability",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/Collectors/GPUCollector.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/GPUCollector.swift",
+                                                    "symbol":  "GPUCollector",
+                                                    "line":  16,
+                                                    "bytes":  3928,
+                                                    "lines":  84,
+                                                    "sha256":  "76a0f5fff242984b16a36458648183c6676e9bbcb3af263dda3b90f51c0bcf1f"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Driver fallback tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TEL-003",
+                         "category":  "Telemetry",
+                         "feature":  "RAM metrics",
+                         "behavior":  "Used/available/pressure mapping",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/Collectors/RAMCollector.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/RAMCollector.swift",
+                                                    "symbol":  "RAMCollector",
+                                                    "line":  12,
+                                                    "bytes":  2768,
+                                                    "lines":  53,
+                                                    "sha256":  "f91c4c2f796bb9de86b7008bcc9112ee068589fa5bc26146ad5399c66c68053f"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Known-value tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TEL-004",
+                         "category":  "Telemetry",
+                         "feature":  "Disk metrics",
+                         "behavior":  "Volume and I/O",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/Collectors",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/CPUCollector.swift",
+                                                    "symbol":  "CPUCollector",
+                                                    "line":  17,
+                                                    "bytes":  8467,
+                                                    "lines":  196,
+                                                    "sha256":  "df7b189a9e49c59d1f8d7f2cf32c42c79e367e9dea92cadc6549562cfe97b8a4"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/CPUFrequencyEstimator.swift",
+                                                    "symbol":  "CPUFrequencyEstimator",
+                                                    "line":  20,
+                                                    "bytes":  7140,
+                                                    "lines":  173,
+                                                    "sha256":  "93a620385f935139e0f9c9874e8588e5225210aa2b3255b47178156ddcfe2fea"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/DiskIOCollector.swift",
+                                                    "symbol":  "DiskIOCollector",
+                                                    "line":  16,
+                                                    "bytes":  3952,
+                                                    "lines":  94,
+                                                    "sha256":  "dbf823cec35dc9d66daf86b0a4a902f8920dbe6fd58525efc950052115f4baba"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/DiskVolumeCollector.swift",
+                                                    "symbol":  "DiskVolumeCollector",
+                                                    "line":  10,
+                                                    "bytes":  1671,
+                                                    "lines":  35,
+                                                    "sha256":  "67ff326c79e011fd308b0d98575dba07b449d813b5991279d73b487dcaebc6db"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/GPUCollector.swift",
+                                                    "symbol":  "GPUCollector",
+                                                    "line":  16,
+                                                    "bytes":  3928,
+                                                    "lines":  84,
+                                                    "sha256":  "76a0f5fff242984b16a36458648183c6676e9bbcb3af263dda3b90f51c0bcf1f"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/IOKitPropertyWalk.swift",
+                                                    "symbol":  "IOKitPropertyWalk",
+                                                    "line":  16,
+                                                    "bytes":  3463,
+                                                    "lines":  79,
+                                                    "sha256":  "041ccafc91d4eab011e91a7aad78c7ef5c234db3b870ff63d09bfc978217480a"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/PowerSourcesCollector.swift",
+                                                    "symbol":  "PowerSourcesCollector",
+                                                    "line":  18,
+                                                    "bytes":  4519,
+                                                    "lines":  111,
+                                                    "sha256":  "b35507ff32b50f62cd64a43bd7d1a4c084a512a701ed782a1ae70d9b5bed0572"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/ProcessMetricsCollector.swift",
+                                                    "symbol":  "ProcessMetricsCollector",
+                                                    "line":  25,
+                                                    "bytes":  8978,
+                                                    "lines":  214,
+                                                    "sha256":  "320925650251f5fa4e75f861a0232bba74fc3d1fb405d60e9e7785099431f177"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/RAMCollector.swift",
+                                                    "symbol":  "RAMCollector",
+                                                    "line":  12,
+                                                    "bytes":  2768,
+                                                    "lines":  53,
+                                                    "sha256":  "f91c4c2f796bb9de86b7008bcc9112ee068589fa5bc26146ad5399c66c68053f"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Mapping tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TEL-005",
+                         "category":  "Telemetry",
+                         "feature":  "Process metrics",
+                         "behavior":  "LM Studio/Forge processes",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/Collectors/ProcessMetricsCollector.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Collectors/ProcessMetricsCollector.swift",
+                                                    "symbol":  "ProcessMetricsCollector",
+                                                    "line":  25,
+                                                    "bytes":  8978,
+                                                    "lines":  214,
+                                                    "sha256":  "320925650251f5fa4e75f861a0232bba74fc3d1fb405d60e9e7785099431f177"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Identity tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TEL-006",
+                         "category":  "Telemetry",
+                         "feature":  "Latest-value delivery",
+                         "behavior":  "Bounded coalescing mailbox",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/LatestValueMailbox.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/LatestValueMailbox.swift",
+                                                    "symbol":  "LatestValueMailbox",
+                                                    "line":  8,
+                                                    "bytes":  8039,
+                                                    "lines":  223,
+                                                    "sha256":  "93cbd7228b64a502432363046ba06160b485accd7fe36acca10f3ddb2a58d70a"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Queue depth never exceeds one",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "TEL-007",
+                         "category":  "Telemetry",
+                         "feature":  "Bounded histories",
+                         "behavior":  "Ring buffers/downsampling",
+                         "original_evidence":  "Sources/ForgeConductorCore/Telemetry/Models",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Models/ForgeUIModels.swift",
+                                                    "symbol":  "MCPServerCard",
+                                                    "line":  15,
+                                                    "bytes":  10402,
+                                                    "lines":  271,
+                                                    "sha256":  "9fcc28a4558b20cea5fa03037b68f0aba3901f87c012780d8d6b193d716bee99"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Telemetry/Models/TelemetryModels.swift",
+                                                    "symbol":  "TelemetryHealth",
+                                                    "line":  12,
+                                                    "bytes":  16814,
+                                                    "lines":  535,
+                                                    "sha256":  "34ae112218eef1e196d68a7164f8bbee33cd7a6b156d6ac861117d16ce9c4147"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Stress tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "GFX-001",
+                         "category":  "Rendering",
+                         "feature":  "Shared graphics resources",
+                         "behavior":  "One device/factory/cache service",
+                         "original_evidence":  "Sources/ForgeConductorApp/Metal/MetalGaugeResources.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalGaugeResources.swift",
+                                                    "symbol":  "GaugeVertex",
+                                                    "line":  10,
+                                                    "bytes":  5128,
+                                                    "lines":  123,
+                                                    "sha256":  "03070d0e78f79bce568e73c7834c68bdf9b92581a5ac1297039b3c20476a5c4d"
+                                                }
+                                            ],
+                         "windows_acceptance":  "No per-gauge device",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "GFX-002",
+                         "category":  "Rendering",
+                         "feature":  "Render-on-demand",
+                         "behavior":  "Visible/data-change bounded rendering",
+                         "original_evidence":  "Sources/ForgeConductorApp/Metal",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/LoadTraceRenderer.swift",
+                                                    "symbol":  "LoadTraceRenderer",
+                                                    "line":  14,
+                                                    "bytes":  5093,
+                                                    "lines":  129,
+                                                    "sha256":  "2c08d052073e9c54de640524d43f9a2e6322658f371c2d172be368b322cb4ac3"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalGaugeKit.swift",
+                                                    "symbol":  "MetalGaugePalette",
+                                                    "line":  26,
+                                                    "bytes":  20292,
+                                                    "lines":  514,
+                                                    "sha256":  "dee9d7e533403cb935e0b14e5a901aee61b284ffd8b992e2141fa3edf2dadb57"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalGaugeResources.swift",
+                                                    "symbol":  "GaugeVertex",
+                                                    "line":  10,
+                                                    "bytes":  5128,
+                                                    "lines":  123,
+                                                    "sha256":  "03070d0e78f79bce568e73c7834c68bdf9b92581a5ac1297039b3c20476a5c4d"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalLoadChart.swift",
+                                                    "symbol":  "MetalLoadChart",
+                                                    "line":  11,
+                                                    "bytes":  1042,
+                                                    "lines":  26,
+                                                    "sha256":  "42474d73eefd108e0b522e30ad80dfd31c01dc4c2b351831814f57cb60c1056d"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MetalMeterView.swift",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  397,
+                                                    "lines":  7,
+                                                    "sha256":  "ddcb1018f5c435132eb6f5f5f4c7b7333615cfff58d4463c096b624a65fbafed"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorApp/Metal/MultiSeriesLoadRenderer.swift",
+                                                    "symbol":  "MultiSeriesLoadRenderer",
+                                                    "line":  15,
+                                                    "bytes":  7933,
+                                                    "lines":  199,
+                                                    "sha256":  "f09f7b2bc9be88309a181b0bcfec71fc46dec09ea4aa8cb7d9b20fc66d0037f2"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Idle GPU gate",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "GFX-003",
+                         "category":  "Rendering",
+                         "feature":  "Device-loss recovery",
+                         "behavior":  "Recreate shared graph",
+                         "original_evidence":  "Windows requirement",
+                         "evidence_origin":  "windows_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "windows_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/TELEMETRY_AND_RENDERING.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  2182,
+                                                    "lines":  40,
+                                                    "sha256":  "55c34d93e09e4afba8f148fa28412fabf31b497a956a87d913c948fd40b19270"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Fault injection",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "DIAG-001",
+                         "category":  "Diagnostics",
+                         "feature":  "Structured diagnostics",
+                         "behavior":  "Categories, levels, bounded files, ETW",
+                         "original_evidence":  "Sources/ForgeConductorCore/Infrastructure/DiagnosticLog.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/DiagnosticLog.swift",
+                                                    "symbol":  "DiagnosticRedaction",
+                                                    "line":  9,
+                                                    "bytes":  16082,
+                                                    "lines":  386,
+                                                    "sha256":  "0c8d42e315cacd4734a7014671ed7e4a9c317fbeea019f68887adb37f29bc5d0"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Redaction/rotation tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "DIAG-002",
+                         "category":  "Diagnostics",
+                         "feature":  "Runtime ownership snapshot",
+                         "behavior":  "Tasks/timers/processes/queues/databases",
+                         "original_evidence":  "Sources/ForgeConductorCore/Infrastructure/RuntimeObservability.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/RuntimeObservability.swift",
+                                                    "symbol":  "RuntimeCounter",
+                                                    "line":  9,
+                                                    "bytes":  6982,
+                                                    "lines":  145,
+                                                    "sha256":  "b1477822a5ec4187c9a44128c2bd9225a485166130c981484c3ebbab80c1e917"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Shutdown zero-owner gate",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "SEC-001",
+                         "category":  "Security",
+                         "feature":  "DPAPI secrets",
+                         "behavior":  "Current-user protected secrets",
+                         "original_evidence":  "Platform replacement",
+                         "evidence_origin":  "platform_replacement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "platform_replacement",
+                                                    "path":  ".forge-codex/instructions/architecture/SECURITY.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1687,
+                                                    "lines":  23,
+                                                    "sha256":  "1ac4e48f30b909a9fdea0f0fb339550da9fc6d4c91a5cd9deb3ab80f0506c681"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Round-trip and user-bound tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "SEC-002",
+                         "category":  "Security",
+                         "feature":  "Process Job Objects",
+                         "behavior":  "Timeout/cancel process tree",
+                         "original_evidence":  "Sources/ForgeConductorCore/Infrastructure/ProcessRunner.swift",
+                         "evidence_origin":  "macos_source",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/ProcessRunner.swift",
+                                                    "symbol":  "ProcessResult",
+                                                    "line":  14,
+                                                    "bytes":  14988,
+                                                    "lines":  346,
+                                                    "sha256":  "b61c03729e0ba2838dea6e2d2254fe9983a04839d799d3dae015fe501b2bb9dc"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Child-tree kill test",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  null
+                     },
+                     {
+                         "id":  "SEC-003",
+                         "category":  "Security",
+                         "feature":  "Authenticated IPC",
+                         "behavior":  "Current-user named pipe and dashboard token",
+                         "original_evidence":  "Windows requirement",
+                         "evidence_origin":  "windows_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "windows_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/SECURITY.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1687,
+                                                    "lines":  23,
+                                                    "sha256":  "1ac4e48f30b909a9fdea0f0fb339550da9fc6d4c91a5cd9deb3ab80f0506c681"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Cross-user denial tests",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "DATA-001",
+                         "category":  "Data",
+                         "feature":  "macOS import",
+                         "behavior":  "Config/store/projects/handoffs/sessions",
+                         "original_evidence":  "macOS data layout docs",
+                         "evidence_origin":  "cross_source_contract",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/AppPaths.swift",
+                                                    "symbol":  "AppPaths",
+                                                    "line":  10,
+                                                    "bytes":  4637,
+                                                    "lines":  79,
+                                                    "sha256":  "8375fd682538cb1ec52db0a8c15f2605f0aa31fffc2c974d3be40052c1e63ccf"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift",
+                                                    "symbol":  "StoreError",
+                                                    "line":  12,
+                                                    "bytes":  39463,
+                                                    "lines":  936,
+                                                    "sha256":  "a5c7ec5750be9c5342dbc9fe5c1adde8e6c5a1f57d3009681b5ac1fb751f5ca0"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "Sources/ForgeConductorCore/Infrastructure/ProjectMemoryRepository.swift",
+                                                    "symbol":  "ProjectMemoryRepository",
+                                                    "line":  9,
+                                                    "bytes":  50277,
+                                                    "lines":  923,
+                                                    "sha256":  "0b6c85105b374a6275afccd735fc72b2938ddb38358753206a912aca606e9042"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "README.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  7876,
+                                                    "lines":  122,
+                                                    "sha256":  "a229aca6a04fa4c0e0493a1bbd736fc1691c3a14648293dcc550690ab03eaa7e"
+                                                },
+                                                {
+                                                    "origin":  "macos_source",
+                                                    "path":  "docs/ARCHITECTURE.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  6305,
+                                                    "lines":  91,
+                                                    "sha256":  "b9a3009eda063afd2d0c7df53ff9d0c3a49afaaca0701cd152014083b62d6baa"
+                                                },
+                                                {
+                                                    "origin":  "cross_source_contract",
+                                                    "path":  ".forge-codex/instructions/architecture/PERSISTENCE_AND_MIGRATION.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1526,
+                                                    "lines":  31,
+                                                    "sha256":  "a2b1e5eaf813b1f52ca4c30cd6e1977a054cb416d46b58ff12f13e4cfbbfd519"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Dry-run/rollback/idempotency",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "PKG-001",
+                         "category":  "Packaging",
+                         "feature":  "MSIX package",
+                         "behavior":  "Packaged WinUI app and executables",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/INSTALLER_AND_RELEASE.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1618,
+                                                    "lines":  54,
+                                                    "sha256":  "e1db4fde4abe243f0bab63b7a83675d8c156d6b7b3043cc727a0bf6cecac7f77"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Install on clean profile",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "PKG-002",
+                         "category":  "Packaging",
+                         "feature":  "Native setup EXE",
+                         "behavior":  "Install/repair/update/uninstall/purge",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/INSTALLER_AND_RELEASE.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1618,
+                                                    "lines":  54,
+                                                    "sha256":  "e1db4fde4abe243f0bab63b7a83675d8c156d6b7b3043cc727a0bf6cecac7f77"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Lifecycle suite",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "PKG-003",
+                         "category":  "Packaging",
+                         "feature":  "Startup and CLI alias",
+                         "behavior":  "Manager startup and execution alias",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/INSTALLER_AND_RELEASE.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1618,
+                                                    "lines":  54,
+                                                    "sha256":  "e1db4fde4abe243f0bab63b7a83675d8c156d6b7b3043cc727a0bf6cecac7f77"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Post-install smoke",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "PKG-004",
+                         "category":  "Packaging",
+                         "feature":  "Upgrade/data preservation",
+                         "behavior":  "Transactional upgrade",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/INSTALLER_AND_RELEASE.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1618,
+                                                    "lines":  54,
+                                                    "sha256":  "e1db4fde4abe243f0bab63b7a83675d8c156d6b7b3043cc727a0bf6cecac7f77"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Previous-version fixture",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "PKG-005",
+                         "category":  "Packaging",
+                         "feature":  "x64/ARM64",
+                         "behavior":  "x64 required, ARM64 when toolchain supports",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/INSTALLER_AND_RELEASE.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1618,
+                                                    "lines":  54,
+                                                    "sha256":  "e1db4fde4abe243f0bab63b7a83675d8c156d6b7b3043cc727a0bf6cecac7f77"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Build/package evidence",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     },
+                     {
+                         "id":  "PKG-006",
+                         "category":  "Packaging",
+                         "feature":  "No Python/no attribution",
+                         "behavior":  "Scanners pass",
+                         "original_evidence":  "Owner requirement",
+                         "evidence_origin":  "owner_requirement",
+                         "source_anchors":  [
+                                                {
+                                                    "origin":  "owner_requirement",
+                                                    "path":  ".forge-codex/instructions/architecture/INSTALLER_AND_RELEASE.md",
+                                                    "symbol":  null,
+                                                    "line":  1,
+                                                    "bytes":  1618,
+                                                    "lines":  54,
+                                                    "sha256":  "e1db4fde4abe243f0bab63b7a83675d8c156d6b7b3043cc727a0bf6cecac7f77"
+                                                }
+                                            ],
+                         "windows_acceptance":  "Hard gate",
+                         "windows_status":  "not_started",
+                         "baseline_drift":  "Target requirement; not a macOS implementation claim."
+                     }
+                 ]
+}

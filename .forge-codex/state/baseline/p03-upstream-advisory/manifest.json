@@ -1,0 +1,58 @@
+{
+    "schema_version":  "1.0",
+    "status":  "pass",
+    "mode":  "manifest",
+    "validator":  {
+                      "name":  "forsetti_validate",
+                      "version":  "0.4.0"
+                  },
+    "invocation":  {
+                       "repo_root":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                       "mode":  "manifest",
+                       "strict":  true,
+                       "contract_path":  null,
+                       "project_context_path":  null,
+                       "edition_profile_path":  "editions/windows/forsetti-windows-0.2.0.profile.json",
+                       "manifest_path":  "D:/GitHub/Forge-Conductor-Windows-Edition/src/ForgeConductor.ForsettiModule/Resources/ForsettiManifests/ForgeConductorAppModule.json",
+                       "changed_files_path":  null,
+                       "timestamp_utc":  "2026-08-25T10:12:13.1708209Z"
+                   },
+    "summary":  {
+                    "status":  "pass",
+                    "total":  2,
+                    "passed":  2,
+                    "request_changes":  0,
+                    "blocks":  0,
+                    "duration_ms":  322
+                },
+    "findings":  [
+                     {
+                         "rule_id":  "FAE-F002",
+                         "severity":  "info",
+                         "decision":  "pass",
+                         "status":  "pass",
+                         "message":  "Edition profile is complete.",
+                         "evidence":  [
+                                          "windows 0.2.0"
+                                      ],
+                         "remediation":  null,
+                         "remediation_hint":  null,
+                         "category":  "edition-profile",
+                         "path":  "editions/windows/forsetti-windows-0.2.0.profile.json"
+                     },
+                     {
+                         "rule_id":  "FAE-F004",
+                         "severity":  "info",
+                         "decision":  "pass",
+                         "status":  "pass",
+                         "message":  "Manifest file was inspected against the selected profile.",
+                         "evidence":  [
+                                          "com.forsetti.app.forge-conductor-windows"
+                                      ],
+                         "remediation":  null,
+                         "remediation_hint":  null,
+                         "category":  "manifest",
+                         "path":  "D:/GitHub/Forge-Conductor-Windows-Edition/src/ForgeConductor.ForsettiModule/Resources/ForsettiManifests/ForgeConductorAppModule.json"
+                     }
+                 ]
+}

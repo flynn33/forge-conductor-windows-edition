@@ -1,0 +1,584 @@
+{
+  "schema_version": 1,
+  "phases": [
+    {
+      "id": "P00",
+      "title": "Package integrity and governing intake",
+      "dependencies": [],
+      "required_gates": [
+        "G00"
+      ],
+      "required_work": [
+        "Validate manifest and source hashes",
+        "Read governing files",
+        "Create durable run state and first handoff"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P01",
+      "title": "Windows toolchain discovery and provisioning",
+      "dependencies": [
+        "P00"
+      ],
+      "required_gates": [
+        "G01"
+      ],
+      "required_work": [
+        "Discover Windows/VS/MSVC/SDK/CMake/MSBuild/vcpkg/Windows App SDK",
+        "Provision first-party missing tools noninteractively",
+        "Record pinned versions"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P02",
+      "title": "Source archaeology and parity baseline",
+      "dependencies": [
+        "P00"
+      ],
+      "required_gates": [
+        "G02"
+      ],
+      "required_work": [
+        "Extract immutable inputs",
+        "Regenerate feature/MCP/CLI/schema/data/test inventories",
+        "Update parity matrix without deleting rows"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P03",
+      "title": "Forsetti contract and architecture decisions",
+      "dependencies": [
+        "P01",
+        "P02"
+      ],
+      "required_gates": [
+        "G03"
+      ],
+      "required_work": [
+        "Validate task contract/profile",
+        "Inventory public Forsetti APIs",
+        "Create architecture/dependency/module ADRs"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P04",
+      "title": "Repository and build scaffold",
+      "dependencies": [
+        "P03"
+      ],
+      "required_gates": [
+        "G04"
+      ],
+      "required_work": [
+        "Create Visual Studio/CMake/MSBuild structure",
+        "Add canonical scripts and VS Code tasks",
+        "Build minimal x64 Debug/Release composition"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P05",
+      "title": "Domain models and abstract contracts",
+      "dependencies": [
+        "P04"
+      ],
+      "required_gates": [
+        "G05"
+      ],
+      "required_work": [
+        "Port IDs/value models/errors/policies",
+        "Create interfaces and composition roots",
+        "Add deterministic native tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P06",
+      "title": "Windows infrastructure foundation",
+      "dependencies": [
+        "P05"
+      ],
+      "required_gates": [
+        "G06"
+      ],
+      "required_work": [
+        "Paths/config/atomic files/DPAPI/logging/ETW",
+        "RAII handles/clock/filesystem/process primitives",
+        "Shutdown and failure tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P07",
+      "title": "Winsqlite3 persistence and migrations",
+      "dependencies": [
+        "P06"
+      ],
+      "required_gates": [
+        "G07"
+      ],
+      "required_work": [
+        "Central and per-project DB wrappers",
+        "Migrations/backups/integrity/busy behavior",
+        "Schema fixture tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P08",
+      "title": "Project identity and project memory",
+      "dependencies": [
+        "P07"
+      ],
+      "required_gates": [
+        "G08"
+      ],
+      "required_work": [
+        "Multi-project registry/repository LRU",
+        "Twelve project_memory tools",
+        "Reset/export/import/redaction/isolation tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P09",
+      "title": "Legacy memory compatibility",
+      "dependencies": [
+        "P07"
+      ],
+      "required_gates": [
+        "G09"
+      ],
+      "required_work": [
+        "Port five memory tools",
+        "Preserve error/limit behavior",
+        "Migration and compatibility tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P10",
+      "title": "Agent catalog and durable sessions",
+      "dependencies": [
+        "P07"
+      ],
+      "required_gates": [
+        "G10"
+      ],
+      "required_work": [
+        "Port catalog/resources",
+        "Start/status/complete runs",
+        "Crash recovery tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P11",
+      "title": "Continuity repositories and state machine",
+      "dependencies": [
+        "P08",
+        "P10"
+      ],
+      "required_gates": [
+        "G11"
+      ],
+      "required_work": [
+        "Port handoffs and lifecycle tools",
+        "CAS transitions/checksums/recovery",
+        "Multi-project concurrency tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P12",
+      "title": "Native session host and autonomous rollover",
+      "dependencies": [
+        "P11"
+      ],
+      "required_gates": [
+        "G12"
+      ],
+      "required_work": [
+        "Implement host adapter interfaces",
+        "Build Forge-native logical session host/plugin",
+        "End-to-end rollover/ack/resume/recovery"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P13",
+      "title": "Filesystem, search, Git, shell, and PDF tools",
+      "dependencies": [
+        "P06"
+      ],
+      "required_gates": [
+        "G13"
+      ],
+      "required_work": [
+        "Port bounded tools with workspace authority",
+        "Use CreateProcessW/Job Objects and native search/PDF",
+        "Negative security and timeout tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P14",
+      "title": "MCP transport, router, audit, and loop protection",
+      "dependencies": [
+        "P08",
+        "P09",
+        "P10",
+        "P11",
+        "P13"
+      ],
+      "required_gates": [
+        "G14"
+      ],
+      "required_work": [
+        "Implement newline JSON-RPC stdio",
+        "Expose exact 53 tools and schemas",
+        "Golden protocol/EOF/malformed/concurrency tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P15",
+      "title": "Windows LM Studio environment and deployment",
+      "dependencies": [
+        "P14"
+      ],
+      "required_gates": [
+        "G15"
+      ],
+      "required_work": [
+        "Evidence-based path/config discovery",
+        "Transactional primary/fallback deploy",
+        "Smoke, rollback, drift, host-sync tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P16",
+      "title": "Manager process, startup, IPC, and dashboard",
+      "dependencies": [
+        "P06",
+        "P07"
+      ],
+      "required_gates": [
+        "G16"
+      ],
+      "required_work": [
+        "Single-instance manager",
+        "Authenticated named pipe and loopback dashboard",
+        "Watchdog/startup/restart/port tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P17",
+      "title": "Windows telemetry collectors",
+      "dependencies": [
+        "P06",
+        "P16"
+      ],
+      "required_gates": [
+        "G17"
+      ],
+      "required_work": [
+        "CPU/RAM/disk/GPU/process/power collectors",
+        "Availability/staleness semantics",
+        "Mapping and fixture tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P18",
+      "title": "Bounded telemetry delivery and histories",
+      "dependencies": [
+        "P17"
+      ],
+      "required_gates": [
+        "G18"
+      ],
+      "required_work": [
+        "Capacity-one latest-value mailbox",
+        "Ring histories/downsampling",
+        "Stall/queue/shutdown stress"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P19",
+      "title": "Shared native gauge rendering",
+      "dependencies": [
+        "P18"
+      ],
+      "required_gates": [
+        "G19"
+      ],
+      "required_work": [
+        "Shared D3D11/D2D/DirectWrite/Composition service",
+        "Render-on-change/visibility control",
+        "Device loss and GPU/idle profiling"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P20",
+      "title": "WinUI 3 shell and seven feature surfaces",
+      "dependencies": [
+        "P08",
+        "P10",
+        "P15",
+        "P16",
+        "P18",
+        "P19"
+      ],
+      "required_gates": [
+        "G20"
+      ],
+      "required_work": [
+        "Build navigation and all views/view models",
+        "Wire commands/settings/reset/diagnostics",
+        "Accessibility/DPI/theme/UI automation"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P21",
+      "title": "CLI and process entry parity",
+      "dependencies": [
+        "P12",
+        "P14",
+        "P15",
+        "P16"
+      ],
+      "required_gates": [
+        "G21"
+      ],
+      "required_work": [
+        "Implement commands/modes/JSON output",
+        "Install/doctor/status/agents/manager/version/import",
+        "Exit-code and invocation tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P22",
+      "title": "Security hardening and fault containment",
+      "dependencies": [
+        "P20",
+        "P21"
+      ],
+      "required_gates": [
+        "G22"
+      ],
+      "required_work": [
+        "Path/reparse/IPC/process/import/secret hardening",
+        "Fuzz/negative/fault tests",
+        "Threat model and endpoint protection review"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P23",
+      "title": "macOS data import and upgrade compatibility",
+      "dependencies": [
+        "P08",
+        "P09",
+        "P11",
+        "P21"
+      ],
+      "required_gates": [
+        "G23"
+      ],
+      "required_work": [
+        "Native dry-run/import/rollback",
+        "Config/path/schema translation",
+        "Idempotency and corrupt-input tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P24",
+      "title": "MSIX, setup bootstrapper, startup, and update",
+      "dependencies": [
+        "P20",
+        "P21",
+        "P22"
+      ],
+      "required_gates": [
+        "G24"
+      ],
+      "required_work": [
+        "Build packaged app and native setup",
+        "Development signing and parameterized release signing",
+        "Install/repair/update/uninstall/purge tests"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P25",
+      "title": "Full native test and analyzer pass",
+      "dependencies": [
+        "P23",
+        "P24"
+      ],
+      "required_gates": [
+        "G25"
+      ],
+      "required_work": [
+        "Debug/Release/ASan/analyze",
+        "Unit/integration/protocol/UI/installer suites",
+        "Fix every deterministic failure"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P26",
+      "title": "Resource, leak, performance, and endurance qualification",
+      "dependencies": [
+        "P25"
+      ],
+      "required_gates": [
+        "G26"
+      ],
+      "required_work": [
+        "Constrained/standard profile measurements",
+        "WPR/WPA/ETW/Application Verifier/PageHeap",
+        "One-hour and lifecycle stress"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P27",
+      "title": "End-to-end feature parity qualification",
+      "dependencies": [
+        "P26"
+      ],
+      "required_gates": [
+        "G27"
+      ],
+      "required_work": [
+        "Execute every parity flow",
+        "Verify all 53 tools and seven UI surfaces",
+        "Close every parity row"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P28",
+      "title": "Independent validation and documentation synchronization",
+      "dependencies": [
+        "P27"
+      ],
+      "required_gates": [
+        "G28"
+      ],
+      "required_work": [
+        "Fresh Validator and Documentation Manager sessions",
+        "Forsetti compliance report",
+        "README/user/admin/developer/migration/release docs"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P29",
+      "title": "Release artifacts and installer qualification",
+      "dependencies": [
+        "P28"
+      ],
+      "required_gates": [
+        "G29"
+      ],
+      "required_work": [
+        "Produce signed artifacts/symbols/checksums/SBOM",
+        "Clean-profile install lifecycle",
+        "Release Manager evidence"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    },
+    {
+      "id": "P30",
+      "title": "Final completion audit",
+      "dependencies": [
+        "P29"
+      ],
+      "required_gates": [
+        "G30"
+      ],
+      "required_work": [
+        "Revalidate manifest/gates/parity/no-Python/no-attribution",
+        "Verify handoff and evidence chain",
+        "Issue final truthful completion report"
+      ],
+      "status": "not_started",
+      "fail_forward": "Persist evidence and blocker; continue any dependency-ready independent phase; never erase passed work.",
+      "completion_evidence": []
+    }
+  ]
+}

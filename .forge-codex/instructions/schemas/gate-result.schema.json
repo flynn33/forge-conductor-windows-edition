@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Forge Windows gate result",
+  "type": "object",
+  "required": [
+    "gate_id",
+    "status",
+    "evaluated_at",
+    "role",
+    "acceptance",
+    "evidence"
+  ],
+  "properties": {
+    "gate_id": {
+      "type": "string",
+      "pattern": "^G\\d{2}$"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "blocked_external"
+      ]
+    },
+    "evaluated_at": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "acceptance": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

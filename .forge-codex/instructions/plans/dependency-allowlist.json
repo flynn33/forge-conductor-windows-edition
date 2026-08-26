@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "allowed_runtime": [
+    {
+      "name": "Windows SDK",
+      "provider": "Microsoft"
+    },
+    {
+      "name": "Windows App SDK",
+      "provider": "Microsoft"
+    },
+    {
+      "name": "C++/WinRT",
+      "provider": "Microsoft"
+    },
+    {
+      "name": "Windows Implementation Library",
+      "provider": "Microsoft",
+      "optional": true
+    },
+    {
+      "name": "winsqlite3",
+      "provider": "Microsoft Windows"
+    },
+    {
+      "name": "nlohmann-json",
+      "provider": "nlohmann",
+      "provisioning": "vcpkg",
+      "forsetti_exception": true
+    }
+  ],
+  "allowed_build": [
+    "MSVC",
+    "MSBuild",
+    "CMake",
+    "CTest",
+    "vcpkg",
+    "NuGet/MSBuild restore",
+    "PowerShell",
+    "Git",
+    "VS Code"
+  ],
+  "forbidden": [
+    "Python",
+    "Electron",
+    "Qt",
+    "Java",
+    "Boost",
+    ".NET application logic",
+    "Node runtime in installed product",
+    "unapproved binary blobs",
+    "Forsetti private headers"
+  ]
+}

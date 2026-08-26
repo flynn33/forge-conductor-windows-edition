@@ -1,0 +1,11 @@
+{
+  "resolutionOrder": [
+    "existing_local_tooling_or_mcp",
+    "locally_created_mcp_wrapper",
+    "provider_supplied_tooling_after_local_first_evidence",
+    "provider_recommended_third_party_only_with_explicit_approval",
+    "non_local_third_party_blocked_by_default",
+    "unknown_provider_blocked"
+  ],
+  "ffaeCoreMayDependOnMcp": false
+}

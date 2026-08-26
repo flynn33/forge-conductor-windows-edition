@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller
+  xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
+  Version="0.1.0.0"
+  Uri="REPLACE_UPDATE_BASE_URI/ForgeConductor.appinstaller">
+
+  <MainBundle
+    Name="REPLACE_PACKAGE_IDENTITY"
+    Publisher="REPLACE_CERTIFICATE_SUBJECT"
+    Version="0.1.0.0"
+    Uri="REPLACE_UPDATE_BASE_URI/ForgeConductor_0.1.0.0_x64.msixbundle" />
+
+  <UpdateSettings>
+    <OnLaunch HoursBetweenUpdateChecks="24" ShowPrompt="false" UpdateBlocksActivation="false" />
+    <AutomaticBackgroundTask />
+  </UpdateSettings>
+</AppInstaller>

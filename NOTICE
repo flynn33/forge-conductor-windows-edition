@@ -1,8 +1,0 @@
-Forge Conductor (Windows)
-Copyright 2026 Jim Daley
-
-This product includes software developed for the Forge Conductor project.
-Licensed under the Apache License, Version 2.0.
-See the LICENSE file for the full license text.
-
-nlohmann/json is used at adapter edges (MIT License).

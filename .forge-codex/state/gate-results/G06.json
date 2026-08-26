@@ -1,0 +1,26 @@
+{
+  "gate_id": "G06",
+  "status": "passed",
+  "evaluated_at": "2026-08-26T02:02:42.2243675+00:00",
+  "role": "validator",
+  "acceptance": "RAII, cancellation, shutdown, config, DPAPI, diagnostics tests pass.",
+  "evidence": [
+    ".forge-codex/state/validator-reports/P06.json",
+    ".forge-codex/state/commands/20260826T015555417Z-f510019b.json",
+    ".forge-codex/state/commands/20260826T015658972Z-03677df6.json",
+    "scripts/validation/Test-G06WindowsInfrastructure.ps1",
+    "src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp",
+    "src/Infrastructure/Windows/WindowsDiagnosticSink.cpp",
+    "src/Infrastructure/Windows/WindowsProcessSupervisor.cpp",
+    "tests/Infrastructure/StorageWindowsTests.cpp",
+    "tests/Infrastructure/WindowsDiagnosticSinkTests.cpp",
+    "tests/Infrastructure/Windows/WindowsProcessSupervisorTests.cpp",
+    ".forge-codex/state/decisions/P06-005-job-object-process-cancellation-and-shutdown.md",
+    ".forge-codex/state/decisions/P06-006-handle-relative-atomic-publish.md",
+    ".forge-codex/state/decisions/P06-008-handle-relative-diagnostic-rotation.md",
+    ".forge-codex/state/decisions/P06-009-same-token-hard-link-publication-boundary.md",
+    ".forge-codex/state/commands/20260826T005120986Z-83e45bff.json",
+    ".forge-codex/state/commands/20260826T010700102Z-b88fffe8.json"
+  ],
+  "failures": []
+}

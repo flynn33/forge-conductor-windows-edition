@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forsetti.dev/schemas/agentic-edition/forsetti-project-context.schema.json",
+  "title": "Forsetti Project Context",
+  "type": "object",
+  "required": [
+    "repository_mode",
+    "forsetti_edition",
+    "target_platform",
+    "framework_version",
+    "edition_profile",
+    "manifest_schema_version",
+    "manifest_template_version",
+    "deployment_pattern",
+    "module_type",
+    "module_id",
+    "capabilities_requested",
+    "runtime_requirements_declared",
+    "uses_public_api_only",
+    "touches_framework_internals"
+  ],
+  "properties": {
+    "repository_mode": {
+      "enum": [
+        "framework_repo",
+        "consumer_app_repo",
+        "module_repo",
+        "sample_repo",
+        "governance_repo"
+      ]
+    },
+    "forsetti_edition": {
+      "enum": [
+        "apple",
+        "windows"
+      ]
+    },
+    "target_platform": {
+      "enum": [
+        "iOS",
+        "macOS",
+        "Windows"
+      ]
+    },
+    "framework_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?$"
+    },
+    "edition_profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "manifest_template_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deployment_pattern": {
+      "enum": [
+        "single_app_module",
+        "multi_module_single_app",
+        "developer_testing",
+        "dashboard",
+        "framework_governance"
+      ]
+    },
+    "module_type": {
+      "enum": [
+        "app",
+        "ui",
+        "service",
+        "not_applicable"
+      ]
+    },
+    "module_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "capabilities_requested": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "runtime_requirements_declared": {
+      "type": "boolean"
+    },
+    "uses_public_api_only": {
+      "type": "boolean"
+    },
+    "touches_framework_internals": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

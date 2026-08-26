@@ -1,0 +1,105 @@
+{
+    "schema_version":  1,
+    "process_modes":  [
+                          {
+                              "mode":  "gui",
+                              "aliases":  [
+
+                                          ],
+                              "behavior":  "No recognized process mode."
+                          },
+                          {
+                              "mode":  "stdio_mcp",
+                              "aliases":  [
+                                              "serve",
+                                              "mcp-serve",
+                                              "mcp"
+                                          ],
+                              "behavior":  "Run compact newline JSON-RPC server."
+                          },
+                          {
+                              "mode":  "manager_foreground",
+                              "aliases":  [
+                                              "manager run",
+                                              "manager",
+                                              "manager flags"
+                                          ],
+                              "behavior":  "Run manager in foreground."
+                          }
+                      ],
+    "top_level_commands":  [
+                               "help",
+                               "-h",
+                               "--help",
+                               "version",
+                               "--version",
+                               "install",
+                               "install-lmstudio-plugin",
+                               "doctor",
+                               "status",
+                               "serve",
+                               "dashboard",
+                               "manager",
+                               "agents"
+                           ],
+    "manager_subcommands":  [
+                                "run",
+                                "start",
+                                "stop",
+                                "restart",
+                                "status",
+                                "install-login",
+                                "uninstall-login",
+                                "cleanup-stale",
+                                "allowlist",
+                                "help",
+                                "-h",
+                                "--help"
+                            ],
+    "options":  {
+                    "global":  [
+                                   "--home"
+                               ],
+                    "install":  [
+                                    "--from"
+                                ],
+                    "install_lmstudio_plugin":  [
+                                                    "--binary"
+                                                ],
+                    "dashboard":  [
+                                      "--host",
+                                      "--port",
+                                      "--open"
+                                  ],
+                    "manager":  [
+                                    "--open",
+                                    "--home",
+                                    "--keep-stale"
+                                ]
+                },
+    "exit_codes":  {
+                       "success":  0,
+                       "failure":  1,
+                       "invalid_invocation":  2
+                   },
+    "anchors":  [
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCLI/ForgeConductorMain.swift",
+                        "symbol":  "ForgeConductorMain",
+                        "line":  18,
+                        "bytes":  23870,
+                        "lines":  522,
+                        "sha256":  "9421b521e241ba5365af1b66039492c92ea720ebef9e89306e3d281a8a68800a"
+                    },
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
+                        "symbol":  "ForgeProcessEntry",
+                        "line":  18,
+                        "bytes":  4185,
+                        "lines":  92,
+                        "sha256":  "2734eb8162375127b9afefd6556e41d3774dd77de362b7519188ffa3589b5a31"
+                    }
+                ]
+}

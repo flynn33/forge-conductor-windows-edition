@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "report_id": "P05-independent-validator",
+  "created_at": "2026-08-25T15:34:52.4846694Z",
+  "role": "validator",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "scope": [
+    "P05/G05 repaired frozen tree"
+  ],
+  "decision": "pass",
+  "gate": "G05",
+  "acceptance": "Domain and interface tests pass with no platform leakage.",
+  "toolchain": {
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "architecture": "AMD64",
+    "generator": "Visual Studio 17 2022",
+    "msbuild": "17.14.40.60911",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform_toolset": "v143 14.44.35207",
+    "windows_sdk": "10.0.26100.0",
+    "cmake": "4.4.2",
+    "ctest": "4.4.2",
+    "configuration_runtime": "MSVC DLL CRT"
+  },
+  "measured_results": {
+    "canonical_fail_closed_assertions": 1273,
+    "configurations_built": [
+      "x64 Debug",
+      "x64 Release"
+    ],
+    "g05_tests_per_configuration": 4,
+    "g04_regression_tests_per_configuration": 2,
+    "test_failures": 0,
+    "product_files": 62,
+    "isolated_public_headers": 46,
+    "required_artifacts_hashed": 12,
+    "git_diff_check_exit_code": 0,
+    "ledger_events_verified_inside_canonical_run": 74
+  },
+  "command_records": [
+    {
+      "id": "20260825T153137206Z-fa6a7cbf",
+      "role": "builder",
+      "purpose": "canonical repaired-tree G05 validation",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "9f27b95dd77b33a9231f841066b6a61e661db5398357c05835d21f7220a0fda2",
+      "stdout_sha256": "7eed717128ba582606c038edae4c3bb330e86e92c20952fe64808396a0c8674e",
+      "stderr_sha256": "2c76d327014ce80b29fa23044a23e3d8bd28622e1afc0682b162b2c43284f4c3"
+    },
+    {
+      "id": "20260825T153339274Z-5218fb53",
+      "role": "validator",
+      "purpose": "independent canonical repaired-tree G05 validation",
+      "exit_code": 0,
+      "timed_out": false,
+      "record_sha256": "b1a7eb3ff8e3abb14af6221daf27f98ae2380bef4849ae413943ccd5ac6c43d7",
+      "stdout_sha256": "b3fdc7786604a5d67526f4e50860efa41734536e46dcf1e8220abbe50bd53628",
+      "stderr_sha256": "bb9fc3aebe579b6a0190270a8d741a487b96f84469b97d62a5dbf9830ed2f06b"
+    }
+  ],
+  "source_hashes": {
+    "CMakeLists.txt": "11b033a7b824e0876a6c8e793d7fb2bd2db3f9fb58d3476f7cc67e66729c3798",
+    "Directory.Build.props": "a2c23b845b00ff60a537fb36e8c0ec154525017edddb5e077ba3386062f45044",
+    "scripts/build.ps1": "feaebb4ecfce3a9d60d3d8138c0a9ecc9e21f7d2c0052d3fef41ab38f66b2bb8",
+    "scripts/test.ps1": "25f56c2e64ddb01f83c1201a33f0f53b294308483b316a42c655e552f80df4e8",
+    "scripts/validation/Test-G05DomainContracts.ps1": "51019ab574d8413bb2a333323981f539aae73155c160a25e7b589bd8452813d5",
+    ".forge-codex/state/decisions/P05-002-source-compatibility-and-windows-resource-bounds.md": "ad2f4e4b90e20aed4467710862e466994648949cedc6abfd4d61a41c988d0f66"
+  },
+  "artifacts": [
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Domain.lib",
+      "bytes": 7128824,
+      "sha256": "6f75caecc3a7d0ab9ff287ede6397638191deaa8fb78ce7e0e8435ad2dbfc661"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Domain.UnitTests.exe",
+      "bytes": 1625600,
+      "sha256": "95dc1dde33e0903013759674c6151bf51c6c5e308e598df3bd6fd315e506be39"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.ContractTests.exe",
+      "bytes": 3449344,
+      "sha256": "a5844ad05658860174854fb0348e14b617710d9f3eb287a465a006527c8a1906"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.HeaderSelfContainment.exe",
+      "bytes": 131584,
+      "sha256": "82d615c756397711492340bce7b4c47f170e117eb8ab50221f48800af0248625"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe",
+      "bytes": 89600,
+      "sha256": "081d99f947e6fb882f72ce94b4131c76aa34195c93ea21f71a6c5008af5c2767"
+    },
+    {
+      "configuration": "Debug",
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.ForsettiHostSmoke.exe",
+      "bytes": 2851328,
+      "sha256": "69a7f16756ca6c988424b4f793fd14384a0dc5d5056d09e16160c07da41a7352"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/lib/Release/ForgeConductor.Domain.lib",
+      "bytes": 2633614,
+      "sha256": "8bc28c09115be77193851b2cc51e8d9d6fad3e09241abfb42cff27dbc8a84b22"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Domain.UnitTests.exe",
+      "bytes": 249856,
+      "sha256": "9599ebfa6be42635ffd2d10c52f4c08b5a11456cc1edb2a600cd088f8c51b972"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Contracts.ContractTests.exe",
+      "bytes": 680960,
+      "sha256": "22a14e1dbe685e0ea25d6df17b698e1039dbf284ed9a8e85a6b7daf3dec19347"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Contracts.HeaderSelfContainment.exe",
+      "bytes": 10752,
+      "sha256": "eafee92051f8f37adf37da8ec5bde28440ded3c90aaa92979e6e5c8c38f51fea"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/forge-conductor.exe",
+      "bytes": 18944,
+      "sha256": "fed411b3239ba5cfc59060eb1adf274c09661b7c3ccd0ddaec824a471c7426bc"
+    },
+    {
+      "configuration": "Release",
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.ForsettiHostSmoke.exe",
+      "bytes": 565248,
+      "sha256": "d093df0f9e8ad923046d9bc0e29568246a830a7ad5ee70eab72c2c15296f2619"
+    }
+  ],
+  "failed_attempts": [
+    {
+      "id": "20260825T150151067Z-7700c792",
+      "path": ".forge-codex/state/commands/20260825T150151067Z-7700c792.json",
+      "record_sha256": "f98cea117e663706dd4e02a9edda73ed162c7c6c81ee8ec23e4fe315cb7b98f1",
+      "exit_code": 1,
+      "timed_out": false,
+      "cause": "The superseded builder wrapper completed its builds and tests, then Windows PowerShell promoted git diff --check LF-to-CRLF warning output to NativeCommandError.",
+      "resolution": "Native-command warning handling was repaired fail-closed; the repaired tree then passed builder record 20260825T153137206Z-fa6a7cbf and independent validator record 20260825T153339274Z-5218fb53."
+    }
+  ],
+  "independent_checks": [
+    "Both successful records were independently re-hashed; exit codes are 0, neither timed out, and both stdout/stderr hashes match their records.",
+    "The validator rerun rebuilt x64 Debug from a fresh build directory, built x64 Release, passed four G05 and two G04 regression tests in each configuration, and ended with 1,273 fail-closed assertions.",
+    "The repaired validator proves platform isolation, exact Domain/Contracts/source/test inventories, executable-owned CLI composition, deterministic fake coverage, exact public limits and cap-plus-one failures, capability/project binding, continuity, purge, manager loopback/7788, and OperationId MCP cancellation.",
+    "All twelve required Debug/Release artifacts are non-empty and hashed."
+  ],
+  "evidence": [
+    ".forge-codex/state/commands/20260825T153137206Z-fa6a7cbf.json",
+    ".forge-codex/state/commands/20260825T153339274Z-5218fb53.json",
+    ".forge-codex/state/commands/20260825T150151067Z-7700c792.json",
+    "CMakeLists.txt",
+    "Directory.Build.props",
+    "scripts/build.ps1",
+    "scripts/test.ps1",
+    "scripts/validation/Test-G05DomainContracts.ps1",
+    "include/ForgeConductor/Domain/Domain.h",
+    "include/ForgeConductor/Contracts/Contracts.h",
+    "tests/Domain/DomainTests.cpp",
+    "tests/Contracts/main.cpp",
+    ".forge-codex/state/decisions/P05-001-typed-results-operation-context-and-authority.md",
+    ".forge-codex/state/decisions/P05-002-source-compatibility-and-windows-resource-bounds.md",
+    ".forge-codex/state/decisions/P05-003-executable-owned-composition-roots.md",
+    ".forge-codex/state/decisions/P05-004-interface-issued-capability-values.md"
+  ],
+  "limitations": [
+    "This approval is scoped to P05 Domain models, abstract contracts, deterministic native tests, header isolation, and the retained P04 scaffold regression. Production Windows infrastructure, persistence, runtime MCP, UI, packaging, installation, and endurance remain assigned to later phases and gates."
+  ],
+  "failures": []
+}

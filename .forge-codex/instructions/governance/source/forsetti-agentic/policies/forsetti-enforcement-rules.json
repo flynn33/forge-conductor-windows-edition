@@ -1,0 +1,534 @@
+{
+  "schema_version": "1.0",
+  "registry_name": "forsetti_agentic_edition_forsetti_enforcement_rules",
+  "rules": [
+    {
+      "rule_id": "FAE-F001",
+      "title": "Forsetti project context required",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "contract",
+        "project-context",
+        "evidence"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Forsetti project context required.",
+        "validator_modes": [
+          "contract",
+          "project-context",
+          "evidence"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F002",
+      "title": "Edition/version profile required",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "contract",
+        "project-context",
+        "edition-profile"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Edition/version profile required.",
+        "validator_modes": [
+          "contract",
+          "project-context",
+          "edition-profile"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F003",
+      "title": "Target platform must match edition profile",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "project-context",
+        "edition-profile"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Target platform must match edition profile.",
+        "validator_modes": [
+          "project-context",
+          "edition-profile"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F004",
+      "title": "Valid Forsetti manifest required",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "manifest"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Valid Forsetti manifest required.",
+        "validator_modes": [
+          "manifest"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F005",
+      "title": "Manifest/code identity match required",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "manifest"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Manifest/code identity match required.",
+        "validator_modes": [
+          "manifest"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F006",
+      "title": "Module isolation required",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "module-isolation"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Module isolation required.",
+        "validator_modes": [
+          "module-isolation"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F007",
+      "title": "Direct module dependency prohibited",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "dependencies",
+        "module-isolation"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Direct module dependency prohibited.",
+        "validator_modes": [
+          "dependencies",
+          "module-isolation"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F008",
+      "title": "Direct module data sharing prohibited",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "module-isolation"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Direct module data sharing prohibited.",
+        "validator_modes": [
+          "module-isolation"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F009",
+      "title": "Declared capability required before use",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "capabilities",
+        "manifest"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Declared capability required before use.",
+        "validator_modes": [
+          "capabilities",
+          "manifest"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F010",
+      "title": "Runtime requirements required for I/O/UI/data isolation",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "manifest",
+        "capabilities"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Runtime requirements required for I/O/UI/data isolation.",
+        "validator_modes": [
+          "manifest",
+          "capabilities"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F011",
+      "title": "Public Forsetti API only",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "dependencies"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Public Forsetti API only.",
+        "validator_modes": [
+          "dependencies"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F012",
+      "title": "Sealed framework internals protected",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "dependencies"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Sealed framework internals protected.",
+        "validator_modes": [
+          "dependencies"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F013",
+      "title": "One-way dependency direction required",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "dependencies"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: One-way dependency direction required.",
+        "validator_modes": [
+          "dependencies"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F014",
+      "title": "UI/app active surface invariant required",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "manifest",
+        "capabilities"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: UI/app active surface invariant required.",
+        "validator_modes": [
+          "manifest",
+          "capabilities"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F015",
+      "title": "Service module UI contribution prohibited",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "manifest",
+        "capabilities"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Service module UI contribution prohibited.",
+        "validator_modes": [
+          "manifest",
+          "capabilities"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F016",
+      "title": "Constructor dependency injection required",
+      "severity": "high",
+      "decision": "request_changes",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "dependencies",
+        "evidence"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Constructor dependency injection required.",
+        "validator_modes": [
+          "dependencies",
+          "evidence"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F017",
+      "title": "Hidden globals/service-location prohibited",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "dependencies",
+        "module-isolation"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Hidden globals/service-location prohibited.",
+        "validator_modes": [
+          "dependencies",
+          "module-isolation"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F018",
+      "title": "Platform-native toolchain required",
+      "severity": "high",
+      "decision": "request_changes",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "edition-profile",
+        "evidence"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Platform-native toolchain required.",
+        "validator_modes": [
+          "edition-profile",
+          "evidence"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F019",
+      "title": "Required verification commands must run",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "evidence"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Required verification commands must run.",
+        "validator_modes": [
+          "evidence"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    },
+    {
+      "rule_id": "FAE-F020",
+      "title": "Completion evidence must map to selected edition profile",
+      "severity": "critical",
+      "decision": "block",
+      "required_evidence": [
+        "selected edition profile",
+        "task contract",
+        "changed file evidence",
+        "validation result"
+      ],
+      "applies_to_modes": [
+        "evidence",
+        "edition-profile"
+      ],
+      "validation": {
+        "method": "Validate that the task satisfies: Completion evidence must map to selected edition profile.",
+        "validator_modes": [
+          "evidence",
+          "edition-profile"
+        ]
+      },
+      "remediation": {
+        "summary": "Correct the task, contract, implementation, manifest, or evidence before proceeding.",
+        "required_action": "Correct the contract, profile, manifest, implementation boundary, or evidence before proceeding."
+      }
+    }
+  ]
+}

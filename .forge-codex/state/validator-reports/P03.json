@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "report_id": "P03-independent-validator",
+  "created_at": "2026-08-25T10:16:00.1939623+00:00",
+  "role": "validator",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "scope": [
+    "P03/G03"
+  ],
+  "decision": "pass",
+  "gate": "G03",
+  "acceptance": "Task contract/profile/public API/module/dependency decisions pass.",
+  "measured_results": {
+    "fail_closed_assertions": 2120,
+    "accepted_adrs": 10,
+    "immutable_forsetti_sources": 2,
+    "public_headers": 34,
+    "public_header_bytes": 81656,
+    "public_header_lines": 2491,
+    "public_named_types": 145,
+    "public_type_declaration_anchors": 148,
+    "policy_symbols": 61,
+    "manifest_capabilities": 13,
+    "manifest_io_requirements": 9,
+    "owned_stores": 5,
+    "upstream_defects_recorded": 14,
+    "known_upstream_test_failures": 4
+  },
+  "hashes": {
+    "source_hash_manifest": "1032838a2da517f391693bef862167bdb7cf434520ef42e314c2983bc2195cd3",
+    "framework_archive": "3fc89cba058830a53a2e20bd015b3c89e13c77151ca63c0ec132d0dacef0204d",
+    "agentic_archive": "e8ef20ad917bd3165335c03beecc674f21f69ff93cbc64fe5edb4e9ffd79692b",
+    "task_contract": "cd2714169189e274eb51c3b0bb666b2b59a68042f4c01b0a60f7506ab6ad0547",
+    "project_context": "3188896487cc49e2ab3cc54bfe8e8dfd4f8ae1c502b7f9476a18ca38af6c83be",
+    "windows_profile": "4a65c4c986da951cddd2376de39ebc87f1186b21c147c53c122ce0c10ac19c8a",
+    "manifest_schema": "0d768364790214335ca3b1b585cfd3be2af5e81313b771463f367a61bd0ed90d",
+    "canonical_and_mirror_manifest": "36221cb7e23c2e1ab170afb96f9254fb518e4ca1e8b1215e8a2216f8a3effed0",
+    "public_header_aggregate": "e31c38c4569a67560696085c9ac060f6eac4ea067ed95af515355dc79435e4b3"
+  },
+  "evidence": [
+    ".forge-codex/state/commands/20260825T101058942Z-87ab4100.json",
+    ".forge-codex/state/commands/20260825T101202492Z-2385e578.json",
+    ".forge-codex/state/commands/20260825T101439602Z-1c8e07c2.json",
+    ".forge-codex/state/commands/20260825T101457086Z-0b3a122b.json",
+    ".forge-codex/state/baseline/p03-forsetti-source-lock.json",
+    ".forge-codex/state/baseline/p03-forsetti-public-api.json",
+    ".forge-codex/state/baseline/p03-upstream-advisory/contract.json",
+    ".forge-codex/state/baseline/p03-upstream-advisory/project-context.json",
+    ".forge-codex/state/baseline/p03-upstream-advisory/edition-profile.json",
+    ".forge-codex/state/baseline/p03-upstream-advisory/manifest.json",
+    "src/ForgeConductor.ForsettiModule/Resources/ForsettiManifests/ForgeConductorAppModule.json",
+    "manifests/ForsettiManifests/forge-conductor.json",
+    "THIRD-PARTY-NOTICES.md",
+    ".forge-codex/state/decisions/P03-001-governance-profile-and-source-pins.md",
+    ".forge-codex/state/decisions/P03-002-sealed-forsetti-consumption.md",
+    ".forge-codex/state/decisions/P03-003-single-app-module-and-process-topology.md",
+    ".forge-codex/state/decisions/P03-004-dependency-direction-and-composition-roots.md",
+    ".forge-codex/state/decisions/P03-005-manifest-capabilities-and-runtime-requirements.md",
+    ".forge-codex/state/decisions/P03-006-host-activation-service-and-ui-composition.md",
+    ".forge-codex/state/decisions/P03-007-data-isolation-and-cross-process-ownership.md",
+    ".forge-codex/state/decisions/P03-008-boundary-lifetimes-errors-and-bounds.md",
+    ".forge-codex/state/decisions/P03-009-licensing-provenance-and-attribution.md",
+    ".forge-codex/state/decisions/P03-010-g03-validation-and-upstream-defects.md"
+  ],
+  "independent_checks": [
+    "The complete canonical Validate-Forsetti.ps1 run exited 0 under role validator and reproduced the builder stdout SHA-256 exactly.",
+    "All ten required P03 decisions are Accepted, contain evidence sections, contain no unresolved markers, and encode the required dependency, lifecycle, isolation, manifest, and licensing resolutions.",
+    "The canonical and packaging-mirror manifests are byte-identical and declare schema/template 1.1, module version 0.9.0, Windows profile/framework 0.2.0, one app module, the exact 13 capabilities, nine I/O requirements, four views, three routes, and five private stores.",
+    "All 34 immutable public headers match their baseline hashes; all 145 public types and 148 declaration anchors resolve exactly with no missing, extra, duplicate, empty, or mismatched records.",
+    "UP-001 through UP-014 are unique, ordered, dispositioned to consumer-owned checks/workarounds, and anchored to immutable evidence with matching hashes.",
+    "The standalone framework build evidence and four deterministic ForsettiCoreTests failures are retained truthfully; the consumer gate does not claim the upstream suite passed.",
+    "git diff --check exited 0; stderr contained only pre-existing LF-to-CRLF working-copy warnings.",
+    "The evidence ledger passed integrity validation before approval with 48 events."
+  ],
+  "known_upstream_failures": [
+    "ScopedServices_StorageAllowedWithCapability: unhandled bad_any_cast",
+    "ScopedServices_StorageRejectsTraversalKeys: unhandled bad_any_cast",
+    "Runtime_V11UIContributionIDsMustBeDeclared: ModuleRegistry::makeModule exception through ModuleManager",
+    "Runtime_V11DeclaredThemeMaskIsPreserved: ModuleRegistry::makeModule exception through ModuleManager"
+  ],
+  "limitations": [
+    "This report approves only the P03/G03 consumer compliance architecture. It does not claim a Forge product build, runtime feature parity, resource compliance, packaging, or release readiness.",
+    "The supplied Forsetti upstream test suite remains non-passing for the four recorded deterministic cases. Sealed sources were not modified; the failures remain visible for later validation and release review.",
+    "The Forsetti Apache-2.0 versus proprietary-policy metadata conflict remains a release-critical provenance issue governed by P03-009; this gate does not resolve legal rights."
+  ],
+  "pre_gate_ledger_validation": {
+    "record": ".forge-codex/state/commands/20260825T101457086Z-0b3a122b.json",
+    "exit_code": 0,
+    "verified_events_before_record": 48,
+    "stdout": ".forge-codex/state/commands/20260825T101457086Z-0b3a122b.stdout.txt",
+    "stdout_sha256": "8a139151732527e01f7e1aa546d002cecde1f13baca057d45a4d76c5d192a4d0"
+  }
+}

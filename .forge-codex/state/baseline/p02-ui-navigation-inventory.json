@@ -1,0 +1,90 @@
+{
+    "schema_version":  1,
+    "navigation":  [
+                       {
+                           "id":  "forge_rig",
+                           "label":  "FORGE RIG",
+                           "view":  "RigDashboardView",
+                           "automation_id":  "nav.forge-rig"
+                       },
+                       {
+                           "id":  "lm_studio_mcp",
+                           "label":  "LM Studio MCP",
+                           "view":  "MCPServersView",
+                           "automation_id":  "nav.lm-studio-mcp"
+                       },
+                       {
+                           "id":  "agents",
+                           "label":  "Agents",
+                           "view":  "AgentsView",
+                           "automation_id":  "nav.agents"
+                       },
+                       {
+                           "id":  "tools",
+                           "label":  "Tools",
+                           "view":  "ToolsView",
+                           "automation_id":  "nav.tools"
+                       },
+                       {
+                           "id":  "live_feed",
+                           "label":  "Live Feed",
+                           "view":  "LiveFeedView",
+                           "automation_id":  "nav.live-feed"
+                       },
+                       {
+                           "id":  "diagnostics",
+                           "label":  "Diagnostics",
+                           "view":  "DiagnosticsView",
+                           "automation_id":  "nav.diagnostics"
+                       },
+                       {
+                           "id":  "manager",
+                           "label":  "Manager",
+                           "view":  "ManagerSettingsView",
+                           "automation_id":  "nav.manager"
+                       }
+                   ],
+    "settings_scene":  {
+                           "view":  "ManagerSettingsView",
+                           "source":  "Sources/ForgeConductorApp/ForgeConductorApp.swift"
+                       },
+    "rig_panels":  [
+                       "sys_strip",
+                       "load_trace",
+                       "cpu_cores",
+                       "gpu_cores",
+                       "storage",
+                       "orchestration",
+                       "mcp_servers",
+                       "mcp_tools",
+                       "sub_agents",
+                       "hot_processes",
+                       "live_stream"
+                   ],
+    "unreachable_source":  [
+                               {
+                                   "view":  "TelemetryDashboardView",
+                                   "reason":  "No source reference outside its defining file."
+                               }
+                           ],
+    "anchors":  [
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorApp/AppModel.swift",
+                        "symbol":  "AppModel",
+                        "line":  19,
+                        "bytes":  25739,
+                        "lines":  582,
+                        "sha256":  "643b86a1f414bf4108465143bb902da0210f819f315e7490c5a6746bf7fe6e3e"
+                    },
+                    {
+                        "origin":  "macos_source",
+                        "path":  "Sources/ForgeConductorApp/Views/ContentView.swift",
+                        "symbol":  "ContentView",
+                        "line":  13,
+                        "bytes":  4533,
+                        "lines":  112,
+                        "sha256":  "5b82f404e411dea5969ddc2576899a3c8423d4bc5e720b8c607ea4d7cf1de0d8"
+                    }
+                ]
+}

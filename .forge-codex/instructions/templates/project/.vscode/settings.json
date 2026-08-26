@@ -1,0 +1,8 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": false,
+  "C_Cpp.default.cppStandard": "c++20",
+  "files.eol": "\r\n",
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true
+}

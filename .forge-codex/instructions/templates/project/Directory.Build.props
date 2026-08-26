@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <CppLanguageStandard>stdcpp20</CppLanguageStandard>
+    <ConformanceMode>true</ConformanceMode>
+    <TreatWarningAsError>true</TreatWarningAsError>
+    <CharacterSet>Unicode</CharacterSet>
+    <WindowsTargetPlatformMinVersion>10.0.22000.0</WindowsTargetPlatformMinVersion>
+  </PropertyGroup>
+</Project>

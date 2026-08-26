@@ -1,0 +1,211 @@
+{
+  "schema_version": "1.0",
+  "default_posture": "strict",
+  "roles": [
+    {
+      "role_id": "architect",
+      "name": "Architect",
+      "description": "Plans tasks, creates contracts, classifies changes, and identifies risks before execution begins.",
+      "authority_level": "planning",
+      "allowed_actions": [
+        "create_task_contract",
+        "amend_task_contract",
+        "classify_change",
+        "classify_approval",
+        "assess_documentation_impact",
+        "assess_release_impact",
+        "identify_risks",
+        "recommend_escalation"
+      ],
+      "forbidden_actions": [
+        "implement_changes",
+        "validate_compliance",
+        "authorize_release",
+        "modify_protected_assets_without_governance_authority",
+        "approve_own_contracts"
+      ],
+      "required_outputs": [
+        "task_contract",
+        "change_classification",
+        "approval_classification",
+        "scope_definition"
+      ],
+      "escalation_triggers": [
+        "task_requires_governance_class_authority",
+        "scope_cannot_be_defined_from_existing_policy",
+        "task_touches_protected_assets_beyond_role_authority",
+        "ambiguity_in_policy_prevents_classification",
+        "conflicting_requirements_cannot_be_resolved"
+      ]
+    },
+    {
+      "role_id": "builder",
+      "name": "Builder",
+      "description": "Executes authorized work within task contract boundaries, producing implementation changes and required documentation updates.",
+      "authority_level": "execution",
+      "allowed_actions": [
+        "modify_authorized_files",
+        "update_documentation",
+        "produce_changelog_entry",
+        "produce_completion_summary",
+        "report_known_issues"
+      ],
+      "forbidden_actions": [
+        "modify_files_outside_contract_scope",
+        "expand_scope_without_amendment",
+        "modify_protected_assets_without_governance_authority",
+        "claim_completion_without_evidence",
+        "hide_known_failures",
+        "perform_drive_by_edits",
+        "validate_own_compliance"
+      ],
+      "required_outputs": [
+        "implementation_changes",
+        "documentation_updates",
+        "changelog_entry",
+        "completion_summary"
+      ],
+      "escalation_triggers": [
+        "scope_boundary_ambiguous",
+        "additional_files_needed_beyond_contract",
+        "breaking_change_discovered_during_non_breaking_work",
+        "required_validation_cannot_be_completed",
+        "blocking_issue_not_anticipated_by_contract"
+      ]
+    },
+    {
+      "role_id": "validator",
+      "name": "Validator",
+      "description": "Reviews completed work for compliance with governance policies and renders pass, request-changes, or block decisions.",
+      "authority_level": "verification",
+      "allowed_actions": [
+        "review_scope_compliance",
+        "review_authority_compliance",
+        "review_documentation_compliance",
+        "review_release_compliance",
+        "review_truthfulness",
+        "review_protected_asset_handling",
+        "render_compliance_decision",
+        "produce_compliance_report"
+      ],
+      "forbidden_actions": [
+        "implement_changes",
+        "create_task_contracts",
+        "authorize_releases",
+        "approve_own_work",
+        "base_decisions_on_assumptions"
+      ],
+      "required_outputs": [
+        "compliance_report",
+        "compliance_decision",
+        "issue_list",
+        "remediation_actions"
+      ],
+      "escalation_triggers": [
+        "deliberate_policy_violation_suspected",
+        "protected_asset_modified_without_authority",
+        "completion_summary_contradicts_evidence",
+        "scope_violation_too_broad_for_request_changes",
+        "governance_policy_ambiguous"
+      ]
+    },
+    {
+      "role_id": "release_manager",
+      "name": "Release Manager",
+      "description": "Ensures release integrity by confirming version classification, changelog completeness, and release readiness.",
+      "authority_level": "release",
+      "allowed_actions": [
+        "confirm_version_classification",
+        "review_changelog_entries",
+        "verify_breaking_change_handling",
+        "assess_release_readiness",
+        "prepare_release_notes",
+        "authorize_release",
+        "block_release"
+      ],
+      "forbidden_actions": [
+        "implement_changes",
+        "create_task_contracts",
+        "validate_scope_compliance",
+        "authorize_release_with_blocking_violations",
+        "approve_release_without_changelog_confirmation"
+      ],
+      "required_outputs": [
+        "release_readiness_assessment",
+        "release_notes",
+        "version_classification_confirmation",
+        "release_authorization_or_block"
+      ],
+      "escalation_triggers": [
+        "version_classification_disputed",
+        "undisclosed_breaking_change_discovered",
+        "multiple_changelog_entries_missing",
+        "release_readiness_cannot_be_confirmed",
+        "governance_changes_affect_release_process"
+      ]
+    },
+    {
+      "role_id": "documentation_manager",
+      "name": "Documentation Manager",
+      "description": "Ensures documentation integrity across all repository surfaces including README, wiki, glossary, and canonical sources.",
+      "authority_level": "documentation",
+      "allowed_actions": [
+        "review_readme_accuracy",
+        "verify_canonical_source_currency",
+        "verify_wiki_synchronization",
+        "detect_documentation_drift",
+        "review_glossary_completeness",
+        "confirm_documentation_requirements",
+        "flag_documentation_issues"
+      ],
+      "forbidden_actions": [
+        "implement_documentation_fixes",
+        "create_task_contracts",
+        "validate_scope_compliance",
+        "authorize_releases",
+        "base_assessments_on_assumptions"
+      ],
+      "required_outputs": [
+        "documentation_compliance_assessment",
+        "drift_report",
+        "sync_status",
+        "remediation_actions"
+      ],
+      "escalation_triggers": [
+        "widespread_documentation_drift",
+        "readme_fundamentally_misrepresents_repository",
+        "wiki_contradicts_canonical_sources",
+        "documentation_changes_require_governance_review",
+        "new_policy_terms_used_without_definition"
+      ]
+    },
+    {
+      "role_id": "governance_steward",
+      "name": "Governance Steward",
+      "description": "Elevated authority for constitutional amendments, policy changes, and protected governance asset modifications.",
+      "authority_level": "governance",
+      "allowed_actions": [
+        "approve_governance_class_changes",
+        "authorize_constitutional_amendments",
+        "authorize_protected_asset_modifications",
+        "review_governance_impact",
+        "approve_policy_changes"
+      ],
+      "forbidden_actions": [
+        "bypass_constitutional_amendment_process",
+        "bundle_governance_changes_with_non_governance_work",
+        "approve_governance_changes_without_impact_assessment"
+      ],
+      "required_outputs": [
+        "governance_approval",
+        "impact_assessment_review",
+        "amendment_authorization"
+      ],
+      "escalation_triggers": [
+        "constitutional_amendment_conflicts_with_foundational_principles",
+        "governance_change_has_unknown_downstream_impact",
+        "multiple_governance_changes_proposed_simultaneously"
+      ]
+    }
+  ]
+}

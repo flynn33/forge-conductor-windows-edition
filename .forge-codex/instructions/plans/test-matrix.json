@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "suites": [
+    {
+      "id": "T-UNIT",
+      "scope": "Domain, contracts, services, repositories, parsers, state machines",
+      "required": true
+    },
+    {
+      "id": "T-DB",
+      "scope": "Winsqlite3 migrations, transactions, busy, corruption, backup, import",
+      "required": true
+    },
+    {
+      "id": "T-MCP",
+      "scope": "JSON-RPC framing, initialize, 53 schemas/calls, errors, EOF, cancellation",
+      "required": true
+    },
+    {
+      "id": "T-MEM",
+      "scope": "Legacy and project memory, multi-project isolation, reset, redaction",
+      "required": true
+    },
+    {
+      "id": "T-CONT",
+      "scope": "Continuity transitions, crash points, adapter idempotency, autonomous rollover",
+      "required": true
+    },
+    {
+      "id": "T-PROC",
+      "scope": "CreateProcessW, pipes, Job Objects, timeouts, child trees, output caps",
+      "required": true
+    },
+    {
+      "id": "T-MGR",
+      "scope": "Single manager, named pipe ACL/auth, dashboard, startup, recovery",
+      "required": true
+    },
+    {
+      "id": "T-TEL",
+      "scope": "Collector mapping, unavailable/stale states, latest-value mailbox, histories",
+      "required": true
+    },
+    {
+      "id": "T-GFX",
+      "scope": "Shared resources, frame timing, hidden pause, device loss",
+      "required": true
+    },
+    {
+      "id": "T-UI",
+      "scope": "Native UI Automation across all seven surfaces, DPI, theme, keyboard",
+      "required": true
+    },
+    {
+      "id": "T-LMS",
+      "scope": "LM Studio discovery/deploy/rollback/smoke/host synchronization",
+      "required": true
+    },
+    {
+      "id": "T-IMPORT",
+      "scope": "macOS dry-run/import/idempotency/rollback/corruption",
+      "required": true
+    },
+    {
+      "id": "T-INSTALL",
+      "scope": "install/launch/startup/repair/update/uninstall/reinstall/purge",
+      "required": true
+    },
+    {
+      "id": "T-SEC",
+      "scope": "path traversal/reparse, IPC, secrets, malformed input, shell policy",
+      "required": true
+    },
+    {
+      "id": "T-STRESS",
+      "scope": "one-hour runtime and 100 lifecycle repetitions",
+      "required": true
+    },
+    {
+      "id": "T-ANALYZE",
+      "scope": "MSVC analyze, ASan where supported, App Verifier/PageHeap/WPR",
+      "required": true
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+    "schema_version":  1,
+    "expected_count":  10,
+    "agents":  [
+                   {
+                       "id":  "debug",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/debug.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  1789,
+                                             "lines":  67,
+                                             "sha256":  "4013e3cfa6a4af1b51d69d4dc8445cc1e0590b0658fb5d250b4a431c70224bef"
+                                         },
+                       "invalid_allowed_tools":  [
+                                                     "python_exec",
+                                                     "python_info",
+                                                     "search_files"
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "docs",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/docs.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  4047,
+                                             "lines":  108,
+                                             "sha256":  "e1118265e19562bf5e470ad6de16cd0c4e009b01e55f263049b24f714649ee55"
+                                         },
+                       "invalid_allowed_tools":  [
+                                                     "python_exec",
+                                                     "python_info",
+                                                     "search_files"
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "explore",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/explore.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  2703,
+                                             "lines":  85,
+                                             "sha256":  "0cfd24d91a74e24a64a8716e7fb6f57bb4a5a6388f5f0d2d843bbc4775e09b92"
+                                         },
+                       "invalid_allowed_tools":  [
+
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "implement",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/implement.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  2130,
+                                             "lines":  74,
+                                             "sha256":  "1459a82d77ceebd099a6fce5ef2504bffac451f0bd9e41c96318c3ff85a70142"
+                                         },
+                       "invalid_allowed_tools":  [
+
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "plan",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/plan.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  1670,
+                                             "lines":  68,
+                                             "sha256":  "89e9ad8543beaa7a681c48a153569b9b340bdf7fd4f34a9164354c5a6874aaff"
+                                         },
+                       "invalid_allowed_tools":  [
+
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "precommit-audit",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/precommit-audit.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  1383,
+                                             "lines":  57,
+                                             "sha256":  "9dc5693035148f124b1b990e8177aa799b5149fd818da7b9a1d447d537db8ea0"
+                                         },
+                       "invalid_allowed_tools":  [
+                                                     "search_files"
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push",
+                                                           "gh_pr_create"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "research",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/research.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  1301,
+                                             "lines":  54,
+                                             "sha256":  "e5b0141797297ae5a5f647d9487445cfbffb43956ce1093e2edfad18ce4cb7e5"
+                                         },
+                       "invalid_allowed_tools":  [
+
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "review",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/review.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  1523,
+                                             "lines":  60,
+                                             "sha256":  "cfab52c5a3ecb384dba6bfa022db773729a0b48c2828e7716d970b873826a9cc"
+                                         },
+                       "invalid_allowed_tools":  [
+
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "security",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/security.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  1453,
+                                             "lines":  54,
+                                             "sha256":  "b7a7bd4a6174499b75ce095f9208cbec26f6e158a0cd7cffd9d204d782340c99"
+                                         },
+                       "invalid_allowed_tools":  [
+
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   },
+                   {
+                       "id":  "test",
+                       "source_anchor":  {
+                                             "origin":  "macos_source",
+                                             "path":  "Sources/ForgeConductorCore/Resources/Agents/test.md",
+                                             "symbol":  null,
+                                             "line":  1,
+                                             "bytes":  1381,
+                                             "lines":  52,
+                                             "sha256":  "bc29c81555acd940eccfe692d4ded50717f43b87943a13644c62b11783d30cc0"
+                                         },
+                       "invalid_allowed_tools":  [
+
+                                                 ],
+                       "unavailable_forbidden_tools":  [
+                                                           "git_push"
+                                                       ],
+                       "windows_normalization":  "Remove unavailable and prohibited tool references while preserving the agent policy intent."
+                   }
+               ]
+}

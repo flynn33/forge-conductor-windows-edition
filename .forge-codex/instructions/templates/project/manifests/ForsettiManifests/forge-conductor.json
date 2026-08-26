@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.1",
+  "manifestTemplateVersion": "1.1",
+  "moduleID": "com.forsetti.app.forge-conductor-windows",
+  "displayName": "Forge Conductor",
+  "moduleVersion": {
+    "major": 0,
+    "minor": 1,
+    "patch": 0,
+    "prerelease": null
+  },
+  "moduleType": "app",
+  "supportedPlatforms": [
+    "Windows"
+  ],
+  "minForsettiVersion": {
+    "major": 0,
+    "minor": 2,
+    "patch": 0,
+    "prerelease": null
+  },
+  "maxForsettiVersion": null,
+  "capabilitiesRequested": [
+    "networking",
+    "storage",
+    "secure_storage",
+    "file_export",
+    "telemetry",
+    "routing_overlay",
+    "toolbar_items",
+    "view_injection",
+    "event_publishing",
+    "shared_database",
+    "diagnostics",
+    "api",
+    "security"
+  ],
+  "iapProductID": null,
+  "entryPoint": "ForgeConductorAppModule",
+  "defaultModuleRole": null,
+  "runtimeRequirements": {
+    "io": [
+      {
+        "requirementID": "storage.forge-config",
+        "kind": "storage",
+        "access": "read_write",
+        "required": true,
+        "description": "Versioned per-user application configuration."
+      },
+      {
+        "requirementID": "storage.forge-operational",
+        "kind": "shared_database",
+        "access": "read_write",
+        "required": true,
+        "description": "Operational audit, sessions, presence, and legacy compatibility data."
+      },
+      {
+        "requirementID": "storage.forge-project-memory",
+        "kind": "shared_database",
+        "access": "read_write",
+        "required": true,
+        "description": "Isolated per-project memory and continuity databases."
+      },
+      {
+        "requirementID": "export.forge-diagnostics",
+        "kind": "file_export",
+        "access": "write",
+        "required": false,
+        "description": "User-selected diagnostic and memory exports."
+      }
+    ],
+    "ui": {
+      "toolbarItems": true,
+      "viewInjections": true,
+      "overlaySchemas": true
+    },
+    "dataIsolation": {
+      "mode": "private_to_module",
+      "ownedStoreIDs": [
+        "forge-operational",
+        "forge-project-memory"
+      ],
+      "requiredDefaultRoles": []
+    }
+  }
+}

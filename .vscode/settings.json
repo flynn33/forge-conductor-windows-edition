@@ -1,0 +1,12 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": false,
+  "cmake.defaultConfigurePreset": "windows-msvc-x64",
+  "cmake.defaultBuildPreset": "windows-msvc-x64-debug",
+  "cmake.defaultTestPreset": "windows-msvc-x64-debug",
+  "C_Cpp.default.cppStandard": "c++20",
+  "C_Cpp.default.intelliSenseMode": "windows-msvc-x64",
+  "files.eol": "\r\n",
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true
+}
