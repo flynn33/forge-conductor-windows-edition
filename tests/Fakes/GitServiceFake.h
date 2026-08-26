@@ -51,18 +51,18 @@ public:
     {
     }
 
-    DeterministicResult<std::string> statusResult;
-    DeterministicResult<std::string> diffResult;
-    DeterministicResult<std::string> logResult;
-    DeterministicResult<void> addResult;
-    DeterministicResult<std::string> commitResult;
+    DeterministicResult<Domain::ProcessResult> statusResult;
+    DeterministicResult<Domain::ProcessResult> diffResult;
+    DeterministicResult<Domain::ProcessResult> logResult;
+    DeterministicResult<Domain::ProcessResult> addResult;
+    DeterministicResult<Domain::ProcessResult> commitResult;
 
-    [[nodiscard]] Domain::Result<std::string> status(
+    [[nodiscard]] Domain::Result<Domain::ProcessResult> status(
         const Contracts::AuthorizedPath& repository,
         const std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept override
     {
-        return simpleStringCall(
+        return simpleProcessCall(
             GitServiceCall::Status,
             repository,
             0,
@@ -71,7 +71,7 @@ public:
             context);
     }
 
-    [[nodiscard]] Domain::Result<std::string> diff(
+    [[nodiscard]] Domain::Result<Domain::ProcessResult> diff(
         const Contracts::AuthorizedPath& repository,
         const std::span<const std::string> arguments,
         const std::size_t maximumBytes,
@@ -80,7 +80,7 @@ public:
         try {
             auto gate = state_.begin(context);
             if (!gate) {
-                return Domain::Result<std::string>::failure(
+                return Domain::Result<Domain::ProcessResult>::failure(
                     std::move(gate).error());
             }
             const auto bytes = textBytes(arguments);
@@ -102,18 +102,18 @@ public:
                 0,
                 maximumBytes});
             if (!bounded) {
-                return Domain::Result<std::string>::failure(
+                return Domain::Result<Domain::ProcessResult>::failure(
                     boundaryLimitExceeded(
                         "The git diff arguments exceed their capture bound."));
             }
-            return boundedString(diffResult, maximumBytes);
+            return boundedProcess(diffResult, maximumBytes);
         } catch (...) {
-            return stringFailure(
+            return processFailure(
                 "The deterministic git diff could not be captured.");
         }
     }
 
-    [[nodiscard]] Domain::Result<std::string> log(
+    [[nodiscard]] Domain::Result<Domain::ProcessResult> log(
         const Contracts::AuthorizedPath& repository,
         const std::size_t maximumEntries,
         const std::size_t maximumBytes,
@@ -123,7 +123,7 @@ public:
             try {
                 auto gate = state_.begin(context);
                 if (!gate) {
-                    return Domain::Result<std::string>::failure(
+                    return Domain::Result<Domain::ProcessResult>::failure(
                         std::move(gate).error());
                 }
                 captureBasic(
@@ -131,15 +131,15 @@ public:
                     repository,
                     maximumEntries,
                     maximumBytes);
-                return Domain::Result<std::string>::failure(
+                return Domain::Result<Domain::ProcessResult>::failure(
                     boundaryLimitExceeded(
                         "The git log entry request exceeds its bound."));
             } catch (...) {
-                return stringFailure(
+                return processFailure(
                     "The deterministic git log could not be captured.");
             }
         }
-        return simpleStringCall(
+        return simpleProcessCall(
             GitServiceCall::Log,
             repository,
             maximumEntries,
@@ -148,7 +148,7 @@ public:
             context);
     }
 
-    [[nodiscard]] Domain::Result<void> add(
+    [[nodiscard]] Domain::Result<Domain::ProcessResult> add(
         const Contracts::AuthorizedPath& repository,
         const std::span<const Contracts::AuthorizedPath> paths,
         const Domain::OperationContext& context) noexcept override
@@ -156,7 +156,8 @@ public:
         try {
             auto gate = state_.begin(context);
             if (!gate) {
-                return gate;
+                return Domain::Result<Domain::ProcessResult>::failure(
+                    std::move(gate).error());
             }
             const auto bounded = paths.size() <= captureItemsMaximum_;
             lastCapture_.emplace(GitServiceCapture{
@@ -174,18 +175,18 @@ public:
                 0,
                 0});
             if (!bounded) {
-                return Domain::Result<void>::failure(boundaryLimitExceeded(
-                    "The git add path set exceeds its capture bound."));
+                return Domain::Result<Domain::ProcessResult>::failure(
+                    boundaryLimitExceeded(
+                        "The git add path set exceeds its capture bound."));
             }
-            return addResult.get();
+            return boundedProcess(addResult, outputBytesMaximum_);
         } catch (...) {
-            return Domain::Result<void>::failure(Domain::makeError(
-                Domain::ErrorCodes::InternalFailure,
-                "The deterministic git add could not be captured."));
+            return processFailure(
+                "The deterministic git add could not be captured.");
         }
     }
 
-    [[nodiscard]] Domain::Result<std::string> commit(
+    [[nodiscard]] Domain::Result<Domain::ProcessResult> commit(
         const Contracts::AuthorizedPath& repository,
         const std::string_view message,
         const Domain::OperationContext& context) noexcept override
@@ -193,7 +194,7 @@ public:
         try {
             auto gate = state_.begin(context);
             if (!gate) {
-                return Domain::Result<std::string>::failure(
+                return Domain::Result<Domain::ProcessResult>::failure(
                     std::move(gate).error());
             }
             const auto capturedBytes =
@@ -209,13 +210,13 @@ public:
                 0,
                 0});
             if (message.size() > captureTextBytesMaximum_) {
-                return Domain::Result<std::string>::failure(
+                return Domain::Result<Domain::ProcessResult>::failure(
                     boundaryPayloadTooLarge(
                         "The git commit message exceeds its capture bound."));
             }
-            return boundedString(commitResult, outputBytesMaximum_);
+            return boundedProcess(commitResult, outputBytesMaximum_);
         } catch (...) {
-            return stringFailure(
+            return processFailure(
                 "The deterministic git commit could not be captured.");
         }
     }
@@ -234,24 +235,24 @@ public:
     }
 
 private:
-    [[nodiscard]] Domain::Result<std::string> simpleStringCall(
+    [[nodiscard]] Domain::Result<Domain::ProcessResult> simpleProcessCall(
         const GitServiceCall call,
         const Contracts::AuthorizedPath& repository,
         const std::size_t maximumEntries,
         const std::size_t maximumBytes,
-        const DeterministicResult<std::string>& scripted,
+        const DeterministicResult<Domain::ProcessResult>& scripted,
         const Domain::OperationContext& context) noexcept
     {
         try {
             auto gate = state_.begin(context);
             if (!gate) {
-                return Domain::Result<std::string>::failure(
+                return Domain::Result<Domain::ProcessResult>::failure(
                     std::move(gate).error());
             }
             captureBasic(call, repository, maximumEntries, maximumBytes);
-            return boundedString(scripted, maximumBytes);
+            return boundedProcess(scripted, maximumBytes);
         } catch (...) {
-            return stringFailure(
+            return processFailure(
                 "The deterministic git request could not be captured.");
         }
     }
@@ -274,19 +275,43 @@ private:
             maximumBytes});
     }
 
-    [[nodiscard]] Domain::Result<std::string> boundedString(
-        const DeterministicResult<std::string>& scripted,
+    [[nodiscard]] Domain::Result<Domain::ProcessResult> boundedProcess(
+        const DeterministicResult<Domain::ProcessResult>& scripted,
         const std::size_t maximumBytes) const
     {
         auto result = scripted.get();
-        if (result &&
-            (result.value().size() > maximumBytes ||
-             result.value().size() > outputBytesMaximum_)) {
-            return Domain::Result<std::string>::failure(
-                boundaryPayloadTooLarge(
-                    "The scripted git response exceeds its output bound."));
+        if (!result) {
+            return result;
         }
-        return result;
+        auto process = std::move(result).value();
+        capText(
+            process.stdoutUtf8,
+            (std::min)(maximumBytes, outputBytesMaximum_),
+            process.stdoutTruncated);
+        capText(
+            process.stderrUtf8,
+            outputBytesMaximum_,
+            process.stderrTruncated);
+        return Domain::Result<Domain::ProcessResult>::success(
+            std::move(process));
+    }
+
+    static void capText(
+        std::string& value,
+        const std::size_t maximumBytes,
+        bool& truncated) noexcept
+    {
+        if (value.size() <= maximumBytes) {
+            return;
+        }
+        auto retainedBytes = maximumBytes;
+        while (retainedBytes > 0U && retainedBytes < value.size() &&
+               (static_cast<unsigned char>(value[retainedBytes]) & 0xC0U) ==
+                   0x80U) {
+            --retainedBytes;
+        }
+        value.resize(retainedBytes);
+        truncated = true;
     }
 
     [[nodiscard]] static std::size_t textBytes(
@@ -299,10 +324,10 @@ private:
         return bytes;
     }
 
-    [[nodiscard]] static Domain::Result<std::string> stringFailure(
+    [[nodiscard]] static Domain::Result<Domain::ProcessResult> processFailure(
         const char* message)
     {
-        return Domain::Result<std::string>::failure(
+        return Domain::Result<Domain::ProcessResult>::failure(
             Domain::makeError(Domain::ErrorCodes::InternalFailure, message));
     }
 

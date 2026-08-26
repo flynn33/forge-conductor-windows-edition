@@ -22,6 +22,7 @@
 #include "ForgeConductor/Contracts/IMcpTransport.h"
 #include "ForgeConductor/Contracts/INativeToolServices.h"
 #include "ForgeConductor/Contracts/INativeSessionHostServices.h"
+#include "ForgeConductor/Contracts/IPathGlobService.h"
 #include "ForgeConductor/Contracts/IProcessSupervisor.h"
 #include "ForgeConductor/Contracts/IProjectMemoryArtifactStore.h"
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"

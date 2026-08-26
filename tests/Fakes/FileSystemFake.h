@@ -48,6 +48,7 @@ public:
     DeterministicResult<std::vector<std::byte>> readFileResult;
     DeterministicResult<void> writeFileResult;
     DeterministicResult<std::vector<Domain::PathText>> listResult;
+    bool listResultTruncated{};
     DeterministicResult<void> createDirectoryResult;
     DeterministicResult<void> removeResult;
     DeterministicResult<void> moveResult;
@@ -109,7 +110,7 @@ public:
         }
     }
 
-    [[nodiscard]] Domain::Result<std::vector<Domain::PathText>> list(
+    [[nodiscard]] Domain::Result<Domain::DirectoryListing> list(
         const Contracts::AuthorizedPath& directory,
         const std::size_t maximumEntries,
         const Domain::OperationContext& context) noexcept override
@@ -117,21 +118,32 @@ public:
         try {
             auto gate = state_.begin(context);
             if (!gate) {
-                return Domain::Result<std::vector<Domain::PathText>>::failure(
+                return Domain::Result<Domain::DirectoryListing>::failure(
                     std::move(gate).error());
             }
             capture(FileSystemCall::List, directory, std::nullopt, maximumEntries);
             auto result = listResult.get();
-            if (result &&
-                (result.value().size() > maximumEntries ||
-                 result.value().size() > captureItemsMaximum_)) {
-                return Domain::Result<std::vector<Domain::PathText>>::failure(
+            if (!result) {
+                return Domain::Result<Domain::DirectoryListing>::failure(
+                    std::move(result).error());
+            }
+            if (result.value().size() > captureItemsMaximum_) {
+                return Domain::Result<Domain::DirectoryListing>::failure(
                     boundaryLimitExceeded(
                         "The scripted directory listing exceeds its entry bound."));
             }
-            return result;
+            auto entries = std::move(result).value();
+            const bool truncated =
+                listResultTruncated || entries.size() > maximumEntries;
+            if (entries.size() > maximumEntries) {
+                entries.erase(
+                    entries.begin() + static_cast<std::ptrdiff_t>(maximumEntries),
+                    entries.end());
+            }
+            return Domain::Result<Domain::DirectoryListing>::success(
+                Domain::DirectoryListing{std::move(entries), truncated});
         } catch (...) {
-            return Domain::Result<std::vector<Domain::PathText>>::failure(
+            return Domain::Result<Domain::DirectoryListing>::failure(
                 Domain::makeError(
                     Domain::ErrorCodes::InternalFailure,
                     "The deterministic directory listing could not be captured."));

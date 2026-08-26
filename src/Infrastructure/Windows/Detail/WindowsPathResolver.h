@@ -40,7 +40,7 @@ class AnchoredAuthorizedPath final
   private:
     std::wstring canonicalPath_;
     // Every existing directory from the volume root through the target parent
-    // remains open without write/delete sharing through the handle-relative
+    // remains open without delete sharing through the handle-relative
     // filesystem commit boundary.
     std::vector<UniqueHandle> directoryAnchors_;
 };

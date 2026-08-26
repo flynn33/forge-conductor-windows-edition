@@ -410,7 +410,8 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
             desiredAccess |= FILE_ADD_FILE | FILE_DELETE_CHILD;
         }
         UniqueHandle handle{::CreateFileW(
-            nativePath.c_str(), desiredAccess, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+            nativePath.c_str(), desiredAccess, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            nullptr, OPEN_EXISTING,
             FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
         if (!handle)
         {

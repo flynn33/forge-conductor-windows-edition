@@ -14,6 +14,7 @@
 #include "ForgeConductor/Domain/LegacyMemoryModels.h"
 #include "ForgeConductor/Domain/ManagerModels.h"
 #include "ForgeConductor/Domain/OperationContext.h"
+#include "ForgeConductor/Domain/PdfModels.h"
 #include "ForgeConductor/Domain/ProcessModels.h"
 #include "ForgeConductor/Domain/ProjectMemoryModels.h"
 #include "ForgeConductor/Domain/ResourcePolicy.h"

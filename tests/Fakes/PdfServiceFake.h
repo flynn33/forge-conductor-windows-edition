@@ -37,10 +37,10 @@ public:
     {
     }
 
-    DeterministicResult<void> writeResult;
-    DeterministicResult<void> fromTextFileResult;
+    DeterministicResult<Domain::PdfWriteReceipt> writeResult;
+    DeterministicResult<Domain::PdfWriteReceipt> fromTextFileResult;
 
-    [[nodiscard]] Domain::Result<void> write(
+    [[nodiscard]] Domain::Result<Domain::PdfWriteReceipt> write(
         const std::string_view title,
         const std::string_view body,
         const Contracts::AuthorizedPath& destination,
@@ -49,7 +49,8 @@ public:
         try {
             auto gate = state_.begin(context);
             if (!gate) {
-                return gate;
+                return Domain::Result<Domain::PdfWriteReceipt>::failure(
+                    std::move(gate).error());
             }
             const auto requestedBytes = title.size() + body.size();
             const auto capturedTitleBytes =
@@ -66,8 +67,9 @@ public:
                 std::string{body.substr(0, capturedBodyBytes)},
                 requestedBytes});
             if (requestedBytes > captureTextBytesMaximum_) {
-                return Domain::Result<void>::failure(boundaryPayloadTooLarge(
-                    "The PDF text exceeds its capture bound."));
+                return Domain::Result<Domain::PdfWriteReceipt>::failure(
+                    boundaryPayloadTooLarge(
+                        "The PDF text exceeds its capture bound."));
             }
             return writeResult.get();
         } catch (...) {
@@ -76,7 +78,8 @@ public:
         }
     }
 
-    [[nodiscard]] Domain::Result<void> fromTextFile(
+    [[nodiscard]] Domain::Result<Domain::PdfWriteReceipt> fromTextFile(
+        const std::string_view title,
         const Contracts::AuthorizedPath& source,
         const Contracts::AuthorizedPath& destination,
         const Domain::OperationContext& context) noexcept override
@@ -84,13 +87,14 @@ public:
         try {
             auto gate = state_.begin(context);
             if (!gate) {
-                return gate;
+                return Domain::Result<Domain::PdfWriteReceipt>::failure(
+                    std::move(gate).error());
             }
             lastCapture_.emplace(PdfServiceCapture{
                 PdfServiceCall::FromTextFile,
                 source,
                 std::optional<Contracts::AuthorizedPath>{destination},
-                {},
+                std::string{title},
                 {},
                 0});
             return fromTextFileResult.get();
@@ -114,10 +118,10 @@ public:
     }
 
 private:
-    [[nodiscard]] static Domain::Result<void> failure(
+    [[nodiscard]] static Domain::Result<Domain::PdfWriteReceipt> failure(
         const char* message)
     {
-        return Domain::Result<void>::failure(
+        return Domain::Result<Domain::PdfWriteReceipt>::failure(
             Domain::makeError(Domain::ErrorCodes::InternalFailure, message));
     }
 

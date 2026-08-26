@@ -184,7 +184,7 @@ public:
         std::span<const std::byte> content,
         const Domain::OperationContext& context) noexcept = 0;
 
-    [[nodiscard]] virtual Domain::Result<std::vector<Domain::PathText>> list(
+    [[nodiscard]] virtual Domain::Result<Domain::DirectoryListing> list(
         const AuthorizedPath& directory,
         std::size_t maximumEntries,
         const Domain::OperationContext& context) noexcept = 0;

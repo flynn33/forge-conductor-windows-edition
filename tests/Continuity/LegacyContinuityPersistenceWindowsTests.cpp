@@ -462,7 +462,7 @@ public:
             Domain::ErrorCodes::HostCapabilityUnavailable, "Unused."));
     }
 
-    [[nodiscard]] Domain::Result<std::vector<Domain::PathText>> list(
+    [[nodiscard]] Domain::Result<Domain::DirectoryListing> list(
         const Contracts::AuthorizedPath& directory,
         const std::size_t maximumEntries,
         const Domain::OperationContext&) noexcept override
@@ -477,15 +477,17 @@ public:
                     paths.push_back(take(Domain::PathText::create(path)));
                 }
             }
-            if (paths.size() > maximumEntries) {
-                return Domain::Result<std::vector<Domain::PathText>>::failure(
-                    Domain::makeError(
-                        Domain::ErrorCodes::LimitExceeded, "Too many projections."));
+            std::sort(paths.begin(), paths.end());
+            const bool truncated = paths.size() > maximumEntries;
+            if (truncated) {
+                paths.erase(
+                    paths.begin() + static_cast<std::ptrdiff_t>(maximumEntries),
+                    paths.end());
             }
-            return Domain::Result<std::vector<Domain::PathText>>::success(
-                std::move(paths));
+            return Domain::Result<Domain::DirectoryListing>::success(
+                Domain::DirectoryListing{std::move(paths), truncated});
         } catch (...) {
-            return Domain::Result<std::vector<Domain::PathText>>::failure(
+            return Domain::Result<Domain::DirectoryListing>::failure(
                 Domain::makeError(
                     Domain::ErrorCodes::InternalFailure, "Memory list failed."));
         }

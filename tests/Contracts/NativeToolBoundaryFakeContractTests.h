@@ -2,14 +2,17 @@
 
 #include "PlatformBoundaryFakeTestSupport.h"
 #include "Fakes/DeterministicWorkspaceAuthority.h"
+#include "Fakes/FileSystemFake.h"
 #include "Fakes/GitServiceFake.h"
 #include "Fakes/PdfServiceFake.h"
 #include "Fakes/ShellServiceFake.h"
 #include "Fakes/TextSearchServiceFake.h"
 
+#include <chrono>
 #include <optional>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace ForgeConductor::Tests {
@@ -20,6 +23,7 @@ inline void runNativeToolBoundaryFakeContractTests()
     namespace Fakes = ForgeConductor::Tests::Fakes;
 
     static_assert(std::is_final_v<Fakes::RecordingTextSearchServiceFake>);
+    static_assert(std::is_final_v<Fakes::RecordingFileSystemFake>);
     static_assert(std::is_final_v<Fakes::RecordingGitServiceFake>);
     static_assert(std::is_final_v<Fakes::RecordingShellServiceFake>);
     static_assert(std::is_final_v<Fakes::RecordingPdfServiceFake>);
@@ -61,6 +65,23 @@ inline void runNativeToolBoundaryFakeContractTests()
             false},
         context));
 
+    Fakes::RecordingFileSystemFake filesystem{32, 2};
+    filesystem.setNow(now);
+    filesystem.listResult.set(
+        Domain::Result<std::vector<Domain::PathText>>::success({file, file}));
+    filesystem.listResultTruncated = true;
+    const auto directoryListing =
+        Support::take(filesystem.list(readPath, 1, context));
+    Support::require(
+        directoryListing.truncated && directoryListing.entries.size() == 1U,
+        "filesystem fake did not preserve sorted-prefix truncation metadata");
+    Support::require(
+        filesystem.lastCapture() &&
+            filesystem.lastCapture()->requestedBound == 1U &&
+            filesystem.lastCapture()->primary.authorityId() ==
+                authority.authorityId(),
+        "filesystem fake did not retain listing authority and bounds");
+
     Fakes::RecordingTextSearchServiceFake search{2, 32, 8};
     search.setNow(now);
     search.searchResult.set(
@@ -81,16 +102,51 @@ inline void runNativeToolBoundaryFakeContractTests()
 
     Fakes::RecordingGitServiceFake git{2, 32, 8};
     git.setNow(now);
+    Domain::ProcessResult scriptedGitStatus;
+    scriptedGitStatus.exitCode = 23;
+    scriptedGitStatus.stdoutUtf8 = "dirty";
+    scriptedGitStatus.stderrUtf8 = "notice";
+    scriptedGitStatus.timedOut = true;
+    scriptedGitStatus.cancelled = true;
+    scriptedGitStatus.stdoutTruncated = true;
+    scriptedGitStatus.stderrTruncated = true;
+    scriptedGitStatus.terminationConfirmed = false;
+    scriptedGitStatus.elapsed = std::chrono::milliseconds{17};
     git.statusResult.set(
-        Domain::Result<std::string>::success("clean"));
+        Domain::Result<Domain::ProcessResult>::success(scriptedGitStatus));
+    const auto gitStatus = Support::take(git.status(readPath, 8, context));
     Support::require(
-        Support::take(git.status(readPath, 8, context)) == "clean",
-        "git status did not return its bounded script");
+        gitStatus.exitCode == scriptedGitStatus.exitCode &&
+            gitStatus.stdoutUtf8 == scriptedGitStatus.stdoutUtf8 &&
+            gitStatus.stderrUtf8 == scriptedGitStatus.stderrUtf8 &&
+            gitStatus.timedOut == scriptedGitStatus.timedOut &&
+            gitStatus.cancelled == scriptedGitStatus.cancelled &&
+            gitStatus.stdoutTruncated == scriptedGitStatus.stdoutTruncated &&
+            gitStatus.stderrTruncated == scriptedGitStatus.stderrTruncated &&
+            gitStatus.terminationConfirmed ==
+                scriptedGitStatus.terminationConfirmed &&
+            gitStatus.elapsed == scriptedGitStatus.elapsed,
+        "git status did not preserve its configured nonzero process result");
     Support::require(
         git.lastCapture() &&
             git.lastCapture()->repository.authorityId() ==
                 authority.authorityId(),
         "git fake did not retain repository authority binding");
+    Domain::ProcessResult oversizedGitDiff;
+    oversizedGitDiff.exitCode = 9;
+    oversizedGitDiff.stdoutUtf8 = "0123456789";
+    oversizedGitDiff.stderrUtf8 = "abcdefghij";
+    git.diffResult.set(Domain::Result<Domain::ProcessResult>::success(
+        std::move(oversizedGitDiff)));
+    const auto boundedGitDiff = Support::take(
+        git.diff(readPath, {}, 4, context));
+    Support::require(
+        boundedGitDiff.exitCode == 9 &&
+            boundedGitDiff.stdoutUtf8 == "0123" &&
+            boundedGitDiff.stderrUtf8 == "abcdefgh" &&
+            boundedGitDiff.stdoutTruncated &&
+            boundedGitDiff.stderrTruncated,
+        "git fake did not cap structured output and retain process status");
     const std::vector<std::string> tooManyArguments{"a", "b", "c"};
     Support::requireError(
         git.diff(readPath, tooManyArguments, 8, context),
@@ -131,8 +187,12 @@ inline void runNativeToolBoundaryFakeContractTests()
 
     Fakes::RecordingPdfServiceFake pdf{32};
     pdf.setNow(now);
-    pdf.writeResult.set(Domain::Result<void>::success());
-    pdf.fromTextFileResult.set(Domain::Result<void>::success());
+    const auto pdfPath = Support::path("C:/platform-boundary/file.pdf");
+    pdf.writeResult.set(Domain::Result<Domain::PdfWriteReceipt>::success(
+        Domain::PdfWriteReceipt{pdfPath, 123, 1, "test", "title"}));
+    pdf.fromTextFileResult.set(
+        Domain::Result<Domain::PdfWriteReceipt>::success(
+            Domain::PdfWriteReceipt{pdfPath, 124, 1, "test", "title"}));
     Support::require(
         pdf.write("title", "body", writePath, context).hasValue(),
         "PDF fake rejected bounded text");
@@ -142,7 +202,7 @@ inline void runNativeToolBoundaryFakeContractTests()
                 authority.authorityId(),
         "PDF fake did not retain destination authority binding");
     Support::require(
-        pdf.fromTextFile(readPath, writePath, context).hasValue() &&
+        pdf.fromTextFile("title", readPath, writePath, context).hasValue() &&
             pdf.lastCapture() &&
             pdf.lastCapture()->secondary &&
             pdf.lastCapture()->secondary->authorityId() ==

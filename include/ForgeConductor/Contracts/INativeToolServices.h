@@ -27,25 +27,29 @@ class IGitService {
 public:
     virtual ~IGitService() = default;
 
-    [[nodiscard]] virtual Domain::Result<std::string> status(
+    // A successfully launched command returns its complete bounded process
+    // outcome even when Git exits nonzero. Contract failures represent request,
+    // authority, admission, or process-supervisor failures.
+
+    [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> status(
         const AuthorizedPath& repository,
         std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept = 0;
-    [[nodiscard]] virtual Domain::Result<std::string> diff(
+    [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> diff(
         const AuthorizedPath& repository,
         std::span<const std::string> arguments,
         std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept = 0;
-    [[nodiscard]] virtual Domain::Result<std::string> log(
+    [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> log(
         const AuthorizedPath& repository,
         std::size_t maximumEntries,
         std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept = 0;
-    [[nodiscard]] virtual Domain::Result<void> add(
+    [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> add(
         const AuthorizedPath& repository,
         std::span<const AuthorizedPath> paths,
         const Domain::OperationContext& context) noexcept = 0;
-    [[nodiscard]] virtual Domain::Result<std::string> commit(
+    [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> commit(
         const AuthorizedPath& repository,
         std::string_view message,
         const Domain::OperationContext& context) noexcept = 0;
@@ -66,15 +70,20 @@ public:
 
 class IPdfService {
 public:
+    static constexpr std::size_t MaximumTitleBytes = 512U;
+    static constexpr std::size_t MaximumTextBytes = 2U * 1024U * 1024U;
+    static constexpr std::size_t MaximumPdfBytes = 16U * 1024U * 1024U;
+
     virtual ~IPdfService() = default;
 
-    [[nodiscard]] virtual Domain::Result<void> write(
+    [[nodiscard]] virtual Domain::Result<Domain::PdfWriteReceipt> write(
         std::string_view title,
         std::string_view body,
         const AuthorizedPath& destination,
         const Domain::OperationContext& context) noexcept = 0;
 
-    [[nodiscard]] virtual Domain::Result<void> fromTextFile(
+    [[nodiscard]] virtual Domain::Result<Domain::PdfWriteReceipt> fromTextFile(
+        std::string_view title,
         const AuthorizedPath& source,
         const AuthorizedPath& destination,
         const Domain::OperationContext& context) noexcept = 0;

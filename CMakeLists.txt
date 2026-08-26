@@ -152,6 +152,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsRuntimeDiagnostics.cpp
     src/Infrastructure/Windows/WindowsUnicodeCanonicalizer.cpp
     src/Infrastructure/Windows/WindowsUuidGenerator.cpp
+    src/Infrastructure/Windows/WindowsWorkspaceAuthority.cpp
     src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp
     src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp
     src/Infrastructure/Windows/Detail/BoundedSerialExecutor.cpp
@@ -224,9 +225,25 @@ target_link_libraries(ForgeConductor.Persistence.Windows PRIVATE
     nlohmann_json::nlohmann_json
     bcrypt
     winsqlite3)
+
+set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
+    src/NativeTools/Windows/NativeFileOperations.cpp
+    src/NativeTools/Windows/WindowsFileSystem.cpp
+    src/NativeTools/Windows/WindowsGitService.cpp
+    src/NativeTools/Windows/WindowsPathGlobService.cpp
+    src/NativeTools/Windows/WindowsPdfService.cpp
+    src/NativeTools/Windows/WindowsShellService.cpp
+    src/NativeTools/Windows/WindowsTextSearchService.cpp
+)
+add_library(ForgeConductor.NativeTools.Windows STATIC
+    ${FORGE_NATIVE_TOOLS_WINDOWS_SOURCES})
 forge_add_layer(ForgeConductor.NativeTools.Windows ForgeConductor::NativeTools.Windows
     ForgeConductor::Contracts
     ForgeConductor::Infrastructure.Windows)
+forge_configure_native_target(ForgeConductor.NativeTools.Windows)
+target_include_directories(ForgeConductor.NativeTools.Windows
+    PUBLIC "${PROJECT_SOURCE_DIR}/include"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
 add_library(ForgeConductor.SessionHost.Core STATIC
     src/SessionHost/BoundedLogicalContinuationQueue.cpp
     src/SessionHost/ForgeNativeSessionHostAdapter.cpp
@@ -1062,7 +1079,7 @@ if(BUILD_TESTING)
     )
     set_tests_properties(
         ForgeConductor.LegacyContinuityPersistence.WindowsTests PROPERTIES
-        LABELS "T-UNIT;T-DB;T-CONT;T-SEC;T-STRESS;G11"
+        LABELS "T-UNIT;T-DB;T-CONT;T-SEC;T-STRESS;G11;G13"
         TIMEOUT 180
     )
 
@@ -1156,6 +1173,174 @@ if(BUILD_TESTING)
         ForgeConductor.LegacyMemory.RepositoryWindowsTests PROPERTIES
         LABELS "T-UNIT;T-DB;T-MEM;T-SEC;G09"
         TIMEOUT 180
+    )
+
+    add_executable(ForgeConductor.NativeTools.FileSystemSearchTests
+        tests/NativeTools/WindowsFileSystemSearchTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.NativeTools.FileSystemSearchTests)
+    target_include_directories(
+        ForgeConductor.NativeTools.FileSystemSearchTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.NativeTools.FileSystemSearchTests PRIVATE
+        ForgeConductor::NativeTools.Windows)
+    add_test(
+        NAME ForgeConductor.NativeTools.FileSystemSearchTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.FileSystemSearchTests>
+    )
+    set_tests_properties(
+        ForgeConductor.NativeTools.FileSystemSearchTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-SEC;G13"
+        TIMEOUT 180
+    )
+
+    add_executable(ForgeConductor.NativeTools.GitShellTests
+        tests/NativeTools/WindowsGitShellTests.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.GitShellTests)
+    target_include_directories(
+        ForgeConductor.NativeTools.GitShellTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.NativeTools.GitShellTests PRIVATE
+        ForgeConductor::NativeTools.Windows)
+    add_test(
+        NAME ForgeConductor.NativeTools.GitShellTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.GitShellTests>
+    )
+    set_tests_properties(
+        ForgeConductor.NativeTools.GitShellTests PROPERTIES
+        LABELS "T-UNIT;T-PROC;T-SEC;G13"
+        TIMEOUT 180
+    )
+
+    set(FORGE_P13_GIT_EXECUTABLE
+        "$ENV{ProgramFiles}/Git/bin/git.exe")
+    if(NOT EXISTS "${FORGE_P13_GIT_EXECUTABLE}")
+        find_program(FORGE_P13_GIT_EXECUTABLE_FALLBACK
+            NAMES git.exe REQUIRED)
+        set(FORGE_P13_GIT_EXECUTABLE
+            "${FORGE_P13_GIT_EXECUTABLE_FALLBACK}")
+    endif()
+    find_program(FORGE_P13_POWERSHELL_EXECUTABLE NAMES pwsh.exe REQUIRED)
+    add_executable(ForgeConductor.NativeTools.GitShellIntegrationTests
+        tests/NativeTools/WindowsGitShellIntegrationTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.NativeTools.GitShellIntegrationTests)
+    target_include_directories(
+        ForgeConductor.NativeTools.GitShellIntegrationTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.NativeTools.GitShellIntegrationTests PRIVATE
+        ForgeConductor::NativeTools.Windows)
+    add_test(
+        NAME ForgeConductor.NativeTools.GitShellIntegrationTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.GitShellIntegrationTests>
+            "${FORGE_P13_GIT_EXECUTABLE}"
+            "${FORGE_P13_POWERSHELL_EXECUTABLE}"
+    )
+    set_tests_properties(
+        ForgeConductor.NativeTools.GitShellIntegrationTests PROPERTIES
+        LABELS "T-INTEGRATION;T-PROC;T-SEC;G13"
+        TIMEOUT 60
+    )
+
+    add_executable(ForgeConductor.NativeTools.PdfTests
+        tests/NativeTools/WindowsPdfServiceTests.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.PdfTests)
+    target_include_directories(
+        ForgeConductor.NativeTools.PdfTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.NativeTools.PdfTests PRIVATE
+        ForgeConductor::NativeTools.Windows
+        windowsapp)
+    add_test(
+        NAME ForgeConductor.NativeTools.PdfTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.PdfTests>
+    )
+    set_tests_properties(
+        ForgeConductor.NativeTools.PdfTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-DOC;T-SEC;G13"
+        TIMEOUT 180
+    )
+
+    add_executable(ForgeConductor.NativeTools.WorkspaceAuthorityTests
+        tests/NativeTools/WindowsWorkspaceAuthorityTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.NativeTools.WorkspaceAuthorityTests)
+    target_include_directories(
+        ForgeConductor.NativeTools.WorkspaceAuthorityTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.NativeTools.WorkspaceAuthorityTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+    add_test(
+        NAME ForgeConductor.NativeTools.WorkspaceAuthorityTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.WorkspaceAuthorityTests>
+    )
+    set_tests_properties(
+        ForgeConductor.NativeTools.WorkspaceAuthorityTests PROPERTIES
+        LABELS "T-UNIT;T-SEC;G13"
+        TIMEOUT 180
+    )
+
+    add_test(
+        NAME ForgeConductor.NativeTools.ContractTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Contracts.ContractTests>
+    )
+    set_tests_properties(
+        ForgeConductor.NativeTools.ContractTests PROPERTIES
+        LABELS "T-UNIT;G13"
+        TIMEOUT 180
+    )
+
+    file(GLOB _forge_native_tools_windows_headers CONFIGURE_DEPENDS
+        "${PROJECT_SOURCE_DIR}/include/ForgeConductor/NativeTools/Windows/*.h")
+    if(NOT _forge_native_tools_windows_headers)
+        message(FATAL_ERROR "P13 public native-tools header inventory is empty.")
+    endif()
+    set(_forge_p13_header_isolation_sources)
+    file(MAKE_DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/p13-header-isolation")
+    foreach(_header IN LISTS _forge_native_tools_windows_headers)
+        file(RELATIVE_PATH _header_relative "${PROJECT_SOURCE_DIR}/include" "${_header}")
+        string(REPLACE "\\" "/" _header_relative "${_header_relative}")
+        string(MAKE_C_IDENTIFIER "${_header_relative}" _header_identifier)
+        set(_isolation_source
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/p13-header-isolation/${_header_identifier}.cpp")
+        file(GENERATE OUTPUT "${_isolation_source}" CONTENT
+            "#include <${_header_relative}>\nint ${_header_identifier}_isolated() noexcept { return 0; }\n")
+        list(APPEND _forge_p13_header_isolation_sources "${_isolation_source}")
+    endforeach()
+    add_library(ForgeConductor.NativeToolsWindows.HeaderObjects OBJECT
+        ${_forge_p13_header_isolation_sources})
+    forge_configure_native_target(
+        ForgeConductor.NativeToolsWindows.HeaderObjects)
+    target_link_libraries(
+        ForgeConductor.NativeToolsWindows.HeaderObjects PRIVATE
+        ForgeConductor::NativeTools.Windows)
+    add_executable(ForgeConductor.NativeTools.HeaderSelfContainment
+        tests/Architecture/P06HeaderSelfContainmentMain.cpp)
+    forge_configure_native_target(
+        ForgeConductor.NativeTools.HeaderSelfContainment)
+    target_link_libraries(
+        ForgeConductor.NativeTools.HeaderSelfContainment PRIVATE
+        ForgeConductor.NativeToolsWindows.HeaderObjects
+        ForgeConductor::NativeTools.Windows)
+    add_test(
+        NAME ForgeConductor.NativeTools.HeaderSelfContainment
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.HeaderSelfContainment>
+    )
+    set_tests_properties(
+        ForgeConductor.NativeTools.HeaderSelfContainment PROPERTIES
+        LABELS "T-UNIT;G13"
+        TIMEOUT 60
     )
 
     add_test(

@@ -36,6 +36,11 @@ private:
     std::string value_;
 };
 
+struct DirectoryListing final {
+    std::vector<PathText> entries;
+    bool truncated{};
+};
+
 enum class FileAccess {
     Read,
     Write,

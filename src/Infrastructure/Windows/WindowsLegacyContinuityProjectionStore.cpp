@@ -631,17 +631,17 @@ Domain::Result<std::size_t> WindowsLegacyContinuityProjectionStore::reset(
             implementation_->memoryRoot,
             Domain::FileAccess::Read,
             context);
-        auto entries = take(implementation_->fileSystem->list(
+        auto listing = take(implementation_->fileSystem->list(
             directory,
             Domain::LegacyContinuityLimits::MaximumRepairRows + 8U,
             context));
-        if (entries.size() > Domain::LegacyContinuityLimits::MaximumRepairRows + 8U) {
+        if (listing.truncated) {
             fail(Domain::makeError(
                 Domain::ErrorCodes::IntegrityFailure,
                 "The continuity projection directory exceeded its reset bound."));
         }
         std::size_t removed{};
-        for (const auto& entry : entries) {
+        for (const auto& entry : listing.entries) {
             removed += implementation_->removePath(
                 entry, implementation_->memoryRoot, context);
         }
