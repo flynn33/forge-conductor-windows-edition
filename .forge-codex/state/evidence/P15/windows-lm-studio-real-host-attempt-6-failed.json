@@ -1,0 +1,79 @@
+{
+  "authority": {
+    "caller": "p15-lmstudio-maintenance",
+    "exact_tool": "install-lmstudio-plugin",
+    "execute_intent": "execute",
+    "execute_root_count": 4,
+    "execute_shell_enabled": true,
+    "project_id": "e8a00577-70c4-4af7-a032-4d52d8a8ac1f",
+    "selected_roots_only": true,
+    "write_intent": "write",
+    "write_root_count": 3
+  },
+  "before": {
+    "configuration": {
+      "bytes": 23,
+      "exists": true,
+      "sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02"
+    },
+    "foreign_configuration": {
+      "server_count": 0,
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    "foreign_plugins": {
+      "file_bytes": 1070,
+      "root_entries": 2,
+      "sha256": "f64eb6fe502c5e4f7cba4c2b016e42e0053488ef6885af1fcbeecf603c13a96f",
+      "transaction_root_count": 0,
+      "transaction_roots_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tree_entries": 8
+    },
+    "status": {
+      "binary_executable": true,
+      "configuration_registered": false,
+      "deployment_id": "",
+      "fallback_installed": false,
+      "lm_studio_present": true,
+      "primary_installed": false
+    },
+    "synchronized_state": {
+      "bytes": 22,
+      "exists": true,
+      "sha256": "38935ac9bd01a9a91be32d16fc131d8b9d46fbcede88855e85c01f31c7347615"
+    }
+  },
+  "binary": {
+    "bytes": 13145600,
+    "path": "<workspace>\\out\\build\\windows-msvc-x64\\bin\\Debug\\forge-conductor.exe",
+    "sha256": "1f15d27dcae01fe1be01fd751d3db23fe368262c93e3463bb3f6d88ec048fbb5"
+  },
+  "bounded": true,
+  "gate": "G15",
+  "host": {
+    "application": "<user-profile>\\AppData\\Local\\Programs\\LM Studio\\LM Studio.exe",
+    "configuration": "<user-profile>\\.lmstudio\\mcp.json",
+    "discovery_evidence_count": 5,
+    "expected_application_bound": true,
+    "lm_studio_present": true,
+    "version": "0.4.21+2"
+  },
+  "host_observations": {
+    "preflight": {
+      "inspection_succeeded": true,
+      "running": false
+    }
+  },
+  "phase": "P15",
+  "result": {
+    "deployment_left_installed": false,
+    "error": "Atomic staged owner, primary group, or mandatory label differs from the target. Rollback also failed: Atomic staged owner, primary group, or mandatory label differs from the target.",
+    "error_code": "integrity_failure",
+    "retryable": false,
+    "rollback_requested": false,
+    "stage": "deploy_lmstudio_plugins",
+    "status": "failed"
+  },
+  "runner": "ForgeConductor.LMStudio.RealHostTests",
+  "sanitized": true,
+  "schema_version": 1
+}

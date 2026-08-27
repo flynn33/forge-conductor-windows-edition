@@ -17,6 +17,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <map>
@@ -114,9 +115,17 @@ public:
         AfterMutation
     };
 
+    struct MoveObservation final {
+        std::string source;
+        std::string destination;
+
+        bool operator==(const MoveObservation&) const = default;
+    };
+
     struct Snapshot final {
         std::map<std::string, std::vector<std::byte>> files;
         std::set<std::string> directories;
+        std::map<std::string, std::uint64_t> fileIdentities;
 
         bool operator==(const Snapshot&) const = default;
     };
@@ -124,7 +133,11 @@ public:
     void seedFile(const std::string_view file, const std::string_view content)
     {
         std::scoped_lock lock{mutex_};
-        files_.insert_or_assign(std::string{file}, bytes(content));
+        const std::string name{file};
+        files_.insert_or_assign(name, bytes(content));
+        if (!fileIdentities_.contains(name)) {
+            fileIdentities_.emplace(name, nextFileIdentity_++);
+        }
     }
 
     void seedDirectory(const std::string_view directory)
@@ -143,16 +156,20 @@ public:
             : std::optional<std::string>{text(found->second)};
     }
 
+    [[nodiscard]] std::optional<std::uint64_t> fileIdentity(
+        const std::string_view file) const
+    {
+        std::scoped_lock lock{mutex_};
+        const auto found = fileIdentities_.find(std::string{file});
+        return found == fileIdentities_.end()
+            ? std::nullopt
+            : std::optional<std::uint64_t>{found->second};
+    }
+
     [[nodiscard]] Snapshot snapshot() const
     {
         std::scoped_lock lock{mutex_};
-        return Snapshot{files_, directories_};
-    }
-
-    void failNextAtomicReplace() noexcept
-    {
-        std::scoped_lock lock{mutex_};
-        failAtomicReplace_ = true;
+        return Snapshot{files_, directories_, fileIdentities_};
     }
 
     void failMoveAt(
@@ -179,6 +196,7 @@ public:
         mutationCalls_ = 0U;
         moveCalls_ = 0U;
         successfulMoveDestinations_.clear();
+        successfulMoves_.clear();
         replaceRetainBackup_.clear();
         failMoveCall_.reset();
         failMutationCall_.reset();
@@ -200,6 +218,12 @@ public:
     {
         std::scoped_lock lock{mutex_};
         return successfulMoveDestinations_;
+    }
+
+    [[nodiscard]] std::vector<MoveObservation> successfulMoves() const
+    {
+        std::scoped_lock lock{mutex_};
+        return successfulMoves_;
     }
 
     [[nodiscard]] std::vector<bool> replaceRetainBackup() const
@@ -233,22 +257,19 @@ public:
                 return mutation;
             }
             replaceRetainBackup_.push_back(retainBackup);
-            if (failAtomicReplace_) {
-                failAtomicReplace_ = false;
-                return Domain::Result<void>::failure(Domain::makeError(
-                    Domain::ErrorCodes::InternalFailure,
-                    "Injected atomic replacement failure."));
-            }
             const auto target = file.canonicalPath().value();
             if (retainBackup) {
                 const auto previous = files_.find(target);
                 if (previous != files_.end()) {
                     files_.insert_or_assign(target + ".bak", previous->second);
+                    fileIdentities_.insert_or_assign(
+                        target + ".bak", nextFileIdentity_++);
                 }
             }
             files_.insert_or_assign(
                 target,
                 std::vector<std::byte>{content.begin(), content.end()});
+            fileIdentities_.insert_or_assign(target, nextFileIdentity_++);
             return finishMutation();
         } catch (...) {
             return internalFailure();
@@ -286,6 +307,8 @@ public:
             files_.emplace(
                 file.canonicalPath().value(),
                 std::vector<std::byte>{content.begin(), content.end()});
+            fileIdentities_.emplace(
+                file.canonicalPath().value(), nextFileIdentity_++);
             return finishMutation();
         } catch (...) {
             return internalFailure();
@@ -339,10 +362,12 @@ public:
             }
             const auto name = target.canonicalPath().value();
             bool removed = files_.erase(name) != 0U || directories_.erase(name) != 0U;
+            fileIdentities_.erase(name);
             if (recursive) {
                 const auto prefix = name + "\\";
                 for (auto file = files_.begin(); file != files_.end();) {
                     if (file->first.starts_with(prefix)) {
+                        fileIdentities_.erase(file->first);
                         file = files_.erase(file);
                         removed = true;
                     } else {
@@ -404,10 +429,17 @@ public:
                     "The scripted move source does not exist."));
             }
             std::map<std::string, std::vector<std::byte>> movedFiles;
+            std::map<std::string, std::uint64_t> movedFileIdentities;
             for (auto file = files_.begin(); file != files_.end();) {
                 if (file->first == sourceName || file->first.starts_with(prefix)) {
                     const auto suffix = file->first.substr(sourceName.size());
-                    movedFiles.emplace(destinationName + suffix, std::move(file->second));
+                    const auto movedName = destinationName + suffix;
+                    movedFiles.emplace(movedName, std::move(file->second));
+                    const auto identity = fileIdentities_.find(file->first);
+                    if (identity != fileIdentities_.end()) {
+                        movedFileIdentities.emplace(movedName, identity->second);
+                        fileIdentities_.erase(identity);
+                    }
                     file = files_.erase(file);
                 } else {
                     ++file;
@@ -426,8 +458,12 @@ public:
             files_.insert(
                 std::make_move_iterator(movedFiles.begin()),
                 std::make_move_iterator(movedFiles.end()));
+            fileIdentities_.insert(
+                std::make_move_iterator(movedFileIdentities.begin()),
+                std::make_move_iterator(movedFileIdentities.end()));
             directories_.insert(movedDirectories.begin(), movedDirectories.end());
             successfulMoveDestinations_.push_back(destinationName);
+            successfulMoves_.push_back(MoveObservation{sourceName, destinationName});
             if (failMoveCall_ && moveCalls_ == failMoveCall_.value() &&
                 failMovePhase_ == FailurePhase::AfterMutation) {
                 failMoveCall_.reset();
@@ -523,7 +559,10 @@ private:
     mutable std::mutex mutex_;
     std::map<std::string, std::vector<std::byte>> files_;
     std::set<std::string> directories_;
+    std::map<std::string, std::uint64_t> fileIdentities_;
     std::vector<std::string> successfulMoveDestinations_;
+    std::vector<MoveObservation> successfulMoves_;
+    std::uint64_t nextFileIdentity_{1U};
     std::vector<bool> replaceRetainBackup_;
     std::size_t mutationCalls_{};
     std::size_t moveCalls_{};
@@ -531,7 +570,6 @@ private:
     FailurePhase failMovePhase_{FailurePhase::BeforeMutation};
     std::optional<std::size_t> failMutationCall_;
     FailurePhase failMutationPhase_{FailurePhase::BeforeMutation};
-    bool failAtomicReplace_{};
 };
 
 class FaultingWorkspaceAuthority final : public Contracts::IWorkspaceAuthority {
@@ -937,6 +975,29 @@ constexpr std::string_view ForeignPluginSentinel{
     return path(fixture.binaryRoot.value() + "\\forge-serve-neighbor.cmd");
 }
 
+[[nodiscard]] std::string transactionRoot(
+    const Fixture& fixture,
+    const std::string_view deploymentId)
+{
+    return fixture.lmStudioRoot.value() +
+        "\\extensions\\plugins\\mcp\\.forge-conductor-install-" +
+        std::string{deploymentId};
+}
+
+[[nodiscard]] std::string stagedConfiguration(
+    const Fixture& fixture,
+    const std::string_view deploymentId)
+{
+    return transactionRoot(fixture, deploymentId) + "\\staged\\mcp.json";
+}
+
+[[nodiscard]] std::string backupConfiguration(
+    const Fixture& fixture,
+    const std::string_view deploymentId)
+{
+    return transactionRoot(fixture, deploymentId) + "\\backup\\mcp.json";
+}
+
 void seedForeignState(Fixture& fixture)
 {
     fixture.storage.seedFile(
@@ -1010,11 +1071,8 @@ void testTransactionalDeployPreservesForeignAndOrdersFallbackFirst()
     require(fixture.storage.fileText(fixture.configurationPath.value() + ".bak") ==
                 "preexisting-backup-sentinel",
             "Deployment changed the caller's preexisting mcp.json.bak state.");
-    const auto backupRequests = fixture.storage.replaceRetainBackup();
-    require(std::all_of(
-                backupRequests.begin(), backupRequests.end(),
-                [](const bool retain) { return !retain; }),
-            "Deployment requested an atomic-store backup side effect.");
+    require(fixture.storage.replaceRetainBackup().empty(),
+            "Deployment rewrote mcp.json through the atomic store instead of moving the original file object.");
 
     const auto roles = fixture.verifier.roles();
     require(roles == std::vector<Domain::LMStudioConnectorRole>{
@@ -1063,6 +1121,80 @@ void testTransactionalDeployPreservesForeignAndOrdersFallbackFirst()
             "The plugin install timestamp did not come from the injected clock.");
 }
 
+void testConfigurationFileObjectTransactionCommitsAndRollsBackByMove()
+{
+    Fixture fixture;
+    seedForeignState(fixture);
+    const auto originalIdentity =
+        fixture.storage.fileIdentity(fixture.configurationPath.value());
+    require(originalIdentity.has_value(),
+            "The existing LM Studio configuration has no file-object identity.");
+
+    static_cast<void>(take(fixture.deploy(fixture.context())));
+    const auto installedIdentity =
+        fixture.storage.fileIdentity(fixture.configurationPath.value());
+    require(installedIdentity.has_value() && installedIdentity != originalIdentity,
+            "Configuration commit did not publish the staged file object.");
+    require(fixture.storage.replaceRetainBackup().empty(),
+            "Configuration commit invoked atomic replacement.");
+
+    const auto committedMoves = fixture.storage.successfulMoves();
+    const auto firstBackup = backupConfiguration(
+        fixture, "97000000-0000-4000-8000-000000000001");
+    const auto firstStaged = stagedConfiguration(
+        fixture, "97000000-0000-4000-8000-000000000001");
+    const auto firstBackupMove = std::find(
+        committedMoves.begin(), committedMoves.end(),
+        MemoryStorage::MoveObservation{
+            fixture.configurationPath.value(), firstBackup});
+    const auto firstPublishMove = std::find(
+        committedMoves.begin(), committedMoves.end(),
+        MemoryStorage::MoveObservation{
+            firstStaged, fixture.configurationPath.value()});
+    require(firstBackupMove != committedMoves.end() &&
+                firstPublishMove != committedMoves.end() &&
+                firstBackupMove < firstPublishMove,
+            "Configuration commit did not move the existing object to transaction backup before publishing the staged object.");
+
+    const auto baseline = fixture.storage.snapshot();
+    fixture.storage.resetMutationObservations();
+    fixture.verifier.failAt(
+        fixture.verifier.calls() + 3U,
+        Domain::makeError(Domain::ErrorCodes::IntegrityFailure,
+                          "Injected post-configuration smoke failure."));
+    require(!fixture.deploy(fixture.context()),
+            "An injected post-configuration failure was accepted.");
+    require(fixture.storage.snapshot() == baseline &&
+                fixture.storage.fileIdentity(fixture.configurationPath.value()) ==
+                    installedIdentity,
+            "Post-configuration rollback did not restore the exact original file object and bytes.");
+    require(fixture.storage.replaceRetainBackup().empty(),
+            "Configuration rollback invoked atomic replacement.");
+
+    const auto rollbackMoves = fixture.storage.successfulMoves();
+    const auto secondBackup = backupConfiguration(
+        fixture, "97000000-0000-4000-8000-000000000002");
+    const auto secondStaged = stagedConfiguration(
+        fixture, "97000000-0000-4000-8000-000000000002");
+    const auto backupMove = std::find(
+        rollbackMoves.begin(), rollbackMoves.end(),
+        MemoryStorage::MoveObservation{
+            fixture.configurationPath.value(), secondBackup});
+    const auto publishMove = std::find(
+        rollbackMoves.begin(), rollbackMoves.end(),
+        MemoryStorage::MoveObservation{
+            secondStaged, fixture.configurationPath.value()});
+    const auto restoreMove = std::find(
+        rollbackMoves.begin(), rollbackMoves.end(),
+        MemoryStorage::MoveObservation{
+            secondBackup, fixture.configurationPath.value()});
+    require(backupMove != rollbackMoves.end() &&
+                publishMove != rollbackMoves.end() &&
+                restoreMove != rollbackMoves.end() &&
+                backupMove < publishMove && publishMove < restoreMove,
+            "Post-configuration rollback did not restore mcp.json from the transaction backup in reverse order.");
+}
+
 void testRepeatedDeployUsesFreshRevisionAndStatusDetectsDrift()
 {
     Fixture fixture;
@@ -1082,33 +1214,26 @@ void testRepeatedDeployUsesFreshRevisionAndStatusDetectsDrift()
             "Status accepted a wrong role or stale shared configuration revision.");
 }
 
-void testAtomicAndPostSmokeFaultsRestoreExactSnapshot()
+void testPluginAndConfigurationCommitMoveFaultsRestoreExactSnapshot()
 {
     Fixture fixture;
     seedForeignState(fixture);
     static_cast<void>(take(fixture.deploy(fixture.context())));
     const auto baseline = fixture.storage.snapshot();
 
-    fixture.storage.failMoveAt(fixture.storage.moveCalls() + 4U);
+    fixture.storage.resetMutationObservations();
+    fixture.storage.failMoveAt(4U);
     require(!fixture.deploy(fixture.context()),
             "An injected primary staged-to-target move failure was accepted.");
     require(fixture.storage.snapshot() == baseline,
-            "Directory commit failure after both targets were backed up did not restore exact state.");
+            "Plugin commit failure after both targets were backed up did not restore exact state.");
 
-    fixture.storage.failNextAtomicReplace();
+    fixture.storage.resetMutationObservations();
+    fixture.storage.failMoveAt(6U);
     require(!fixture.deploy(fixture.context()),
-            "An injected atomic configuration failure was accepted.");
+            "An injected staged-configuration publish failure was accepted.");
     require(fixture.storage.snapshot() == baseline,
-            "Atomic configuration failure did not restore exact plugin/configuration state.");
-
-    fixture.verifier.failAt(
-        fixture.verifier.calls() + 3U,
-        Domain::makeError(Domain::ErrorCodes::IntegrityFailure,
-                          "Injected post-smoke failure."));
-    require(!fixture.deploy(fixture.context()),
-            "An injected post-smoke failure was accepted.");
-    require(fixture.storage.snapshot() == baseline,
-            "Post-smoke failure did not restore exact plugin/configuration state.");
+            "Configuration publish failure did not restore the exact plugin/configuration objects.");
 }
 
 void testFreshInstallAndAmbiguousBackupFaultsRestoreExactState()
@@ -1121,6 +1246,19 @@ void testFreshInstallAndAmbiguousBackupFaultsRestoreExactState()
                 "A fresh install accepted failure after fallback commit but before primary commit.");
         require(fixture.storage.snapshot() == baseline,
                 "Fresh-install rollback did not restore the exact no-file/no-plugin state.");
+    }
+
+    {
+        Fixture fixture;
+        const auto baseline = fixture.storage.snapshot();
+        fixture.storage.failMoveAt(
+            6U, MemoryStorage::FailurePhase::AfterMutation);
+        require(!fixture.deploy(fixture.context()),
+                "A fresh install accepted an ambiguous staged-configuration publish failure.");
+        require(fixture.storage.snapshot() == baseline &&
+                    !fixture.storage.fileIdentity(
+                        fixture.configurationPath.value()).has_value(),
+                "Fresh-install rollback retained a newly published configuration object when no original existed.");
     }
 
     {
@@ -1181,13 +1319,13 @@ void testEveryMutationBoundaryEitherRollsBackOrSurfacesCommittedCleanup()
             require(fixture.storage.fileText(
                         fixture.configurationPath.value() + ".bak") ==
                         "preexisting-backup-sentinel",
-                    "A faulted transaction changed the preexisting atomic backup state.");
+                    "A faulted transaction changed the caller's preexisting mcp.json.bak state.");
             ++committedCleanupFailures;
         }
 
         require(reachedSuccessfulCallBeyondMatrix,
                 "The storage mutation boundary matrix did not reach an unfaulted deployment.");
-        require(exactRollbacks == 15U && committedCleanupFailures == 1U,
+        require(exactRollbacks == 17U && committedCleanupFailures == 1U,
                 "The storage mutation boundary matrix did not cover every rollback and cleanup boundary exactly.");
     }
 }
@@ -1198,6 +1336,10 @@ void testRollbackAndPostCommitCleanupFailuresAreTypedAndDiagnosed()
         Fixture fixture;
         seedForeignState(fixture);
         static_cast<void>(take(fixture.deploy(fixture.context())));
+        const auto originalConfigurationIdentity =
+            fixture.storage.fileIdentity(fixture.configurationPath.value());
+        require(originalConfigurationIdentity.has_value(),
+                "The rollback-failure fixture has no live configuration identity.");
         const auto postPrimaryCall = fixture.verifier.calls() + 3U;
         fixture.verifier.failAt(
             postPrimaryCall,
@@ -1215,6 +1357,11 @@ void testRollbackAndPostCommitCleanupFailuresAreTypedAndDiagnosed()
             fixture.deploy(fixture.context()),
             Domain::ErrorCodes::IntegrityFailure,
             "A rollback restoration failure was suppressed.");
+        const auto retainedConfigurationBackup = backupConfiguration(
+            fixture, "97000000-0000-4000-8000-000000000002");
+        require(fixture.storage.fileIdentity(retainedConfigurationBackup) ==
+                    originalConfigurationIdentity,
+                "Rollback failure deleted the original configuration object instead of retaining its transaction backup.");
         const auto events = take(fixture.diagnostics.recent(
             128U, fixture.context()));
         require(std::any_of(events.begin(), events.end(), [](const auto& event) {
@@ -1498,10 +1645,12 @@ void registerLMStudioDeploymentServiceTests(TestRegistry& tests)
 {
     addTest(tests, "lmstudio.deploy.transaction-and-fallback-order",
             testTransactionalDeployPreservesForeignAndOrdersFallbackFirst);
+    addTest(tests, "lmstudio.deploy.configuration-file-object-transaction",
+            testConfigurationFileObjectTransactionCommitsAndRollsBackByMove);
     addTest(tests, "lmstudio.deploy.fresh-revision-and-drift",
             testRepeatedDeployUsesFreshRevisionAndStatusDetectsDrift);
-    addTest(tests, "lmstudio.deploy.atomic-post-smoke-rollback",
-            testAtomicAndPostSmokeFaultsRestoreExactSnapshot);
+    addTest(tests, "lmstudio.deploy.commit-move-rollback",
+            testPluginAndConfigurationCommitMoveFaultsRestoreExactSnapshot);
     addTest(tests, "lmstudio.deploy.fresh-and-ambiguous-move-rollback",
             testFreshInstallAndAmbiguousBackupFaultsRestoreExactState);
     addTest(tests, "lmstudio.deploy.complete-mutation-fault-matrix",

@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "phase": "P15",
+  "gate": "G15",
+  "status": "diagnosed_and_corrected",
+  "recorded_utc": "2026-08-27T16:31:17.0215640+00:00",
+  "working_directory": "<workspace>",
+  "toolchain": "MSVC x64 Debug through CMake, MSBuild, and CTest",
+  "bounded": true,
+  "sanitized": true,
+  "failure_evidence": {
+    "command_record": ".forge-codex/state/commands/20260827T160759833Z-4fa891ce.json",
+    "command_record_sha256": "2f610272123b20fca7a231af1879a55c10167e5143fbea2fe8d88cb3f88e132d",
+    "command_stdout_sha256": "71cd168bf546ea4f4745042da1a779009ba9ce49101821da8da7ab31cfc43559",
+    "command_stderr_sha256": "47438ecb751b4fdf89a1e96ac1aa9c4d96a87824bc10a25c9a631fe7b3cf16f7",
+    "exit_code": 1,
+    "timed_out": false,
+    "real_host_evidence": ".forge-codex/state/evidence/P15/windows-lm-studio-real-host-attempt-6-failed.json",
+    "real_host_evidence_sha256": "d87195cde2c375e599f7eea85f9a52d32a9fd63f90602f8e5114f67fcf554746"
+  },
+  "failure": {
+    "stage": "deploy_lmstudio_plugins",
+    "error_code": "integrity_failure",
+    "cause": "The existing mcp.json file object was owned by BUILTIN\\Administrators, while the non-elevated transaction stage was owned by the current user. The shared atomic replacement invariant rejected that owner mismatch during publication and the byte-based rollback path repeated the same mismatch.",
+    "deployment_operation_started": true,
+    "predeployment_smokes_succeeded": true,
+    "plugin_transaction_mutation_started": true,
+    "configuration_publish_attempted": true,
+    "deployment_left_installed": false,
+    "lm_studio_launched": false,
+    "rollback_requested": false
+  },
+  "diagnostics": {
+    "failed_acl_harness": {
+      "command_record": ".forge-codex/state/commands/20260827T161149424Z-f231584a.json",
+      "command_record_sha256": "d700a50c7fb82f268c6f2c8ab7ec88ed27a50589b2e24024494d3997f9bc19a6",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "2111091956b485f1a9eda8e14b97c2952d87fc1b8fce4a4b9d70c7c450db5f3e",
+      "exit_code": 1,
+      "timed_out": false,
+      "usable_as_security_descriptor_evidence": false,
+      "reason": "Windows PowerShell could not autoload Microsoft.PowerShell.Security for Get-Acl. The bounded temporary file was removed by the validated finally block."
+    },
+    "bounded_same_directory_probe": {
+      "qualification_evidence": false,
+      "existing_owner": "BUILTIN\\Administrators",
+      "staged_owner": "PC-CREATION-R9-\\Flynn",
+      "existing_group": "PC-CREATION-R9-\\None",
+      "staged_group": "PC-CREATION-R9-\\None",
+      "group_equal": true,
+      "dacl_equal": true,
+      "existing_explicit_mandatory_label": false,
+      "staged_explicit_mandatory_label": false,
+      "observed_difference": "owner_only",
+      "probe_file_removed": true,
+      "temporary_file_count_after_probe": 0
+    },
+    "privilege_analysis": {
+      "process_elevated": false,
+      "administrators_sid_owner_assignable": false,
+      "ownership_or_security_privilege_available": false,
+      "conclusion": "The non-elevated per-user deployment cannot reproduce the existing Administrators owner and must preserve the original file object instead."
+    }
+  },
+  "observed_impact": {
+    "lm_studio_process_count": 0,
+    "configuration": {
+      "exists": true,
+      "bytes": 23,
+      "sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02",
+      "matches_baseline": true
+    },
+    "synchronized_state": {
+      "exists": true,
+      "bytes": 22,
+      "sha256": "38935ac9bd01a9a91be32d16fc131d8b9d46fbcede88855e85c01f31c7347615",
+      "matches_baseline": true
+    },
+    "foreign_plugins": {
+      "root_entries": 2,
+      "tree_entries": 8,
+      "file_bytes": 1070,
+      "sha256": "f64eb6fe502c5e4f7cba4c2b016e42e0053488ef6885af1fcbeecf603c13a96f",
+      "matches_baseline": true
+    },
+    "transaction_root_count": 0,
+    "temporary_file_count": 0,
+    "atomic_sidecar_backup_exists": false,
+    "owned_primary_plugin_exists": false,
+    "owned_fallback_plugin_exists": false,
+    "plugin_mutation_was_transient": true,
+    "configuration_forward_publish_occurred": false,
+    "host_state_mutated_after_rollback": false
+  },
+  "correction": {
+    "description": "Stage the merged configuration inside the deployment transaction, move the original mcp.json file object to transaction backup, publish the staged object by move, and restore the original object by reverse move on rollback without changing the global atomic replacement invariant.",
+    "successful_focused_command_record": ".forge-codex/state/commands/20260827T162901514Z-e2606ac4.json",
+    "successful_focused_command_record_sha256": "044be902aa6e99a3bd8ec8dde1e6b07adddf5f2739ef4aa7fbe93ff58edc35b4",
+    "successful_focused_stdout_sha256": "91b3919b7d80ad66936074cc42bee5ae7a5072d0593d02bae7f1042adf60a82e",
+    "successful_focused_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "successful_focused_exit_code": 0,
+    "successful_focused_timed_out": false,
+    "successful_focused_result": "Both affected Debug targets rebuilt and 1/1 ForgeConductor.Infrastructure.UnitTests passed in 14.00 seconds.",
+    "binary_hashes": {
+      "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Infrastructure.UnitTests.exe": "2d3243cd376b43d97a1490426e6b21a56117b338d2b5a680e8c259e1a658e15e",
+      "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.LMStudio.RealHostTests.exe": "7b74f0facd6f2b4e6063287e5c83b6850c8a15c0b8b8d43ced8effb80058912e",
+      "out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe": "96f5ec5ea2f83fc454439457e23c0986e3fe4b32876a8b35b2631129eeae92cc"
+    },
+    "source_hashes": {
+      "src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp": "096516fa2c85d9404d6ce91926fb49e44f2a9de9b9a65a460087940acdeac6b2",
+      "src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp": "bde6810bf959a781a3aab0554d4bf0ac07c3580b78ee6f2f0a03cbef58640045",
+      "tests/Application/LMStudioDeploymentServiceTests.cpp": "4b52207b8a08c18f444a6929603c4cc52aeafdcdc7874915a1b9dbea86edcc5b"
+    }
+  },
+  "resume_policy": {
+    "authoritative_full_rebuild_invocations": 1,
+    "authoritative_full_test_invocations": 1,
+    "corrective_focused_build_invocations": 7,
+    "corrective_focused_test_command_invocations": 7,
+    "corrective_focused_test_executions": 6,
+    "corrective_zero_test_filter_invocations": 1,
+    "completed_real_host_attempts": 6,
+    "successful_real_host_qualifications": 0
+  }
+}

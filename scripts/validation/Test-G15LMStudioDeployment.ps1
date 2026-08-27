@@ -64,6 +64,15 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'Resume')]
     [string]$McpCorrectiveCommandRecordPath,
 
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$SixthFailedCommandRecordPath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$SixthFailedRealHostEvidencePath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$ConfigurationCorrectiveCommandRecordPath,
+
     [switch]$StaticOnly
 )
 
@@ -485,6 +494,7 @@ $p15Files = @(
     'tests/Infrastructure/WindowsLMStudioRealHostTests.cpp',
     'tests/Infrastructure/WindowsLMStudioServeVerifierTests.cpp',
     '.forge-codex/state/decisions/P15-001-evidence-based-lm-studio-deployment-and-maintenance-authority.md',
+    '.forge-codex/state/decisions/P15-004-lmstudio-configuration-file-object-transaction.md',
     'scripts/validation/Test-G15LMStudioDeployment.ps1')
 foreach ($relative in $p15Files) {
     $path = Join-Path $WorkspaceRoot $relative.Replace('/', '\')
@@ -529,6 +539,35 @@ Assert-Match $adr 'Foreign server\s+entries and unknown root and per-server fiel
     'foreign configuration preservation is recorded'
 Assert-Match $adr 'restores the\s+exact original configuration bytes' `
     'exact rollback requirement is recorded'
+$configurationTransactionAdr = Get-Content -Raw -LiteralPath (Join-Path `
+    $WorkspaceRoot `
+    '.forge-codex\state\decisions\P15-004-lmstudio-configuration-file-object-transaction.md')
+Assert-Match $configurationTransactionAdr `
+    'global\s+`?AtomicReplaceEngine`?\s+metadata invariant unchanged' `
+    'configuration transaction preserves the global atomic metadata invariant'
+Assert-Match $configurationTransactionAdr `
+    'move the original configuration file object[\s\S]*?transaction backup[\s\S]*?move it back' `
+    'configuration transaction records file-object rollback by move'
+$deploymentServiceText = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
+    'src\Infrastructure\Windows\WindowsLMStudioDeploymentService.cpp')
+Assert-NoMatch $deploymentServiceText 'atomicFileStore[.]replace\s*\(' `
+    'LM Studio deployment does not bypass file-object preservation through atomic replacement' `
+    -CaseSensitive
+Assert-Match $deploymentServiceText `
+    'journal[.]configuration[.]backup\s*=\s*BackupMutationState::Attempted;[\s\S]*?moveIfExists\([\s\S]*?configurationPath[.]value\(\),\s*backupConfiguration[\s\S]*?journal[.]configuration[.]targetMoveAttempted\s*=\s*true;[\s\S]*?moveRequired\([\s\S]*?stagedConfiguration,\s*configurationPath[.]value\(\)' `
+    'configuration commit journals backup, moves the original object, and publishes the staged object' `
+    -CaseSensitive
+$atomicReplaceEnginePath = Join-Path $WorkspaceRoot `
+    'src\Infrastructure\Windows\Detail\AtomicReplaceEngine.cpp'
+Assert-Exact (Get-FileSha256 $atomicReplaceEnginePath) `
+    'bde6810bf959a781a3aab0554d4bf0ac07c3580b78ee6f2f0a03cbef58640045' `
+    'global atomic replacement engine remains byte-identical to the passed invariant'
+$deploymentTestsText = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
+    'tests\Application\LMStudioDeploymentServiceTests.cpp')
+Assert-Match $deploymentTestsText `
+    'fileIdentity\(fixture[.]configurationPath[.]value\(\)\)[\s\S]*?backupConfiguration\([\s\S]*?restoreMove' `
+    'focused tests prove configuration file-object identity and reverse restoration' `
+    -CaseSensitive
 
 Invoke-RepositoryIntegrityChecks
 
@@ -638,6 +677,10 @@ $fifthFailedEvidenceCanonicalPath = $null
 $fifthFailedEvidenceSha256 = $null
 $mcpCorrectiveFailedCommandEvidence = $null
 $mcpCorrectiveCommandEvidence = $null
+$sixthFailedCommandEvidence = $null
+$sixthFailedEvidenceCanonicalPath = $null
+$sixthFailedEvidenceSha256 = $null
+$configurationCorrectiveCommandEvidence = $null
 if ($Resume) {
     Write-Host 'G15: validating exact prior and corrective evidence for fail-closed resume.'
     Assert-True (-not [string]::Equals(
@@ -718,6 +761,22 @@ if ($Resume) {
         "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug " +
         "--output-on-failure -R '^ForgeConductor[.]Mcp[.]ServeProcessSnapshotTests$'; " +
         'exit $LASTEXITCODE'
+    $expectedSixthFailedCommand = $expectedFifthFailedCommand +
+        " -FifthFailedCommandRecordPath '" + $FifthFailedCommandRecordPath + "'" +
+        " -FifthFailedRealHostEvidencePath '" +
+        $FifthFailedRealHostEvidencePath + "'" +
+        " -McpCorrectiveFailedCommandRecordPath '" +
+        $McpCorrectiveFailedCommandRecordPath + "'" +
+        " -McpCorrectiveCommandRecordPath '" +
+        $McpCorrectiveCommandRecordPath + "'"
+    $expectedConfigurationCorrectiveCommand =
+        "cmake --build 'out/build/windows-msvc-x64' --config Debug --target " +
+        'ForgeConductor.Infrastructure.UnitTests ' +
+        'ForgeConductor.LMStudio.RealHostTests --parallel ' + $Parallel +
+        '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ' +
+        "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug " +
+        "--output-on-failure -R '^ForgeConductor[.]Infrastructure[.]UnitTests$'; " +
+        'exit $LASTEXITCODE'
     Assert-True ([string]::Equals(
         $SecondFailedCommandRecordPath,
         (Join-Path $WorkspaceRoot `
@@ -778,6 +837,18 @@ if ($Resume) {
             '.forge-codex\state\commands\20260827T155313063Z-971b814b.json'),
         [StringComparison]::OrdinalIgnoreCase)) `
         'successful MCP correction uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $SixthFailedCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T160759833Z-4fa891ce.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'sixth failed command uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $ConfigurationCorrectiveCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T162901514Z-e2606ac4.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'configuration correction uses its exact canonical record path'
     $priorCommandEvidence = Read-ValidatedCommandRecord `
         -Path $PriorFailedCommandRecordPath `
         -ExpectedCommand $expectedPriorCommand `
@@ -838,6 +909,16 @@ if ($Resume) {
         -ExpectedCommand $expectedMcpCorrectiveCommand `
         -ExpectedExitCode 0 `
         -Message 'successful MCP corrective command record'
+    $sixthFailedCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $SixthFailedCommandRecordPath `
+        -ExpectedCommand $expectedSixthFailedCommand `
+        -ExpectedExitCode 1 `
+        -Message 'sixth failed resumed G15 command record'
+    $configurationCorrectiveCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $ConfigurationCorrectiveCommandRecordPath `
+        -ExpectedCommand $expectedConfigurationCorrectiveCommand `
+        -ExpectedExitCode 0 `
+        -Message 'configuration corrective command record'
     Assert-CommandLedgerEvent `
         -RecordPath $priorCommandEvidence.RecordPath `
         -ExpectedExitCode 1 `
@@ -886,6 +967,14 @@ if ($Resume) {
         -RecordPath $mcpCorrectiveCommandEvidence.RecordPath `
         -ExpectedExitCode 0 `
         -Message 'successful MCP corrective command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $sixthFailedCommandEvidence.RecordPath `
+        -ExpectedExitCode 1 `
+        -Message 'sixth failed resumed G15 command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $configurationCorrectiveCommandEvidence.RecordPath `
+        -ExpectedExitCode 0 `
+        -Message 'configuration corrective command'
 
     $priorFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
         $PriorFailedRealHostEvidencePath `
@@ -1187,6 +1276,101 @@ if ($Resume) {
     $fifthFailedEvidenceSha256 = Get-FileSha256 `
         $fifthFailedEvidenceCanonicalPath
 
+    Assert-True ([string]::Equals(
+        $SixthFailedRealHostEvidencePath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\evidence\P15\windows-lm-studio-real-host-attempt-6-failed.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'sixth failed evidence uses its exact canonical path'
+    Assert-True (-not [string]::Equals(
+        $SixthFailedRealHostEvidencePath,
+        $RealHostEvidencePath,
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'preserved sixth failed evidence is distinct from the next evidence target'
+    $sixthFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
+        $SixthFailedRealHostEvidencePath `
+        'preserved sixth-attempt real-host evidence' `
+        $maximumRealHostEvidenceBytes
+    Assert-Exact ([IO.Path]::GetFileName($sixthFailedEvidenceCanonicalPath)) `
+        'windows-lm-studio-real-host-attempt-6-failed.json' `
+        'preserved sixth-attempt evidence canonical leaf'
+    $sixthFailedEvidence = Get-Content -Raw -LiteralPath `
+        $sixthFailedEvidenceCanonicalPath | ConvertFrom-Json
+    Assert-Set @($sixthFailedEvidence.PSObject.Properties.Name) @(
+        'authority', 'before', 'binary', 'bounded', 'gate', 'host',
+        'host_observations', 'phase', 'result', 'runner', 'sanitized',
+        'schema_version') 'preserved sixth failed real-host evidence schema'
+    Assert-Set @($sixthFailedEvidence.result.PSObject.Properties.Name) @(
+        'deployment_left_installed', 'error', 'error_code', 'retryable',
+        'rollback_requested', 'stage', 'status') `
+        'preserved sixth failed real-host result schema'
+    Assert-Exact ([int]$sixthFailedEvidence.schema_version) 1 `
+        'preserved sixth failed evidence schema version'
+    Assert-Exact ([string]$sixthFailedEvidence.phase) 'P15' `
+        'preserved sixth failed evidence phase'
+    Assert-Exact ([string]$sixthFailedEvidence.gate) 'G15' `
+        'preserved sixth failed evidence gate'
+    Assert-Exact ([string]$sixthFailedEvidence.runner) `
+        'ForgeConductor.LMStudio.RealHostTests' `
+        'preserved sixth failed evidence runner'
+    Assert-True ([bool]$sixthFailedEvidence.bounded) `
+        'preserved sixth failed evidence remained bounded'
+    Assert-True ([bool]$sixthFailedEvidence.sanitized) `
+        'preserved sixth failed evidence remained sanitized'
+    Assert-Exact ([string]$sixthFailedEvidence.result.status) 'failed' `
+        'preserved sixth-attempt result status'
+    Assert-Exact ([string]$sixthFailedEvidence.result.stage) `
+        'deploy_lmstudio_plugins' 'preserved sixth-attempt failure stage'
+    Assert-Exact ([string]$sixthFailedEvidence.result.error_code) `
+        'integrity_failure' 'preserved sixth-attempt failure code'
+    Assert-Exact ([string]$sixthFailedEvidence.result.error) `
+        'Atomic staged owner, primary group, or mandatory label differs from the target. Rollback also failed: Atomic staged owner, primary group, or mandatory label differs from the target.' `
+        'preserved sixth-attempt bounded error'
+    Assert-Exact ([bool]$sixthFailedEvidence.result.retryable) $false `
+        'preserved sixth-attempt failure retryability'
+    Assert-Exact ([bool]$sixthFailedEvidence.result.deployment_left_installed) `
+        $false 'sixth attempt left no installed deployment'
+    Assert-Exact ([bool]$sixthFailedEvidence.result.rollback_requested) $false `
+        'sixth attempt required no runner-level rollback'
+    Assert-True ([bool]$sixthFailedEvidence.host.expected_application_bound) `
+        'sixth attempt remained bound to the captured LM Studio application'
+    Assert-True ([bool]$sixthFailedEvidence.host_observations.preflight.inspection_succeeded) `
+        'sixth attempt completed its bounded process preflight inspection'
+    Assert-Exact ([bool]$sixthFailedEvidence.host_observations.preflight.running) `
+        $false 'sixth attempt observed LM Studio stopped at preflight'
+    Assert-True ([bool]$sixthFailedEvidence.before.configuration.exists) `
+        'sixth attempt began with an existing configuration'
+    Assert-Exact ([long]$sixthFailedEvidence.before.configuration.bytes) 23L `
+        'sixth attempt configuration baseline bytes'
+    Assert-Exact ([string]$sixthFailedEvidence.before.configuration.sha256) `
+        'd8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02' `
+        'sixth attempt configuration baseline SHA-256'
+    Assert-True ([bool]$sixthFailedEvidence.before.synchronized_state.exists) `
+        'sixth attempt began with synchronized state'
+    Assert-Exact ([long]$sixthFailedEvidence.before.synchronized_state.bytes) 22L `
+        'sixth attempt synchronized-state baseline bytes'
+    Assert-Exact ([string]$sixthFailedEvidence.before.synchronized_state.sha256) `
+        '38935ac9bd01a9a91be32d16fc131d8b9d46fbcede88855e85c01f31c7347615' `
+        'sixth attempt synchronized-state baseline SHA-256'
+    Assert-Exact ([int]$sixthFailedEvidence.before.foreign_plugins.root_entries) 2 `
+        'sixth attempt foreign plugin root count'
+    Assert-Exact ([int]$sixthFailedEvidence.before.foreign_plugins.tree_entries) 8 `
+        'sixth attempt foreign plugin tree-entry count'
+    Assert-Exact ([long]$sixthFailedEvidence.before.foreign_plugins.file_bytes) 1070L `
+        'sixth attempt foreign plugin byte count'
+    Assert-Exact ([string]$sixthFailedEvidence.before.foreign_plugins.sha256) `
+        'f64eb6fe502c5e4f7cba4c2b016e42e0053488ef6885af1fcbeecf603c13a96f' `
+        'sixth attempt foreign plugin tree SHA-256'
+    Assert-Exact ([int]$sixthFailedEvidence.before.foreign_plugins.transaction_root_count) `
+        0 'sixth attempt transaction-root baseline count'
+    Assert-Exact ([string]$sixthFailedEvidence.before.foreign_plugins.transaction_roots_sha256) `
+        $emptySha256 'sixth attempt empty transaction-root SHA-256'
+    $sixthFailedEvidenceSha256 = Get-FileSha256 `
+        $sixthFailedEvidenceCanonicalPath
+    Assert-Exact $sixthFailedEvidenceSha256 `
+        'd87195cde2c375e599f7eea85f9a52d32a9fd63f90602f8e5114f67fcf554746' `
+        'preserved sixth-attempt evidence SHA-256'
+
     $buildMarker = 'G15: running the single authoritative affected-target Debug rebuild.'
     $testMarker = 'G15: running the deterministic G15 CTest suite once.'
     $runnerMarker = 'G15: launching LM Studio through its supported activation path; no GUI automation is used.'
@@ -1463,6 +1647,74 @@ if ($Resume) {
     Assert-NoMatch $mcpCorrectiveCommandEvidence.StdoutText `
         '[*][*][*]Failed' 'successful MCP correction contains no failed test' `
         -CaseSensitive
+
+    Assert-Exact $sixthFailedCommandEvidence.RecordSha256 `
+        '2f610272123b20fca7a231af1879a55c10167e5143fbea2fe8d88cb3f88e132d' `
+        'sixth failed command record SHA-256'
+    Assert-Exact $sixthFailedCommandEvidence.StdoutSha256 `
+        '71cd168bf546ea4f4745042da1a779009ba9ce49101821da8da7ab31cfc43559' `
+        'sixth failed command stdout SHA-256'
+    Assert-Exact $sixthFailedCommandEvidence.StderrSha256 `
+        '47438ecb751b4fdf89a1e96ac1aa9c4d96a87824bc10a25c9a631fe7b3cf16f7' `
+        'sixth failed command stderr SHA-256'
+    Assert-LiteralOccurrenceCount $sixthFailedCommandEvidence.StdoutText `
+        'G15: validating exact prior and corrective evidence for fail-closed resume.' 1 `
+        'sixth attempt resume validation marker'
+    Assert-LiteralOccurrenceCount $sixthFailedCommandEvidence.StdoutText `
+        'G15: prior full build/CTest and corrective focused pass validated; execution is not repeated.' 1 `
+        'sixth attempt no-repeat confirmation marker'
+    Assert-LiteralOccurrenceCount $sixthFailedCommandEvidence.StdoutText `
+        $buildMarker 0 'sixth attempt full-build marker exclusion'
+    Assert-LiteralOccurrenceCount $sixthFailedCommandEvidence.StdoutText `
+        $testMarker 0 'sixth attempt full-CTest marker exclusion'
+    Assert-LiteralOccurrenceCount $sixthFailedCommandEvidence.StdoutText `
+        $runnerMarker 1 'sixth real-host runner marker'
+    Assert-LiteralOccurrenceCount $sixthFailedCommandEvidence.StdoutText `
+        '.vcxproj ->' 0 'sixth attempt build-output exclusion'
+    Assert-LiteralOccurrenceCount $sixthFailedCommandEvidence.StdoutText `
+        'Test project ' 0 'sixth attempt CTest-output exclusion'
+    Assert-Match (Get-Content -Raw -LiteralPath `
+        $sixthFailedCommandEvidence.StderrPath) `
+        "single real-host LM Studio qualification exit code \(expected '0', found '1'\)" `
+        'sixth failed command exact gate-boundary diagnostic' -CaseSensitive
+
+    Assert-Exact $configurationCorrectiveCommandEvidence.RecordSha256 `
+        '044be902aa6e99a3bd8ec8dde1e6b07adddf5f2739ef4aa7fbe93ff58edc35b4' `
+        'configuration correction command record SHA-256'
+    Assert-Exact $configurationCorrectiveCommandEvidence.StdoutSha256 `
+        '91b3919b7d80ad66936074cc42bee5ae7a5072d0593d02bae7f1042adf60a82e' `
+        'configuration correction stdout SHA-256'
+    Assert-Exact $configurationCorrectiveCommandEvidence.StderrBytes 0L `
+        'configuration correction stderr bytes'
+    Assert-Exact $configurationCorrectiveCommandEvidence.StderrSha256 `
+        $emptySha256 'configuration correction empty stderr SHA-256'
+    Assert-LiteralOccurrenceCount `
+        $configurationCorrectiveCommandEvidence.StdoutText `
+        'ForgeConductor.Infrastructure.UnitTests.vcxproj ->' 1 `
+        'configuration correction unit-test target completion'
+    Assert-LiteralOccurrenceCount `
+        $configurationCorrectiveCommandEvidence.StdoutText `
+        'ForgeConductor.LMStudio.RealHostTests.vcxproj ->' 1 `
+        'configuration correction real-host target completion'
+    Assert-LiteralOccurrenceCount `
+        $configurationCorrectiveCommandEvidence.StdoutText `
+        'Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64' `
+        1 'configuration correction CTest project marker'
+    Assert-LiteralOccurrenceCount `
+        $configurationCorrectiveCommandEvidence.StdoutText `
+        'Start 19: ForgeConductor.Infrastructure.UnitTests' 1 `
+        'configuration correction exact CTest start'
+    Assert-Exact ([regex]::Matches(
+        $configurationCorrectiveCommandEvidence.StdoutText,
+        '(?m)^1/1 Test #19: ForgeConductor[.]Infrastructure[.]UnitTests\s+[.]+\s+Passed\s+[0-9]+[.][0-9]+ sec\s*$').Count) 1 `
+        'configuration correction exact passed result'
+    Assert-LiteralOccurrenceCount `
+        $configurationCorrectiveCommandEvidence.StdoutText `
+        '100% tests passed out of 1' 1 `
+        'configuration correction complete success summary'
+    Assert-NoMatch $configurationCorrectiveCommandEvidence.StdoutText `
+        '[*][*][*]Failed' 'configuration correction contains no failed test' `
+        -CaseSensitive
 } else {
     $buildScript = Join-Path $WorkspaceRoot 'scripts\build.ps1'
     Write-Host 'G15: running the single authoritative affected-target Debug rebuild.'
@@ -1658,17 +1910,17 @@ $summaryScope = [ordered]@{
     security_hardening_deferred = $true
     authoritative_build_invocations = 1
     authoritative_test_invocations = 1
-    real_host_invocations = if ($Resume) { 6 } else { 1 }
+    real_host_invocations = if ($Resume) { 7 } else { 1 }
     gui_automation_used_against_lm_studio = $false
 }
 if ($Resume) {
     $summaryScope['resumed'] = $true
-    $summaryScope['corrective_focused_build_invocations'] = 6
-    $summaryScope['corrective_focused_test_command_invocations'] = 6
-    $summaryScope['corrective_focused_test_executions'] = 5
+    $summaryScope['corrective_focused_build_invocations'] = 7
+    $summaryScope['corrective_focused_test_command_invocations'] = 7
+    $summaryScope['corrective_focused_test_executions'] = 6
     $summaryScope['corrective_zero_test_filter_invocations'] = 1
-    $summaryScope['corrective_focused_test_invocations'] = 6
-    $summaryScope['total_real_host_attempts'] = 6
+    $summaryScope['corrective_focused_test_invocations'] = 7
+    $summaryScope['total_real_host_attempts'] = 7
     $summaryScope['successful_real_host_qualifications'] = 1
 }
 $summary = [ordered]@{
@@ -1850,6 +2102,33 @@ if ($Resume) {
         mcp_corrective_command_stderr = Get-RelativePathPortable `
             -BasePath $WorkspaceRoot -TargetPath $mcpCorrectiveCommandEvidence.StderrPath
         mcp_corrective_command_stderr_sha256 = $mcpCorrectiveCommandEvidence.StderrSha256
+        sixth_failed_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $sixthFailedCommandEvidence.RecordPath
+        sixth_failed_command_record_sha256 = $sixthFailedCommandEvidence.RecordSha256
+        sixth_failed_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $sixthFailedCommandEvidence.StdoutPath
+        sixth_failed_command_stdout_sha256 = $sixthFailedCommandEvidence.StdoutSha256
+        sixth_failed_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $sixthFailedCommandEvidence.StderrPath
+        sixth_failed_command_stderr_sha256 = $sixthFailedCommandEvidence.StderrSha256
+        sixth_failed_real_host_evidence = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $sixthFailedEvidenceCanonicalPath
+        sixth_failed_real_host_evidence_sha256 = $sixthFailedEvidenceSha256
+        configuration_corrective_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $configurationCorrectiveCommandEvidence.RecordPath
+        configuration_corrective_command_record_sha256 = `
+            $configurationCorrectiveCommandEvidence.RecordSha256
+        configuration_corrective_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $configurationCorrectiveCommandEvidence.StdoutPath
+        configuration_corrective_command_stdout_sha256 = `
+            $configurationCorrectiveCommandEvidence.StdoutSha256
+        configuration_corrective_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $configurationCorrectiveCommandEvidence.StderrPath
+        configuration_corrective_command_stderr_sha256 = `
+            $configurationCorrectiveCommandEvidence.StderrSha256
     }
 }
 Write-JsonFileAtomic -Path $summaryPath -Value $summary

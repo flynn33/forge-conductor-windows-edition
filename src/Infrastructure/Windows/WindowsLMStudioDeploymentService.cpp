@@ -33,6 +33,7 @@ using Json = nlohmann::json;
 constexpr std::size_t MaximumPluginDocumentBytes = 64U * 1024U;
 constexpr char InstallerId[] = "forge-conductor-app";
 constexpr char LMStudioDeploymentToolName[] = "install-lmstudio-plugin";
+constexpr char LMStudioConfigurationFileName[] = "mcp.json";
 
 class DeploymentFailure final : public std::runtime_error {
 public:
@@ -729,6 +730,18 @@ public:
         take(fileSystem.writeFile(authorized, bytes, context));
     }
 
+    void writeNewFile(
+        const Contracts::WorkspaceAuthority& authority,
+        const Domain::PathText& path,
+        const Domain::PathText& base,
+        const std::vector<std::byte>& content,
+        const Domain::OperationContext& context)
+    {
+        auto authorized = authorize(
+            authority, path, base, Domain::FileAccess::Create, context);
+        take(fileSystem.writeFile(authorized, content, context));
+    }
+
     [[nodiscard]] bool moveIfExists(
         const Contracts::WorkspaceAuthority& authority,
         const Domain::PathText& source,
@@ -921,13 +934,8 @@ private:
     bool acquired_{};
 };
 
-struct ConfigurationSnapshot final {
-    LMStudioConfigurationDocument document;
-    std::optional<std::vector<std::byte>> original;
-};
-
 template <typename Implementation>
-[[nodiscard]] ConfigurationSnapshot readConfiguration(
+[[nodiscard]] LMStudioConfigurationDocument readConfiguration(
     Implementation& implementation,
     const Contracts::WorkspaceAuthority& authority,
     const Domain::PathText& configurationPath,
@@ -941,15 +949,13 @@ template <typename Implementation>
         LMStudioConfigurationCodec::MaximumDocumentBytes,
         context);
     if (!original) {
-        return ConfigurationSnapshot{LMStudioConfigurationCodec::empty(), std::nullopt};
+        return LMStudioConfigurationCodec::empty();
     }
     auto parsed = LMStudioConfigurationCodec::parse(*original);
     if (!parsed) {
         throw DeploymentFailure{std::move(parsed).error()};
     }
-    return ConfigurationSnapshot{
-        std::move(parsed).value(),
-        std::move(original)};
+    return std::move(parsed).value();
 }
 
 [[nodiscard]] Domain::PathText selectedBinary(
@@ -1158,12 +1164,17 @@ struct RoleMutationJournal final {
     bool targetMoveAttempted{};
 };
 
+struct ConfigurationMutationJournal final {
+    BackupMutationState backup{BackupMutationState::NotStarted};
+    bool targetMoveAttempted{};
+};
+
 struct DeploymentMutationJournal final {
     std::array<RoleMutationJournal, 2U> roles{
         RoleMutationJournal{Domain::LMStudioConnectorRole::Fallback},
         RoleMutationJournal{Domain::LMStudioConnectorRole::Primary}};
     bool transactionTreeMutationAttempted{};
-    bool configurationMutationAttempted{};
+    ConfigurationMutationJournal configuration;
     bool commitValidated{};
 };
 
@@ -1216,7 +1227,6 @@ template <typename Implementation>
     const Domain::PathText& backupRoot,
     const DeploymentMutationJournal& journal,
     const Domain::PathText& configurationPath,
-    const std::optional<std::vector<std::byte>>& originalConfiguration,
     const Domain::OperationContext& context) noexcept
 {
     std::optional<Domain::Error> rollbackError;
@@ -1225,6 +1235,40 @@ template <typename Implementation>
             rollbackError.emplace(std::move(error));
         }
     };
+    const auto& configuration = journal.configuration;
+    if (configuration.backup != BackupMutationState::NotStarted ||
+        configuration.targetMoveAttempted) {
+        try {
+            const auto backup = take(childPath(
+                backupRoot, LMStudioConfigurationFileName));
+            if (configuration.backup == BackupMutationState::Attempted) {
+                static_cast<void>(implementation.moveIfExists(
+                    authority, backup, configurationPath,
+                    layout.lmStudioRoot, context));
+            } else if (configuration.backup == BackupMutationState::Present) {
+                implementation.removeIfExists(
+                    authority, configurationPath, layout.lmStudioRoot, false, context);
+                implementation.moveRequired(
+                    authority, backup, configurationPath,
+                    layout.lmStudioRoot, context);
+            } else if (configuration.backup == BackupMutationState::Absent &&
+                       configuration.targetMoveAttempted) {
+                implementation.removeIfExists(
+                    authority, configurationPath, layout.lmStudioRoot, false, context);
+            } else if (configuration.backup == BackupMutationState::NotStarted &&
+                       configuration.targetMoveAttempted) {
+                remember(Domain::makeError(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "LM Studio rollback journal contains an impossible configuration state."));
+            }
+        } catch (DeploymentFailure& failure) {
+            remember(failure.releaseError());
+        } catch (...) {
+            remember(Domain::makeError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "LM Studio configuration rollback failed at its exception boundary."));
+        }
+    }
     for (auto role = journal.roles.rbegin(); role != journal.roles.rend(); ++role) {
         try {
             const auto target = rolePath(layout, role->role);
@@ -1255,27 +1299,7 @@ template <typename Implementation>
                 "LM Studio plugin rollback failed at its exception boundary."));
         }
     }
-    if (journal.configurationMutationAttempted) {
-        try {
-            if (originalConfiguration) {
-                auto write = implementation.authorize(
-                    authority, configurationPath, layout.lmStudioRoot,
-                    Domain::FileAccess::Write, context);
-                take(implementation.atomicFileStore.replace(
-                    write, *originalConfiguration, false, context));
-            } else {
-                implementation.removeIfExists(
-                    authority, configurationPath, layout.lmStudioRoot, false, context);
-            }
-        } catch (DeploymentFailure& failure) {
-            remember(failure.releaseError());
-        } catch (...) {
-            remember(Domain::makeError(
-                Domain::ErrorCodes::IntegrityFailure,
-                "LM Studio configuration rollback failed at its exception boundary."));
-        }
-    }
-    if (journal.transactionTreeMutationAttempted) {
+    if (journal.transactionTreeMutationAttempted && !rollbackError) {
         try {
             implementation.removeIfExists(
                 authority, transactionRoot, layout.lmStudioRoot, true, context);
@@ -1367,7 +1391,6 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
     std::optional<Domain::PathText> transactionRoot;
     std::optional<Domain::PathText> backupRoot;
     std::optional<Domain::PathText> configurationPath;
-    std::optional<std::vector<std::byte>> originalConfiguration;
     std::optional<Contracts::WorkspaceAuthority> maintenanceAuthority;
     DeploymentMutationJournal journal;
 
@@ -1427,12 +1450,11 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
 
         auto generated = take(implementation->uuidGenerator.next());
         auto deploymentId = take(Domain::DeploymentId::parse(generated.value()));
-        auto snapshot = readConfiguration(
+        auto configuration = readConfiguration(
             *implementation, maintenance, configurationPath.value(),
             layout.value(), context);
-        originalConfiguration = snapshot.original;
         auto mergedConfiguration = take(LMStudioConfigurationCodec::mergeForgeServers(
-            snapshot.document, binary, forgeHome, deploymentId));
+            configuration, binary, forgeHome, deploymentId));
 
         auto transactionName = std::string{".forge-conductor-install-"} + deploymentId.value();
         transactionRoot = take(childPath(layout->pluginsRoot, transactionName));
@@ -1446,6 +1468,10 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
 
         auto stagedPrimary = take(childPath(stagedRoot, LMStudioPrimaryServerId));
         auto stagedFallback = take(childPath(stagedRoot, LMStudioFallbackServerId));
+        auto stagedConfiguration = take(childPath(
+            stagedRoot, LMStudioConfigurationFileName));
+        auto backupConfiguration = take(childPath(
+            backupRoot.value(), LMStudioConfigurationFileName));
         implementation->stagePlugin(
             maintenance, stagedPrimary, layout->lmStudioRoot,
             Domain::LMStudioConnectorRole::Primary,
@@ -1454,6 +1480,9 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
             maintenance, stagedFallback, layout->lmStudioRoot,
             Domain::LMStudioConnectorRole::Fallback,
             binary, forgeHome, deploymentId, context);
+        implementation->writeNewFile(
+            maintenance, stagedConfiguration, layout->lmStudioRoot,
+            mergedConfiguration, context);
 
         for (auto& roleJournal : journal.roles) {
             implementation->requireLive(context, "LM Studio plugin commit");
@@ -1472,16 +1501,18 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
                 maintenance, staged, target, layout->lmStudioRoot, context);
         }
 
-        Contracts::AuthorizedPath configAuthorization = originalConfiguration
-            ? implementation->authorize(
-                  maintenance, configurationPath.value(), layout->lmStudioRoot,
-                  Domain::FileAccess::Write, context)
-            : implementation->authorize(
-                  maintenance, configurationPath.value(), layout->lmStudioRoot,
-                  Domain::FileAccess::Create, context);
-        journal.configurationMutationAttempted = true;
-        take(implementation->atomicFileStore.replace(
-            configAuthorization, mergedConfiguration, false, context));
+        implementation->requireLive(context, "LM Studio configuration commit");
+        journal.configuration.backup = BackupMutationState::Attempted;
+        const bool hadPreviousConfiguration = implementation->moveIfExists(
+            maintenance, configurationPath.value(), backupConfiguration,
+            layout->lmStudioRoot, context);
+        journal.configuration.backup = hadPreviousConfiguration
+            ? BackupMutationState::Present
+            : BackupMutationState::Absent;
+        journal.configuration.targetMoveAttempted = true;
+        implementation->moveRequired(
+            maintenance, stagedConfiguration, configurationPath.value(),
+            layout->lmStudioRoot, context);
 
         const auto committedStatus = take(statusInternal(
             *implementation, request, maintenance, context));
@@ -1546,8 +1577,7 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
                 maintenanceAuthority ? maintenanceAuthority.value() : writeAuthority,
                 layout.value(),
                 transactionRoot.value(), backupRoot.value(), journal,
-                configurationPath.value(), originalConfiguration,
-                cleanupContext);
+                configurationPath.value(), cleanupContext);
             if (rollbackError) {
                 error = Domain::makeError(
                     Domain::ErrorCodes::IntegrityFailure,
@@ -1584,8 +1614,7 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
                 maintenanceAuthority ? maintenanceAuthority.value() : writeAuthority,
                 layout.value(),
                 transactionRoot.value(), backupRoot.value(), journal,
-                configurationPath.value(), originalConfiguration,
-                cleanupContext);
+                configurationPath.value(), cleanupContext);
             if (rollbackError) {
                 error = Domain::makeError(
                     Domain::ErrorCodes::IntegrityFailure,

@@ -1,0 +1,6 @@
+No-Python gate passed.
+No-attribution gate passed.
+Ledger validation passed: 239 event(s).
+G15: validating exact prior and corrective evidence for fail-closed resume.
+G15: prior full build/CTest and corrective focused pass validated; execution is not repeated.
+G15: launching LM Studio through its supported activation path; no GUI automation is used.

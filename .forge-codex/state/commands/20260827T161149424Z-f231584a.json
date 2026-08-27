@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T161149424Z-f231584a",
+  "phase": "P15",
+  "role": "builder",
+  "command": "$ErrorActionPreference='Stop'\n$probe='C:\\Users\\james\\.lmstudio\\.forge-acl-probe-20260827T161200Z.tmp'\n$expectedParent='C:\\Users\\james\\.lmstudio'\ntry {\n    New-Item -ItemType File -Path $probe -ErrorAction Stop | Out-Null\n    $acl=Get-Acl -LiteralPath $probe\n    Write-Output ('PROBE_PATH='+$probe)\n    Write-Output ('OWNER='+$acl.Owner)\n    Write-Output ('GROUP='+$acl.Group)\n    Write-Output ('SDDL='+$acl.Sddl)\n}\nfinally {\n    if(Test-Path -LiteralPath $probe) {\n        $actualParent=[IO.Path]::GetFullPath((Split-Path -Parent $probe))\n        $leaf=Split-Path -Leaf $probe\n        if(-not [string]::Equals($actualParent,$expectedParent,[StringComparison]::OrdinalIgnoreCase)-or -not $leaf.StartsWith('.forge-acl-probe-',[StringComparison]::Ordinal)){throw 'ACL probe cleanup target validation failed.'}\n        Remove-Item -LiteralPath $probe\n    }\n}",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T16:11:49.4309692+00:00",
+  "end_utc": "2026-08-27T16:11:51.5052433+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T161149424Z-f231584a.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T161149424Z-f231584a.stderr.txt",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "2111091956b485f1a9eda8e14b97c2952d87fc1b8fce4a4b9d70c7c450db5f3e"
+}
