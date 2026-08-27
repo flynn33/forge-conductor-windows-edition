@@ -1,0 +1,6 @@
+Errors while running CTest
+Exception: D:\GitHub\Forge-Conductor-Windows-Edition\scripts\test.ps1:61
+Line |
+  61 |          throw "CTest failed for $Architecture $Configuration (exit $L .
+     |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | CTest failed for x64 Debug (exit 8).

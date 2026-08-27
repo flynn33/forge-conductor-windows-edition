@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T001102639Z-955cd3e3",
+  "phase": "P13",
+  "role": "builder",
+  "command": "& 'C:\\Program Files\\PowerShell\\7\\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\scripts\\validation\\Test-G13NativeTools.ps1' -WorkspaceRoot 'D:\\GitHub\\Forge-Conductor-Windows-Edition' -Parallel 16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T00:11:02.6494753+00:00",
+  "end_utc": "2026-08-27T00:15:59.5378904+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T001102639Z-955cd3e3.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T001102639Z-955cd3e3.stderr.txt",
+  "stdout_sha256": "0a9fa5ff56ac4730db12a2588b07d8dd38616d87f586543dc7fa2dbe49cd38dc",
+  "stderr_sha256": "a2412e0d7c6f357b8a8cd0d155bc5aa793969654bdd5a8dc46badfd75bd88561"
+}
