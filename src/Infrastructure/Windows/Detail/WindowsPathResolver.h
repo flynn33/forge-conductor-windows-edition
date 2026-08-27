@@ -54,6 +54,9 @@ class AnchoredAuthorizedPath final
 class WindowsPathResolver final
 {
   public:
+    [[nodiscard]] static bool isExpectedPackagedLocalAppDataRedirect(
+        std::wstring_view requested, std::wstring_view opened) noexcept;
+
     [[nodiscard]] static Domain::Result<void> validateDirectoryCaseSensitivityFlags(
         std::uint32_t flags) noexcept;
 

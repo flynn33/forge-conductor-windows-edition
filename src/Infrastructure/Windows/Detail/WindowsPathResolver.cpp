@@ -222,7 +222,7 @@ constexpr DWORD DirectoryAnchorOpenRetrySliceMilliseconds = 10U;
     return value;
 }
 
-[[nodiscard]] bool isExpectedPackagedLocalAppDataRedirect(
+[[nodiscard]] bool expectedPackagedLocalAppDataRedirect(
     const std::wstring_view requested,
     const std::wstring_view opened) noexcept
 {
@@ -360,7 +360,7 @@ constexpr DWORD DirectoryAnchorOpenRetrySliceMilliseconds = 10U;
         std::wstring opened =
             withoutExtendedPrefix(std::wstring{buffer.data(), static_cast<std::size_t>(written)});
         if (!equalPath(path, opened) &&
-            !isExpectedPackagedLocalAppDataRedirect(path, opened))
+            !WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(path, opened))
         {
             return Domain::Result<void>::failure(
                 Domain::makeError(Domain::ErrorCodes::PathOutsideAuthority,
@@ -603,6 +603,13 @@ constexpr DWORD DirectoryAnchorOpenRetrySliceMilliseconds = 10U;
 }
 
 } // namespace
+
+bool WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+    const std::wstring_view requested,
+    const std::wstring_view opened) noexcept
+{
+    return expectedPackagedLocalAppDataRedirect(requested, opened);
+}
 
 Domain::Result<void> WindowsPathResolver::validateDirectoryCaseSensitivityFlags(
     const std::uint32_t flags) noexcept

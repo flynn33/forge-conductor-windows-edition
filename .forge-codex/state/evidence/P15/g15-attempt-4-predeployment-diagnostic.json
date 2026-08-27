@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "phase": "P15",
+  "gate": "G15",
+  "checkpoint": "g15_attempt_4_predeployment_diagnostic",
+  "status": "resolved",
+  "recorded_utc": "2026-08-27T15:12:35.3046839+00:00",
+  "implementation_commit": "815abc12d6dc56fb0fadc0647a28ed1bd1381ec6",
+  "resumed_attempt": {
+    "command_record": ".forge-codex/state/commands/20260827T150124952Z-5cedbb6e.json",
+    "command_record_sha256": "aa3e50ad78e8cfb915f5549ec935c70dbb9c8f4ddcf765162662f95a6466bd13",
+    "stdout_sha256": "59100864306f3b27ac8fae789fb5bfbb45e4f81bc2ee5148dfc10592cd55838b",
+    "stderr_sha256": "45c79da6d0280e1c49a3c3829bcc4a3271f0a4cc5fbe32232995dd23258f027c",
+    "exit_code": 1,
+    "timed_out": false,
+    "repeat_full_rebuild": false,
+    "repeat_full_g15_ctest": false,
+    "failed_real_host_evidence": ".forge-codex/state/evidence/P15/windows-lm-studio-real-host-attempt-4-failed.json",
+    "failed_real_host_evidence_sha256": "0b17b6fa376dfc4336bc3a0171f22fa5f7100520088b03ca0847d082c6683062"
+  },
+  "failure": {
+    "stage": "deploy_lmstudio_plugins",
+    "error_code": "process_launch_failed",
+    "cause": "The LM Studio pre-smoke working directory used the authorized logical LocalAppData path, while Windows packaged-app virtualization opened the same NTFS directory through the current package LocalCache path. Process launch did not yet reuse the strict package-family redirect equivalence already enforced by the Windows path resolver.",
+    "deployment_operation_started": true,
+    "predeployment_smoke_started": true,
+    "transaction_mutation_started": false,
+    "deployment_left_installed": false,
+    "lm_studio_launched": false,
+    "rollback_requested": false
+  },
+  "observed_impact": {
+    "lm_studio_process_count": 0,
+    "configuration_bytes": 23,
+    "configuration_sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02",
+    "configuration_matches_baseline": true,
+    "host_state_mutated": false
+  },
+  "correction": {
+    "description": "Reuse the strict current-package LocalAppData redirect classifier for anchored process-path verification and cover a real redirected working-directory launch without relaxing reparse, ancestry, or authority checks.",
+    "focused_build_command_record": ".forge-codex/state/commands/20260827T151026597Z-92e2bf74.json",
+    "focused_build_command_record_sha256": "974bef2b780c76e4b770a6345c5215f55711cb03258c665c849c84e58cd1a6fe",
+    "focused_build_stdout_sha256": "41abf6e1e7f791f80cc703a9a3f321cd0010d9a0bdfa555ebc724c5c80872540",
+    "focused_build_stderr_sha256": "70c65eb8406433945809319b4c6d97fd6858220abaec39a1562897b7e4d22720",
+    "focused_build_exit_code": 0,
+    "focused_build_timed_out": false,
+    "focused_targets_built": [
+      "ForgeConductor.Infrastructure.ProcessTests",
+      "ForgeConductor.LMStudio.RealHostTests"
+    ],
+    "zero_test_filter_result": "No tests were found; this command is retained but is not test-pass evidence.",
+    "focused_test_command_record": ".forge-codex/state/commands/20260827T151128087Z-39498297.json",
+    "focused_test_command_record_sha256": "e85a2a76ea253942e91f84ae9616cbe22e019b8e7f76ed25a8f46b28b0916f8a",
+    "focused_test_stdout_sha256": "389d5c08ede936fe42f3145b7dca02869a6b0233046f4bf681e7c0f3bfd56eb1",
+    "focused_test_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "focused_test_exit_code": 0,
+    "focused_test_timed_out": false,
+    "focused_test_result": "1/1 ForgeConductor.Infrastructure.ProcessTests passed.",
+    "source_hashes": {
+      "src/Infrastructure/Windows/Detail/WindowsPathResolver.h": "99e6875b2c31707f84a87a685330bd7483bcdec44eb4b1563b17707a8a7889a9",
+      "src/Infrastructure/Windows/Detail/WindowsPathResolver.cpp": "7cb94b336ce47b9a3888593303d90e3eaca32fc1b46bc72ede1f2be88c1f6c3e",
+      "src/Infrastructure/Windows/WindowsProcessSupervisor.cpp": "06bcead133a83e6d61fa15efbeb8ab0bf18f4538ad444da9e2bbbd2d7896fd0d",
+      "tests/Infrastructure/Windows/WindowsProcessSupervisorTests.cpp": "3500dbd9c7a800b099caaeba4d385b3978b183b9602138fd4beaeac8725cd720"
+    }
+  },
+  "resume_policy": {
+    "authoritative_full_rebuild_invocations": 1,
+    "authoritative_full_test_invocations": 1,
+    "corrective_focused_build_invocations": 4,
+    "corrective_focused_test_command_invocations": 4,
+    "corrective_focused_test_executions": 3,
+    "corrective_zero_test_filter_invocations": 1,
+    "completed_real_host_attempts": 4,
+    "successful_real_host_qualifications": 0
+  }
+}

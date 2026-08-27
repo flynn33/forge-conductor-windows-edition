@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T150124952Z-5cedbb6e",
+  "phase": "P15",
+  "role": "builder",
+  "command": "& 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\scripts\\validation\\Test-G15LMStudioDeployment.ps1' -WorkspaceRoot 'D:\\GitHub\\Forge-Conductor-Windows-Edition' -Parallel 16 -Resume -PriorFailedCommandRecordPath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\commands\\20260827T141837131Z-e0c0a3a9.json' -PriorFailedRealHostEvidencePath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\evidence\\P15\\windows-lm-studio-real-host-attempt-1-failed.json' -CorrectiveCommandRecordPath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\commands\\20260827T142234017Z-0ec43363.json' -SecondFailedCommandRecordPath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\commands\\20260827T143842697Z-c3dff953.json' -SecondFailedRealHostEvidencePath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\evidence\\P15\\windows-lm-studio-real-host-attempt-2-failed.json' -RunnerCorrectiveCommandRecordPath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\commands\\20260827T144053220Z-295171a5.json' -ThirdFailedCommandRecordPath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\commands\\20260827T144836198Z-72acd98d.json' -ThirdFailedRealHostEvidencePath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\evidence\\P15\\windows-lm-studio-real-host-attempt-3-failed.json' -DeploymentCorrectiveCommandRecordPath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-codex\\state\\commands\\20260827T145523645Z-f71473e0.json'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T15:01:24.9607557+00:00",
+  "end_utc": "2026-08-27T15:01:42.4485132+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T150124952Z-5cedbb6e.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T150124952Z-5cedbb6e.stderr.txt",
+  "stdout_sha256": "59100864306f3b27ac8fae789fb5bfbb45e4f81bc2ee5148dfc10592cd55838b",
+  "stderr_sha256": "45c79da6d0280e1c49a3c3829bcc4a3271f0a4cc5fbe32232995dd23258f027c"
+}

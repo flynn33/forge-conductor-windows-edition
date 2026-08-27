@@ -1,0 +1,14 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 21: ForgeConductor.Infrastructure.ProcessTests
+1/1 Test #21: ForgeConductor.Infrastructure.ProcessTests ...   Passed    2.37 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+G06       =   2.37 sec*proc (1 test)
+G15       =   2.37 sec*proc (1 test)
+T-LMS     =   2.37 sec*proc (1 test)
+T-PROC    =   2.37 sec*proc (1 test)
+T-SEC     =   2.37 sec*proc (1 test)
+
+Total Test time (real) =   2.38 sec

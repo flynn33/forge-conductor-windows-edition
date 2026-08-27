@@ -2,10 +2,12 @@
 
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsApplicationPaths.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
 #include "Infrastructure/Windows/Detail/CommandLineBuilder.h"
 #include "Infrastructure/Windows/Detail/ProcessLaunchObserver.h"
+#include "Infrastructure/Windows/Detail/WindowsPathResolver.h"
 
 #include <Windows.h>
 
@@ -30,12 +32,14 @@ namespace ForgeConductor::Tests {
 namespace {
 
 using Infrastructure::Windows::SystemClock;
+using Infrastructure::Windows::WindowsApplicationPaths;
 using Infrastructure::Windows::WindowsProcessSupervisor;
 using Infrastructure::Windows::WindowsRuntimeDiagnostics;
 using Infrastructure::Windows::Detail::CommandLineBuilder;
 using Infrastructure::Windows::Detail::EnvironmentEntry;
 using Infrastructure::Windows::Detail::IProcessLaunchObserver;
 using Infrastructure::Windows::Detail::ProcessSupervisorTestAccess;
+using Infrastructure::Windows::Detail::WindowsPathResolver;
 using namespace std::chrono_literals;
 
 class TestHandle final {
@@ -239,6 +243,15 @@ public:
     [[nodiscard]] static Contracts::WorkspaceAuthority
     create(const Domain::PathText& root, const bool shellEnabled, const bool grantExecute = true)
     {
+        return create(
+            std::vector<Domain::PathText>{root}, shellEnabled, grantExecute);
+    }
+
+    [[nodiscard]] static Contracts::WorkspaceAuthority
+    create(std::vector<Domain::PathText> roots,
+           const bool shellEnabled,
+           const bool grantExecute = true)
+    {
         std::vector<Domain::FileAccess> grants{Domain::FileAccess::Read};
         if (grantExecute) {
             grants.push_back(Domain::FileAccess::Execute);
@@ -246,7 +259,7 @@ public:
         return take(
             issueAuthority(parse<Domain::AuthorityId>("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
                            parse<Domain::ProjectId>("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
-                           parse<Domain::ClientId>("p06-process-test"), {root},
+                           parse<Domain::ClientId>("p06-process-test"), std::move(roots),
                            grantExecute ? Domain::FileAccess::Execute : Domain::FileAccess::Read,
                            std::move(grants), {}, shellEnabled, 1U));
     }
@@ -372,6 +385,43 @@ private:
         expected += std::to_string(value.size()) + ":" + value + "\n";
     }
     return expected;
+}
+
+void testPackagedLocalAppDataWorkingDirectory(const FixtureContext& fixture)
+{
+    WindowsApplicationPaths paths;
+    const auto dataRoot = take(paths.dataRoot(context(72U)));
+    const auto dataRootWide = take(CommandLineBuilder::utf8ToUtf16(dataRoot.value()));
+    const std::filesystem::path dataRootPath{dataRootWide};
+    std::error_code directoryError;
+    static_cast<void>(std::filesystem::create_directories(dataRootPath, directoryError));
+    require(!directoryError,
+            "the packaged LocalAppData process fixture root could not be established");
+    TemporaryProcessTree workingTree{dataRootPath};
+    const auto workingRoot = pathText(workingTree.path().wstring());
+    const auto authority = AuthorityIssuer::create(
+        std::vector<Domain::PathText>{fixture.root, workingRoot}, true);
+
+    Domain::ProcessRequest request{fixture.executable};
+    request.arguments = {"--working-directory"};
+    request.workingDirectory = workingRoot;
+    request.timeout = 30s;
+    ProcessSupervisorHarness harness;
+    const auto result = take(harness.supervisor().run(request, authority, context(73U)));
+    const auto actualWorkingDirectory =
+        take(CommandLineBuilder::utf8ToUtf16(result.stdoutUtf8));
+    const auto expectedWorkingDirectory = workingTree.path().wstring();
+    const bool exactMatch =
+        actualWorkingDirectory.size() <= static_cast<std::size_t>(INT_MAX) &&
+        expectedWorkingDirectory.size() <= static_cast<std::size_t>(INT_MAX) &&
+        ::CompareStringOrdinal(
+            actualWorkingDirectory.data(), static_cast<int>(actualWorkingDirectory.size()),
+            expectedWorkingDirectory.data(), static_cast<int>(expectedWorkingDirectory.size()),
+            TRUE) == CSTR_EQUAL;
+    require(result.exitCode == 0 &&
+                (exactMatch || WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+                    expectedWorkingDirectory, actualWorkingDirectory)),
+            "a packaged LocalAppData working-directory redirect was rejected");
 }
 
 void testLaunchPinsAncestryOnlyThroughCreateProcess(const FixtureContext& fixture)
@@ -1124,6 +1174,8 @@ void registerProcessWindowsTests(TestRegistry& tests, const std::wstring& fixtur
     addTest(tests, "process.command_line_quoting", [fixture] { testCommandLineQuoting(fixture); });
     addTest(tests, "process.environment_and_working_directory",
             [fixture] { testEnvironmentAndWorkingDirectory(fixture); });
+    addTest(tests, "process.packaged-localappdata-working-directory",
+            [fixture] { testPackagedLocalAppDataWorkingDirectory(fixture); });
     addTest(tests, "process.bounded_standard_input",
             [fixture] { testBoundedStandardInputDelivery(fixture); });
     addTest(tests, "process.descendant_retained_stdin",

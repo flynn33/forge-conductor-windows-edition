@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T151026597Z-92e2bf74",
+  "phase": "P15",
+  "role": "builder",
+  "command": "cmake --build 'out/build/windows-msvc-x64' --config Debug --target ForgeConductor.Infrastructure.ProcessTests ForgeConductor.LMStudio.RealHostTests --parallel 16; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ctest --test-dir 'out/build/windows-msvc-x64' -C Debug --output-on-failure -R '^Infrastructure[.]ProcessTests$'; exit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T15:10:26.6053365+00:00",
+  "end_utc": "2026-08-27T15:10:48.7898868+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T151026597Z-92e2bf74.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T151026597Z-92e2bf74.stderr.txt",
+  "stdout_sha256": "41abf6e1e7f791f80cc703a9a3f321cd0010d9a0bdfa555ebc724c5c80872540",
+  "stderr_sha256": "70c65eb8406433945809319b4c6d97fd6858220abaec39a1562897b7e4d22720"
+}

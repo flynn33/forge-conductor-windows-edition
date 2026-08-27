@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T151128087Z-39498297",
+  "phase": "P15",
+  "role": "builder",
+  "command": "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug --output-on-failure -R '^ForgeConductor[.]Infrastructure[.]ProcessTests$'; exit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T15:11:28.0961378+00:00",
+  "end_utc": "2026-08-27T15:11:31.4816648+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T151128087Z-39498297.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T151128087Z-39498297.stderr.txt",
+  "stdout_sha256": "389d5c08ede936fe42f3145b7dca02869a6b0233046f4bf681e7c0f3bfd56eb1",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -40,6 +40,18 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'Resume')]
     [string]$DeploymentCorrectiveCommandRecordPath,
 
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$FourthFailedCommandRecordPath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$FourthFailedRealHostEvidencePath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$ProcessCorrectiveBuildCommandRecordPath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$ProcessCorrectiveTestCommandRecordPath,
+
     [switch]$StaticOnly
 )
 
@@ -604,6 +616,11 @@ $thirdFailedCommandEvidence = $null
 $thirdFailedEvidenceCanonicalPath = $null
 $thirdFailedEvidenceSha256 = $null
 $deploymentCorrectiveCommandEvidence = $null
+$fourthFailedCommandEvidence = $null
+$fourthFailedEvidenceCanonicalPath = $null
+$fourthFailedEvidenceSha256 = $null
+$processCorrectiveBuildCommandEvidence = $null
+$processCorrectiveTestCommandEvidence = $null
 if ($Resume) {
     Write-Host 'G15: validating exact prior and corrective evidence for fail-closed resume.'
     Assert-True (-not [string]::Equals(
@@ -640,6 +657,22 @@ if ($Resume) {
         " -SecondFailedCommandRecordPath '" + $SecondFailedCommandRecordPath + "'" +
         " -SecondFailedRealHostEvidencePath '" + $SecondFailedRealHostEvidencePath + "'" +
         " -RunnerCorrectiveCommandRecordPath '" + $RunnerCorrectiveCommandRecordPath + "'"
+    $expectedFourthFailedCommand = $expectedThirdFailedCommand +
+        " -ThirdFailedCommandRecordPath '" + $ThirdFailedCommandRecordPath + "'" +
+        " -ThirdFailedRealHostEvidencePath '" + $ThirdFailedRealHostEvidencePath + "'" +
+        " -DeploymentCorrectiveCommandRecordPath '" +
+        $DeploymentCorrectiveCommandRecordPath + "'"
+    $expectedProcessCorrectiveBuildCommand =
+        "cmake --build 'out/build/windows-msvc-x64' --config Debug --target " +
+        'ForgeConductor.Infrastructure.ProcessTests ' +
+        'ForgeConductor.LMStudio.RealHostTests --parallel ' + $Parallel +
+        '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ' +
+        "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug " +
+        "--output-on-failure -R '^Infrastructure[.]ProcessTests$'; exit `$LASTEXITCODE"
+    $expectedProcessCorrectiveTestCommand =
+        "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug " +
+        "--output-on-failure -R '^ForgeConductor[.]Infrastructure[.]ProcessTests$'; " +
+        'exit $LASTEXITCODE'
     Assert-True ([string]::Equals(
         $SecondFailedCommandRecordPath,
         (Join-Path $WorkspaceRoot `
@@ -664,6 +697,24 @@ if ($Resume) {
             '.forge-codex\state\commands\20260827T145523645Z-f71473e0.json'),
         [StringComparison]::OrdinalIgnoreCase)) `
         'deployment correction uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $FourthFailedCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T150124952Z-5cedbb6e.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'fourth failed command uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $ProcessCorrectiveBuildCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T151026597Z-92e2bf74.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'process corrective build uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $ProcessCorrectiveTestCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T151128087Z-39498297.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'process corrective test uses its exact canonical record path'
     $priorCommandEvidence = Read-ValidatedCommandRecord `
         -Path $PriorFailedCommandRecordPath `
         -ExpectedCommand $expectedPriorCommand `
@@ -694,6 +745,21 @@ if ($Resume) {
         -ExpectedCommand $expectedCorrectiveCommand `
         -ExpectedExitCode 0 `
         -Message 'deployment corrective command record'
+    $fourthFailedCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $FourthFailedCommandRecordPath `
+        -ExpectedCommand $expectedFourthFailedCommand `
+        -ExpectedExitCode 1 `
+        -Message 'fourth failed resumed G15 command record'
+    $processCorrectiveBuildCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $ProcessCorrectiveBuildCommandRecordPath `
+        -ExpectedCommand $expectedProcessCorrectiveBuildCommand `
+        -ExpectedExitCode 0 `
+        -Message 'process corrective build command record'
+    $processCorrectiveTestCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $ProcessCorrectiveTestCommandRecordPath `
+        -ExpectedCommand $expectedProcessCorrectiveTestCommand `
+        -ExpectedExitCode 0 `
+        -Message 'process corrective test command record'
     Assert-CommandLedgerEvent `
         -RecordPath $priorCommandEvidence.RecordPath `
         -ExpectedExitCode 1 `
@@ -718,6 +784,18 @@ if ($Resume) {
         -RecordPath $deploymentCorrectiveCommandEvidence.RecordPath `
         -ExpectedExitCode 0 `
         -Message 'deployment corrective command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $fourthFailedCommandEvidence.RecordPath `
+        -ExpectedExitCode 1 `
+        -Message 'fourth failed resumed G15 command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $processCorrectiveBuildCommandEvidence.RecordPath `
+        -ExpectedExitCode 0 `
+        -Message 'process corrective build command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $processCorrectiveTestCommandEvidence.RecordPath `
+        -ExpectedExitCode 0 `
+        -Message 'process corrective test command'
 
     $priorFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
         $PriorFailedRealHostEvidencePath `
@@ -904,6 +982,62 @@ if ($Resume) {
     $thirdFailedEvidenceSha256 = Get-FileSha256 `
         $thirdFailedEvidenceCanonicalPath
 
+    Assert-True ([string]::Equals(
+        $FourthFailedRealHostEvidencePath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\evidence\P15\windows-lm-studio-real-host-attempt-4-failed.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'fourth failed evidence uses its exact canonical path'
+    Assert-True (-not [string]::Equals(
+        $FourthFailedRealHostEvidencePath,
+        $RealHostEvidencePath,
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'preserved fourth failed evidence is distinct from the next evidence target'
+    $fourthFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
+        $FourthFailedRealHostEvidencePath `
+        'preserved fourth-attempt real-host evidence' `
+        $maximumRealHostEvidenceBytes
+    Assert-Exact ([IO.Path]::GetFileName($fourthFailedEvidenceCanonicalPath)) `
+        'windows-lm-studio-real-host-attempt-4-failed.json' `
+        'preserved fourth-attempt evidence canonical leaf'
+    $fourthFailedEvidence = Get-Content -Raw -LiteralPath `
+        $fourthFailedEvidenceCanonicalPath | ConvertFrom-Json
+    Assert-Set @($fourthFailedEvidence.PSObject.Properties.Name) @(
+        'authority', 'before', 'binary', 'bounded', 'gate', 'host',
+        'host_observations', 'phase', 'result', 'runner', 'sanitized',
+        'schema_version') 'preserved fourth failed real-host evidence schema'
+    Assert-Set @($fourthFailedEvidence.result.PSObject.Properties.Name) @(
+        'deployment_left_installed', 'error', 'error_code', 'retryable',
+        'rollback_requested', 'stage', 'status') `
+        'preserved fourth failed real-host result schema'
+    Assert-Exact ([int]$fourthFailedEvidence.schema_version) 1 `
+        'preserved fourth failed evidence schema version'
+    Assert-Exact ([string]$fourthFailedEvidence.phase) 'P15' `
+        'preserved fourth failed evidence phase'
+    Assert-Exact ([string]$fourthFailedEvidence.gate) 'G15' `
+        'preserved fourth failed evidence gate'
+    Assert-Exact ([string]$fourthFailedEvidence.runner) `
+        'ForgeConductor.LMStudio.RealHostTests' `
+        'preserved fourth failed evidence runner'
+    Assert-True ([bool]$fourthFailedEvidence.bounded) `
+        'preserved fourth failed evidence remained bounded'
+    Assert-True ([bool]$fourthFailedEvidence.sanitized) `
+        'preserved fourth failed evidence remained sanitized'
+    Assert-Exact ([string]$fourthFailedEvidence.result.status) 'failed' `
+        'preserved fourth-attempt result status'
+    Assert-Exact ([string]$fourthFailedEvidence.result.stage) `
+        'deploy_lmstudio_plugins' 'preserved fourth-attempt failure stage'
+    Assert-Exact ([string]$fourthFailedEvidence.result.error_code) `
+        'process_launch_failed' 'preserved fourth-attempt failure code'
+    Assert-Exact ([bool]$fourthFailedEvidence.result.retryable) $false `
+        'preserved fourth-attempt failure retryability'
+    Assert-Exact ([bool]$fourthFailedEvidence.result.deployment_left_installed) `
+        $false 'fourth attempt performed no deployment mutation'
+    Assert-Exact ([bool]$fourthFailedEvidence.result.rollback_requested) $false `
+        'fourth attempt required no rollback'
+    $fourthFailedEvidenceSha256 = Get-FileSha256 `
+        $fourthFailedEvidenceCanonicalPath
+
     $buildMarker = 'G15: running the single authoritative affected-target Debug rebuild.'
     $testMarker = 'G15: running the deterministic G15 CTest suite once.'
     $runnerMarker = 'G15: launching LM Studio through its supported activation path; no GUI automation is used.'
@@ -1028,6 +1162,69 @@ if ($Resume) {
     Assert-LiteralOccurrenceCount $deploymentCorrectiveCommandEvidence.StdoutText `
         '88/88 Windows infrastructure unit tests passed.' 1 `
         'deployment correction unit-test success summary'
+
+    Assert-LiteralOccurrenceCount $fourthFailedCommandEvidence.StdoutText `
+        'G15: validating exact prior and corrective evidence for fail-closed resume.' 1 `
+        'fourth attempt resume validation marker'
+    Assert-LiteralOccurrenceCount $fourthFailedCommandEvidence.StdoutText `
+        'G15: prior full build/CTest and corrective focused pass validated; execution is not repeated.' 1 `
+        'fourth attempt no-repeat confirmation marker'
+    Assert-LiteralOccurrenceCount $fourthFailedCommandEvidence.StdoutText `
+        $buildMarker 0 'fourth attempt full-build marker exclusion'
+    Assert-LiteralOccurrenceCount $fourthFailedCommandEvidence.StdoutText `
+        $testMarker 0 'fourth attempt full-CTest marker exclusion'
+    Assert-LiteralOccurrenceCount $fourthFailedCommandEvidence.StdoutText `
+        $runnerMarker 1 'fourth real-host runner marker'
+
+    Assert-LiteralOccurrenceCount `
+        $processCorrectiveBuildCommandEvidence.StdoutText `
+        'ForgeConductor.Infrastructure.ProcessTests.vcxproj ->' 1 `
+        'process correction process-test target completion'
+    Assert-LiteralOccurrenceCount `
+        $processCorrectiveBuildCommandEvidence.StdoutText `
+        'ForgeConductor.LMStudio.RealHostTests.vcxproj ->' 1 `
+        'process correction real-host target completion'
+    Assert-LiteralOccurrenceCount `
+        $processCorrectiveBuildCommandEvidence.StdoutText `
+        'Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64' `
+        1 'process correction zero-test CTest project marker'
+    Assert-Exact ((Get-Content -Raw -LiteralPath `
+        $processCorrectiveBuildCommandEvidence.StderrPath).Trim()) `
+        'No tests were found!!!' `
+        'process correction zero-test filter stderr'
+    Assert-Exact ([regex]::Matches(
+        $processCorrectiveBuildCommandEvidence.StdoutText,
+        '(?m)^\s*Start [0-9]+:').Count) 0 `
+        'process correction zero-test filter started no tests'
+    Assert-Exact ([regex]::Matches(
+        $processCorrectiveBuildCommandEvidence.StdoutText,
+        '(?m)^[0-9]+/[0-9]+ Test #').Count) 0 `
+        'process correction zero-test filter executed no tests'
+    Assert-NoMatch $processCorrectiveBuildCommandEvidence.StdoutText `
+        '[0-9]+% tests passed out of' `
+        'process correction zero-test filter is not pass evidence' `
+        -CaseSensitive
+
+    Assert-Exact $processCorrectiveTestCommandEvidence.StderrBytes 0L `
+        'process corrective test stderr bytes'
+    Assert-Exact $processCorrectiveTestCommandEvidence.StderrSha256 `
+        $emptySha256 'process corrective test empty stderr SHA-256'
+    Assert-LiteralOccurrenceCount `
+        $processCorrectiveTestCommandEvidence.StdoutText `
+        'Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64' `
+        1 'process corrective test CTest project marker'
+    Assert-LiteralOccurrenceCount `
+        $processCorrectiveTestCommandEvidence.StdoutText `
+        'Start 21: ForgeConductor.Infrastructure.ProcessTests' 1 `
+        'process corrective test exact start'
+    Assert-Exact ([regex]::Matches(
+        $processCorrectiveTestCommandEvidence.StdoutText,
+        '(?m)^1/1 Test #[0-9]+: ForgeConductor[.]Infrastructure[.]ProcessTests\s+[.]+\s+Passed\s+[0-9]+[.][0-9]+ sec\s*$').Count) 1 `
+        'process corrective test exact passed result'
+    Assert-LiteralOccurrenceCount `
+        $processCorrectiveTestCommandEvidence.StdoutText `
+        '100% tests passed out of 1' 1 `
+        'process corrective test complete success summary'
 } else {
     $buildScript = Join-Path $WorkspaceRoot 'scripts\build.ps1'
     Write-Host 'G15: running the single authoritative affected-target Debug rebuild.'
@@ -1223,14 +1420,17 @@ $summaryScope = [ordered]@{
     security_hardening_deferred = $true
     authoritative_build_invocations = 1
     authoritative_test_invocations = 1
-    real_host_invocations = if ($Resume) { 4 } else { 1 }
+    real_host_invocations = if ($Resume) { 5 } else { 1 }
     gui_automation_used_against_lm_studio = $false
 }
 if ($Resume) {
     $summaryScope['resumed'] = $true
-    $summaryScope['corrective_focused_build_invocations'] = 3
-    $summaryScope['corrective_focused_test_invocations'] = 2
-    $summaryScope['total_real_host_attempts'] = 4
+    $summaryScope['corrective_focused_build_invocations'] = 4
+    $summaryScope['corrective_focused_test_command_invocations'] = 4
+    $summaryScope['corrective_focused_test_executions'] = 3
+    $summaryScope['corrective_zero_test_filter_invocations'] = 1
+    $summaryScope['corrective_focused_test_invocations'] = 4
+    $summaryScope['total_real_host_attempts'] = 5
     $summaryScope['successful_real_host_qualifications'] = 1
 }
 $summary = [ordered]@{
@@ -1334,6 +1534,48 @@ if ($Resume) {
             -BasePath $WorkspaceRoot -TargetPath $deploymentCorrectiveCommandEvidence.StderrPath
         deployment_corrective_command_stderr_sha256 = `
             $deploymentCorrectiveCommandEvidence.StderrSha256
+        fourth_failed_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fourthFailedCommandEvidence.RecordPath
+        fourth_failed_command_record_sha256 = $fourthFailedCommandEvidence.RecordSha256
+        fourth_failed_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fourthFailedCommandEvidence.StdoutPath
+        fourth_failed_command_stdout_sha256 = $fourthFailedCommandEvidence.StdoutSha256
+        fourth_failed_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fourthFailedCommandEvidence.StderrPath
+        fourth_failed_command_stderr_sha256 = $fourthFailedCommandEvidence.StderrSha256
+        fourth_failed_real_host_evidence = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fourthFailedEvidenceCanonicalPath
+        fourth_failed_real_host_evidence_sha256 = $fourthFailedEvidenceSha256
+        process_corrective_build_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $processCorrectiveBuildCommandEvidence.RecordPath
+        process_corrective_build_command_record_sha256 = `
+            $processCorrectiveBuildCommandEvidence.RecordSha256
+        process_corrective_build_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $processCorrectiveBuildCommandEvidence.StdoutPath
+        process_corrective_build_command_stdout_sha256 = `
+            $processCorrectiveBuildCommandEvidence.StdoutSha256
+        process_corrective_build_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $processCorrectiveBuildCommandEvidence.StderrPath
+        process_corrective_build_command_stderr_sha256 = `
+            $processCorrectiveBuildCommandEvidence.StderrSha256
+        process_corrective_test_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $processCorrectiveTestCommandEvidence.RecordPath
+        process_corrective_test_command_record_sha256 = `
+            $processCorrectiveTestCommandEvidence.RecordSha256
+        process_corrective_test_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $processCorrectiveTestCommandEvidence.StdoutPath
+        process_corrective_test_command_stdout_sha256 = `
+            $processCorrectiveTestCommandEvidence.StdoutSha256
+        process_corrective_test_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $processCorrectiveTestCommandEvidence.StderrPath
+        process_corrective_test_command_stderr_sha256 = `
+            $processCorrectiveTestCommandEvidence.StderrSha256
     }
 }
 Write-JsonFileAtomic -Path $summaryPath -Value $summary

@@ -7,6 +7,7 @@
 #include "Detail/ProcessLaunchObserver.h"
 #include "Detail/RelativeFileOperations.h"
 #include "Detail/UniqueHandle.h"
+#include "Detail/WindowsPathResolver.h"
 #include "ForgeConductor/Domain/Error.h"
 
 #include <Windows.h>
@@ -243,7 +244,9 @@ struct OpenedPath final {
     if (!finalPath) {
         return Domain::Result<void>::failure(std::move(finalPath).error());
     }
-    if (!ordinalEqual(finalPath.value(), expectedPath)) {
+    if (!ordinalEqual(finalPath.value(), expectedPath) &&
+        !Detail::WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+            expectedPath, finalPath.value())) {
         return Domain::Result<void>::failure(Domain::makeError(
             failureCode, "An anchored process path differs from its authorized canonical path."));
     }
