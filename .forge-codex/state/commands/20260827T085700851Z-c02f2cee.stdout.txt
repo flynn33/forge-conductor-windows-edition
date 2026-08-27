@@ -1,0 +1,87 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.ProcessFixture.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Persistence.ProcessFixture.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.UnitTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Persistence.UnitTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Performing build step for 'forsetti_external'
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  
+    1>Checking Build System
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Debug\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Debug\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Debug\ForsettiHostTemplate.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.NativeTools.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.SessionHost.Core.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\forge-conductor.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpServeProcessSnapshotTests.cpp
+  Compiling...
+  McpServeProcessSnapshotTests.cpp
+  ForgeConductor.Mcp.ServeProcessSnapshotTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.ServeProcessSnapshotTests.exe
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  4: ForgeConductor.Mcp.ServeProcessSnapshotTests
+1/2 Test  #4: ForgeConductor.Mcp.ServeProcessSnapshotTests ...   Passed    1.08 sec
+    Start 22: ForgeConductor.Persistence.UnitTests
+2/2 Test #22: ForgeConductor.Persistence.UnitTests ...........   Passed   23.14 sec
+
+100% tests passed out of 2
+
+Label Time Summary:
+G07              =  23.14 sec*proc (1 test)
+G14              =   1.08 sec*proc (1 test)
+T-DB             =  23.14 sec*proc (1 test)
+T-INTEGRATION    =   1.08 sec*proc (1 test)
+T-MCP            =   1.08 sec*proc (1 test)
+T-PARITY         =   1.08 sec*proc (1 test)
+T-PROC           =   1.08 sec*proc (1 test)
+T-SEC            =  23.14 sec*proc (1 test)
+T-UNIT           =  23.14 sec*proc (1 test)
+
+Total Test time (real) =  24.24 sec

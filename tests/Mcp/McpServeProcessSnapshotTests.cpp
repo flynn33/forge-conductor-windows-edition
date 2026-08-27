@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -15,6 +16,8 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -30,6 +33,8 @@ using namespace std::chrono_literals;
 using Json = nlohmann::json;
 
 constexpr auto ChildTimeout = 30s;
+constexpr auto ForcedCleanupTimeout = 5s;
+constexpr auto DrainCancelRetryInterval = 25ms;
 constexpr std::size_t MaximumCapturedBytes = 2U * 1024U * 1024U;
 constexpr std::size_t ExpectedToolCount = 53U;
 
@@ -344,49 +349,190 @@ void writeAll(const HANDLE handle, const std::string_view bytes)
 }
 
 struct PipeCapture final {
+    std::mutex mutex;
+    std::condition_variable changed;
     std::string bytes;
     bool overflow{};
     std::optional<DWORD> failure;
+    bool closed{};
 };
 
-void drainPipe(const HANDLE handle, PipeCapture& capture) noexcept
+struct PipeDrainState final {
+    explicit PipeDrainState(UniqueHandle ownedReader) noexcept
+        : reader{std::move(ownedReader)}
+    {
+    }
+
+    UniqueHandle reader;
+    PipeCapture capture;
+};
+
+void drainPipe(
+    const HANDLE handle,
+    PipeCapture& capture,
+    const std::stop_token cancellation) noexcept
 {
-    std::array<char, 4U * 1024U> buffer{};
-    for (;;) {
-        DWORD read{};
-        if (::ReadFile(
-                handle,
-                buffer.data(),
-                static_cast<DWORD>(buffer.size()),
-                &read,
-                nullptr) == FALSE) {
-            const DWORD error = ::GetLastError();
-            if (error == ERROR_BROKEN_PIPE || error == ERROR_HANDLE_EOF) {
-                return;
+    try {
+        std::array<char, 4U * 1024U> buffer{};
+        for (;;) {
+            if (cancellation.stop_requested()) {
+                break;
             }
-            capture.failure = error;
-            return;
+            DWORD read{};
+            if (::ReadFile(
+                    handle,
+                    buffer.data(),
+                    static_cast<DWORD>(buffer.size()),
+                    &read,
+                    nullptr) == FALSE) {
+                const DWORD error = ::GetLastError();
+                if (error != ERROR_BROKEN_PIPE && error != ERROR_HANDLE_EOF &&
+                    !(error == ERROR_OPERATION_ABORTED &&
+                      cancellation.stop_requested())) {
+                    std::lock_guard lock{capture.mutex};
+                    capture.failure = error;
+                }
+                break;
+            }
+            if (read == 0U) {
+                break;
+            }
+            {
+                std::lock_guard lock{capture.mutex};
+                if (capture.bytes.size() + read <= MaximumCapturedBytes) {
+                    capture.bytes.append(buffer.data(), read);
+                } else {
+                    capture.overflow = true;
+                }
+            }
+            capture.changed.notify_all();
         }
-        if (read == 0U) {
-            return;
+    } catch (...) {
+        try {
+            std::lock_guard lock{capture.mutex};
+            capture.failure = ERROR_OUTOFMEMORY;
+        } catch (...) {
         }
-        if (capture.bytes.size() + read <= MaximumCapturedBytes) {
-            capture.bytes.append(buffer.data(), read);
-        } else {
-            capture.overflow = true;
+    }
+    try {
+        {
+            std::lock_guard lock{capture.mutex};
+            capture.closed = true;
         }
+        capture.changed.notify_all();
+    } catch (...) {
     }
 }
 
-void terminateIfRunning(const HANDLE process) noexcept
+[[nodiscard]] DWORD waitMilliseconds(
+    const std::chrono::milliseconds timeout) noexcept
 {
-    if (::WaitForSingleObject(process, 0U) == WAIT_TIMEOUT) {
-        static_cast<void>(::TerminateProcess(process, 124U));
-        static_cast<void>(::WaitForSingleObject(process, 5'000U));
+    if (timeout <= std::chrono::milliseconds::zero()) {
+        return 0U;
+    }
+    constexpr auto maximum = static_cast<std::chrono::milliseconds::rep>(
+        INFINITE - 1U);
+    return static_cast<DWORD>((std::min)(timeout.count(), maximum));
+}
+
+[[nodiscard]] bool terminateAndWait(
+    const HANDLE process,
+    const std::chrono::milliseconds timeout) noexcept
+{
+    if (process == nullptr || process == INVALID_HANDLE_VALUE) {
+        return true;
+    }
+    const DWORD initial = ::WaitForSingleObject(process, 0U);
+    if (initial == WAIT_OBJECT_0) {
+        return true;
+    }
+    if (initial != WAIT_TIMEOUT) {
+        return false;
+    }
+
+    static_cast<void>(::TerminateProcess(process, 124U));
+    return ::WaitForSingleObject(process, waitMilliseconds(timeout)) ==
+        WAIT_OBJECT_0;
+}
+
+void detachNoexcept(std::jthread& thread) noexcept
+{
+    try {
+        if (thread.joinable()) {
+            thread.detach();
+        }
+    } catch (...) {
     }
 }
 
-[[nodiscard]] std::string requestStream()
+[[nodiscard]] bool joinSignaledThread(std::jthread& thread) noexcept
+{
+    try {
+        thread.join();
+        return true;
+    } catch (...) {
+        detachNoexcept(thread);
+        return false;
+    }
+}
+
+[[nodiscard]] bool waitAndJoinDrain(
+    std::jthread& thread,
+    const std::chrono::milliseconds timeout) noexcept
+{
+    if (!thread.joinable()) {
+        return true;
+    }
+    const HANDLE threadHandle = thread.native_handle();
+    if (::WaitForSingleObject(threadHandle, waitMilliseconds(timeout)) !=
+        WAIT_OBJECT_0) {
+        return false;
+    }
+    return joinSignaledThread(thread);
+}
+
+[[nodiscard]] bool cancelAndJoinDrain(
+    std::jthread& thread,
+    const std::chrono::milliseconds timeout) noexcept
+{
+    if (!thread.joinable()) {
+        return true;
+    }
+
+    thread.request_stop();
+    const HANDLE threadHandle = thread.native_handle();
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (std::chrono::steady_clock::now() < deadline) {
+        // Repeating cancellation closes the small race between the worker's
+        // stop check and entry into its next synchronous ReadFile call.
+        static_cast<void>(::CancelSynchronousIo(threadHandle));
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= deadline) {
+            break;
+        }
+        const auto remaining =
+            std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
+        const auto waitSlice = (std::min)(
+            remaining, std::chrono::duration_cast<std::chrono::milliseconds>(
+                           DrainCancelRetryInterval));
+        const DWORD wait = ::WaitForSingleObject(
+            threadHandle,
+            (std::max)(DWORD{1U}, waitMilliseconds(waitSlice)));
+        if (wait == WAIT_OBJECT_0) {
+            return joinSignaledThread(thread);
+        }
+        if (wait != WAIT_TIMEOUT) {
+            break;
+        }
+    }
+
+    // Drain state and its reader handle are shared with the worker, so a
+    // detached last-resort reader cannot access this session after destruction.
+    detachNoexcept(thread);
+    return false;
+}
+
+[[nodiscard]] std::string handshakeStream()
 {
     const Json initialize{
         {"id", 1},
@@ -408,73 +554,19 @@ void terminateIfRunning(const HANDLE process) noexcept
         {"jsonrpc", "2.0"},
         {"method", "tools/list"},
         {"params", Json::object()}};
+    return initialize.dump() + '\n' + initialized.dump() + '\n' +
+        toolsList.dump() + '\n';
+}
+
+[[nodiscard]] std::string statusRequest(const std::int64_t id)
+{
     const Json forgeStatus{
-        {"id", 3},
+        {"id", id},
         {"jsonrpc", "2.0"},
         {"method", "tools/call"},
         {"params",
          Json{{"arguments", Json::object()}, {"name", "forge_status"}}}};
-    return initialize.dump() + '\n' + initialized.dump() + '\n' +
-        toolsList.dump() + '\n' + forgeStatus.dump() + '\n';
-}
-
-[[nodiscard]] std::string runRole(
-    const std::filesystem::path& executable,
-    const std::filesystem::path& home,
-    const std::filesystem::path& workspace,
-    const std::wstring_view role,
-    const std::wstring_view deploymentId)
-{
-    auto child = launch(
-        executable, home, workspace, role, deploymentId);
-    PipeCapture output;
-    PipeCapture error;
-    std::jthread outputDrain{
-        [&] { drainPipe(child.outputReader.get(), output); }};
-    std::jthread errorDrain{
-        [&] { drainPipe(child.errorReader.get(), error); }};
-
-    DWORD exitCode{};
-    try {
-        const auto input = requestStream();
-        writeAll(child.inputWriter.get(), input);
-        child.inputWriter.reset();
-
-        const DWORD wait = ::WaitForSingleObject(
-            child.process.get(),
-            static_cast<DWORD>(ChildTimeout.count() * 1'000));
-        if (wait == WAIT_TIMEOUT) {
-            terminateIfRunning(child.process.get());
-            throw std::runtime_error{
-                "The stdio MCP child did not exit after end-of-file."};
-        }
-        if (wait != WAIT_OBJECT_0) {
-            throw win32Failure("WaitForSingleObject");
-        }
-        if (::GetExitCodeProcess(child.process.get(), &exitCode) == FALSE) {
-            throw win32Failure("GetExitCodeProcess");
-        }
-    } catch (...) {
-        child.inputWriter.reset();
-        terminateIfRunning(child.process.get());
-        outputDrain.join();
-        errorDrain.join();
-        throw;
-    }
-
-    outputDrain.join();
-    errorDrain.join();
-    REQUIRE(!output.overflow);
-    REQUIRE(!error.overflow);
-    REQUIRE(!output.failure.has_value());
-    REQUIRE(!error.failure.has_value());
-    if (exitCode != 0U) {
-        throw std::runtime_error{
-            "The stdio MCP child exited with code " +
-            std::to_string(exitCode) + "; stderr: " + error.bytes};
-    }
-    REQUIRE(error.bytes.empty());
-    return output.bytes;
+    return forgeStatus.dump() + '\n';
 }
 
 [[nodiscard]] std::vector<Json> parseProtocolFrames(
@@ -503,6 +595,232 @@ void terminateIfRunning(const HANDLE process) noexcept
     }
     return frames;
 }
+
+[[nodiscard]] std::size_t completeFrameCount(
+    const std::string_view bytes) noexcept
+{
+    return static_cast<std::size_t>(std::count(bytes.begin(), bytes.end(), '\n'));
+}
+
+struct PipeCaptureSnapshot final {
+    std::string bytes;
+    bool overflow{};
+    std::optional<DWORD> failure;
+    bool closed{};
+};
+
+[[nodiscard]] PipeCaptureSnapshot snapshotCapture(PipeCapture& capture)
+{
+    std::lock_guard lock{capture.mutex};
+    return PipeCaptureSnapshot{
+        capture.bytes,
+        capture.overflow,
+        capture.failure,
+        capture.closed};
+}
+
+class McpProcessSession final {
+public:
+    McpProcessSession(
+        const std::filesystem::path& executable,
+        const std::filesystem::path& home,
+        const std::filesystem::path& workspace,
+        const std::wstring_view role,
+        const std::wstring_view deploymentId)
+        : child_{launch(executable, home, workspace, role, deploymentId)}
+    {
+        try {
+            output_ = std::make_shared<PipeDrainState>(
+                std::move(child_.outputReader));
+            error_ = std::make_shared<PipeDrainState>(
+                std::move(child_.errorReader));
+
+            const auto outputState = output_;
+            outputDrain_ = std::jthread{
+                [outputState](const std::stop_token cancellation) noexcept {
+                    drainPipe(
+                        outputState->reader.get(), outputState->capture,
+                        cancellation);
+                }};
+            const auto errorState = error_;
+            errorDrain_ = std::jthread{
+                [errorState](const std::stop_token cancellation) noexcept {
+                    drainPipe(
+                        errorState->reader.get(), errorState->capture,
+                        cancellation);
+                }};
+        } catch (...) {
+            forceCleanup();
+            throw;
+        }
+    }
+
+    ~McpProcessSession() noexcept
+    {
+        forceCleanup();
+    }
+
+    McpProcessSession(const McpProcessSession&) = delete;
+    McpProcessSession& operator=(const McpProcessSession&) = delete;
+    McpProcessSession(McpProcessSession&&) = delete;
+    McpProcessSession& operator=(McpProcessSession&&) = delete;
+
+    void send(const std::string_view bytes)
+    {
+        if (finished_ || !child_.inputWriter) {
+            throw std::runtime_error{
+                "The stdio MCP child input is already closed."};
+        }
+        writeAll(child_.inputWriter.get(), bytes);
+    }
+
+    [[nodiscard]] std::vector<Json> awaitFrames(
+        const std::size_t expectedCount)
+    {
+        std::string bytes;
+        bool closedEarly{};
+        auto& outputCapture = output_->capture;
+        {
+            std::unique_lock lock{outputCapture.mutex};
+            const auto deadline = std::chrono::steady_clock::now() + ChildTimeout;
+            const bool ready = outputCapture.changed.wait_until(
+                lock,
+                deadline,
+                [&] {
+                    return outputCapture.overflow ||
+                        outputCapture.failure.has_value() ||
+                        outputCapture.closed ||
+                        completeFrameCount(outputCapture.bytes) >= expectedCount;
+                });
+            if (!ready) {
+                throw std::runtime_error{
+                    "The stdio MCP child did not produce its bounded response set."};
+            }
+            if (outputCapture.overflow) {
+                throw std::runtime_error{
+                    "The stdio MCP child exceeded the stdout capture bound."};
+            }
+            if (outputCapture.failure) {
+                throw win32Failure(
+                    "ReadFile(stdout)", outputCapture.failure.value());
+            }
+            if (completeFrameCount(outputCapture.bytes) < expectedCount) {
+                closedEarly = true;
+            } else {
+                bytes = outputCapture.bytes;
+            }
+        }
+        if (closedEarly) {
+            DWORD exitCode{STILL_ACTIVE};
+            static_cast<void>(::GetExitCodeProcess(
+                child_.process.get(), &exitCode));
+            const auto error = snapshotCapture(error_->capture);
+            throw std::runtime_error{
+                "The stdio MCP child closed stdout before completing its response set; "
+                "exit code " + std::to_string(exitCode) + "; stderr: " +
+                error.bytes};
+        }
+        auto frames = parseProtocolFrames(bytes);
+        REQUIRE(frames.size() == expectedCount);
+        return frames;
+    }
+
+    void finish(const std::size_t expectedFrameCount)
+    {
+        if (finished_) {
+            throw std::runtime_error{
+                "The stdio MCP child was already collected."};
+        }
+        child_.inputWriter.reset();
+
+        const DWORD wait = ::WaitForSingleObject(
+            child_.process.get(),
+            waitMilliseconds(std::chrono::duration_cast<
+                             std::chrono::milliseconds>(ChildTimeout)));
+        if (wait == WAIT_TIMEOUT) {
+            const bool terminationConfirmed = terminateAndWait(
+                child_.process.get(),
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    ForcedCleanupTimeout));
+            throw std::runtime_error{
+                std::string{
+                    "The stdio MCP child did not exit after end-of-file; "
+                    "forced termination was "} +
+                (terminationConfirmed ? "confirmed." : "not confirmed.")};
+        }
+        if (wait != WAIT_OBJECT_0) {
+            throw win32Failure("WaitForSingleObject");
+        }
+        DWORD exitCode{};
+        if (::GetExitCodeProcess(child_.process.get(), &exitCode) == FALSE) {
+            throw win32Failure("GetExitCodeProcess");
+        }
+
+        if (!collectDrainsExactly()) {
+            throw std::runtime_error{
+                "The stdio MCP pipe drains did not finish within their bounds."};
+        }
+        const auto output = snapshotCapture(output_->capture);
+        const auto error = snapshotCapture(error_->capture);
+        REQUIRE(output.closed);
+        REQUIRE(error.closed);
+        REQUIRE(!output.overflow);
+        REQUIRE(!error.overflow);
+        REQUIRE(!output.failure.has_value());
+        REQUIRE(!error.failure.has_value());
+        if (exitCode != 0U) {
+            throw std::runtime_error{
+                "The stdio MCP child exited with code " +
+                std::to_string(exitCode) + "; stderr: " + error.bytes};
+        }
+        REQUIRE(error.bytes.empty());
+        auto frames = parseProtocolFrames(output.bytes);
+        REQUIRE(frames.size() == expectedFrameCount);
+        finished_ = true;
+    }
+
+private:
+    [[nodiscard]] bool collectDrainExactly(std::jthread& thread) noexcept
+    {
+        const auto timeout =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                ForcedCleanupTimeout);
+        if (waitAndJoinDrain(thread, timeout)) {
+            return true;
+        }
+        static_cast<void>(cancelAndJoinDrain(thread, timeout));
+        return false;
+    }
+
+    [[nodiscard]] bool collectDrainsExactly() noexcept
+    {
+        const bool outputCollected = collectDrainExactly(outputDrain_);
+        const bool errorCollected = collectDrainExactly(errorDrain_);
+        return outputCollected && errorCollected;
+    }
+
+    void forceCleanup() noexcept
+    {
+        child_.inputWriter.reset();
+        const auto timeout =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                ForcedCleanupTimeout);
+        const bool childStopped =
+            terminateAndWait(child_.process.get(), timeout);
+        const bool outputStopped = cancelAndJoinDrain(outputDrain_, timeout);
+        const bool errorStopped = cancelAndJoinDrain(errorDrain_, timeout);
+        static_cast<void>(childStopped);
+        static_cast<void>(outputStopped);
+        static_cast<void>(errorStopped);
+    }
+
+    ChildProcess child_;
+    std::shared_ptr<PipeDrainState> output_;
+    std::shared_ptr<PipeDrainState> error_;
+    std::jthread outputDrain_;
+    std::jthread errorDrain_;
+    bool finished_{};
+};
 
 [[nodiscard]] const Json& responseFor(
     const std::vector<Json>& frames,
@@ -566,15 +884,9 @@ struct RoleObservation final {
 };
 
 [[nodiscard]] RoleObservation observeRole(
-    const std::filesystem::path& executable,
-    const std::filesystem::path& home,
-    const std::filesystem::path& workspace,
-    const std::wstring_view role,
-    const std::wstring_view deploymentId)
+    McpProcessSession& session)
 {
-    const auto frames = parseProtocolFrames(runRole(
-        executable, home, workspace, role, deploymentId));
-    REQUIRE(frames.size() == 3U);
+    const auto frames = session.awaitFrames(2U);
 
     const auto& initialize = responseFor(frames, 1);
     REQUIRE(initialize.size() == 3U);
@@ -593,8 +905,17 @@ struct RoleObservation final {
     REQUIRE(!listed.contains("error"));
     const auto& tools = listed.at("result").at("tools");
     validateToolArray(tools);
+    return RoleObservation{
+        initializeResult.at("serverInfo").at("name").get<std::string>(),
+        tools};
+}
 
-    const auto& status = responseFor(frames, 3);
+void validateStatus(
+    const std::vector<Json>& frames,
+    const std::int64_t id,
+    const std::size_t expectedPresenceCount)
+{
+    const auto& status = responseFor(frames, id);
     REQUIRE(status.size() == 3U);
     REQUIRE(status.at("jsonrpc") == "2.0");
     REQUIRE(status.contains("result"));
@@ -603,17 +924,109 @@ struct RoleObservation final {
     REQUIRE(statusResult.at("isError") == false);
     const auto& structuredStatus = statusResult.at("structuredContent");
     REQUIRE(structuredStatus.is_object());
-    REQUIRE(structuredStatus.at("presence_count") == 1U);
+    REQUIRE(structuredStatus.at("presence_count") == expectedPresenceCount);
     const auto& content = statusResult.at("content");
     REQUIRE(content.is_array());
     REQUIRE(content.size() == 1U);
     REQUIRE(content.front().at("type") == "text");
     const auto textStatus = Json::parse(
         content.front().at("text").get_ref<const std::string&>());
-    REQUIRE(textStatus.at("presence_count") == 1U);
-    return RoleObservation{
-        initializeResult.at("serverInfo").at("name").get<std::string>(),
-        tools};
+    REQUIRE(textStatus.at("presence_count") == expectedPresenceCount);
+}
+
+[[nodiscard]] bool canonicalUuid(const std::string_view value) noexcept
+{
+    if (value.size() != 36U) {
+        return false;
+    }
+    for (std::size_t index{}; index < value.size(); ++index) {
+        if (index == 8U || index == 13U || index == 18U || index == 23U) {
+            if (value[index] != '-') {
+                return false;
+            }
+            continue;
+        }
+        const char character = value[index];
+        const bool hexadecimal =
+            (character >= '0' && character <= '9') ||
+            (character >= 'a' && character <= 'f') ||
+            (character >= 'A' && character <= 'F');
+        if (!hexadecimal) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] std::string utf8Path(const std::filesystem::path& path)
+{
+    const auto encoded = path.u8string();
+    std::string result;
+    result.reserve(encoded.size());
+    for (const char8_t character : encoded) {
+        result.push_back(static_cast<char>(character));
+    }
+    return result;
+}
+
+[[nodiscard]] std::string normalizedPathKey(std::string value)
+{
+    for (char& character : value) {
+        if (character == '/') {
+            character = '\\';
+        } else if (character >= 'A' && character <= 'Z') {
+            character = static_cast<char>(character - 'A' + 'a');
+        }
+    }
+    while (value.size() > 3U && value.back() == '\\') {
+        value.pop_back();
+    }
+    return value;
+}
+
+void validateRegistry(
+    const std::filesystem::path& home,
+    const std::filesystem::path& workspace)
+{
+    const auto registryPath = home / "projects" / "registry.json";
+    REQUIRE(std::filesystem::is_regular_file(registryPath));
+    const auto bytes = std::filesystem::file_size(registryPath);
+    REQUIRE(bytes > 0U);
+    REQUIRE(bytes <= MaximumCapturedBytes);
+    std::ifstream input{registryPath, std::ios::binary};
+    REQUIRE(input.is_open());
+    std::string content(static_cast<std::size_t>(bytes), '\0');
+    input.read(content.data(), static_cast<std::streamsize>(content.size()));
+    REQUIRE(static_cast<std::size_t>(input.gcount()) == content.size());
+
+    const auto registry = Json::parse(content.begin(), content.end());
+    REQUIRE(registry.is_object());
+    REQUIRE(registry.size() == 2U);
+    REQUIRE(registry.at("schemaVersion") == 1U);
+    const auto& projects = registry.at("projects");
+    REQUIRE(projects.is_array());
+    REQUIRE(projects.size() == 1U);
+    const auto& project = projects.front();
+    REQUIRE(project.is_object());
+    REQUIRE(project.size() == 6U);
+    REQUIRE(project.at("id").is_string());
+    REQUIRE(canonicalUuid(project.at("id").get_ref<const std::string&>()));
+    REQUIRE(project.at("displayName").is_string());
+    REQUIRE(!project.at("displayName").get_ref<const std::string&>().empty());
+    REQUIRE(project.at("repositoryIdentity").is_null() ||
+            project.at("repositoryIdentity").is_string());
+    REQUIRE(project.at("createdAt").is_string());
+    REQUIRE(!project.at("createdAt").get_ref<const std::string&>().empty());
+    REQUIRE(project.at("updatedAt").is_string());
+    REQUIRE(!project.at("updatedAt").get_ref<const std::string&>().empty());
+    const auto& aliases = project.at("aliases");
+    REQUIRE(aliases.is_array());
+    REQUIRE(aliases.size() == 1U);
+    REQUIRE(aliases.front().is_string());
+    const auto& alias = aliases.front().get_ref<const std::string&>();
+    REQUIRE(!alias.empty());
+    REQUIRE(normalizedPathKey(alias) == normalizedPathKey(
+        utf8Path(std::filesystem::canonical(workspace))));
 }
 
 void run(
@@ -624,35 +1037,63 @@ void run(
     const auto golden = loadGolden(goldenPath);
 
     TemporaryDirectory temporary;
-    const auto primaryRoot = temporary.root() / "primary";
-    const auto fallbackRoot = temporary.root() / "fallback";
-    const auto primaryHome = primaryRoot / "home";
-    const auto primaryWorkspace = primaryRoot / "workspace";
-    const auto fallbackHome = fallbackRoot / "home";
-    const auto fallbackWorkspace = fallbackRoot / "workspace";
-    std::filesystem::create_directories(primaryHome);
-    std::filesystem::create_directories(primaryWorkspace);
-    std::filesystem::create_directories(fallbackHome);
-    std::filesystem::create_directories(fallbackWorkspace);
+    const auto sharedRoot = temporary.root() / L"shared-\u5171\u6709";
+    const auto home = sharedRoot / L"home-\u4e3b";
+    const auto workspace = sharedRoot / L"workspace-\u4f5c\u696d";
+    std::filesystem::create_directories(home);
+    std::filesystem::create_directories(workspace);
 
-    const auto primary = observeRole(
+    McpProcessSession primary{
         executable,
-        primaryHome,
-        primaryWorkspace,
+        home,
+        workspace,
         L"primary",
-        L"p14-process-snapshot-primary");
-    const auto fallback = observeRole(
+        L"p14-shared-root-primary"};
+    McpProcessSession fallback{
         executable,
-        fallbackHome,
-        fallbackWorkspace,
+        home,
+        workspace,
         L"fallback",
-        L"p14-process-snapshot-fallback");
+        L"p14-shared-root-fallback"};
 
-    REQUIRE(primary.serverName == "forge-conductor");
-    REQUIRE(fallback.serverName == "forge-conductor-fallback");
-    REQUIRE(primary.serverName != fallback.serverName);
-    REQUIRE(primary.tools == fallback.tools);
-    REQUIRE(primary.tools == golden.at("tools"));
+    const auto handshake = handshakeStream();
+    primary.send(handshake);
+    fallback.send(handshake);
+    const auto primaryObservation = observeRole(primary);
+    const auto fallbackObservation = observeRole(fallback);
+
+    REQUIRE(primaryObservation.serverName == "forge-conductor");
+    REQUIRE(fallbackObservation.serverName == "forge-conductor-fallback");
+    REQUIRE(primaryObservation.serverName != fallbackObservation.serverName);
+    REQUIRE(primaryObservation.tools == fallbackObservation.tools);
+    REQUIRE(primaryObservation.tools == golden.at("tools"));
+
+    primary.send(statusRequest(3));
+    fallback.send(statusRequest(3));
+    validateStatus(primary.awaitFrames(3U), 3, 2U);
+    validateStatus(fallback.awaitFrames(3U), 3, 2U);
+
+    primary.finish(3U);
+
+    fallback.send(statusRequest(4));
+    validateStatus(fallback.awaitFrames(4U), 4, 1U);
+    fallback.finish(4U);
+
+    McpProcessSession verifier{
+        executable,
+        home,
+        workspace,
+        L"primary",
+        L"p14-shared-root-verifier"};
+    verifier.send(handshake);
+    const auto verifierObservation = observeRole(verifier);
+    REQUIRE(verifierObservation.serverName == primaryObservation.serverName);
+    REQUIRE(verifierObservation.tools == golden.at("tools"));
+    verifier.send(statusRequest(3));
+    validateStatus(verifier.awaitFrames(3U), 3, 1U);
+    verifier.finish(3U);
+
+    validateRegistry(home, workspace);
 }
 
 } // namespace

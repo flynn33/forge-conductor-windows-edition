@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "shared_home_role_concurrency",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T08:58:32.6018174+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "msbuild": "17.14.40+3e7442088",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2",
+    "sqlite": "Windows SDK winsqlite3"
+  },
+  "command_record": ".forge-codex/state/commands/20260827T085700851Z-c02f2cee.json",
+  "effective_exit_code": 0,
+  "measured_result": {
+    "focused_build_targets": 2,
+    "focused_ctest_tests": 2,
+    "focused_ctest_passed": 2,
+    "focused_ctest_failed": 0,
+    "focused_ctest_real_seconds": 24.24,
+    "process_snapshot_ctest_seconds": 1.08,
+    "persistence_ctest_seconds": 23.14,
+    "persistence_tests_passed": 62,
+    "persistence_tests_total": 62,
+    "process_snapshot_assertions": 2529,
+    "real_process_launches": 3,
+    "peak_simultaneous_processes": 2,
+    "tool_descriptors_per_process": 53,
+    "presence_count_primary_before_exit": 2,
+    "presence_count_fallback_before_exit": 2,
+    "presence_count_fallback_after_primary_exit": 1,
+    "presence_count_verifier_after_reopen": 1,
+    "normal_shutdown_stale_presence_rows": 0,
+    "registry_projects": 1,
+    "registry_aliases": 1,
+    "process_stderr_bytes": 0,
+    "command_stderr_bytes": 0,
+    "eof_exit_bound_seconds": 30,
+    "forced_cleanup_bound_seconds": 5,
+    "capture_bound_bytes_per_stream": 2097152,
+    "unicode_home_and_workspace_paths": true,
+    "directory_component_open_retry_bound_milliseconds": 500,
+    "directory_component_open_retry_slice_milliseconds": 10,
+    "persistent_contention_error_code": "database_busy",
+    "persistent_contention_retryable": true
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe",
+      "bytes": 13005312,
+      "sha256": "ad8ab69f052de61e06c1ce35aad6c2a2675f18733d6bc165480c77e414f5ae92"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ServeProcessSnapshotTests.exe",
+      "bytes": 1555968,
+      "sha256": "95bd76fad1ace781556998a6b89e3e70d509581211996eb56cdaf9be958959d1"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Persistence.UnitTests.exe",
+      "bytes": 4292608,
+      "sha256": "b77939b529209472e8f05de4cd464707618424f5e7901b686076659d0018cc2d"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Persistence.Windows.lib",
+      "bytes": 118079292,
+      "sha256": "9f1d6f728a2d1c851aa829b2bfdced7e7a2dc1312f8943f529e26f71754944f0"
+    },
+    {
+      "path": "tests/fixtures/Mcp/mcp-tools-semantic-golden.json",
+      "bytes": 37659,
+      "sha256": "3a53160fcd2aa9d3c3d9aeb0a07cdf7d54b5fa5220276c26dd11af1b163c9289"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/Testing/Temporary/LastTest.log",
+      "bytes": 5533,
+      "sha256": "1f3799671c36918c7b40afeb1d82ff9d8d00a19f2c81ab33a05f0d37c215dccf"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": "src/Persistence/Windows/Detail/DatabaseNamespaceLease.cpp",
+      "sha256": "7e889bb2d029614c84f07daf716bdbacd9216955d3e2fa37a5eb08d6df619335"
+    },
+    {
+      "path": "tests/Persistence/DatabaseConcurrencyTests.cpp",
+      "sha256": "29a3de6feffb476e3d00e97db3e11f5ffbbe4f7146807ab71a08657cd660e682"
+    },
+    {
+      "path": "tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "sha256": "769b46f859be7f26ddcb4c4e66970d17f388a674a196e10ae6be4877a529d09b"
+    }
+  ],
+  "qualified_surface": [
+    "primary and fallback CLI processes remain live concurrently against one Unicode application-data root and one canonical workspace",
+    "both live roles advertise the exact ordered 53-tool golden catalog and report a shared presence count of two",
+    "clean primary EOF removes only the primary identity, after which the still-live fallback reports one presence row",
+    "clean fallback EOF leaves no stale row; a third process reopens the same persistence root and reports only its own presence",
+    "simultaneous first-run project adoption converges to one durable project and one canonical alias without lost or duplicate registry updates",
+    "directory namespace pinning continues to exclude FILE_SHARE_DELETE while transient startup sharing and lock violations receive one bounded retry window",
+    "persistent namespace contention returns typed retryable database_busy instead of internal_failure",
+    "the real-process harness owns bounded stdout and stderr drains, handles partial construction safely, and bounds forced child and pipe cleanup"
+  ],
+  "diagnostic_resolution": [
+    "The first simultaneous shared-root run failed before fallback handshake with Win32 error 32 while opening an anchored database directory component.",
+    "A 500 millisecond global startup-contention window now retries only ERROR_SHARING_VIOLATION and ERROR_LOCK_VIOLATION in 10 millisecond slices; the directory share mask remains FILE_SHARE_READ | FILE_SHARE_WRITE.",
+    "A native persistence regression proves recovery after transient incompatible directory access and proves bounded retryable database_busy after persistent contention.",
+    "Independent lifecycle review found constructor-unwind and synchronous-drain hang risks in the process fixture; two-phase startup, shared drain ownership, stop-aware reads, bounded process waits, and CancelSynchronousIo cleanup close both paths."
+  ],
+  "remaining_limitations": [
+    "dynamic multi-project workspace authority and project-scoped Git/shell dispatch after process startup",
+    "complete 53-entry per-tool valid/invalid request, response, error, bounds, and side-effect semantic fixtures",
+    "replacement of temporary direct stdio persistence ownership with versioned manager IPC in P16",
+    "remaining G14 evidence and parity-matrix synchronization after per-tool semantics are qualified"
+  ]
+}

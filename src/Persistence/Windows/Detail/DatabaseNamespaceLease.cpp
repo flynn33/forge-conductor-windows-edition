@@ -24,6 +24,8 @@ constexpr ACCESS_MASK DirectoryAnchorAccess =
     FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES;
 constexpr ULONG DirectoryShare = FILE_SHARE_READ | FILE_SHARE_WRITE;
 constexpr std::size_t MaximumNativePathCharacters = 32'760U;
+constexpr auto MaximumDirectoryComponentOpenWait = std::chrono::milliseconds{500};
+constexpr DWORD DirectoryComponentOpenRetrySliceMilliseconds = 10U;
 constexpr auto MaximumMigrationLockWait = std::chrono::seconds{3};
 constexpr auto MigrationLockRetrySlice = std::chrono::milliseconds{10};
 constexpr ULONG NativeFileRenameInformationEx = 65U;
@@ -435,6 +437,30 @@ struct AnchoredDirectoryTree final {
     std::vector<InfrastructureDetail::UniqueHandle> handles;
 };
 
+[[nodiscard]] constexpr bool transientDirectoryComponentOpenError(
+    const DWORD nativeCode) noexcept
+{
+    return nativeCode == ERROR_SHARING_VIOLATION ||
+           nativeCode == ERROR_LOCK_VIOLATION;
+}
+
+[[nodiscard]] InfrastructureDetail::RelativeOpenResult openDirectoryComponent(
+    const HANDLE anchoredParent,
+    const std::wstring_view directoryName,
+    const InfrastructureDetail::RelativeOpenOptions& options,
+    const std::chrono::steady_clock::time_point contentionDeadline) noexcept
+{
+    auto opened = InfrastructureDetail::openRelative(
+        anchoredParent, directoryName, options);
+    while (!opened && transientDirectoryComponentOpenError(opened.win32Error) &&
+           std::chrono::steady_clock::now() < contentionDeadline) {
+        ::Sleep(DirectoryComponentOpenRetrySliceMilliseconds);
+        opened = InfrastructureDetail::openRelative(
+            anchoredParent, directoryName, options);
+    }
+    return opened;
+}
+
 [[nodiscard]] Domain::Result<InfrastructureDetail::UniqueHandle> openRootAnchor(
     const std::wstring_view rootPath) noexcept
 {
@@ -464,7 +490,8 @@ struct AnchoredDirectoryTree final {
 [[nodiscard]] Domain::Result<InfrastructureDetail::UniqueHandle> reopenForDirectoryCreation(
     const HANDLE anchoredParent,
     const std::wstring_view directoryName,
-    const std::wstring_view expectedPath) noexcept
+    const std::wstring_view expectedPath,
+    const std::chrono::steady_clock::time_point contentionDeadline) noexcept
 {
     InfrastructureDetail::RelativeOpenOptions options{};
     options.desiredAccess = DirectoryAnchorAccess | FILE_ADD_SUBDIRECTORY;
@@ -472,13 +499,18 @@ struct AnchoredDirectoryTree final {
     options.disposition = InfrastructureDetail::RelativeOpenDisposition::OpenExisting;
     options.fileAttributes = FILE_ATTRIBUTE_DIRECTORY;
     options.objectType = InfrastructureDetail::RelativeObjectType::Directory;
-    auto reopened = InfrastructureDetail::openRelative(
-        anchoredParent, directoryName, options);
+    auto reopened = openDirectoryComponent(
+        anchoredParent, directoryName, options, contentionDeadline);
     if (!reopened) {
+        const bool transientContention =
+            transientDirectoryComponentOpenError(reopened.win32Error);
         return Domain::Result<InfrastructureDetail::UniqueHandle>::failure(
             fileError(
                 "reopen an anchored database directory for child creation",
-                reopened.win32Error));
+                reopened.win32Error,
+                transientContention ? Domain::ErrorCodes::DatabaseBusy
+                                    : Domain::ErrorCodes::InternalFailure,
+                transientContention));
     }
     auto verified = verifyDirectoryHandle(reopened.handle.get(), expectedPath);
     if (!verified) {
@@ -494,6 +526,8 @@ struct AnchoredDirectoryTree final {
 {
     try {
         AnchoredDirectoryTree result;
+        const auto contentionDeadline =
+            std::chrono::steady_clock::now() + MaximumDirectoryComponentOpenWait;
         result.paths.emplace_back(canonicalDirectory.substr(0U, 3U));
         auto root = openRootAnchor(result.paths.back());
         if (!root) {
@@ -518,8 +552,8 @@ struct AnchoredDirectoryTree final {
             options.disposition = InfrastructureDetail::RelativeOpenDisposition::OpenExisting;
             options.fileAttributes = FILE_ATTRIBUTE_DIRECTORY;
             options.objectType = InfrastructureDetail::RelativeObjectType::Directory;
-            auto opened = InfrastructureDetail::openRelative(
-                result.handles.back().get(), component, options);
+            auto opened = openDirectoryComponent(
+                result.handles.back().get(), component, options, contentionDeadline);
             if (!opened &&
                 (opened.win32Error == ERROR_FILE_NOT_FOUND || opened.win32Error == ERROR_PATH_NOT_FOUND)) {
                 if (result.handles.size() < 2U) {
@@ -541,19 +575,26 @@ struct AnchoredDirectoryTree final {
                 auto creationParent = reopenForDirectoryCreation(
                     result.handles[result.handles.size() - 2U].get(),
                     creationParentName,
-                    creationParentPath);
+                    creationParentPath,
+                    contentionDeadline);
                 if (!creationParent) {
                     return Domain::Result<AnchoredDirectoryTree>::failure(
                         std::move(creationParent).error());
                 }
                 options.disposition = InfrastructureDetail::RelativeOpenDisposition::OpenOrCreate;
-                opened = InfrastructureDetail::openRelative(
-                    creationParent.value().get(), component, options);
+                opened = openDirectoryComponent(
+                    creationParent.value().get(), component, options,
+                    contentionDeadline);
             }
             if (!opened) {
+                const bool transientContention =
+                    transientDirectoryComponentOpenError(opened.win32Error);
                 return Domain::Result<AnchoredDirectoryTree>::failure(fileError(
                     "open or create an anchored database directory component",
-                    opened.win32Error));
+                    opened.win32Error,
+                    transientContention ? Domain::ErrorCodes::DatabaseBusy
+                                        : Domain::ErrorCodes::InternalFailure,
+                    transientContention));
             }
             auto verified = verifyDirectoryHandle(opened.handle.get(), expectedPath);
             if (!verified) {

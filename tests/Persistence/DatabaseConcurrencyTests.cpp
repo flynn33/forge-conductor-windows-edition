@@ -35,6 +35,7 @@ using namespace std::chrono_literals;
 using PersistenceSupport::ScopedTestDirectory;
 
 constexpr DWORD ChildWaitMilliseconds = 15'000U;
+constexpr DWORD TransientDirectoryConflictMilliseconds = 75U;
 
 [[nodiscard]] std::filesystem::path canonicalPath(
     const std::filesystem::path& path,
@@ -79,6 +80,19 @@ constexpr DWORD ChildWaitMilliseconds = 15'000U;
         canonicalPath(directory, "the concurrency directory could not be canonicalized").native(),
         mainBasename,
         lockBasename));
+}
+
+[[nodiscard]] InfrastructureDetail::UniqueHandle holdDirectoryWithoutSharing(
+    const std::filesystem::path& directory)
+{
+    InfrastructureDetail::UniqueHandle handle{::CreateFileW(
+        directory.c_str(), DELETE | FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
+    require(static_cast<bool>(handle),
+            "the namespace-startup fixture could not hold an incompatible directory handle");
+    return handle;
 }
 
 [[nodiscard]] std::wstring quoteArgument(const std::wstring_view argument)
@@ -382,6 +396,52 @@ private:
         ready.name,
         release.name,
         std::to_wstring(ChildWaitMilliseconds)};
+}
+
+void testNamespaceStartupSharingConflictRetry()
+{
+    ScopedTestDirectory transientDirectory{L"concurrency-namespace-startup-transient"};
+    const auto transientCanonical = canonicalPath(
+        transientDirectory.path(),
+        "the transient namespace-startup directory could not be canonicalized");
+    auto transientBlocker = holdDirectoryWithoutSharing(transientCanonical);
+    std::jthread releaseTransient{[&transientBlocker] {
+        ::Sleep(TransientDirectoryConflictMilliseconds);
+        transientBlocker.reset();
+    }};
+
+    const auto transientStarted = std::chrono::steady_clock::now();
+    auto recovered = PersistenceDetail::DatabaseNamespaceLease::create(
+        transientCanonical.native(), L"startup.sqlite", L"startup.sqlite.lock");
+    const auto transientElapsed =
+        std::chrono::steady_clock::now() - transientStarted;
+    releaseTransient.join();
+    require(static_cast<bool>(recovered),
+            "a transient directory sharing conflict prevented namespace startup");
+    require(transientElapsed < 2s,
+            "namespace startup recovery exceeded its bounded sharing-conflict retry");
+    auto recoveredLease = std::move(recovered).value();
+    require(recoveredLease->canonicalDirectory() == transientCanonical.native(),
+            "namespace startup recovery anchored a different directory");
+    recoveredLease.reset();
+
+    ScopedTestDirectory persistentDirectory{L"concurrency-namespace-startup-persistent"};
+    const auto persistentCanonical = canonicalPath(
+        persistentDirectory.path(),
+        "the persistent namespace-startup directory could not be canonicalized");
+    auto persistentBlocker = holdDirectoryWithoutSharing(persistentCanonical);
+    const auto persistentStarted = std::chrono::steady_clock::now();
+    const auto exhausted = PersistenceDetail::DatabaseNamespaceLease::create(
+        persistentCanonical.native(), L"startup.sqlite", L"startup.sqlite.lock");
+    const auto persistentElapsed =
+        std::chrono::steady_clock::now() - persistentStarted;
+    requireError(exhausted, Domain::ErrorCodes::DatabaseBusy,
+                 "persistent directory contention was not mapped to database_busy");
+    require(exhausted.error().retryable,
+            "persistent directory contention was not marked retryable");
+    require(persistentElapsed >= 350ms && persistentElapsed < 2s,
+            "persistent directory contention did not honor its bounded retry window");
+    persistentBlocker.reset();
 }
 
 void testCrossProcessMigrationLockCancellationAndCleanup(
@@ -822,6 +882,8 @@ void registerDatabaseConcurrencyTests(
     TestRegistry& tests,
     const std::filesystem::path& processFixture)
 {
+    addTest(tests, "persistence.concurrency.namespace-startup-sharing-retry",
+            testNamespaceStartupSharingConflictRetry);
     addTest(tests, "persistence.concurrency.migration-lock",
             [processFixture] {
                 testCrossProcessMigrationLockCancellationAndCleanup(processFixture);
