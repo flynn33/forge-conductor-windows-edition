@@ -1,0 +1,19 @@
+[PASS] registration precedes repeated bounded heartbeats
+[PASS] transient failure retries without overlap
+[PASS] superseded owner retires without reclaim
+[PASS] stop cancels in-flight heartbeat and joins before remove
+[PASS] failed registration is best effort and retries
+[PASS] stop and destructor are idempotent
+[PASS] failed removal retains identity for retry and destruction
+7/7 client presence lifecycle tests passed: 113 assertions.
+MCP serve process snapshot tests passed: 1837 assertions
+Forge Conductor native scaffold self-test passed.
+Forge Conductor 0.9.0 (Windows native)
+Forge Conductor for Windows
+Usage: forge-conductor COMMAND
+Commands:
+  serve [--home PATH]  Run one stdio MCP connection.
+  mcp-serve             Alias for serve.
+  mcp                   Alias for serve.
+  version               Print the product version.
+  --self-test           Validate the native CLI scaffold.

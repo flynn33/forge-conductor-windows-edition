@@ -1,0 +1,20 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 4: ForgeConductor.Mcp.ServeProcessSnapshotTests
+1/1 Test #4: ForgeConductor.Mcp.ServeProcessSnapshotTests ...***Failed    0.18 sec
+MCP serve process snapshot tests failed after 598 assertions: The stdio MCP child exited with code 1; stderr: Forge Conductor composition failed: project_not_found: The explicitly requested project id is not registered.
+
+
+
+0% tests passed, 1 tests failed out of 1
+
+Label Time Summary:
+G14              =   0.18 sec*proc (1 test)
+T-INTEGRATION    =   0.18 sec*proc (1 test)
+T-MCP            =   0.18 sec*proc (1 test)
+T-PARITY         =   0.18 sec*proc (1 test)
+T-PROC           =   0.18 sec*proc (1 test)
+
+Total Test time (real) =   0.21 sec
+
+The following tests FAILED:
+	  4 - ForgeConductor.Mcp.ServeProcessSnapshotTests (Failed) G14 T-INTEGRATION T-MCP T-PARITY T-PROC

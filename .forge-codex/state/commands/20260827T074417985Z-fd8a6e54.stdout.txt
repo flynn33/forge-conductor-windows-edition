@@ -1,0 +1,7 @@
+[PASS] registration precedes repeated bounded heartbeats
+[PASS] transient failure retries without overlap
+[PASS] superseded owner retires without reclaim
+[PASS] stop cancels in-flight heartbeat and joins before remove
+[PASS] failed registration cleans thread and possible row
+[PASS] stop and destructor are idempotent
+6/6 client presence lifecycle tests passed: 90 assertions.

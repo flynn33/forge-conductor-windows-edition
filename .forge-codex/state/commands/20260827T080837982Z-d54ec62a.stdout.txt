@@ -1,0 +1,9 @@
+[PASS] registration precedes repeated bounded heartbeats
+[PASS] transient failure retries without overlap
+[PASS] superseded owner retires without reclaim
+[PASS] stop cancels in-flight heartbeat and joins before remove
+[PASS] failed registration is best effort and retries
+[PASS] stop and destructor are idempotent
+[PASS] failed removal retains identity for retry and destruction
+7/7 client presence lifecycle tests passed: 113 assertions.
+MCP serve process snapshot tests passed: 1837 assertions

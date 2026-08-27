@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T075424142Z-d322862c",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "ctest --test-dir out/build/windows-msvc-x64 -C Debug --output-on-failure -R \"^ForgeConductor\\.Mcp\\.ServeProcessSnapshotTests$\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T07:54:24.1509475+00:00",
+  "end_utc": "2026-08-27T07:54:25.3188067+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T075424142Z-d322862c.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T075424142Z-d322862c.stderr.txt",
+  "stdout_sha256": "cf0ec5eda4b1e34c2f03a2893f9f93a152b2ea960dac1e9ebea4a9085deecf23",
+  "stderr_sha256": "18e00877dc1071c85cd4f479d451bebeef8309022e46cf8c63b0bed5151984a4"
+}

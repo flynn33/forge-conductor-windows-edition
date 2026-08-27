@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T080627818Z-6a419ea5",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "& 'out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Application.ClientPresenceLifecycleTests.exe'\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n& 'out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ServeProcessSnapshotTests.exe' 'out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe' 'tests/fixtures/Mcp/mcp-tools-semantic-golden.json'\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n& 'out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe' --self-test\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n& 'out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe' --version\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n& 'out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe' --help\nexit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T08:06:27.8255056+00:00",
+  "end_utc": "2026-08-27T08:06:29.8837303+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T080627818Z-6a419ea5.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T080627818Z-6a419ea5.stderr.txt",
+  "stdout_sha256": "994f71b6a122fab34f14f6153ffa34d9d3ffeec7eedbcd42aaf5444b0a62c13e",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

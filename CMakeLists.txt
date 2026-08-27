@@ -122,6 +122,7 @@ target_include_directories(ForgeConductor.Contracts INTERFACE
 set(FORGE_APPLICATION_SOURCES
     src/Application/AgentCatalog.cpp
     src/Application/AgentSessionService.cpp
+    src/Application/ClientPresenceLifecycle.cpp
     src/Application/ContinuityAutomation.cpp
     src/Application/ContinuityCoordinator.cpp
     src/Application/LegacyContextContinuityService.cpp
@@ -314,12 +315,15 @@ target_link_libraries(ForgeConductor.ForsettiModule PUBLIC
 add_executable(ForgeConductor.Cli
     src/Hosts/Cli/CliCompositionRoot.cpp
     src/Hosts/Cli/CliCompositionRoot.h
+    src/Hosts/Cli/McpServeCompositionRoot.cpp
+    src/Hosts/Cli/McpServeCompositionRoot.h
     src/Hosts/Cli/main.cpp
 )
 add_executable(ForgeConductor::Cli ALIAS ForgeConductor.Cli)
 set_target_properties(ForgeConductor.Cli PROPERTIES OUTPUT_NAME "forge-conductor")
 forge_configure_native_target(ForgeConductor.Cli)
-target_link_libraries(ForgeConductor.Cli PRIVATE ForgeConductor::Application)
+target_link_libraries(ForgeConductor.Cli PRIVATE
+    ForgeConductor::Composition.Windows)
 
 add_executable(ForgeConductor.SessionHost
     src/Hosts/SessionHost/SessionHostCompositionRoot.cpp
@@ -420,6 +424,26 @@ if(BUILD_TESTING)
     set_tests_properties(ForgeConductor.Mcp.ProtocolServerTests PROPERTIES
         LABELS "G14;T-MCP;T-UNIT;T-STRESS"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.ServeProcessSnapshotTests
+        tests/Mcp/McpServeProcessSnapshotTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Mcp.ServeProcessSnapshotTests)
+    target_link_libraries(
+        ForgeConductor.Mcp.ServeProcessSnapshotTests PRIVATE
+        nlohmann_json::nlohmann_json)
+    add_dependencies(
+        ForgeConductor.Mcp.ServeProcessSnapshotTests
+        ForgeConductor.Cli)
+    add_test(
+        NAME ForgeConductor.Mcp.ServeProcessSnapshotTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ServeProcessSnapshotTests>
+            "$<TARGET_FILE:ForgeConductor.Cli>"
+            "${PROJECT_SOURCE_DIR}/tests/fixtures/Mcp/mcp-tools-semantic-golden.json")
+    set_tests_properties(
+        ForgeConductor.Mcp.ServeProcessSnapshotTests PROPERTIES
+        LABELS "G14;T-MCP;T-PROC;T-INTEGRATION;T-PARITY"
+        TIMEOUT 90)
 
     add_executable(ForgeConductor.Mcp.ClientWorkspaceContextTests
         tests/Mcp/McpClientWorkspaceContextTests.cpp)
@@ -883,6 +907,27 @@ if(BUILD_TESTING)
         ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests PROPERTIES
         LABELS "G14;T-MCP;T-DB;T-UNIT;T-INTEGRATION"
         TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.Application.ClientPresenceLifecycleTests
+        tests/Application/ClientPresenceLifecycleTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Application.ClientPresenceLifecycleTests)
+    target_include_directories(
+        ForgeConductor.Application.ClientPresenceLifecycleTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Application.ClientPresenceLifecycleTests PRIVATE
+        ForgeConductor::Application)
+
+    add_test(
+        NAME ForgeConductor.Application.ClientPresenceLifecycleTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Application.ClientPresenceLifecycleTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Application.ClientPresenceLifecycleTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-STRESS"
+        TIMEOUT 60
     )
 
     add_test(

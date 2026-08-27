@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T080223629Z-f237c86c",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "cmake --build out/build/windows-msvc-x64 --config Debug --target ForgeConductor.Application.ClientPresenceLifecycleTests ForgeConductor.Mcp.ServeProcessSnapshotTests -- /m:1 /nr:false\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\nctest --test-dir out/build/windows-msvc-x64 -C Debug --output-on-failure -R \"^(ForgeConductor\\.Application\\.ClientPresenceLifecycleTests|ForgeConductor\\.Mcp\\.ServeProcessSnapshotTests)$\"\nexit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T08:02:23.6373042+00:00",
+  "end_utc": "2026-08-27T08:02:40.9697211+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T080223629Z-f237c86c.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T080223629Z-f237c86c.stderr.txt",
+  "stdout_sha256": "105f304a46ef27a478079d90560a283f70f36716f89e79d2821db9efcc98412c",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

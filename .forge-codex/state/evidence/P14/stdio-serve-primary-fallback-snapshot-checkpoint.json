@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "stdio_serve_primary_fallback_snapshot",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T08:08:54.2554071+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "msbuild": "17.14.40+3e7442088",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2",
+    "sqlite": "Windows SDK winsqlite3"
+  },
+  "build_command_records": [
+    ".forge-codex/state/commands/20260827T074355060Z-e43fa15e.json",
+    ".forge-codex/state/commands/20260827T075356549Z-951aab48.json",
+    ".forge-codex/state/commands/20260827T075538669Z-ef1809af.json",
+    ".forge-codex/state/commands/20260827T080223629Z-f237c86c.json",
+    ".forge-codex/state/commands/20260827T080544923Z-8ead2fbf.json"
+  ],
+  "test_command_records": [
+    ".forge-codex/state/commands/20260827T074417985Z-fd8a6e54.json",
+    ".forge-codex/state/commands/20260827T075424142Z-d322862c.json",
+    ".forge-codex/state/commands/20260827T075538669Z-ef1809af.json",
+    ".forge-codex/state/commands/20260827T075617281Z-38eabcd8.json",
+    ".forge-codex/state/commands/20260827T080223629Z-f237c86c.json",
+    ".forge-codex/state/commands/20260827T080255226Z-13a92297.json",
+    ".forge-codex/state/commands/20260827T080544923Z-8ead2fbf.json",
+    ".forge-codex/state/commands/20260827T080627818Z-6a419ea5.json",
+    ".forge-codex/state/commands/20260827T080837982Z-d54ec62a.json"
+  ],
+  "effective_exit_code": 0,
+  "measured_result": {
+    "focused_build_targets": 2,
+    "focused_ctest_tests": 2,
+    "focused_ctest_passed": 2,
+    "focused_ctest_failed_after_fix": 0,
+    "focused_ctest_real_seconds": 1.08,
+    "process_snapshot_ctest_seconds": 0.75,
+    "presence_lifecycle_ctest_seconds": 0.32,
+    "presence_lifecycle_scenarios": 7,
+    "presence_lifecycle_assertions": 113,
+    "process_snapshot_assertions": 1837,
+    "real_process_roles": 2,
+    "tool_descriptors_per_role": 53,
+    "protocol_response_frames_per_role": 3,
+    "distinct_server_names": 2,
+    "live_presence_count_per_isolated_role": 1,
+    "stderr_bytes_per_successful_role": 0,
+    "eof_exit_bound_seconds": 30,
+    "unicode_home_and_workspace_paths": true,
+    "cli_compatibility_surfaces": 3
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe",
+      "bytes": 13005312,
+      "sha256": "6f5ef9eeaab2797791837ed6186bc38938416b754da27071f098c2eac3fa5475"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ServeProcessSnapshotTests.exe",
+      "bytes": 1473536,
+      "sha256": "c511280ca651fe33439cae51dad3081489940686f298ca7112ee3806a05f0142"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Application.ClientPresenceLifecycleTests.exe",
+      "bytes": 964096,
+      "sha256": "6c57e17f57f1c9ff4bf2cce80c7df5efbfb17ce3fef2826d9ed343128560f761"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Application.lib",
+      "bytes": 32943338,
+      "sha256": "5559ec1971eb1c67664cbe0089036bf1f62dd9b130fadfc500c6b79f1b2d948e"
+    },
+    {
+      "path": "tests/fixtures/Mcp/mcp-tools-semantic-golden.json",
+      "bytes": 37659,
+      "sha256": "3a53160fcd2aa9d3c3d9aeb0a07cdf7d54b5fa5220276c26dd11af1b163c9289"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": ".forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/MCP/MCPServer.swift",
+      "sha256": "511d2b1f438ffd223263fff4ed6899cfddb0d7fc768212ee575061ca60141765"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "ecd7148a9fc3acb71e302d54fbee726831ec8927298980f80ce53a4b2a185f12"
+    },
+    {
+      "path": "include/ForgeConductor/Application/ClientPresenceLifecycle.h",
+      "sha256": "8ca0cae732797e5163a3d0929aa3992f1306566f4cbafb02deadb1c2a1c960d9"
+    },
+    {
+      "path": "src/Application/ClientPresenceLifecycle.cpp",
+      "sha256": "3af408a5975f7368d092131bdf0aed4348d2e9335fc6c38b5d76b0a426b19145"
+    },
+    {
+      "path": "src/Hosts/Cli/CliCompositionRoot.cpp",
+      "sha256": "c1c4cbea499f3a3fa61fd70f1b3a2d7c1d27b15e2db55225ac61de8fd8a0cf48"
+    },
+    {
+      "path": "src/Hosts/Cli/main.cpp",
+      "sha256": "346a0d263e5f6eb4176107d09961ad9e639f09fd7405d2917f75c935798a41fe"
+    },
+    {
+      "path": "src/Hosts/Cli/McpServeCompositionRoot.cpp",
+      "sha256": "37b21c5dd6b0b10cc66297289cdf7c8217ee577dd86f438f5184eeed84b65f69"
+    },
+    {
+      "path": "tests/Application/ClientPresenceLifecycleTests.cpp",
+      "sha256": "b31d66e98c108a6840ad93b82c7e4da7a0c8a4a4d06c5b00705df63b0bbe1591"
+    },
+    {
+      "path": "tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "sha256": "9c88bbfad8892fc03d51a0ea62bcdcb4beee991ada77c2604349ee5e39743064"
+    }
+  ],
+  "qualified_surface": [
+    "production CLI aliases serve, mcp-serve, and mcp lazily construct one native stdio MCP graph",
+    "primary and fallback processes negotiate protocol 2025-11-25 with distinct server identities",
+    "both roles advertise an exact ordered 53-tool semantic snapshot including every name, description, and input schema",
+    "the committed golden is derived independently from the canonical reviewed catalog rather than captured from the executable under test",
+    "one startup workspace is canonicalized and registered before router authority is issued",
+    "application-data, workspace, and native-execution capabilities remain separately owned while Git and configuration-gated PowerShell retain required execution roots",
+    "one composition-owned presence identity starts before protocol ingress, reports through forge_status, heartbeats every ten seconds, and is removed only after the worker joins",
+    "initial presence-store lock failure remains best-effort and retries without blocking MCP startup, matching macOS 0.9.0 behavior",
+    "transient exact-removal failures retain the complete owner identity for explicit stop or destructor retry",
+    "EOF produces bounded clean shutdown with no extra stdout frames and no stderr leakage",
+    "UTF-16 Windows argv is converted strictly to UTF-8 and the real process test passes with Unicode home and workspace paths",
+    "existing CLI self-test, version, and help surfaces remain available"
+  ],
+  "diagnostic_resolution": [
+    "The first real-process run passed compilation but supplied a new random id as an explicitly existing project id; the registry correctly returned project_not_found. First-run composition now lets the registry assign the durable project id, and the rerun passes.",
+    "Independent lifecycle review found that an initial presence upsert error incorrectly blocked the MCP handshake. Registration is now best-effort with bounded retry, while runtime ownership failures remain typed startup failures.",
+    "Independent lifecycle review found deletion could proceed after an unconfirmed join and that removal failure discarded retry state. The worker is now destroyed before predicate state, explicit stop refuses deletion until join succeeds, and the exact identity remains retained after transient removal failure.",
+    "The final CLI entry point uses wmain and strict UTF-16 to UTF-8 conversion; the process snapshot passes in a Unicode isolated directory.",
+    "The optional CodeRabbit audit could not run because the official installer rejects Git-for-Windows mingw64 as an unsupported operating system and the review skill forbids a manual fallback. Focused native tests and an independent lifecycle review completed; a vendor-supported Windows CLI or Linux/macOS runner is still required for CodeRabbit."
+  ],
+  "remaining_limitations": [
+    "dynamic multi-project workspace authority and project-scoped Git/shell dispatch after process startup",
+    "complete 53-entry per-tool valid/invalid request, response, error, bounds, and side-effect semantic fixtures",
+    "simultaneous primary/fallback shared-data-root concurrency qualification",
+    "replacement of temporary direct stdio persistence ownership with versioned manager IPC in P16",
+    "remaining G14 evidence and parity-matrix synchronization after per-tool semantics are qualified"
+  ]
+}

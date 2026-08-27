@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T075617281Z-38eabcd8",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "cmake --build out/build/windows-msvc-x64 --config Debug --target ForgeConductor.Application.ClientPresenceLifecycleTests -- /m:1 /nr:false\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n& 'out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Application.ClientPresenceLifecycleTests.exe'\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n& 'out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ServeProcessSnapshotTests.exe' 'out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe' 'tests/fixtures/Mcp/mcp-tools-semantic-golden.json'\nexit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T07:56:17.2890320+00:00",
+  "end_utc": "2026-08-27T07:56:23.7797035+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T075617281Z-38eabcd8.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T075617281Z-38eabcd8.stderr.txt",
+  "stdout_sha256": "645acc6d8084c9451d29923b93174fa3495bb7ad2d9aba8b5a87f30958f7f7d9",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

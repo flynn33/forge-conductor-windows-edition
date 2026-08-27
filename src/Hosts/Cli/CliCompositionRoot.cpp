@@ -1,6 +1,10 @@
 #include "CliCompositionRoot.h"
+#include "McpServeCompositionRoot.h"
 
 #include <iostream>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 
 namespace ForgeConductor::Hosts::Cli {
@@ -39,17 +43,48 @@ public:
             printHelp();
             return 0;
         }
+        if (command == "serve" || command == "mcp-serve" || command == "mcp") {
+            return serve(arguments.subspan(1U));
+        }
 
         std::cerr << "Unknown command: " << command << '\n';
         return 2;
     }
 
 private:
+    [[nodiscard]] static int serve(
+        const std::span<const std::string_view> arguments)
+    {
+        McpServeOptions options;
+        if (!arguments.empty()) {
+            if (arguments.size() != 2U || arguments.front() != "--home") {
+                std::cerr
+                    << "Usage: forge-conductor serve [--home PATH]\n";
+                return 2;
+            }
+            auto home = Domain::PathText::create(arguments[1U]);
+            if (!home) {
+                throw std::runtime_error{
+                    home.error().code + ": " + home.error().message};
+            }
+            options.explicitHome = std::move(home).value();
+        }
+
+        McpServeCompositionRoot serveRoot{std::move(options)};
+        return serveRoot.run();
+    }
+
     static void printHelp()
     {
         std::cout
             << "Forge Conductor for Windows\n"
-            << "Usage: forge-conductor [--version|version|--self-test|--help]\n";
+            << "Usage: forge-conductor COMMAND\n"
+            << "Commands:\n"
+            << "  serve [--home PATH]  Run one stdio MCP connection.\n"
+            << "  mcp-serve             Alias for serve.\n"
+            << "  mcp                   Alias for serve.\n"
+            << "  version               Print the product version.\n"
+            << "  --self-test           Validate the native CLI scaffold.\n";
     }
 };
 

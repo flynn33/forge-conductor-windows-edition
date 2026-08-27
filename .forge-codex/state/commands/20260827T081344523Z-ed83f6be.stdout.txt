@@ -1,0 +1,5 @@
+Ledger validation passed: 201 event(s).
+No-Python gate passed.
+No-attribution gate passed.
+MCP name parity passed: 53 tools. Schema semantic comparison must also pass in native tests.
+P14 stdio checkpoint integrity passed: 11 command records, 5 artifacts, 9 source hashes, 53 tools.

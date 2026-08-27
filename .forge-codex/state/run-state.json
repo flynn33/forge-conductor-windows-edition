@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-27T07:20:44.9573615+00:00",
+  "updated_at": "2026-08-27T08:08:54.2554071+00:00",
   "status": "in_progress",
   "active_role": "builder",
   "active_phase": "P14",
@@ -493,7 +493,13 @@
         ".forge-codex/state/commands/20260827T060301241Z-164b4d74.json",
         ".forge-codex/state/commands/20260827T060533194Z-0908da50.json",
         ".forge-codex/state/commands/20260827T060546666Z-1685e491.json",
-        ".forge-codex/state/evidence/P14/mcp-presence-continuity-status-checkpoint.json"
+        ".forge-codex/state/evidence/P14/mcp-presence-continuity-status-checkpoint.json",
+        ".forge-codex/state/decisions/P14-007-alpha-stdio-persistence-ownership.md",
+        ".forge-codex/state/commands/20260827T080544923Z-8ead2fbf.json",
+        ".forge-codex/state/commands/20260827T080627818Z-6a419ea5.json",
+        ".forge-codex/state/commands/20260827T080837982Z-d54ec62a.json",
+        ".forge-codex/state/commands/20260827T081344523Z-ed83f6be.json",
+        ".forge-codex/state/evidence/P14/stdio-serve-primary-fallback-snapshot-checkpoint.json"
       ]
     },
     {
@@ -1060,7 +1066,14 @@
         ".forge-codex/state/commands/20260827T071846497Z-044a8ed6.json",
         ".forge-codex/state/commands/20260827T071929036Z-b5999a73.json",
         ".forge-codex/state/commands/20260827T072025739Z-5d369ac7.json",
-        ".forge-codex/state/evidence/P14/mcp-presence-continuity-status-checkpoint.json"
+        ".forge-codex/state/evidence/P14/mcp-presence-continuity-status-checkpoint.json",
+        ".forge-codex/state/decisions/P14-007-alpha-stdio-persistence-ownership.md",
+        ".forge-codex/state/commands/20260827T075424142Z-d322862c.json",
+        ".forge-codex/state/commands/20260827T080544923Z-8ead2fbf.json",
+        ".forge-codex/state/commands/20260827T080627818Z-6a419ea5.json",
+        ".forge-codex/state/commands/20260827T080837982Z-d54ec62a.json",
+        ".forge-codex/state/commands/20260827T081344523Z-ed83f6be.json",
+        ".forge-codex/state/evidence/P14/stdio-serve-primary-fallback-snapshot-checkpoint.json"
       ]
     },
     {

@@ -1,0 +1,1544 @@
+{
+  "schemaVersion": 1,
+  "tools": [
+    {
+      "description": "Alias of agent_get — full playbook body.",
+      "inputSchema": {
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ],
+        "type": "object"
+      },
+      "name": "agent_context"
+    },
+    {
+      "description": "Get a specialist agent playbook by id.",
+      "inputSchema": {
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id"
+        ],
+        "type": "object"
+      },
+      "name": "agent_get"
+    },
+    {
+      "description": "List specialist agent playbooks.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "agent_list"
+    },
+    {
+      "description": "Recommend a specialist agent for a task description.",
+      "inputSchema": {
+        "properties": {
+          "task": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task"
+        ],
+        "type": "object"
+      },
+      "name": "agent_recommend"
+    },
+    {
+      "description": "Close a session with a report matching output_schema.",
+      "inputSchema": {
+        "properties": {
+          "report": {
+            "type": "object"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "type": "object"
+      },
+      "name": "agent_run_complete"
+    },
+    {
+      "description": "Start a durable specialist session (supersedes prior open sessions).",
+      "inputSchema": {
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "goal"
+        ],
+        "type": "object"
+      },
+      "name": "agent_run_start"
+    },
+    {
+      "description": "Status of an agent session; reminds host to complete open runs.",
+      "inputSchema": {
+        "properties": {
+          "report": {
+            "type": "object"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "type": "object"
+      },
+      "name": "agent_run_status"
+    },
+    {
+      "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",
+      "inputSchema": {
+        "properties": {
+          "handoff_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "resume_ready": {
+            "description": "Prefer latest resume-ready packet",
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "context_get"
+    },
+    {
+      "description": "List recent context handoff packets.",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "context_list"
+    },
+    {
+      "description": "Compare-and-set acknowledgment for an exact successor and handoff.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter_id": {
+            "type": "string"
+          },
+          "handoff_id": {
+            "type": "string"
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "successor_session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "operation_id",
+          "handoff_id",
+          "successor_session_id"
+        ],
+        "type": "object"
+      },
+      "name": "continuity.acknowledge_handoff"
+    },
+    {
+      "description": "Persist a compact project checkpoint and rollover operation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "active_files": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "adapter_id": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "commit": {
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "context_budget_source": {
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "dirty_summary": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "handoff_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "memory_record_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "mission": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "next_actions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "open_gates": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "open_work": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "passed_gates": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "phase_id": {
+            "type": "string"
+          },
+          "predecessor_session_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "provider_session_id": {
+            "type": "string"
+          },
+          "remaining_budget_estimate": {
+            "type": "number"
+          },
+          "repository_root": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "work_item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "predecessor_session_id",
+          "mission"
+        ],
+        "type": "object"
+      },
+      "name": "continuity.checkpoint"
+    },
+    {
+      "description": "Fetch the latest unsealed project handoff.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "name": "continuity.get_pending_handoff"
+    },
+    {
+      "description": "Build and persist a canonical successor handoff.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "active_files": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "adapter_id": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "commit": {
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "context_budget_source": {
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "dirty_summary": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "handoff_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "memory_record_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "mission": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "next_actions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "open_gates": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "open_work": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "passed_gates": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "phase_id": {
+            "type": "string"
+          },
+          "predecessor_session_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "provider_session_id": {
+            "type": "string"
+          },
+          "remaining_budget_estimate": {
+            "type": "number"
+          },
+          "repository_root": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "work_item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "predecessor_session_id",
+          "mission"
+        ],
+        "type": "object"
+      },
+      "name": "continuity.prepare_handoff"
+    },
+    {
+      "description": "Prepare rollover; reports memory-only readiness unless a host adapter confirms creation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "active_files": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "adapter_id": {
+            "type": "string"
+          },
+          "branch": {
+            "type": "string"
+          },
+          "commit": {
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "context_budget_source": {
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "dirty_summary": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "handoff_id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "memory_record_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "mission": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "next_actions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "open_gates": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "open_work": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "passed_gates": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "phase_id": {
+            "type": "string"
+          },
+          "predecessor_session_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "provider_session_id": {
+            "type": "string"
+          },
+          "remaining_budget_estimate": {
+            "type": "number"
+          },
+          "repository_root": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "work_item_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "predecessor_session_id",
+          "mission"
+        ],
+        "type": "object"
+      },
+      "name": "continuity.request_rollover"
+    },
+    {
+      "description": "Seal an acknowledged rollover and atomically select the successor.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "operation_id"
+        ],
+        "type": "object"
+      },
+      "name": "continuity.resume"
+    },
+    {
+      "description": "Report durable continuity state, retry metadata, and active session.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "name": "continuity.status"
+    },
+    {
+      "description": "Runtime status: home, agents, open sessions, tools.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "forge_status"
+    },
+    {
+      "description": "Delete a file or directory.",
+      "inputSchema": {
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "fs_delete"
+    },
+    {
+      "description": "Replace occurrences of old with new in a file.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "fs_edit"
+    },
+    {
+      "description": "Find files by name pattern under a path.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "fs_glob"
+    },
+    {
+      "description": "List directory entries.",
+      "inputSchema": {
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "fs_list"
+    },
+    {
+      "description": "Create a directory.",
+      "inputSchema": {
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "fs_mkdir"
+    },
+    {
+      "description": "Move/rename a path.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "fs_move"
+    },
+    {
+      "description": "Read a UTF-8 text file. Optional 1-based line window: offset (start line) + length/limit (line count). Response includes total_lines, start_line, end_line, has_more, next_offset. Do not re-call with the same offset when content was returned.",
+      "inputSchema": {
+        "properties": {
+          "byte_offset": {
+            "description": "UTF-8 byte offset returned by next_byte_offset for an oversized line",
+            "type": "integer"
+          },
+          "length": {
+            "description": "Number of lines to return (alias: limit)",
+            "type": "integer"
+          },
+          "limit": {
+            "description": "Alias for length — number of lines to return",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "1-based start line for a partial read",
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "fs_read"
+    },
+    {
+      "description": "Write a UTF-8 text file.",
+      "inputSchema": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ],
+        "type": "object"
+      },
+      "name": "fs_write"
+    },
+    {
+      "description": "git add path or -A.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "git_add"
+    },
+    {
+      "description": "git commit -m message.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "git_commit"
+    },
+    {
+      "description": "git diff (optional staged).",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "git_diff"
+    },
+    {
+      "description": "git log --oneline.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "git_log"
+    },
+    {
+      "description": "git status --porcelain.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "git_status"
+    },
+    {
+      "description": "Delete a durable memory note by key.",
+      "inputSchema": {
+        "properties": {
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
+      "name": "memory_delete"
+    },
+    {
+      "description": "Read a durable memory note by key.",
+      "inputSchema": {
+        "properties": {
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
+      "name": "memory_get"
+    },
+    {
+      "description": "List durable memory notes (optional prefix/tag; hides internal agent and continuity keys by default).",
+      "inputSchema": {
+        "properties": {
+          "include_body": {
+            "type": "boolean"
+          },
+          "include_system": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "memory_list"
+    },
+    {
+      "description": "Search durable memory notes by substring in key/body/tags.",
+      "inputSchema": {
+        "properties": {
+          "include_body": {
+            "type": "boolean"
+          },
+          "include_system": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "memory_search"
+    },
+    {
+      "description": "Store a durable key/value note in Forge local memory (survives chat sessions).",
+      "inputSchema": {
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "content": {
+            "description": "Alias of body",
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "body"
+        ],
+        "type": "object"
+      },
+      "name": "memory_set"
+    },
+    {
+      "description": "Convert a local markdown/text file to PDF.",
+      "inputSchema": {
+        "properties": {
+          "dest_path": {
+            "type": "string"
+          },
+          "source_path": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_path"
+        ],
+        "type": "object"
+      },
+      "name": "pdf_from_file"
+    },
+    {
+      "description": "Write a PDF from markdown-ish text (stdlib, no pandoc).",
+      "inputSchema": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ],
+        "type": "object"
+      },
+      "name": "pdf_write"
+    },
+    {
+      "description": "Create a checksummed project memory export artifact.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.export"
+    },
+    {
+      "description": "Tombstone a record in one project.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.forget"
+    },
+    {
+      "description": "Fetch project memory records by stable ID.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "include_body": {
+            "type": "boolean"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.get"
+    },
+    {
+      "description": "Preview or transactionally import a checksummed export.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact": {
+            "type": "string"
+          },
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "merge_policy": {
+            "type": "string"
+          },
+          "preview": {
+            "type": "boolean"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "artifact"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.import"
+    },
+    {
+      "description": "Create or open a durable project-scoped memory store.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "project_path": {
+            "type": "string"
+          },
+          "repository_identity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_path"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.initialize"
+    },
+    {
+      "description": "Create an idempotent typed link between records.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "source_id",
+          "target_id",
+          "relation"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.link"
+    },
+    {
+      "description": "List recent project records with bounded pagination.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "include_body": {
+            "type": "boolean"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "maximum_response_bytes": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.list_recent"
+    },
+    {
+      "description": "Store one redacted, deduplicated project memory record.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "expires_at": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "importance": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "related_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "source_kind": {
+            "type": "string"
+          },
+          "source_reference": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "kind",
+          "title",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.remember"
+    },
+    {
+      "description": "Store a bounded batch transactionally.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "type": "object"
+            },
+            "maxItems": 50,
+            "type": "array"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "items"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.remember_batch"
+    },
+    {
+      "description": "Search one project with deterministic bounded pagination.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "include_body": {
+            "type": "boolean"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "maximum_response_bytes": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "project_id",
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.search"
+    },
+    {
+      "description": "Report project memory health, sizes, capabilities, and limits.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.status"
+    },
+    {
+      "description": "Update a record with optimistic version checking.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "deadline_ms": {
+            "type": "integer"
+          },
+          "expected_version": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "id",
+          "expected_version"
+        ],
+        "type": "object"
+      },
+      "name": "project_memory.update"
+    },
+    {
+      "description": "Recursive text search (grep).",
+      "inputSchema": {
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ],
+        "type": "object"
+      },
+      "name": "search_text"
+    },
+    {
+      "description": "Soft-save context + open agent sessions for continuity (continue working).",
+      "inputSchema": {
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "chat_label": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "handoff_id": {
+            "description": "Update an existing packet",
+            "type": "string"
+          },
+          "key_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "narrative": {
+            "type": "string"
+          },
+          "next_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "project_slug": {
+            "type": "string"
+          },
+          "resume_seed": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "summary": {
+            "description": "Alias for narrative",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "session_checkpoint"
+    },
+    {
+      "description": "Finalize context/agent handoff for a new chat; returns resume_seed. Prefer before context is full.",
+      "inputSchema": {
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "chat_label": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "handoff_id": {
+            "description": "Update an existing packet",
+            "type": "string"
+          },
+          "key_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "narrative": {
+            "type": "string"
+          },
+          "next_actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "project_slug": {
+            "type": "string"
+          },
+          "resume_seed": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "summary": {
+            "description": "Alias for narrative",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "session_handoff"
+    },
+    {
+      "description": "Run an opt-in bounded PowerShell command with timeout.",
+      "inputSchema": {
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "timeout_sec": {
+            "exclusiveMinimum": 0,
+            "maximum": 120,
+            "type": "number"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      },
+      "name": "shell_exec"
+    }
+  ]
+}
