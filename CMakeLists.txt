@@ -127,6 +127,7 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/ContinuityCoordinator.cpp
     src/Application/LegacyContextContinuityService.cpp
     src/Application/LegacyMemoryService.cpp
+    src/Application/ManagerController.cpp
     src/Application/ProjectMemoryRepositoryCache.cpp
     src/Application/ProjectMemoryService.cpp
 )
@@ -136,6 +137,16 @@ forge_add_layer(ForgeConductor.Application ForgeConductor::Application
 forge_configure_standard_target(ForgeConductor.Application)
 target_include_directories(ForgeConductor.Application PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
+
+add_library(ForgeConductor.Manager.Protocol STATIC
+    src/Manager/ManagerProtocolCodec.cpp)
+forge_add_layer(ForgeConductor.Manager.Protocol ForgeConductor::Manager.Protocol
+    ForgeConductor::Contracts)
+forge_configure_standard_target(ForgeConductor.Manager.Protocol)
+target_include_directories(ForgeConductor.Manager.Protocol PUBLIC
+    "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(ForgeConductor.Manager.Protocol PRIVATE
+    nlohmann_json::nlohmann_json)
 
 set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp
@@ -149,12 +160,15 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsAgentCompletionReportInspector.cpp
     src/Infrastructure/Windows/WindowsConfigurationStore.cpp
     src/Infrastructure/Windows/WindowsContinuityDocumentCodec.cpp
+    src/Infrastructure/Windows/WindowsCurrentUserIdentity.cpp
     src/Infrastructure/Windows/WindowsDiagnosticSink.cpp
     src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp
     src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp
     src/Infrastructure/Windows/WindowsLMStudioEnvironment.cpp
     src/Infrastructure/Windows/WindowsLMStudioHostActivator.cpp
     src/Infrastructure/Windows/WindowsLMStudioServeVerifier.cpp
+    src/Infrastructure/Windows/WindowsManagerAuthentication.cpp
+    src/Infrastructure/Windows/WindowsManagerInstanceLease.cpp
     src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
     src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp
@@ -394,6 +408,52 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 )
 
 if(BUILD_TESTING)
+    add_executable(ForgeConductor.Manager.ProtocolTests
+        tests/Manager/ManagerProtocolCodecTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Manager.ProtocolTests)
+    target_link_libraries(ForgeConductor.Manager.ProtocolTests PRIVATE
+        ForgeConductor::Manager.Protocol
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Manager.ProtocolTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProtocolTests>)
+    set_tests_properties(ForgeConductor.Manager.ProtocolTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.ControllerTests
+        tests/Manager/ManagerControllerTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Manager.ControllerTests)
+    target_link_libraries(ForgeConductor.Manager.ControllerTests PRIVATE
+        ForgeConductor::Application)
+    add_test(
+        NAME ForgeConductor.Manager.ControllerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.ControllerTests>)
+    set_tests_properties(ForgeConductor.Manager.ControllerTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.WindowsInfrastructureTests
+        tests/Manager/WindowsManagerAuthenticationTests.cpp
+        tests/Manager/WindowsManagerInfrastructureTestMain.cpp
+        tests/Manager/WindowsManagerOwnershipTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.WindowsInfrastructureTests)
+    target_include_directories(
+        ForgeConductor.Manager.WindowsInfrastructureTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.WindowsInfrastructureTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.WindowsInfrastructureTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.WindowsInfrastructureTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.WindowsInfrastructureTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Mcp.CatalogCodecTests
         tests/Mcp/McpCatalogCodecTests.cpp)
     forge_configure_standard_target(ForgeConductor.Mcp.CatalogCodecTests)

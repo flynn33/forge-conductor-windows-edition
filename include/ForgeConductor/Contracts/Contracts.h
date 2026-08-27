@@ -21,6 +21,8 @@
 #include "ForgeConductor/Contracts/ILMStudioEnvironment.h"
 #include "ForgeConductor/Contracts/ILMStudioHostActivator.h"
 #include "ForgeConductor/Contracts/ILMStudioServeVerifier.h"
+#include "ForgeConductor/Contracts/IManagerAuthentication.h"
+#include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagerServices.h"
 #include "ForgeConductor/Contracts/IMcpServer.h"
 #include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"
