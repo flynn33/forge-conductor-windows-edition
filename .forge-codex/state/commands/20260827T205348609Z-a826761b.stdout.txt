@@ -1,0 +1,33 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardRouteCatalog.cpp
+  Compiling...
+  DashboardRouteCatalog.cpp
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardRouteCatalogTests.cpp
+  Compiling...
+  DashboardRouteCatalogTests.cpp
+  ForgeConductor.Dashboard.RouteCatalogTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.RouteCatalogTests.exe
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 10: ForgeConductor.Dashboard.RouteCatalogTests
+1/1 Test #10: ForgeConductor.Dashboard.RouteCatalogTests ...   Passed    0.03 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+G16         =   0.03 sec*proc (1 test)
+T-MGR       =   0.03 sec*proc (1 test)
+T-PARITY    =   0.03 sec*proc (1 test)
+T-SEC       =   0.03 sec*proc (1 test)
+T-UNIT      =   0.03 sec*proc (1 test)
+
+Total Test time (real) =   0.04 sec

@@ -162,7 +162,10 @@ target_link_libraries(ForgeConductor.Manager.Host PUBLIC
 
 add_library(ForgeConductor.Dashboard.Protocol STATIC
     src/Dashboard/DashboardHttpParser.cpp
-    src/Dashboard/DashboardRequestPolicy.cpp)
+    src/Dashboard/DashboardManagerJsonCodec.cpp
+    src/Dashboard/DashboardRequestPolicy.cpp
+    src/Dashboard/DashboardRouteCatalog.cpp
+    src/Dashboard/DashboardTelemetryJsonCodec.cpp)
 forge_add_layer(
     ForgeConductor.Dashboard.Protocol
     ForgeConductor::Dashboard.Protocol
@@ -170,6 +173,8 @@ forge_add_layer(
 forge_configure_standard_target(ForgeConductor.Dashboard.Protocol)
 target_include_directories(ForgeConductor.Dashboard.Protocol PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(ForgeConductor.Dashboard.Protocol PRIVATE
+    nlohmann_json::nlohmann_json)
 
 set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp
@@ -560,6 +565,50 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.RequestPolicyTests>)
     set_tests_properties(ForgeConductor.Dashboard.RequestPolicyTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.RouteCatalogTests
+        tests/Dashboard/DashboardRouteCatalogTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Dashboard.RouteCatalogTests)
+    target_link_libraries(ForgeConductor.Dashboard.RouteCatalogTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.RouteCatalogTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.RouteCatalogTests>)
+    set_tests_properties(ForgeConductor.Dashboard.RouteCatalogTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.ManagerJsonCodecTests
+        tests/Dashboard/DashboardManagerJsonCodecTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.ManagerJsonCodecTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.ManagerJsonCodecTests PRIVATE
+        ForgeConductor::Dashboard.Protocol
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Dashboard.ManagerJsonCodecTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ManagerJsonCodecTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ManagerJsonCodecTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.TelemetryJsonCodecTests
+        tests/Dashboard/DashboardTelemetryJsonCodecTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.TelemetryJsonCodecTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.TelemetryJsonCodecTests PRIVATE
+        ForgeConductor::Dashboard.Protocol
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Dashboard.TelemetryJsonCodecTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.TelemetryJsonCodecTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.TelemetryJsonCodecTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Mcp.CatalogCodecTests

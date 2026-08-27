@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-route-manager-telemetry-codecs",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "MSVC 19.44.35223 / Visual Studio 2022 17.14 generator, v143, Windows SDK 10.0.26100.0, CMake preset windows-msvc-x64-debug, CTest Debug",
+  "integrated_command": {
+    "command_record": ".forge-codex/state/commands/20260827T204545411Z-5db29188.json",
+    "command_record_sha256": "bed0458912f8a424b04155327e9578b0bcfaad626e8565fa0d23b7229fce5dd9",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 3,
+    "tests_passed": 3,
+    "tests_failed": 0,
+    "real_seconds": 0.19,
+    "stdout_sha256": "82d7776906916dddd68247c1c22a0c8faf318d53254ba6877d4adeb1086e418a",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "post_review_verification": [
+    {
+      "scope": "global OPTIONS route precedence",
+      "command_record": ".forge-codex/state/commands/20260827T205348609Z-a826761b.json",
+      "command_record_sha256": "b705922152b098d75512b97be8bcbb6a9eacf6d3b032748f158d93e17005e5d4",
+      "exit_code": 0,
+      "timed_out": false,
+      "tests_passed": 1,
+      "tests_failed": 0,
+      "real_seconds": 0.04,
+      "stdout_sha256": "8e4854ecd4c764fdb3966ed1cf34b71353d6cb5ad919977f1c6ea881aae98529",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "scope": "shared manager interval bounds and dashboard mutation decoding",
+      "command_record": ".forge-codex/state/commands/20260827T205740112Z-612a31d9.json",
+      "command_record_sha256": "c577255ec354ae20d95302c2df70a7f60b2d7dbc335a7f9e33c3d67698fe70c3",
+      "exit_code": 0,
+      "timed_out": false,
+      "tests_passed": 2,
+      "tests_failed": 0,
+      "real_seconds": 0.19,
+      "stdout_sha256": "35942750b499f06b618ce8c5cce23b4521b1ee21281c66a5376cc50703e36b8a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "scope": "post-review manager pre-DOM response bounds, health authentication value, and telemetry test labeling",
+      "command_record": ".forge-codex/state/commands/20260827T210506186Z-364632c0.json",
+      "command_record_sha256": "b911e4199dbfb89716e4c62685f661fe0a67a1cd3ba41dd006d67743fa5ef24b",
+      "exit_code": 0,
+      "timed_out": false,
+      "tests_passed": 2,
+      "tests_failed": 0,
+      "real_seconds": 0.19,
+      "stdout_sha256": "580944e65295548a23a18cd07fb62e995cfcc71c3394ffa4ce34a604f9299702",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "diagnosed_test_correction": {
+    "failed_command_record": ".forge-codex/state/commands/20260827T203851981Z-c551cb43.json",
+    "failed_command_record_sha256": "a3cb44b6ae504aa547f6811fd33106138f2cf2df2bf26a36f7d260aea49c6157",
+    "exit_code": 8,
+    "timed_out": false,
+    "failure": "CTest passed the route and manager codec tests, then its telemetry child reached the 60.02-second per-test timeout; the outer command recorder did not time out.",
+    "diagnosis": "The test used vector.assign(count, vector.front()), so its fill value aliased storage invalidated by assign and invoked undefined behavior.",
+    "correction": "Independent seed copies now supply the boundary fill values; the same three-target checkpoint then passed 3/3 in 0.19 seconds.",
+    "stdout_sha256": "fce7827f5df3c98f04f2e0bed37c757921efe79b32c9db87bdf6c233bd279b18",
+    "stderr_sha256": "18e00877dc1071c85cd4f479d451bebeef8309022e46cf8c63b0bed5151984a4"
+  },
+  "behavior_proved": [
+    "the pure route catalog classifies the canonical P02 dashboard route inventory from the undecoded raw path and preserves exact method, query-category, operational-service, and deliberately-unavailable dispositions",
+    "OPTIONS is globally rejected with MethodNotAllowed before unknown, stopped-service, or unavailable route disposition can win",
+    "dashboard manager status, settings, and atomic settings-update outcomes use the exact closed P16-004 JSON schemas with canonical IPv4 and IPv6 dashboard URLs and explicit null optionals",
+    "dashboard settings mutations accept nested or top-level patches, default apply to true, and reject duplicate or unknown keys, wrong types, invalid UTF-8, embedded NUL, excessive nesting, and oversized bodies",
+    "shared manager validation enforces dashboard refresh from 2 through 300 seconds, watchdog from 1 through 60 seconds, session idle TTL of at least 60 seconds, and the existing shell timeout from 1 through 120 seconds",
+    "manager responses validate their configured limit and exactly preflight full escaped JSON size before constructing the nlohmann DOM, then enforce the same limit again while serializing",
+    "telemetry JSON preserves canonical frame, system, Forge, history, health, and SSE framing keys; validates finite values, UTC timestamps, UTF-8, collection caps, and units; and uses explicit null for unavailable detail",
+    "dashboard health reports the P16-004 authenticated dynamic-route capability as true",
+    "telemetry serialization and SSE framing stop at the 2 MiB response ceiling, and the telemetry codec test is labeled T-TEL in addition to the dashboard manager, parity, security, unit, and G16 labels"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "ad8a135683e80b210acbdb9acf4c5df6644e65bb18e7aa854f313889f7d93116",
+    "include/ForgeConductor/Dashboard/DashboardManagerJsonCodec.h": "1fe520c17cf70fc6bdc24de8e70eeda02adca521fad003dd01ee850efd603a3d",
+    "include/ForgeConductor/Dashboard/DashboardRouteCatalog.h": "1b6a821bcb80d869c5f0dafe10dcd7b3cd601b8857c95f9733495431085afc33",
+    "include/ForgeConductor/Dashboard/DashboardTelemetryJsonCodec.h": "a1f87c84d11f6a715498b6fc2e195de8ad573a9ac65a2de0ec1653acd1157b32",
+    "src/Dashboard/DashboardManagerJsonCodec.cpp": "d1c33e705f6e1633d2da33a81aa23a2ad4267f29c7e1cf970fa46d97d1c12fd9",
+    "src/Dashboard/DashboardRouteCatalog.cpp": "93a091493cefbf8a925a6a5cdd9e8da74e21447107339317b2a90479d37e05dd",
+    "src/Dashboard/DashboardTelemetryJsonCodec.cpp": "28ec046e91955fba86da0576a9f5b0f086203deffd841dea8543215b402f3d1b",
+    "src/Domain/ManagerModels.cpp": "30c30af5590abc47ca918b9ed43e08b974dec8944a9591ccfa18d5fa52079267",
+    "tests/Dashboard/DashboardManagerJsonCodecTests.cpp": "7c5430e80568436053cad395dd9980c37316e4de82fb74d0c7e27651a0672beb",
+    "tests/Dashboard/DashboardRouteCatalogTests.cpp": "8b034430b47364cc5153e782ccb72b70eea6fce247f8f0c32015e19a9bc3c8f6",
+    "tests/Dashboard/DashboardTelemetryJsonCodecTests.cpp": "545d5f20cb11bc1de8570bab484e6b1353a6d946bf3cbc1e643c80ad8321b40c",
+    "tests/Domain/DomainTests.cpp": "8354b696bd1da020e2e37f94b6c82e9d1f0fe128d2af77c34f4b569b4af04a87",
+    ".forge-codex/state/decisions/P16-004-bounded-loopback-dashboard-protocol-and-authentication.md": "9bc7ba87291be5cf39bd375b0ca78c37c2cb7e68643cfe333b704d4edf8b9dc8"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.RouteCatalogTests.exe": "77f169fd8a337d323448d046e1659ff9f16891314f6e7bd9ec2d1da599107de3",
+    "ForgeConductor.Dashboard.ManagerJsonCodecTests.exe": "262cceebe540c598e2755859d202c77dc4698baa1ca4fd9a73b1bb436cb56dc5",
+    "ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe": "2b5f3119eedc5483465398734895b8138be6c7dc16e5e6289a4f6b7ea4e544c8",
+    "ForgeConductor.Domain.UnitTests.exe": "4ee4e5bc8973d9809bd9badb2c9c890cdbc2d3f496ed9bef0efe26573567cbbf"
+  },
+  "remaining_limitations": [
+    "This checkpoint does not implement or prove the live dashboard router, static-resource suffix decoder, functional static shell, operational route codecs or handlers, Windows socket listener, or response writer.",
+    "Strict numeric decoding and clamping for hz= and legacy interval= stream queries remain router and stream-runtime work.",
+    "Health composition still needs sample_hz_target, sample_hz_measured, stream, stream_running, and bounded runtime_diagnostics fields from the live runtime.",
+    "SSE still needs latest-value mailboxes plus compact frames with a full frame every tenth event; this checkpoint proves only bounded full-frame encoding and framing.",
+    "The current Windows ForgeSnapshot cannot yet carry full presence, MCP server, agent catalog, job, feed, load, file, audit, and orchestration detail, so those fields remain truthfully null and do not prove telemetry parity.",
+    "Power availability must be made explicit or the later Windows collector must always replace the unknown default before publishing a frame.",
+    "The DPAPI dashboard bearer store, asynchronous loopback listener, connection and SSE admission limits, deadlines, two-phase listener rebind, retirement, and shutdown-after-delivery behavior remain P16-B work.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused codec checkpoint; DASH-001 and all TEL, manager, process, security, UI, and CLI rows remain open until their required runtime evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

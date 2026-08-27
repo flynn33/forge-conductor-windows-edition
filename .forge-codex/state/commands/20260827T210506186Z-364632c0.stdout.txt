@@ -1,0 +1,49 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardManagerJsonCodec.cpp
+  Compiling...
+  DashboardManagerJsonCodec.cpp
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardManagerJsonCodecTests.cpp
+  Compiling...
+  DashboardManagerJsonCodecTests.cpp
+  ForgeConductor.Dashboard.ManagerJsonCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.ManagerJsonCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.TelemetryJsonCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 11: ForgeConductor.Dashboard.ManagerJsonCodecTests
+1/2 Test #11: ForgeConductor.Dashboard.ManagerJsonCodecTests .....   Passed    0.08 sec
+    Start 12: ForgeConductor.Dashboard.TelemetryJsonCodecTests
+2/2 Test #12: ForgeConductor.Dashboard.TelemetryJsonCodecTests ...   Passed    0.10 sec
+
+100% tests passed out of 2
+
+Label Time Summary:
+G16         =   0.18 sec*proc (2 tests)
+T-MGR       =   0.18 sec*proc (2 tests)
+T-PARITY    =   0.18 sec*proc (2 tests)
+T-SEC       =   0.18 sec*proc (2 tests)
+T-TEL       =   0.10 sec*proc (1 test)
+T-UNIT      =   0.18 sec*proc (2 tests)
+
+Total Test time (real) =   0.19 sec

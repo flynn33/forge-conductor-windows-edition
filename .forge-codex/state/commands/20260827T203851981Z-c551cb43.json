@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T203851981Z-c551cb43",
+  "phase": "P16",
+  "role": "builder",
+  "command": "cmake --build out\\build\\windows-msvc-x64 --config Debug --target ForgeConductor.Dashboard.RouteCatalogTests ForgeConductor.Dashboard.ManagerJsonCodecTests ForgeConductor.Dashboard.TelemetryJsonCodecTests -- /m; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ctest --test-dir out\\build\\windows-msvc-x64 -C Debug -R \"^ForgeConductor[.]Dashboard[.](RouteCatalog|ManagerJsonCodec|TelemetryJsonCodec)Tests$\" --output-on-failure; exit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T20:38:51.9896969+00:00",
+  "end_utc": "2026-08-27T20:40:17.1172485+00:00",
+  "exit_code": 8,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T203851981Z-c551cb43.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T203851981Z-c551cb43.stderr.txt",
+  "stdout_sha256": "fce7827f5df3c98f04f2e0bed37c757921efe79b32c9db87bdf6c233bd279b18",
+  "stderr_sha256": "18e00877dc1071c85cd4f479d451bebeef8309022e46cf8c63b0bed5151984a4"
+}

@@ -1123,6 +1123,30 @@ void processToolTelemetryAndManagerBounds()
     }
     settings.dashboardHost = "127.0.0.1";
 
+    settings.dashboardRefreshInterval = std::chrono::seconds{1};
+    REQUIRE(!Domain::validateManagerSettings(settings));
+    settings.dashboardRefreshInterval = std::chrono::seconds{2};
+    REQUIRE(Domain::validateManagerSettings(settings));
+    settings.dashboardRefreshInterval = std::chrono::seconds{300};
+    REQUIRE(Domain::validateManagerSettings(settings));
+    settings.dashboardRefreshInterval = std::chrono::seconds{301};
+    REQUIRE(!Domain::validateManagerSettings(settings));
+    settings.dashboardRefreshInterval = std::chrono::seconds{8};
+
+    settings.watchdogInterval = std::chrono::seconds{1};
+    REQUIRE(Domain::validateManagerSettings(settings));
+    settings.watchdogInterval = std::chrono::seconds{60};
+    REQUIRE(Domain::validateManagerSettings(settings));
+    settings.watchdogInterval = std::chrono::seconds{61};
+    REQUIRE(!Domain::validateManagerSettings(settings));
+    settings.watchdogInterval = std::chrono::seconds{3};
+
+    settings.sessionIdleTtl = std::chrono::seconds{59};
+    REQUIRE(!Domain::validateManagerSettings(settings));
+    settings.sessionIdleTtl = std::chrono::seconds{60};
+    REQUIRE(Domain::validateManagerSettings(settings));
+    settings.sessionIdleTtl = std::chrono::seconds{14'400};
+
     Domain::ManagerSettingsPatch settingsPatch;
     settingsPatch.autoRestart = false;
     settingsPatch.dashboardHost = "::1";

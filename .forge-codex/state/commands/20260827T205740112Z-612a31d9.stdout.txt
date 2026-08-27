@@ -1,0 +1,49 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerModels.cpp
+  Compiling...
+  ManagerModels.cpp
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DomainTests.cpp
+  Compiling...
+  DomainTests.cpp
+  ForgeConductor.Domain.UnitTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Domain.UnitTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardManagerJsonCodecTests.cpp
+  Compiling...
+  DashboardManagerJsonCodecTests.cpp
+  ForgeConductor.Dashboard.ManagerJsonCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.ManagerJsonCodecTests.exe
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 11: ForgeConductor.Dashboard.ManagerJsonCodecTests
+1/2 Test #11: ForgeConductor.Dashboard.ManagerJsonCodecTests ...   Passed    0.05 sec
+    Start 26: ForgeConductor.Domain.UnitTests
+2/2 Test #26: ForgeConductor.Domain.UnitTests ..................   Passed    0.14 sec
+
+100% tests passed out of 2
+
+Label Time Summary:
+G05         =   0.14 sec*proc (1 test)
+G16         =   0.05 sec*proc (1 test)
+T-MGR       =   0.05 sec*proc (1 test)
+T-PARITY    =   0.05 sec*proc (1 test)
+T-SEC       =   0.05 sec*proc (1 test)
+T-UNIT      =   0.19 sec*proc (2 tests)
+
+Total Test time (real) =   0.19 sec
