@@ -18,10 +18,12 @@ namespace {
 
 using Infrastructure::Windows::WindowsCurrentUserIdentity;
 using Infrastructure::Windows::WindowsManagerInstanceLease;
+using Infrastructure::Windows::WindowsManagerInstanceNames;
 using Infrastructure::Windows::WindowsManagerInstanceLeaseOptions;
 
 static_assert(std::is_final_v<WindowsCurrentUserIdentity>);
 static_assert(std::is_final_v<WindowsManagerInstanceLease>);
+static_assert(std::is_final_v<WindowsManagerInstanceNames>);
 static_assert(!std::is_copy_constructible_v<WindowsManagerInstanceLease>);
 static_assert(!std::is_copy_assignable_v<WindowsManagerInstanceLease>);
 static_assert(std::is_nothrow_move_constructible_v<WindowsManagerInstanceLease>);
@@ -121,6 +123,28 @@ void distinctPurposeSuffixesAreIsolated()
             "distinct purpose suffixes produced the same pipe name");
 }
 
+void namesCanBeDerivedWithoutTakingOwnership()
+{
+    const auto identity = take(WindowsCurrentUserIdentity::load());
+    const auto leaseOptions = options("name-derivation");
+    const auto firstNames = take(
+        WindowsManagerInstanceLease::namesFor(identity, leaseOptions));
+    const auto secondNames = take(
+        WindowsManagerInstanceLease::namesFor(identity, leaseOptions));
+
+    require(firstNames.mutexName() == secondNames.mutexName() &&
+                firstNames.pipeName() == secondNames.pipeName(),
+            "repeated manager endpoint-name derivation was not deterministic");
+
+    auto lease = take(
+        WindowsManagerInstanceLease::acquire(identity, leaseOptions));
+    require(lease.owns(),
+            "deriving manager endpoint names unexpectedly acquired ownership");
+    require(lease.mutexName() == firstNames.mutexName() &&
+                lease.pipeName() == firstNames.pipeName(),
+            "the manager lease did not reuse the canonical derived names");
+}
+
 void moveTransfersSoleOwnership()
 {
     const auto identity = take(WindowsCurrentUserIdentity::load());
@@ -157,6 +181,8 @@ void namesAreBoundedAndSuffixesAreValidated()
 {
     const auto identity = take(WindowsCurrentUserIdentity::load());
     const auto canonicalOptions = options("name-shape");
+    const auto canonicalNames = take(
+        WindowsManagerInstanceLease::namesFor(identity, canonicalOptions));
     auto canonical = take(WindowsManagerInstanceLease::acquire(
         identity, canonicalOptions));
     const std::wstring canonicalSuffix{
@@ -170,9 +196,11 @@ void namesAreBoundedAndSuffixesAreValidated()
         L"\\\\.\\pipe\\ForgeConductor.Manager.v1." +
         std::wstring{identity.stableKey().begin(), identity.stableKey().end()} +
         L'.' + canonicalSuffix;
-    require(canonical.mutexName() == expectedMutex,
+    require(canonicalNames.mutexName() == expectedMutex &&
+                canonical.mutexName() == canonicalNames.mutexName(),
             "the manager mutex name was not canonical");
-    require(canonical.pipeName() == expectedPipe,
+    require(canonicalNames.pipeName() == expectedPipe &&
+                canonical.pipeName() == canonicalNames.pipeName(),
             "the manager pipe name was not canonical");
     require(canonical.mutexName().size() <=
                 WindowsManagerInstanceLease::MaximumMutexNameCharacters,
@@ -201,21 +229,28 @@ void namesAreBoundedAndSuffixesAreValidated()
                     WindowsManagerInstanceLease::MaximumPipeNameCharacters,
             "the maximum safe suffix produced an unbounded object name");
 
+    const WindowsManagerInstanceLeaseOptions overlongOptions{
+        std::string(
+            WindowsManagerInstanceLease::MaximumPurposeSuffixCharacters + 1U,
+            'a')};
     requireError(
-        WindowsManagerInstanceLease::acquire(
-            identity,
-            WindowsManagerInstanceLeaseOptions{
-                std::string(
-                    WindowsManagerInstanceLease::MaximumPurposeSuffixCharacters + 1U,
-                    'a')}),
+        WindowsManagerInstanceLease::namesFor(identity, overlongOptions),
+        Domain::ErrorCodes::InvalidRequest,
+        "endpoint-name derivation accepted an overlong manager purpose suffix");
+    requireError(
+        WindowsManagerInstanceLease::acquire(identity, overlongOptions),
         Domain::ErrorCodes::InvalidRequest,
         "an overlong manager purpose suffix was accepted");
     for (const std::string_view unsafe :
          {"contains.dot", "contains slash", "contains\\backslash", "nonascii-\xC3\xA9"}) {
+        const WindowsManagerInstanceLeaseOptions unsafeOptions{
+            std::string{unsafe}};
         requireError(
-            WindowsManagerInstanceLease::acquire(
-                identity,
-                WindowsManagerInstanceLeaseOptions{std::string{unsafe}}),
+            WindowsManagerInstanceLease::namesFor(identity, unsafeOptions),
+            Domain::ErrorCodes::InvalidRequest,
+            "endpoint-name derivation accepted an unsafe manager purpose suffix");
+        requireError(
+            WindowsManagerInstanceLease::acquire(identity, unsafeOptions),
             Domain::ErrorCodes::InvalidRequest,
             "an unsafe manager purpose suffix was accepted");
     }
@@ -233,6 +268,8 @@ void registerWindowsManagerOwnershipTests(TestRegistry& tests)
             releasedLeaseCanBeReacquired);
     addTest(tests, "manager_ownership.distinct_purpose_suffixes_are_isolated",
             distinctPurposeSuffixesAreIsolated);
+    addTest(tests, "manager_ownership.names_can_be_derived_without_taking_ownership",
+            namesCanBeDerivedWithoutTakingOwnership);
     addTest(tests, "manager_ownership.move_transfers_sole_ownership",
             moveTransfersSoleOwnership);
     addTest(tests, "manager_ownership.names_are_bounded_and_suffixes_are_validated",

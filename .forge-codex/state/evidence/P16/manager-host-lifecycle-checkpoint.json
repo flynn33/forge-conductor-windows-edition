@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-host-lifecycle-and-canonical-endpoint-names",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "MSVC 19.44 / Visual Studio 2022 17.14, CMake preset windows-msvc-x64-debug, CTest Debug",
+  "command_record": ".forge-codex/state/commands/20260827T193015437Z-2d30f32a.json",
+  "command_record_sha256": "7a93aceb609f36522453b423f310c9d7b0b9351200951caebc8279592b02666c",
+  "exit_code": 0,
+  "timed_out": false,
+  "measured_result": {
+    "tests_passed": 7,
+    "tests_failed": 0,
+    "real_seconds": 1.21,
+    "stdout_sha256": "a060c0902dbb5f6ed35d35a1914e2a8aaa7bd82dd4c79b322b9490a457d5750a",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "behavior_proved": [
+    "canonical deterministic manager mutex and named-pipe endpoint derivation without taking ownership",
+    "manager lease acquisition reuses the shared endpoint-name derivation and preserves validation bounds",
+    "controller initialization completes before manager ingress is exposed",
+    "host exit closes server ingress before dispatcher-owned controller shutdown",
+    "initialization and ingress failures retain their typed errors after cleanup",
+    "manager host run and shutdown are single-use and idempotent",
+    "64 barrier-controlled startup/shutdown races cancel startup without blocking shutdown or exposing ingress",
+    "shutdown during the server-start transition is reported as orderly completion",
+    "the run-frame lifetime guard retains host dependencies through callback and finalizer teardown"
+  ],
+  "source_sha256": {
+    "src/Hosts/Manager/ManagerProcessHost.cpp": "4cda7f912f84f44de91fe5746f3e7bb8c2cadc8599fa4b10e1cd63576439b490",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h": "dc2ea44374cf8a1a29ac22ed69354ff9342a42d15fdb2f408f5c47a77e7e64b6"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Manager.DeadlineMapperTests.exe": "db8d2080c120f5f06fa3928f6d98e9eb0ea84c3dd8e6f569bdced7a3fa7ac43f",
+    "ForgeConductor.Manager.RequestDispatcherTests.exe": "5ff6c4ebdceddd2780886524fc48ac4e8d3c4cfd9fdf49fddd25d3846a4dd2be",
+    "ForgeConductor.Manager.ProtocolTests.exe": "9c3099385edec959437f79f61d54989d0b4613770b1e681a04ce64697bfddc60",
+    "ForgeConductor.Manager.ControllerTests.exe": "90cb5ffcaa9a9365be4a2e1cf35c18291db753996fe2735106ec02709d10ec62",
+    "ForgeConductor.Manager.WindowsInfrastructureTests.exe": "5235b2e0d014a4b5073fd9cf6f83c5f75d987754d77d153a054784968324e565",
+    "ForgeConductor.Manager.NamedPipeRoundTripTests.exe": "ecc706f06551baefb00e7769d97f8dbb01d8fdaaaad5abb1c6acf24809b3a469",
+    "ForgeConductor.Manager.ProcessHostTests.exe": "758793e7ecd3ea1edbbea88111529c0ec0bad55e6bb85748ef57fd6180df4a5b"
+  },
+  "remaining_limitations": [
+    "A truthful ForgeConductor.Manager.exe composition waits for the P16-B loopback runtime; no placeholder runtime or executable was introduced.",
+    "The named-pipe retained-worker path must retain the complete process dependency and lease bundle or fail fast before production composition can release ownership.",
+    "P16-B dashboard and P16-C watchdog, startup registration, and recovery remain unimplemented.",
+    "The authoritative G16 invocation has not been run."
+  ]
+}

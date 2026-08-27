@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T193015437Z-2d30f32a",
+  "phase": "P16",
+  "role": "builder",
+  "command": "cmake --build out\\build\\windows-msvc-x64 --config Debug --target ForgeConductor.Manager.DeadlineMapperTests ForgeConductor.Manager.RequestDispatcherTests ForgeConductor.Manager.ProtocolTests ForgeConductor.Manager.ControllerTests ForgeConductor.Manager.WindowsInfrastructureTests ForgeConductor.Manager.NamedPipeRoundTripTests ForgeConductor.Manager.ProcessHostTests -- /m; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ctest --test-dir out\\build\\windows-msvc-x64 -C Debug -L T-MGR --output-on-failure; exit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T19:30:15.4457267+00:00",
+  "end_utc": "2026-08-27T19:30:35.2873194+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T193015437Z-2d30f32a.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T193015437Z-2d30f32a.stderr.txt",
+  "stdout_sha256": "a060c0902dbb5f6ed35d35a1914e2a8aaa7bd82dd4c79b322b9490a457d5750a",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -155,20 +155,20 @@ WindowsManagerInstanceLease::WindowsManagerInstanceLease(
 WindowsManagerInstanceLease& WindowsManagerInstanceLease::operator=(
     WindowsManagerInstanceLease&& other) noexcept = default;
 
-Domain::Result<WindowsManagerInstanceLease>
-WindowsManagerInstanceLease::acquire(
+Domain::Result<WindowsManagerInstanceNames>
+WindowsManagerInstanceLease::namesFor(
     const WindowsCurrentUserIdentity& identity,
     const WindowsManagerInstanceLeaseOptions& options) noexcept
 {
     try {
         auto validIdentity = validateIdentity(identity);
         if (!validIdentity) {
-            return Domain::Result<WindowsManagerInstanceLease>::failure(
+            return Domain::Result<WindowsManagerInstanceNames>::failure(
                 std::move(validIdentity).error());
         }
         auto suffix = validatedSuffix(options.purposeSuffix);
         if (!suffix) {
-            return Domain::Result<WindowsManagerInstanceLease>::failure(
+            return Domain::Result<WindowsManagerInstanceNames>::failure(
                 std::move(suffix).error());
         }
 
@@ -186,11 +186,35 @@ WindowsManagerInstanceLease::acquire(
         pipeName += suffix.value();
         if (mutexName.size() > MaximumMutexNameCharacters ||
             pipeName.size() > MaximumPipeNameCharacters) {
-            return Domain::Result<WindowsManagerInstanceLease>::failure(
+            return Domain::Result<WindowsManagerInstanceNames>::failure(
                 Domain::makeError(
                     Domain::ErrorCodes::LimitExceeded,
                     "The manager instance names exceeded their Windows object-name bounds."));
         }
+
+        return Domain::Result<WindowsManagerInstanceNames>::success(
+            WindowsManagerInstanceNames{
+                std::move(mutexName), std::move(pipeName)});
+    } catch (...) {
+        return Domain::Result<WindowsManagerInstanceNames>::failure(
+            Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The manager instance names could not allocate bounded state."));
+    }
+}
+
+Domain::Result<WindowsManagerInstanceLease>
+WindowsManagerInstanceLease::acquire(
+    const WindowsCurrentUserIdentity& identity,
+    const WindowsManagerInstanceLeaseOptions& options) noexcept
+{
+    try {
+        auto names = namesFor(identity, options);
+        if (!names) {
+            return Domain::Result<WindowsManagerInstanceLease>::failure(
+                std::move(names).error());
+        }
+        WindowsManagerInstanceNames instanceNames = std::move(names).value();
 
         const std::span<const std::byte> sidBytes = identity.sidBytes();
         const PSID sid = reinterpret_cast<PSID>(
@@ -241,7 +265,9 @@ WindowsManagerInstanceLease::acquire(
             // Object existence, retained by this handle, is the process lease.
             // Avoid thread-affine Win32 mutex ownership so the move-only lease
             // can be transferred and destroyed safely by another thread.
-            ::CreateMutexW(&securityAttributes, FALSE, mutexName.c_str())};
+            ::CreateMutexW(
+                &securityAttributes, FALSE,
+                instanceNames.mutexName_.c_str())};
         const DWORD creationStatus = ::GetLastError();
         if (!handle) {
             return Domain::Result<WindowsManagerInstanceLease>::failure(
@@ -258,7 +284,8 @@ WindowsManagerInstanceLease::acquire(
 
         return Domain::Result<WindowsManagerInstanceLease>::success(
             WindowsManagerInstanceLease{std::make_unique<Impl>(
-                std::move(handle), std::move(mutexName), std::move(pipeName))});
+                std::move(handle), std::move(instanceNames.mutexName_),
+                std::move(instanceNames.pipeName_))});
     } catch (...) {
         return Domain::Result<WindowsManagerInstanceLease>::failure(
             Domain::makeError(
