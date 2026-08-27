@@ -1,0 +1,6 @@
+No-Python gate passed.
+No-attribution gate passed.
+Ledger validation passed: 242 event(s).
+G15: validating exact prior and corrective evidence for fail-closed resume.
+G15: prior full build/CTest and corrective focused pass validated; execution is not repeated.
+G15 resume evidence validation passed without build, test, artifact, or live-host execution (1843 assertions).
