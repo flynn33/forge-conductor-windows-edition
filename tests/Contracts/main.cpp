@@ -97,6 +97,7 @@ FORGE_ASSERT_INTERFACE(Contracts::ITelemetryService);
 FORGE_ASSERT_INTERFACE(Contracts::IToolAuthorizer);
 FORGE_ASSERT_INTERFACE(Contracts::IToolHandler);
 FORGE_ASSERT_INTERFACE(Contracts::IToolCatalog);
+FORGE_ASSERT_INTERFACE(Contracts::IMcpExecutionContextResolver);
 FORGE_ASSERT_INTERFACE(Contracts::IToolRouter);
 
 #undef FORGE_ASSERT_INTERFACE

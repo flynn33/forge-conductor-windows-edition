@@ -1,0 +1,134 @@
+CMake is re-running because D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/CMakeFiles/generate.stamp is out-of-date.
+  the file 'D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt'
+  is newer than 'D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/CMakeFiles/generate.stamp.depend'
+  result='-1'
+-- Running vcpkg install
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+The following packages are already installed:
+    nlohmann-json:x64-windows@3.12.0#2
+  * vcpkg-cmake:x64-windows@2025-08-07
+  * vcpkg-cmake-config:x64-windows@2026-07-21
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+All requested installations completed successfully in: 171 us
+-- Running vcpkg install - done
+-- Configuring done (3.4s)
+-- Generating done (1.4s)
+-- Build files have been written to: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  main.cpp
+  GroupedFakeContractTests.cpp
+  Compiling...
+  main.cpp
+  GroupedFakeContractTests.cpp
+  ForgeConductor.Contracts.ContractTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Contracts.ContractTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpToolCatalog.cpp
+  McpJsonCodec.cpp
+  WindowsStdioMcpTransport.cpp
+  McpServer.cpp
+  Compiling...
+  McpServer.cpp
+  WindowsStdioMcpTransport.cpp
+  McpJsonCodec.cpp
+  McpToolCatalog.cpp
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpCatalogCodecTests.cpp
+  Compiling...
+  McpCatalogCodecTests.cpp
+  ForgeConductor.Mcp.CatalogCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.CatalogCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpStdioTransportTests.cpp
+  Compiling...
+  McpStdioTransportTests.cpp
+  ForgeConductor.Mcp.StdioTransportTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.StdioTransportTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpProtocolServerTests.cpp
+  Compiling...
+  McpProtocolServerTests.cpp
+  ForgeConductor.Mcp.ProtocolServerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.ProtocolServerTests.exe
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  1: ForgeConductor.Mcp.CatalogCodecTests
+1/5 Test  #1: ForgeConductor.Mcp.CatalogCodecTests .......   Passed    0.16 sec
+    Start  2: ForgeConductor.Mcp.StdioTransportTests
+2/5 Test  #2: ForgeConductor.Mcp.StdioTransportTests .....   Passed    0.40 sec
+    Start  3: ForgeConductor.Mcp.ProtocolServerTests
+3/5 Test  #3: ForgeConductor.Mcp.ProtocolServerTests .....   Passed    0.66 sec
+    Start  9: ForgeConductor.Contracts.ContractTests
+4/5 Test  #9: ForgeConductor.Contracts.ContractTests .....   Passed    0.04 sec
+    Start 49: ForgeConductor.NativeTools.ContractTests
+5/5 Test #49: ForgeConductor.NativeTools.ContractTests ...   Passed    0.01 sec
+
+100% tests passed out of 5
+
+Label Time Summary:
+G05              =   0.04 sec*proc (1 test)
+G13              =   0.01 sec*proc (1 test)
+G14              =   1.23 sec*proc (3 tests)
+T-INTEGRATION    =   0.40 sec*proc (1 test)
+T-MCP            =   1.23 sec*proc (3 tests)
+T-STRESS         =   0.66 sec*proc (1 test)
+T-UNIT           =   1.28 sec*proc (5 tests)
+
+Total Test time (real) =   1.30 sec

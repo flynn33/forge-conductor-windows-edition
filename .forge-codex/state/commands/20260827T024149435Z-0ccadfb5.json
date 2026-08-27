@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T024149435Z-0ccadfb5",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "cmake --build --preset windows-msvc-x64-debug --target ForgeConductor.Contracts.ContractTests ForgeConductor.Mcp.CatalogCodecTests ForgeConductor.Mcp.StdioTransportTests ForgeConductor.Mcp.ProtocolServerTests -- /m\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\nctest --preset windows-msvc-x64-debug -R \"^(ForgeConductor\\.Mcp\\.(CatalogCodec|StdioTransport|ProtocolServer)Tests|ForgeConductor\\.(Contracts|NativeTools)\\.ContractTests)$\" --output-on-failure\nexit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T02:41:49.4437151+00:00",
+  "end_utc": "2026-08-27T02:42:25.0995183+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T024149435Z-0ccadfb5.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T024149435Z-0ccadfb5.stderr.txt",
+  "stdout_sha256": "656ee162848c4ab74a5ae80ce891c3cbfea6806611c39f49b0e85f0ef73407b7",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

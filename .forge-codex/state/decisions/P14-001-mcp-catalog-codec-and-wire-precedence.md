@@ -33,6 +33,9 @@ layer.
 - Schemas preserve the macOS descriptor shapes and openness. Ten legacy tools
   retain their explicit permissive object schema; other legacy schemas omit
   `additionalProperties`; project-memory and lifecycle schemas are closed.
+- User-visible descriptions remain source-compatible. The shell descriptor says
+  PowerShell rather than bash because the Windows product's typed shell adapter
+  executes bounded PowerShell; advertising bash would be observably false.
 - The Windows `project_memory.search` and
   `project_memory.list_recent` `kinds` arrays advertise `maxItems: 100`, as
   already decided by P05-002 and enforced by the typed Windows boundary.

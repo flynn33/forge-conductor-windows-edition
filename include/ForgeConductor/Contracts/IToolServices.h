@@ -90,6 +90,16 @@ public:
     [[nodiscard]] virtual std::span<const Domain::McpToolDescriptor> tools() const noexcept = 0;
 };
 
+class IMcpExecutionContextResolver {
+public:
+    virtual ~IMcpExecutionContextResolver() = default;
+
+    [[nodiscard]] virtual Domain::Result<WorkspaceAuthority> resolve(
+        const Domain::ToolCallRequest& request,
+        Domain::ToolEffect effect,
+        const Domain::OperationContext& context) noexcept = 0;
+};
+
 class IToolRouter {
 public:
     virtual ~IToolRouter() = default;

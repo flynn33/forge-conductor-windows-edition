@@ -37,14 +37,14 @@ constexpr auto Write = Domain::ToolEffect::Write;
 // and export publishes an artifact.
 constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
     SourceDescriptors{{
-        {"agent_context", "Alias of agent_get - full playbook body.", "AgentToolPack", Read, false, false},
+        {"agent_context", "Alias of agent_get \xE2\x80\x94 full playbook body.", "AgentToolPack", Read, false, false},
         {"agent_get", "Get a specialist agent playbook by id.", "AgentToolPack", Read, false, false},
         {"agent_list", "List specialist agent playbooks.", "AgentToolPack", Read, false, false},
         {"agent_recommend", "Recommend a specialist agent for a task description.", "AgentToolPack", Read, false, false},
         {"agent_run_complete", "Close a session with a report matching output_schema.", "AgentToolPack", Write, false, false},
         {"agent_run_start", "Start a durable specialist session (supersedes prior open sessions).", "AgentToolPack", Write, false, false},
         {"agent_run_status", "Status of an agent session; reminds host to complete open runs.", "AgentToolPack", Write, false, false},
-        {"context_get", "Load latest (or id) handoff packet - call first in every new chat bootstrap.", "ContinuityToolPack", Read, false, false},
+        {"context_get", "Load latest (or id) handoff packet \xE2\x80\x94 call first in every new chat bootstrap.", "ContinuityToolPack", Read, false, false},
         {"context_list", "List recent context handoff packets.", "ContinuityToolPack", Read, false, false},
         {"continuity.acknowledge_handoff", "Compare-and-set acknowledgment for an exact successor and handoff.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.checkpoint", "Persist a compact project checkpoint and rollover operation.", "ContinuityLifecycleToolPack", Write, true, false},
@@ -60,7 +60,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"fs_list", "List directory entries.", "FilesystemToolPack", Read, true, false},
         {"fs_mkdir", "Create a directory.", "FilesystemToolPack", Write, true, false},
         {"fs_move", "Move/rename a path.", "FilesystemToolPack", Write, true, false},
-        {"fs_read", "Read a UTF-8 text file with optional 1-based line windowing.", "FilesystemToolPack", Read, true, false},
+        {"fs_read", "Read a UTF-8 text file. Optional 1-based line window: offset (start line) + length/limit (line count). Response includes total_lines, start_line, end_line, has_more, next_offset. Do not re-call with the same offset when content was returned.", "FilesystemToolPack", Read, true, false},
         {"fs_write", "Write a UTF-8 text file.", "FilesystemToolPack", Write, true, false},
         {"git_add", "git add path or -A.", "GitToolPack", Write, true, false},
         {"git_commit", "git commit -m message.", "GitToolPack", Write, true, false},
@@ -88,7 +88,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"project_memory.update", "Update a record with optimistic version checking.", "ProjectMemoryToolPack", Write, true, false},
         {"search_text", "Recursive text search (grep).", "SearchToolPack", Read, true, false},
         {"session_checkpoint", "Soft-save context + open agent sessions for continuity (continue working).", "ContinuityToolPack", Write, false, false},
-        {"session_handoff", "Finalize context/agent handoff for a new chat; returns resume_seed.", "ContinuityToolPack", Write, false, false},
+        {"session_handoff", "Finalize context/agent handoff for a new chat; returns resume_seed. Prefer before context is full.", "ContinuityToolPack", Write, false, false},
         {"shell_exec", "Run an opt-in bounded PowerShell command with timeout.", "ShellToolPack", Write, true, true},
     }};
 

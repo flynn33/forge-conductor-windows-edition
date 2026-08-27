@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "bounded_mcp_server_and_windows_stdio",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T02:42:25.0995183+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "compiler": "MSVC 14.51.36231",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2"
+  },
+  "command_record": ".forge-codex/state/commands/20260827T024149435Z-0ccadfb5.json",
+  "exit_code": 0,
+  "measured_result": {
+    "tests_selected": 5,
+    "tests_passed": 5,
+    "tests_failed": 0,
+    "ctest_real_seconds": 1.30
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Mcp.lib",
+      "bytes": 33480606,
+      "sha256": "fbe988d192d0bd930d04a8f49dc7982f3295e7bd4313446b3856b4a9f7c3a1b1"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.CatalogCodecTests.exe",
+      "bytes": 1444864,
+      "sha256": "2515bfcc46f6ae5ee59dadf9631c457e6ba7ea9ae9507dfb5cbf42946777a167"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.StdioTransportTests.exe",
+      "bytes": 1553408,
+      "sha256": "a9eeeee7a7db769c43a9d6ab6479b56114b263067b0b165527b731d873109934"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ProtocolServerTests.exe",
+      "bytes": 2344960,
+      "sha256": "c866c22bd08686610c1b058acbab2b292e82276585f989a4d466480122978f8e"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.ContractTests.exe",
+      "bytes": 4114944,
+      "sha256": "d614528364b2ec261fc79f321ff5fd8c8565081c161f18b082a6b2041947121f"
+    }
+  ],
+  "qualified_surface": [
+    "immutable 53-tool MCP catalog and bounded JSON codec",
+    "bounded concurrent JSON-RPC server and per-call authority handoff",
+    "native newline-delimited Windows stdio transport",
+    "cancellation, shutdown, malformed-frame, and bounded-result recovery"
+  ],
+  "remaining_limitations": [
+    "typed tool-pack adapters and production router",
+    "audit persistence and loop prevention",
+    "CLI serve composition and real primary/fallback process fixtures",
+    "closed-schema validation and remaining G14 evidence"
+  ]
+}

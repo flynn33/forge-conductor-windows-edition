@@ -267,7 +267,9 @@ target_link_libraries(ForgeNativeSessionHostPlugin PRIVATE
 add_library(ForgeConductor.Mcp STATIC
     src/Mcp/McpJsonCodec.cpp
     src/Mcp/McpProtocol.cpp
+    src/Mcp/McpServer.cpp
     src/Mcp/McpToolCatalog.cpp
+    src/Mcp/WindowsStdioMcpTransport.cpp
 )
 forge_add_layer(ForgeConductor.Mcp ForgeConductor::Mcp
     ForgeConductor::Application
@@ -382,6 +384,31 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Mcp.CatalogCodecTests>)
     set_tests_properties(ForgeConductor.Mcp.CatalogCodecTests PROPERTIES
         LABELS "G14;T-MCP;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.StdioTransportTests
+        tests/Mcp/McpStdioTransportTests.cpp)
+    forge_configure_native_target(ForgeConductor.Mcp.StdioTransportTests)
+    target_link_libraries(ForgeConductor.Mcp.StdioTransportTests PRIVATE
+        ForgeConductor::Mcp)
+    add_test(
+        NAME ForgeConductor.Mcp.StdioTransportTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.StdioTransportTests>)
+    set_tests_properties(ForgeConductor.Mcp.StdioTransportTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-INTEGRATION"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.ProtocolServerTests
+        tests/Mcp/McpProtocolServerTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Mcp.ProtocolServerTests)
+    target_link_libraries(ForgeConductor.Mcp.ProtocolServerTests PRIVATE
+        ForgeConductor::Mcp
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Mcp.ProtocolServerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ProtocolServerTests>)
+    set_tests_properties(ForgeConductor.Mcp.ProtocolServerTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-STRESS"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Agents.CatalogTests

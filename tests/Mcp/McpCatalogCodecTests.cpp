@@ -114,6 +114,12 @@ void testCanonicalCatalog()
     REQUIRE(writeEffects == 30U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "project_memory.export").tool.effect == Domain::ToolEffect::Write);
+    REQUIRE(descriptor(tools, "fs_read").tool.description.find("next_offset") !=
+        std::string::npos);
+    REQUIRE(descriptor(tools, "session_handoff").tool.description.ends_with(
+        "Prefer before context is full."));
+    REQUIRE(descriptor(tools, "shell_exec").tool.description.find("PowerShell") !=
+        std::string::npos);
     REQUIRE(descriptor(tools, "shell_exec").tool.requiresShell);
 }
 

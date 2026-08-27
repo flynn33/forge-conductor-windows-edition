@@ -109,7 +109,7 @@ Domain::Result<std::string> McpJsonCodec::canonicalize(
         }
         if (!document.is_object()) {
             return Domain::Result<std::string>::failure(codecError(
-                Domain::ErrorCodes::MalformedMessage,
+                Domain::ErrorCodes::InvalidRequest,
                 "MCP JSON input must have an object root."));
         }
         if (containsEmbeddedNul(document)) {
