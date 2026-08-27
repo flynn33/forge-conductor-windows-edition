@@ -1,0 +1,174 @@
+{
+  "activation": {
+    "configuration_synchronized": true,
+    "deployment_id": "a2e8ee58-9ac8-442c-b19d-108a7f002f26",
+    "host_running_after_attempt": true,
+    "launched": true,
+    "process_inspection_succeeded": true,
+    "ready_role_count": 0,
+    "restarted": false,
+    "running_before_deploy": false,
+    "status": "passed"
+  },
+  "after_activation": {
+    "complete_role_objects_equal": true,
+    "configuration": {
+      "bytes": 865,
+      "exists": true,
+      "sha256": "8a257a011c24a6a031d3448c8c984163ec465fd418f414a970fe8490310c3977"
+    },
+    "exact_synchronized_revision": true,
+    "foreign_configuration": {
+      "server_count": 0,
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    "foreign_configuration_semantics_preserved": true,
+    "foreign_plugin_tree_bytes_preserved": true,
+    "foreign_plugins": {
+      "file_bytes": 1070,
+      "root_entries": 2,
+      "sha256": "f64eb6fe502c5e4f7cba4c2b016e42e0053488ef6885af1fcbeecf603c13a96f",
+      "transaction_root_count": 0,
+      "transaction_roots_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tree_entries": 8
+    },
+    "live_codec_registered": true,
+    "no_new_transaction_roots": true,
+    "synchronized_codec_registered": true,
+    "synchronized_state": {
+      "bytes": 864,
+      "exists": true,
+      "sha256": "e5199d87aaa943d84afdb9ded1becb94e394f3c8d166d7e50dbeb65be49ed7e1"
+    }
+  },
+  "after_deployment": {
+    "configuration": {
+      "bytes": 865,
+      "exists": true,
+      "sha256": "8a257a011c24a6a031d3448c8c984163ec465fd418f414a970fe8490310c3977"
+    },
+    "foreign_configuration": {
+      "server_count": 0,
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    "foreign_configuration_semantics_preserved": true,
+    "foreign_plugin_tree_bytes_preserved": true,
+    "foreign_plugins": {
+      "file_bytes": 1070,
+      "root_entries": 2,
+      "sha256": "f64eb6fe502c5e4f7cba4c2b016e42e0053488ef6885af1fcbeecf603c13a96f",
+      "transaction_root_count": 0,
+      "transaction_roots_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tree_entries": 8
+    },
+    "no_new_transaction_roots": true,
+    "synchronized_state": {
+      "bytes": 22,
+      "exists": true,
+      "sha256": "38935ac9bd01a9a91be32d16fc131d8b9d46fbcede88855e85c01f31c7347615"
+    },
+    "synchronized_state_byte_identical_before_activation": true
+  },
+  "authority": {
+    "caller": "p15-lmstudio-maintenance",
+    "exact_tool": "install-lmstudio-plugin",
+    "execute_intent": "execute",
+    "execute_root_count": 4,
+    "execute_shell_enabled": true,
+    "project_id": "e9bb191b-a5be-4137-aae4-6ee467f02a9f",
+    "selected_roots_only": true,
+    "write_intent": "write",
+    "write_root_count": 3
+  },
+  "before": {
+    "configuration": {
+      "bytes": 23,
+      "exists": true,
+      "sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02"
+    },
+    "foreign_configuration": {
+      "server_count": 0,
+      "sha256": "691f62624936af38f0e6b2ac6c8b43162a23696696f62d5037d9eb2b43bd73c5"
+    },
+    "foreign_plugins": {
+      "file_bytes": 1070,
+      "root_entries": 2,
+      "sha256": "f64eb6fe502c5e4f7cba4c2b016e42e0053488ef6885af1fcbeecf603c13a96f",
+      "transaction_root_count": 0,
+      "transaction_roots_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tree_entries": 8
+    },
+    "status": {
+      "binary_executable": true,
+      "configuration_registered": false,
+      "deployment_id": "",
+      "fallback_installed": false,
+      "lm_studio_present": true,
+      "primary_installed": false
+    },
+    "synchronized_state": {
+      "bytes": 22,
+      "exists": true,
+      "sha256": "38935ac9bd01a9a91be32d16fc131d8b9d46fbcede88855e85c01f31c7347615"
+    }
+  },
+  "binary": {
+    "bytes": 13145600,
+    "path": "<workspace>\\out\\build\\windows-msvc-x64\\bin\\Debug\\forge-conductor.exe",
+    "sha256": "96f5ec5ea2f83fc454439457e23c0986e3fe4b32876a8b35b2631129eeae92cc"
+  },
+  "bounded": true,
+  "deployment": {
+    "committed": true,
+    "deployment_id": "a2e8ee58-9ac8-442c-b19d-108a7f002f26",
+    "plugin_count": 2,
+    "status": {
+      "binary_executable": true,
+      "configuration_registered": true,
+      "deployment_id": "a2e8ee58-9ac8-442c-b19d-108a7f002f26",
+      "fallback_installed": true,
+      "lm_studio_present": true,
+      "primary_installed": true
+    }
+  },
+  "diagnostics": {
+    "bounded_event_count": 3,
+    "events": [
+      "lmstudio_deploy_begin",
+      "lmstudio_deploy_complete",
+      "lmstudio_host_synchronized"
+    ]
+  },
+  "gate": "G15",
+  "host": {
+    "application": "<user-profile>\\AppData\\Local\\Programs\\LM Studio\\LM Studio.exe",
+    "configuration": "<user-profile>\\.lmstudio\\mcp.json",
+    "discovery_evidence_count": 5,
+    "expected_application_bound": true,
+    "lm_studio_present": true,
+    "version": "0.4.21+2"
+  },
+  "host_observations": {
+    "after_activation_attempt": {
+      "inspection_succeeded": true,
+      "running": true
+    },
+    "before_activation": {
+      "inspection_succeeded": true,
+      "running": false
+    },
+    "preflight": {
+      "inspection_succeeded": true,
+      "running": false
+    }
+  },
+  "phase": "P15",
+  "result": {
+    "deployment_left_installed": true,
+    "rollback_requested": false,
+    "status": "passed"
+  },
+  "runner": "ForgeConductor.LMStudio.RealHostTests",
+  "sanitized": true,
+  "schema_version": 1
+}
