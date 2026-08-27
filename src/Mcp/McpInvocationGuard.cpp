@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <limits>
 #include <map>
 #include <mutex>
@@ -27,6 +28,7 @@ constexpr std::size_t MaximumRecentTools = 12U;
 constexpr std::size_t MaximumRecentPaths = 16U;
 constexpr std::size_t MaximumInferredKeyFiles = 12U;
 constexpr std::size_t MaximumNarrativeTools = 8U;
+constexpr std::size_t MaximumCanonicalPayloadBytes = 1'048'576U;
 constexpr std::uint32_t MaximumConfiguredCount = 1'000'000U;
 constexpr std::uint32_t MaximumConfiguredIntervalSeconds = 604'800U;
 
@@ -234,44 +236,77 @@ template <typename T>
     }
 }
 
-struct ExtractedPaths final {
-    std::optional<std::string> path;
-    std::optional<std::string> workingDirectory;
-};
+[[nodiscard]] std::filesystem::path filesystemPath(
+    const Domain::PathText& value)
+{
+    std::u8string utf8;
+    utf8.reserve(value.value().size());
+    for (const auto byte : value.value()) {
+        utf8.push_back(static_cast<char8_t>(
+            static_cast<unsigned char>(byte)));
+    }
+    return std::filesystem::path{utf8};
+}
 
-[[nodiscard]] Domain::Result<ExtractedPaths> extractPaths(
-    const std::string& canonicalArguments)
+[[nodiscard]] std::optional<Domain::PathText> implicitRootFor(
+    const Domain::ToolContinuityObservation& observation) noexcept
 {
     try {
-        const auto arguments = Json::parse(
-            canonicalArguments, nullptr, false, true);
-        if (arguments.is_discarded() || !arguments.is_object()) {
-            return failure<ExtractedPaths>(
-                Domain::ErrorCodes::InvalidRequest,
-                "Progress-tool arguments must be a JSON object.");
+        const auto& observed = observation.path
+            ? observation.path
+            : observation.workingDirectory;
+        if (!observed) {
+            return std::nullopt;
         }
-        ExtractedPaths result;
-        const auto capture = [&](const char* const name)
-            -> std::optional<std::string> {
-            const auto found = arguments.find(name);
-            if (found == arguments.end() || !found->is_string()) {
+
+        auto candidate = filesystemPath(*observed);
+        std::error_code pathError;
+        if (candidate.is_relative()) {
+            const Domain::PathText* baseText = nullptr;
+            if (observation.path && observation.workingDirectory) {
+                baseText = &*observation.workingDirectory;
+            } else if (observation.baseDirectory) {
+                baseText = &*observation.baseDirectory;
+            }
+            if (baseText == nullptr) {
                 return std::nullopt;
             }
-            auto value = found->get<std::string>();
-            if (value.empty() ||
-                value.size() > Domain::LegacyContinuityLimits::MaximumItemBytes ||
-                value.find('\0') != std::string::npos) {
-                return std::nullopt;
+            auto base = filesystemPath(*baseText);
+            if (base.is_relative()) {
+                if (!observation.baseDirectory ||
+                    baseText == &*observation.baseDirectory) {
+                    return std::nullopt;
+                }
+                auto authority = filesystemPath(
+                    *observation.baseDirectory);
+                if (authority.is_relative()) {
+                    return std::nullopt;
+                }
+                base = authority / base;
             }
-            return value;
-        };
-        result.path = capture("path");
-        result.workingDirectory = capture("cwd");
-        return Domain::Result<ExtractedPaths>::success(std::move(result));
+            candidate = base / candidate;
+        }
+        candidate = candidate.lexically_normal();
+
+        const bool observedDirectory = !observation.path;
+        if (!observedDirectory &&
+            !std::filesystem::is_directory(candidate, pathError)) {
+            candidate = candidate.parent_path();
+        }
+        if (candidate.empty()) {
+            return std::nullopt;
+        }
+
+        const auto utf8 = candidate.generic_u8string();
+        const std::string text{
+            reinterpret_cast<const char*>(utf8.data()), utf8.size()};
+        auto root = Domain::PathText::create(text);
+        if (!root) {
+            return std::nullopt;
+        }
+        return std::move(root).value();
     } catch (...) {
-        return failure<ExtractedPaths>(
-            Domain::ErrorCodes::InvalidRequest,
-            "Progress-tool arguments could not be inspected.");
+        return std::nullopt;
     }
 }
 
@@ -351,6 +386,43 @@ struct HandoffReceipt final {
 } // namespace
 
 class McpInvocationGuard::Implementation final {
+    struct StateToken final {
+        std::string clientKey;
+        std::uint64_t generation{};
+        bool recoveryLease{};
+    };
+
+    class StateLease final {
+    public:
+        StateLease(
+            Implementation& owner,
+            std::optional<StateToken> token) noexcept
+            : owner_{owner}, token_{std::move(token)}
+        {
+        }
+
+        ~StateLease() noexcept
+        {
+            if (token_) {
+                owner_.releaseContinuityState(*token_);
+            }
+        }
+
+        StateLease(const StateLease&) = delete;
+        StateLease& operator=(const StateLease&) = delete;
+        StateLease(StateLease&&) = delete;
+        StateLease& operator=(StateLease&&) = delete;
+
+        [[nodiscard]] const StateToken* token() const noexcept
+        {
+            return token_ ? &*token_ : nullptr;
+        }
+
+    private:
+        Implementation& owner_;
+        std::optional<StateToken> token_;
+    };
+
 public:
     Implementation(
         Contracts::ILegacyContextContinuityService& continuity,
@@ -385,16 +457,6 @@ public:
 
             const bool continuityTool = isContinuityTool(request.toolName);
             const bool progressTool = isProgressTool(request.toolName);
-            ExtractedPaths paths;
-            if (progressTool) {
-                auto extracted = extractPaths(request.canonicalArguments);
-                if (!extracted) {
-                    return Domain::Result<
-                        Domain::ToolInvocationAdmission>::failure(
-                            std::move(extracted).error());
-                }
-                paths = std::move(extracted).value();
-            }
 
             std::string fingerprint;
             if (!continuityTool) {
@@ -411,6 +473,7 @@ public:
             }
 
             std::optional<BlockSnapshot> blocked;
+            std::optional<StateToken> hardLoopState;
             std::uint64_t loopCount{};
             {
                 std::lock_guard lock{mutex_};
@@ -451,7 +514,16 @@ public:
                     loopCount = loop.count;
                 }
 
-                if (loopCount < policy_.hardIdenticalCallCount) {
+                if (loopCount >= policy_.hardIdenticalCallCount) {
+                    auto reserved = reserveContinuityStateLocked(
+                        request.metadata.clientId);
+                    if (!reserved) {
+                        return Domain::Result<
+                            Domain::ToolInvocationAdmission>::failure(
+                                std::move(reserved).error());
+                    }
+                    hardLoopState = std::move(reserved).value();
+                } else {
                     const auto operationKey = context.operationId.value();
                     if (pending_.contains(operationKey)) {
                         return failure<Domain::ToolInvocationAdmission>(
@@ -464,26 +536,52 @@ public:
                             "The MCP invocation guard pending-call bound was reached.",
                             true);
                     }
-                    pending_.emplace(
-                        operationKey,
-                        PendingCall{
+                    std::optional<StateToken> continuityState;
+                    if (progressTool || request.toolName == "context_get") {
+                        auto reserved = reserveContinuityStateLocked(
                             request.metadata.clientId,
-                            request.toolName,
-                            loopCount,
-                            continuityTool,
-                            progressTool,
-                            isForcePersistTool(request.toolName),
-                            std::move(paths.path),
-                            std::move(paths.workingDirectory)});
+                            request.toolName == "context_get");
+                        if (!reserved) {
+                            return Domain::Result<
+                                Domain::ToolInvocationAdmission>::failure(
+                                    std::move(reserved).error());
+                        }
+                        continuityState = std::move(reserved).value();
+                    }
+                    try {
+                        pending_.emplace(
+                            operationKey,
+                            PendingCall{
+                                request.metadata.clientId,
+                                request.toolName,
+                                loopCount,
+                                continuityTool,
+                                progressTool,
+                                isForcePersistTool(request.toolName),
+                                continuityState});
+                    } catch (...) {
+                        if (continuityState) {
+                            releaseContinuityStateLocked(*continuityState);
+                        }
+                        throw;
+                    }
                     return Domain::Result<
                         Domain::ToolInvocationAdmission>::success(
                             Domain::ToolInvocationAdmission{});
                 }
             }
 
-            return Domain::Result<Domain::ToolInvocationAdmission>::success(
-                Domain::ToolInvocationAdmission{
-                    hardLoopOutcome(request, loopCount, context)});
+            try {
+                auto outcome = hardLoopOutcome(
+                    request, loopCount, *hardLoopState, context);
+                releaseContinuityState(*hardLoopState);
+                return Domain::Result<
+                    Domain::ToolInvocationAdmission>::success(
+                        Domain::ToolInvocationAdmission{std::move(outcome)});
+            } catch (...) {
+                releaseContinuityState(*hardLoopState);
+                throw;
+            }
         } catch (...) {
             return failure<Domain::ToolInvocationAdmission>(
                 Domain::ErrorCodes::InternalFailure,
@@ -502,12 +600,31 @@ public:
             if (!pending) {
                 return outcome;
             }
+            StateLease stateLease{
+                *this, std::move(pending->continuityState)};
             if (pending->toolName != request.toolName ||
                 descriptor.name != request.toolName ||
                 pending->clientId != request.metadata.clientId) {
                 return failure<Domain::ToolCallOutcome>(
                     Domain::ErrorCodes::IntegrityFailure,
                     "The MCP invocation completion does not match its admission.");
+            }
+            if (outcome) {
+                const auto& receipt = outcome.value().receipt;
+                if (receipt.requestId != request.metadata.requestId ||
+                    receipt.toolName != request.toolName ||
+                    receipt.ok == receipt.error.has_value() ||
+                    outcome.value().canonicalPayload.empty() ||
+                    outcome.value().canonicalPayload.size() >
+                        MaximumCanonicalPayloadBytes ||
+                    outcome.value().canonicalPayload.find('\0') !=
+                        std::string::npos ||
+                    !Domain::isValidUtf8(
+                        outcome.value().canonicalPayload)) {
+                    return failure<Domain::ToolCallOutcome>(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The MCP invocation receipt does not match its request or result state.");
+                }
             }
 
             const bool succeeded = outcome && outcome.value().receipt.ok;
@@ -525,13 +642,26 @@ public:
                         "The recovered context receipt belongs to another client.");
                 }
                 if (recovery) {
-                    const bool cleared = clearBlockIfMatches(
-                        pending->clientId, recovery->handoffId);
+                    if (!stateLease.token()) {
+                        return failure<Domain::ToolCallOutcome>(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The recovered context has no continuity-state lease.");
+                    }
+                    const auto recoveryDecision = recordRecoveredContext(
+                        *stateLease.token(), *recovery);
                     finalOutcome = annotate(
                         request,
                         std::move(finalOutcome),
-                        Json{{"context_budget_cleared", cleared}});
+                        Json{{"context_budget_cleared",
+                              recoveryDecision.cleared}});
                 }
+            }
+            const auto observation = finalOutcome
+                ? finalOutcome.value().continuityObservation
+                : std::optional<Domain::ToolContinuityObservation>{};
+            if (!pending->continuityTool && observation &&
+                stateLease.token()) {
+                recordImplicitRoot(*stateLease.token(), *observation);
             }
             if (!pending->continuityTool &&
                 pending->loopCount == policy_.softIdenticalCallCount) {
@@ -560,8 +690,9 @@ public:
                 }
             }
 
-            if (succeeded && pending->progressTool) {
-                auto progress = recordProgress(*pending);
+            if (succeeded && pending->progressTool && stateLease.token()) {
+                auto progress = recordProgress(
+                    *pending, *stateLease.token(), observation);
                 if (progress.persist) {
                     try {
                         Domain::LegacyContinuityPatch patch;
@@ -591,7 +722,7 @@ public:
                                 persisted.value(), progress.finalize);
                             if (receipt) {
                                 recordPersistedProgress(
-                                    pending->clientId,
+                                    *stateLease.token(),
                                     progress,
                                     receipt.value());
                                 persistedProgress = true;
@@ -619,11 +750,11 @@ public:
                         }
                         if (!persistedProgress) {
                             releasePersistenceReservation(
-                                pending->clientId, progress);
+                                *stateLease.token(), progress);
                         }
                     } catch (...) {
                         releasePersistenceReservation(
-                            pending->clientId, progress);
+                            *stateLease.token(), progress);
                         throw;
                     }
                 }
@@ -640,7 +771,15 @@ public:
     {
         try {
             std::lock_guard lock{mutex_};
-            pending_.erase(operationId.value());
+            const auto found = pending_.find(operationId.value());
+            if (found == pending_.end()) {
+                return;
+            }
+            if (found->second.continuityState) {
+                releaseContinuityStateLocked(
+                    *found->second.continuityState);
+            }
+            pending_.erase(found);
         } catch (...) {
         }
     }
@@ -670,6 +809,31 @@ public:
         }
     }
 
+    [[nodiscard]] Domain::ContinuityAutomationStatusSnapshot snapshot(
+        const Domain::ClientId& clientId) const noexcept
+    {
+        Domain::ContinuityAutomationStatusSnapshot result;
+        result.checkpointEveryTools = policy_.checkpointProgressCount;
+        result.handoffEveryTools = policy_.handoffProgressCount;
+        try {
+            std::lock_guard lock{mutex_};
+            const auto found = continuityStates_.find(clientId.value());
+            if (found == continuityStates_.end()) {
+                return result;
+            }
+            result.progressCount = found->second.progressCount;
+            result.blocked = found->second.blocked;
+            result.handoffId = found->second.handoffId;
+            result.implicitRoots = found->second.implicitRoots;
+        } catch (...) {
+            result.progressCount = 0U;
+            result.blocked = false;
+            result.handoffId.reset();
+            result.implicitRoots.clear();
+        }
+        return result;
+    }
+
     [[nodiscard]] std::size_t trackedContinuityClientCount() const noexcept
     {
         try {
@@ -697,6 +861,8 @@ private:
     };
 
     struct ClientContinuityState final {
+        std::uint64_t stateGeneration{};
+        std::size_t activeUseCount{};
         std::uint64_t progressCount{};
         std::uint64_t lastCheckpointCount{};
         std::uint64_t lastHandoffCount{};
@@ -705,11 +871,13 @@ private:
         std::vector<std::string> recentTools;
         std::vector<std::string> recentPaths;
         std::optional<std::string> workingDirectory;
+        std::vector<Domain::PathText> implicitRoots;
         bool blocked{};
         std::optional<std::string> handoffId;
         std::optional<std::string> resumeSeed;
         bool persistenceInFlight{};
         std::uint64_t persistenceGeneration{};
+        bool recoveryInFlight{};
     };
 
     struct PendingCall final {
@@ -719,13 +887,17 @@ private:
         bool continuityTool{};
         bool progressTool{};
         bool forcePersist{};
-        std::optional<std::string> path;
-        std::optional<std::string> workingDirectory;
+        std::optional<StateToken> continuityState;
     };
 
     struct BlockSnapshot final {
         std::optional<std::string> handoffId;
         std::optional<std::string> resumeSeed;
+    };
+
+    struct RecoveryDecision final {
+        bool accepted{};
+        bool cleared{};
     };
 
     struct ProgressDecision final {
@@ -750,20 +922,107 @@ private:
         }
     }
 
-    void makeContinuityRoom(const std::string& key)
+    [[nodiscard]] Domain::Result<StateToken> reserveContinuityStateLocked(
+        const Domain::ClientId& clientId,
+        const bool recoveryLease = false)
     {
-        if (continuityStates_.contains(key) ||
-            continuityStates_.size() < MaximumTrackedContinuityClients) {
-            return;
+        const auto& key = clientId.value();
+        const auto existing = continuityStates_.find(key);
+        if (existing != continuityStates_.end()) {
+            if (recoveryLease &&
+                (existing->second.activeUseCount != 0U ||
+                 existing->second.persistenceInFlight ||
+                 existing->second.recoveryInFlight)) {
+                return failure<StateToken>(
+                    Domain::ErrorCodes::OwnershipConflict,
+                    "The MCP client has another continuity mutation in flight.",
+                    true);
+            }
+            if (!recoveryLease && existing->second.recoveryInFlight) {
+                return failure<StateToken>(
+                    Domain::ErrorCodes::OwnershipConflict,
+                    "The MCP client has a context recovery in flight.",
+                    true);
+            }
+            if (existing->second.activeUseCount ==
+                (std::numeric_limits<std::size_t>::max)()) {
+                return failure<StateToken>(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The MCP continuity-state use count was exhausted.",
+                    true);
+            }
+            ++existing->second.activeUseCount;
+            if (recoveryLease) {
+                existing->second.recoveryInFlight = true;
+            }
+            return Domain::Result<StateToken>::success(StateToken{
+                key, existing->second.stateGeneration, recoveryLease});
         }
-        const auto evictable = std::find_if(
-            continuityStates_.begin(),
-            continuityStates_.end(),
-            [](const auto& entry) {
-                return !entry.second.persistenceInFlight;
-            });
-        if (evictable != continuityStates_.end()) {
+
+        if (continuityStates_.size() >=
+            MaximumTrackedContinuityClients) {
+            const auto evictable = std::find_if(
+                continuityStates_.begin(),
+                continuityStates_.end(),
+                [](const auto& entry) {
+                    return entry.second.activeUseCount == 0U &&
+                        !entry.second.persistenceInFlight &&
+                        !entry.second.blocked;
+                });
+            if (evictable == continuityStates_.end()) {
+                return failure<StateToken>(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The MCP continuity client bound is fully occupied.",
+                    true);
+            }
             continuityStates_.erase(evictable);
+        }
+
+        if (nextContinuityStateGeneration_ ==
+            (std::numeric_limits<std::uint64_t>::max)()) {
+            return failure<StateToken>(
+                Domain::ErrorCodes::LimitExceeded,
+                "The MCP continuity-state generation was exhausted.",
+                true);
+        }
+        ++nextContinuityStateGeneration_;
+        ClientContinuityState state;
+        state.stateGeneration = nextContinuityStateGeneration_;
+        state.activeUseCount = 1U;
+        state.recoveryInFlight = recoveryLease;
+        continuityStates_.emplace(key, std::move(state));
+        return Domain::Result<StateToken>::success(StateToken{
+            key, nextContinuityStateGeneration_, recoveryLease});
+    }
+
+    [[nodiscard]] ClientContinuityState* findContinuityStateLocked(
+        const StateToken& token) noexcept
+    {
+        const auto found = continuityStates_.find(token.clientKey);
+        if (found == continuityStates_.end() ||
+            found->second.stateGeneration != token.generation) {
+            return nullptr;
+        }
+        return &found->second;
+    }
+
+    void releaseContinuityStateLocked(const StateToken& token) noexcept
+    {
+        auto* const state = findContinuityStateLocked(token);
+        if (state != nullptr && state->activeUseCount != 0U) {
+            --state->activeUseCount;
+            if (token.recoveryLease) {
+                state->recoveryInFlight = false;
+            }
+        }
+    }
+
+    void releaseContinuityState(const StateToken& token) noexcept
+    {
+        try {
+            std::lock_guard lock{mutex_};
+            releaseContinuityStateLocked(token);
+        } catch (...) {
         }
     }
 
@@ -788,6 +1047,7 @@ private:
     [[nodiscard]] Domain::ToolCallOutcome hardLoopOutcome(
         const Domain::ToolCallRequest& request,
         const std::uint64_t loopCount,
+        const StateToken& stateToken,
         const Domain::OperationContext& context)
     {
         const std::string reason =
@@ -798,7 +1058,7 @@ private:
         if (persisted) {
             auto receipt = validatePersistedHandoff(persisted.value(), true);
             if (receipt) {
-                markBlocked(request.metadata.clientId, receipt.value());
+                markBlocked(stateToken, receipt.value());
                 Json additions{
                     {"handoff_id", receipt.value().id},
                     {"handoff_required", true},
@@ -830,39 +1090,20 @@ private:
     }
 
     void markBlocked(
-        const Domain::ClientId& clientId,
+        const StateToken& token,
         const HandoffReceipt& receipt)
     {
         std::lock_guard lock{mutex_};
         if (stopping_) {
             return;
         }
-        const auto key = clientId.value();
-        makeContinuityRoom(key);
-        auto& state = continuityStates_[key];
-        state.blocked = true;
-        state.handoffId = receipt.id;
-        state.resumeSeed = receipt.resumeSeed;
-    }
-
-    [[nodiscard]] bool clearBlockIfMatches(
-        const Domain::ClientId& clientId,
-        const Domain::LegacyHandoffId& handoffId)
-    {
-        std::lock_guard lock{mutex_};
-        const auto state = continuityStates_.find(clientId.value());
-        if (stopping_ || state == continuityStates_.end() ||
-            !state->second.blocked || !state->second.handoffId ||
-            *state->second.handoffId != handoffId.value()) {
-            return false;
+        auto* const state = findContinuityStateLocked(token);
+        if (state == nullptr) {
+            return;
         }
-        state->second.blocked = false;
-        state->second.handoffId.reset();
-        state->second.resumeSeed.reset();
-        state->second.progressCount = 0U;
-        state->second.lastCheckpointCount = 0U;
-        state->second.lastHandoffCount = 0U;
-        return true;
+        state->blocked = true;
+        state->handoffId = receipt.id;
+        state->resumeSeed = receipt.resumeSeed;
     }
 
     [[nodiscard]] std::optional<PendingCall> takePending(
@@ -885,51 +1126,61 @@ private:
     }
 
     [[nodiscard]] ProgressDecision recordProgress(
-        const PendingCall& pending)
+        const PendingCall& pending,
+        const StateToken& token,
+        const std::optional<Domain::ToolContinuityObservation>& observation)
     {
         std::lock_guard lock{mutex_};
-        const auto key = pending.clientId.value();
-        makeContinuityRoom(key);
-        auto& state = continuityStates_[key];
-        if (state.progressCount !=
+        auto* const state = findContinuityStateLocked(token);
+        if (state == nullptr) {
+            return ProgressDecision{};
+        }
+        if (state->progressCount !=
             (std::numeric_limits<std::uint64_t>::max)()) {
-            ++state.progressCount;
+            ++state->progressCount;
         }
-        state.recentTools.push_back(pending.toolName);
-        if (state.recentTools.size() > MaximumRecentTools) {
-            state.recentTools.erase(
-                state.recentTools.begin(),
-                state.recentTools.begin() +
+        state->recentTools.push_back(pending.toolName);
+        if (state->recentTools.size() > MaximumRecentTools) {
+            state->recentTools.erase(
+                state->recentTools.begin(),
+                state->recentTools.begin() +
                     static_cast<std::ptrdiff_t>(
-                        state.recentTools.size() - MaximumRecentTools));
+                        state->recentTools.size() - MaximumRecentTools));
         }
-        const auto observedPath = pending.path
-            ? pending.path
-            : pending.workingDirectory;
-        if (observedPath) {
-            state.recentPaths.push_back(*observedPath);
-            if (state.recentPaths.size() > MaximumRecentPaths) {
-                state.recentPaths.erase(
-                    state.recentPaths.begin(),
-                    state.recentPaths.begin() +
-                        static_cast<std::ptrdiff_t>(
-                            state.recentPaths.size() - MaximumRecentPaths));
+        std::optional<std::string> observedPath;
+        if (observation) {
+            const auto& path = observation->path
+                ? observation->path
+                : observation->workingDirectory;
+            if (path) {
+                observedPath = path->value();
             }
         }
-        if (pending.workingDirectory) {
-            state.workingDirectory = pending.workingDirectory;
+        if (observedPath) {
+            state->recentPaths.push_back(*observedPath);
+            if (state->recentPaths.size() > MaximumRecentPaths) {
+                state->recentPaths.erase(
+                    state->recentPaths.begin(),
+                    state->recentPaths.begin() +
+                        static_cast<std::ptrdiff_t>(
+                            state->recentPaths.size() - MaximumRecentPaths));
+            }
+        }
+        if (observation && observation->workingDirectory) {
+            state->workingDirectory =
+                observation->workingDirectory->value();
         }
 
         const auto now = clock_.monotonicNow();
         const auto sinceCheckpoint =
-            state.progressCount - state.lastCheckpointCount;
+            state->progressCount - state->lastCheckpointCount;
         const auto sinceHandoff =
-            state.progressCount - state.lastHandoffCount;
-        const bool checkpointTimeDue = state.lastCheckpointAt &&
-            now - *state.lastCheckpointAt >=
+            state->progressCount - state->lastHandoffCount;
+        const bool checkpointTimeDue = state->lastCheckpointAt &&
+            now - *state->lastCheckpointAt >=
                 std::chrono::seconds{policy_.checkpointIntervalSeconds};
-        const bool handoffTimeDue = state.lastHandoffAt &&
-            now - *state.lastHandoffAt >=
+        const bool handoffTimeDue = state->lastHandoffAt &&
+            now - *state->lastHandoffAt >=
                 std::chrono::seconds{policy_.handoffIntervalSeconds};
         const bool handoffDue =
             sinceHandoff >= policy_.handoffProgressCount || handoffTimeDue;
@@ -939,13 +1190,13 @@ private:
         ProgressDecision decision{
             false,
             handoffDue,
-            state.progressCount,
+            state->progressCount,
             now,
-            state.recentTools,
-            state.recentPaths,
-            state.workingDirectory,
+            state->recentTools,
+            state->recentPaths,
+            state->workingDirectory,
             0U};
-        if (!state.blocked && !state.persistenceInFlight &&
+        if (!state->blocked && !state->persistenceInFlight &&
             (checkpointDue || handoffDue)) {
             if (nextPersistenceGeneration_ ==
                 (std::numeric_limits<std::uint64_t>::max)()) {
@@ -953,16 +1204,147 @@ private:
             } else {
                 ++nextPersistenceGeneration_;
             }
-            state.persistenceInFlight = true;
-            state.persistenceGeneration = nextPersistenceGeneration_;
+            state->persistenceInFlight = true;
+            state->persistenceGeneration = nextPersistenceGeneration_;
             decision.persist = true;
             decision.persistenceGeneration = nextPersistenceGeneration_;
         }
         return decision;
     }
 
+    static void appendImplicitRoot(
+        ClientContinuityState& state,
+        const Domain::PathText& root)
+    {
+        auto& roots = state.implicitRoots;
+        if (std::find(roots.begin(), roots.end(), root) != roots.end()) {
+            return;
+        }
+        roots.push_back(root);
+        if (roots.size() > Domain::MaximumContinuityAutomationImplicitRoots) {
+            roots.erase(
+                roots.begin(),
+                roots.begin() + static_cast<std::ptrdiff_t>(
+                    roots.size() -
+                    Domain::MaximumContinuityAutomationImplicitRoots));
+        }
+    }
+
+    static void appendRecentPath(
+        ClientContinuityState& state,
+        const std::string& path)
+    {
+        state.recentPaths.push_back(path);
+        if (state.recentPaths.size() > MaximumRecentPaths) {
+            state.recentPaths.erase(
+                state.recentPaths.begin(),
+                state.recentPaths.begin() + static_cast<std::ptrdiff_t>(
+                    state.recentPaths.size() - MaximumRecentPaths));
+        }
+    }
+
+    void recordImplicitRoot(
+        const StateToken& token,
+        const Domain::ToolContinuityObservation& observation)
+    {
+        std::vector<Domain::PathText> roots;
+        if (observation.path) {
+            if (auto root = implicitRootFor(observation)) {
+                roots.push_back(std::move(*root));
+            }
+        }
+        if (observation.workingDirectory) {
+            Domain::ToolContinuityObservation workingDirectory;
+            workingDirectory.workingDirectory = observation.workingDirectory;
+            workingDirectory.baseDirectory = observation.baseDirectory;
+            if (auto root = implicitRootFor(workingDirectory)) {
+                if (std::find(roots.begin(), roots.end(), *root) ==
+                    roots.end()) {
+                    roots.push_back(std::move(*root));
+                }
+            }
+        }
+        if (roots.empty()) {
+            return;
+        }
+
+        std::lock_guard lock{mutex_};
+        if (stopping_) {
+            return;
+        }
+        auto* const state = findContinuityStateLocked(token);
+        if (state != nullptr) {
+            for (const auto& root : roots) {
+                appendImplicitRoot(*state, root);
+            }
+        }
+    }
+
+    [[nodiscard]] RecoveryDecision recordRecoveredContext(
+        const StateToken& token,
+        const Domain::ContextRecoveryReceipt& recovery)
+    {
+        std::vector<Domain::PathText> roots;
+        if (recovery.workingDirectory) {
+            Domain::ToolContinuityObservation observation;
+            observation.workingDirectory = recovery.workingDirectory;
+            if (auto root = implicitRootFor(observation)) {
+                roots.push_back(std::move(*root));
+            }
+        }
+        for (const auto& keyFile : recovery.keyFiles) {
+            Domain::ToolContinuityObservation observation;
+            observation.path = keyFile;
+            observation.workingDirectory = recovery.workingDirectory;
+            if (auto root = implicitRootFor(observation)) {
+                if (std::find(roots.begin(), roots.end(), *root) ==
+                    roots.end()) {
+                    roots.push_back(std::move(*root));
+                }
+            }
+        }
+
+        std::lock_guard lock{mutex_};
+        if (stopping_) {
+            return RecoveryDecision{};
+        }
+        auto* const state = findContinuityStateLocked(token);
+        if (state == nullptr) {
+            return RecoveryDecision{};
+        }
+        if (state->blocked &&
+            (!state->handoffId ||
+             *state->handoffId != recovery.handoffId.value())) {
+            return RecoveryDecision{};
+        }
+        const bool cleared = state->blocked;
+        if (recovery.workingDirectory) {
+            state->workingDirectory = recovery.workingDirectory->value();
+        }
+        const auto firstKeyFile = recovery.keyFiles.size() > MaximumRecentPaths
+            ? recovery.keyFiles.size() - MaximumRecentPaths
+            : 0U;
+        for (std::size_t index = firstKeyFile;
+             index < recovery.keyFiles.size();
+             ++index) {
+            appendRecentPath(*state, recovery.keyFiles[index].value());
+        }
+        for (const auto& root : roots) {
+            appendImplicitRoot(*state, root);
+        }
+        if (cleared) {
+            state->blocked = false;
+            state->progressCount = 0U;
+            state->lastCheckpointCount = 0U;
+            state->lastHandoffCount = 0U;
+            state->lastCheckpointAt.reset();
+            state->lastHandoffAt.reset();
+        }
+        return RecoveryDecision{true, cleared};
+    }
+
     void recordPersistedProgress(
-        const Domain::ClientId& clientId,
+        const StateToken& token,
         const ProgressDecision& progress,
         const HandoffReceipt& receipt)
     {
@@ -970,48 +1352,45 @@ private:
         if (stopping_) {
             return;
         }
-        const auto found = continuityStates_.find(clientId.value());
-        if (found == continuityStates_.end()) {
+        auto* const state = findContinuityStateLocked(token);
+        if (state == nullptr) {
             return;
         }
-        auto& state = found->second;
-        if (!state.persistenceInFlight ||
-            state.persistenceGeneration != progress.persistenceGeneration) {
+        if (!state->persistenceInFlight ||
+            state->persistenceGeneration != progress.persistenceGeneration) {
             return;
         }
-        state.persistenceInFlight = false;
-        state.lastCheckpointCount = (std::max)(
-            state.lastCheckpointCount, progress.progressCount);
-        if (!state.lastCheckpointAt ||
-            *state.lastCheckpointAt < progress.observedAt) {
-            state.lastCheckpointAt = progress.observedAt;
+        state->persistenceInFlight = false;
+        state->lastCheckpointCount = (std::max)(
+            state->lastCheckpointCount, progress.progressCount);
+        if (!state->lastCheckpointAt ||
+            *state->lastCheckpointAt < progress.observedAt) {
+            state->lastCheckpointAt = progress.observedAt;
         }
         if (progress.finalize) {
-            state.lastHandoffCount = (std::max)(
-                state.lastHandoffCount, progress.progressCount);
-            if (!state.lastHandoffAt ||
-                *state.lastHandoffAt < progress.observedAt) {
-                state.lastHandoffAt = progress.observedAt;
+            state->lastHandoffCount = (std::max)(
+                state->lastHandoffCount, progress.progressCount);
+            if (!state->lastHandoffAt ||
+                *state->lastHandoffAt < progress.observedAt) {
+                state->lastHandoffAt = progress.observedAt;
             }
-            state.blocked = true;
-            state.handoffId = receipt.id;
-            state.resumeSeed = receipt.resumeSeed;
+            state->blocked = true;
+            state->handoffId = receipt.id;
+            state->resumeSeed = receipt.resumeSeed;
         }
     }
 
     void releasePersistenceReservation(
-        const Domain::ClientId& clientId,
+        const StateToken& token,
         const ProgressDecision& progress)
     {
         std::lock_guard lock{mutex_};
-        const auto found = continuityStates_.find(clientId.value());
-        if (found == continuityStates_.end() ||
-            !found->second.persistenceInFlight ||
-            found->second.persistenceGeneration !=
-                progress.persistenceGeneration) {
+        auto* const state = findContinuityStateLocked(token);
+        if (state == nullptr || !state->persistenceInFlight ||
+            state->persistenceGeneration != progress.persistenceGeneration) {
             return;
         }
-        found->second.persistenceInFlight = false;
+        state->persistenceInFlight = false;
     }
 
     Contracts::ILegacyContextContinuityService& continuity_;
@@ -1023,6 +1402,7 @@ private:
     std::map<std::string, LoopState> loopStates_;
     std::map<std::string, ClientContinuityState> continuityStates_;
     std::map<std::string, PendingCall> pending_;
+    std::uint64_t nextContinuityStateGeneration_{};
     std::uint64_t nextPersistenceGeneration_{};
     bool stopping_{};
 };
@@ -1104,6 +1484,14 @@ void McpInvocationGuard::shutdown() noexcept
     if (implementation_) {
         implementation_->shutdown();
     }
+}
+
+Domain::ContinuityAutomationStatusSnapshot McpInvocationGuard::snapshot(
+    const Domain::ClientId& clientId) const noexcept
+{
+    return implementation_
+        ? implementation_->snapshot(clientId)
+        : Domain::ContinuityAutomationStatusSnapshot{};
 }
 
 std::size_t McpInvocationGuard::trackedLoopClientCount() const noexcept

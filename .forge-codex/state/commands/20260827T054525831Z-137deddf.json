@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T054525831Z-137deddf",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "cmake --build --preset windows-msvc-x64-debug --target ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests -- /m /nr:false",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T05:45:25.8395288+00:00",
+  "end_utc": "2026-08-27T05:45:33.0024919+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T054525831Z-137deddf.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T054525831Z-137deddf.stderr.txt",
+  "stdout_sha256": "c7123424ea153cc0d87ac92667a4b1b588ccf808dc6348ac57ae89c86b868fba",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

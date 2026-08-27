@@ -1,0 +1,25 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  7: ForgeConductor.Mcp.InvocationGuardTests
+1/5 Test  #7: ForgeConductor.Mcp.InvocationGuardTests ..........   Passed    0.21 sec
+    Start  8: ForgeConductor.Mcp.ToolPackAdapterTests
+2/5 Test  #8: ForgeConductor.Mcp.ToolPackAdapterTests ..........   Passed    0.27 sec
+    Start 12: ForgeConductor.Domain.UnitTests
+3/5 Test #12: ForgeConductor.Domain.UnitTests ..................   Passed    0.15 sec
+    Start 14: ForgeConductor.Contracts.ContractTests
+4/5 Test #14: ForgeConductor.Contracts.ContractTests ...........   Passed    0.05 sec
+    Start 16: ForgeConductor.Contracts.HeaderSelfContainment
+5/5 Test #16: ForgeConductor.Contracts.HeaderSelfContainment ...   Passed    0.03 sec
+
+100% tests passed out of 5
+
+Label Time Summary:
+G05              =   0.23 sec*proc (3 tests)
+G14              =   0.48 sec*proc (2 tests)
+T-CONT           =   0.21 sec*proc (1 test)
+T-INTEGRATION    =   0.27 sec*proc (1 test)
+T-MCP            =   0.48 sec*proc (2 tests)
+T-PARITY         =   0.27 sec*proc (1 test)
+T-STRESS         =   0.21 sec*proc (1 test)
+T-UNIT           =   0.70 sec*proc (5 tests)
+
+Total Test time (real) =   0.71 sec

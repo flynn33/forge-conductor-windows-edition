@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -131,11 +132,11 @@ public:
                 std::unique_lock lock{mutex_};
                 automaticRequests_.push_back(request);
                 if (blockAutomatic_) {
-                    automaticEntered_ = true;
+                    ++automaticEnteredCount_;
                     changed_.notify_all();
                     if (!changed_.wait_for(
                             lock,
-                            5s,
+                            30s,
                             [&] { return releaseAutomatic_; })) {
                         return failed<
                             Domain::LegacyContinuityPersistOutcome>();
@@ -232,15 +233,18 @@ public:
     {
         std::lock_guard lock{mutex_};
         blockAutomatic_ = true;
-        automaticEntered_ = false;
+        automaticEnteredCount_ = 0U;
         releaseAutomatic_ = false;
     }
 
-    [[nodiscard]] bool waitForAutomaticPersistence()
+    [[nodiscard]] bool waitForAutomaticPersistence(
+        const std::size_t expectedCount = 1U)
     {
         std::unique_lock lock{mutex_};
         return changed_.wait_for(
-            lock, 5s, [&] { return automaticEntered_; });
+            lock,
+            30s,
+            [&] { return automaticEnteredCount_ >= expectedCount; });
     }
 
     void releaseAutomaticPersistence()
@@ -318,7 +322,7 @@ private:
     std::vector<std::string> budgetReasons_;
     std::vector<Domain::LegacyContinuityAutomaticRequest> automaticRequests_;
     bool blockAutomatic_{};
-    bool automaticEntered_{};
+    std::size_t automaticEnteredCount_{};
     bool releaseAutomatic_{};
     bool shutdown_{};
 };
@@ -377,7 +381,9 @@ private:
 
 [[nodiscard]] Domain::ToolCallOutcome successOutcome(
     const Domain::ToolCallRequest& call,
-    std::optional<Domain::ContextRecoveryReceipt> contextRecovery = std::nullopt)
+    std::optional<Domain::ContextRecoveryReceipt> contextRecovery = std::nullopt,
+    std::optional<Domain::ToolContinuityObservation> continuityObservation =
+        std::nullopt)
 {
     return Domain::ToolCallOutcome{
         Domain::ToolExecutionReceipt{
@@ -387,7 +393,30 @@ private:
             std::nullopt,
             1ms},
         R"json({"ok":true})json",
-        std::move(contextRecovery)};
+        std::move(contextRecovery),
+        std::move(continuityObservation)};
+}
+
+[[nodiscard]] Domain::ToolContinuityObservation observedPath(
+    const std::string_view path,
+    const std::optional<std::string_view> workingDirectory = std::nullopt)
+{
+    Domain::ToolContinuityObservation result;
+    result.path = take(Domain::PathText::create(path));
+    if (workingDirectory) {
+        result.workingDirectory = take(Domain::PathText::create(
+            *workingDirectory));
+    }
+    return result;
+}
+
+[[nodiscard]] Domain::ToolContinuityObservation observedWorkingDirectory(
+    const std::string_view workingDirectory)
+{
+    Domain::ToolContinuityObservation result;
+    result.workingDirectory = take(Domain::PathText::create(
+        workingDirectory));
+    return result;
 }
 
 [[nodiscard]] Json payload(const Domain::ToolCallOutcome& outcome)
@@ -399,7 +428,9 @@ private:
     Mcp::McpInvocationGuard& guard,
     const Domain::ToolCallRequest& call,
     const Domain::OperationContext& operation,
-    std::optional<Domain::ContextRecoveryReceipt> contextRecovery = std::nullopt)
+    std::optional<Domain::ContextRecoveryReceipt> contextRecovery = std::nullopt,
+    std::optional<Domain::ToolContinuityObservation> continuityObservation =
+        std::nullopt)
 {
     auto admission = guard.beforeInvoke(call, descriptor(call), operation);
     if (!admission) {
@@ -414,7 +445,10 @@ private:
         call,
         descriptor(call),
         Domain::Result<Domain::ToolCallOutcome>::success(
-            successOutcome(call, std::move(contextRecovery))),
+            successOutcome(
+                call,
+                std::move(contextRecovery),
+                std::move(continuityObservation))),
         operation);
 }
 
@@ -486,9 +520,13 @@ void identicalCallsSoftHandoffHardBlockAndResume()
         context(staleResume, 13U),
         Domain::ContextRecoveryReceipt{
             caller,
-            id<Domain::LegacyHandoffId>("handoff-1")}));
+            id<Domain::LegacyHandoffId>("handoff-1"),
+            take(Domain::PathText::create("D:/stale/recovery")),
+            {take(Domain::PathText::create(
+                "D:/stale/recovery/file.txt"))}}));
     REQUIRE(staleOutcome.receipt.ok);
     REQUIRE(payload(staleOutcome).at("context_budget_cleared") == false);
+    REQUIRE(guard->snapshot(caller).implicitRoots.empty());
 
     const auto blockedAfterStale = request(
         caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 14U);
@@ -523,6 +561,34 @@ void identicalCallsSoftHandoffHardBlockAndResume()
         descriptor(blockedAfterExpiry),
         context(blockedAfterExpiry, 16U))).immediateOutcome.has_value());
 
+    const auto malformedResume = request(
+        caller, "context_get", R"json({})json", 19U);
+    const auto malformedContext = context(malformedResume, 19U);
+    REQUIRE(!take(guard->beforeInvoke(
+        malformedResume,
+        descriptor(malformedResume),
+        malformedContext)).immediateOutcome);
+    auto malformedOutcome = successOutcome(
+        malformedResume,
+        Domain::ContextRecoveryReceipt{
+            caller,
+            id<Domain::LegacyHandoffId>("handoff-2"),
+            take(Domain::PathText::create("D:/malformed/recovery")),
+            {}});
+    malformedOutcome.canonicalPayload = R"json({"ok":true})json";
+    malformedOutcome.canonicalPayload.push_back('\0');
+    const auto rejectedMalformed = guard->afterInvoke(
+        malformedResume,
+        descriptor(malformedResume),
+        Domain::Result<Domain::ToolCallOutcome>::success(
+            std::move(malformedOutcome)),
+        malformedContext);
+    REQUIRE(!rejectedMalformed);
+    REQUIRE(rejectedMalformed.error().code ==
+            Domain::ErrorCodes::IntegrityFailure);
+    REQUIRE(guard->snapshot(caller).blocked);
+    REQUIRE(guard->snapshot(caller).implicitRoots.empty());
+
     const auto resume = request(
         caller, "context_get", R"json({})json", 17U);
     const auto resumeOutcome = take(execute(
@@ -552,15 +618,32 @@ void successfulProgressCheckpointsThenHandsOff()
     auto guard = take(Mcp::McpInvocationGuard::create(
         continuity, hasher, clock, policy));
     const auto caller = client("progress-client");
+    const auto root = take(Domain::PathText::create("D:/workspace/progress"));
+
+    const auto initialStatus = guard->snapshot(caller);
+    REQUIRE(initialStatus.enabled);
+    REQUIRE(initialStatus.checkpointEveryTools == 2U);
+    REQUIRE(initialStatus.handoffEveryTools == 4U);
+    REQUIRE(initialStatus.progressCount == 0U);
+    REQUIRE(!initialStatus.blocked);
+    REQUIRE(!initialStatus.handoffId);
+    REQUIRE(initialStatus.implicitRoots.empty());
 
     for (std::uint64_t index = 1U; index <= 4U; ++index) {
         const auto call = request(
             caller,
             "fs_read",
-            "{\"path\":\"file-" + std::to_string(index) + ".txt\"}",
+            "{\"path\":\"D:/workspace/progress/file-" +
+                std::to_string(index) + ".txt\"}",
             100U + index);
         const auto result = take(execute(
-            *guard, call, context(call, 100U + index)));
+            *guard,
+            call,
+            context(call, 100U + index),
+            std::nullopt,
+            observedPath(
+                "D:/workspace/progress/file-" +
+                std::to_string(index) + ".txt")));
         if (index == 2U) {
             REQUIRE(payload(result).at("auto_continuity") == "checkpoint");
         }
@@ -574,6 +657,15 @@ void successfulProgressCheckpointsThenHandsOff()
     REQUIRE(continuity.automaticRequests().back().finalize);
     REQUIRE(continuity.automaticRequests().front().inferred.keyFiles.has_value());
     REQUIRE(continuity.automaticRequests().front().inferred.narrative.has_value());
+
+    const auto blockedStatus = guard->snapshot(caller);
+    REQUIRE(blockedStatus.enabled);
+    REQUIRE(blockedStatus.checkpointEveryTools == 2U);
+    REQUIRE(blockedStatus.handoffEveryTools == 4U);
+    REQUIRE(blockedStatus.progressCount == 4U);
+    REQUIRE(blockedStatus.blocked);
+    REQUIRE(blockedStatus.handoffId == std::optional<std::string>{"handoff-2"});
+    REQUIRE(blockedStatus.implicitRoots == std::vector<Domain::PathText>{root});
 
     const auto blocked = request(
         caller, "git_status", R"json({})json", 105U);
@@ -589,6 +681,54 @@ void successfulProgressCheckpointsThenHandsOff()
         *guard,
         allowedResumeTool,
         context(allowedResumeTool, 106U))).receipt.ok);
+
+    const auto resume = request(
+        caller, "context_get", R"json({})json", 107U);
+    const auto resumeOutcome = take(execute(
+        *guard,
+        resume,
+        context(resume, 107U),
+        Domain::ContextRecoveryReceipt{
+            caller,
+            id<Domain::LegacyHandoffId>("handoff-2"),
+            take(Domain::PathText::create("D:/recovered/project")),
+            {take(Domain::PathText::create(
+                "D:/recovered/project/src/main.cpp"))}}));
+    REQUIRE(payload(resumeOutcome).at("context_budget_cleared") == true);
+
+    const auto resumedStatus = guard->snapshot(caller);
+    REQUIRE(resumedStatus.progressCount == 0U);
+    REQUIRE(!resumedStatus.blocked);
+    REQUIRE(resumedStatus.handoffId == std::optional<std::string>{"handoff-2"});
+    const std::vector<Domain::PathText> recoveredRoots{
+        root,
+        take(Domain::PathText::create("D:/recovered/project")),
+        take(Domain::PathText::create("D:/recovered/project/src"))};
+    REQUIRE(resumedStatus.implicitRoots == recoveredRoots);
+
+    for (std::uint64_t index = 1U; index <= 2U; ++index) {
+        const auto memory = request(
+            caller,
+            "memory_set",
+            "{\"key\":\"resumed-" + std::to_string(index) +
+                "\",\"value\":\"ready\"}",
+            107U + index);
+        REQUIRE(take(execute(
+            *guard,
+            memory,
+            context(memory, 107U + index))).receipt.ok);
+    }
+    REQUIRE(continuity.automaticCalls() == 3U);
+    REQUIRE(continuity.automaticRequests().back().inferred.workingDirectory ==
+            std::optional<std::string>{"D:/recovered/project"});
+    const auto& recoveredKeyFiles =
+        continuity.automaticRequests().back().inferred.keyFiles;
+    REQUIRE(recoveredKeyFiles.has_value());
+    REQUIRE(std::find(
+                recoveredKeyFiles->begin(),
+                recoveredKeyFiles->end(),
+                "D:/recovered/project/src/main.cpp") !=
+            recoveredKeyFiles->end());
 }
 
 void failuresCancellationBoundsAndShutdownAreSafe()
@@ -628,6 +768,34 @@ void failuresCancellationBoundsAndShutdownAreSafe()
     REQUIRE(!changedAdmission.immediateOutcome.has_value());
     guard->cancel(context(changed, 204U).operationId);
     REQUIRE(guard->pendingCallCount() == 0U);
+
+    const auto mismatchedCall = request(
+        caller,
+        "fs_read",
+        R"json({"path":"D:/mismatched/file.txt"})json",
+        207U);
+    const auto mismatchedContext = context(mismatchedCall, 207U);
+    REQUIRE(!take(guard->beforeInvoke(
+        mismatchedCall,
+        descriptor(mismatchedCall),
+        mismatchedContext)).immediateOutcome);
+    auto mismatchedOutcome = successOutcome(
+        mismatchedCall,
+        std::nullopt,
+        observedPath("D:/mismatched/file.txt"));
+    mismatchedOutcome.receipt.requestId =
+        id<Domain::RequestId>("request-not-this-call");
+    const auto rejectedMismatch = guard->afterInvoke(
+        mismatchedCall,
+        descriptor(mismatchedCall),
+        Domain::Result<Domain::ToolCallOutcome>::success(
+            std::move(mismatchedOutcome)),
+        mismatchedContext);
+    REQUIRE(!rejectedMismatch);
+    REQUIRE(rejectedMismatch.error().code ==
+            Domain::ErrorCodes::IntegrityFailure);
+    REQUIRE(guard->snapshot(caller).progressCount == 0U);
+    REQUIRE(guard->snapshot(caller).implicitRoots.empty());
 
     std::stop_source cancelled;
     cancelled.request_stop();
@@ -703,6 +871,233 @@ void concurrentThresholdCrossingCoalescesPersistence()
     REQUIRE(guard->pendingCallCount() == 0U);
 }
 
+void implicitRootsAreAuthorizedAndBounded()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    Mcp::McpInvocationGuardPolicy policy;
+    policy.softIdenticalCallCount = 999'999U;
+    policy.hardIdenticalCallCount = 1'000'000U;
+    policy.checkpointProgressCount = 1'000U;
+    policy.handoffProgressCount = 1'000U;
+    auto guard = take(Mcp::McpInvocationGuard::create(
+        continuity, hasher, clock, policy));
+    const auto caller = client("implicit-root-client");
+
+    for (std::uint64_t index = 1U; index <= 18U; ++index) {
+        const auto call = request(
+            caller,
+            "fs_read",
+            "{\"path\":\"D:/bounded/root-" +
+                std::to_string(index) + "/file.txt\"}",
+            400U + index);
+        REQUIRE(take(execute(
+            *guard,
+            call,
+            context(call, 400U + index),
+            std::nullopt,
+            observedPath(
+                "D:/bounded/root-" + std::to_string(index) +
+                "/file.txt"))).receipt.ok);
+    }
+
+    auto status = guard->snapshot(caller);
+    REQUIRE(status.progressCount == 18U);
+    REQUIRE(status.implicitRoots.size() ==
+            Domain::MaximumContinuityAutomationImplicitRoots);
+    REQUIRE(status.implicitRoots.front() ==
+            take(Domain::PathText::create("D:/bounded/root-3")));
+    REQUIRE(status.implicitRoots.back() ==
+            take(Domain::PathText::create("D:/bounded/root-18")));
+
+    const auto duplicate = request(
+        caller,
+        "fs_read",
+        R"json({"path":"D:/bounded/root-18/another.txt"})json",
+        419U);
+    REQUIRE(take(execute(
+        *guard,
+        duplicate,
+        context(duplicate, 419U),
+        std::nullopt,
+        observedPath(
+            "D:/bounded/root-18/another.txt"))).receipt.ok);
+    status = guard->snapshot(caller);
+    REQUIRE(status.progressCount == 19U);
+    REQUIRE(status.implicitRoots.size() ==
+            Domain::MaximumContinuityAutomationImplicitRoots);
+    REQUIRE(status.implicitRoots.front() ==
+            take(Domain::PathText::create("D:/bounded/root-3")));
+
+    const auto failed = request(
+        caller,
+        "fs_read",
+        R"json({"path":"D:/bounded/root-19/file.txt"})json",
+        420U);
+    const auto failedContext = context(failed, 420U);
+    REQUIRE(!take(guard->beforeInvoke(
+        failed, descriptor(failed), failedContext)).immediateOutcome);
+    auto failedValue = successOutcome(
+        failed,
+        std::nullopt,
+        observedPath("D:/bounded/root-19/file.txt"));
+    failedValue.receipt.ok = false;
+    failedValue.receipt.error = Domain::makeError(
+        Domain::ErrorCodes::RecordNotFound,
+        "The scripted tool failed.");
+    const auto failedOutcome = guard->afterInvoke(
+        failed,
+        descriptor(failed),
+        Domain::Result<Domain::ToolCallOutcome>::success(
+            std::move(failedValue)),
+        failedContext);
+    REQUIRE(failedOutcome);
+    REQUIRE(!failedOutcome.value().receipt.ok);
+
+    status = guard->snapshot(caller);
+    REQUIRE(status.progressCount == 19U);
+    REQUIRE(status.implicitRoots.size() ==
+            Domain::MaximumContinuityAutomationImplicitRoots);
+    REQUIRE(status.implicitRoots.front() ==
+            take(Domain::PathText::create("D:/bounded/root-4")));
+    REQUIRE(status.implicitRoots.back() ==
+            take(Domain::PathText::create("D:/bounded/root-19")));
+
+    const auto continuityCall = request(
+        caller,
+        "session_checkpoint",
+        R"json({"cwd":"D:/ignored/root"})json",
+        421U);
+    REQUIRE(take(execute(
+        *guard,
+        continuityCall,
+        context(continuityCall, 421U),
+        std::nullopt,
+        observedWorkingDirectory("D:/ignored/root"))).receipt.ok);
+    REQUIRE(guard->snapshot(caller).implicitRoots == status.implicitRoots);
+}
+
+void continuityCapacityRejectsSaturationAndRetainsBlockedStates()
+{
+    LegacyContinuityFake continuity;
+    continuity.blockAutomaticPersistence();
+    FixedHasher hasher;
+    FixedClock clock;
+    Mcp::McpInvocationGuardPolicy policy;
+    policy.softIdenticalCallCount = 999'999U;
+    policy.hardIdenticalCallCount = 1'000'000U;
+    policy.checkpointProgressCount = 1U;
+    policy.handoffProgressCount = 1U;
+    auto guard = take(Mcp::McpInvocationGuard::create(
+        continuity, hasher, clock, policy));
+
+    const auto capacity =
+        Mcp::McpInvocationGuard::MaximumTrackedContinuityClients;
+    std::vector<Domain::ClientId> clients;
+    std::vector<std::optional<Domain::Result<Domain::ToolCallOutcome>>>
+        results(capacity);
+    std::vector<std::jthread> workers;
+    clients.reserve(capacity);
+    workers.reserve(capacity);
+
+    for (std::size_t index = 0U; index < capacity; ++index) {
+        clients.push_back(client(
+            "saturation-client-" + std::to_string(index + 1U)));
+        const auto call = request(
+            clients.back(),
+            "fs_read",
+            "{\"path\":\"D:/saturation/file-" +
+                std::to_string(index + 1U) + ".txt\"}",
+            2'000U + index);
+        workers.emplace_back([&, index, call] {
+            results[index].emplace(execute(
+                *guard,
+                call,
+                context(call, 2'000U + index),
+                std::nullopt,
+                observedPath(
+                    "D:/saturation/file-" +
+                    std::to_string(index + 1U) + ".txt")));
+        });
+        REQUIRE(continuity.waitForAutomaticPersistence(index + 1U));
+        REQUIRE(guard->trackedContinuityClientCount() == index + 1U);
+    }
+
+    const auto overflowClient = client("saturation-client-129");
+    const auto overflowCall = request(
+        overflowClient,
+        "fs_read",
+        R"json({"path":"D:/saturation/overflow.txt"})json",
+        2'200U);
+    const auto overflow = execute(
+        *guard,
+        overflowCall,
+        context(overflowCall, 2'200U),
+        std::nullopt,
+        observedPath("D:/saturation/overflow.txt"));
+    REQUIRE(!overflow);
+    REQUIRE(overflow.error().code == Domain::ErrorCodes::LimitExceeded);
+    REQUIRE(overflow.error().retryable);
+    REQUIRE(guard->trackedContinuityClientCount() == capacity);
+    REQUIRE(continuity.automaticCalls() == capacity);
+
+    continuity.releaseAutomaticPersistence();
+    for (auto& worker : workers) {
+        worker.join();
+    }
+    for (const auto& result : results) {
+        REQUIRE(result.has_value());
+        REQUIRE(result->hasValue());
+        REQUIRE(result->value().receipt.ok);
+    }
+    REQUIRE(guard->trackedContinuityClientCount() == capacity);
+
+    const auto firstStatus = guard->snapshot(clients.front());
+    REQUIRE(firstStatus.blocked);
+    REQUIRE(firstStatus.handoffId.has_value());
+    const auto blockedCall = request(
+        clients.front(), "git_status", R"json({})json", 2'201U);
+    const auto blockedAdmission = take(guard->beforeInvoke(
+        blockedCall,
+        descriptor(blockedCall),
+        context(blockedCall, 2'201U)));
+    REQUIRE(blockedAdmission.immediateOutcome.has_value());
+    REQUIRE(payload(*blockedAdmission.immediateOutcome).at("code") ==
+            "context_budget_exceeded");
+
+    const auto stillFull = execute(
+        *guard,
+        overflowCall,
+        context(overflowCall, 2'202U),
+        std::nullopt,
+        observedPath("D:/saturation/overflow.txt"));
+    REQUIRE(!stillFull);
+    REQUIRE(stillFull.error().code == Domain::ErrorCodes::LimitExceeded);
+    REQUIRE(guard->trackedContinuityClientCount() == capacity);
+
+    const auto recovery = request(
+        clients.front(), "context_get", R"json({})json", 2'203U);
+    const auto recoveryOutcome = take(execute(
+        *guard,
+        recovery,
+        context(recovery, 2'203U),
+        Domain::ContextRecoveryReceipt{
+            clients.front(),
+            id<Domain::LegacyHandoffId>(*firstStatus.handoffId)}));
+    REQUIRE(payload(recoveryOutcome).at("context_budget_cleared") == true);
+    REQUIRE(!guard->snapshot(clients.front()).blocked);
+
+    const auto admitted = take(execute(
+        *guard,
+        overflowCall,
+        context(overflowCall, 2'204U),
+        std::nullopt,
+        observedPath("D:/saturation/overflow.txt")));
+    REQUIRE(admitted.receipt.ok);
+    REQUIRE(guard->trackedContinuityClientCount() == capacity);
+}
+
 void clientStateIsDeterministicallyBounded()
 {
     LegacyContinuityFake continuity;
@@ -737,10 +1132,15 @@ int main()
 {
     try {
         static_assert(std::is_final_v<Mcp::McpInvocationGuard>);
+        static_assert(std::is_base_of_v<
+                      Contracts::IContinuityAutomationStatusSource,
+                      Mcp::McpInvocationGuard>);
         identicalCallsSoftHandoffHardBlockAndResume();
         successfulProgressCheckpointsThenHandsOff();
         failuresCancellationBoundsAndShutdownAreSafe();
         concurrentThresholdCrossingCoalescesPersistence();
+        implicitRootsAreAuthorizedAndBounded();
+        continuityCapacityRejectsSaturationAndRetainsBlockedStates();
         clientStateIsDeterministicallyBounded();
         std::cout << "MCP invocation guard tests passed.\n";
         return 0;

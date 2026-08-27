@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T063940982Z-3484df2a",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "& 'out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolPackAdapterTests.exe'; exit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T06:39:40.9910670+00:00",
+  "end_utc": "2026-08-27T06:39:42.1063973+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T063940982Z-3484df2a.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T063940982Z-3484df2a.stderr.txt",
+  "stdout_sha256": "2bbc41298e3fd4894c051d108e15df93719bc44d01ce7742e4108ad2dd9dc614",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

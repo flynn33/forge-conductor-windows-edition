@@ -2,8 +2,11 @@
 
 #include "ForgeConductor/Domain/ContinuityModels.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace ForgeConductor::Domain {
 
@@ -12,6 +15,7 @@ inline constexpr std::uint32_t DefaultRolloverProgressInterval = 200U;
 inline constexpr std::uint32_t DefaultCheckpointIntervalSeconds = 1'800U;
 inline constexpr std::uint32_t DefaultRolloverIntervalSeconds = 7'200U;
 inline constexpr std::uint32_t MaximumProgressUnitsPerObservation = 1'024U;
+inline constexpr std::size_t MaximumContinuityAutomationImplicitRoots = 16U;
 
 struct ContinuityAutomationPolicy final {
     std::uint32_t checkpointProgressInterval{
@@ -46,6 +50,21 @@ struct ContinuityAutomationOutcome final {
     bool checkpointPersisted{};
     bool rolloverRequested{};
     bool successorActivated{};
+};
+
+// Source-compatible projection returned by the macOS auto_continuity member
+// of forge_status. A client that has not produced an observation receives the
+// same enabled, zero-progress snapshot as the original implementation.
+struct ContinuityAutomationStatusSnapshot final {
+    bool enabled{true};
+    std::uint32_t checkpointEveryTools{DefaultCheckpointProgressInterval};
+    std::uint32_t handoffEveryTools{DefaultRolloverProgressInterval};
+    std::uint64_t progressCount{};
+    bool blocked{};
+    std::optional<std::string> handoffId;
+    std::vector<PathText> implicitRoots;
+
+    bool operator==(const ContinuityAutomationStatusSnapshot&) const = default;
 };
 
 } // namespace ForgeConductor::Domain

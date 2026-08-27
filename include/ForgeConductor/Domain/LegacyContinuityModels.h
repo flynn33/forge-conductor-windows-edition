@@ -187,6 +187,34 @@ struct LegacyContinuityListOutcome final {
     std::vector<LegacyContinuityListItem> handoffs;
 };
 
+struct LegacyContinuityAutomaticStatus final {
+    std::uint32_t checkpointEveryTools{50U};
+    std::uint32_t handoffEveryTools{200U};
+    std::string note{
+        "Forge writes checkpoints and handoffs from tool progress; the model does not have to call session_*."};
+
+    bool operator==(const LegacyContinuityAutomaticStatus&) const = default;
+};
+
+// Typed projection of ContextContinuityService.statusSummary().
+struct LegacyContinuityStatusSummary final {
+    std::optional<LegacyHandoffId> latestId;
+    std::optional<UtcTimePoint> latestUpdatedAt;
+    bool resumeReady{};
+    std::optional<LegacyHandoffId> resumeId;
+    std::size_t openAgentSessions{};
+    std::vector<std::string> tools{
+        "session_checkpoint",
+        "session_handoff",
+        "context_get",
+        "context_list"};
+    std::string note{
+        "New chat bootstrap: call context_get over stdio MCP (forge-conductor)."};
+    LegacyContinuityAutomaticStatus automatic;
+
+    bool operator==(const LegacyContinuityStatusSummary&) const = default;
+};
+
 struct LegacyContinuityPointerRepairOutcome final {
     std::optional<LegacyHandoffId> latestId;
     std::optional<LegacyHandoffId> resumeReadyId;

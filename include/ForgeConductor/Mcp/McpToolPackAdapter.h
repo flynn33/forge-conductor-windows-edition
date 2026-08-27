@@ -47,7 +47,7 @@ struct McpToolPackDependencies final {
     Contracts::IProjectMemoryService& projectMemory;
     Contracts::IContinuityCoordinator& continuity;
     Contracts::IContinuityDocumentCodec& continuityCodec;
-    Contracts::IContinuityAutomation& continuityAutomation;
+    Contracts::IContinuityAutomationStatusSource& continuityAutomationStatus;
     Contracts::IForgeStatusRepository& forgeStatus;
     Contracts::IClock& clock;
     Contracts::IUuidGenerator& uuidGenerator;

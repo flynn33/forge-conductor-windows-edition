@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T054923136Z-fb780ae8",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "$ErrorActionPreference = \"Stop\"\n$workspace = (Get-Location).Path\n& \"$workspace\\.forge-codex\\instructions\\scripts\\Verify-Ledger.ps1\" -WorkspaceRoot $workspace\n$jsonPaths = @(\n  '.forge-codex/state/run-state.json',\n  '.forge-codex/state/evidence/P14/mcp-presence-continuity-status-checkpoint.json',\n  '.forge-codex/state/commands/20260827T054234539Z-6c87f3b1.json',\n  '.forge-codex/state/commands/20260827T054341785Z-c98598c5.json',\n  '.forge-codex/state/commands/20260827T054406237Z-06b4e544.json',\n  '.forge-codex/state/commands/20260827T054525831Z-137deddf.json',\n  '.forge-codex/state/commands/20260827T054540604Z-35e385f2.json'\n)\nforeach ($relative in $jsonPaths) {\n  $null = Get-Content -Raw -LiteralPath (Join-Path $workspace $relative) | ConvertFrom-Json\n}\n& \"$workspace\\.forge-codex\\instructions\\scripts\\Validate-NoAttribution.ps1\" -WorkspaceRoot $workspace\n& \"$workspace\\.forge-codex\\instructions\\scripts\\Validate-NoPython.ps1\" -WorkspaceRoot $workspace\n& git diff --check\nif ($LASTEXITCODE -ne 0) { throw \"git diff --check failed with exit code $LASTEXITCODE.\" }\n$textPaths = @()\n$textPaths += @(git diff --name-only)\n$textPaths += @(git ls-files --others --exclude-standard)\n$textPaths = $textPaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Sort-Object -Unique\nforeach ($relative in $textPaths) {\n  $extension = [System.IO.Path]::GetExtension($relative).ToLowerInvariant()\n  if ($relative -ne 'CMakeLists.txt' -and $extension -notin @('.cpp','.h','.md','.json','.jsonl','.txt','.ps1','.cmake','.tsv')) { continue }\n  $path = Join-Path $workspace $relative\n  $bytes = [System.IO.File]::ReadAllBytes($path)\n  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xef -and $bytes[1] -eq 0xbb -and $bytes[2] -eq 0xbf) {\n    throw \"$relative contains a UTF-8 BOM.\"\n  }\n  $text = [System.Text.UTF8Encoding]::new($false, $true).GetString($bytes)\n  if ([regex]::IsMatch($text, '(?<!\\r)\\n|\\r(?!\\n)')) {\n    throw \"$relative contains a non-CRLF line ending.\"\n  }\n}\nWrite-Host \"P14 presence and status checkpoint integrity validation passed.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T05:49:23.1449978+00:00",
+  "end_utc": "2026-08-27T05:49:28.2499385+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T054923136Z-fb780ae8.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T054923136Z-fb780ae8.stderr.txt",
+  "stdout_sha256": "bb475c0fc02aa0dfd9a2a5e16f235d1a842139eba4a0088da9fa66d921e832a7",
+  "stderr_sha256": "af53be77866320d10742b454960eddb9b124ed8d255a7b4d6902482a7d59efde"
+}

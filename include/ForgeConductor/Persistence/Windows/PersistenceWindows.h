@@ -4,6 +4,7 @@
 #include "ForgeConductor/Persistence/Windows/WindowsAgentSessionRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsAuditRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsCentralDatabase.h"
+#include "ForgeConductor/Persistence/Windows/WindowsClientPresenceRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsForgeStatusRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsLegacyContinuityRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsLegacyMemoryRepository.h"

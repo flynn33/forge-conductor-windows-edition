@@ -1,0 +1,48 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+      Start  8: ForgeConductor.Mcp.ToolPackAdapterTests
+ 1/10 Test  #8: ForgeConductor.Mcp.ToolPackAdapterTests ...........................   Passed    0.21 sec
+      Start 11: ForgeConductor.Agents.RepositoryWindowsTests
+ 2/10 Test #11: ForgeConductor.Agents.RepositoryWindowsTests ......................   Passed    5.77 sec
+      Start 12: ForgeConductor.Domain.UnitTests
+ 3/10 Test #12: ForgeConductor.Domain.UnitTests ...................................   Passed    0.14 sec
+      Start 14: ForgeConductor.Contracts.ContractTests
+ 4/10 Test #14: ForgeConductor.Contracts.ContractTests ............................   Passed    0.04 sec
+      Start 16: ForgeConductor.Contracts.HeaderSelfContainment
+ 5/10 Test #16: ForgeConductor.Contracts.HeaderSelfContainment ....................   Passed    0.03 sec
+      Start 23: ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests
+ 6/10 Test #23: ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests ......   Passed    0.75 sec
+      Start 24: ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests
+ 7/10 Test #24: ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests ...***Failed    3.10 sec
+[FAIL] replacement rejects stale owner and preserves first seen: database_busy: The database connection remained owned by another operation for 3000 ms.
+
+      Start 26: ForgeConductor.Persistence.HeaderSelfContainment
+ 8/10 Test #26: ForgeConductor.Persistence.HeaderSelfContainment ..................   Passed    0.03 sec
+      Start 30: ForgeConductor.Continuity.LegacyApplicationTests
+ 9/10 Test #30: ForgeConductor.Continuity.LegacyApplicationTests ..................   Passed    0.06 sec
+      Start 32: ForgeConductor.Continuity.AutomationTests
+10/10 Test #32: ForgeConductor.Continuity.AutomationTests .........................   Passed    0.07 sec
+
+90% tests passed, 1 tests failed out of 10
+
+Label Time Summary:
+G05              =   0.21 sec*proc (3 tests)
+G07              =   0.03 sec*proc (1 test)
+G10              =   5.77 sec*proc (1 test)
+G11              =   0.06 sec*proc (1 test)
+G12              =   0.07 sec*proc (1 test)
+G14              =   4.06 sec*proc (3 tests)
+T-AGENT          =   5.77 sec*proc (1 test)
+T-AUTO           =   0.07 sec*proc (1 test)
+T-CONT           =   0.13 sec*proc (2 tests)
+T-DB             =   9.62 sec*proc (3 tests)
+T-INTEGRATION    =   4.06 sec*proc (3 tests)
+T-MCP            =   4.06 sec*proc (3 tests)
+T-PARITY         =   0.21 sec*proc (1 test)
+T-SEC            =   6.51 sec*proc (2 tests)
+T-STRESS         =   0.06 sec*proc (1 test)
+T-UNIT           =  10.20 sec*proc (10 tests)
+
+Total Test time (real) =  10.23 sec
+
+The following tests FAILED:
+	 24 - ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests (Failed) G14 T-DB T-INTEGRATION T-MCP T-UNIT

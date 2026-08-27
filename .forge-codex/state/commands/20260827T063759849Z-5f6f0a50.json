@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T063759849Z-5f6f0a50",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "ctest --test-dir out/build/windows-msvc-x64 -C Debug --output-on-failure -R \"ForgeConductor\\.Mcp\\.InvocationGuardTests\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T06:37:59.8578549+00:00",
+  "end_utc": "2026-08-27T06:38:01.4465616+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T063759849Z-5f6f0a50.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T063759849Z-5f6f0a50.stderr.txt",
+  "stdout_sha256": "fb1d4eff8776666541a3eaf83c8ade1c02897ef4633f1c0f3de3776fbc18cad8",
+  "stderr_sha256": "18e00877dc1071c85cd4f479d451bebeef8309022e46cf8c63b0bed5151984a4"
+}

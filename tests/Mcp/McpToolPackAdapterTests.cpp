@@ -1,8 +1,12 @@
+#include "ForgeConductor/Mcp/McpExecutionServices.h"
+#include "ForgeConductor/Mcp/McpInvocationGuard.h"
 #include "ForgeConductor/Mcp/McpToolCatalog.h"
 #include "ForgeConductor/Mcp/McpJsonCodec.h"
 #include "ForgeConductor/Mcp/McpToolPackAdapter.h"
+#include "ForgeConductor/Mcp/McpToolRouter.h"
 #include "Fakes/ApplicationServiceFakes.h"
 #include "Fakes/DeterministicWorkspaceAuthority.h"
+#include "Fakes/DiagnosticsFakes.h"
 #include "Fakes/FileSystemFake.h"
 #include "Fakes/FoundationFakes.h"
 #include "Fakes/GitServiceFake.h"
@@ -95,6 +99,16 @@ public:
         getOutcome_ = std::move(outcome);
     }
 
+    void setStatusSummary(Domain::LegacyContinuityStatusSummary summary)
+    {
+        statusSummary_ = std::move(summary);
+    }
+
+    void setAutomaticOutcome(Domain::LegacyContinuityPersistOutcome outcome)
+    {
+        automaticOutcome_ = std::move(outcome);
+    }
+
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityPersistOutcome>
     checkpoint(
         const Domain::LegacyContinuityWriteRequest&,
@@ -117,10 +131,18 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityPersistOutcome>
     automaticPersist(
-        const Domain::LegacyContinuityAutomaticRequest&,
-        const Domain::ClientId&,
+        const Domain::LegacyContinuityAutomaticRequest& request,
+        const Domain::ClientId& clientId,
         const Domain::OperationContext&) noexcept override
     {
+        ++automaticCalls_;
+        lastAutomaticRequest_ = request;
+        lastAutomaticClientId_ = clientId;
+        if (automaticOutcome_) {
+            return Domain::Result<
+                Domain::LegacyContinuityPersistOutcome>::success(
+                    *automaticOutcome_);
+        }
         return unavailable<Domain::LegacyContinuityPersistOutcome>(message_);
     }
 
@@ -151,6 +173,17 @@ public:
         return unavailable<Domain::LegacyContinuityListOutcome>(message_);
     }
 
+    [[nodiscard]] Domain::Result<Domain::LegacyContinuityStatusSummary>
+    statusSummary(const Domain::OperationContext&) noexcept override
+    {
+        if (statusSummary_) {
+            return Domain::Result<
+                Domain::LegacyContinuityStatusSummary>::success(
+                    *statusSummary_);
+        }
+        return unavailable<Domain::LegacyContinuityStatusSummary>(message_);
+    }
+
     [[nodiscard]]
     Domain::Result<Domain::LegacyContinuityProjectionRepairOutcome>
     repairProjections(const Domain::OperationContext&) noexcept override
@@ -168,10 +201,33 @@ public:
 
     void shutdown() noexcept override {}
 
+    [[nodiscard]] std::size_t automaticCalls() const noexcept
+    {
+        return automaticCalls_;
+    }
+
+    [[nodiscard]] const std::optional<Domain::LegacyContinuityAutomaticRequest>&
+    lastAutomaticRequest() const noexcept
+    {
+        return lastAutomaticRequest_;
+    }
+
+    [[nodiscard]] const std::optional<Domain::ClientId>&
+    lastAutomaticClientId() const noexcept
+    {
+        return lastAutomaticClientId_;
+    }
+
 private:
     static constexpr const char* message_ =
         "Legacy continuity is not configured for this test.";
     std::optional<Domain::LegacyContinuityGetOutcome> getOutcome_;
+    std::optional<Domain::LegacyContinuityStatusSummary> statusSummary_;
+    std::optional<Domain::LegacyContinuityPersistOutcome> automaticOutcome_;
+    std::optional<Domain::LegacyContinuityAutomaticRequest>
+        lastAutomaticRequest_;
+    std::optional<Domain::ClientId> lastAutomaticClientId_;
+    std::size_t automaticCalls_{};
 };
 
 class RecordingClientWorkspaceContext final
@@ -288,22 +344,20 @@ private:
 };
 
 class PassiveContinuityAutomation final
-    : public Contracts::IContinuityAutomation {
+    : public Contracts::IContinuityAutomationStatusSource {
 public:
-    [[nodiscard]] Domain::Result<Domain::ContinuityAutomationOutcome> observe(
-        const Domain::ContinuityAutomationObservation&,
-        const Domain::OperationContext&) noexcept override
+    void setSnapshot(Domain::ContinuityAutomationStatusSnapshot snapshot)
     {
-        return unavailable<Domain::ContinuityAutomationOutcome>(
-            "Continuity automation is not configured for this test.");
+        snapshot_ = std::move(snapshot);
     }
 
-    void cancel(const Domain::OperationId&) noexcept override {}
-    [[nodiscard]] std::size_t trackedProjectCount() const noexcept override
+    [[nodiscard]] Domain::ContinuityAutomationStatusSnapshot snapshot(
+        const Domain::ClientId&) const noexcept override
     {
-        return 0U;
+        return snapshot_;
     }
-    void shutdown() noexcept override {}
+private:
+    Domain::ContinuityAutomationStatusSnapshot snapshot_;
 };
 
 class RecordingForgeStatusRepository final
@@ -477,6 +531,27 @@ void testRuntimeDispatchAndSchemaPolicy()
     Fakes::RecordingContinuityCoordinator continuity;
     PassiveContinuityCodec continuityCodec;
     PassiveContinuityAutomation continuityAutomation;
+    Domain::LegacyContinuityStatusSummary continuityStatus;
+    continuityStatus.latestId = parse<Domain::LegacyHandoffId>(
+        "status-latest-handoff");
+    continuityStatus.latestUpdatedAt =
+        Domain::UtcTimePoint{1'700'000'000s};
+    continuityStatus.resumeReady = true;
+    continuityStatus.resumeId = parse<Domain::LegacyHandoffId>(
+        "status-resume-handoff");
+    continuityStatus.openAgentSessions = 5U;
+    legacyContinuity.setStatusSummary(std::move(continuityStatus));
+    const auto secondaryRoot =
+        take(Domain::PathText::create("D:/workspace-secondary"));
+    continuityAutomation.setSnapshot(
+        Domain::ContinuityAutomationStatusSnapshot{
+            true,
+            50U,
+            200U,
+            17U,
+            true,
+            std::optional<std::string>{"automatic-handoff"},
+            {root, secondaryRoot}});
     RecordingForgeStatusRepository forgeStatus;
     const auto firstOpenSession = parse<Domain::SessionId>(
         "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
@@ -581,6 +656,35 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(forgeStatusPayload.at("open_sessions") == 2U);
     REQUIRE(forgeStatusPayload.at("open_session_ids") == Json::array(
         {firstOpenSession.value(), secondOpenSession.value()}));
+    REQUIRE((forgeStatusPayload.at("continuity") == Json{
+        {"latest_id", "status-latest-handoff"},
+        {"latest_updated_at", "2023-11-14T22:13:20.000Z"},
+        {"resume_ready", true},
+        {"resume_id", "status-resume-handoff"},
+        {"open_agent_sessions", 5U},
+        {"tools",
+         Json::array({
+             "session_checkpoint",
+             "session_handoff",
+             "context_get",
+             "context_list"})},
+        {"note",
+         "New chat bootstrap: call context_get over stdio MCP (forge-conductor)."},
+        {"auto",
+         Json{
+             {"checkpoint_every_tools", 50U},
+             {"handoff_every_tools", 200U},
+             {"note",
+              "Forge writes checkpoints and handoffs from tool progress; the model does not have to call session_*."}}}}));
+    REQUIRE((forgeStatusPayload.at("auto_continuity") == Json{
+        {"enabled", true},
+        {"checkpoint_every_tools", 50U},
+        {"handoff_every_tools", 200U},
+        {"progress_count", 17U},
+        {"blocked", true},
+        {"handoff_id", "automatic-handoff"},
+        {"implicit_roots",
+         Json::array({root.value(), secondaryRoot.value()})}}));
     REQUIRE(forgeStatus.calls() == 1U);
 
     forgeStatus.setFailure(
@@ -636,6 +740,10 @@ void testRuntimeDispatchAndSchemaPolicy()
             12U},
         std::nullopt,
         false});
+    auto recoveryAutomation = continuityAutomation.snapshot(clientId);
+    recoveryAutomation.blocked = true;
+    recoveryAutomation.handoffId = handoffId.value();
+    continuityAutomation.setSnapshot(std::move(recoveryAutomation));
 
     auto contextGetCall = authorize(
         "context_get",
@@ -648,6 +756,12 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(contextGetResult.value().contextRecovery.has_value());
     REQUIRE(contextGetResult.value().contextRecovery->clientId == clientId);
     REQUIRE(contextGetResult.value().contextRecovery->handoffId == handoffId);
+    REQUIRE(contextGetResult.value().contextRecovery->workingDirectory ==
+            std::optional<Domain::PathText>{root});
+    REQUIRE(contextGetResult.value().contextRecovery->keyFiles ==
+            std::vector<Domain::PathText>{take(Domain::PathText::create(
+                "D:/workspace/recovered.cpp"))});
+    REQUIRE(!contextGetResult.value().continuityObservation.has_value());
     const auto contextPayload = Json::parse(
         contextGetResult.value().canonicalPayload);
     REQUIRE(contextPayload.at("found") == true);
@@ -721,6 +835,13 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto readResult = adapter->handle(readCall, authority, context);
     REQUIRE(readResult);
     REQUIRE(readResult.value().receipt.ok);
+    REQUIRE(readResult.value().continuityObservation.has_value());
+    REQUIRE(readResult.value().continuityObservation->path.has_value());
+    REQUIRE(readResult.value().continuityObservation->path->value() ==
+            "D:/workspace\\notes.txt");
+    REQUIRE(!readResult.value().continuityObservation->workingDirectory);
+    REQUIRE(readResult.value().continuityObservation->baseDirectory ==
+            std::optional<Domain::PathText>{root});
     const auto readPayload = Json::parse(readResult.value().canonicalPayload);
     REQUIRE(readPayload.at("content") == "beta");
     REQUIRE(readPayload.at("start_line") == 2);
@@ -732,6 +853,76 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(fileSystem.lastCapture().has_value());
     REQUIRE(fileSystem.lastCapture()->primary.canonicalPath().value() ==
             "D:/workspace\\notes.txt");
+
+    const auto agentWorkingDirectory = take(Domain::PathText::create(
+        "D:/workspace\\agent-work"));
+    const auto agentId = parse<Domain::AgentId>("explore");
+    const auto agentSessionId = parse<Domain::SessionId>(
+        "cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+    const Domain::AgentSession agentSession{
+        agentSessionId,
+        agentId,
+        clientId,
+        Domain::SessionStatus::Open,
+        std::nullopt,
+        Domain::UtcTimePoint{},
+        Domain::UtcTimePoint{}};
+    const Domain::AgentRunRecord agentRun{
+        agentSession,
+        projectId,
+        std::optional<std::string>{"Inspect the authorized workspace"},
+        agentWorkingDirectory,
+        {"report"},
+        {"Inspect files"},
+        std::nullopt};
+    const Domain::AgentSpec agentSpec{
+        agentId,
+        "Explore",
+        "Inspect the workspace",
+        {"fs_read"},
+        {},
+        {"Workspace inspection"},
+        {"Inspect files"},
+        {"Report findings"},
+        {"report"},
+        {},
+        {},
+        "Inspect the authorized workspace.",
+        "builtin"};
+    agentSessions.startRunResult.set(
+        Domain::Result<Domain::AgentRunStartOutcome>::success(
+            Domain::AgentRunStartOutcome{
+                agentRun, std::nullopt, agentSpec, 0U, true}));
+    auto agentStartCall = authorize(
+        "agent_run_start",
+        Domain::ToolEffect::Write,
+        R"({"agent_id":"explore","cwd":"agent-work","goal":"Inspect the authorized workspace"})",
+        "request-agent-start-authorized-cwd");
+    auto agentStart = adapter->handle(agentStartCall, authority, context);
+    REQUIRE(agentStart);
+    REQUIRE(agentStart.value().receipt.ok);
+    REQUIRE(agentStart.value().continuityObservation.has_value());
+    REQUIRE(!agentStart.value().continuityObservation->path);
+    REQUIRE(agentStart.value().continuityObservation->workingDirectory ==
+            std::optional<Domain::PathText>{agentWorkingDirectory});
+    REQUIRE(agentStart.value().continuityObservation->baseDirectory ==
+            std::optional<Domain::PathText>{root});
+    REQUIRE(agentSessions.lastCapture().has_value());
+    REQUIRE(agentSessions.lastCapture()->startRequest.has_value());
+    REQUIRE(agentSessions.lastCapture()->startRequest->workingDirectory ==
+            std::optional<Domain::PathText>{agentWorkingDirectory});
+
+    const auto agentCallsBeforeRejectedCwd = agentSessions.calls();
+    auto rejectedAgentStartCall = authorize(
+        "agent_run_start",
+        Domain::ToolEffect::Write,
+        R"({"agent_id":"explore","cwd":"D:/outside","goal":"Reject this cwd"})",
+        "request-agent-start-rejected-cwd");
+    auto rejectedAgentStart = adapter->handle(
+        rejectedAgentStartCall, authority, context);
+    REQUIRE(!rejectedAgentStart);
+    REQUIRE(rejectedAgentStart.error().code == Domain::ErrorCodes::Unauthorized);
+    REQUIRE(agentSessions.calls() == agentCallsBeforeRejectedCwd);
 
     std::vector<std::byte> largeFile(
         1'100'000U,
@@ -828,6 +1019,26 @@ void testRuntimeDispatchAndSchemaPolicy()
 
     git.statusResult.set(Domain::Result<Domain::ProcessResult>::success(
         Domain::ProcessResult{
+            0, "", "", false, false,
+            false, false, true, 1ms}));
+    auto defaultedGitCall = authorize(
+        "git_status",
+        Domain::ToolEffect::Read,
+        "{}",
+        "request-git-defaulted-cwd");
+    auto defaultedGit = adapter->handle(
+        defaultedGitCall, authority, context);
+    REQUIRE(defaultedGit);
+    REQUIRE(defaultedGit.value().receipt.ok);
+    REQUIRE(defaultedGit.value().continuityObservation.has_value());
+    REQUIRE(!defaultedGit.value().continuityObservation->path);
+    REQUIRE(defaultedGit.value().continuityObservation->workingDirectory ==
+            std::optional<Domain::PathText>{root});
+    REQUIRE(defaultedGit.value().continuityObservation->baseDirectory ==
+            std::optional<Domain::PathText>{root});
+
+    git.statusResult.set(Domain::Result<Domain::ProcessResult>::success(
+        Domain::ProcessResult{
             17, "partial status", "fatal status", false, false,
             false, false, true, 3ms}));
     auto gitFailureCall = authorize(
@@ -842,6 +1053,9 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(gitFailure.value().receipt.error.has_value());
     REQUIRE(gitFailure.value().receipt.error->code ==
             Domain::ErrorCodes::ProcessExitNonzero);
+    REQUIRE(gitFailure.value().continuityObservation.has_value());
+    REQUIRE(gitFailure.value().continuityObservation->workingDirectory ==
+            std::optional<Domain::PathText>{root});
     REQUIRE(Json::parse(gitFailure.value().canonicalPayload).at("stdout") ==
             "partial status");
 
@@ -864,6 +1078,9 @@ void testRuntimeDispatchAndSchemaPolicy()
         REQUIRE(!result.value().receipt.ok);
         REQUIRE(result.value().receipt.error.has_value());
         REQUIRE(result.value().receipt.error->code == expectedCode);
+        REQUIRE(result.value().continuityObservation.has_value());
+        REQUIRE(result.value().continuityObservation->workingDirectory ==
+                std::optional<Domain::PathText>{root});
         REQUIRE(Json::parse(result.value().canonicalPayload).at("ok") ==
                 false);
     };
@@ -890,6 +1107,329 @@ void testRuntimeDispatchAndSchemaPolicy()
         "request-shell-unconfirmed");
 }
 
+void testRealRouterContinuityIntegration()
+{
+    const auto authorityId = parse<Domain::AuthorityId>(
+        "70000000-0000-4000-8000-000000000007");
+    const auto projectId = parse<Domain::ProjectId>(
+        "71000000-0000-4000-8000-000000000007");
+    const auto clientId = parse<Domain::ClientId>("integration-client");
+    const auto root = take(Domain::PathText::create("D:/workspace"));
+    const auto recoveredWorkingDirectory = take(Domain::PathText::create(
+        "D:/recovered/project"));
+    const auto recoveredKeyFile = take(Domain::PathText::create(
+        "D:/recovered/project/src/main.cpp"));
+    const auto recoveredKeyFileRoot = take(Domain::PathText::create(
+        "D:/recovered/project/src"));
+    const auto handoffId = parse<Domain::LegacyHandoffId>(
+        "integration-automatic-handoff");
+    const auto staleHandoffId = parse<Domain::LegacyHandoffId>(
+        "integration-stale-handoff");
+
+    Fakes::FakeClock clock{
+        Domain::UtcTimePoint{1'735'789'855s},
+        Domain::MonotonicTimePoint{1s}};
+    const auto authorityOperationId = parse<Domain::OperationId>(
+        "72000000-0000-4000-8000-000000000007");
+    const auto authorityCorrelationId = parse<Domain::CorrelationId>(
+        "integration-authority");
+    const Domain::OperationContext authorityContext{
+        authorityOperationId,
+        clock.monotonicNow() + 5min,
+        {},
+        authorityCorrelationId};
+    Fakes::DeterministicWorkspaceAuthority workspaceAuthority{
+        authorityId,
+        clientId,
+        {root},
+        Domain::FileAccess::Write,
+        {Domain::FileAccess::Read,
+         Domain::FileAccess::Write,
+         Domain::FileAccess::Create,
+         Domain::FileAccess::Delete,
+         Domain::FileAccess::Execute},
+        {},
+        true,
+        17U};
+    auto authority = take(workspaceAuthority.authorityFor(
+        projectId, authorityContext));
+
+    Domain::LegacyHandoffPacket recoveredPacket{
+        handoffId,
+        Domain::LegacyContinuityLimits::SchemaVersion,
+        clock.utcNow(),
+        clock.utcNow(),
+        Domain::LegacyHandoffSource::Budget,
+        true,
+        std::nullopt,
+        clientId,
+        "Continue the router integration",
+        "handoff_ready",
+        std::nullopt,
+        recoveredWorkingDirectory.value(),
+        {},
+        {"Continue from recovered context"},
+        {recoveredKeyFile.value()},
+        {},
+        {},
+        "Router integration continuity",
+        "Resume the router integration.",
+        false};
+    Domain::LegacyContinuityRecord recoveredRecord{
+        recoveredPacket, 19U, {}};
+
+    PassiveLegacyContinuity legacyContinuity;
+    legacyContinuity.setAutomaticOutcome(
+        Domain::LegacyContinuityPersistOutcome{
+            recoveredRecord,
+            true,
+            true,
+            false,
+            std::nullopt,
+            {}});
+    legacyContinuity.setGetOutcome(
+        Domain::LegacyContinuityGetOutcome{recoveredRecord, true});
+    Domain::LegacyContinuityStatusSummary continuityStatus;
+    continuityStatus.latestId = handoffId;
+    continuityStatus.resumeReady = true;
+    continuityStatus.resumeId = handoffId;
+    legacyContinuity.setStatusSummary(std::move(continuityStatus));
+
+    Fakes::ScriptedHasher hasher{parse<Domain::Sha256Digest>(
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")};
+    auto guard = take(Mcp::McpInvocationGuard::create(
+        legacyContinuity,
+        hasher,
+        clock,
+        Mcp::McpInvocationGuardPolicy{
+            50U,
+            100U,
+            1U,
+            1U,
+            3'600U,
+            3'600U}));
+
+    auto catalog = take(Mcp::McpToolCatalog::create());
+    Fakes::RecordingApplicationPathsFake applicationPaths;
+    applicationPaths.dataRootResult.set(
+        Domain::Result<Domain::PathText>::success(root));
+    Fakes::RecordingAgentCatalogFake agentCatalog;
+    agentCatalog.allResult.set(
+        Domain::Result<std::vector<Domain::AgentSpec>>::success({}));
+    Fakes::RecordingAgentSessionServiceFake agentSessions;
+    PassiveReportInspector reportInspector;
+    RecordingClientWorkspaceContext clientWorkspaceContext;
+    clientWorkspaceContext.setAdoption(Domain::ClientWorkspaceAdoption{
+        Domain::ClientWorkspaceSnapshot{
+            clientId,
+            projectId,
+            recoveredWorkingDirectory,
+            handoffId,
+            recoveredRecord.writeSequence,
+            21U},
+        std::nullopt,
+        false});
+    Fakes::RecordingFileSystemFake fileSystem{3U * 1024U * 1024U};
+    const std::string progressText = "progress";
+    std::vector<std::byte> progressBytes;
+    progressBytes.reserve(progressText.size());
+    for (const auto value : progressText) {
+        progressBytes.push_back(static_cast<std::byte>(
+            static_cast<unsigned char>(value)));
+    }
+    fileSystem.readFileResult.set(
+        Domain::Result<std::vector<std::byte>>::success(
+            std::move(progressBytes)));
+    PassiveFileTextServices fileTextServices;
+    Fakes::RecordingGitServiceFake git;
+    Fakes::LegacyMemoryServiceFake legacyMemory{
+        32U,
+        Domain::DestructiveConfirmation{
+            "purge_legacy_memory", "all", "integration-token"}};
+    Fakes::RecordingPdfServiceFake pdf;
+    Fakes::RecordingTextSearchServiceFake textSearch;
+    Fakes::RecordingShellServiceFake shell;
+    Fakes::ProjectRegistryRepositoryFake projectRegistry{8U};
+    Fakes::RecordingProjectMemoryService projectMemory;
+    Fakes::RecordingContinuityCoordinator continuity;
+    PassiveContinuityCodec continuityCodec;
+    RecordingForgeStatusRepository forgeStatus;
+    forgeStatus.setProjection(Domain::ForgeStatusProjection{1U, {}});
+    Fakes::SequenceUuidGenerator uuidGenerator{
+        std::vector<Domain::Uuid>{}};
+    const auto shellExecutable = take(Domain::PathText::create(
+        "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"));
+
+    auto adapter = take(Mcp::McpToolPackAdapter::create(
+        Mcp::McpToolPackDependencies{
+            *catalog,
+            applicationPaths,
+            agentCatalog,
+            agentSessions,
+            reportInspector,
+            legacyContinuity,
+            clientWorkspaceContext,
+            workspaceAuthority,
+            fileSystem,
+            fileTextServices,
+            fileTextServices,
+            git,
+            legacyMemory,
+            pdf,
+            textSearch,
+            shell,
+            projectRegistry,
+            projectMemory,
+            continuity,
+            continuityCodec,
+            *guard,
+            forgeStatus,
+            clock,
+            uuidGenerator,
+            Domain::ProjectMemoryLimits{},
+            shellExecutable,
+            "0.9.0",
+            "windows-cpp",
+            77U}));
+    Mcp::McpToolAuthorizer authorizer{clock};
+    Fakes::AuditRepositoryFake audit{32U, clock.monotonicNow()};
+    std::array<Contracts::IToolHandler*, 1U> handlers{adapter.get()};
+    auto router = take(Mcp::McpToolRouter::create(
+        *catalog,
+        handlers,
+        authorizer,
+        *guard,
+        audit,
+        hasher,
+        clock));
+
+    std::uint64_t sequence{};
+    const auto invoke = [&] (
+                            const std::string& toolName,
+                            const std::string& arguments) {
+        ++sequence;
+        const auto suffix = std::to_string(sequence);
+        std::string operationText{"73000000-0000-4000-8000-"};
+        operationText.append(12U - suffix.size(), '0');
+        operationText += suffix;
+        const auto correlation = parse<Domain::CorrelationId>(
+            "integration-correlation-" + suffix);
+        Domain::ToolCallRequest request{
+            Domain::McpRequestMetadata{
+                parse<Domain::RequestId>(
+                    "integration-request-" + suffix),
+                correlation,
+                clientId,
+                projectId,
+                "2025-06-18"},
+            toolName,
+            arguments};
+        return router->invoke(
+            request,
+            authority,
+            Domain::OperationContext{
+                parse<Domain::OperationId>(operationText),
+                clock.monotonicNow() + 5min,
+                {},
+                correlation});
+    };
+
+    auto progress = invoke("fs_read", R"({"path":"notes.txt"})");
+    REQUIRE(progress);
+    REQUIRE(progress.value().receipt.ok);
+    const auto progressPayload = Json::parse(
+        progress.value().canonicalPayload);
+    REQUIRE(progressPayload.at("auto_continuity") == "handoff");
+    REQUIRE(progressPayload.at("handoff_id") == handoffId.value());
+    REQUIRE(progressPayload.at("handoff_required") == true);
+    REQUIRE(legacyContinuity.automaticCalls() == 1U);
+    REQUIRE(legacyContinuity.lastAutomaticClientId() ==
+            std::optional<Domain::ClientId>{clientId});
+    REQUIRE(legacyContinuity.lastAutomaticRequest().has_value());
+    REQUIRE(legacyContinuity.lastAutomaticRequest()->finalize);
+    REQUIRE(legacyContinuity.lastAutomaticRequest()->inferred.keyFiles ==
+            std::optional<std::vector<std::string>>{
+                {"D:/workspace\\notes.txt"}});
+
+    auto blockedForgeStatus = invoke("forge_status", "{}");
+    REQUIRE(blockedForgeStatus);
+    const auto blockedPayload = Json::parse(
+        blockedForgeStatus.value().canonicalPayload);
+    const auto& blockedAutomatic = blockedPayload.at("auto_continuity");
+    REQUIRE(blockedAutomatic.at("enabled") == true);
+    REQUIRE(blockedAutomatic.at("checkpoint_every_tools") == 1U);
+    REQUIRE(blockedAutomatic.at("handoff_every_tools") == 1U);
+    REQUIRE(blockedAutomatic.at("progress_count") == 1U);
+    REQUIRE(blockedAutomatic.at("blocked") == true);
+    REQUIRE(blockedAutomatic.at("handoff_id") == handoffId.value());
+    REQUIRE(blockedAutomatic.at("implicit_roots") ==
+            Json::array({root.value()}));
+
+    auto stalePacket = recoveredPacket;
+    stalePacket.id = staleHandoffId;
+    stalePacket.workingDirectory = "D:/stale/project";
+    stalePacket.keyFiles = {"D:/stale/project/file.cpp"};
+    legacyContinuity.setGetOutcome(
+        Domain::LegacyContinuityGetOutcome{
+            Domain::LegacyContinuityRecord{
+                std::move(stalePacket), 18U, {}},
+            true});
+    auto staleRecovery = invoke(
+        "context_get",
+        Json{{"handoff_id", staleHandoffId.value()}}.dump());
+    REQUIRE(!staleRecovery);
+    REQUIRE(staleRecovery.error().code == Domain::ErrorCodes::Conflict);
+    REQUIRE(clientWorkspaceContext.adoptCalls() == 0U);
+    const auto afterStale = guard->snapshot(clientId);
+    REQUIRE(afterStale.blocked);
+    REQUIRE(afterStale.handoffId ==
+            std::optional<std::string>{handoffId.value()});
+    REQUIRE(afterStale.implicitRoots ==
+            std::vector<Domain::PathText>{root});
+    legacyContinuity.setGetOutcome(
+        Domain::LegacyContinuityGetOutcome{recoveredRecord, true});
+
+    auto recovered = invoke(
+        "context_get",
+        Json{{"handoff_id", handoffId.value()}, {"resume_ready", true}}.dump());
+    REQUIRE(recovered);
+    REQUIRE(recovered.value().receipt.ok);
+    REQUIRE(recovered.value().contextRecovery.has_value());
+    REQUIRE(recovered.value().contextRecovery->handoffId == handoffId);
+    REQUIRE(recovered.value().contextRecovery->workingDirectory ==
+            std::optional<Domain::PathText>{recoveredWorkingDirectory});
+    REQUIRE(recovered.value().contextRecovery->keyFiles ==
+            std::vector<Domain::PathText>{recoveredKeyFile});
+    REQUIRE(!recovered.value().continuityObservation);
+    const auto recoveredPayload = Json::parse(
+        recovered.value().canonicalPayload);
+    REQUIRE(recoveredPayload.at("found") == true);
+    REQUIRE(recoveredPayload.at("context_budget_cleared") == true);
+    REQUIRE(clientWorkspaceContext.adoptCalls() == 1U);
+
+    auto resumedForgeStatus = invoke("forge_status", "{}");
+    REQUIRE(resumedForgeStatus);
+    const auto resumedPayload = Json::parse(
+        resumedForgeStatus.value().canonicalPayload);
+    const auto& resumedAutomatic = resumedPayload.at("auto_continuity");
+    REQUIRE(resumedAutomatic.at("progress_count") == 0U);
+    REQUIRE(resumedAutomatic.at("blocked") == false);
+    REQUIRE(resumedAutomatic.at("handoff_id") == handoffId.value());
+    REQUIRE(resumedAutomatic.at("implicit_roots") == Json::array(
+        {root.value(),
+         recoveredWorkingDirectory.value(),
+         recoveredKeyFileRoot.value()}));
+
+    const auto finalSnapshot = guard->snapshot(clientId);
+    REQUIRE(!finalSnapshot.blocked);
+    REQUIRE(finalSnapshot.handoffId ==
+            std::optional<std::string>{handoffId.value()});
+    REQUIRE((finalSnapshot.implicitRoots ==
+             std::vector<Domain::PathText>{
+                 root, recoveredWorkingDirectory, recoveredKeyFileRoot}));
+    REQUIRE(audit.eventCount() == 5U);
+}
+
 } // namespace
 
 int main()
@@ -898,6 +1438,7 @@ int main()
         testHandlerContract();
         testAllCatalogPacksAreBoundedByTheAdapterContract();
         testRuntimeDispatchAndSchemaPolicy();
+        testRealRouterContinuityIntegration();
         std::cout << "MCP tool-pack adapter tests passed: " << assertions
                   << " assertions\n";
         return 0;

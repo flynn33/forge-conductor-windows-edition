@@ -579,6 +579,19 @@ private:
 class FakeSessionSource final
     : public Contracts::ILegacyContinuitySessionSource {
 public:
+    [[nodiscard]] Domain::Result<std::size_t> countOpen(
+        const std::size_t maximumCount,
+        const Domain::OperationContext&) noexcept override
+    {
+        std::lock_guard lock{mutex_};
+        if (open_.size() > maximumCount) {
+            return Domain::Result<std::size_t>::failure(Domain::makeError(
+                Domain::ErrorCodes::LimitExceeded,
+                "The fake global open-session count exceeds its bound."));
+        }
+        return Domain::Result<std::size_t>::success(open_.size());
+    }
+
     [[nodiscard]] Domain::Result<
         std::vector<Domain::LegacyAgentContinuitySnapshot>>
     listOpenForClient(
@@ -802,6 +815,56 @@ void checkpointHandoffGetListAndProjectionFailure()
     REQUIRE(listed.handoffs.size() == 1U);
     REQUIRE(listed.handoffs.front().id == handoff.record.packet.id);
     REQUIRE(listed.handoffs.front().agentCount == 1U);
+}
+
+void statusSummaryMatchesLegacyObservableFields()
+{
+    Fixture fixture;
+    const auto empty = take(fixture.service.statusSummary(
+        fixture.context("status-empty")));
+    REQUIRE(!empty.latestId);
+    REQUIRE(!empty.latestUpdatedAt);
+    REQUIRE(!empty.resumeReady);
+    REQUIRE(!empty.resumeId);
+    REQUIRE(empty.openAgentSessions == 0U);
+    const std::vector<std::string> expectedTools{
+        "session_checkpoint", "session_handoff", "context_get", "context_list"};
+    REQUIRE(empty.tools == expectedTools);
+    REQUIRE(empty.note ==
+            "New chat bootstrap: call context_get over stdio MCP (forge-conductor).");
+    REQUIRE(empty.automatic.checkpointEveryTools == 50U);
+    REQUIRE(empty.automatic.handoffEveryTools == 200U);
+    REQUIRE(empty.automatic.note ==
+            "Forge writes checkpoints and handoffs from tool progress; the model does not have to call session_*.");
+
+    const auto owner = clientId("status-owner");
+    fixture.sessions.setSnapshots(
+        owner,
+        {snapshot("51111111-1111-4111-8111-111111111111", "debug"),
+         snapshot("52222222-2222-4222-8222-222222222222", "review")});
+    const auto checkpoint = take(fixture.service.checkpoint(
+        {std::nullopt,
+         Domain::LegacyContinuityPatch{std::string{"Status checkpoint"}}},
+        owner,
+        Domain::LegacyHandoffSource::Model,
+        fixture.context("status-checkpoint")));
+    fixture.clock.advance(1s);
+    const auto handoff = take(fixture.service.handoff(
+        {std::nullopt,
+         Domain::LegacyContinuityPatch{std::string{"Status handoff"}}},
+        owner,
+        Domain::LegacyHandoffSource::Model,
+        fixture.context("status-handoff")));
+
+    const auto summary = take(fixture.service.statusSummary(
+        fixture.context("status-populated")));
+    REQUIRE(summary.latestId == handoff.record.packet.id);
+    REQUIRE(summary.latestUpdatedAt == handoff.record.packet.updatedAt);
+    REQUIRE(summary.resumeReady);
+    REQUIRE(summary.resumeId == handoff.record.packet.id);
+    REQUIRE(summary.openAgentSessions == 2U);
+    REQUIRE(summary.latestId == checkpoint.record.packet.id);
+    REQUIRE(summary.latestUpdatedAt != checkpoint.record.packet.updatedAt);
 }
 
 void explicitContinuationPreservesOnlyStillOpenAgentsAndCapsSnapshots()
@@ -1221,6 +1284,8 @@ int main()
     const std::vector<std::pair<std::string_view, void (*)()>> tests{
         {"checkpoint_handoff_get_list_and_projection_failure",
          checkpointHandoffGetListAndProjectionFailure},
+        {"status_summary_matches_legacy_observable_fields",
+         statusSummaryMatchesLegacyObservableFields},
         {"explicit_continuation_preserves_only_still_open_agents_and_caps_snapshots",
          explicitContinuationPreservesOnlyStillOpenAgentsAndCapsSnapshots},
         {"compare_exchange_merges_disjoint_fields_and_bounds_conflicts",

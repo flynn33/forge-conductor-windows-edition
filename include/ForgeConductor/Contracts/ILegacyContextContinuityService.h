@@ -44,6 +44,15 @@ public:
         const Domain::LegacyContinuityListRequest& request,
         const Domain::OperationContext& context) noexcept = 0;
 
+    [[nodiscard]] virtual Domain::Result<Domain::LegacyContinuityStatusSummary>
+    statusSummary(const Domain::OperationContext&) noexcept
+    {
+        return Domain::Result<Domain::LegacyContinuityStatusSummary>::failure(
+            Domain::makeError(
+                Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Legacy continuity status is not implemented by this service."));
+    }
+
     [[nodiscard]] virtual Domain::Result<Domain::LegacyContinuityProjectionRepairOutcome>
     repairProjections(const Domain::OperationContext& context) noexcept = 0;
 

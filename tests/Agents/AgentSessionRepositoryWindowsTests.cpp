@@ -1150,6 +1150,30 @@ void legacyContinuitySessionSourceIsAuthoritativeAndBounded()
         fixture.clock->utcNow(),
         "p14-legacy-source-foreign");
 
+    require(take(source.countOpen(
+                5U,
+                activeContext(*fixture.clock, "p14-legacy-source-global-count"))) ==
+                5U,
+            "legacy source did not count all global open-status aliases");
+    const auto globalOverflow = source.countOpen(
+        4U,
+        activeContext(*fixture.clock, "p14-legacy-source-global-overflow"));
+    require(!globalOverflow &&
+                globalOverflow.error().code == Domain::ErrorCodes::LimitExceeded,
+            "legacy source silently truncated the global open count");
+    const auto globalZero = source.countOpen(
+        0U,
+        activeContext(*fixture.clock, "p14-legacy-source-global-zero"));
+    require(!globalZero &&
+                globalZero.error().code == Domain::ErrorCodes::InvalidRequest,
+            "legacy source accepted a zero global count bound");
+    const auto globalOversized = source.countOpen(
+        Domain::AgentSessionLimits::MaximumSessionQueryRows + 1U,
+        activeContext(*fixture.clock, "p14-legacy-source-global-oversized"));
+    require(!globalOversized &&
+                globalOversized.error().code == Domain::ErrorCodes::InvalidRequest,
+            "legacy source accepted an oversized global count bound");
+
     const auto snapshots = take(source.listOpenForClient(
         owner,
         4U,
@@ -1272,6 +1296,15 @@ void legacyContinuitySessionSourceIsAuthoritativeAndBounded()
     require(!cancelled &&
                 cancelled.error().code == Domain::ErrorCodes::Cancelled,
             "legacy source ignored pre-request cancellation");
+    const auto cancelledCount = source.countOpen(
+        5U,
+        activeContext(
+            *fixture.clock,
+            "p14-legacy-source-count-cancelled",
+            cancellation.get_token()));
+    require(!cancelledCount &&
+                cancelledCount.error().code == Domain::ErrorCodes::Cancelled,
+            "legacy global count ignored pre-request cancellation");
     const auto expired = source.isOpen(
         startedId,
         expiredContext(*fixture.clock, "p14-legacy-source-expired"));
@@ -1284,6 +1317,9 @@ void legacyContinuitySessionSourceIsAuthoritativeAndBounded()
         owner,
         4U,
         activeContext(*fixture.clock, "p14-legacy-source-closed-list"));
+    const auto closedCount = source.countOpen(
+        5U,
+        activeContext(*fixture.clock, "p14-legacy-source-closed-count"));
     const auto closedState = source.isOpen(
         startedId,
         activeContext(*fixture.clock, "p14-legacy-source-closed-state"));
@@ -1293,6 +1329,8 @@ void legacyContinuitySessionSourceIsAuthoritativeAndBounded()
     require(
         !closedList &&
             closedList.error().code == Domain::ErrorCodes::InvalidRequest &&
+            !closedCount &&
+            closedCount.error().code == Domain::ErrorCodes::InvalidRequest &&
             !closedState &&
             closedState.error().code == Domain::ErrorCodes::InvalidRequest &&
             !closedBinding &&

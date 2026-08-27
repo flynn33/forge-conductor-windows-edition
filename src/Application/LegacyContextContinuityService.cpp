@@ -489,6 +489,88 @@ public:
         });
     }
 
+    [[nodiscard]] Domain::Result<Domain::LegacyContinuityStatusSummary>
+    statusSummary(const Domain::OperationContext& context) noexcept
+    {
+        return execute<Domain::LegacyContinuityStatusSummary>(context, [&]() {
+            constexpr std::size_t MaximumOpenAgentSessions = 10'000U;
+            auto latest = repository_.latest(std::nullopt, false, context);
+            if (!latest) {
+                return propagateFailure<Domain::LegacyContinuityStatusSummary>(
+                    std::move(latest));
+            }
+            auto latestRecord = std::move(latest).value();
+            auto valid = validateLatestSelection(
+                latestRecord, std::nullopt, false);
+            if (!valid) {
+                return dependencyIntegrityFailure<
+                    Domain::LegacyContinuityStatusSummary>(
+                        "The continuity repository returned an invalid latest status row.");
+            }
+            if (latestRecord) {
+                valid = validateLoadedRecord(*latestRecord);
+                if (!valid) {
+                    return dependencyIntegrityFailure<
+                        Domain::LegacyContinuityStatusSummary>(
+                            "The continuity repository returned an invalid latest status record.");
+                }
+            }
+
+            valid = validateContext(context, clock_);
+            if (!valid) {
+                return propagateFailure<Domain::LegacyContinuityStatusSummary>(
+                    std::move(valid));
+            }
+            auto resume = repository_.latest(std::nullopt, true, context);
+            if (!resume) {
+                return propagateFailure<Domain::LegacyContinuityStatusSummary>(
+                    std::move(resume));
+            }
+            auto resumeRecord = std::move(resume).value();
+            valid = validateLatestSelection(
+                resumeRecord, std::nullopt, true);
+            if (!valid) {
+                return dependencyIntegrityFailure<
+                    Domain::LegacyContinuityStatusSummary>(
+                        "The continuity repository returned an invalid resume-ready status row.");
+            }
+            if (resumeRecord) {
+                valid = validateLoadedRecord(*resumeRecord);
+                if (!valid) {
+                    return dependencyIntegrityFailure<
+                        Domain::LegacyContinuityStatusSummary>(
+                            "The continuity repository returned an invalid resume-ready status record.");
+                }
+            }
+
+            valid = validateContext(context, clock_);
+            if (!valid) {
+                return propagateFailure<Domain::LegacyContinuityStatusSummary>(
+                    std::move(valid));
+            }
+            auto openAgentSessions = sessions_.countOpen(
+                MaximumOpenAgentSessions, context);
+            if (!openAgentSessions) {
+                return propagateFailure<Domain::LegacyContinuityStatusSummary>(
+                    std::move(openAgentSessions));
+            }
+
+            Domain::LegacyContinuityStatusSummary summary;
+            summary.openAgentSessions = openAgentSessions.value();
+            if (latestRecord) {
+                summary.latestId = latestRecord->packet.id;
+                summary.latestUpdatedAt = latestRecord->packet.updatedAt;
+            }
+            summary.resumeReady = resumeRecord.has_value();
+            if (resumeRecord) {
+                summary.resumeId = resumeRecord->packet.id;
+            }
+            return Domain::Result<
+                Domain::LegacyContinuityStatusSummary>::success(
+                    std::move(summary));
+        });
+    }
+
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityProjectionRepairOutcome>
     repairProjections(const Domain::OperationContext& context) noexcept
     {
@@ -1251,6 +1333,13 @@ LegacyContextContinuityService::list(
     const Domain::OperationContext& context) noexcept
 {
     return implementation_->list(request, context);
+}
+
+Domain::Result<Domain::LegacyContinuityStatusSummary>
+LegacyContextContinuityService::statusSummary(
+    const Domain::OperationContext& context) noexcept
+{
+    return implementation_->statusSummary(context);
 }
 
 Domain::Result<Domain::LegacyContinuityProjectionRepairOutcome>

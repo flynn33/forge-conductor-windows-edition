@@ -22,4 +22,15 @@ public:
     virtual void shutdown() noexcept = 0;
 };
 
+// Read-only status boundary for the legacy per-client MCP automation state.
+// The invocation guard owns this state because it observes every admitted tool
+// completion; project-continuity automation is intentionally a separate owner.
+class IContinuityAutomationStatusSource {
+public:
+    virtual ~IContinuityAutomationStatusSource() = default;
+
+    [[nodiscard]] virtual Domain::ContinuityAutomationStatusSnapshot snapshot(
+        const Domain::ClientId& clientId) const noexcept = 0;
+};
+
 } // namespace ForgeConductor::Contracts

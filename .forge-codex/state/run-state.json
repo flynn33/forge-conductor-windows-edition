@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-27T05:23:57.5383410+00:00",
+  "updated_at": "2026-08-27T07:20:44.9573615+00:00",
   "status": "in_progress",
   "active_role": "builder",
   "active_phase": "P14",
@@ -482,7 +482,18 @@
         ".forge-codex/state/commands/20260827T051933035Z-a5353193.json",
         ".forge-codex/state/commands/20260827T052009026Z-5792fdf6.json",
         ".forge-codex/state/commands/20260827T052352847Z-80423366.json",
-        ".forge-codex/state/evidence/P14/authoritative-mcp-runtime-persistence-checkpoint.json"
+        ".forge-codex/state/evidence/P14/authoritative-mcp-runtime-persistence-checkpoint.json",
+        ".forge-codex/state/decisions/P14-006-client-presence-and-status-parity.md",
+        ".forge-codex/state/commands/20260827T054234539Z-6c87f3b1.json",
+        ".forge-codex/state/commands/20260827T054341785Z-c98598c5.json",
+        ".forge-codex/state/commands/20260827T054406237Z-06b4e544.json",
+        ".forge-codex/state/commands/20260827T054525831Z-137deddf.json",
+        ".forge-codex/state/commands/20260827T054540604Z-35e385f2.json",
+        ".forge-codex/state/commands/20260827T060215976Z-635bff81.json",
+        ".forge-codex/state/commands/20260827T060301241Z-164b4d74.json",
+        ".forge-codex/state/commands/20260827T060533194Z-0908da50.json",
+        ".forge-codex/state/commands/20260827T060546666Z-1685e491.json",
+        ".forge-codex/state/evidence/P14/mcp-presence-continuity-status-checkpoint.json"
       ]
     },
     {
@@ -1031,7 +1042,25 @@
         ".forge-codex/state/commands/20260827T051933035Z-a5353193.json",
         ".forge-codex/state/commands/20260827T052009026Z-5792fdf6.json",
         ".forge-codex/state/commands/20260827T052352847Z-80423366.json",
-        ".forge-codex/state/evidence/P14/authoritative-mcp-runtime-persistence-checkpoint.json"
+        ".forge-codex/state/evidence/P14/authoritative-mcp-runtime-persistence-checkpoint.json",
+        ".forge-codex/state/decisions/P14-006-client-presence-and-status-parity.md",
+        ".forge-codex/state/commands/20260827T054341785Z-c98598c5.json",
+        ".forge-codex/state/commands/20260827T054525831Z-137deddf.json",
+        ".forge-codex/state/commands/20260827T054540604Z-35e385f2.json",
+        ".forge-codex/state/commands/20260827T060844888Z-a5eff22a.json",
+        ".forge-codex/state/commands/20260827T063848180Z-a4c846e0.json",
+        ".forge-codex/state/commands/20260827T063940982Z-3484df2a.json",
+        ".forge-codex/state/commands/20260827T065204115Z-d60b16db.json",
+        ".forge-codex/state/commands/20260827T065228507Z-f394a754.json",
+        ".forge-codex/state/commands/20260827T065734188Z-9ae2dbbd.json",
+        ".forge-codex/state/commands/20260827T065835912Z-69d028a1.json",
+        ".forge-codex/state/commands/20260827T071247018Z-8c3b0969.json",
+        ".forge-codex/state/commands/20260827T071307202Z-a122e8a1.json",
+        ".forge-codex/state/commands/20260827T071329153Z-7149020f.json",
+        ".forge-codex/state/commands/20260827T071846497Z-044a8ed6.json",
+        ".forge-codex/state/commands/20260827T071929036Z-b5999a73.json",
+        ".forge-codex/state/commands/20260827T072025739Z-5d369ac7.json",
+        ".forge-codex/state/evidence/P14/mcp-presence-continuity-status-checkpoint.json"
       ]
     },
     {

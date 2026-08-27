@@ -87,6 +87,7 @@ endfunction()
 
 set(FORGE_DOMAIN_SOURCES
     src/Domain/AgentModels.cpp
+    src/Domain/ClientPresenceModels.cpp
     src/Domain/ConfigurationModels.cpp
     src/Domain/ContinuityModels.cpp
     src/Domain/DeploymentModels.cpp
@@ -194,6 +195,7 @@ set(FORGE_PERSISTENCE_WINDOWS_SOURCES
     src/Persistence/Windows/WindowsAgentSessionRepository.cpp
     src/Persistence/Windows/WindowsAuditRepository.cpp
     src/Persistence/Windows/WindowsCentralDatabase.cpp
+    src/Persistence/Windows/WindowsClientPresenceRepository.cpp
     src/Persistence/Windows/WindowsForgeStatusRepository.cpp
     src/Persistence/Windows/WindowsLegacyContinuityRepository.cpp
     src/Persistence/Windows/WindowsLegacyMemoryRepository.cpp
@@ -859,6 +861,28 @@ if(BUILD_TESTING)
         ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests PROPERTIES
         LABELS "G14;T-MCP;T-DB;T-UNIT;T-INTEGRATION;T-SEC"
         TIMEOUT 180
+    )
+
+    add_executable(ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests
+        tests/Persistence/ClientPresenceRepositoryWindowsTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests)
+    target_include_directories(
+        ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests PRIVATE
+        ForgeConductor::Persistence.Windows)
+
+    add_test(
+        NAME ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests PROPERTIES
+        LABELS "G14;T-MCP;T-DB;T-UNIT;T-INTEGRATION"
+        TIMEOUT 120
     )
 
     add_test(

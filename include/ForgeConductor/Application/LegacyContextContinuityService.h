@@ -64,6 +64,10 @@ public:
         const Domain::LegacyContinuityListRequest& request,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<Domain::LegacyContinuityStatusSummary>
+    statusSummary(
+        const Domain::OperationContext& context) noexcept override;
+
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityProjectionRepairOutcome>
     repairProjections(
         const Domain::OperationContext& context) noexcept override;

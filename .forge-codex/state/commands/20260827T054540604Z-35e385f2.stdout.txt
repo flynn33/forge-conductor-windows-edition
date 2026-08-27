@@ -1,0 +1,14 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 24: ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests
+1/1 Test #24: ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests ...   Passed    0.34 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+G14              =   0.34 sec*proc (1 test)
+T-DB             =   0.34 sec*proc (1 test)
+T-INTEGRATION    =   0.34 sec*proc (1 test)
+T-MCP            =   0.34 sec*proc (1 test)
+T-UNIT           =   0.34 sec*proc (1 test)
+
+Total Test time (real) =   0.35 sec

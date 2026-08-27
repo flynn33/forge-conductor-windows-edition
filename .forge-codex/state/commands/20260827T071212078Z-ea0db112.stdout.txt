@@ -1,0 +1,23 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 7: ForgeConductor.Mcp.InvocationGuardTests
+1/2 Test #7: ForgeConductor.Mcp.InvocationGuardTests ...***Failed    0.04 sec
+Requirement failed: status.implicitRoots.front() == take(Domain::PathText::create("D:/bounded/root-4"))
+
+    Start 8: ForgeConductor.Mcp.ToolPackAdapterTests
+2/2 Test #8: ForgeConductor.Mcp.ToolPackAdapterTests ...   Passed    0.26 sec
+
+50% tests passed, 1 tests failed out of 2
+
+Label Time Summary:
+G14              =   0.30 sec*proc (2 tests)
+T-CONT           =   0.04 sec*proc (1 test)
+T-INTEGRATION    =   0.26 sec*proc (1 test)
+T-MCP            =   0.30 sec*proc (2 tests)
+T-PARITY         =   0.26 sec*proc (1 test)
+T-STRESS         =   0.04 sec*proc (1 test)
+T-UNIT           =   0.30 sec*proc (2 tests)
+
+Total Test time (real) =   0.31 sec
+
+The following tests FAILED:
+	  7 - ForgeConductor.Mcp.InvocationGuardTests (Failed)  G14 T-CONT T-MCP T-STRESS T-UNIT

@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "mcp_presence_continuity_status",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T07:20:44.9573615+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "msbuild": "17.14.40+3e7442088",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2",
+    "sqlite": "Windows SDK winsqlite3"
+  },
+  "build_command_records": [
+    ".forge-codex/state/commands/20260827T054341785Z-c98598c5.json",
+    ".forge-codex/state/commands/20260827T054525831Z-137deddf.json",
+    ".forge-codex/state/commands/20260827T060215976Z-635bff81.json",
+    ".forge-codex/state/commands/20260827T060533194Z-0908da50.json",
+    ".forge-codex/state/commands/20260827T060844888Z-a5eff22a.json",
+    ".forge-codex/state/commands/20260827T063832339Z-3b1d2e35.json",
+    ".forge-codex/state/commands/20260827T063924411Z-d55f26e8.json",
+    ".forge-codex/state/commands/20260827T065204115Z-d60b16db.json",
+    ".forge-codex/state/commands/20260827T065734188Z-9ae2dbbd.json",
+    ".forge-codex/state/commands/20260827T071247018Z-8c3b0969.json"
+  ],
+  "test_command_records": [
+    ".forge-codex/state/commands/20260827T054406237Z-06b4e544.json",
+    ".forge-codex/state/commands/20260827T054540604Z-35e385f2.json",
+    ".forge-codex/state/commands/20260827T060301241Z-164b4d74.json",
+    ".forge-codex/state/commands/20260827T060546666Z-1685e491.json",
+    ".forge-codex/state/commands/20260827T063848180Z-a4c846e0.json",
+    ".forge-codex/state/commands/20260827T063940982Z-3484df2a.json",
+    ".forge-codex/state/commands/20260827T065228507Z-f394a754.json",
+    ".forge-codex/state/commands/20260827T065835912Z-69d028a1.json",
+    ".forge-codex/state/commands/20260827T071307202Z-a122e8a1.json",
+    ".forge-codex/state/commands/20260827T071329153Z-7149020f.json"
+  ],
+  "diagnostic_command_records": [
+    ".forge-codex/state/commands/20260827T054141492Z-9fe6f936.json",
+    ".forge-codex/state/commands/20260827T054234539Z-6c87f3b1.json",
+    ".forge-codex/state/commands/20260827T060110402Z-24a6c528.json",
+    ".forge-codex/state/commands/20260827T063643168Z-1a5949db.json",
+    ".forge-codex/state/commands/20260827T063759849Z-5f6f0a50.json",
+    ".forge-codex/state/commands/20260827T071059518Z-0685d121.json",
+    ".forge-codex/state/commands/20260827T071212078Z-ea0db112.json",
+    ".forge-codex/state/commands/20260827T071846497Z-044a8ed6.json",
+    ".forge-codex/state/commands/20260827T071929036Z-b5999a73.json",
+    ".forge-codex/state/commands/20260827T072025739Z-5d369ac7.json"
+  ],
+  "effective_exit_code": 0,
+  "measured_result": {
+    "build_targets_qualified": 11,
+    "tests_qualified": 11,
+    "tests_passed": 11,
+    "tests_failed_after_focused_fix": 0,
+    "unchanged_tests_passed_in_combined_run": 9,
+    "combined_ctest_real_seconds": 10.23,
+    "focused_presence_ctest_real_seconds": 0.35,
+    "focused_status_ctest_real_seconds": 0.36,
+    "final_invocation_guard_ctest_real_seconds": 0.12,
+    "final_affected_build_targets": 5,
+    "final_affected_tests": 5,
+    "final_affected_ctest_real_seconds": 0.71,
+    "final_mcp_ctest_real_seconds": 0.49,
+    "tool_pack_adapter_assertions": 387,
+    "capacity_saturation_concurrent_clients": 128,
+    "capacity_overflow_rejected_clients": 1,
+    "real_router_continuity_integration_invocations": 5,
+    "maximum_global_open_session_count": 10000,
+    "maximum_tracked_automation_clients": 128,
+    "maximum_implicit_roots_per_client": 16
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Domain.lib",
+      "bytes": 12111586,
+      "sha256": "dbe1c4d93085536ab993671dbd48f652a54abeabf7ac43e1f0fc6b9034e9b2d9"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Application.lib",
+      "bytes": 31448872,
+      "sha256": "9075e32f366eabfd5cd1efc5d1cadb69bd1c5cfd8a6393484d81583be6617fec"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Mcp.lib",
+      "bytes": 81836370,
+      "sha256": "a68e610c300fbc919bc5c17bee8f3f4617692448a2b75618a27ba1e5b8f3e3ee"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Persistence.Windows.lib",
+      "bytes": 118072776,
+      "sha256": "26d862b69284548d2b2dfc03bf56f03ce31c3e9dfa26fae0c2eecb0d654e23d7"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.InvocationGuardTests.exe",
+      "bytes": 1967104,
+      "sha256": "933ec35abf68cf283cd5401e6bfbf6c7d6f7217fdd34ce0a6e5937aa6eb84309"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolPackAdapterTests.exe",
+      "bytes": 5065728,
+      "sha256": "14fe69c9e6af9abdeb68c0e076ee70b5b5841e5ab034f1b4bf334ec4e7d4fe8b"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests.exe",
+      "bytes": 2952192,
+      "sha256": "a15ff6af25978794871256ed23dc389cce770b6b303a1438a22c551ddad04c5d"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Continuity.LegacyApplicationTests.exe",
+      "bytes": 1612800,
+      "sha256": "f0ec9115f63d5c316b6f773c2bdd8c7463937eefc65a80c5cf1a78d2f47e3ebf"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Continuity.AutomationTests.exe",
+      "bytes": 1239552,
+      "sha256": "7c517f27d8a53b6425927da270bf0eb53d3c3b2da4f3dd4b7b3e2491c6522a31"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Agents.RepositoryWindowsTests.exe",
+      "bytes": 4615168,
+      "sha256": "5239a364cd8c638976d84af64538af28ba7c52ba88a75c9f03f5f7c574c37610"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.HeaderSelfContainment.exe",
+      "bytes": 168448,
+      "sha256": "6e9ea251ca64a638321f7d97d9d6610c3e9cf79f387019e4ea6956b22778ae03"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": ".forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+      "sha256": "df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd"
+    },
+    {
+      "path": ".forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/ContinuityAutomation.swift",
+      "sha256": "7d6f200e5863b9724b11fbd8be455feb1aae092e81fb003e09aa31df89e28c11"
+    },
+    {
+      "path": ".forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/ContextContinuityService.swift",
+      "sha256": "f1abf82ff3fd613fa675f1edf56bd2c75155b069ee42a741bbbf8c5fd2fdfca2"
+    }
+  ],
+  "qualified_surface": [
+    "shared-central-database client presence registration with original first-seen preservation",
+    "monotonic heartbeat updates and exact full-identity compare-and-delete semantics",
+    "stale owner heartbeat and removal rejection after a client key is replaced",
+    "bounded authoritative global open-agent-session counting across every legacy open-state alias",
+    "source-compatible continuity status with latest, resume-ready, tool, note, and automatic-policy fields",
+    "guard-owned client-scoped auto-continuity status with configured thresholds, progress, block, retained last-handoff, and bounded unique implicit-root fields derived only from authority-canonicalized dispatched-tool outcomes; failed dispatches retain roots without advancing progress",
+    "strict generation-tagged continuity-state leases retain the 128-client bound while every slot is active or blocked, reject client 129 with retryable limit_exceeded, and never evict blocked handoffs",
+    "matching context_get holds an exclusive per-client recovery lease, validates the active handoff before workspace adoption, atomically adopts recovered cwd and key-file roots, clears block and progress, and retains last-handoff status; stale handoffs cannot mutate workspace authority or recovery metadata",
+    "handler receipt ownership, result-state, UTF-8, NUL, emptiness, and one-megabyte payload checks run before any continuity mutation",
+    "real router-authorizer-guard-adapter integration proves progress, automatic handoff, forge_status projection, context_get recovery, and resumed status ownership",
+    "forge_status continuity failure fallback to an empty object as implemented by macOS 0.9.0",
+    "aggregate-header and native CMake integration for the new persistence contract"
+  ],
+  "diagnostic_resolution": [
+    "The combined build collided with an overlapping MSBuild invocation and locked two MCP object files; the isolated MCP target then built successfully with node reuse disabled.",
+    "The combined test run passed nine unchanged targets and exposed a nested SQLite ownership guard in the new presence mutation path.",
+    "Mutation statements are now destroyed before SELECT changes() acquires the next connection guard; the focused rebuild and presence integration test pass.",
+    "Independent review found that forge_status initially read the separate P12 project automation service; a dedicated read-only status contract now makes the invocation guard the only production-compatible owner.",
+    "The first focused status rebuild rejected deprecated std::filesystem::u8path under warnings-as-errors; explicit char8_t path construction replaced it and the final focused builds and tests pass.",
+    "Independent review found pre-authorization root derivation, missing recovered-packet roots, continuity-tool observation, and a saturated 128-client insertion path; typed adapter observations, atomic recovery, and generation-tagged state leases resolve those defects.",
+    "Independent follow-up review found state mutation could precede handler receipt and payload validation; the guard now rejects mismatched or malformed outcomes before progress, root, or block changes, with dedicated regression coverage.",
+    "Final parity review found context_get workspace adoption preceded active-handoff validation and failed dispatched tools lost macOS root observation; an exclusive recovery lease plus pre-adoption status validation resolves the stale mutation path, while authorized observations now remain success-independent and progress remains success-gated.",
+    "The first two integrity-validator attempts exposed validator-only assumptions about PowerShell module availability and retained failed-attempt evidence; the corrected validator uses the repository hash primitive, validates every retained stream and artifact, requires the designated final commands to pass, and completed successfully."
+  ],
+  "remaining_limitations": [
+    "CLI serve and executable production composition",
+    "composition-owned ten-second presence heartbeat and process-exit removal",
+    "dynamic multi-project workspace authority and project-scoped Git/shell dispatch",
+    "primary and fallback real-process semantic snapshots",
+    "complete per-tool semantic fixtures and remaining G14 evidence"
+  ]
+}

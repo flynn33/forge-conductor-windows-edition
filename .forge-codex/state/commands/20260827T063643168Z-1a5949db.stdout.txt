@@ -1,0 +1,93 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpToolPackAdapter.cpp
+  Compiling...
+  McpToolPackAdapter.cpp
+  McpInvocationGuard.cpp
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpInvocationGuardTests.cpp
+  Compiling...
+  McpInvocationGuardTests.cpp
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(673,1): error C2220: the following warning is treated as an error [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(673,1): warning C4002: too many arguments for function-like macro invocation 'REQUIRE' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(670,5): error C2187: syntax error: ')' was unexpected here [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(673,1): error C2958: the left brace '{' found at 'D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(673)' was not matched correctly [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(670,5): error C3329: syntax error: expected '}' not ')' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(670,5): error C2059: syntax error: ';' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(670,5): error C2059: syntax error: '}' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(670,5): error C2059: syntax error: 'while' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,5): error C2059: syntax error: 'for' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,34): error C2143: syntax error: missing ')' before ';' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,42): error C2143: syntax error: missing ';' before '<=' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,36): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,49): error C2059: syntax error: '++' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,56): error C2059: syntax error: ')' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,58): error C2143: syntax error: missing ';' before '{' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,58): error C2447: '{': missing function header (old-style formal list?) [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(687,5): error C2059: syntax error: 'do' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(687,5): error C2143: syntax error: missing ';' before '{' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(687,5): error C2447: '{': missing function header (old-style formal list?) [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(687,5): error C2059: syntax error: 'while' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(688,5): error C2059: syntax error: 'do' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(688,5): error C2143: syntax error: missing ';' before '{' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(688,5): error C2447: '{': missing function header (old-style formal list?) [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(688,5): error C2059: syntax error: 'while' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(690,5): error C2059: syntax error: 'do' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(690,5): error C2143: syntax error: missing ';' before '{' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(690,5): error C2447: '{': missing function header (old-style formal list?) [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(690,5): error C2059: syntax error: 'while' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(710,24): warning C4459: declaration of 'index' hides global declaration [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,36):
+      see declaration of '`anonymous-namespace'::index'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(821,24): warning C4459: declaration of 'index' hides global declaration [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,36):
+      see declaration of '`anonymous-namespace'::index'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(900,16): error C2374: 'continuity': redefinition; multiple initialization [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(809,26):
+      see declaration of 'continuity'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(900,16): error C2086: '`anonymous-namespace'::LegacyContinuityFake continuity': redefinition [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(809,26):
+      see declaration of 'continuity'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(900,16): error C2371: 'continuity': redefinition; different basic types [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(905,5): error C2664: 'ForgeConductor::Domain::OperationContext `anonymous-namespace'::context(const ForgeConductor::Domain::ToolCallRequest &,const uint64_t,const std::stop_token)': cannot convert argument 1 from '`anonymous-namespace'::LegacyContinuityFake' to 'const ForgeConductor::Domain::ToolCallRequest &' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(905,5):
+      Reason: cannot convert from '`anonymous-namespace'::LegacyContinuityFake' to 'const ForgeConductor::Domain::ToolCallRequest'
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(905,5):
+      No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(352,40):
+      see declaration of '`anonymous-namespace'::context'
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(905,5):
+      while trying to match the argument list '(`anonymous-namespace'::LegacyContinuityFake, unsigned int)'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(905,5): error C2672: '`anonymous-namespace'::take': no matching overloaded function found [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(40,17):
+      could be 'T `anonymous-namespace'::take(ForgeConductor::Domain::Result<T>)'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(937,22): warning C4459: declaration of 'index' hides global declaration [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,36):
+      see declaration of '`anonymous-namespace'::index'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(1045,24): warning C4459: declaration of 'index' hides global declaration [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+      D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(675,36):
+      see declaration of '`anonymous-namespace'::index'
+  
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(1062,1): error C2059: syntax error: '}' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(1062,1): error C2143: syntax error: missing ';' before '}' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(1065,1): error C2143: syntax error: missing ';' before '{' [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpInvocationGuardTests.cpp(1065,1): error C2447: '{': missing function header (old-style formal list?) [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.InvocationGuardTests.vcxproj]

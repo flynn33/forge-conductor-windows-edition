@@ -15,6 +15,18 @@ class ILegacyContinuitySessionSource {
 public:
     virtual ~ILegacyContinuitySessionSource() = default;
 
+    // Global source-compatible count used by forge_status continuity summary.
+    // Implementations fail when the durable count exceeds maximumCount rather
+    // than truncating a value that is reported as exact.
+    [[nodiscard]] virtual Domain::Result<std::size_t> countOpen(
+        std::size_t,
+        const Domain::OperationContext&) noexcept
+    {
+        return Domain::Result<std::size_t>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable,
+            "Global open agent-session count is not implemented by this source."));
+    }
+
     [[nodiscard]] virtual Domain::Result<std::vector<Domain::LegacyAgentContinuitySnapshot>>
     listOpenForClient(
         const Domain::ClientId& clientId,

@@ -2264,6 +2264,49 @@ WindowsAgentSessionRepository::listOpenForClient(
     });
 }
 
+Domain::Result<std::size_t> WindowsAgentSessionRepository::countOpen(
+    const std::size_t maximumCount,
+    const Domain::OperationContext& context) noexcept
+{
+    return guarded<std::size_t>([&]() {
+        if (maximumCount == 0U || maximumCount > MaximumBoundedRows) {
+            fail(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The global open agent-session count bound is invalid."));
+        }
+        auto& store = requireStore(
+            implementation_ ? implementation_->repositoryStore() : nullptr);
+        return take(runOnStore<std::size_t>(
+            store,
+            "Count open legacy continuity agent sessions",
+            context,
+            [&](WinsqliteConnection& connection) noexcept {
+                return guarded<std::size_t>([&]() {
+                    std::string sql{
+                        "SELECT COUNT(*) FROM agent_sessions WHERE "};
+                    sql += OpenStatusPredicate;
+                    auto statement = take(connection.prepare(sql, context));
+                    if (take(statement.step()) != WinsqliteStepResult::Row) {
+                        fail(integrityError(
+                            "The global open agent-session count returned no row."));
+                    }
+                    const auto count = take(statement.columnInt64(0));
+                    if (count < 0) {
+                        fail(integrityError(
+                            "The global open agent-session count is negative."));
+                    }
+                    const auto converted = static_cast<std::uint64_t>(count);
+                    if (converted > maximumCount) {
+                        fail(Domain::makeError(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "The global open agent-session count exceeds its bound."));
+                    }
+                    return static_cast<std::size_t>(converted);
+                });
+            }));
+    });
+}
+
 Domain::Result<bool> WindowsAgentSessionRepository::isOpen(
     const Domain::SessionId& sessionId,
     const Domain::OperationContext& context) noexcept

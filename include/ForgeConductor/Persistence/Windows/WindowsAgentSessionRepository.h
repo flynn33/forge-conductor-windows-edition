@@ -115,6 +115,9 @@ public:
         const Domain::ClientId& clientId,
         std::size_t maximumCount,
         const Domain::OperationContext& context) noexcept override;
+    [[nodiscard]] Domain::Result<std::size_t> countOpen(
+        std::size_t maximumCount,
+        const Domain::OperationContext& context) noexcept override;
     [[nodiscard]] Domain::Result<bool> isOpen(
         const Domain::SessionId& sessionId,
         const Domain::OperationContext& context) noexcept override;

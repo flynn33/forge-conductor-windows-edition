@@ -451,13 +451,49 @@ template <typename T>
     return result;
 }
 
+enum class ContinuityPathRole { Path, WorkingDirectory };
+
+class ToolContinuityObservationBuilder final {
+public:
+    void observe(
+        const Contracts::AuthorizedPath& authorized,
+        const ContinuityPathRole role)
+    {
+        if (!observation_.baseDirectory) {
+            observation_.baseDirectory = authorized.authorityRoot();
+        }
+        if (role == ContinuityPathRole::WorkingDirectory) {
+            observation_.workingDirectory = authorized.canonicalPath();
+            return;
+        }
+        if (!observation_.path) {
+            observation_.path = authorized.canonicalPath();
+        }
+    }
+
+    [[nodiscard]] std::optional<Domain::ToolContinuityObservation>
+    finish() const
+    {
+        if (!observation_.path && !observation_.workingDirectory &&
+            !observation_.baseDirectory) {
+            return std::nullopt;
+        }
+        return observation_;
+    }
+
+private:
+    Domain::ToolContinuityObservation observation_;
+};
+
 [[nodiscard]] Domain::Result<Contracts::AuthorizedPath> authorizePath(
     Contracts::IWorkspaceAuthority& resolver,
     const Contracts::WorkspaceAuthority& authority,
     const std::string_view encoded,
     const Domain::FileAccess access,
     const bool protectAuthorityRoot,
-    const Domain::OperationContext& context)
+    const Domain::OperationContext& context,
+    ToolContinuityObservationBuilder* const observation = nullptr,
+    const ContinuityPathRole role = ContinuityPathRole::Path)
 {
     std::optional<Domain::PathText> base;
     if (!authority.trustedRoots().empty()) {
@@ -469,7 +505,7 @@ template <typename T>
     if (!requested) {
         return propagate<Contracts::AuthorizedPath>(std::move(requested));
     }
-    return resolver.authorize(
+    auto authorized = resolver.authorize(
         authority,
         Domain::PathAuthorizationRequest{
             std::move(requested).value(),
@@ -477,6 +513,10 @@ template <typename T>
             access,
             protectAuthorityRoot},
         context);
+    if (authorized && observation != nullptr) {
+        observation->observe(authorized.value(), role);
+    }
+    return authorized;
 }
 
 [[nodiscard]] std::string defaultRoot(
@@ -1297,11 +1337,15 @@ public:
                 return propagate<Domain::ToolCallOutcome>(
                     std::move(operationContext));
             }
+            ToolContinuityObservationBuilder continuityObservation;
+            std::optional<Domain::ContextRecoveryReceipt> contextRecovery;
             auto payload = dispatch(
                 authorizedCall,
                 authority,
                 arguments,
-                operationContext.value());
+                operationContext.value(),
+                continuityObservation,
+                contextRecovery);
             if (!payload) {
                 return propagate<Domain::ToolCallOutcome>(std::move(payload));
             }
@@ -1310,7 +1354,6 @@ public:
                     Domain::ErrorCodes::InternalFailure,
                     "The MCP tool adapter produced a non-object payload.");
             }
-            std::optional<Domain::ContextRecoveryReceipt> contextRecovery;
             if (authorizedCall.toolName() == "context_get" &&
                 payload.value().value("found", false)) {
                 const auto handoffId = payload.value().find("handoff_id");
@@ -1326,15 +1369,29 @@ public:
                     return propagate<Domain::ToolCallOutcome>(
                         std::move(parsed));
                 }
-                contextRecovery.emplace(Domain::ContextRecoveryReceipt{
-                    authorizedCall.clientId(),
-                    std::move(parsed).value()});
+                if (!contextRecovery ||
+                    contextRecovery->clientId != authorizedCall.clientId() ||
+                    contextRecovery->handoffId != parsed.value()) {
+                    return failure<Domain::ToolCallOutcome>(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The recovered context metadata does not match its payload.");
+                }
+            } else if (contextRecovery) {
+                return failure<Domain::ToolCallOutcome>(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "Unexpected recovered context metadata was emitted.");
             }
             auto encoded = codec.canonicalize(payload.value().dump());
             if (!encoded) {
                 return propagate<Domain::ToolCallOutcome>(std::move(encoded));
             }
             const bool ok = payload.value().value("ok", true);
+            const bool continuityTool =
+                selected->tool.pack == "ContinuityToolPack" ||
+                selected->tool.pack == "ContinuityLifecycleToolPack";
+            auto observation = !continuityTool
+                ? continuityObservation.finish()
+                : std::optional<Domain::ToolContinuityObservation>{};
             auto receiptError = processReceiptError(payload.value());
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 dependencies_.clock.monotonicNow() - started);
@@ -1350,7 +1407,8 @@ public:
                         std::move(receiptError),
                         elapsed},
                     std::move(encoded).value(),
-                    std::move(contextRecovery)});
+                    std::move(contextRecovery),
+                    std::move(observation)});
         } catch (...) {
             return failure<Domain::ToolCallOutcome>(
                 Domain::ErrorCodes::InternalFailure,
@@ -1399,37 +1457,47 @@ private:
         const Contracts::AuthorizedToolCall& call,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation,
+        std::optional<Domain::ContextRecoveryReceipt>& contextRecovery)
     {
         const auto& name = call.toolName();
         if (name == "forge_status" || name.starts_with("agent_")) {
-            return agents(name, call, authority, arguments, context);
+            return agents(
+                name, call, authority, arguments, context, observation);
         }
         if (name == "session_checkpoint" || name == "session_handoff" ||
             name == "context_get" || name == "context_list") {
             return legacyContinuity(
-                name, call, authority, arguments, context);
+                name,
+                call,
+                authority,
+                arguments,
+                context,
+                contextRecovery);
         }
         if (name.starts_with("fs_")) {
-            return fileSystem(name, authority, arguments, context);
+            return fileSystem(
+                name, authority, arguments, context, observation);
         }
         if (name.starts_with("git_")) {
-            return git(name, authority, arguments, context);
+            return git(name, authority, arguments, context, observation);
         }
         if (name.starts_with("memory_")) {
             return legacyMemory(name, arguments, context);
         }
         if (name.starts_with("pdf_")) {
-            return pdf(name, authority, arguments, context);
+            return pdf(name, authority, arguments, context, observation);
         }
         if (name == "search_text") {
-            return search(authority, arguments, context);
+            return search(authority, arguments, context, observation);
         }
         if (name == "shell_exec") {
-            return shell(authority, arguments, context);
+            return shell(authority, arguments, context, observation);
         }
         if (name.starts_with("project_memory.")) {
-            return projectMemory(name, call, authority, arguments, context);
+            return projectMemory(
+                name, call, authority, arguments, context, observation);
         }
         if (name.starts_with("continuity.")) {
             return continuity(name, call, authority, arguments, context);
@@ -1444,7 +1512,8 @@ private:
         const Contracts::AuthorizedToolCall& call,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         if (name == "forge_status") {
             auto home = dependencies_.applicationPaths.dataRoot(context);
@@ -1484,6 +1553,55 @@ private:
             const std::size_t memoryCount = memory
                 ? memory.value().visibleTotal
                 : 0U;
+            Json continuityStatus = Json::object();
+            auto continuity =
+                dependencies_.legacyContinuity.statusSummary(context);
+            if (continuity) {
+                const auto& summary = continuity.value();
+                continuityStatus = Json{
+                    {"latest_id",
+                     summary.latestId
+                         ? Json(summary.latestId->value())
+                         : Json(nullptr)},
+                    {"latest_updated_at",
+                     summary.latestUpdatedAt
+                         ? Json(formatTimestamp(*summary.latestUpdatedAt))
+                         : Json(nullptr)},
+                    {"resume_ready", summary.resumeReady},
+                    {"resume_id",
+                     summary.resumeId
+                         ? Json(summary.resumeId->value())
+                         : Json(nullptr)},
+                    {"open_agent_sessions", summary.openAgentSessions},
+                    {"tools", stringArray(summary.tools)},
+                    {"note", summary.note},
+                    {"auto",
+                     Json{
+                         {"checkpoint_every_tools",
+                          summary.automatic.checkpointEveryTools},
+                         {"handoff_every_tools",
+                          summary.automatic.handoffEveryTools},
+                         {"note", summary.automatic.note}}}};
+            }
+
+            const auto automatic =
+                dependencies_.continuityAutomationStatus.snapshot(
+                    call.clientId());
+            Json implicitRoots = Json::array();
+            for (const auto& root : automatic.implicitRoots) {
+                implicitRoots.push_back(root.value());
+            }
+            Json automaticStatus{
+                {"enabled", automatic.enabled},
+                {"checkpoint_every_tools", automatic.checkpointEveryTools},
+                {"handoff_every_tools", automatic.handoffEveryTools},
+                {"progress_count", automatic.progressCount},
+                {"blocked", automatic.blocked},
+                {"handoff_id",
+                 automatic.handoffId
+                     ? Json(*automatic.handoffId)
+                     : Json(nullptr)},
+                {"implicit_roots", std::move(implicitRoots)}};
             return Domain::Result<Json>::success(Json{
                 {"ok", true},
                 {"version", dependencies_.productVersion},
@@ -1496,12 +1614,8 @@ private:
                 {"presence_count", status.value().presenceCount},
                 {"open_sessions", openIds.size()},
                 {"open_session_ids", std::move(openIds)},
-                {"continuity",
-                 Json{{"tracked_projects",
-                       dependencies_.continuityAutomation.trackedProjectCount()}}},
-                {"auto_continuity",
-                 Json{{"tracked_projects",
-                       dependencies_.continuityAutomation.trackedProjectCount()}}},
+                {"continuity", std::move(continuityStatus)},
+                {"auto_continuity", std::move(automaticStatus)},
                 {"pid", dependencies_.processId}});
         }
         if (name == "agent_list") {
@@ -1579,11 +1693,19 @@ private:
             std::optional<Domain::PathText> cwd;
             if (const auto encoded = legacyString(arguments, "cwd");
                 encoded && !encoded->empty()) {
-                auto parsed = pathText(*encoded, "cwd");
-                if (!parsed) {
-                    return propagate<Json>(std::move(parsed));
+                auto authorized = authorizePath(
+                    dependencies_.workspaceAuthority,
+                    authority,
+                    *encoded,
+                    Domain::FileAccess::Write,
+                    false,
+                    context,
+                    &observation,
+                    ContinuityPathRole::WorkingDirectory);
+                if (!authorized) {
+                    return propagate<Json>(std::move(authorized));
                 }
-                cwd.emplace(std::move(parsed).value());
+                cwd = authorized.value().canonicalPath();
             }
             Domain::AgentRunStartRequest request{
                 std::move(agentId).value(),
@@ -1740,7 +1862,8 @@ private:
         const std::string_view name,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         const auto suppliedPath = legacyString(arguments, "path");
         if (name != "fs_list" && name != "fs_glob" && name != "fs_move" &&
@@ -1763,7 +1886,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Read,
                 false,
-                context);
+                context,
+                &observation);
             if (!authorized) {
                 return propagate<Json>(std::move(authorized));
             }
@@ -1972,7 +2096,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Write,
                 false,
-                context);
+                context,
+                &observation);
             if (!authorized) {
                 return propagate<Json>(std::move(authorized));
             }
@@ -2002,7 +2127,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Read,
                 false,
-                context);
+                context,
+                &observation);
             if (!readable) {
                 return propagate<Json>(std::move(readable));
             }
@@ -2012,7 +2138,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Write,
                 false,
-                context);
+                context,
+                &observation);
             if (!writable) {
                 return propagate<Json>(std::move(writable));
             }
@@ -2034,7 +2161,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Read,
                 false,
-                context);
+                context,
+                &observation);
             if (!authorized) {
                 return propagate<Json>(std::move(authorized));
             }
@@ -2066,7 +2194,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Read,
                 false,
-                context);
+                context,
+                &observation);
             if (!authorized) {
                 return propagate<Json>(std::move(authorized));
             }
@@ -2096,7 +2225,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Create,
                 false,
-                context);
+                context,
+                &observation);
             if (!authorized) {
                 return propagate<Json>(std::move(authorized));
             }
@@ -2117,7 +2247,8 @@ private:
                 encodedPath,
                 Domain::FileAccess::Delete,
                 true,
-                context);
+                context,
+                &observation);
             if (!authorized) {
                 return propagate<Json>(std::move(authorized));
             }
@@ -2153,7 +2284,8 @@ private:
                 *source,
                 Domain::FileAccess::Delete,
                 true,
-                context);
+                context,
+                &observation);
             if (!authorizedSource) {
                 return propagate<Json>(std::move(authorizedSource));
             }
@@ -2163,7 +2295,8 @@ private:
                 *destination,
                 Domain::FileAccess::Create,
                 false,
-                context);
+                context,
+                &observation);
             if (!authorizedDestination) {
                 return propagate<Json>(std::move(authorizedDestination));
             }
@@ -2186,7 +2319,8 @@ private:
         const std::string_view name,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         const auto repository = legacyString(arguments, "cwd").value_or(
             defaultRoot(authority));
@@ -2199,7 +2333,9 @@ private:
             repository,
             access,
             false,
-            context);
+            context,
+            &observation,
+            ContinuityPathRole::WorkingDirectory);
         if (!authorizedRepository) {
             return propagate<Json>(std::move(authorizedRepository));
         }
@@ -2241,7 +2377,8 @@ private:
                     anchored,
                     Domain::FileAccess::Read,
                     false,
-                    context);
+                    context,
+                    &observation);
                 if (!authorizedPath) {
                     return propagate<Json>(std::move(authorizedPath));
                 }
@@ -2266,7 +2403,8 @@ private:
         const std::string_view name,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         if (name == "pdf_write") {
             const auto requestedPath = legacyString(arguments, "path");
@@ -2285,7 +2423,8 @@ private:
                 destinationText,
                 Domain::FileAccess::Create,
                 false,
-                context);
+                context,
+                &observation);
             if (!destination) {
                 return propagate<Json>(std::move(destination));
             }
@@ -2316,7 +2455,8 @@ private:
                 sourceText,
                 Domain::FileAccess::Read,
                 false,
-                context);
+                context,
+                &observation);
             if (!source) {
                 return propagate<Json>(std::move(source));
             }
@@ -2330,7 +2470,8 @@ private:
                 *destinationText,
                 Domain::FileAccess::Create,
                 false,
-                context);
+                context,
+                &observation);
             if (!destination) {
                 return propagate<Json>(std::move(destination));
             }
@@ -2353,7 +2494,8 @@ private:
     [[nodiscard]] Domain::Result<Json> search(
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         const auto query = legacyString(arguments, "pattern").value_or("");
         const auto rootText = legacyString(arguments, "path").value_or(
@@ -2364,7 +2506,8 @@ private:
             rootText,
             Domain::FileAccess::Read,
             false,
-            context);
+            context,
+            &observation);
         if (!root) {
             return propagate<Json>(std::move(root));
         }
@@ -2387,7 +2530,8 @@ private:
     [[nodiscard]] Domain::Result<Json> shell(
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         const auto command = legacyString(arguments, "command").value_or("");
         if (command.empty()) {
@@ -2403,7 +2547,9 @@ private:
             cwdText,
             Domain::FileAccess::Execute,
             false,
-            context);
+            context,
+            &observation,
+            ContinuityPathRole::WorkingDirectory);
         if (!cwd) {
             return propagate<Json>(std::move(cwd));
         }
@@ -2563,7 +2709,8 @@ private:
         const Contracts::AuthorizedToolCall& call,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         if (name == "project_memory.initialize") {
             const auto projectPath = strictString(arguments, "project_path").value_or("");
@@ -2573,7 +2720,8 @@ private:
                 projectPath,
                 Domain::FileAccess::Read,
                 false,
-                context);
+                context,
+                &observation);
             if (!authorizedPath) {
                 return propagate<Json>(std::move(authorizedPath));
             }
@@ -2818,7 +2966,13 @@ private:
         }
 
         return projectMemoryMutation(
-            name, call, authority, project.value(), arguments, context);
+            name,
+            call,
+            authority,
+            project.value(),
+            arguments,
+            context,
+            observation);
     }
 
     [[nodiscard]] Domain::Result<Json> projectMemoryMutation(
@@ -2827,7 +2981,8 @@ private:
         const Contracts::WorkspaceAuthority& authority,
         const Domain::ProjectId& project,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         if (name == "project_memory.update") {
             auto id = parseStrongUuid<Domain::MemoryRecordId>(arguments, "id");
@@ -2942,7 +3097,7 @@ private:
         }
 
         return projectMemoryArtifact(
-            name, call, authority, project, arguments, context);
+            name, call, authority, project, arguments, context, observation);
     }
 
     [[nodiscard]] Domain::Result<Json> projectMemoryArtifact(
@@ -2951,7 +3106,8 @@ private:
         const Contracts::WorkspaceAuthority& authority,
         const Domain::ProjectId& project,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
     {
         if (name == "project_memory.link") {
             auto source = parseStrongUuid<Domain::MemoryRecordId>(
@@ -3008,7 +3164,8 @@ private:
                 artifactText,
                 Domain::FileAccess::Read,
                 false,
-                context);
+                context,
+                &observation);
             if (!artifact) {
                 return propagate<Json>(std::move(artifact));
             }
@@ -3772,7 +3929,8 @@ private:
         const Contracts::AuthorizedToolCall& call,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        std::optional<Domain::ContextRecoveryReceipt>& contextRecovery)
     {
         if (name == "session_checkpoint" || name == "session_handoff") {
             auto patch = legacyPatch(arguments);
@@ -3850,6 +4008,18 @@ private:
                     Domain::ErrorCodes::IntegrityFailure,
                     "The recovered context caller does not match workspace authority.");
             }
+            const auto automation =
+                dependencies_.continuityAutomationStatus.snapshot(
+                    call.clientId());
+            if (automation.blocked &&
+                (!automation.handoffId ||
+                 *automation.handoffId !=
+                     result.value().record->packet.id.value())) {
+                return failure<Json>(
+                    Domain::ErrorCodes::Conflict,
+                    "The recovered handoff does not match the client's active context block.",
+                    true);
+            }
             auto adoption = dependencies_.clientWorkspaceContext.adopt(
                 call.clientId(), *result.value().record, context);
             if (!adoption) {
@@ -3865,6 +4035,33 @@ private:
                     "A newer recovered workspace superseded this context.",
                     true);
             }
+            std::optional<Domain::PathText> recoveredWorkingDirectory;
+            if (result.value().record->packet.workingDirectory) {
+                auto parsed = pathText(
+                    *result.value().record->packet.workingDirectory,
+                    "recovered cwd");
+                if (!parsed) {
+                    return propagate<Json>(std::move(parsed));
+                }
+                recoveredWorkingDirectory.emplace(
+                    std::move(parsed).value());
+            }
+            std::vector<Domain::PathText> recoveredKeyFiles;
+            recoveredKeyFiles.reserve(
+                result.value().record->packet.keyFiles.size());
+            for (const auto& encoded :
+                 result.value().record->packet.keyFiles) {
+                auto parsed = pathText(encoded, "recovered key_files");
+                if (!parsed) {
+                    return propagate<Json>(std::move(parsed));
+                }
+                recoveredKeyFiles.push_back(std::move(parsed).value());
+            }
+            contextRecovery.emplace(Domain::ContextRecoveryReceipt{
+                call.clientId(),
+                result.value().record->packet.id,
+                std::move(recoveredWorkingDirectory),
+                std::move(recoveredKeyFiles)});
             return Domain::Result<Json>::success(legacyGetJson(
                 *result.value().record,
                 adoption.value()));

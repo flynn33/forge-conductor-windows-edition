@@ -1,0 +1,99 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpInvocationGuard.cpp
+  Compiling...
+  McpInvocationGuard.cpp
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpInvocationGuardTests.cpp
+  Compiling...
+  McpInvocationGuardTests.cpp
+  ForgeConductor.Mcp.InvocationGuardTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.InvocationGuardTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpToolPackAdapterTests.cpp
+  Compiling...
+  McpToolPackAdapterTests.cpp
+  ForgeConductor.Mcp.ToolPackAdapterTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.ToolPackAdapterTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor_Contracts_ILegacyContinuityRepository_h.cpp
+  ForgeConductor_Contracts_INativeToolServices_h.cpp
+  ForgeConductor_Contracts_IMcpTransport_h.cpp
+  ForgeConductor_Domain_Domain_h.cpp
+  ForgeConductor_Domain_LegacyContinuityModels_h.cpp
+  ForgeConductor_Contracts_IClientPresenceRepository_h.cpp
+  ForgeConductor_Contracts_IMcpClientWorkspaceContext_h.cpp
+  ForgeConductor_Contracts_IProjectMemoryService_h.cpp
+  ForgeConductor_Contracts_ILegacyContextContinuityService_h.cpp
+  ForgeConductor_Domain_ClientPresenceModels_h.cpp
+  ForgeConductor_Contracts_IContinuityProjectionStore_h.cpp
+  ForgeConductor_Contracts_IFoundationServices_h.cpp
+  ForgeConductor_Contracts_Contracts_h.cpp
+  ForgeConductor_Contracts_IToolServices_h.cpp
+  ForgeConductor_Contracts_ILegacyContinuitySessionSource_h.cpp
+  ForgeConductor_Contracts_IContinuityCoordinator_h.cpp
+  ForgeConductor_Contracts_IContinuityAutomation_h.cpp
+  ForgeConductor_Contracts_INativeSessionHostServices_h.cpp
+  ForgeConductor_Contracts_IProcessSupervisor_h.cpp
+  ForgeConductor_Contracts_ISessionHostAdapter_h.cpp
+  ForgeConductor_Contracts_IMcpServer_h.cpp
+  ForgeConductor_Domain_ContinuityAutomationModels_h.cpp
+  Compiling...
+  ForgeConductor_Contracts_Contracts_h.cpp
+  ForgeConductor_Contracts_ISessionHostAdapter_h.cpp
+  ForgeConductor_Contracts_ILegacyContinuityRepository_h.cpp
+  ForgeConductor_Contracts_IContinuityProjectionStore_h.cpp
+  ForgeConductor_Contracts_IFoundationServices_h.cpp
+  ForgeConductor_Contracts_IProcessSupervisor_h.cpp
+  ForgeConductor_Contracts_INativeToolServices_h.cpp
+  ForgeConductor_Contracts_ILegacyContinuitySessionSource_h.cpp
+  ForgeConductor_Contracts_IContinuityAutomation_h.cpp
+  ForgeConductor_Contracts_IClientPresenceRepository_h.cpp
+  ForgeConductor_Contracts_IContinuityCoordinator_h.cpp
+  ForgeConductor_Contracts_ILegacyContextContinuityService_h.cpp
+  ForgeConductor_Contracts_IMcpClientWorkspaceContext_h.cpp
+  ForgeConductor_Contracts_IMcpServer_h.cpp
+  ForgeConductor_Contracts_IMcpTransport_h.cpp
+  ForgeConductor_Contracts_IProjectMemoryService_h.cpp
+  ForgeConductor_Contracts_INativeSessionHostServices_h.cpp
+  ForgeConductor_Domain_LegacyContinuityModels_h.cpp
+  ForgeConductor_Contracts_IToolServices_h.cpp
+  ForgeConductor_Domain_Domain_h.cpp
+  ForgeConductor_Domain_ContinuityAutomationModels_h.cpp
+  ForgeConductor_Domain_ClientPresenceModels_h.cpp
+  ForgeConductor.DomainContracts.HeaderObjects.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.DomainContracts.HeaderObjects.dir\Debug\ForgeConductor.DomainContracts.HeaderObjects.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Contracts.HeaderSelfContainment.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Contracts.HeaderSelfContainment.exe

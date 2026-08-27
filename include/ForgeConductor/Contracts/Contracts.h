@@ -3,6 +3,7 @@
 #include "ForgeConductor/Contracts/AuthorityCapabilities.h"
 #include "ForgeConductor/Contracts/AuthorizedToolCall.h"
 #include "ForgeConductor/Contracts/IAgentServices.h"
+#include "ForgeConductor/Contracts/IClientPresenceRepository.h"
 #include "ForgeConductor/Contracts/IConfigurationStore.h"
 #include "ForgeConductor/Contracts/IContinuityCoordinator.h"
 #include "ForgeConductor/Contracts/IContinuityAutomation.h"

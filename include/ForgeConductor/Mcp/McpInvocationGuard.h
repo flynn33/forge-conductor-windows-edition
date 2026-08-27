@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/IFoundationServices.h"
+#include "ForgeConductor/Contracts/IContinuityAutomation.h"
 #include "ForgeConductor/Contracts/ILegacyContextContinuityService.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
 
@@ -26,7 +27,9 @@ struct McpInvocationGuardPolicy final {
 // Owns bounded per-client loop and legacy runtime-continuity state. It has no
 // worker thread; persistence is synchronous and observes the caller's deadline
 // and cancellation token.
-class McpInvocationGuard final : public Contracts::IToolInvocationGuard {
+class McpInvocationGuard final
+    : public Contracts::IToolInvocationGuard,
+      public Contracts::IContinuityAutomationStatusSource {
 public:
     static constexpr std::size_t MaximumTrackedLoopClients = 256U;
     static constexpr std::size_t MaximumTrackedContinuityClients = 128U;
@@ -60,6 +63,9 @@ public:
 
     void cancel(const Domain::OperationId& operationId) noexcept override;
     void shutdown() noexcept override;
+
+    [[nodiscard]] Domain::ContinuityAutomationStatusSnapshot snapshot(
+        const Domain::ClientId& clientId) const noexcept override;
 
     [[nodiscard]] std::size_t trackedLoopClientCount() const noexcept;
     [[nodiscard]] std::size_t trackedContinuityClientCount() const noexcept;

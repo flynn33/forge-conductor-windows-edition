@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeConductor/Domain/AgentModels.h"
+#include "ForgeConductor/Domain/ClientPresenceModels.h"
 #include "ForgeConductor/Domain/ConfigurationModels.h"
 #include "ForgeConductor/Domain/ContinuityModels.h"
 #include "ForgeConductor/Domain/ContinuityAutomationModels.h"

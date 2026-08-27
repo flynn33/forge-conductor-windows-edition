@@ -1,0 +1,19 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 7: ForgeConductor.Mcp.InvocationGuardTests
+1/1 Test #7: ForgeConductor.Mcp.InvocationGuardTests ...***Failed    0.04 sec
+Requirement failed: continuity.automaticRequests().back().inferred.keyFiles == recoveredKeyFiles
+
+
+0% tests passed, 1 tests failed out of 1
+
+Label Time Summary:
+G14         =   0.04 sec*proc (1 test)
+T-CONT      =   0.04 sec*proc (1 test)
+T-MCP       =   0.04 sec*proc (1 test)
+T-STRESS    =   0.04 sec*proc (1 test)
+T-UNIT      =   0.04 sec*proc (1 test)
+
+Total Test time (real) =   0.05 sec
+
+The following tests FAILED:
+	  7 - ForgeConductor.Mcp.InvocationGuardTests (Failed)  G14 T-CONT T-MCP T-STRESS T-UNIT

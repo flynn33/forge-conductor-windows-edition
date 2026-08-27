@@ -94,9 +94,22 @@ struct ClientWorkspaceAdoption final {
     bool superseded{};
 };
 
+// Canonical path observation emitted by the authorized tool adapter. The
+// invocation guard consumes this metadata after dispatch so continuity state
+// never derives workspace roots from pre-authorization wire arguments.
+struct ToolContinuityObservation final {
+    std::optional<PathText> path;
+    std::optional<PathText> workingDirectory;
+    std::optional<PathText> baseDirectory;
+
+    bool operator==(const ToolContinuityObservation&) const = default;
+};
+
 struct ContextRecoveryReceipt final {
     ClientId clientId;
     LegacyHandoffId handoffId;
+    std::optional<PathText> workingDirectory;
+    std::vector<PathText> keyFiles;
 
     bool operator==(const ContextRecoveryReceipt&) const = default;
 };
@@ -105,6 +118,7 @@ struct ToolCallOutcome final {
     ToolExecutionReceipt receipt;
     std::string canonicalPayload;
     std::optional<ContextRecoveryReceipt> contextRecovery;
+    std::optional<ToolContinuityObservation> continuityObservation;
 };
 
 // A missing immediate outcome admits the invocation. A present outcome is a

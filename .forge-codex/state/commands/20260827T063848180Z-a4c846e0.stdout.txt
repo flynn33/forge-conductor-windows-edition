@@ -1,0 +1,14 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 7: ForgeConductor.Mcp.InvocationGuardTests
+1/1 Test #7: ForgeConductor.Mcp.InvocationGuardTests ...   Passed    0.21 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+G14         =   0.21 sec*proc (1 test)
+T-CONT      =   0.21 sec*proc (1 test)
+T-MCP       =   0.21 sec*proc (1 test)
+T-STRESS    =   0.21 sec*proc (1 test)
+T-UNIT      =   0.21 sec*proc (1 test)
+
+Total Test time (real) =   0.21 sec
