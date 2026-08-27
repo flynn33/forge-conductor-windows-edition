@@ -160,6 +160,17 @@ target_include_directories(ForgeConductor.Manager.Host PUBLIC
 target_link_libraries(ForgeConductor.Manager.Host PUBLIC
     ForgeConductor::Manager.Protocol)
 
+add_library(ForgeConductor.Dashboard.Protocol STATIC
+    src/Dashboard/DashboardHttpParser.cpp
+    src/Dashboard/DashboardRequestPolicy.cpp)
+forge_add_layer(
+    ForgeConductor.Dashboard.Protocol
+    ForgeConductor::Dashboard.Protocol
+    ForgeConductor::Contracts)
+forge_configure_standard_target(ForgeConductor.Dashboard.Protocol)
+target_include_directories(ForgeConductor.Dashboard.Protocol PUBLIC
+    "${PROJECT_SOURCE_DIR}/include")
+
 set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp
     src/Infrastructure/Windows/BCryptSha256Hasher.cpp
@@ -525,6 +536,30 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProcessHostTests>)
     set_tests_properties(ForgeConductor.Manager.ProcessHostTests PROPERTIES
         LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.HttpParserTests
+        tests/Dashboard/DashboardHttpParserTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Dashboard.HttpParserTests)
+    target_link_libraries(ForgeConductor.Dashboard.HttpParserTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.HttpParserTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.HttpParserTests>)
+    set_tests_properties(ForgeConductor.Dashboard.HttpParserTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.RequestPolicyTests
+        tests/Dashboard/DashboardRequestPolicyTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Dashboard.RequestPolicyTests)
+    target_link_libraries(ForgeConductor.Dashboard.RequestPolicyTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.RequestPolicyTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.RequestPolicyTests>)
+    set_tests_properties(ForgeConductor.Dashboard.RequestPolicyTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-UNIT"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Mcp.CatalogCodecTests

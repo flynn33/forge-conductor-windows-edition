@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "bounded-dashboard-http-parser-policy-and-protocol-decision",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "MSVC 19.44.35223 / Visual Studio 2022 17.14 generator, v143, Windows SDK 10.0.26100.0, CMake preset windows-msvc-x64-debug, CTest Debug",
+  "command_record": ".forge-codex/state/commands/20260827T195455965Z-da600e54.json",
+  "command_record_sha256": "8d86eea687c5e1bace358f977c350de3ba76615fb43ed3eb1927fd93493aac4b",
+  "exit_code": 0,
+  "timed_out": false,
+  "measured_result": {
+    "tests_passed": 2,
+    "tests_failed": 0,
+    "real_seconds": 0.12,
+    "stdout_sha256": "8f420afe6aa8b272aea45a7138e366b98d46ec7641cdb89ca42a6f08acc943c0",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "behavior_proved": [
+    "strict incremental HTTP/1.1 parsing distinguishes incomplete input from rejected input",
+    "32 KiB header, 64-header, 8 KiB target, and 1 MiB body limits are enforced at exact boundaries",
+    "strict UTF-8, CRLF framing, token names, duplicate headers, Transfer-Encoding rejection, Content-Length, percent syntax, and one-request framing are validated",
+    "only exact IPv4 or IPv6 loopback host and port authorities are accepted",
+    "the public bootstrap route allowlist is exact and every other path requires the dashboard bearer",
+    "malformed bearer candidates receive fixed-width normalization and constant-time digest comparison before rejection",
+    "state-changing requests enforce the bounded JSON media grammar and exact origin/fetch metadata",
+    "query values and cookies never substitute for Authorization",
+    "an independent design audit passed after atomic settings-update and cross-origin rebind handoff requirements were frozen"
+  ],
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-004-bounded-loopback-dashboard-protocol-and-authentication.md": "9bc7ba87291be5cf39bd375b0ca78c37c2cb7e68643cfe333b704d4edf8b9dc8",
+    "include/ForgeConductor/Dashboard/DashboardHttpModels.h": "369402e6df51dbbacf8bf5d5064413549247e3bfbff77001d8e149aacf6b6a99",
+    "include/ForgeConductor/Dashboard/DashboardHttpParser.h": "d50aa7da073862c56d35051d160c7a51b9eae5f5d36e8c1d371ef1f28498e894",
+    "include/ForgeConductor/Dashboard/DashboardRequestPolicy.h": "4049c31fc04c5ae541715ee565c07763882db398f83a924739b86048cabb6562",
+    "src/Dashboard/DashboardHttpParser.cpp": "d6525d5ee2b8361988102aa28c228e91605c9aff348ecd76b1bb9b6262048993",
+    "src/Dashboard/DashboardRequestPolicy.cpp": "f5be66f166a3e03dbbd7b450deae5c37ccf02bdc2279087b216c113d8253e1fd"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.HttpParserTests.exe": "81d2937063ba6199b74a7ae8031724afe98ca71031cc0af0b2193912d24612de",
+    "ForgeConductor.Dashboard.RequestPolicyTests.exe": "93ccda8476c3eb51b261916715436e276959c86fa6ec7dd350f020216da13922"
+  },
+  "remaining_limitations": [
+    "The atomic manager settings-update outcome required by P16-004 is not yet carried through the controller, named-pipe protocol, and client.",
+    "The dashboard JSON codec, route composition, static shell, Windows socket listener, DPAPI dashboard bearer store, SSE delivery, and production manager runtime remain P16-B work.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "The authoritative G16 invocation has not been run."
+  ]
+}
