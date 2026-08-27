@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "phase": "P15",
+  "gate": "G15",
+  "checkpoint": "g15_attempt_3_predeployment_diagnostic",
+  "status": "resolved",
+  "recorded_utc": "2026-08-27T14:57:01.0677543+00:00",
+  "implementation_commit": "fc743c11d1624bbfcd32610ef51c4079857d523d",
+  "resumed_attempt": {
+    "command_record": ".forge-codex/state/commands/20260827T144836198Z-72acd98d.json",
+    "command_record_sha256": "85be8d67147b9984adbe3bf1afc25cd682721cc37f1690635503531c17a760f5",
+    "stdout_sha256": "201b3e5c4b200e9f28d5609b2f56d4f05719ba4c9a31653c1bc7034adeaf7884",
+    "stderr_sha256": "c178e8d0b686d19c294da78b8bf0c5fadb69a4f7222eed8f96c4a3e9b2b93b93",
+    "exit_code": 1,
+    "timed_out": false,
+    "repeat_full_rebuild": false,
+    "repeat_full_g15_ctest": false,
+    "failed_real_host_evidence": ".forge-codex/state/evidence/P15/windows-lm-studio-real-host-attempt-3-failed.json",
+    "failed_real_host_evidence_sha256": "b8ba05b30406a3fb1dd4754e79f27fed28beffba40e100da94cfc8f2006fbc37"
+  },
+  "failure": {
+    "stage": "deploy_lmstudio_plugins",
+    "error_code": "path_outside_authority",
+    "cause": "Deployment attempted to read-authorize the discovered LM Studio application executable through the write authority even though deployment neither reads, mutates, nor launches that executable. The separate execute authority already owns application activation.",
+    "deployment_operation_started": true,
+    "transaction_mutation_started": false,
+    "deployment_left_installed": false,
+    "lm_studio_launched": false,
+    "rollback_requested": false
+  },
+  "observed_impact": {
+    "lm_studio_process_count": 0,
+    "configuration_bytes": 23,
+    "configuration_sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02",
+    "configuration_matches_baseline": true,
+    "host_state_mutated": false
+  },
+  "correction": {
+    "description": "Keep deployment maintenance authority limited to the Forge binary, LM Studio configuration/plugin root, and Forge home; authorize and launch LM Studio.exe only through the separate activation execute authority.",
+    "focused_command_record": ".forge-codex/state/commands/20260827T145523645Z-f71473e0.json",
+    "focused_command_record_sha256": "face095c28cf9e8922d76c51953c7e8d7d16524585f6fc18d8a67b25b0eba4f7",
+    "stdout_sha256": "88510a79056ca7158606591832b1f32e87d039f01e7b2a9c4a6dec56c062e10c",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "exit_code": 0,
+    "timed_out": false,
+    "focused_targets_built": [
+      "ForgeConductor.Infrastructure.UnitTests",
+      "ForgeConductor.LMStudio.RealHostTests"
+    ],
+    "focused_test_result": "88/88 Windows infrastructure unit tests passed.",
+    "source_hashes": {
+      "src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp": "c74e22253265d68b21499d0f577bc95ef80df25c92460820f7f3a6de83730e69",
+      "tests/Application/LMStudioDeploymentServiceTests.cpp": "48c4348a5406c6cf7fb2cdc14697c19d979dfe3562dc2d37b995d52634487391"
+    }
+  },
+  "resume_policy": {
+    "authoritative_full_rebuild_invocations": 1,
+    "authoritative_full_test_invocations": 1,
+    "corrective_focused_build_invocations": 3,
+    "corrective_focused_test_invocations": 2,
+    "completed_real_host_attempts": 3,
+    "successful_real_host_qualifications": 0
+  }
+}

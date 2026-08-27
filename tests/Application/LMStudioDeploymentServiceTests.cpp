@@ -968,11 +968,22 @@ void seedForeignState(Fixture& fixture)
 void testTransactionalDeployPreservesForeignAndOrdersFallbackFirst()
 {
     Fixture fixture;
+    fixture.environment.inspectResult.set(
+        Domain::Result<Domain::LMStudioEnvironmentStatus>::success(
+            Domain::LMStudioEnvironmentStatus{
+                true,
+                fixture.lmStudioRoot,
+                fixture.configurationPath,
+                std::string{"0.4.21+2"},
+                path("C:\\Program Files\\LM Studio\\LM Studio.exe"),
+                {}}));
     seedForeignState(fixture);
     const auto result = take(fixture.deploy(fixture.context()));
     require(result.ok && result.deploymentId.value() ==
                 "97000000-0000-4000-8000-000000000001",
             "The deployment did not publish its fresh deterministic revision.");
+    require(fixture.host.calls() == 0U,
+            "Deployment attempted to activate an application outside its write authority.");
 
     const auto configuration = Json::parse(
         fixture.storage.fileText(fixture.configurationPath.value()).value());

@@ -1388,7 +1388,7 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
         const auto forgeHome = take(implementation->applicationPaths.dataRoot(context));
 
         std::vector<Domain::PathText> maintenanceRoots;
-        maintenanceRoots.reserve(4U);
+        maintenanceRoots.reserve(3U);
         appendUniqueRoot(maintenanceRoots, validatedBinary.authorityRoot);
         const auto configurationRead = implementation->authorize(
             writeAuthority, configurationPath.value(), layout->lmStudioRoot,
@@ -1400,16 +1400,6 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
                 forgeHome, std::nullopt, Domain::FileAccess::Read, false},
             context));
         appendUniqueRoot(maintenanceRoots, forgeHomeRead.authorityRoot());
-        if (environment.applicationExecutable) {
-            const auto applicationRead = take(
-                implementation->workspaceAuthority.authorize(
-                    writeAuthority,
-                    Domain::PathAuthorizationRequest{
-                        environment.applicationExecutable.value(), std::nullopt,
-                        Domain::FileAccess::Read, false},
-                    context));
-            appendUniqueRoot(maintenanceRoots, applicationRead.authorityRoot());
-        }
         maintenanceAuthority.emplace(take(implementation->workspaceAuthority.narrow(
             writeAuthority,
             maintenanceRoots,
