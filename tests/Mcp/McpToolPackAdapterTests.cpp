@@ -291,6 +291,12 @@ class PassiveFileTextServices final
     : public Contracts::ITextFileEditService,
       public Contracts::IPathGlobService {
 public:
+    void setReplaceAllResult(
+        Domain::Result<Contracts::TextFileEditReport> result)
+    {
+        replaceAllResult_ = std::move(result);
+    }
+
     [[nodiscard]] Domain::Result<Contracts::TextFileEditReport> replaceAll(
         const Contracts::AuthorizedPath&,
         const Contracts::AuthorizedPath&,
@@ -298,6 +304,9 @@ public:
         std::string_view,
         const Domain::OperationContext&) noexcept override
     {
+        if (replaceAllResult_) {
+            return *replaceAllResult_;
+        }
         return unavailable<Contracts::TextFileEditReport>(message_);
     }
 
@@ -314,6 +323,8 @@ public:
 private:
     static constexpr const char* message_ =
         "Text editing and globbing are not configured for this test.";
+    std::optional<Domain::Result<Contracts::TextFileEditReport>>
+        replaceAllResult_;
 };
 
 class PassiveContinuityCodec final
@@ -593,6 +604,7 @@ void testRuntimeDispatchAndSchemaPolicy()
             clock,
             uuidGenerator,
             Domain::ProjectMemoryLimits{},
+            std::chrono::seconds{37},
             shellExecutable,
             "0.9.0",
             "windows-cpp",
@@ -979,6 +991,343 @@ void testRuntimeDispatchAndSchemaPolicy()
             Domain::ErrorCodes::InvalidRequest);
     REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Status) == 0U);
 
+    const auto memoryRecordId = parse<Domain::MemoryRecordId>(
+        "90000000-0000-4000-8000-000000000009");
+    const auto memoryDigest = parse<Domain::Sha256Digest>(
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    const Domain::MemoryWriteOutcome memoryWriteOutcome{
+        projectId,
+        memoryRecordId,
+        3U,
+        Domain::MemoryWriteDisposition::Inserted,
+        memoryDigest,
+        Domain::ProjectMemorySchemaVersion,
+        Domain::ProjectMemoryCapabilityVersion};
+
+    projectMemory.initializeResult.set(
+        Domain::Result<Domain::ProjectInitialization>::success(
+            Domain::ProjectInitialization{
+                Domain::ProjectMemoryDescriptor{
+                    projectId,
+                    "Adapter project",
+                    std::optional<std::string>{"adapter-project"},
+                    {root}},
+                Domain::ProjectMemorySchemaVersion,
+                Domain::ProjectMemoryCapabilityVersion,
+                Domain::ProjectMemoryLimits{},
+                true,
+                true,
+                true}));
+    auto initializeAliasCall = authorize(
+        "project_memory.initialize",
+        Domain::ToolEffect::Write,
+        Json{
+            {"path", " \tD:/workspace\r\n"},
+            {"display_name", 2026},
+            {"idempotency_key", 31415},
+            {"deadline_ms", "5000"}}
+            .dump(),
+        "request-project-memory-initialize-alias");
+    auto initializeAlias = adapter->handle(
+        initializeAliasCall, authority, context);
+    REQUIRE(initializeAlias);
+    REQUIRE(Json::parse(initializeAlias.value().canonicalPayload).at(
+                "project_id") == projectId.value());
+    REQUIRE(projectMemory.callCount(
+                Fakes::ProjectMemoryCall::Initialize) == 1U);
+
+    projectMemory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            projectId,
+            {},
+            std::nullopt,
+            false,
+            0U,
+            2'048U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    auto normalizedSearchCall = authorize(
+        "project_memory.search",
+        Domain::ToolEffect::Read,
+        Json{
+            {"project_id", "  " + projectId.value() + "\n"},
+            {"query", 17},
+            {"kinds", "decision"},
+            {"tags", Json::array({"alpha", 9, "beta"})},
+            {"limit", "2"},
+            {"maximum_response_bytes", 2048.0},
+            {"include_body", "false"}}
+            .dump(),
+        "request-project-memory-normalized-search");
+    auto normalizedSearch = adapter->handle(
+        normalizedSearchCall, authority, context);
+    REQUIRE(normalizedSearch);
+    REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Search) == 1U);
+    const auto normalizedSearchPayload = Json::parse(
+        normalizedSearch.value().canonicalPayload);
+    REQUIRE(normalizedSearchPayload.at("project_id") == projectId.value());
+    REQUIRE(normalizedSearchPayload.at("records") == Json::array());
+
+    projectMemory.rememberBatchResult.set(
+        Domain::Result<Domain::MemoryBatchOutcome>::success(
+            Domain::MemoryBatchOutcome{
+                projectId,
+                {memoryWriteOutcome},
+                Domain::ProjectMemorySchemaVersion,
+                Domain::ProjectMemoryCapabilityVersion}));
+    auto normalizedBatchCall = authorize(
+        "project_memory.remember_batch",
+        Domain::ToolEffect::Write,
+        Json{
+            {"project_id", projectId.value()},
+            {"deadline_ms", "5000"},
+            {"items",
+             Json::array({Json{
+                 {"kind", " decision "},
+                 {"title", 123},
+                 {"summary", " Batch summary "},
+                 {"body", Json::object()},
+                 {"tags", "batch-tag"},
+                 {"importance", "default-me"},
+                 {"confidence", false},
+                 {"source_reference", 99},
+                 {"related_ids",
+                  Json::array({memoryRecordId.value(), 7})}}})}}
+            .dump(),
+        "request-project-memory-normalized-batch");
+    auto normalizedBatch = adapter->handle(
+        normalizedBatchCall, authority, context);
+    REQUIRE(normalizedBatch);
+    REQUIRE(projectMemory.callCount(
+                Fakes::ProjectMemoryCall::RememberBatch) == 1U);
+    const auto normalizedBatchPayload = Json::parse(
+        normalizedBatch.value().canonicalPayload);
+    REQUIRE(normalizedBatchPayload.at("count") == 1U);
+    REQUIRE(normalizedBatchPayload.at("results").at(0).at("record_id") ==
+            memoryRecordId.value());
+
+    projectMemory.importResult.set(
+        Domain::Result<Domain::ProjectMemoryImport>::success(
+            Domain::ProjectMemoryImport{
+                projectId,
+                Domain::ImportDisposition::Preview,
+                4U,
+                2U,
+                memoryDigest,
+                {}}));
+    auto previewImportCall = authorize(
+        "project_memory.import",
+        Domain::ToolEffect::Write,
+        Json{
+            {"project_id", projectId.value()},
+            {"artifact", " memory-export.json "},
+            {"preview", "not-a-bool"}}
+            .dump(),
+        "request-project-memory-preview-import");
+    auto previewImport = adapter->handle(
+        previewImportCall, authority, context);
+    REQUIRE(previewImport);
+    const auto previewImportPayload = Json::parse(
+        previewImport.value().canonicalPayload);
+    REQUIRE(previewImportPayload.at("preview") == true);
+    REQUIRE(previewImportPayload.at("disposition") == "preview");
+    REQUIRE(previewImportPayload.at("record_count") == 4U);
+    REQUIRE(previewImportPayload.contains("imported"));
+    REQUIRE(!previewImportPayload.contains("results"));
+
+    projectMemory.importResult.set(
+        Domain::Result<Domain::ProjectMemoryImport>::success(
+            Domain::ProjectMemoryImport{
+                projectId,
+                Domain::ImportDisposition::Imported,
+                1U,
+                1U,
+                memoryDigest,
+                {memoryWriteOutcome}}));
+    auto committedImportCall = authorize(
+        "project_memory.import",
+        Domain::ToolEffect::Write,
+        Json{
+            {"project_id", projectId.value()},
+            {"artifact", "memory-export.json"},
+            {"preview", false}}
+            .dump(),
+        "request-project-memory-committed-import");
+    auto committedImport = adapter->handle(
+        committedImportCall, authority, context);
+    REQUIRE(committedImport);
+    const auto committedImportPayload = Json::parse(
+        committedImport.value().canonicalPayload);
+    REQUIRE(committedImportPayload.size() == 6U);
+    REQUIRE(committedImportPayload.at("ok") == true);
+    REQUIRE(committedImportPayload.at("project_id") == projectId.value());
+    REQUIRE(committedImportPayload.at("count") == 1U);
+    REQUIRE(committedImportPayload.at("results").at(0).at("record_id") ==
+            memoryRecordId.value());
+    REQUIRE(committedImportPayload.at("schema_version") ==
+            Domain::ProjectMemorySchemaVersion);
+    REQUIRE(committedImportPayload.at("capability_version") ==
+            Domain::ProjectMemoryCapabilityVersion);
+    REQUIRE(!committedImportPayload.contains("preview"));
+    REQUIRE(!committedImportPayload.contains("disposition"));
+
+    continuity.statusResult.set(
+        Domain::Result<Domain::ContinuityStatus>::success(
+            Domain::ContinuityStatus{
+                projectId, std::nullopt, 0U, 0U, false}));
+    auto inactiveContinuityStatusCall = authorize(
+        "continuity.status",
+        Domain::ToolEffect::Read,
+        Json{{"project_id", " \t" + projectId.value() + "\r\n"}}.dump(),
+        "request-continuity-inactive-status");
+    auto inactiveContinuityStatus = adapter->handle(
+        inactiveContinuityStatusCall, authority, context);
+    REQUIRE(inactiveContinuityStatus);
+    const auto inactiveContinuityPayload = Json::parse(
+        inactiveContinuityStatus.value().canonicalPayload);
+    REQUIRE(inactiveContinuityPayload.at("state") == "active");
+    REQUIRE(inactiveContinuityPayload.at("operation").is_null());
+
+    const auto verifyReadFailure = [&] (
+        Domain::Error error,
+        const std::string_view expectedCode,
+        const std::string& requestId) {
+        fileSystem.readFileResult.set(
+            Domain::Result<std::vector<std::byte>>::failure(
+                std::move(error)));
+        auto call = authorize(
+            "fs_read",
+            Domain::ToolEffect::Read,
+            R"({"path":"failure.txt"})",
+            requestId);
+        auto result = adapter->handle(call, authority, context);
+        REQUIRE(!result);
+        REQUIRE(result.error().code == expectedCode);
+        return result.error();
+    };
+    auto oversizedReadError = verifyReadFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::PayloadTooLarge,
+            "The native text file exceeds its byte bound.",
+            true,
+            std::optional<std::string>{"read-evidence"}),
+        "file_too_large",
+        "request-fs-read-payload-remap");
+    REQUIRE(oversizedReadError.retryable);
+    REQUIRE(oversizedReadError.evidenceId ==
+            std::optional<std::string>{"read-evidence"});
+    (void)verifyReadFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::RecordNotFound,
+            "The native text file was not found."),
+        "not_found",
+        "request-fs-read-missing-remap");
+    (void)verifyReadFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "Text is not valid UTF-8."),
+        "not_found",
+        "request-fs-read-utf8-remap");
+    (void)verifyReadFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::Unauthorized,
+            "The native text file is not authorized."),
+        Domain::ErrorCodes::Unauthorized,
+        "request-fs-read-unauthorized-preserved");
+
+    const auto verifyEditFailure = [&] (
+        Domain::Error error,
+        const std::string_view expectedCode,
+        const std::string& requestId) {
+        fileTextServices.setReplaceAllResult(
+            Domain::Result<Contracts::TextFileEditReport>::failure(
+                std::move(error)));
+        auto call = authorize(
+            "fs_edit",
+            Domain::ToolEffect::Write,
+            R"({"path":"failure.txt","old":"before","new":"after"})",
+            requestId);
+        auto result = adapter->handle(call, authority, context);
+        REQUIRE(!result);
+        REQUIRE(result.error().code == expectedCode);
+    };
+    verifyEditFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::PayloadTooLarge,
+            "The edited text would exceed 2 MiB."),
+        "file_too_large",
+        "request-fs-edit-payload-remap");
+    verifyEditFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::RecordNotFound,
+            "The native text file was not found."),
+        "not_found",
+        "request-fs-edit-missing-remap");
+    verifyEditFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::RecordNotFound,
+            "The text-edit search value was not found."),
+        "no_match",
+        "request-fs-edit-no-match-remap");
+
+    const auto verifyPdfSourceFailure = [&] (
+        Domain::Error error,
+        const std::string& requestId) {
+        pdf.fromTextFileResult.set(
+            Domain::Result<Domain::PdfWriteReceipt>::failure(
+                std::move(error)));
+        auto call = authorize(
+            "pdf_from_file",
+            Domain::ToolEffect::Write,
+            R"({"source_path":"source.md"})",
+            requestId);
+        auto result = adapter->handle(call, authority, context);
+        REQUIRE(!result);
+        REQUIRE(result.error().code == "not_found");
+    };
+    verifyPdfSourceFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::RecordNotFound,
+            "The PDF source file was not found."),
+        "request-pdf-source-missing-remap");
+    verifyPdfSourceFailure(
+        Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The PDF source file must contain valid NUL-free UTF-8 text."),
+        "request-pdf-source-utf8-remap");
+
+    const auto defaultPdfPath = take(Domain::PathText::create(
+        "D:/workspace\\source.pdf"));
+    pdf.fromTextFileResult.set(
+        Domain::Result<Domain::PdfWriteReceipt>::success(
+            Domain::PdfWriteReceipt{
+                defaultPdfPath, 128U, 1U, "test-pdf", "source"}));
+    auto emptyPdfDestinationCall = authorize(
+        "pdf_from_file",
+        Domain::ToolEffect::Write,
+        R"({"source_path":"source.md","dest_path":""})",
+        "request-pdf-empty-destination-default");
+    auto emptyPdfDestination = adapter->handle(
+        emptyPdfDestinationCall, authority, context);
+    REQUIRE(emptyPdfDestination);
+    REQUIRE(pdf.lastCapture().has_value());
+    REQUIRE(pdf.lastCapture()->secondary.has_value());
+    REQUIRE(pdf.lastCapture()->secondary->canonicalPath() == defaultPdfPath);
+
+    textSearch.searchResult.set(
+        Domain::Result<std::vector<std::string>>::success(
+            {"D:/workspace/file.cpp:1:2026"}));
+    auto numericSearchPatternCall = authorize(
+        "search_text",
+        Domain::ToolEffect::Read,
+        R"({"pattern":2026,"path":"D:/workspace"})",
+        "request-search-numeric-pattern");
+    auto numericSearchPattern = adapter->handle(
+        numericSearchPatternCall, authority, context);
+    REQUIRE(numericSearchPattern);
+    REQUIRE(textSearch.lastCapture().has_value());
+    REQUIRE(textSearch.lastCapture()->query == "2026");
+
     fileSystem.createDirectoryResult.set(Domain::Result<void>::success());
     auto mkdirCall = authorize(
         "fs_mkdir",
@@ -1016,6 +1365,50 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(continuity.lastCheckpointRequest()->idempotencyKey.has_value());
     REQUIRE(continuity.lastCheckpointRequest()->idempotencyKey->value() ==
             idempotencyKey);
+
+    auto normalizedCheckpointCall = authorize(
+        "continuity.checkpoint",
+        Domain::ToolEffect::Write,
+        Json{
+            {"project_id", " \t" + projectId.value() + "\r\n"},
+            {"operation_id", " 40000000-0000-4000-8000-000000000004 "},
+            {"handoff_id", " 50000000-0000-4000-8000-000000000005 "},
+            {"predecessor_session_id",
+             " 60000000-0000-4000-8000-000000000006 "},
+            {"mission", 42},
+            {"repository_root", " \tD:/workspace\r\n"},
+            {"branch", 17},
+            {"constraints", "scalar-is-not-a-continuity-list"},
+            {"dirty_summary", Json::array({"first", 9, "second"})},
+            {"active_files",
+             Json::array({"D:/workspace/file.cpp", false})},
+            {"open_work", Json::array({"remaining", Json::object()})},
+            {"next_actions", "scalar-defaults-to-empty"}}
+            .dump(),
+        "request-continuity-normalized-checkpoint");
+    auto normalizedCheckpoint = adapter->handle(
+        normalizedCheckpointCall, authority, context);
+    REQUIRE(!normalizedCheckpoint);
+    REQUIRE(normalizedCheckpoint.error().code ==
+            Domain::ErrorCodes::InternalFailure);
+    REQUIRE(continuity.callCount(Fakes::ContinuityCall::Checkpoint) == 2U);
+    REQUIRE(continuity.lastCheckpointRequest().has_value());
+    const auto& normalizedHandoff =
+        continuity.lastCheckpointRequest()->handoff;
+    REQUIRE(normalizedHandoff.mission == "42");
+    REQUIRE(normalizedHandoff.project.repositoryRoot == root);
+    REQUIRE(normalizedHandoff.project.branch == "17");
+    REQUIRE(normalizedHandoff.constraints.empty());
+    REQUIRE(normalizedHandoff.project.dirtySummary ==
+            std::vector<std::string>({"first", "second"}));
+    REQUIRE(normalizedHandoff.currentWork.activeFiles ==
+            std::vector<Domain::PathText>({
+                take(Domain::PathText::create("D:/workspace/file.cpp"))}));
+    REQUIRE(normalizedHandoff.openWork.size() == 1U);
+    REQUIRE(normalizedHandoff.openWork.at(0).summary == "remaining");
+    REQUIRE(normalizedHandoff.nextActions.size() == 1U);
+    REQUIRE(normalizedHandoff.nextActions.at(0).action ==
+            "Continue current work");
 
     git.statusResult.set(Domain::Result<Domain::ProcessResult>::success(
         Domain::ProcessResult{
@@ -1081,6 +1474,9 @@ void testRuntimeDispatchAndSchemaPolicy()
         REQUIRE(result.value().continuityObservation.has_value());
         REQUIRE(result.value().continuityObservation->workingDirectory ==
                 std::optional<Domain::PathText>{root});
+        REQUIRE(shell.lastExecution().has_value());
+        REQUIRE(shell.lastExecution()->request.has_value());
+        REQUIRE(shell.lastExecution()->request->timeout == 37s);
         REQUIRE(Json::parse(result.value().canonicalPayload).at("ok") ==
                 false);
     };
@@ -1287,6 +1683,7 @@ void testRealRouterContinuityIntegration()
             clock,
             uuidGenerator,
             Domain::ProjectMemoryLimits{},
+            std::chrono::seconds{30},
             shellExecutable,
             "0.9.0",
             "windows-cpp",

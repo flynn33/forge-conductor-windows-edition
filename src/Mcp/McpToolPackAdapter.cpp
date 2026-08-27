@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <ctime>
+#include <initializer_list>
 #include <limits>
 #include <optional>
 #include <set>
@@ -242,6 +243,334 @@ template <typename T, typename U>
     } catch (...) {
         return {};
     }
+}
+
+[[nodiscard]] std::string trimLegacyScalar(std::string value)
+{
+    const auto whitespace = [](const unsigned char character) {
+        return std::isspace(character) != 0;
+    };
+    const auto first = std::find_if_not(
+        value.begin(), value.end(), [&](const char character) {
+            return whitespace(static_cast<unsigned char>(character));
+        });
+    const auto last = std::find_if_not(
+        value.rbegin(), value.rend(), [&](const char character) {
+            return whitespace(static_cast<unsigned char>(character));
+        }).base();
+    if (first >= last) {
+        return {};
+    }
+    return std::string{first, last};
+}
+
+void normalizeLegacyStringField(Json& object, const std::string_view key)
+{
+    if (member(object, key) == nullptr) {
+        return;
+    }
+    const auto value = legacyString(object, key);
+    if (!value) {
+        object.erase(std::string{key});
+        return;
+    }
+    object[std::string{key}] = trimLegacyScalar(*value);
+}
+
+void normalizeLegacyStringFields(
+    Json& object,
+    const std::initializer_list<std::string_view> keys)
+{
+    for (const auto key : keys) {
+        normalizeLegacyStringField(object, key);
+    }
+}
+
+void normalizeLegacyIntegerField(Json& object, const std::string_view key)
+{
+    if (member(object, key) == nullptr) {
+        return;
+    }
+    const auto value = legacyInteger(object, key);
+    if (!value) {
+        object.erase(std::string{key});
+        return;
+    }
+    object[std::string{key}] = *value;
+}
+
+void normalizeLegacyNumberField(Json& object, const std::string_view key)
+{
+    if (member(object, key) != nullptr && !strictNumber(object, key)) {
+        object.erase(std::string{key});
+    }
+}
+
+void normalizeLegacyBooleanDefault(Json& object, const std::string_view key)
+{
+    if (member(object, key) != nullptr && !strictBoolean(object, key)) {
+        object.erase(std::string{key});
+    }
+}
+
+void normalizeProjectMemoryStringCollection(
+    Json& object,
+    const std::string_view key)
+{
+    const auto* value = member(object, key);
+    if (value == nullptr) {
+        return;
+    }
+    Json normalized = Json::array();
+    if (value->is_string()) {
+        normalized.push_back(value->get<std::string>());
+    } else if (value->is_array()) {
+        for (const auto& item : *value) {
+            if (item.is_string()) {
+                normalized.push_back(item);
+            }
+        }
+    }
+    object[std::string{key}] = std::move(normalized);
+}
+
+void normalizeContinuityStringCollection(
+    Json& object,
+    const std::string_view key)
+{
+    const auto* value = member(object, key);
+    if (value == nullptr) {
+        return;
+    }
+    Json normalized = Json::array();
+    if (value->is_array()) {
+        for (const auto& item : *value) {
+            if (item.is_string()) {
+                normalized.push_back(item);
+            }
+        }
+    }
+    object[std::string{key}] = std::move(normalized);
+}
+
+void normalizeProjectMemoryWrite(Json& write)
+{
+    if (!write.is_object()) {
+        return;
+    }
+    normalizeLegacyStringFields(
+        write,
+        {"kind",
+         "title",
+         "summary",
+         "body",
+         "source_kind",
+         "source_reference",
+         "session_id",
+         "expires_at",
+         "idempotency_key"});
+    normalizeProjectMemoryStringCollection(write, "tags");
+    normalizeProjectMemoryStringCollection(write, "related_ids");
+    normalizeLegacyNumberField(write, "importance");
+    normalizeLegacyNumberField(write, "confidence");
+    normalizeLegacyIntegerField(write, "deadline_ms");
+}
+
+void normalizeProjectMemoryArguments(
+    Json& arguments,
+    const std::string_view name)
+{
+    normalizeLegacyStringField(arguments, "project_id");
+    normalizeLegacyIntegerField(arguments, "deadline_ms");
+
+    if (name == "project_memory.initialize") {
+        normalizeLegacyStringField(arguments, "project_path");
+        normalizeLegacyStringField(arguments, "path");
+        if (member(arguments, "project_path") == nullptr) {
+            const auto alias = arguments.find("path");
+            if (alias != arguments.end()) {
+                arguments["project_path"] = *alias;
+            }
+        }
+        arguments.erase("path");
+        normalizeLegacyStringFields(
+            arguments,
+            {"display_name", "repository_identity", "idempotency_key"});
+        return;
+    }
+    if (name == "project_memory.remember") {
+        normalizeProjectMemoryWrite(arguments);
+        return;
+    }
+    if (name == "project_memory.remember_batch") {
+        auto items = arguments.find("items");
+        if (items != arguments.end() && items->is_array()) {
+            for (auto& item : *items) {
+                normalizeProjectMemoryWrite(item);
+            }
+        }
+        return;
+    }
+    if (name == "project_memory.search") {
+        normalizeLegacyStringFields(
+            arguments, {"query", "session_id", "cursor"});
+        normalizeLegacyIntegerField(arguments, "limit");
+        normalizeLegacyIntegerField(arguments, "maximum_response_bytes");
+        normalizeLegacyBooleanDefault(arguments, "include_body");
+        normalizeProjectMemoryStringCollection(arguments, "kinds");
+        normalizeProjectMemoryStringCollection(arguments, "tags");
+        return;
+    }
+    if (name == "project_memory.get") {
+        normalizeLegacyStringField(arguments, "id");
+        normalizeLegacyBooleanDefault(arguments, "include_body");
+        normalizeProjectMemoryStringCollection(arguments, "ids");
+        return;
+    }
+    if (name == "project_memory.update") {
+        normalizeLegacyStringFields(
+            arguments, {"id", "title", "summary", "body"});
+        normalizeLegacyIntegerField(arguments, "expected_version");
+        normalizeProjectMemoryStringCollection(arguments, "tags");
+        return;
+    }
+    if (name == "project_memory.forget") {
+        normalizeLegacyStringField(arguments, "id");
+        return;
+    }
+    if (name == "project_memory.list_recent") {
+        normalizeLegacyStringFields(arguments, {"session_id", "cursor"});
+        normalizeLegacyIntegerField(arguments, "limit");
+        normalizeLegacyIntegerField(arguments, "maximum_response_bytes");
+        normalizeLegacyBooleanDefault(arguments, "include_body");
+        normalizeProjectMemoryStringCollection(arguments, "kinds");
+        return;
+    }
+    if (name == "project_memory.link") {
+        normalizeLegacyStringFields(
+            arguments, {"source_id", "target_id", "relation"});
+        return;
+    }
+    if (name == "project_memory.import") {
+        normalizeLegacyStringFields(arguments, {"artifact", "merge_policy"});
+        normalizeLegacyBooleanDefault(arguments, "preview");
+    }
+}
+
+void normalizeContinuityArguments(Json& arguments, const std::string_view name)
+{
+    normalizeLegacyStringField(arguments, "project_id");
+    if (name == "continuity.checkpoint" ||
+        name == "continuity.prepare_handoff" ||
+        name == "continuity.request_rollover") {
+        normalizeLegacyStringFields(
+            arguments,
+            {"operation_id",
+             "handoff_id",
+             "predecessor_session_id",
+             "provider_session_id",
+             "model",
+             "mission",
+             "phase_id",
+             "work_item_id",
+             "summary",
+             "repository_root",
+             "branch",
+             "commit",
+             "adapter_id",
+             "idempotency_key",
+             "context_budget_source"});
+        for (const auto key : {
+                 "constraints",
+                 "dirty_summary",
+                 "active_files",
+                 "open_work",
+                 "decisions",
+                 "passed_gates",
+                 "open_gates",
+                 "memory_record_ids",
+                 "evidence_ids",
+                 "next_actions"}) {
+            normalizeContinuityStringCollection(arguments, key);
+        }
+        return;
+    }
+    if (name == "continuity.acknowledge_handoff") {
+        normalizeLegacyStringFields(
+            arguments,
+            {"operation_id",
+             "handoff_id",
+             "successor_session_id",
+             "adapter_id"});
+        return;
+    }
+    if (name == "continuity.resume") {
+        normalizeLegacyStringField(arguments, "operation_id");
+    }
+}
+
+void normalizeClosedPackArguments(
+    Json& arguments,
+    const std::string_view name)
+{
+    if (name.starts_with("project_memory.")) {
+        normalizeProjectMemoryArguments(arguments, name);
+    } else if (name.starts_with("continuity.")) {
+        normalizeContinuityArguments(arguments, name);
+    }
+}
+
+[[nodiscard]] bool isNativeInvalidUtf8FileSource(
+    const Domain::Error& error) noexcept
+{
+    return error.code == Domain::ErrorCodes::InvalidRequest &&
+        (error.message == "Text is not valid UTF-8." ||
+         error.message == "The file content contains NUL.");
+}
+
+[[nodiscard]] Domain::Error remapFsReadError(Domain::Error error)
+{
+    if (error.code == Domain::ErrorCodes::Unauthorized) {
+        return error;
+    }
+    if (error.code == Domain::ErrorCodes::PayloadTooLarge) {
+        error.code = "file_too_large";
+    } else if (error.code == Domain::ErrorCodes::RecordNotFound ||
+               isNativeInvalidUtf8FileSource(error)) {
+        error.code = "not_found";
+    }
+    return error;
+}
+
+[[nodiscard]] Domain::Error remapFsEditError(Domain::Error error)
+{
+    if (error.code == Domain::ErrorCodes::Unauthorized) {
+        return error;
+    }
+    if (error.code == Domain::ErrorCodes::PayloadTooLarge) {
+        error.code = "file_too_large";
+    } else if (
+        error.code == Domain::ErrorCodes::RecordNotFound &&
+        error.message == "The text-edit search value was not found.") {
+        error.code = "no_match";
+    } else if (error.code == Domain::ErrorCodes::RecordNotFound) {
+        error.code = "not_found";
+    }
+    return error;
+}
+
+[[nodiscard]] Domain::Error remapPdfFromFileError(Domain::Error error)
+{
+    if (error.code == Domain::ErrorCodes::Unauthorized) {
+        return error;
+    }
+    if (error.code == Domain::ErrorCodes::RecordNotFound ||
+        (error.code == Domain::ErrorCodes::InvalidRequest &&
+         error.message ==
+             "The PDF source file must contain valid NUL-free UTF-8 text.")) {
+        error.code = "not_found";
+    }
+    return error;
 }
 
 [[nodiscard]] Domain::Result<void> validateValueAgainstSchema(
@@ -1328,6 +1657,7 @@ public:
                     Domain::ErrorCodes::InvalidRequest,
                     "MCP tool arguments must be one JSON object.");
             }
+            normalizeClosedPackArguments(arguments, authorizedCall.toolName());
             auto schema = validateArgumentsAgainstSchema(arguments, *selected);
             if (!schema) {
                 return propagate<Domain::ToolCallOutcome>(std::move(schema));
@@ -1747,8 +2077,15 @@ private:
                  "Large context host: do not skip specialists to save tokens."}});
         }
         if (name == "agent_run_status") {
-            auto sessionId = parseStrongUuid<Domain::SessionId>(
-                arguments, "session_id");
+            const auto encodedSessionId =
+                strictString(arguments, "session_id");
+            if (!encodedSessionId) {
+                return failure<Json>(
+                    "missing_session_id",
+                    "session_id required",
+                    true);
+            }
+            auto sessionId = Domain::SessionId::parse(*encodedSessionId);
             if (!sessionId) {
                 return propagate<Json>(std::move(sessionId));
             }
@@ -1793,8 +2130,15 @@ private:
             return Domain::Result<Json>::success(std::move(result));
         }
         if (name == "agent_run_complete") {
-            auto sessionId = parseStrongUuid<Domain::SessionId>(
-                arguments, "session_id");
+            const auto encodedSessionId =
+                strictString(arguments, "session_id");
+            if (!encodedSessionId) {
+                return failure<Json>(
+                    "missing_session_id",
+                    "session_id required",
+                    true);
+            }
+            auto sessionId = Domain::SessionId::parse(*encodedSessionId);
             if (!sessionId) {
                 return propagate<Json>(std::move(sessionId));
             }
@@ -1868,10 +2212,19 @@ private:
         const auto suppliedPath = legacyString(arguments, "path");
         if (name != "fs_list" && name != "fs_glob" && name != "fs_move" &&
             !suppliedPath) {
+            if (name == "fs_write") {
+                return failure<Json>(
+                    "missing_args",
+                    "path and content required");
+            }
+            if (name == "fs_edit") {
+                return failure<Json>(
+                    "missing_args",
+                    "path, old, new required");
+            }
             return failure<Json>(
-                Domain::ErrorCodes::InvalidRequest,
-                "path is required.",
-                true);
+                "missing_path",
+                "path required");
         }
         const auto encodedPath = suppliedPath.value_or(defaultRoot(authority));
         if (encodedPath.empty()) {
@@ -1889,18 +2242,20 @@ private:
                 context,
                 &observation);
             if (!authorized) {
-                return propagate<Json>(std::move(authorized));
+                return Domain::Result<Json>::failure(remapFsReadError(
+                    std::move(authorized).error()));
             }
             auto bytes = dependencies_.fileSystem.readFile(
                 authorized.value(), MaximumTextFileBytes, context);
             if (!bytes) {
-                return propagate<Json>(std::move(bytes));
+                return Domain::Result<Json>::failure(remapFsReadError(
+                    std::move(bytes).error()));
             }
             const auto* data = reinterpret_cast<const char*>(bytes.value().data());
             std::string content{data, bytes.value().size()};
             if (!Domain::isValidUtf8(content)) {
                 return failure<Json>(
-                    Domain::ErrorCodes::InvalidRequest,
+                    "not_found",
                     "The requested file is not valid UTF-8 text.");
             }
             std::vector<std::string_view> lines;
@@ -2085,9 +2440,8 @@ private:
             const auto suppliedContent = legacyString(arguments, "content");
             if (!suppliedContent) {
                 return failure<Json>(
-                    Domain::ErrorCodes::InvalidRequest,
-                    "path and content are required.",
-                    true);
+                    "missing_args",
+                    "path and content required");
             }
             const auto& content = *suppliedContent;
             auto authorized = authorizePath(
@@ -2117,9 +2471,8 @@ private:
             const auto replacement = legacyString(arguments, "new");
             if (!oldText || !replacement) {
                 return failure<Json>(
-                    Domain::ErrorCodes::InvalidRequest,
-                    "path, old, and new are required.",
-                    true);
+                    "missing_args",
+                    "path, old, new required");
             }
             auto readable = authorizePath(
                 dependencies_.workspaceAuthority,
@@ -2130,7 +2483,8 @@ private:
                 context,
                 &observation);
             if (!readable) {
-                return propagate<Json>(std::move(readable));
+                return Domain::Result<Json>::failure(remapFsEditError(
+                    std::move(readable).error()));
             }
             auto writable = authorizePath(
                 dependencies_.workspaceAuthority,
@@ -2141,12 +2495,14 @@ private:
                 context,
                 &observation);
             if (!writable) {
-                return propagate<Json>(std::move(writable));
+                return Domain::Result<Json>::failure(remapFsEditError(
+                    std::move(writable).error()));
             }
             auto edited = dependencies_.textFileEditor.replaceAll(
                 readable.value(), writable.value(), *oldText, *replacement, context);
             if (!edited) {
-                return propagate<Json>(std::move(edited));
+                return Domain::Result<Json>::failure(remapFsEditError(
+                    std::move(edited).error()));
             }
             return Domain::Result<Json>::success(Json{
                 {"ok", true},
@@ -2259,24 +2615,25 @@ private:
             }
             return Domain::Result<Json>::success(Json{
                 {"ok", true},
-                {"path", authorized.value().canonicalPath().value()}});
+                {"path", authorized.value().canonicalPath().value()},
+                {"deleted", true}});
         }
         if (name == "fs_move") {
-            auto source = legacyString(arguments, "source");
+            auto source = legacyString(arguments, "path");
             if (!source) {
                 source = legacyString(arguments, "src");
             }
             if (!source) {
-                source = legacyString(arguments, "path");
+                source = legacyString(arguments, "source");
             }
-            auto destination = legacyString(arguments, "destination");
+            auto destination = legacyString(arguments, "dest");
             if (!destination) {
-                destination = legacyString(arguments, "dest");
+                destination = legacyString(arguments, "destination");
             }
             if (!source || !destination) {
                 return failure<Json>(
-                    Domain::ErrorCodes::InvalidRequest,
-                    "fs_move requires source and destination paths.");
+                    "missing_args",
+                    "path/src and dest required");
             }
             auto authorizedSource = authorizePath(
                 dependencies_.workspaceAuthority,
@@ -2389,7 +2746,8 @@ private:
         } else if (name == "git_commit") {
             result = dependencies_.git.commit(
                 authorizedRepository.value(),
-                legacyString(arguments, "message").value_or(""),
+                legacyString(arguments, "message").value_or(
+                    "chore: forge-conductor commit"),
                 context);
         }
         if (!result) {
@@ -2411,9 +2769,8 @@ private:
             const auto content = legacyString(arguments, "content");
             if (!requestedPath || !content) {
                 return failure<Json>(
-                    Domain::ErrorCodes::InvalidRequest,
-                    "path and content are required.",
-                    true);
+                    "missing_args",
+                    "path and content required");
             }
             const auto& requested = *requestedPath;
             const auto destinationText = pdfPath(requested);
@@ -2444,9 +2801,8 @@ private:
             const auto requestedSource = legacyString(arguments, "source_path");
             if (!requestedSource) {
                 return failure<Json>(
-                    Domain::ErrorCodes::InvalidRequest,
-                    "source_path is required.",
-                    true);
+                    "missing_source",
+                    "source_path required");
             }
             const auto& sourceText = *requestedSource;
             auto source = authorizePath(
@@ -2458,10 +2814,11 @@ private:
                 context,
                 &observation);
             if (!source) {
-                return propagate<Json>(std::move(source));
+                return Domain::Result<Json>::failure(remapPdfFromFileError(
+                    std::move(source).error()));
             }
             auto destinationText = legacyString(arguments, "dest_path");
-            if (!destinationText) {
+            if (!destinationText || destinationText->empty()) {
                 destinationText = replaceExtensionWithPdf(sourceText);
             }
             auto destination = authorizePath(
@@ -2480,7 +2837,8 @@ private:
             auto written = dependencies_.pdf.fromTextFile(
                 title, source.value(), destination.value(), context);
             if (!written) {
-                return propagate<Json>(std::move(written));
+                return Domain::Result<Json>::failure(remapPdfFromFileError(
+                    std::move(written).error()));
             }
             auto payload = pdfJson(written.value());
             payload["source_path"] = source.value().canonicalPath().value();
@@ -2497,7 +2855,12 @@ private:
         const Domain::OperationContext& context,
         ToolContinuityObservationBuilder& observation)
     {
-        const auto query = legacyString(arguments, "pattern").value_or("");
+        const auto query = legacyString(arguments, "pattern");
+        if (!query) {
+            return failure<Json>(
+                "missing_pattern",
+                "pattern required");
+        }
         const auto rootText = legacyString(arguments, "path").value_or(
             defaultRoot(authority));
         auto root = authorizePath(
@@ -2513,7 +2876,7 @@ private:
         }
         auto matches = dependencies_.textSearch.search(
             root.value(),
-            query,
+            *query,
             MaximumSearchMatches,
             MaximumNativeResponseBytes,
             context);
@@ -2522,7 +2885,7 @@ private:
         }
         return Domain::Result<Json>::success(Json{
             {"ok", true},
-            {"pattern", query},
+            {"pattern", *query},
             {"matches", stringArray(matches.value())},
             {"count", matches.value().size()}});
     }
@@ -2536,8 +2899,8 @@ private:
         const auto command = legacyString(arguments, "command").value_or("");
         if (command.empty()) {
             return failure<Json>(
-                Domain::ErrorCodes::InvalidRequest,
-                "The PowerShell command must not be empty.");
+                "missing_command",
+                "command required");
         }
         const auto cwdText = legacyString(arguments, "cwd").value_or(
             defaultRoot(authority));
@@ -2553,11 +2916,12 @@ private:
         if (!cwd) {
             return propagate<Json>(std::move(cwd));
         }
-        auto timeoutSeconds = strictNumber(arguments, "timeout_sec").value_or(30.0);
+        auto timeoutSeconds = strictNumber(arguments, "timeout_sec").value_or(
+            static_cast<double>(dependencies_.shellDefaultTimeout.count()));
         if (!std::isfinite(timeoutSeconds) || timeoutSeconds <= 0.0) {
             return failure<Json>(
-                Domain::ErrorCodes::InvalidRequest,
-                "timeout_sec must be a positive finite number.");
+                "invalid_timeout",
+                "timeout_sec must be finite and positive");
         }
         timeoutSeconds = (std::min)(timeoutSeconds, 120.0);
         const auto timeout = std::chrono::milliseconds{
@@ -3184,6 +3548,17 @@ private:
             for (const auto& item : outcome.value().imported) {
                 imported.push_back(memoryWriteJson(item));
             }
+            if (outcome.value().disposition !=
+                Domain::ImportDisposition::Preview) {
+                return Domain::Result<Json>::success(Json{
+                    {"ok", true},
+                    {"project_id", outcome.value().projectId.value()},
+                    {"count", imported.size()},
+                    {"results", std::move(imported)},
+                    {"schema_version", Domain::ProjectMemorySchemaVersion},
+                    {"capability_version",
+                     Domain::ProjectMemoryCapabilityVersion}});
+            }
             return Domain::Result<Json>::success(Json{
                 {"ok", true},
                 {"project_id", outcome.value().projectId.value()},
@@ -3648,7 +4023,7 @@ private:
             }
             const auto state = status.value().activeOperation
                 ? Domain::wireName(status.value().activeOperation->state)
-                : std::string_view{"idle"};
+                : std::string_view{"active"};
             const auto pendingHandoff = status.value().activeOperation
                 ? Json(status.value().activeOperation->handoffId.value())
                 : Json(nullptr);

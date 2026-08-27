@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "mcp_tool_contract_matrix",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T10:10:24.4299056+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "msbuild": "17.14.40+3e7442088",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2",
+    "sqlite": "Windows SDK winsqlite3"
+  },
+  "build_test_command_record": ".forge-codex/state/commands/20260827T100751448Z-8deaa7ec.json",
+  "qualified_postprocess_retry_record": ".forge-codex/state/commands/20260827T100908176Z-036a09a7.json",
+  "recovery_command_record": ".forge-codex/state/commands/20260827T101001127Z-bac9cd57.json",
+  "effective_exit_code": 0,
+  "measured_result": {
+    "focused_build_targets": 3,
+    "focused_ctest_tests": 3,
+    "focused_ctest_passed": 3,
+    "focused_ctest_failed": 0,
+    "focused_ctest_real_seconds": 13.25,
+    "adapter_test_assertions": 470,
+    "contract_matrix_assertions": 1737,
+    "native_filesystem_search_tests_passed": 5,
+    "native_filesystem_search_tests_total": 5,
+    "catalog_tools": 53,
+    "fixture_tools": 53,
+    "fixture_unique_tools": 53,
+    "fixture_cases": 212,
+    "fixture_categories_per_tool": 4,
+    "configured_shell_default_seconds": 37,
+    "build_test_record_exit_code": 1,
+    "build_exit_code": 0,
+    "ctest_exit_code": 0,
+    "postprocess_exit_code": 1,
+    "recovery_exit_code": 0
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolContractMatrixTests.exe",
+      "bytes": 4864000,
+      "sha256": "a0fbceb8338af0960c338f5314b919c0c93457b11ff30c5405db9ca1a6a759bf"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolPackAdapterTests.exe",
+      "bytes": 5274112,
+      "sha256": "5ad261cd671514a37833ab8df35c2cfbe4b10cba28e7222f2f1781e7eafe173d"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.NativeTools.FileSystemSearchTests.exe",
+      "bytes": 1952768,
+      "sha256": "d609b6ce9b9089a3e4151fc7bef714c230626397db6d9ed07c01aaa43785fd27"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Mcp.lib",
+      "bytes": 82275370,
+      "sha256": "fb22123cefaac298d383ee228ab8c582967cb40622780a342c53caffaf5bcef4"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.NativeTools.Windows.lib",
+      "bytes": 13530034,
+      "sha256": "ec93f0220a6f977707cbb96b8c04c257384ecac5e775ebd14b33311b7c71fb46"
+    },
+    {
+      "path": "tests/fixtures/Mcp/mcp-tool-contract-cases.json",
+      "bytes": 38693,
+      "sha256": "d39d8a8dec2ad9f6cf10f9ebc0da8e22a035371cb412e6887db381179af35aea"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/Testing/Temporary/LastTest.log",
+      "bytes": 3377,
+      "sha256": "28262bbcb5c31e5142025611cb72555aab7a61889377306257b38ad39c57d1c5"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md",
+      "sha256": "6616bea646c22d8110eda9fc8370ba6c7d58e879c4b7f11defd86b54c7caf3ce"
+    },
+    {
+      "path": "include/ForgeConductor/Mcp/McpToolPackAdapter.h",
+      "sha256": "117e0d0f345330e4f5fda2b253471c6fab19ecc1a6139d04eff54fba811982a6"
+    },
+    {
+      "path": "src/Hosts/Cli/McpServeCompositionRoot.cpp",
+      "sha256": "ecf9a8118c0f87c2b76baa42666e0467329ace6e7b6af52352819581d7032362"
+    },
+    {
+      "path": "src/Mcp/McpToolPackAdapter.cpp",
+      "sha256": "3189d797273e3f63058d71bd82c2a6e00e8fdcabeca006bd70159871281a1eea"
+    },
+    {
+      "path": "src/NativeTools/Windows/WindowsPathGlobService.cpp",
+      "sha256": "ed702e308cfb244aadcc8b9f1c384f062108e745635cd6f45a490f0c8ba41bc5"
+    },
+    {
+      "path": "tests/Mcp/McpToolPackAdapterTests.cpp",
+      "sha256": "ef9762a027bcba3e8633cfd35c20b6d76253402278dfdba0acb098e79dd760b2"
+    },
+    {
+      "path": "tests/NativeTools/WindowsFileSystemSearchTests.cpp",
+      "sha256": "27409423f4864e0fd878f5123d35b0f316d67cc659c45cce757144b4aecdc8f2"
+    },
+    {
+      "path": "tests/Mcp/McpToolContractMatrixTests.cpp",
+      "sha256": "403b9570ffa039874fb8bbedf4dafc2be13e1ab72a784aa460f256f167244c15"
+    },
+    {
+      "path": "tests/Mcp/McpToolContractTestSupport.cpp",
+      "sha256": "3f11645a121ec2e378b8a5c3a159e249a65e7688d51fdfe135fc7acb22d67ac1"
+    },
+    {
+      "path": "tests/Mcp/McpToolContractTestSupport.h",
+      "sha256": "7b58af7ff7beffd097f601ab44335dd85eadb967146bb6afe45f48ce6642e1ca"
+    }
+  ],
+  "qualified_surface": [
+    "the real MCP catalog and fixture contain the same exact 53 unique tool names",
+    "each tool executes one valid, invalid, dependency_error, and boundary case through the real catalog, schema validator, authorizer, router, adapter, and deterministic service boundary",
+    "legacy aliases, coercions, defaults, error codes, payload envelopes, process nonzero outcomes, effects, context adoption, configured shell timeout, and qualified Windows extensions are asserted across 212 cases",
+    "separator-free native glob patterns recursively match basenames while separator-bearing patterns retain root-relative component semantics",
+    "the focused adapter regression suite retains authority, continuity-block clearing, schema, and runtime-dispatch integration coverage"
+  ],
+  "diagnostic_resolution": [
+    "The recorded incremental build completed all three targets and the recorded verbose CTest run passed all three tests before post-test evidence processing began.",
+    "The build/test record exited one only because Windows PowerShell 5.1 does not support ConvertFrom-Json -Depth; its stdout contains the complete 3/3 pass and exact assertion counts.",
+    "The first metadata-only retry used unavailable Get-FileHash and performed no build or test work.",
+    "The successful metadata-only recovery used the repository Common.ps1 SHA-256 helper, verified both prior stream hashes and exact failure signatures, proved no build input changed after the recorded build began, validated the 53-by-4 fixture inventory, and pinned artifact hashes without repeating the successful rebuild or tests."
+  ],
+  "remaining_limitations": [
+    "dynamic multi-project workspace authority and project-scoped Git/shell dispatch after process startup",
+    "replacement of temporary direct stdio persistence ownership with versioned manager IPC in P16",
+    "remaining G14 real-process multi-project evidence and parity-matrix synchronization after dynamic authority is qualified"
+  ]
+}

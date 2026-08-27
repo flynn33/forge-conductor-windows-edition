@@ -740,6 +740,7 @@ private:
                 *clock_,
                 *uuidGenerator_,
                 projectMemoryLimits_,
+                configuration_.shell.defaultTimeout,
                 powerShellExecutable,
                 std::string{ProductVersion},
                 std::string{RuntimeName},

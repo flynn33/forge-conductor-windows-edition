@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "expected_tool_count": 53,
+  "lineage": {
+    "canonical_macos": {
+      "tool_count": 53,
+      "root": ".forge-inputs/macos/Forge-Conductor-MacOS-main",
+      "sources": [
+        "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift",
+        "Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift"
+      ],
+      "behavior_contract": "Each row preserves the macOS source tool name, accepted arguments, payload shape, defaulting or alias behavior, failure boundary, and downstream service effect. The valid and boundary cases are canonical source-behavior evidence; dependency_error is a Windows typed-boundary propagation contract."
+    },
+    "windows_host_extensions": {
+      "fs_read_byte_pagination": {
+        "qualification": "Windows host extension",
+        "behavior": "An oversized UTF-8 line is bounded to 96 KiB and continued only with next_byte_offset; repeated offsets are not required.",
+        "covered_by": ["fs_read/valid", "fs_read/boundary"]
+      },
+      "continuity_request_rollover_host_capability": {
+        "qualification": "Windows host extension",
+        "behavior": "The canonical memory-only handoff is prepared first, then the injected native host capability may create, acknowledge, and seal a successor session.",
+        "covered_by": ["continuity.request_rollover/valid", "continuity.request_rollover/boundary"]
+      }
+    }
+  },
+  "case_defaults": {
+    "valid": {
+      "dependency_mode": "happy",
+      "expect": {
+        "kind": "outcome",
+        "receipt_ok": true,
+        "payload_contains": {"ok": true}
+      }
+    },
+    "invalid": {
+      "dependency_mode": "happy",
+      "arguments": [],
+      "expect": {
+        "kind": "error",
+        "error_code": "invalid_request",
+        "retryable": false,
+        "effects_exact": []
+      }
+    },
+    "dependency_error": {
+      "dependency_mode": "database_busy",
+      "arguments_from": "valid",
+      "expect": {
+        "kind": "error",
+        "error_code": "database_busy",
+        "retryable": true
+      }
+    },
+    "boundary": {
+      "dependency_mode": "happy",
+      "arguments_from": "valid",
+      "expect_from": "valid"
+    }
+  },
+  "tools": [
+    {
+      "name": "agent_context",
+      "macos_behavior": "Alias of agent_get returning the full specialist playbook.",
+      "cases": {
+        "valid": {"arguments": {"agent_id": "explore"}, "expect": {"effects_exact": ["agent_catalog.get"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["agent_catalog.get"]}},
+        "boundary": {"arguments": {"agent_id": "x"}}
+      }
+    },
+    {
+      "name": "agent_get",
+      "macos_behavior": "Gets one specialist by id and includes its playbook body.",
+      "cases": {
+        "valid": {"arguments": {"agent_id": "explore"}, "expect": {"effects_exact": ["agent_catalog.get"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["agent_catalog.get"]}},
+        "boundary": {"arguments": {}, "expect_from": "invalid", "expect": {"error_code": "agent_not_found", "retryable": true}}
+      }
+    },
+    {
+      "name": "agent_list",
+      "macos_behavior": "Lists the bounded specialist catalog without playbook bodies.",
+      "cases": {
+        "valid": {"arguments": {}, "expect": {"payload_contains": {"agents": [{"id": "explore"}]}, "effects_exact": ["agent_catalog.all"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["agent_catalog.all"]}},
+        "boundary": {}
+      }
+    },
+    {
+      "name": "agent_recommend",
+      "macos_behavior": "Recommends one specialist for the supplied task text.",
+      "cases": {
+        "valid": {"arguments": {"task": "Inspect the repository"}, "expect": {"payload_contains": {"agent_id": "explore"}, "effects_exact": ["agent_catalog.recommend"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["agent_catalog.recommend"]}},
+        "boundary": {"arguments": {"task": ""}}
+      }
+    },
+    {
+      "name": "agent_run_complete",
+      "macos_behavior": "Inspects a report object and durably completes the named agent session.",
+      "cases": {
+        "valid": {"arguments": {"session_id": "80000000-0000-4000-8000-000000000008", "report": {"summary": "done"}}, "expect": {"payload_contains": {"schema_complete": true}, "effects_exact": ["agent_sessions.complete_run", "report_inspector.inspect"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["report_inspector.inspect"]}},
+        "boundary": {"arguments": {}, "expect_from": "invalid", "expect": {"error_code": "missing_session_id", "retryable": true}}
+      }
+    },
+    {
+      "name": "agent_run_start",
+      "macos_behavior": "Starts a durable specialist run and requires later completion.",
+      "cases": {
+        "valid": {"arguments": {"agent_id": "explore", "goal": "Inspect the workspace"}, "expect": {"payload_contains": {"must_complete": true}, "effects_exact": ["agent_sessions.start_run"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["agent_sessions.start_run"]}},
+        "boundary": {"arguments": {"agent_id": "explore", "goal": "x"}}
+      }
+    },
+    {
+      "name": "agent_run_status",
+      "macos_behavior": "Returns durable run status and the mandatory completion reminder for an open run.",
+      "cases": {
+        "valid": {"arguments": {"session_id": "80000000-0000-4000-8000-000000000008"}, "expect": {"payload_contains": {"must_complete": true}, "effects_exact": ["agent_sessions.run_status"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["agent_sessions.run_status"]}},
+        "boundary": {"arguments": {}, "expect_from": "invalid", "expect": {"error_code": "missing_session_id", "retryable": true}}
+      }
+    },
+    {
+      "name": "context_get",
+      "macos_behavior": "Loads and adopts the latest handoff into the calling client's workspace context.",
+      "cases": {
+        "valid": {"arguments": {}, "expect": {"payload_contains": {"found": true, "workspace_adopted": "D:/workspace"}, "effects_exact": ["client_workspace.adopt", "continuity_automation.snapshot", "legacy_continuity.get"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_continuity.get"]}},
+        "boundary": {"arguments": {"handoff_id": "contract-handoff"}}
+      }
+    },
+    {
+      "name": "context_list",
+      "macos_behavior": "Lists recent legacy handoff summaries with a normalized bounded limit.",
+      "cases": {
+        "valid": {"arguments": {"limit": 10}, "expect": {"payload_contains": {"count": 1}, "effects_exact": ["legacy_continuity.list"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_continuity.list"]}},
+        "boundary": {"arguments": {"limit": 100}}
+      }
+    },
+    {
+      "name": "continuity.acknowledge_handoff",
+      "macos_behavior": "Compare-and-set acknowledges the exact pending operation, handoff, and successor.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "operation_id": "20000000-0000-4000-8000-000000000002", "handoff_id": "30000000-0000-4000-8000-000000000003", "successor_session_id": "50000000-0000-4000-8000-000000000005"}, "expect": {"payload_contains": {"acknowledged": true}, "effects_exact": ["continuity.acknowledge_handoff", "continuity.get_pending_handoff"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["continuity.get_pending_handoff"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "operation_id": "20000000-0000-4000-8000-000000000002", "handoff_id": "30000000-0000-4000-8000-000000000003", "successor_session_id": "50000000-0000-4000-8000-000000000005", "adapter_id": "external-mcp"}}
+      }
+    },
+    {
+      "name": "continuity.checkpoint",
+      "macos_behavior": "Persists a canonical memory-only checkpoint and operation.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "operation_id": "20000000-0000-4000-8000-000000000002", "handoff_id": "30000000-0000-4000-8000-000000000003", "predecessor_session_id": "40000000-0000-4000-8000-000000000004", "mission": "Ship the matrix", "repository_root": "D:/workspace"}, "expect": {"payload_contains": {"disposition": "memory_only_handoff_ready"}, "effects_exact": ["continuity.checkpoint", "continuity_codec.encode", "project_registry.descriptor"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_registry.descriptor"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "predecessor_session_id": "40000000-0000-4000-8000-000000000004", "mission": "x"}}
+      }
+    },
+    {
+      "name": "continuity.get_pending_handoff",
+      "macos_behavior": "Returns the pending handoff and its active operation when present.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001"}, "expect": {"payload_contains": {"found": true}, "effects_exact": ["continuity.get_pending_handoff", "continuity.status"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["continuity.get_pending_handoff"]}},
+        "boundary": {}
+      }
+    },
+    {
+      "name": "continuity.prepare_handoff",
+      "macos_behavior": "Builds, validates, and persists a canonical successor handoff without creating a host session.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "operation_id": "20000000-0000-4000-8000-000000000002", "handoff_id": "30000000-0000-4000-8000-000000000003", "predecessor_session_id": "40000000-0000-4000-8000-000000000004", "mission": "Ship the matrix"}, "expect": {"payload_contains": {"disposition": "memory_only_handoff_ready"}, "effects_exact": ["continuity.prepare_handoff", "continuity_codec.encode", "project_registry.descriptor"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_registry.descriptor"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "predecessor_session_id": "40000000-0000-4000-8000-000000000004", "mission": "x"}}
+      }
+    },
+    {
+      "name": "continuity.request_rollover",
+      "macos_behavior": "Prepares the canonical handoff; the qualified Windows host extension may create and activate a successor.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "operation_id": "20000000-0000-4000-8000-000000000002", "handoff_id": "30000000-0000-4000-8000-000000000003", "predecessor_session_id": "40000000-0000-4000-8000-000000000004", "mission": "Ship the matrix"}, "expect": {"payload_contains": {"successor_created": true, "acknowledged": true, "predecessor_sealed": true}, "effects_exact": ["continuity.prepare_handoff", "continuity.request_rollover", "continuity_codec.encode", "project_registry.descriptor"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_registry.descriptor"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "predecessor_session_id": "40000000-0000-4000-8000-000000000004", "mission": "x"}}
+      }
+    },
+    {
+      "name": "continuity.resume",
+      "macos_behavior": "Resumes the active acknowledged operation and seals ownership to its successor.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "operation_id": "20000000-0000-4000-8000-000000000002"}, "expect": {"payload_contains": {"resumed": true}, "effects_exact": ["continuity.resume", "continuity.status"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["continuity.status"]}},
+        "boundary": {}
+      }
+    },
+    {
+      "name": "continuity.status",
+      "macos_behavior": "Reports durable active operation, retry, health, and session state.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001"}, "expect": {"payload_contains": {"health": "ok", "operation_count": 1}, "effects_exact": ["continuity.status"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["continuity.status"]}},
+        "boundary": {"arguments": {"project_id": " \t10000000-0000-4000-8000-000000000001\r\n"}, "expect": {"payload_contains": {"state": "active", "active_operation": null, "operation_count": 0}}}
+      }
+    },
+    {
+      "name": "forge_status",
+      "macos_behavior": "Aggregates runtime identity, agents, tools, memory, presence, and continuity status.",
+      "cases": {
+        "valid": {"arguments": {}, "expect": {"payload_contains": {"version": "0.9.0", "runtime": "windows-cpp", "home": "D:/workspace"}, "effects_exact": ["agent_catalog.all", "application_paths.data_root", "continuity_automation.snapshot", "forge_status.snapshot", "legacy_continuity.status_summary", "legacy_memory.list"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["application_paths.data_root"]}},
+        "boundary": {}
+      }
+    },
+    {
+      "name": "fs_delete",
+      "macos_behavior": "Recursively removes the authorized path and returns deleted=true.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace/remove.txt"}, "expect": {"payload_contains": {"deleted": true}, "effects_exact": ["file_system.remove"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["file_system.remove"]}},
+        "boundary": {"arguments": {}, "expect_from": "invalid", "expect": {"error_code": "missing_path", "retryable": false}}
+      }
+    },
+    {
+      "name": "fs_edit",
+      "macos_behavior": "Replaces all occurrences of old text with new text in one authorized file.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace/edit.txt", "old": "before", "new": "after"}, "expect": {"payload_contains": {"replacements": 1}, "effects_exact": ["text_file_editor.replace_all"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["text_file_editor.replace_all"]}},
+        "boundary": {"arguments": {"path": "D:/workspace/edit.txt"}, "expect_from": "invalid", "expect": {"error_code": "missing_args", "retryable": false}}
+      }
+    },
+    {
+      "name": "fs_glob",
+      "macos_behavior": "Returns bounded paths matching a filename pattern under an authorized root.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace", "pattern": "*.cpp"}, "expect": {"payload_contains": {"pattern": "*.cpp"}, "effects_exact": ["path_glob.glob"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["path_glob.glob"]}},
+        "boundary": {"arguments": {"path": "D:/workspace"}, "expect": {"payload_contains": {"pattern": "*"}}}
+      }
+    },
+    {
+      "name": "fs_list",
+      "macos_behavior": "Lists bounded directory entry names and reports truncation explicitly.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace"}, "expect": {"payload_contains": {"entries": ["src"], "truncated": false, "maximum_entries": 1000}, "effects_exact": ["file_system.list"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["file_system.list"]}},
+        "boundary": {"arguments": {}}
+      }
+    },
+    {
+      "name": "fs_mkdir",
+      "macos_behavior": "Creates one authorized directory and returns created=true.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace/new-directory"}, "expect": {"payload_contains": {"created": true}, "effects_exact": ["file_system.create_directory"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["file_system.create_directory"]}},
+        "boundary": {"arguments": {}, "expect_from": "invalid", "expect": {"error_code": "missing_path", "retryable": false}}
+      }
+    },
+    {
+      "name": "fs_move",
+      "macos_behavior": "Uses path before src/source and dest before destination, then moves within authorized roots.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace/path-source.txt", "src": "D:/workspace/src-source.txt", "source": "D:/workspace/source-source.txt", "dest": "D:/workspace/dest-target.txt", "destination": "D:/workspace/destination-target.txt"}, "expect": {"payload_contains": {"src": "D:/workspace/path-source.txt", "dest": "D:/workspace/dest-target.txt"}, "observations_contains": {"fs_move_source": "D:/workspace/path-source.txt", "fs_move_destination": "D:/workspace/dest-target.txt"}, "effects_exact": ["file_system.move"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["file_system.move"]}},
+        "boundary": {"arguments": {"src": "D:/workspace/alias-source.txt", "destination": "D:/workspace/alias-target.txt"}, "expect": {"payload_contains": {"src": "D:/workspace/alias-source.txt", "dest": "D:/workspace/alias-target.txt"}, "observations_contains": {"fs_move_source": "D:/workspace/alias-source.txt", "fs_move_destination": "D:/workspace/alias-target.txt"}}}
+      }
+    },
+    {
+      "name": "fs_read",
+      "macos_behavior": "Reads UTF-8 text; the qualified Windows extension byte-pages an oversized line at 96 KiB.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace/large-line.txt"}, "expect": {"payload_contains": {"has_more": true, "byte_offset": 0, "next_byte_offset": 98304}, "effects_exact": ["file_system.read_file"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["file_system.read_file"]}},
+        "boundary": {"arguments": {"path": "D:/workspace/large-line.txt", "byte_offset": 98304}, "expect": {"payload_contains": {"byte_offset": 98304, "has_more": false, "next_byte_offset": null}}}
+      }
+    },
+    {
+      "name": "fs_write",
+      "macos_behavior": "Writes complete UTF-8 content to one authorized path.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace/write.txt", "content": "contract"}, "expect": {"payload_contains": {"bytes_written": 8}, "effects_exact": ["file_system.write_file"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["file_system.write_file"]}},
+        "boundary": {"arguments": {"path": "D:/workspace/write.txt"}, "expect_from": "invalid", "expect": {"error_code": "missing_args", "retryable": false}}
+      }
+    },
+    {
+      "name": "git_add",
+      "macos_behavior": "Stages either -A or one explicitly authorized repository path.",
+      "cases": {
+        "valid": {"arguments": {"cwd": "D:/workspace", "path": "-A"}, "expect": {"effects_exact": ["git.add"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["git.add"]}},
+        "boundary": {"dependency_mode": "process_nonzero", "arguments": {"cwd": "D:/workspace", "path": "-A"}, "expect": {"receipt_ok": false, "receipt_error_code": "process_exit_nonzero", "payload_contains": {"ok": false, "exit_code": 7}}}
+      }
+    },
+    {
+      "name": "git_commit",
+      "macos_behavior": "Commits with the supplied message or defaults exactly to chore: forge-conductor commit.",
+      "cases": {
+        "valid": {"arguments": {"cwd": "D:/workspace", "message": "test: explicit contract"}, "expect": {"observations_contains": {"git_commit_message": "test: explicit contract"}, "effects_exact": ["git.commit"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["git.commit"]}},
+        "boundary": {"dependency_mode": "process_nonzero", "arguments": {"cwd": "D:/workspace"}, "expect": {"receipt_ok": false, "receipt_error_code": "process_exit_nonzero", "payload_contains": {"ok": false, "exit_code": 7}, "observations_contains": {"git_commit_message": "chore: forge-conductor commit"}}}
+      }
+    },
+    {
+      "name": "git_diff",
+      "macos_behavior": "Returns bounded git diff output and maps staged=true to --cached.",
+      "cases": {
+        "valid": {"arguments": {"cwd": "D:/workspace", "staged": true}, "expect": {"effects_exact": ["git.diff"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["git.diff"]}},
+        "boundary": {"dependency_mode": "process_nonzero", "arguments_from": "valid", "expect": {"receipt_ok": false, "receipt_error_code": "process_exit_nonzero", "payload_contains": {"ok": false, "exit_code": 7}}}
+      }
+    },
+    {
+      "name": "git_log",
+      "macos_behavior": "Returns bounded one-line history and clamps the requested entry count to 200.",
+      "cases": {
+        "valid": {"arguments": {"cwd": "D:/workspace", "limit": 20}, "expect": {"effects_exact": ["git.log"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["git.log"]}},
+        "boundary": {"dependency_mode": "process_nonzero", "arguments": {"cwd": "D:/workspace", "limit": 200}, "expect": {"receipt_ok": false, "receipt_error_code": "process_exit_nonzero", "payload_contains": {"ok": false, "exit_code": 7}}}
+      }
+    },
+    {
+      "name": "git_status",
+      "macos_behavior": "Returns bounded porcelain status and preserves a nonzero child exit as a structured outcome.",
+      "cases": {
+        "valid": {"arguments": {"cwd": "D:/workspace"}, "expect": {"effects_exact": ["git.status"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["git.status"]}},
+        "boundary": {"dependency_mode": "process_nonzero", "arguments_from": "valid", "expect": {"receipt_ok": false, "receipt_error_code": "process_exit_nonzero", "payload_contains": {"ok": false, "exit_code": 7}}}
+      }
+    },
+    {
+      "name": "memory_delete",
+      "macos_behavior": "Deletes a durable memory note by key and reports whether it existed.",
+      "cases": {
+        "valid": {"arguments": {"key": "contract.note"}, "expect": {"payload_contains": {"deleted": true, "existed": true}, "effects_exact": ["legacy_memory.remove"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_memory.remove"]}},
+        "boundary": {"arguments": {"key": "x"}}
+      }
+    },
+    {
+      "name": "memory_get",
+      "macos_behavior": "Gets one durable memory note and returns found plus body and tags.",
+      "cases": {
+        "valid": {"arguments": {"key": "contract.note"}, "expect": {"payload_contains": {"found": true, "key": "contract.note"}, "effects_exact": ["legacy_memory.get"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_memory.get"]}},
+        "boundary": {"arguments": {"key": "x"}, "expect": {"payload_contains": {"key": "x"}}}
+      }
+    },
+    {
+      "name": "memory_list",
+      "macos_behavior": "Lists bounded non-system memory note projections with optional body inclusion.",
+      "cases": {
+        "valid": {"arguments": {"limit": 50, "include_body": false}, "expect": {"payload_contains": {"count": 1, "total": 1}, "effects_exact": ["legacy_memory.list"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_memory.list"]}},
+        "boundary": {"arguments": {"limit": 200, "include_body": true}}
+      }
+    },
+    {
+      "name": "memory_search",
+      "macos_behavior": "Searches key, body, and tags with a bounded result count.",
+      "cases": {
+        "valid": {"arguments": {"query": "contract", "limit": 50}, "expect": {"payload_contains": {"query": "contract", "count": 1}, "effects_exact": ["legacy_memory.search"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_memory.search"]}},
+        "boundary": {"arguments": {"query": "x", "limit": 200}, "expect": {"payload_contains": {"query": "x"}}}
+      }
+    },
+    {
+      "name": "memory_set",
+      "macos_behavior": "Stores one durable key/body note, then returns the Forge data root.",
+      "cases": {
+        "valid": {"arguments": {"key": "contract.note", "body": "remembered body", "tags": ["contract"]}, "expect": {"payload_contains": {"stored": true, "home": "D:/workspace"}, "effects_exact": ["application_paths.data_root", "legacy_memory.set"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_memory.set"]}},
+        "boundary": {"arguments": {"key": "x", "body": ""}}
+      }
+    },
+    {
+      "name": "pdf_from_file",
+      "macos_behavior": "Converts an authorized text source and defaults the destination to the source basename plus .pdf.",
+      "cases": {
+        "valid": {"arguments": {"source_path": "D:/workspace/document.md"}, "expect": {"payload_contains": {"source_path": "D:/workspace/document.md"}, "effects_exact": ["pdf.from_text_file"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["pdf.from_text_file"]}},
+        "boundary": {"arguments": {"source_path": "D:/workspace/document.md", "dest_path": ""}, "expect": {"observations_contains": {"pdf_destination": "D:/workspace/document.pdf"}}}
+      }
+    },
+    {
+      "name": "pdf_write",
+      "macos_behavior": "Writes markdown-like content to an authorized PDF destination.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace/output.pdf", "content": "Contract PDF", "title": "Contract PDF"}, "expect": {"payload_contains": {"pages": 1, "engine": "contract"}, "effects_exact": ["pdf.write"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["pdf.write"]}},
+        "boundary": {"arguments": {"path": "D:/workspace/output.pdf"}, "expect_from": "invalid", "expect": {"error_code": "missing_args", "retryable": false}}
+      }
+    },
+    {
+      "name": "project_memory.export",
+      "macos_behavior": "Publishes one checksummed project-memory export artifact under write authority.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001"}, "expect": {"payload_contains": {"record_count": 1, "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, "effects_exact": ["project_memory.export"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.export"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "deadline_ms": 60000}}
+      }
+    },
+    {
+      "name": "project_memory.forget",
+      "macos_behavior": "Tombstones one stable project-memory record id.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "id": "60000000-0000-4000-8000-000000000006"}, "expect": {"payload_contains": {"disposition": "tombstoned"}, "effects_exact": ["project_memory.forget"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.forget"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "id": "60000000-0000-4000-8000-000000000006", "deadline_ms": 1}}
+      }
+    },
+    {
+      "name": "project_memory.get",
+      "macos_behavior": "Gets a bounded set of stable record ids and optionally includes bodies.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "ids": ["60000000-0000-4000-8000-000000000006"], "include_body": true}, "expect": {"payload_contains": {"count": 1}, "effects_exact": ["project_memory.get"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.get"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "id": "60000000-0000-4000-8000-000000000006"}}
+      }
+    },
+    {
+      "name": "project_memory.import",
+      "macos_behavior": "Previews by default and commits only when preview=false; merge is explicit.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "artifact": "D:/workspace/project-memory-export.json", "preview": true}, "expect": {"payload_contains": {"disposition": "preview", "preview": true}, "effects_exact": ["project_memory.import"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.import"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "artifact": "D:/workspace/project-memory-export.json", "preview": false, "merge_policy": "merge"}, "expect_from": "", "expect": {"payload_contains": {"ok": true, "project_id": "10000000-0000-4000-8000-000000000001", "count": 1, "results": [{"record_id": "60000000-0000-4000-8000-000000000006"}], "schema_version": 1, "capability_version": 1}, "payload_absent": ["disposition", "preview"], "effects_exact": ["project_memory.import"]}}
+      }
+    },
+    {
+      "name": "project_memory.initialize",
+      "macos_behavior": "Accepts the canonical macOS path alias as project_path and creates or opens one durable project store.",
+      "cases": {
+        "valid": {"arguments": {"path": "D:/workspace", "project_id": "10000000-0000-4000-8000-000000000001", "idempotency_key": 31415}, "expect": {"payload_contains": {"project_id": "10000000-0000-4000-8000-000000000001"}, "observations_contains": {"project_memory_project_id": "10000000-0000-4000-8000-000000000001"}, "effects_exact": ["project_memory.initialize"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.initialize"]}},
+        "boundary": {"arguments": {"project_path": "D:/workspace", "project_id": "10000000-0000-4000-8000-000000000001", "deadline_ms": 1}}
+      }
+    },
+    {
+      "name": "project_memory.link",
+      "macos_behavior": "Creates an idempotent typed relation between two stable project-memory records.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "source_id": "60000000-0000-4000-8000-000000000006", "target_id": "70000000-0000-4000-8000-000000000007", "relation": "supports"}, "expect": {"payload_contains": {"disposition": "inserted"}, "effects_exact": ["project_memory.link"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.link"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "source_id": "60000000-0000-4000-8000-000000000006", "target_id": "70000000-0000-4000-8000-000000000007", "relation": "x"}}
+      }
+    },
+    {
+      "name": "project_memory.list_recent",
+      "macos_behavior": "Lists recent project records with bounded pagination and response bytes.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "limit": 20, "include_body": false}, "expect": {"payload_contains": {"count": 1, "truncated": false}, "effects_exact": ["project_memory.list_recent"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.list_recent"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "limit": 100, "maximum_response_bytes": 262144, "include_body": true}}
+      }
+    },
+    {
+      "name": "project_memory.remember",
+      "macos_behavior": "Validates, redacts, deduplicates, and stores one typed project-memory record.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "kind": "fact", "title": "Contract record", "summary": "A deterministic record", "body": "Contract body", "tags": ["contract"]}, "expect": {"payload_contains": {"disposition": "inserted", "record_id": "60000000-0000-4000-8000-000000000006"}, "effects_exact": ["project_memory.remember"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.remember"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "kind": "x", "title": "x", "summary": "x", "importance": 0.0, "confidence": 0.0}}
+      }
+    },
+    {
+      "name": "project_memory.remember_batch",
+      "macos_behavior": "Stores up to 50 validated project-memory writes transactionally.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "items": [{"kind": "fact", "title": "Contract record", "summary": "A deterministic record"}]}, "expect": {"payload_contains": {"count": 1}, "effects_exact": ["project_memory.remember_batch"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.remember_batch"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "items": [{"kind": "x", "title": "x", "summary": "x"}], "deadline_ms": 60000}}
+      }
+    },
+    {
+      "name": "project_memory.search",
+      "macos_behavior": "Searches one project with deterministic bounded pagination and optional bodies.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "query": "contract", "limit": 20}, "expect": {"payload_contains": {"count": 1, "truncated": false}, "effects_exact": ["project_memory.search"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.search"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "query": "x", "limit": 100, "maximum_response_bytes": 262144, "include_body": true}}
+      }
+    },
+    {
+      "name": "project_memory.status",
+      "macos_behavior": "Reports project-memory schema, capabilities, counts, cache, integrity, and limits.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001"}, "expect": {"payload_contains": {"integrity_ok": true, "record_count": 1}, "effects_exact": ["project_memory.status"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.status"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "deadline_ms": 60000}}
+      }
+    },
+    {
+      "name": "project_memory.update",
+      "macos_behavior": "Updates one record with optimistic uint32 version checking.",
+      "cases": {
+        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "id": "60000000-0000-4000-8000-000000000006", "expected_version": 1, "title": "Updated contract"}, "expect": {"payload_contains": {"record": {"id": "60000000-0000-4000-8000-000000000006"}}, "effects_exact": ["project_memory.update"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["project_memory.update"]}},
+        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "id": "60000000-0000-4000-8000-000000000006", "expected_version": 4294967295, "summary": "x"}}
+      }
+    },
+    {
+      "name": "search_text",
+      "macos_behavior": "Missing pattern is an error; a present empty pattern is distinct and reaches the bounded search dependency.",
+      "cases": {
+        "valid": {"arguments": {"pattern": "", "path": "D:/workspace"}, "expect": {"payload_contains": {"pattern": "", "count": 1}, "effects_exact": ["text_search.search"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["text_search.search"]}},
+        "boundary": {"arguments": {"path": "D:/workspace"}, "expect_from": "invalid", "expect": {"error_code": "missing_pattern", "retryable": false}}
+      }
+    },
+    {
+      "name": "session_checkpoint",
+      "macos_behavior": "Soft-saves a legacy context packet while the current chat continues.",
+      "cases": {
+        "valid": {"arguments": {"goal": "Ship the matrix", "status": "in_progress"}, "expect": {"payload_contains": {"action": "checkpoint"}, "effects_exact": ["legacy_continuity.checkpoint"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_continuity.checkpoint"]}},
+        "boundary": {"arguments": {}}
+      }
+    },
+    {
+      "name": "session_handoff",
+      "macos_behavior": "Finalizes a legacy handoff packet and returns its resume seed.",
+      "cases": {
+        "valid": {"arguments": {"goal": "Ship the matrix", "status": "handoff_ready"}, "expect": {"payload_contains": {"action": "handoff", "handoff_required": true}, "effects_exact": ["legacy_continuity.handoff"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["legacy_continuity.handoff"]}},
+        "boundary": {"arguments": {}}
+      }
+    },
+    {
+      "name": "shell_exec",
+      "macos_behavior": "Runs opt-in bounded PowerShell, defaults to the configured 30-second timeout, and preserves child nonzero as a structured outcome.",
+      "cases": {
+        "valid": {"arguments": {"command": "Write-Output contract", "cwd": "D:/workspace", "timeout_sec": 120}, "expect": {"observations_contains": {"shell_timeout_ms": 120000}, "effects_exact": ["shell.execute"]}},
+        "invalid": {},
+        "dependency_error": {"expect": {"effects_exact": ["shell.execute"]}},
+        "boundary": {"dependency_mode": "process_nonzero", "arguments": {"command": "Write-Output contract", "cwd": "D:/workspace"}, "expect": {"receipt_ok": false, "receipt_error_code": "process_exit_nonzero", "payload_contains": {"ok": false, "exit_code": 7}, "observations_contains": {"shell_timeout_ms": 30000}}}
+      }
+    }
+  ]
+}

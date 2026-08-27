@@ -421,6 +421,34 @@ void globAndTextSearchAreBoundedAndDeterministic() {
   require(matches.front() == pathText(git / L"hidden.txt") &&
               matches.back() == pathText(root / L"top.txt"),
           "native glob results are not deterministically sorted");
+  const auto basenameMatches =
+      take(glob.glob(rootRead, "*.txt", 20U,
+                     WindowsPathGlobService::MaximumResponseBytes, context));
+  require(basenameMatches == matches,
+          "separator-free glob did not recursively match nested basenames");
+  const auto defaultMatches =
+      take(glob.glob(rootRead, "*", 20U,
+                     WindowsPathGlobService::MaximumResponseBytes, context));
+  const std::vector<Domain::PathText> expectedDefaultMatches{
+      pathText(git),
+      pathText(git / L"hidden.txt"),
+      pathText(modules),
+      pathText(modules / L"dependency.txt"),
+      pathText(source),
+      pathText(source / L"alpha.txt"),
+      pathText(source / L"ignore.bin"),
+      pathText(nested),
+      pathText(nested / L"beta.txt"),
+      pathText(root / L"top.txt"),
+  };
+  require(defaultMatches == expectedDefaultMatches,
+          "default glob did not recursively match every basename in order");
+  const auto relativePathMatches =
+      take(glob.glob(rootRead, "src/*.txt", 20U,
+                     WindowsPathGlobService::MaximumResponseBytes, context));
+  require(relativePathMatches.size() == 1U &&
+              relativePathMatches.front() == pathText(source / L"alpha.txt"),
+          "separator glob no longer used root-relative path semantics");
   const auto limited =
       take(glob.glob(rootRead, "**/*.txt", 2U,
                      WindowsPathGlobService::MaximumResponseBytes, context));

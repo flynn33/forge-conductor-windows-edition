@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T100751448Z-8deaa7ec",
+  "phase": "P14",
+  "role": "builder",
+  "command": "$ErrorActionPreference = 'Stop'\ncmake --build out\\build\\windows-msvc-x64 --config Debug --target ForgeConductor.Mcp.ToolContractMatrixTests ForgeConductor.Mcp.ToolPackAdapterTests ForgeConductor.NativeTools.FileSystemSearchTests -- /m:1 /nr:false\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\nctest --test-dir out\\build\\windows-msvc-x64 -C Debug -V -R \"ForgeConductor.Mcp.ToolContractMatrixTests|ForgeConductor.Mcp.ToolPackAdapterTests|ForgeConductor.NativeTools.FileSystemSearchTests\"\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n$fixture = Get-Content -Raw tests\\fixtures\\Mcp\\mcp-tool-contract-cases.json | ConvertFrom-Json -Depth 100\n$names = @($fixture.tools | ForEach-Object name)\n$caseCount = ($fixture.tools | ForEach-Object { $_.cases.psobject.Properties.Count } | Measure-Object -Sum).Sum\n$categoryFailures = @($fixture.tools | Where-Object { (@($_.cases.psobject.Properties.Name | Sort-Object) -join ',') -ne 'boundary,dependency_error,invalid,valid' })\nif ($fixture.tools.Count -ne 53 -or @($names | Sort-Object -Unique).Count -ne 53 -or $caseCount -ne 212 -or $categoryFailures.Count -ne 0) { throw 'MCP fixture inventory mismatch.' }\nWrite-Output \"MCP_FIXTURE tools=53 unique=53 cases=212 categories=valid,invalid,dependency_error,boundary\"\n$artifacts = @(\n  'out\\build\\windows-msvc-x64\\bin\\Debug\\ForgeConductor.Mcp.ToolContractMatrixTests.exe',\n  'out\\build\\windows-msvc-x64\\bin\\Debug\\ForgeConductor.Mcp.ToolPackAdapterTests.exe',\n  'out\\build\\windows-msvc-x64\\bin\\Debug\\ForgeConductor.NativeTools.FileSystemSearchTests.exe',\n  'out\\build\\windows-msvc-x64\\lib\\Debug\\ForgeConductor.Mcp.lib',\n  'out\\build\\windows-msvc-x64\\lib\\Debug\\ForgeConductor.NativeTools.Windows.lib',\n  'tests\\fixtures\\Mcp\\mcp-tool-contract-cases.json'\n)\nforeach ($artifact in $artifacts) {\n  $item = Get-Item -LiteralPath $artifact\n  $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $artifact).Hash.ToLowerInvariant()\n  Write-Output (\"ARTIFACT path={0} bytes={1} sha256={2}\" -f $artifact,$item.Length,$hash)\n}",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T10:07:51.4568030+00:00",
+  "end_utc": "2026-08-27T10:08:12.9384362+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T100751448Z-8deaa7ec.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T100751448Z-8deaa7ec.stderr.txt",
+  "stdout_sha256": "74a3888dd64c7a021f377eb606414b6f780e14a4e3643d99b798f4137e558f20",
+  "stderr_sha256": "00cf2eaa40ca662fe9d0e364d8e36dd47164b399fa18336226216b11d28361d4"
+}

@@ -521,6 +521,27 @@ if(BUILD_TESTING)
         LABELS "G14;T-MCP;T-UNIT;T-INTEGRATION;T-PARITY"
         TIMEOUT 60)
 
+    add_executable(ForgeConductor.Mcp.ToolContractMatrixTests
+        tests/Mcp/McpToolContractMatrixTests.cpp
+        tests/Mcp/McpToolContractTestSupport.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Mcp.ToolContractMatrixTests)
+    target_include_directories(
+        ForgeConductor.Mcp.ToolContractMatrixTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Mcp.ToolContractMatrixTests PRIVATE
+        ForgeConductor::Mcp
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Mcp.ToolContractMatrixTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ToolContractMatrixTests>
+            "${PROJECT_SOURCE_DIR}/tests/fixtures/Mcp/mcp-tool-contract-cases.json")
+    set_tests_properties(
+        ForgeConductor.Mcp.ToolContractMatrixTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-PARITY"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Agents.CatalogTests
         tests/Agents/AgentCatalogTests.cpp)
     forge_configure_standard_target(ForgeConductor.Agents.CatalogTests)

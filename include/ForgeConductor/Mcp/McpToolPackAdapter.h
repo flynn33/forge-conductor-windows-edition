@@ -15,6 +15,7 @@
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -24,8 +25,8 @@ namespace ForgeConductor::Mcp {
 
 // All product services used by the application-owned MCP tool packs. The
 // composition root owns every referenced dependency for longer than the
-// adapter and supplies the exact configured PowerShell executable rather than
-// permitting ambient executable discovery at the protocol boundary.
+// adapter and supplies the configured PowerShell timeout and exact executable
+// rather than permitting ambient defaults or discovery at the protocol boundary.
 struct McpToolPackDependencies final {
     Contracts::IToolCatalog& catalog;
     Contracts::IApplicationPaths& applicationPaths;
@@ -52,6 +53,7 @@ struct McpToolPackDependencies final {
     Contracts::IClock& clock;
     Contracts::IUuidGenerator& uuidGenerator;
     Domain::ProjectMemoryLimits projectMemoryLimits;
+    std::chrono::seconds shellDefaultTimeout;
     Domain::PathText shellExecutable;
     std::string productVersion;
     std::string runtimeName;

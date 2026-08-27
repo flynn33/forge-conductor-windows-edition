@@ -23,6 +23,7 @@ namespace InfrastructureDetail =
 struct GlobPattern final {
   std::wstring storage;
   std::vector<std::wstring> segments;
+  bool matchesBasenameOnly{};
 };
 
 [[nodiscard]] bool equalCharacter(const wchar_t left,
@@ -115,7 +116,10 @@ parsePattern(const std::string_view pattern) noexcept {
     if (!converted) {
       return Domain::Result<GlobPattern>::failure(std::move(converted).error());
     }
-    GlobPattern parsed{std::move(converted).value(), {}};
+    const bool matchesBasenameOnly =
+        pattern.find('/') == std::string_view::npos &&
+        pattern.find('\\') == std::string_view::npos;
+    GlobPattern parsed{std::move(converted).value(), {}, matchesBasenameOnly};
     for (auto &character : parsed.storage) {
       if (character == L'/') {
         character = L'\\';
@@ -186,12 +190,16 @@ Domain::Result<std::vector<Domain::PathText>> WindowsPathGlobService::glob(
     std::size_t responseBytes{};
     const Detail::NativeWalkOptions options{100'000U, 128U, false};
     const auto visitor =
-        [&](const HANDLE, const Detail::NativeDirectoryEntry &,
+        [&](const HANDLE, const Detail::NativeDirectoryEntry &entry,
             const std::wstring_view canonicalPath,
             const std::wstring_view relativePath, const std::size_t,
             const Domain::OperationContext &) -> Domain::Result<bool> {
-      const auto pathSegments = splitPath(relativePath);
-      if (!matchPath(parsed.value().segments, pathSegments)) {
+      const bool matched = parsed.value().matchesBasenameOnly
+                               ? matchSegment(parsed.value().segments.front(),
+                                              entry.name)
+                               : matchPath(parsed.value().segments,
+                                           splitPath(relativePath));
+      if (!matched) {
         return Domain::Result<bool>::success(false);
       }
       auto converted =

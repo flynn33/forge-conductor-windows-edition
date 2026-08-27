@@ -121,6 +121,16 @@
       "path": ".forge-codex/state/commands/20260825T090026442Z-59f380ef.json",
       "sha256": "5ec73ee53bb40ab035361f63da68aa2bd109f14fa5d380b310bc798f5a4822d6",
       "summary": "Post-gate ledger verification passed through the G00/P00/G01/P01 state events."
+    },
+    {
+      "id": "P14-mcp-tool-contract-matrix-checkpoint",
+      "type": "checkpoint",
+      "phase": "P14",
+      "gate": "G14",
+      "created_at": "2026-08-27T10:10:24.4299056+00:00",
+      "path": ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+      "sha256": "0ce0bfc6c46a71929e46312bce21aae2a6151bb692b0ea75a487e2b2a36a77fd",
+      "summary": "Focused Debug build and 3/3 CTest pass qualified 53 MCP tools across 212 semantic cases, adapter integration, and recursive Windows glob compatibility; G14 remains open for dynamic multi-project authority."
     }
   ]
 }

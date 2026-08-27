@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-27T09:02:01.7509698+00:00",
+  "updated_at": "2026-08-27T10:14:38.6001913+00:00",
   "status": "in_progress",
   "active_role": "builder",
   "active_phase": "P14",
@@ -502,7 +502,13 @@
         ".forge-codex/state/evidence/P14/stdio-serve-primary-fallback-snapshot-checkpoint.json",
         ".forge-codex/state/commands/20260827T085700851Z-c02f2cee.json",
         ".forge-codex/state/commands/20260827T090149461Z-c5cbe046.json",
-        ".forge-codex/state/evidence/P14/shared-home-role-concurrency-checkpoint.json"
+        ".forge-codex/state/evidence/P14/shared-home-role-concurrency-checkpoint.json",
+        ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md",
+        ".forge-codex/state/commands/20260827T100751448Z-8deaa7ec.json",
+        ".forge-codex/state/commands/20260827T100908176Z-036a09a7.json",
+        ".forge-codex/state/commands/20260827T101001127Z-bac9cd57.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/commands/20260827T101427449Z-191d5151.json"
       ]
     },
     {
@@ -1079,7 +1085,13 @@
         ".forge-codex/state/evidence/P14/stdio-serve-primary-fallback-snapshot-checkpoint.json",
         ".forge-codex/state/commands/20260827T085700851Z-c02f2cee.json",
         ".forge-codex/state/commands/20260827T090149461Z-c5cbe046.json",
-        ".forge-codex/state/evidence/P14/shared-home-role-concurrency-checkpoint.json"
+        ".forge-codex/state/evidence/P14/shared-home-role-concurrency-checkpoint.json",
+        ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md",
+        ".forge-codex/state/commands/20260827T100751448Z-8deaa7ec.json",
+        ".forge-codex/state/commands/20260827T100908176Z-036a09a7.json",
+        ".forge-codex/state/commands/20260827T101001127Z-bac9cd57.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/commands/20260827T101427449Z-191d5151.json"
       ]
     },
     {
