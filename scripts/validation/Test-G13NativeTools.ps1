@@ -914,13 +914,60 @@ $buildTargets = @(
 $buildScript = Join-Path $WorkspaceRoot 'scripts\build.ps1'
 $testScript = Join-Path $WorkspaceRoot 'scripts\test.ps1'
 if ($reuseFreshBuild) {
+    $expectedFreshBuildCommit = '05e93de83fcf31aef32cb12e6a324a18ecfc27c2'
+    $expectedRepairCommit = '03f8b5267a60ccff532f26f204cc7b2eb390eb50'
+    $expectedRepairTree = '2ad670fe98dff6a9dba17be4fe08626038dcae44'
+    $expectedRecordId = '20260827T001102639Z-955cd3e3'
+    $expectedRecordRelative = ".forge-codex/state/commands/$expectedRecordId.json"
+    $expectedRecordSha256 = '8b4dd46c909d2f5b3c2091e7d5588aa36d8f0bba28be423edc97cbd3efc04df0'
+    $expectedStdoutRelative = ".forge-codex/state/commands/$expectedRecordId.stdout.txt"
+    $expectedStdoutSha256 = '0a9fa5ff56ac4730db12a2588b07d8dd38616d87f586543dc7fa2dbe49cd38dc'
+    $expectedStderrRelative = ".forge-codex/state/commands/$expectedRecordId.stderr.txt"
+    $expectedStderrSha256 = 'a2412e0d7c6f357b8a8cd0d155bc5aa793969654bdd5a8dc46badfd75bd88561'
+
     Assert-Match $FreshBuildCommit '^[0-9a-f]{40}$' `
         'fresh-build recovery commit is a full lowercase SHA-1' -CaseSensitive
-    & git -C $WorkspaceRoot cat-file -e "$FreshBuildCommit^{commit}"
-    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery commit exists'
+    Assert-Exact $FreshBuildCommit $expectedFreshBuildCommit `
+        'fresh-build recovery exact frozen baseline commit'
+    & git -C $WorkspaceRoot cat-file -e "$expectedFreshBuildCommit^{commit}"
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery baseline commit exists'
+    & git -C $WorkspaceRoot cat-file -e "$expectedRepairCommit^{commit}"
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery repair commit exists'
+    $repairParent = (& git -C $WorkspaceRoot rev-parse "$expectedRepairCommit^").Trim()
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery repair-parent query'
+    Assert-Exact $repairParent $expectedFreshBuildCommit `
+        'diagnostics repair is the direct child of the fresh-build baseline'
+    $repairTree = (& git -C $WorkspaceRoot show -s --format='%T' `
+        $expectedRepairCommit).Trim()
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery repair-tree query'
+    Assert-Exact $repairTree $expectedRepairTree `
+        'fresh-build recovery exact reviewed repair tree'
+    & git -C $WorkspaceRoot merge-base --is-ancestor $expectedRepairCommit HEAD
+    Assert-Exact $LASTEXITCODE 0 'reviewed diagnostics repair is an ancestor of HEAD'
+    $postRepairCommittedChanges = @(& git -C $WorkspaceRoot diff --name-only `
+        "$expectedRepairCommit..HEAD")
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery post-repair comparison command'
+    Assert-Set $postRepairCommittedChanges @(
+        '.forge-codex/state/decisions/P13-006-g13-regression-and-alpha-qualification.md',
+        'scripts/validation/Test-G13NativeTools.ps1') `
+        'fresh-build recovery exact post-repair control-file set'
+    & git -C $WorkspaceRoot diff --quiet HEAD --
+    Assert-Exact $LASTEXITCODE 0 `
+        'fresh-build recovery has no unstaged tracked changes'
+    & git -C $WorkspaceRoot diff --cached --quiet HEAD --
+    Assert-Exact $LASTEXITCODE 0 `
+        'fresh-build recovery has no staged tracked changes'
+    $untrackedWorkspacePaths = @(& git -C $WorkspaceRoot ls-files --others `
+        --exclude-standard)
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery untracked-workspace query'
+    $unexpectedUntrackedPaths = @($untrackedWorkspacePaths | Where-Object {
+        $_ -cnotmatch '^\.forge-codex/state/commands/[0-9]{8}T[0-9]{9}Z-[0-9a-f]{8}[.](?:stdout|stderr)[.]txt$'
+    })
+    Assert-Exact $unexpectedUntrackedPaths.Count 0 `
+        'fresh-build recovery permits only the active recorder output streams'
 
     $buildInputChanges = @(& git -C $WorkspaceRoot diff --name-only `
-        "$FreshBuildCommit..HEAD" -- CMakeLists.txt src include tests cmake `
+        "$expectedFreshBuildCommit..$expectedRepairCommit" -- CMakeLists.txt src include tests cmake `
         CMakePresets.json vcpkg.json)
     Assert-Exact $LASTEXITCODE 0 'fresh-build recovery input comparison command'
     Assert-Set $buildInputChanges @(
@@ -930,8 +977,25 @@ if ($reuseFreshBuild) {
         'tests/Infrastructure/InfrastructureTestMain.cpp',
         'tests/Infrastructure/WindowsDiagnosticSinkTests.cpp') `
         'fresh-build recovery exact diagnostics repair input set'
+    $currentBuildInputChanges = @(& git -C $WorkspaceRoot diff --name-only `
+        $expectedRepairCommit -- CMakeLists.txt src include tests cmake `
+        CMakePresets.json vcpkg.json)
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery current-input comparison command'
+    Assert-Exact $currentBuildInputChanges.Count 0 `
+        'tracked build and test inputs exactly match the reviewed repair tree'
+    $untrackedBuildInputs = @(& git -C $WorkspaceRoot ls-files --others `
+        --exclude-standard -- CMakeLists.txt src include tests cmake `
+        CMakePresets.json vcpkg.json)
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery untracked-input query'
+    Assert-Exact $untrackedBuildInputs.Count 0 `
+        'no untracked build or test input can enter recovery'
+    $harnessChanges = @(& git -C $WorkspaceRoot diff --name-only HEAD -- `
+        scripts/build.ps1 scripts/test.ps1 scripts/validation/Test-G13NativeTools.ps1)
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery harness comparison command'
+    Assert-Exact $harnessChanges.Count 0 `
+        'recovery build and test harnesses have no staged or unstaged changes'
     $cmakeDiff = @(& git -C $WorkspaceRoot diff --unified=0 --no-color `
-        "$FreshBuildCommit..HEAD" -- CMakeLists.txt)
+        "$expectedFreshBuildCommit..$expectedRepairCommit" -- CMakeLists.txt)
     Assert-Exact $LASTEXITCODE 0 'fresh-build recovery CMake comparison command'
     $cmakeChangedLines = @($cmakeDiff | Where-Object {
         ($_ -match '^[+-]') -and ($_ -notmatch '^(?:---|[+][+][+])')
@@ -952,24 +1016,56 @@ if ($reuseFreshBuild) {
     Assert-True (-not [IO.Path]::IsPathFullyQualified($recordRelative) -and
         -not $recordRelative.StartsWith('..', [StringComparison]::Ordinal)) `
         'fresh-build recovery record stays in the command-evidence directory'
+    $recordWorkspaceRelative = [IO.Path]::GetRelativePath(
+        $WorkspaceRoot, $recordPath).Replace('\', '/')
+    Assert-Exact $recordWorkspaceRelative $expectedRecordRelative `
+        'fresh-build recovery exact pinned record path'
+    Assert-Exact (Get-FileSha256 $recordPath) $expectedRecordSha256 `
+        'fresh-build recovery exact pinned record hash'
     $buildRecord = Get-Content -Raw -LiteralPath $recordPath | ConvertFrom-Json
     Assert-Exact ([int]$buildRecord.schema_version) 1 `
         'fresh-build recovery record schema'
+    Assert-Exact ([string]$buildRecord.id) $expectedRecordId `
+        'fresh-build recovery record identifier'
     Assert-Exact ([string]$buildRecord.phase) 'P13' `
         'fresh-build recovery record phase'
+    Assert-Exact ([string]$buildRecord.role) 'builder' `
+        'fresh-build recovery record role'
+    Assert-Exact ([string]$buildRecord.working_directory) $WorkspaceRoot `
+        'fresh-build recovery working directory'
     Assert-Exact ([int]$buildRecord.exit_code) 1 `
         'fresh-build recovery record captures the interrupted test pass'
     Assert-Exact ([bool]$buildRecord.timed_out) $false `
         'fresh-build recovery record did not time out'
-    Assert-Match ([string]$buildRecord.command) `
-        'Test-G13NativeTools[.]ps1[\s\S]*?-Parallel\s+16' `
-        'fresh-build recovery record command identity' -CaseSensitive
+    $expectedRecordCommand = "& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File '$WorkspaceRoot\scripts\validation\Test-G13NativeTools.ps1' -WorkspaceRoot '$WorkspaceRoot' -Parallel 16"
+    Assert-Exact ([string]$buildRecord.command) $expectedRecordCommand `
+        'fresh-build recovery exact recorded command'
+    $recordParallel = [regex]::Match(
+        [string]$buildRecord.command, '-Parallel\s+(?<parallel>[0-9]+)').Groups['parallel'].Value
+    Assert-True (-not [string]::IsNullOrWhiteSpace($recordParallel)) `
+        'fresh-build recovery recorded parallelism exists'
+    Assert-Exact $Parallel ([int]$recordParallel) `
+        'fresh-build recovery reuses recorded parallelism'
+    Assert-Exact ([string]$buildRecord.stdout).Replace('\', '/') `
+        $expectedStdoutRelative 'fresh-build recovery stdout record path'
+    Assert-Exact ([string]$buildRecord.stdout_sha256) $expectedStdoutSha256 `
+        'fresh-build recovery stdout record hash'
     $recordStdoutPath = Join-Path $WorkspaceRoot `
         ([string]$buildRecord.stdout).Replace('/', '\')
     Assert-True (Test-Path -LiteralPath $recordStdoutPath -PathType Leaf) `
         'fresh-build recovery stdout exists'
-    Assert-Exact (Get-FileSha256 $recordStdoutPath) `
-        ([string]$buildRecord.stdout_sha256) 'fresh-build recovery stdout hash'
+    Assert-Exact (Get-FileSha256 $recordStdoutPath) $expectedStdoutSha256 `
+        'fresh-build recovery exact pinned stdout hash'
+    Assert-Exact ([string]$buildRecord.stderr).Replace('\', '/') `
+        $expectedStderrRelative 'fresh-build recovery stderr record path'
+    Assert-Exact ([string]$buildRecord.stderr_sha256) $expectedStderrSha256 `
+        'fresh-build recovery stderr record hash'
+    $recordStderrPath = Join-Path $WorkspaceRoot `
+        ([string]$buildRecord.stderr).Replace('/', '\')
+    Assert-True (Test-Path -LiteralPath $recordStderrPath -PathType Leaf) `
+        'fresh-build recovery stderr exists'
+    Assert-Exact (Get-FileSha256 $recordStderrPath) $expectedStderrSha256 `
+        'fresh-build recovery exact pinned stderr hash'
     $recordStdout = Get-Content -Raw -LiteralPath $recordStdoutPath
     $buildMarker = $recordStdout.IndexOf(
         'G13: performing the one authoritative fresh x64 Debug affected-target build.',
@@ -984,19 +1080,23 @@ if ($reuseFreshBuild) {
         'fresh-build recovery record isolates the failure to the infrastructure suite' `
         -CaseSensitive
 
-    $toolchainState = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
-        '.forge-codex\state\toolchain.json') | ConvertFrom-Json
-    $cmakeExecutable = [string]$toolchainState.tools.cmake
-    $vcpkgRoot = [string]$toolchainState.vcpkg.root
-    Assert-True (Test-Path -LiteralPath $cmakeExecutable -PathType Leaf) `
-        'fresh-build recovery CMake executable exists'
-    Assert-True (Test-Path -LiteralPath $vcpkgRoot -PathType Container) `
-        'fresh-build recovery vcpkg root exists'
-    $env:VCPKG_ROOT = $vcpkgRoot
+    $priorSuccessfulRecovery = @(Get-ChildItem -LiteralPath $commandRoot `
+        -Filter '*.json' -File | Where-Object { $_.FullName -cne $recordPath } | ForEach-Object {
+            try {
+                $candidate = Get-Content -Raw -LiteralPath $_.FullName | ConvertFrom-Json
+                if ([string]$candidate.phase -ceq 'P13' -and
+                    [int]$candidate.exit_code -eq 0 -and
+                    [string]$candidate.command -cmatch 'ReuseFreshBuildRecord' -and
+                    [string]$candidate.command -cmatch [regex]::Escape($expectedRecordId)) {
+                    $_.FullName
+                }
+            } catch {
+            }
+        })
+    Assert-Exact $priorSuccessfulRecovery.Count 0 `
+        'pinned fresh-build recovery has not already succeeded'
+
     Write-Host 'G13: reusing the evidenced fresh build with an incremental diagnostics-repair rebuild.'
-    & $cmakeExecutable --preset windows-msvc-x64
-    Assert-Exact $LASTEXITCODE 0 `
-        'fresh-build recovery diagnostics-repair reconfigure'
     & $buildScript -Configuration Debug -Architecture x64 -Target $buildTargets `
         -Parallel $Parallel
     Assert-True $? `

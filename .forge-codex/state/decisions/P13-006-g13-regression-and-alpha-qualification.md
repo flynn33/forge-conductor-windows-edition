@@ -30,7 +30,11 @@ scope.
   test suspended an arbitrary same-process worker instruction after observing
   a staging filename. That worker could hold a CRT, filesystem, or sink lock
   needed by the test thread. `RUN_SERIAL` was rejected because it cannot repair
-  an intra-process deadlock.
+  an intra-process deadlock. This attribution is a code-analysis diagnosis
+  corroborated by two live parent-process snapshots: PIDs 9644 and 27652 each
+  retained a worker in the suspended wait state while the main test thread
+  stopped making progress. The failed command output alone proves the isolated
+  infrastructure-suite failure, not its internal cause.
 - Diagnostics rotation tests use a private, injected, bounded cooperative
   checkpoint after exclusive staging-file creation and retain the existing
   checkpoint immediately before staged-handle publication validation. The
@@ -38,14 +42,16 @@ scope.
   those owned boundaries. Arbitrary `SuspendThread` and `ResumeThread` calls
   are prohibited from the suite.
 - G13 may reuse the successful fresh-build evidence once for this repair. The
-  recovery path validates the failed command record and stdout hash, proves
-  that the exact changed build-input set is limited to the reviewed
-  diagnostics checkpoint, its tests, test progress output, and the CTest
-  timeout, then incrementally rebuilds every affected G06/G13 target. It must
-  complete the same parallel test, inventory, artifact-hash, and
-  repository-integrity assertions. This implements the owner's direction that
-  a successful fresh rebuild is not repeated merely to recover a gate-harness
-  defect while ensuring all changed inputs are rebuilt.
+  recovery path pins the baseline commit, its direct repair commit and tree,
+  the failed record identifier and file hash, both output hashes, the exact
+  command, working directory, role, and parallelism. It rejects tracked,
+  staged, unstaged, or untracked build-input differences from the reviewed
+  repair and rejects reuse after any prior recorded successful recovery. It
+  then incrementally rebuilds every affected G06/G13 target and completes the
+  same parallel test, inventory, artifact-hash, and repository-integrity
+  assertions. This implements the owner's direction that a successful fresh
+  rebuild is not repeated merely to recover a gate-harness defect while
+  ensuring all changed inputs are rebuilt.
 - The authoritative runner verifies strict source formatting, sealed Forsetti
   inputs, repository integrity, platform-neutral public contracts, native tool
   architecture invariants, x64 PE identity, and SHA-256 hashes for the three
@@ -74,5 +80,10 @@ retained test selection.
 - `.forge-codex/state/gate-results/G06.json`
 - `.forge-codex/state/gate-results/G12.json`
 - `.forge-codex/state/decisions/P13-005-native-services-to-mcp-parity-boundary.md`
+- `.forge-codex/state/commands/20260827T001102639Z-955cd3e3.json`
+- `.forge-codex/state/commands/20260827T001102639Z-955cd3e3.stdout.txt`
+- Repair commit `03f8b5267a60ccff532f26f204cc7b2eb390eb50`, whose
+  parent is the successful fresh-build baseline
+  `05e93de83fcf31aef32cb12e6a324a18ecfc27c2`
 - `.forge-codex/instructions/plans/phases.json`
 - `.forge-codex/instructions/plans/gates.json`
