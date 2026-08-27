@@ -2,6 +2,7 @@
 
 #include "../../../Infrastructure/Windows/Detail/RelativeFileOperations.h"
 #include "../../../Infrastructure/Windows/Detail/Win32Error.h"
+#include "../../../Infrastructure/Windows/Detail/WindowsPathResolver.h"
 
 #include <algorithm>
 #include <array>
@@ -383,7 +384,9 @@ constexpr std::array<DatabaseLeafRole, 4U> QuarantineCohortRoles{
     if (!resolved) {
         return Domain::Result<void>::failure(std::move(resolved).error());
     }
-    if (!equalInsensitive(expectedPath, resolved.value())) {
+    if (!equalInsensitive(expectedPath, resolved.value()) &&
+        !InfrastructureDetail::WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+            expectedPath, resolved.value())) {
         return Domain::Result<void>::failure(namespaceError(
             Domain::ErrorCodes::PathOutsideAuthority,
             "An opened database directory differs from its canonical path."));
@@ -424,7 +427,9 @@ constexpr std::array<DatabaseLeafRole, 4U> QuarantineCohortRoles{
     if (!resolved) {
         return Domain::Result<DatabaseFileIdentity>::failure(std::move(resolved).error());
     }
-    if (!equalInsensitive(expectedPath, resolved.value())) {
+    if (!equalInsensitive(expectedPath, resolved.value()) &&
+        !InfrastructureDetail::WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+            expectedPath, resolved.value())) {
         return Domain::Result<DatabaseFileIdentity>::failure(namespaceError(
             Domain::ErrorCodes::PathOutsideAuthority,
             "An opened database leaf differs from its canonical path."));

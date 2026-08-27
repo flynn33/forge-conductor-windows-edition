@@ -167,10 +167,12 @@ private:
     }
 
     std::wstring value(required, L'\0');
+    ::SetLastError(ERROR_SUCCESS);
     const DWORD written = ::GetEnvironmentVariableW(
         std::wstring{name}.c_str(), value.data(), required);
-    if (written == 0U || written >= required) {
-        throw win32Failure("GetEnvironmentVariableW");
+    const DWORD readError = ::GetLastError();
+    if (written >= required || (written == 0U && readError != ERROR_SUCCESS)) {
+        throw win32Failure("GetEnvironmentVariableW", readError);
     }
     value.resize(written);
     return value;
@@ -273,7 +275,8 @@ struct ChildProcess final {
     const std::filesystem::path& home,
     const std::filesystem::path& workspace,
     const std::wstring_view role,
-    const std::wstring_view deploymentId)
+    const std::wstring_view deploymentId,
+    const bool homeFromEnvironment)
 {
     auto input = createPipe(false);
     auto output = createPipe(true);
@@ -287,9 +290,11 @@ struct ChildProcess final {
     startup.hStdError = error.writer.get();
 
     const auto executableText = executable.native();
-    std::wstring commandLine =
-        quoteWindowsArgument(executableText) + L" serve --home " +
-        quoteWindowsArgument(home.native());
+    std::wstring commandLine = quoteWindowsArgument(executableText) + L" serve";
+    if (!homeFromEnvironment) {
+        commandLine.append(L" --home ");
+        commandLine.append(quoteWindowsArgument(home.native()));
+    }
     std::vector<wchar_t> mutableCommand{
         commandLine.begin(), commandLine.end()};
     mutableCommand.push_back(L'\0');
@@ -300,6 +305,10 @@ struct ChildProcess final {
             L"FORGE_MCP_ROLE", role};
         const ScopedEnvironmentVariable deploymentEnvironment{
             L"FORGE_DEPLOYMENT_ID", deploymentId};
+        std::optional<ScopedEnvironmentVariable> homeEnvironment;
+        if (homeFromEnvironment) {
+            homeEnvironment.emplace(L"FORGE_CONDUCTOR_HOME", home.native());
+        }
         if (::CreateProcessW(
                 executableText.c_str(),
                 mutableCommand.data(),
@@ -641,8 +650,11 @@ public:
         const std::filesystem::path& home,
         const std::filesystem::path& workspace,
         const std::wstring_view role,
-        const std::wstring_view deploymentId)
-        : child_{launch(executable, home, workspace, role, deploymentId)}
+        const std::wstring_view deploymentId,
+        const bool homeFromEnvironment = false)
+        : child_{launch(
+              executable, home, workspace, role, deploymentId,
+              homeFromEnvironment)}
     {
         try {
             output_ = std::make_shared<PipeDrainState>(
@@ -1262,6 +1274,45 @@ void run(
         std::istreambuf_iterator<char>{dynamicInput}, std::istreambuf_iterator<char>{}};
     REQUIRE(dynamicBytes == dynamicContent);
     verifier.finish(7U);
+
+    // The deployment preflight intentionally supplies a present-but-empty
+    // deployment ID so the child cannot inherit an ambient installed revision.
+    // The serve root must treat that value as empty and generate its isolated
+    // process identity instead of rejecting the successful zero-character read.
+    const auto localAppData = environmentValue(L"LOCALAPPDATA");
+    REQUIRE(localAppData.has_value());
+    REQUIRE(!localAppData->empty());
+    const auto isolatedHome = std::filesystem::path{*localAppData} /
+        (L"ForgeConductor-LMStudioPreflight-" +
+         std::to_wstring(::GetCurrentProcessId()) + L'-' +
+         std::to_wstring(::GetTickCount64()));
+    std::error_code isolatedDirectoryError;
+    REQUIRE(std::filesystem::create_directories(
+        isolatedHome, isolatedDirectoryError));
+    REQUIRE(!isolatedDirectoryError);
+    struct IsolatedHomeCleanup final {
+        std::filesystem::path path;
+        ~IsolatedHomeCleanup() noexcept
+        {
+            std::error_code ignored;
+            static_cast<void>(std::filesystem::remove_all(path, ignored));
+        }
+    } isolatedCleanup{isolatedHome};
+    McpProcessSession isolatedPreflight{
+        executable,
+        isolatedHome,
+        isolatedHome,
+        L"primary",
+        L"",
+        true};
+    isolatedPreflight.send(handshake);
+    const auto isolatedObservation = observeRole(isolatedPreflight);
+    REQUIRE(isolatedObservation.serverName == primaryObservation.serverName);
+    REQUIRE(isolatedObservation.tools == golden.at("tools"));
+    isolatedPreflight.finish(2U);
+    REQUIRE(std::filesystem::is_regular_file(
+        isolatedHome / L"projects" / L"registry.json"));
+    REQUIRE(std::filesystem::is_regular_file(isolatedHome / L"store.sqlite"));
 
     validateRegistry(home, {workspace, workspaceB});
 }

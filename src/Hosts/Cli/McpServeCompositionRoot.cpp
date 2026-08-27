@@ -192,10 +192,15 @@ void requireSuccess(Domain::Result<void> result)
         throw std::runtime_error{"An MCP environment value exceeds its bound."};
     }
     std::wstring buffer(static_cast<std::size_t>(required), L'\0');
+    ::SetLastError(ERROR_SUCCESS);
     const DWORD written = ::GetEnvironmentVariableW(
         name, buffer.data(), required);
-    if (written == 0U || written >= required) {
+    const DWORD readError = ::GetLastError();
+    if (written >= required || (written == 0U && readError != ERROR_SUCCESS)) {
         throw std::runtime_error{"An MCP environment value could not be read."};
+    }
+    if (written == 0U) {
+        return std::string{};
     }
     buffer.resize(static_cast<std::size_t>(written));
     return take(strictWideToUtf8(buffer));
@@ -358,7 +363,7 @@ public:
           applicationPaths_{std::make_shared<
               InfrastructureWindows::WindowsApplicationPaths>(
               InfrastructureWindows::WindowsApplicationPathsOptions{
-                  std::move(options.explicitHome), false})},
+                  std::move(options.explicitHome), true})},
           profile_{resourceProfile()},
           budgets_{Domain::budgetsForProfile(profile_)},
           projectMemoryLimits_{Domain::projectMemoryLimitsForProfile(profile_)},

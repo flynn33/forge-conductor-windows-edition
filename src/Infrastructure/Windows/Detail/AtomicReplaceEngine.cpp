@@ -302,7 +302,9 @@ class WindowsAtomicReplaceNativeOperations final : public IAtomicReplaceNativeOp
     }
     auto actual =
         withoutExtendedPrefix(std::wstring{buffer.data(), static_cast<std::size_t>(written)});
-    if (!equalPath(expectedPath, actual))
+    if (!equalPath(expectedPath, actual) &&
+        !WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+            expectedPath, actual))
     {
         return Domain::Result<void>::failure(
             Domain::makeError(Domain::ErrorCodes::PathOutsideAuthority,

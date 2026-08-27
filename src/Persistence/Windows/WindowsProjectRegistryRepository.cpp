@@ -520,7 +520,9 @@ void sortDocument(RegistryDocument& document)
     if (!finalPath) {
         return Domain::Result<void>::failure(std::move(finalPath).error());
     }
-    if (!ordinalEqualIgnoreCase(finalPath.value(), expectedPath)) {
+    if (!ordinalEqualIgnoreCase(finalPath.value(), expectedPath) &&
+        !InfrastructureDetail::WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+            expectedPath, finalPath.value())) {
         return Domain::Result<void>::failure(Domain::makeError(
             Domain::ErrorCodes::PathOutsideAuthority,
             "The opened project path differs from its canonical local path."));
@@ -1361,7 +1363,9 @@ struct RegistryDirectoryAnchors final {
     if (!finalPath) {
         return Domain::Result<void>::failure(std::move(finalPath).error());
     }
-    if (!ordinalEqualIgnoreCase(finalPath.value(), expectedPath)) {
+    if (!ordinalEqualIgnoreCase(finalPath.value(), expectedPath) &&
+        !InfrastructureDetail::WindowsPathResolver::isExpectedPackagedLocalAppDataRedirect(
+            expectedPath, finalPath.value())) {
         return Domain::Result<void>::failure(Domain::makeError(
             Domain::ErrorCodes::PathOutsideAuthority,
             "The opened project-registry lock differs from its fixed app-data path."));

@@ -52,6 +52,18 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'Resume')]
     [string]$ProcessCorrectiveTestCommandRecordPath,
 
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$FifthFailedCommandRecordPath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$FifthFailedRealHostEvidencePath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$McpCorrectiveFailedCommandRecordPath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$McpCorrectiveCommandRecordPath,
+
     [switch]$StaticOnly
 )
 
@@ -621,6 +633,11 @@ $fourthFailedEvidenceCanonicalPath = $null
 $fourthFailedEvidenceSha256 = $null
 $processCorrectiveBuildCommandEvidence = $null
 $processCorrectiveTestCommandEvidence = $null
+$fifthFailedCommandEvidence = $null
+$fifthFailedEvidenceCanonicalPath = $null
+$fifthFailedEvidenceSha256 = $null
+$mcpCorrectiveFailedCommandEvidence = $null
+$mcpCorrectiveCommandEvidence = $null
 if ($Resume) {
     Write-Host 'G15: validating exact prior and corrective evidence for fail-closed resume.'
     Assert-True (-not [string]::Equals(
@@ -673,6 +690,34 @@ if ($Resume) {
         "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug " +
         "--output-on-failure -R '^ForgeConductor[.]Infrastructure[.]ProcessTests$'; " +
         'exit $LASTEXITCODE'
+    $expectedFifthFailedCommand = $expectedFourthFailedCommand +
+        " -FourthFailedCommandRecordPath '" + $FourthFailedCommandRecordPath + "'" +
+        " -FourthFailedRealHostEvidencePath '" + $FourthFailedRealHostEvidencePath + "'" +
+        " -ProcessCorrectiveBuildCommandRecordPath '" +
+        $ProcessCorrectiveBuildCommandRecordPath + "'" +
+        " -ProcessCorrectiveTestCommandRecordPath '" +
+        $ProcessCorrectiveTestCommandRecordPath + "'"
+    $expectedMcpCorrectiveFailedCommand =
+        "cmake --build 'out/build/windows-msvc-x64' --config Debug --target " +
+        'ForgeConductor.Infrastructure.UnitTests ' +
+        'ForgeConductor.Persistence.UnitTests ' +
+        'ForgeConductor.Mcp.ServeProcessSnapshotTests ' +
+        'ForgeConductor.ProjectMemory.RegistryWindowsTests ' +
+        'ForgeConductor.LMStudio.RealHostTests --parallel ' + $Parallel +
+        '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ' +
+        "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug " +
+        "--output-on-failure -R '^(ForgeConductor[.]Infrastructure[.]UnitTests|" +
+        'ForgeConductor[.]Persistence[.]UnitTests|' +
+        'ForgeConductor[.]Mcp[.]ServeProcessSnapshotTests|' +
+        "ForgeConductor[.]ProjectMemory[.]RegistryWindowsTests)$'; " +
+        'exit $LASTEXITCODE'
+    $expectedMcpCorrectiveCommand =
+        "cmake --build 'out/build/windows-msvc-x64' --config Debug --target " +
+        'ForgeConductor.Mcp.ServeProcessSnapshotTests --parallel ' + $Parallel +
+        '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ' +
+        "ctest --test-dir 'out/build/windows-msvc-x64' -C Debug " +
+        "--output-on-failure -R '^ForgeConductor[.]Mcp[.]ServeProcessSnapshotTests$'; " +
+        'exit $LASTEXITCODE'
     Assert-True ([string]::Equals(
         $SecondFailedCommandRecordPath,
         (Join-Path $WorkspaceRoot `
@@ -715,6 +760,24 @@ if ($Resume) {
             '.forge-codex\state\commands\20260827T151128087Z-39498297.json'),
         [StringComparison]::OrdinalIgnoreCase)) `
         'process corrective test uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $FifthFailedCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T152436935Z-5a68dfe2.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'fifth failed command uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $McpCorrectiveFailedCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T154643696Z-7eedb3e9.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'failed MCP correction uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $McpCorrectiveCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T155313063Z-971b814b.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'successful MCP correction uses its exact canonical record path'
     $priorCommandEvidence = Read-ValidatedCommandRecord `
         -Path $PriorFailedCommandRecordPath `
         -ExpectedCommand $expectedPriorCommand `
@@ -760,6 +823,21 @@ if ($Resume) {
         -ExpectedCommand $expectedProcessCorrectiveTestCommand `
         -ExpectedExitCode 0 `
         -Message 'process corrective test command record'
+    $fifthFailedCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $FifthFailedCommandRecordPath `
+        -ExpectedCommand $expectedFifthFailedCommand `
+        -ExpectedExitCode 1 `
+        -Message 'fifth failed resumed G15 command record'
+    $mcpCorrectiveFailedCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $McpCorrectiveFailedCommandRecordPath `
+        -ExpectedCommand $expectedMcpCorrectiveFailedCommand `
+        -ExpectedExitCode 8 `
+        -Message 'failed MCP corrective command record'
+    $mcpCorrectiveCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $McpCorrectiveCommandRecordPath `
+        -ExpectedCommand $expectedMcpCorrectiveCommand `
+        -ExpectedExitCode 0 `
+        -Message 'successful MCP corrective command record'
     Assert-CommandLedgerEvent `
         -RecordPath $priorCommandEvidence.RecordPath `
         -ExpectedExitCode 1 `
@@ -796,6 +874,18 @@ if ($Resume) {
         -RecordPath $processCorrectiveTestCommandEvidence.RecordPath `
         -ExpectedExitCode 0 `
         -Message 'process corrective test command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $fifthFailedCommandEvidence.RecordPath `
+        -ExpectedExitCode 1 `
+        -Message 'fifth failed resumed G15 command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $mcpCorrectiveFailedCommandEvidence.RecordPath `
+        -ExpectedExitCode 8 `
+        -Message 'failed MCP corrective command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $mcpCorrectiveCommandEvidence.RecordPath `
+        -ExpectedExitCode 0 `
+        -Message 'successful MCP corrective command'
 
     $priorFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
         $PriorFailedRealHostEvidencePath `
@@ -1038,6 +1128,65 @@ if ($Resume) {
     $fourthFailedEvidenceSha256 = Get-FileSha256 `
         $fourthFailedEvidenceCanonicalPath
 
+    Assert-True ([string]::Equals(
+        $FifthFailedRealHostEvidencePath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\evidence\P15\windows-lm-studio-real-host-attempt-5-failed.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'fifth failed evidence uses its exact canonical path'
+    Assert-True (-not [string]::Equals(
+        $FifthFailedRealHostEvidencePath,
+        $RealHostEvidencePath,
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'preserved fifth failed evidence is distinct from the next evidence target'
+    $fifthFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
+        $FifthFailedRealHostEvidencePath `
+        'preserved fifth-attempt real-host evidence' `
+        $maximumRealHostEvidenceBytes
+    Assert-Exact ([IO.Path]::GetFileName($fifthFailedEvidenceCanonicalPath)) `
+        'windows-lm-studio-real-host-attempt-5-failed.json' `
+        'preserved fifth-attempt evidence canonical leaf'
+    $fifthFailedEvidence = Get-Content -Raw -LiteralPath `
+        $fifthFailedEvidenceCanonicalPath | ConvertFrom-Json
+    Assert-Set @($fifthFailedEvidence.PSObject.Properties.Name) @(
+        'authority', 'before', 'binary', 'bounded', 'gate', 'host',
+        'host_observations', 'phase', 'result', 'runner', 'sanitized',
+        'schema_version') 'preserved fifth failed real-host evidence schema'
+    Assert-Set @($fifthFailedEvidence.result.PSObject.Properties.Name) @(
+        'deployment_left_installed', 'error', 'error_code', 'retryable',
+        'rollback_requested', 'stage', 'status') `
+        'preserved fifth failed real-host result schema'
+    Assert-Exact ([int]$fifthFailedEvidence.schema_version) 1 `
+        'preserved fifth failed evidence schema version'
+    Assert-Exact ([string]$fifthFailedEvidence.phase) 'P15' `
+        'preserved fifth failed evidence phase'
+    Assert-Exact ([string]$fifthFailedEvidence.gate) 'G15' `
+        'preserved fifth failed evidence gate'
+    Assert-Exact ([string]$fifthFailedEvidence.runner) `
+        'ForgeConductor.LMStudio.RealHostTests' `
+        'preserved fifth failed evidence runner'
+    Assert-True ([bool]$fifthFailedEvidence.bounded) `
+        'preserved fifth failed evidence remained bounded'
+    Assert-True ([bool]$fifthFailedEvidence.sanitized) `
+        'preserved fifth failed evidence remained sanitized'
+    Assert-Exact ([string]$fifthFailedEvidence.result.status) 'failed' `
+        'preserved fifth-attempt result status'
+    Assert-Exact ([string]$fifthFailedEvidence.result.stage) `
+        'deploy_lmstudio_plugins' 'preserved fifth-attempt failure stage'
+    Assert-Exact ([string]$fifthFailedEvidence.result.error_code) `
+        'process_exit_nonzero' 'preserved fifth-attempt failure code'
+    Assert-Exact ([string]$fifthFailedEvidence.result.error) `
+        'The MCP serve smoke process returned exit code 1.' `
+        'preserved fifth-attempt bounded error'
+    Assert-Exact ([bool]$fifthFailedEvidence.result.retryable) $false `
+        'preserved fifth-attempt failure retryability'
+    Assert-Exact ([bool]$fifthFailedEvidence.result.deployment_left_installed) `
+        $false 'fifth attempt performed no installed deployment mutation'
+    Assert-Exact ([bool]$fifthFailedEvidence.result.rollback_requested) $false `
+        'fifth attempt required no rollback'
+    $fifthFailedEvidenceSha256 = Get-FileSha256 `
+        $fifthFailedEvidenceCanonicalPath
+
     $buildMarker = 'G15: running the single authoritative affected-target Debug rebuild.'
     $testMarker = 'G15: running the deterministic G15 CTest suite once.'
     $runnerMarker = 'G15: launching LM Studio through its supported activation path; no GUI automation is used.'
@@ -1225,6 +1374,95 @@ if ($Resume) {
         $processCorrectiveTestCommandEvidence.StdoutText `
         '100% tests passed out of 1' 1 `
         'process corrective test complete success summary'
+
+    Assert-LiteralOccurrenceCount $fifthFailedCommandEvidence.StdoutText `
+        'G15: validating exact prior and corrective evidence for fail-closed resume.' 1 `
+        'fifth attempt resume validation marker'
+    Assert-LiteralOccurrenceCount $fifthFailedCommandEvidence.StdoutText `
+        'G15: prior full build/CTest and corrective focused pass validated; execution is not repeated.' 1 `
+        'fifth attempt no-repeat confirmation marker'
+    Assert-LiteralOccurrenceCount $fifthFailedCommandEvidence.StdoutText `
+        $buildMarker 0 'fifth attempt full-build marker exclusion'
+    Assert-LiteralOccurrenceCount $fifthFailedCommandEvidence.StdoutText `
+        $testMarker 0 'fifth attempt full-CTest marker exclusion'
+    Assert-LiteralOccurrenceCount $fifthFailedCommandEvidence.StdoutText `
+        $runnerMarker 1 'fifth real-host runner marker'
+
+    foreach ($target in @(
+        'ForgeConductor.Infrastructure.UnitTests',
+        'ForgeConductor.Persistence.UnitTests',
+        'ForgeConductor.Mcp.ServeProcessSnapshotTests',
+        'ForgeConductor.ProjectMemory.RegistryWindowsTests',
+        'ForgeConductor.LMStudio.RealHostTests')) {
+        Assert-LiteralOccurrenceCount `
+            $mcpCorrectiveFailedCommandEvidence.StdoutText `
+            ($target + '.vcxproj ->') 1 `
+            "failed MCP correction completed requested target $target"
+    }
+    Assert-LiteralOccurrenceCount `
+        $mcpCorrectiveFailedCommandEvidence.StdoutText `
+        'Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64' `
+        1 'failed MCP correction CTest project marker'
+    Assert-Exact ([regex]::Matches(
+        $mcpCorrectiveFailedCommandEvidence.StdoutText,
+        '(?m)^\s*Start\s+[0-9]+:').Count) 4 `
+        'failed MCP correction exact started-test count'
+    Assert-Exact ([regex]::Matches(
+        $mcpCorrectiveFailedCommandEvidence.StdoutText,
+        '(?m)^[1-4]/4 Test\s+#[0-9]+:').Count) 4 `
+        'failed MCP correction exact result count'
+    Assert-Exact ([regex]::Matches(
+        $mcpCorrectiveFailedCommandEvidence.StdoutText,
+        '(?m)^[1-4]/4 Test\s+#[0-9]+: .+\s+Passed\s+[0-9]+[.][0-9]+ sec\s*$').Count) 3 `
+        'failed MCP correction passed-test count'
+    Assert-Exact ([regex]::Matches(
+        $mcpCorrectiveFailedCommandEvidence.StdoutText,
+        '(?m)^1/4 Test\s+#4: ForgeConductor[.]Mcp[.]ServeProcessSnapshotTests\s+[.]+[*][*][*]Failed\s+[0-9]+[.][0-9]+ sec\s*$').Count) 1 `
+        'failed MCP correction exact failed test'
+    Assert-LiteralOccurrenceCount `
+        $mcpCorrectiveFailedCommandEvidence.StdoutText `
+        'invalid_request: A Windows path could not be converted to UTF-8.' 1 `
+        'failed MCP correction exact boundary diagnostic'
+    Assert-LiteralOccurrenceCount `
+        $mcpCorrectiveFailedCommandEvidence.StdoutText `
+        '75% tests passed, 1 tests failed out of 4' 1 `
+        'failed MCP correction failure summary'
+    Assert-LiteralOccurrenceCount `
+        $mcpCorrectiveFailedCommandEvidence.StdoutText `
+        '100% tests passed' 0 `
+        'failed MCP correction is not pass evidence'
+    Assert-Exact ((Get-Content -Raw -LiteralPath `
+        $mcpCorrectiveFailedCommandEvidence.StderrPath).Trim()) `
+        'Errors while running CTest' `
+        'failed MCP correction stderr'
+
+    Assert-Exact $mcpCorrectiveCommandEvidence.StderrBytes 0L `
+        'successful MCP correction stderr bytes'
+    Assert-Exact $mcpCorrectiveCommandEvidence.StderrSha256 $emptySha256 `
+        'successful MCP correction empty stderr SHA-256'
+    Assert-LiteralOccurrenceCount $mcpCorrectiveCommandEvidence.StdoutText `
+        'ForgeConductor.Cli.vcxproj ->' 1 `
+        'successful MCP correction CLI target completion'
+    Assert-LiteralOccurrenceCount $mcpCorrectiveCommandEvidence.StdoutText `
+        'ForgeConductor.Mcp.ServeProcessSnapshotTests.vcxproj ->' 1 `
+        'successful MCP correction test target completion'
+    Assert-LiteralOccurrenceCount `
+        $mcpCorrectiveCommandEvidence.StdoutText `
+        'Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64' `
+        1 'successful MCP correction CTest project marker'
+    Assert-LiteralOccurrenceCount $mcpCorrectiveCommandEvidence.StdoutText `
+        'Start 4: ForgeConductor.Mcp.ServeProcessSnapshotTests' 1 `
+        'successful MCP correction exact start'
+    Assert-Exact ([regex]::Matches(
+        $mcpCorrectiveCommandEvidence.StdoutText,
+        '(?m)^1/1 Test #4: ForgeConductor[.]Mcp[.]ServeProcessSnapshotTests\s+[.]+\s+Passed\s+[0-9]+[.][0-9]+ sec\s*$').Count) 1 `
+        'successful MCP correction exact passed result'
+    Assert-LiteralOccurrenceCount $mcpCorrectiveCommandEvidence.StdoutText `
+        '100% tests passed out of 1' 1 `
+        'successful MCP correction complete success summary'
+    Assert-NoMatch $mcpCorrectiveCommandEvidence.StdoutText `
+        '[*][*][*]Failed' 'successful MCP correction contains no failed test' `
+        -CaseSensitive
 } else {
     $buildScript = Join-Path $WorkspaceRoot 'scripts\build.ps1'
     Write-Host 'G15: running the single authoritative affected-target Debug rebuild.'
@@ -1420,17 +1658,17 @@ $summaryScope = [ordered]@{
     security_hardening_deferred = $true
     authoritative_build_invocations = 1
     authoritative_test_invocations = 1
-    real_host_invocations = if ($Resume) { 5 } else { 1 }
+    real_host_invocations = if ($Resume) { 6 } else { 1 }
     gui_automation_used_against_lm_studio = $false
 }
 if ($Resume) {
     $summaryScope['resumed'] = $true
-    $summaryScope['corrective_focused_build_invocations'] = 4
-    $summaryScope['corrective_focused_test_command_invocations'] = 4
-    $summaryScope['corrective_focused_test_executions'] = 3
+    $summaryScope['corrective_focused_build_invocations'] = 6
+    $summaryScope['corrective_focused_test_command_invocations'] = 6
+    $summaryScope['corrective_focused_test_executions'] = 5
     $summaryScope['corrective_zero_test_filter_invocations'] = 1
-    $summaryScope['corrective_focused_test_invocations'] = 4
-    $summaryScope['total_real_host_attempts'] = 5
+    $summaryScope['corrective_focused_test_invocations'] = 6
+    $summaryScope['total_real_host_attempts'] = 6
     $summaryScope['successful_real_host_qualifications'] = 1
 }
 $summary = [ordered]@{
@@ -1576,6 +1814,42 @@ if ($Resume) {
             -TargetPath $processCorrectiveTestCommandEvidence.StderrPath
         process_corrective_test_command_stderr_sha256 = `
             $processCorrectiveTestCommandEvidence.StderrSha256
+        fifth_failed_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fifthFailedCommandEvidence.RecordPath
+        fifth_failed_command_record_sha256 = $fifthFailedCommandEvidence.RecordSha256
+        fifth_failed_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fifthFailedCommandEvidence.StdoutPath
+        fifth_failed_command_stdout_sha256 = $fifthFailedCommandEvidence.StdoutSha256
+        fifth_failed_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fifthFailedCommandEvidence.StderrPath
+        fifth_failed_command_stderr_sha256 = $fifthFailedCommandEvidence.StderrSha256
+        fifth_failed_real_host_evidence = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $fifthFailedEvidenceCanonicalPath
+        fifth_failed_real_host_evidence_sha256 = $fifthFailedEvidenceSha256
+        mcp_corrective_failed_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $mcpCorrectiveFailedCommandEvidence.RecordPath
+        mcp_corrective_failed_command_record_sha256 = `
+            $mcpCorrectiveFailedCommandEvidence.RecordSha256
+        mcp_corrective_failed_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $mcpCorrectiveFailedCommandEvidence.StdoutPath
+        mcp_corrective_failed_command_stdout_sha256 = `
+            $mcpCorrectiveFailedCommandEvidence.StdoutSha256
+        mcp_corrective_failed_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot `
+            -TargetPath $mcpCorrectiveFailedCommandEvidence.StderrPath
+        mcp_corrective_failed_command_stderr_sha256 = `
+            $mcpCorrectiveFailedCommandEvidence.StderrSha256
+        mcp_corrective_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $mcpCorrectiveCommandEvidence.RecordPath
+        mcp_corrective_command_record_sha256 = $mcpCorrectiveCommandEvidence.RecordSha256
+        mcp_corrective_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $mcpCorrectiveCommandEvidence.StdoutPath
+        mcp_corrective_command_stdout_sha256 = $mcpCorrectiveCommandEvidence.StdoutSha256
+        mcp_corrective_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $mcpCorrectiveCommandEvidence.StderrPath
+        mcp_corrective_command_stderr_sha256 = $mcpCorrectiveCommandEvidence.StderrSha256
     }
 }
 Write-JsonFileAtomic -Path $summaryPath -Value $summary

@@ -471,7 +471,9 @@ void testSuccessfulRoleVerificationAndRequestShape()
     require(environmentValue(*captured, "FORGE_CONDUCTOR_HOME") == "C:\\Forge\\home" &&
                 environmentValue(*captured, "FORGE_MCP_ROLE") == "primary" &&
                 environmentValue(*captured, "FORGE_DEPLOYMENT_ID") ==
-                    deployment.value(),
+                    deployment.value() &&
+                environmentValue(*captured, "PATH").has_value() &&
+                !environmentValue(*captured, "PATH")->empty(),
             "the verifier did not bind the primary environment exactly");
     require(captured->stdinUtf8.find("Content-Length:") == std::string::npos,
             "the verifier emitted Content-Length framing");
