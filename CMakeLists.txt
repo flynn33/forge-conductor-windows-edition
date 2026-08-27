@@ -264,9 +264,19 @@ target_include_directories(ForgeNativeSessionHostPlugin PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(ForgeNativeSessionHostPlugin PRIVATE
     ForgeConductor::SessionHost.Core)
+add_library(ForgeConductor.Mcp STATIC
+    src/Mcp/McpJsonCodec.cpp
+    src/Mcp/McpProtocol.cpp
+    src/Mcp/McpToolCatalog.cpp
+)
 forge_add_layer(ForgeConductor.Mcp ForgeConductor::Mcp
     ForgeConductor::Application
     ForgeConductor::Contracts)
+forge_configure_standard_target(ForgeConductor.Mcp)
+target_include_directories(ForgeConductor.Mcp PUBLIC
+    "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(ForgeConductor.Mcp PRIVATE
+    nlohmann_json::nlohmann_json)
 forge_add_layer(ForgeConductor.Composition.Windows ForgeConductor::Composition.Windows
     ForgeConductor::Application
     ForgeConductor::Infrastructure.Windows
@@ -361,6 +371,19 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 )
 
 if(BUILD_TESTING)
+    add_executable(ForgeConductor.Mcp.CatalogCodecTests
+        tests/Mcp/McpCatalogCodecTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Mcp.CatalogCodecTests)
+    target_link_libraries(ForgeConductor.Mcp.CatalogCodecTests PRIVATE
+        ForgeConductor::Mcp
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Mcp.CatalogCodecTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.CatalogCodecTests>)
+    set_tests_properties(ForgeConductor.Mcp.CatalogCodecTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Agents.CatalogTests
         tests/Agents/AgentCatalogTests.cpp)
     forge_configure_standard_target(ForgeConductor.Agents.CatalogTests)

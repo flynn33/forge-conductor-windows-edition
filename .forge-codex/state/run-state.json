@@ -2,10 +2,10 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-27T00:59:32.8041652+00:00",
+  "updated_at": "2026-08-27T01:02:59.3220554+00:00",
   "status": "in_progress",
-  "active_role": "validator",
-  "active_phase": "P13",
+  "active_role": "builder",
+  "active_phase": "P14",
   "session_number": 0,
   "phases": [
     {
@@ -453,8 +453,21 @@
     },
     {
       "id": "P14",
-      "status": "not_started",
-      "evidence": []
+      "status": "in_progress",
+      "evidence": [
+        ".forge-codex/state/gate-results/G08.json",
+        ".forge-codex/state/gate-results/G09.json",
+        ".forge-codex/state/gate-results/G10.json",
+        ".forge-codex/state/gate-results/G11.json",
+        ".forge-codex/state/gate-results/G12.json",
+        ".forge-codex/state/gate-results/G13.json",
+        ".forge-codex/instructions/plans/phases.json",
+        ".forge-codex/instructions/plans/gates.json",
+        ".forge-codex/instructions/plans/mcp-tool-parity.json",
+        ".forge-codex/state/baseline/p02-mcp-semantic-inventory.json",
+        ".forge-codex/state/baseline/p02-schema-inventory.json",
+        ".forge-codex/state/decisions/OWNER-002-alpha-release-qualification-scope.md"
+      ]
     },
     {
       "id": "P15",
