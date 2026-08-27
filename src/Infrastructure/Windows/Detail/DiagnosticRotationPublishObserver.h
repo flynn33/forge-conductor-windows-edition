@@ -13,6 +13,7 @@ class IDiagnosticRotationPublishObserver
   public:
     virtual ~IDiagnosticRotationPublishObserver() = default;
 
+    virtual void afterStagedFileCreation(std::wstring_view stagedPath) noexcept = 0;
     virtual void beforeStagedFileValidation(std::wstring_view stagedPath) noexcept = 0;
 };
 

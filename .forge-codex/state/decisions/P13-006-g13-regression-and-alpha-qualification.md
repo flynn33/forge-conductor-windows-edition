@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Date: 2026-08-26
+Date: 2026-08-27
 
 ## Context
 
@@ -23,6 +23,29 @@ scope.
   retained G06 infrastructure registrations and eight G13 registrations in one
   `G06|G13` CTest selection. The eighth registration is the retained G11 legacy
   continuity persistence test affected by the directory-listing contract.
+- The infrastructure unit executable has a 120-second CTest fail-safe timeout.
+  It remains eligible for normal CTest parallel scheduling.
+- The first authoritative G13 build succeeded, but its subsequent test pass
+  exposed a nondeterministic G06 test-harness hang. The diagnostics rotation
+  test suspended an arbitrary same-process worker instruction after observing
+  a staging filename. That worker could hold a CRT, filesystem, or sink lock
+  needed by the test thread. `RUN_SERIAL` was rejected because it cannot repair
+  an intra-process deadlock.
+- Diagnostics rotation tests use a private, injected, bounded cooperative
+  checkpoint after exclusive staging-file creation and retain the existing
+  checkpoint immediately before staged-handle publication validation. The
+  cancellation, collision, and crash-recovery fixtures synchronize only at
+  those owned boundaries. Arbitrary `SuspendThread` and `ResumeThread` calls
+  are prohibited from the suite.
+- G13 may reuse the successful fresh-build evidence once for this repair. The
+  recovery path validates the failed command record and stdout hash, proves
+  that the exact changed build-input set is limited to the reviewed
+  diagnostics checkpoint, its tests, test progress output, and the CTest
+  timeout, then incrementally rebuilds every affected G06/G13 target. It must
+  complete the same parallel test, inventory, artifact-hash, and
+  repository-integrity assertions. This implements the owner's direction that
+  a successful fresh rebuild is not repeated merely to recover a gate-harness
+  defect while ensuring all changed inputs are rebuilt.
 - The authoritative runner verifies strict source formatting, sealed Forsetti
   inputs, repository integrity, platform-neutral public contracts, native tool
   architecture invariants, x64 PE identity, and SHA-256 hashes for the three
@@ -39,6 +62,11 @@ Shared-contract and retained process-supervisor behavior receive regression
 evidence without a redundant full rebuild. A G13 pass establishes that the
 bounded native services work on this alpha machine; it does not claim MCP,
 manager, GUI, installer, or whole-product completion.
+
+The recovery path cannot replace a failed build or accept unrelated build
+input changes. It preserves the successful fresh build and adds a bounded
+incremental rebuild for the exact diagnostics repair before rerunning the full
+retained test selection.
 
 ## Evidence basis
 

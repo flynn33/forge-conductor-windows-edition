@@ -23,6 +23,7 @@ int main()
     std::size_t passed = 0U;
     for (const auto& [name, run] : tests) {
         try {
+            std::cout << "[RUN] " << name << '\n' << std::flush;
             run();
             ++passed;
             std::cout << "[PASS] " << name << '\n';

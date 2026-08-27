@@ -558,6 +558,7 @@ if(BUILD_TESTING)
     )
     set_tests_properties(ForgeConductor.Infrastructure.UnitTests PROPERTIES
         LABELS "T-UNIT;T-SEC;G06"
+        TIMEOUT 120
     )
 
     add_executable(ForgeConductor.Infrastructure.ShutdownTests

@@ -1378,6 +1378,10 @@ class PendingDiagnosticRotationFile final
         {
             return Domain::Result<void>::failure(std::move(temporary).error());
         }
+        if (observer != nullptr)
+        {
+            observer->afterStagedFileCreation(temporary.value().path());
+        }
         std::array<std::byte, 64U * 1024U> buffer{};
         std::uint64_t copied{};
         while (copied < sourceBytes.value())

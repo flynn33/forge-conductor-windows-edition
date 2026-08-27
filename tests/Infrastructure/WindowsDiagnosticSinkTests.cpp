@@ -573,24 +573,7 @@ struct DiagnosticFixture final
     return environmentValue(DiagnosticCrashChildVariable) == L"1";
 }
 
-void diagnosticRotationCrashChild()
-{
-    const std::wstring rootValue = environmentValue(DiagnosticCrashRootVariable);
-    require(!rootValue.empty(), "diagnostic crash child requires its retained log root");
-    const std::filesystem::path logRoot{rootValue};
-    const std::filesystem::path exportRoot = logRoot.parent_path() / L"exports";
-    auto clock = std::make_shared<FixedClock>();
-    auto redactor = std::make_shared<SecretRedactor>();
-    auto hasher = std::make_shared<BCryptSha256Hasher>();
-    const auto exportRootText = pathText(exportRoot);
-    auto authority = std::make_shared<ExportAuthority>(exportRootText);
-    auto atomicStore = std::make_shared<WindowsAtomicFileStore>();
-    const WindowsDiagnosticSinkOptions options{pathText(logRoot), exportRootText, rotationStressBudgets(), false};
-    WindowsDiagnosticSink sink{options, clock, redactor, hasher, authority, atomicStore};
-    const auto result = sink.record(diagnostic("crash-child", clock->utc()), liveContext(*clock));
-    require(static_cast<bool>(result), result ? "diagnostic crash child must finish only if it was not terminated"
-                                              : "diagnostic crash child failed before its termination boundary");
-}
+void diagnosticRotationCrashChild();
 
 [[nodiscard]] std::string readText(const std::filesystem::path &path)
 {
@@ -703,50 +686,61 @@ void requireNoDiagnosticRotationTemporaries(const std::filesystem::path &root)
     return std::wstring{buffer.data(), static_cast<std::size_t>(written)};
 }
 
-class SuspendedThread final
+enum class DiagnosticRotationCheckpoint
+{
+    StagedFileCreation,
+    BeforeStagedFileValidation,
+};
+
+class BlockingDiagnosticRotationObserver final : public WindowsDetail::IDiagnosticRotationPublishObserver
 {
   public:
-    explicit SuspendedThread(const HANDLE thread) : thread_{thread}
+    explicit BlockingDiagnosticRotationObserver(const DiagnosticRotationCheckpoint checkpoint)
+        : checkpoint_{checkpoint}, checkpointReached_{::CreateEventW(nullptr, TRUE, FALSE, nullptr)},
+          allowCheckpoint_{::CreateEventW(nullptr, TRUE, FALSE, nullptr)}
     {
-        require(::SuspendThread(thread_) != static_cast<DWORD>(-1),
-                "diagnostic rotation worker must suspend at the copy boundary");
-        suspended_ = true;
+        require(static_cast<bool>(checkpointReached_) && static_cast<bool>(allowCheckpoint_),
+                "diagnostic rotation checkpoint events must be created");
     }
 
-    ~SuspendedThread() noexcept
+    void afterStagedFileCreation(const std::wstring_view stagedPath) noexcept override
     {
-        resume();
-    }
-
-    SuspendedThread(const SuspendedThread &) = delete;
-    SuspendedThread &operator=(const SuspendedThread &) = delete;
-
-    void resume() noexcept
-    {
-        if (suspended_)
+        if (checkpoint_ == DiagnosticRotationCheckpoint::StagedFileCreation)
         {
-            static_cast<void>(::ResumeThread(thread_));
-            suspended_ = false;
+            reachCheckpoint(stagedPath);
         }
     }
 
-  private:
-    HANDLE thread_{};
-    bool suspended_{};
-};
-
-class BlockingDiagnosticRotationPublishObserver final : public WindowsDetail::IDiagnosticRotationPublishObserver
-{
-  public:
-    BlockingDiagnosticRotationPublishObserver()
-        : validationReached_{::CreateEventW(nullptr, TRUE, FALSE, nullptr)},
-          allowValidation_{::CreateEventW(nullptr, TRUE, FALSE, nullptr)}
+    void beforeStagedFileValidation(const std::wstring_view stagedPath) noexcept override
     {
-        require(static_cast<bool>(validationReached_) && static_cast<bool>(allowValidation_),
-                "diagnostic rotation publication events must be created");
+        if (checkpoint_ == DiagnosticRotationCheckpoint::BeforeStagedFileValidation)
+        {
+            reachCheckpoint(stagedPath);
+        }
     }
 
-    void beforeStagedFileValidation(const std::wstring_view stagedPath) noexcept override
+    [[nodiscard]] bool waitUntilCheckpoint() const noexcept
+    {
+        return ::WaitForSingleObject(checkpointReached_.get(), 15'000U) == WAIT_OBJECT_0;
+    }
+
+    [[nodiscard]] std::filesystem::path stagedPath() const
+    {
+        return std::filesystem::path{std::wstring{stagedPath_.data(), stagedPathLength_}};
+    }
+
+    void allowCheckpoint() noexcept
+    {
+        static_cast<void>(::SetEvent(allowCheckpoint_.get()));
+    }
+
+    [[nodiscard]] bool callbackFailed() const noexcept
+    {
+        return callbackFailed_.load(std::memory_order_acquire);
+    }
+
+  private:
+    void reachCheckpoint(const std::wstring_view stagedPath) noexcept
     {
         if (stagedPath.size() >= stagedPath_.size())
         {
@@ -757,62 +751,65 @@ class BlockingDiagnosticRotationPublishObserver final : public WindowsDetail::ID
             std::copy(stagedPath.begin(), stagedPath.end(), stagedPath_.begin());
             stagedPathLength_ = stagedPath.size();
         }
-        if (::SetEvent(validationReached_.get()) == FALSE ||
-            ::WaitForSingleObject(allowValidation_.get(), 30'000U) != WAIT_OBJECT_0)
+        if (::SetEvent(checkpointReached_.get()) == FALSE ||
+            ::WaitForSingleObject(allowCheckpoint_.get(), 30'000U) != WAIT_OBJECT_0)
         {
             callbackFailed_.store(true, std::memory_order_release);
         }
     }
 
-    [[nodiscard]] bool waitUntilValidation() const noexcept
-    {
-        return ::WaitForSingleObject(validationReached_.get(), 15'000U) == WAIT_OBJECT_0;
-    }
-
-    [[nodiscard]] std::filesystem::path stagedPath() const
-    {
-        return std::filesystem::path{std::wstring{stagedPath_.data(), stagedPathLength_}};
-    }
-
-    void allowValidation() noexcept
-    {
-        static_cast<void>(::SetEvent(allowValidation_.get()));
-    }
-
-    [[nodiscard]] bool callbackFailed() const noexcept
-    {
-        return callbackFailed_.load(std::memory_order_acquire);
-    }
-
-  private:
-    WindowsDetail::UniqueHandle validationReached_;
-    WindowsDetail::UniqueHandle allowValidation_;
+    DiagnosticRotationCheckpoint checkpoint_;
+    WindowsDetail::UniqueHandle checkpointReached_;
+    WindowsDetail::UniqueHandle allowCheckpoint_;
     std::array<wchar_t, 32U * 1024U> stagedPath_{};
     std::size_t stagedPathLength_{};
     std::atomic_bool callbackFailed_{};
 };
 
-class DiagnosticRotationPublishReleaseGuard final
+class DiagnosticRotationCheckpointReleaseGuard final
 {
   public:
-    explicit DiagnosticRotationPublishReleaseGuard(BlockingDiagnosticRotationPublishObserver &observer) noexcept
+    explicit DiagnosticRotationCheckpointReleaseGuard(BlockingDiagnosticRotationObserver &observer) noexcept
         : observer_{observer}
     {
     }
 
-    ~DiagnosticRotationPublishReleaseGuard() noexcept
+    ~DiagnosticRotationCheckpointReleaseGuard() noexcept
     {
-        observer_.allowValidation();
+        observer_.allowCheckpoint();
     }
 
-    DiagnosticRotationPublishReleaseGuard(const DiagnosticRotationPublishReleaseGuard &) = delete;
-    DiagnosticRotationPublishReleaseGuard &operator=(const DiagnosticRotationPublishReleaseGuard &) = delete;
-    DiagnosticRotationPublishReleaseGuard(DiagnosticRotationPublishReleaseGuard &&) = delete;
-    DiagnosticRotationPublishReleaseGuard &operator=(DiagnosticRotationPublishReleaseGuard &&) = delete;
+    DiagnosticRotationCheckpointReleaseGuard(const DiagnosticRotationCheckpointReleaseGuard &) = delete;
+    DiagnosticRotationCheckpointReleaseGuard &operator=(const DiagnosticRotationCheckpointReleaseGuard &) = delete;
+    DiagnosticRotationCheckpointReleaseGuard(DiagnosticRotationCheckpointReleaseGuard &&) = delete;
+    DiagnosticRotationCheckpointReleaseGuard &operator=(DiagnosticRotationCheckpointReleaseGuard &&) = delete;
 
   private:
-    BlockingDiagnosticRotationPublishObserver &observer_;
+    BlockingDiagnosticRotationObserver &observer_;
 };
+
+void diagnosticRotationCrashChild()
+{
+    const std::wstring rootValue = environmentValue(DiagnosticCrashRootVariable);
+    require(!rootValue.empty(), "diagnostic crash child requires its retained log root");
+    const std::filesystem::path logRoot{rootValue};
+    const std::filesystem::path exportRoot = logRoot.parent_path() / L"exports";
+    auto clock = std::make_shared<FixedClock>();
+    auto redactor = std::make_shared<SecretRedactor>();
+    auto hasher = std::make_shared<BCryptSha256Hasher>();
+    const auto exportRootText = pathText(exportRoot);
+    auto authority = std::make_shared<ExportAuthority>(exportRootText);
+    auto atomicStore = std::make_shared<WindowsAtomicFileStore>();
+    auto observer = std::make_shared<BlockingDiagnosticRotationObserver>(
+        DiagnosticRotationCheckpoint::StagedFileCreation);
+    const WindowsDiagnosticSinkOptions options{pathText(logRoot), exportRootText, rotationStressBudgets(), false};
+    auto sink = WindowsDetail::WindowsDiagnosticSinkTestAccess::create(options, clock, redactor, hasher, authority,
+                                                                       atomicStore, observer);
+    const auto result = sink->record(diagnostic("crash-child", clock->utc()), liveContext(*clock));
+    require(static_cast<bool>(result) && !observer->callbackFailed(),
+            result ? "diagnostic crash child must remain at its bounded cooperative checkpoint"
+                   : "diagnostic crash child failed before its termination boundary");
+}
 
 [[nodiscard]] std::vector<std::byte> bytesFor(const std::string_view text)
 {
@@ -1419,111 +1416,107 @@ void rotationTemporaryDeniesReadersAndCancelsCleanly()
     const auto firstArchive = fixture.logRoot / L"forge-diagnostics.jsonl.1";
     createSizedFile(master, RotationStressBytes);
 
-    WindowsDiagnosticSink sink{fixture.options(rotationStressBudgets()),
-                               fixture.clockOwner,
-                               fixture.redactorOwner,
-                               fixture.hasherOwner,
-                               fixture.authorityOwner,
-                               fixture.atomicStoreOwner};
-    std::stop_source cancellation;
-    std::optional<Domain::Result<void>> outcome;
-    std::jthread writer{[&]() {
-        outcome.emplace(sink.record(diagnostic("cancel-rotation-copy", fixture.clock.utc()),
-                                    liveContext(fixture.clock, cancellation.get_token())));
-    }};
-
-    std::optional<std::filesystem::path> temporary;
-    const auto discoveryDeadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
-    while (!temporary.has_value() && std::chrono::steady_clock::now() < discoveryDeadline)
     {
-        temporary = findDiagnosticRotationTemporary(fixture.logRoot);
-        if (!temporary.has_value())
-        {
-            std::this_thread::yield();
-        }
+        auto observer = std::make_shared<BlockingDiagnosticRotationObserver>(
+            DiagnosticRotationCheckpoint::StagedFileCreation);
+        auto sink = WindowsDetail::WindowsDiagnosticSinkTestAccess::create(
+            fixture.options(rotationStressBudgets()), fixture.clockOwner, fixture.redactorOwner, fixture.hasherOwner,
+            fixture.authorityOwner, fixture.atomicStoreOwner, observer);
+        std::stop_source cancellation;
+        std::optional<Domain::Result<void>> outcome;
+        std::jthread writer{[&]() {
+            outcome.emplace(sink->record(diagnostic("cancel-rotation-copy", fixture.clock.utc()),
+                                         liveContext(fixture.clock, cancellation.get_token())));
+        }};
+        DiagnosticRotationCheckpointReleaseGuard releaseObserver{*observer};
+
+        const bool reachedCreation = observer->waitUntilCheckpoint();
+        require(reachedCreation, "diagnostic rotation must reach its cooperative staging-copy checkpoint");
+        const std::filesystem::path temporary = observer->stagedPath();
+        require(std::filesystem::exists(temporary),
+                "diagnostic rotation temporary must remain named at its cooperative checkpoint");
+        require(!std::filesystem::exists(firstArchive),
+                "a partial rotation must not publish its canonical archive name");
+
+        WindowsDetail::UniqueHandle externalReader{::CreateFileW(
+            temporary.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+            OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_SEQUENTIAL_SCAN, nullptr)};
+        const DWORD readerError = externalReader ? ERROR_SUCCESS : ::GetLastError();
+        require(!externalReader && (readerError == ERROR_SHARING_VIOLATION || readerError == ERROR_ACCESS_DENIED),
+                "an in-progress diagnostic rotation temporary must deny external readers");
+
+        cancellation.request_stop();
+        observer->allowCheckpoint();
+        writer.join();
+        require(!observer->callbackFailed(),
+                "diagnostic rotation creation observer must complete its bounded wait");
+        require(outcome.has_value(), "cancelled diagnostic rotation must return a result");
+        requireError(outcome.value(), Domain::ErrorCodes::Cancelled,
+                     "cancellation at the rotation copy boundary must fail before publication");
+        require(std::filesystem::exists(master) && std::filesystem::file_size(master) == RotationStressBytes,
+                "cancelled diagnostic rotation must preserve its complete source");
+        require(!std::filesystem::exists(firstArchive),
+                "cancelled diagnostic rotation must not publish a canonical archive");
+        requireNoDiagnosticRotationTemporaries(fixture.logRoot);
     }
-    require(temporary.has_value(), "diagnostic rotation must expose its bounded "
-                                   "staging name to the directory");
 
-    SuspendedThread suspension{writer.native_handle()};
-    temporary = findDiagnosticRotationTemporary(fixture.logRoot);
-    require(temporary.has_value(), "diagnostic rotation temporary must remain "
-                                   "named while its writer is suspended");
-    require(!std::filesystem::exists(firstArchive), "a partial rotation must not publish its canonical archive name");
-
-    WindowsDetail::UniqueHandle externalReader{
-        ::CreateFileW(temporary->c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-                      OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_SEQUENTIAL_SCAN, nullptr)};
-    const DWORD readerError = externalReader ? ERROR_SUCCESS : ::GetLastError();
-    require(!externalReader && (readerError == ERROR_SHARING_VIOLATION || readerError == ERROR_ACCESS_DENIED),
-            "an in-progress diagnostic rotation temporary must deny external "
-            "readers");
-
-    cancellation.request_stop();
-    suspension.resume();
-    writer.join();
-    require(outcome.has_value(), "cancelled diagnostic rotation must return a result");
-    requireError(outcome.value(), Domain::ErrorCodes::Cancelled,
-                 "cancellation during rotation copy must fail before publication");
-    require(std::filesystem::exists(master) && std::filesystem::file_size(master) == RotationStressBytes,
-            "cancelled diagnostic rotation must preserve its complete source");
-    require(!std::filesystem::exists(firstArchive),
-            "cancelled diagnostic rotation must not publish a canonical archive");
-    requireNoDiagnosticRotationTemporaries(fixture.logRoot);
-
-    outcome.reset();
-    temporary.reset();
-    std::jthread collisionWriter{[&]() {
-        outcome.emplace(
-            sink.record(diagnostic("collision-rotation-copy", fixture.clock.utc()), liveContext(fixture.clock)));
-    }};
-    const auto collisionDiscoveryDeadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
-    while (!temporary.has_value() && std::chrono::steady_clock::now() < collisionDiscoveryDeadline)
     {
-        temporary = findDiagnosticRotationTemporary(fixture.logRoot);
-        if (!temporary.has_value())
-        {
-            std::this_thread::yield();
-        }
+        auto observer = std::make_shared<BlockingDiagnosticRotationObserver>(
+            DiagnosticRotationCheckpoint::BeforeStagedFileValidation);
+        auto sink = WindowsDetail::WindowsDiagnosticSinkTestAccess::create(
+            fixture.options(rotationStressBudgets()), fixture.clockOwner, fixture.redactorOwner, fixture.hasherOwner,
+            fixture.authorityOwner, fixture.atomicStoreOwner, observer);
+        std::optional<Domain::Result<void>> outcome;
+        std::jthread writer{[&]() {
+            outcome.emplace(
+                sink->record(diagnostic("collision-rotation-copy", fixture.clock.utc()), liveContext(fixture.clock)));
+        }};
+        DiagnosticRotationCheckpointReleaseGuard releaseObserver{*observer};
+
+        const bool reachedValidation = observer->waitUntilCheckpoint();
+        require(reachedValidation,
+                "diagnostic rotation collision test must reach its prepublication validation checkpoint");
+        const std::filesystem::path temporary = observer->stagedPath();
+        require(std::filesystem::exists(temporary) && !std::filesystem::exists(firstArchive),
+                "diagnostic rotation collision fixture must pause before publication");
+
+        WindowsDetail::UniqueHandle collisionRoot{::CreateFileW(
+            fixture.logRoot.c_str(), FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_TRAVERSE, FILE_SHARE_READ,
+            nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
+        require(static_cast<bool>(collisionRoot),
+                "diagnostic collision fixture must share the retained root read anchor");
+        WindowsDetail::RelativeOpenOptions collisionOptions{};
+        collisionOptions.desiredAccess = GENERIC_WRITE | FILE_READ_ATTRIBUTES;
+        collisionOptions.shareAccess = 0U;
+        collisionOptions.disposition = WindowsDetail::RelativeOpenDisposition::CreateNew;
+        collisionOptions.objectType = WindowsDetail::RelativeObjectType::File;
+        collisionOptions.writeThrough = true;
+        auto collision =
+            WindowsDetail::openRelative(collisionRoot.get(), L"forge-diagnostics.jsonl.1", collisionOptions);
+        require(static_cast<bool>(collision),
+                "diagnostic collision fixture must create a handle-relative destination");
+        constexpr std::string_view CollisionCanary = "rotation-collision-canary";
+        DWORD collisionWritten{};
+        require(::WriteFile(collision.handle.get(), CollisionCanary.data(), static_cast<DWORD>(CollisionCanary.size()),
+                            &collisionWritten, nullptr) != FALSE &&
+                    collisionWritten == CollisionCanary.size() && ::FlushFileBuffers(collision.handle.get()) != FALSE,
+                "diagnostic collision canary must be durable before publication resumes");
+        collision.handle.reset();
+        collisionRoot.reset();
+
+        observer->allowCheckpoint();
+        writer.join();
+        require(!observer->callbackFailed(),
+                "diagnostic rotation validation observer must complete its bounded wait");
+        require(outcome.has_value(), "colliding diagnostic rotation must return a result");
+        requireError(outcome.value(), Domain::ErrorCodes::Conflict,
+                     "a newly introduced archive destination must fail closed");
+        require(std::filesystem::exists(master) && std::filesystem::file_size(master) == RotationStressBytes,
+                "colliding diagnostic rotation must preserve its complete source");
+        require(readText(firstArchive) == CollisionCanary,
+                "colliding diagnostic rotation must not replace its destination canary");
+        requireNoDiagnosticRotationTemporaries(fixture.logRoot);
     }
-    require(temporary.has_value(), "diagnostic rotation collision test must reach its staging copy");
-
-    SuspendedThread collisionSuspension{collisionWriter.native_handle()};
-    temporary = findDiagnosticRotationTemporary(fixture.logRoot);
-    require(temporary.has_value() && !std::filesystem::exists(firstArchive),
-            "diagnostic rotation collision fixture must suspend before publication");
-
-    WindowsDetail::UniqueHandle collisionRoot{::CreateFileW(
-        fixture.logRoot.c_str(), FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_TRAVERSE, FILE_SHARE_READ, nullptr,
-        OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
-    require(static_cast<bool>(collisionRoot), "diagnostic collision fixture must share the retained root read anchor");
-    WindowsDetail::RelativeOpenOptions collisionOptions{};
-    collisionOptions.desiredAccess = GENERIC_WRITE | FILE_READ_ATTRIBUTES;
-    collisionOptions.shareAccess = 0U;
-    collisionOptions.disposition = WindowsDetail::RelativeOpenDisposition::CreateNew;
-    collisionOptions.objectType = WindowsDetail::RelativeObjectType::File;
-    collisionOptions.writeThrough = true;
-    auto collision = WindowsDetail::openRelative(collisionRoot.get(), L"forge-diagnostics.jsonl.1", collisionOptions);
-    require(static_cast<bool>(collision), "diagnostic collision fixture must create a handle-relative destination");
-    constexpr std::string_view CollisionCanary = "rotation-collision-canary";
-    DWORD collisionWritten{};
-    require(::WriteFile(collision.handle.get(), CollisionCanary.data(), static_cast<DWORD>(CollisionCanary.size()),
-                        &collisionWritten, nullptr) != FALSE &&
-                collisionWritten == CollisionCanary.size() && ::FlushFileBuffers(collision.handle.get()) != FALSE,
-            "diagnostic collision canary must be durable before publication resumes");
-    collision.handle.reset();
-    collisionRoot.reset();
-
-    collisionSuspension.resume();
-    collisionWriter.join();
-    require(outcome.has_value(), "colliding diagnostic rotation must return a result");
-    requireError(outcome.value(), Domain::ErrorCodes::Conflict,
-                 "a newly introduced archive destination must fail closed");
-    require(std::filesystem::exists(master) && std::filesystem::file_size(master) == RotationStressBytes,
-            "colliding diagnostic rotation must preserve its complete source");
-    require(readText(firstArchive) == CollisionCanary,
-            "colliding diagnostic rotation must not replace its destination canary");
-    requireNoDiagnosticRotationTemporaries(fixture.logRoot);
 }
 
 void rotationStageHardLinkFailsClosedAtPublishValidation()
@@ -1541,7 +1534,8 @@ void rotationStageHardLinkFailsClosedAtPublishValidation()
     require(static_cast<bool>(attackerParent),
             "diagnostic hard-link fixture must retain a parent handle before strong anchoring");
 
-    auto observer = std::make_shared<BlockingDiagnosticRotationPublishObserver>();
+    auto observer = std::make_shared<BlockingDiagnosticRotationObserver>(
+        DiagnosticRotationCheckpoint::BeforeStagedFileValidation);
     auto sink = WindowsDetail::WindowsDiagnosticSinkTestAccess::create(
         fixture.options(rotationStressBudgets()), fixture.clockOwner, fixture.redactorOwner, fixture.hasherOwner,
         fixture.authorityOwner, fixture.atomicStoreOwner, observer);
@@ -1550,9 +1544,9 @@ void rotationStageHardLinkFailsClosedAtPublishValidation()
         outcome.emplace(
             sink->record(diagnostic("hard-link-rotation-stage", fixture.clock.utc()), liveContext(fixture.clock)));
     }};
-    DiagnosticRotationPublishReleaseGuard releaseObserver{*observer};
+    DiagnosticRotationCheckpointReleaseGuard releaseObserver{*observer};
 
-    const bool reachedValidation = observer->waitUntilValidation();
+    const bool reachedValidation = observer->waitUntilCheckpoint();
     std::filesystem::path stagedPath;
     bool hardLinkCreated{};
     DWORD hardLinkError{ERROR_SUCCESS};
@@ -1577,7 +1571,7 @@ void rotationStageHardLinkFailsClosedAtPublishValidation()
             hardLinkError = linked.errorCode;
         }
     }
-    observer->allowValidation();
+    observer->allowCheckpoint();
     writer.join();
 
     require(reachedValidation, "diagnostic rotation must pause immediately before staged-handle "
@@ -1652,14 +1646,12 @@ void rotationCrashLeavesNoPartialCanonicalAndRestartCleansStaging()
         }
     }
     require(temporary.has_value(), "diagnostic crash child must reach its noncanonical staging copy");
-    SuspendedThread childSuspension{childThread.get()};
     const bool stagingStillNamed = findDiagnosticRotationTemporary(fixture.logRoot).has_value();
     const bool canonicalAbsent = !std::filesystem::exists(firstArchive);
     const BOOL terminated = ::TerminateProcess(childProcess.get(), 0xD1A6U);
     const DWORD terminationWait = ::WaitForSingleObject(childProcess.get(), 5000U);
-    childSuspension.resume();
     require(stagingStillNamed, "diagnostic crash child must remain at the "
-                               "staging boundary after suspension");
+                               "cooperative staging checkpoint");
     require(canonicalAbsent, "diagnostic crash child must not expose a partial canonical archive");
     require(terminated != FALSE, "diagnostic crash child must terminate at the staging boundary");
     require(terminationWait == WAIT_OBJECT_0, "diagnostic crash child termination must drain within five seconds");

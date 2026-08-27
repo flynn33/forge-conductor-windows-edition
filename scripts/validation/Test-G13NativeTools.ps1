@@ -6,13 +6,25 @@ param(
     [ValidateRange(1, 256)]
     [int]$Parallel = [Math]::Max(1, [Environment]::ProcessorCount),
 
-    [switch]$StaticOnly
+    [switch]$StaticOnly,
+
+    [string]$ReuseFreshBuildRecord,
+
+    [string]$FreshBuildCommit
 )
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $WorkspaceRoot = (Resolve-Path -LiteralPath $WorkspaceRoot).Path
 . (Join-Path $WorkspaceRoot '.forge-codex\instructions\scripts\Common.ps1')
+
+$reuseFreshBuild = -not [string]::IsNullOrWhiteSpace($ReuseFreshBuildRecord)
+if ($reuseFreshBuild -ne (-not [string]::IsNullOrWhiteSpace($FreshBuildCommit))) {
+    throw 'ReuseFreshBuildRecord and FreshBuildCommit must be supplied together.'
+}
+if ($StaticOnly -and $reuseFreshBuild) {
+    throw 'StaticOnly cannot be combined with fresh-build recovery.'
+}
 
 $script:AssertionCount = 0
 
@@ -809,6 +821,11 @@ foreach ($case in @(
 }
 
 $cmake = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot 'CMakeLists.txt')
+$diagnosticTests = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
+    'tests\Infrastructure\WindowsDiagnosticSinkTests.cpp')
+Assert-NoMatch $diagnosticTests '\b(?:SuspendThread|ResumeThread)\s*\(' `
+    'retained G06 diagnostics tests use only cooperative thread checkpoints' `
+    -CaseSensitive
 $nativeSourceList = [regex]::Match(
     $cmake,
     'set\s*\(\s*FORGE_NATIVE_TOOLS_WINDOWS_SOURCES(?<body>.*?)\)',
@@ -865,6 +882,10 @@ Assert-Match $cmake `
     'target_link_libraries\s*\(\s*ForgeConductor[.]NativeTools[.]PdfTests[\s\S]*?\bwindowsapp\b[\s\S]*?\)' `
     'native PDF runtime validation links the Windows app platform library' `
     -CaseSensitive
+Assert-Match $cmake `
+    'set_tests_properties\s*\(\s*ForgeConductor[.]Infrastructure[.]UnitTests\s+PROPERTIES[\s\S]*?LABELS\s+"T-UNIT;T-SEC;G06"[\s\S]*?TIMEOUT\s+120\s*\)' `
+    'infrastructure suite has a bounded fail-safe timeout' `
+    -CaseSensitive
 
 if ($StaticOnly) {
     $frameworkAfter = Get-TreeSummary $frameworkRoot
@@ -892,10 +913,100 @@ $buildTargets = @(
     'ForgeConductor.NativeTools.HeaderSelfContainment')
 $buildScript = Join-Path $WorkspaceRoot 'scripts\build.ps1'
 $testScript = Join-Path $WorkspaceRoot 'scripts\test.ps1'
-Write-Host 'G13: performing the one authoritative fresh x64 Debug affected-target build.'
-& $buildScript -Configuration Debug -Architecture x64 -Target $buildTargets `
-    -Parallel $Parallel -Fresh
-Assert-True $? 'one authoritative fresh x64 Debug G06/G13 affected-target build'
+if ($reuseFreshBuild) {
+    Assert-Match $FreshBuildCommit '^[0-9a-f]{40}$' `
+        'fresh-build recovery commit is a full lowercase SHA-1' -CaseSensitive
+    & git -C $WorkspaceRoot cat-file -e "$FreshBuildCommit^{commit}"
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery commit exists'
+
+    $buildInputChanges = @(& git -C $WorkspaceRoot diff --name-only `
+        "$FreshBuildCommit..HEAD" -- CMakeLists.txt src include tests cmake `
+        CMakePresets.json vcpkg.json)
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery input comparison command'
+    Assert-Set $buildInputChanges @(
+        'CMakeLists.txt',
+        'src/Infrastructure/Windows/Detail/DiagnosticRotationPublishObserver.h',
+        'src/Infrastructure/Windows/WindowsDiagnosticSink.cpp',
+        'tests/Infrastructure/InfrastructureTestMain.cpp',
+        'tests/Infrastructure/WindowsDiagnosticSinkTests.cpp') `
+        'fresh-build recovery exact diagnostics repair input set'
+    $cmakeDiff = @(& git -C $WorkspaceRoot diff --unified=0 --no-color `
+        "$FreshBuildCommit..HEAD" -- CMakeLists.txt)
+    Assert-Exact $LASTEXITCODE 0 'fresh-build recovery CMake comparison command'
+    $cmakeChangedLines = @($cmakeDiff | Where-Object {
+        ($_ -match '^[+-]') -and ($_ -notmatch '^(?:---|[+][+][+])')
+    })
+    Assert-Set $cmakeChangedLines @(
+        '+        TIMEOUT 120') `
+        'fresh-build recovery exact CMake timeout-only change'
+
+    $commandRoot = (Resolve-Path -LiteralPath (Join-Path $WorkspaceRoot `
+        '.forge-codex\state\commands')).Path
+    $candidateRecord = if ([IO.Path]::IsPathFullyQualified($ReuseFreshBuildRecord)) {
+        $ReuseFreshBuildRecord
+    } else {
+        Join-Path $WorkspaceRoot $ReuseFreshBuildRecord
+    }
+    $recordPath = (Resolve-Path -LiteralPath $candidateRecord).Path
+    $recordRelative = [IO.Path]::GetRelativePath($commandRoot, $recordPath)
+    Assert-True (-not [IO.Path]::IsPathFullyQualified($recordRelative) -and
+        -not $recordRelative.StartsWith('..', [StringComparison]::Ordinal)) `
+        'fresh-build recovery record stays in the command-evidence directory'
+    $buildRecord = Get-Content -Raw -LiteralPath $recordPath | ConvertFrom-Json
+    Assert-Exact ([int]$buildRecord.schema_version) 1 `
+        'fresh-build recovery record schema'
+    Assert-Exact ([string]$buildRecord.phase) 'P13' `
+        'fresh-build recovery record phase'
+    Assert-Exact ([int]$buildRecord.exit_code) 1 `
+        'fresh-build recovery record captures the interrupted test pass'
+    Assert-Exact ([bool]$buildRecord.timed_out) $false `
+        'fresh-build recovery record did not time out'
+    Assert-Match ([string]$buildRecord.command) `
+        'Test-G13NativeTools[.]ps1[\s\S]*?-Parallel\s+16' `
+        'fresh-build recovery record command identity' -CaseSensitive
+    $recordStdoutPath = Join-Path $WorkspaceRoot `
+        ([string]$buildRecord.stdout).Replace('/', '\')
+    Assert-True (Test-Path -LiteralPath $recordStdoutPath -PathType Leaf) `
+        'fresh-build recovery stdout exists'
+    Assert-Exact (Get-FileSha256 $recordStdoutPath) `
+        ([string]$buildRecord.stdout_sha256) 'fresh-build recovery stdout hash'
+    $recordStdout = Get-Content -Raw -LiteralPath $recordStdoutPath
+    $buildMarker = $recordStdout.IndexOf(
+        'G13: performing the one authoritative fresh x64 Debug affected-target build.',
+        [StringComparison]::Ordinal)
+    $testMarker = $recordStdout.IndexOf(
+        'G13: running the one authoritative x64 Debug retained G06 plus G13 CTest pass.',
+        [StringComparison]::Ordinal)
+    Assert-True ($buildMarker -ge 0 -and $testMarker -gt $buildMarker) `
+        'fresh-build recovery record proves the fresh build completed before testing'
+    Assert-Match $recordStdout `
+        '11/12 Test #[0-9]+: ForgeConductor[.]NativeTools[.]GitShellIntegrationTests[\s\S]*?ForgeConductor[.]Infrastructure[.]UnitTests[\s\S]*?[A-Za-z*]+Failed[\s\S]*?92% tests passed, 1 tests failed out of 12' `
+        'fresh-build recovery record isolates the failure to the infrastructure suite' `
+        -CaseSensitive
+
+    $toolchainState = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
+        '.forge-codex\state\toolchain.json') | ConvertFrom-Json
+    $cmakeExecutable = [string]$toolchainState.tools.cmake
+    $vcpkgRoot = [string]$toolchainState.vcpkg.root
+    Assert-True (Test-Path -LiteralPath $cmakeExecutable -PathType Leaf) `
+        'fresh-build recovery CMake executable exists'
+    Assert-True (Test-Path -LiteralPath $vcpkgRoot -PathType Container) `
+        'fresh-build recovery vcpkg root exists'
+    $env:VCPKG_ROOT = $vcpkgRoot
+    Write-Host 'G13: reusing the evidenced fresh build with an incremental diagnostics-repair rebuild.'
+    & $cmakeExecutable --preset windows-msvc-x64
+    Assert-Exact $LASTEXITCODE 0 `
+        'fresh-build recovery diagnostics-repair reconfigure'
+    & $buildScript -Configuration Debug -Architecture x64 -Target $buildTargets `
+        -Parallel $Parallel
+    Assert-True $? `
+        'fresh-build recovery incremental G06/G13 affected-target rebuild'
+} else {
+    Write-Host 'G13: performing the one authoritative fresh x64 Debug affected-target build.'
+    & $buildScript -Configuration Debug -Architecture x64 -Target $buildTargets `
+        -Parallel $Parallel -Fresh
+    Assert-True $? 'one authoritative fresh x64 Debug G06/G13 affected-target build'
+}
 Write-Host 'G13: running the one authoritative x64 Debug retained G06 plus G13 CTest pass.'
 & $testScript -Configuration Debug -Architecture x64 -Parallel $Parallel `
     -Label 'G06|G13'
@@ -943,6 +1054,7 @@ $expectedLabels = [ordered]@{
     'ForgeConductor.NativeTools.HeaderSelfContainment' = @('G13','T-UNIT')
 }
 $expectedTimeouts = [ordered]@{
+    'ForgeConductor.Infrastructure.UnitTests' = 120.0
     'ForgeConductor.LegacyContinuityPersistence.WindowsTests' = 180.0
     'ForgeConductor.NativeTools.FileSystemSearchTests' = 180.0
     'ForgeConductor.NativeTools.GitShellTests' = 180.0
@@ -975,7 +1087,6 @@ foreach ($test in @($ctestInventory.tests)) {
         Assert-Exact ([double]$timeoutProperty[0].value) `
             ([double]$expectedTimeouts[$testName]) "CTest timeout for $testName"
     }
-
     $expectedExecutable = "$buildRootForward/bin/Debug/$testName.exe"
     if ($testName -ceq 'ForgeConductor.NativeTools.ContractTests') {
         $expectedExecutable = `
@@ -1081,4 +1192,9 @@ Assert-Exact ([long]$frameworkAfter.bytes) ([long]$frameworkBefore.bytes) `
 Assert-Exact ([string]$frameworkAfter.sha256) ([string]$frameworkBefore.sha256) `
     'sealed Forsetti hash after full G13'
 Invoke-RepositoryIntegrityChecks
-Write-Host "G13 native-tools validation passed: $script:AssertionCount assertions; 4 retained G06 plus 8 G13 CTest registrations, $($artifactHashes.Count) artifact hashes, retained G12 static validation, and the single fresh x64 Debug build/test invocation succeeded."
+$qualificationMode = if ($reuseFreshBuild) {
+    'the evidenced fresh x64 Debug build, incremental diagnostics repair, and recovery test invocation succeeded'
+} else {
+    'the single fresh x64 Debug build/test invocation succeeded'
+}
+Write-Host "G13 native-tools validation passed: $script:AssertionCount assertions; 4 retained G06 plus 8 G13 CTest registrations, $($artifactHashes.Count) artifact hashes, retained G12 static validation, and $qualificationMode."
