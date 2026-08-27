@@ -180,6 +180,17 @@ target_include_directories(ForgeConductor.Dashboard.Protocol PUBLIC
 target_link_libraries(ForgeConductor.Dashboard.Protocol PRIVATE
     nlohmann_json::nlohmann_json)
 
+add_library(ForgeConductor.Dashboard.Windows STATIC
+    src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp)
+forge_add_layer(
+    ForgeConductor.Dashboard.Windows
+    ForgeConductor::Dashboard.Windows
+    ForgeConductor::Dashboard.Protocol)
+forge_configure_native_target(ForgeConductor.Dashboard.Windows)
+target_include_directories(ForgeConductor.Dashboard.Windows
+    PUBLIC "${PROJECT_SOURCE_DIR}/include"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
+
 set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp
     src/Infrastructure/Windows/BCryptSha256Hasher.cpp
@@ -193,6 +204,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsConfigurationStore.cpp
     src/Infrastructure/Windows/WindowsContinuityDocumentCodec.cpp
     src/Infrastructure/Windows/WindowsCurrentUserIdentity.cpp
+    src/Infrastructure/Windows/WindowsDashboardBearerToken.cpp
     src/Infrastructure/Windows/WindowsDiagnosticSink.cpp
     src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp
     src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp
@@ -547,6 +559,39 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-UNIT;T-STRESS"
         TIMEOUT 60)
 
+    add_executable(ForgeConductor.Dashboard.PreparedExchangeTests
+        tests/Dashboard/DashboardPreparedExchangeTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.PreparedExchangeTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.PreparedExchangeTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.PreparedExchangeTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.PreparedExchangeTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.PreparedExchangeTests PROPERTIES
+        LABELS "G16;T-MGR;T-TEL;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.AdmissionControllerTests
+        tests/Dashboard/DashboardAdmissionControllerTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.AdmissionControllerTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.AdmissionControllerTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.AdmissionControllerTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.AdmissionControllerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.AdmissionControllerTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.AdmissionControllerTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
     add_executable(ForgeConductor.Dashboard.HttpParserTests
         tests/Dashboard/DashboardHttpParserTests.cpp)
     forge_configure_standard_target(ForgeConductor.Dashboard.HttpParserTests)
@@ -569,6 +614,21 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.RequestPolicyTests>)
     set_tests_properties(ForgeConductor.Dashboard.RequestPolicyTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.WindowsBearerTokenTests
+        tests/Dashboard/WindowsDashboardBearerTokenTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.WindowsBearerTokenTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.WindowsBearerTokenTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.WindowsBearerTokenTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.WindowsBearerTokenTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.WindowsBearerTokenTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-UNIT;T-STRESS"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Dashboard.RouteCatalogTests

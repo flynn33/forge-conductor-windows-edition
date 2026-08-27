@@ -12,6 +12,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsAtomicFileStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsConfigurationStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsCurrentUserIdentity.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsDashboardBearerToken.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsDiagnosticSink.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioDeploymentService.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioEnvironment.h"

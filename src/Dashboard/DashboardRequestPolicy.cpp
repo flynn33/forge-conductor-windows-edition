@@ -1,6 +1,6 @@
 #include "ForgeConductor/Dashboard/DashboardRequestPolicy.h"
 
-#include "ForgeConductor/Contracts/IManagerAuthentication.h"
+#include "ForgeConductor/Contracts/IDashboardBearerToken.h"
 #include "ForgeConductor/Domain/Error.h"
 
 #include <array>
@@ -115,7 +115,7 @@ struct HeaderLookup final {
 {
     constexpr std::string_view Scheme = "Bearer ";
     constexpr std::size_t TokenCharacters =
-        Contracts::ManagerAuthenticationSecret::SizeBytes * 2U;
+        Contracts::DashboardBearerSecret::SizeBytes * 2U;
     if (!authorization.starts_with(Scheme)) {
         return false;
     }
@@ -137,7 +137,7 @@ struct HeaderLookup final {
     if (!parsed) {
         return false;
     }
-    const bool equal = Contracts::constantTimeManagerAuthenticationTokenEquals(
+    const bool equal = Contracts::constantTimeDashboardBearerTokenEquals(
         parsed.value(), expected);
     return syntaxValid && equal;
 }

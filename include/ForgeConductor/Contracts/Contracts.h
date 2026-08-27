@@ -7,6 +7,7 @@
 #include "ForgeConductor/Contracts/IConfigurationStore.h"
 #include "ForgeConductor/Contracts/IContinuityCoordinator.h"
 #include "ForgeConductor/Contracts/IContinuityAutomation.h"
+#include "ForgeConductor/Contracts/IDashboardBearerToken.h"
 #include "ForgeConductor/Contracts/IDiagnosticsServices.h"
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/IForgeApplicationLifecycle.h"

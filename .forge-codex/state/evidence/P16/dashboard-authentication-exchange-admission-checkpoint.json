@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-authentication-exchange-admission",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "final_build": {
+    "command_record": ".forge-codex/state/commands/20260827T223903683Z-84938d0a.json",
+    "command_record_sha256": "ab8b7e983351848e5424555ca4556aeab6888b874928c4fc0075abd5986f01a1",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 6,
+    "configuration": "Debug",
+    "stdout_sha256": "4be6c19a3fbc397561101878170dc864a57e24fdeb15344e1fc230443b37e69b",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "final_validation": {
+    "command_record": ".forge-codex/state/commands/20260827T223940108Z-3c0fe9e7.json",
+    "command_record_sha256": "129af03ffb7ca95c9afedbc9f899c2294beee50345954ac242f61be0c333be33",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "explicit_assertions_passed": 757,
+    "real_seconds": 0.44,
+    "assertions_by_test": {
+      "ForgeConductor.Dashboard.PreparedExchangeTests": 134,
+      "ForgeConductor.Dashboard.AdmissionControllerTests": 214,
+      "ForgeConductor.Dashboard.WindowsBearerTokenTests": 409
+    },
+    "additional_tests_without_printed_assertion_counts": [
+      "ForgeConductor.Dashboard.RequestPolicyTests",
+      "ForgeConductor.Contracts.HeaderSelfContainment",
+      "ForgeConductor.Infrastructure.HeaderSelfContainment"
+    ],
+    "stdout_sha256": "77147f88dd55c253c9f5eb9169fc8a4fd94dab16770a364d086a9c31c024b9e2",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260827T224008759Z-5443319e.json",
+      "command_record_sha256": "486a5020e342953998476aed5515f02dbf0652833e9d1c310bc01556a29f7d14",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260827T224033761Z-6a63fc6c.json",
+      "command_record_sha256": "51a8b6b5b093d69c9da03d61cc1329ec6be87f57ded912c4bc55a9870fd7c9d9",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 16 implementation text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260827T224055906Z-a2c5dd05.json",
+      "command_record_sha256": "c3d920896d0aea69c6850a1c38bf812d7e4b5fd075ca83fcf526939f72bcbddd",
+      "exit_code": 0,
+      "files_passed": 16
+    },
+    {
+      "scope": "Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260827T224103211Z-3cf3f083.json",
+      "command_record_sha256": "1c2356098baec403377e1f3cad7b232f41ba363c9abde1257aa69afe959dde3f",
+      "exit_code": 0
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260827T224536500Z-14213e2d.json",
+      "command_record_sha256": "45c14b4b4178fdf186d819191d6e1bbc855e31ae57f7e8252c8025fb946791eb",
+      "exit_code": 0,
+      "events_verified": 302
+    }
+  ],
+  "independent_review": {
+    "scope": "dashboard bearer lifecycle, prepared exchange ownership, global admission accounting, tests, CMake target boundaries, and IOCP/application architecture",
+    "initial_findings": [
+      "The bearer implementation originally held a mutex across injected secure-storage I/O, so shutdown could wait without a bound.",
+      "The bearer implementation originally did not revalidate cancellation, deadline, or shutdown after secure-storage retrieval.",
+      "The first prepared-exchange and admission tests exposed an atomic-wait terminal race, assertion teardown deadlock, moved-from SSE null dereference, HEAD shutdown ownership, repeated post-delivery actions, repeated close calls, ambiguous same-lease concurrency, frame error classification, partial thread-construction cleanup, and nested complete-exchange move ownership."
+    ],
+    "corrections": [
+      "Bearer admission now uses an atomic flag, shutdown is nonblocking, in-flight lifetime is caller-owned and documented, and context is revalidated after retrieval with returned-secret wiping on rejection.",
+      "Prepared exchange now has an explicit empty moved-from state, null-safe subscription access, one-shot shutdown-action transfer and consumption, idempotent SSE close, and typed frame-size and integrity errors.",
+      "Admission tests use RAII worker-gate cleanup and cover partial thread-construction unwind; the admission lease is explicitly confined to one serialized connection state machine."
+    ],
+    "post_correction_result": "No remaining blocker found in the reviewed authentication, exchange, admission, test-lifetime, target-boundary, or ownership behavior."
+  },
+  "behavior_proved": [
+    "the dashboard bearer token uses the dashboard-specific manager.dashboard.bearer.v1 key, not the manager IPC nonce key, creates a 256-bit token through an injected generator, encodes exactly 64 lowercase hexadecimal characters, and stores or retrieves the token only through the injected secure-storage abstraction",
+    "the dashboard bearer token permits only one operation at a time without waiting, revalidates cancellation, deadline, and shutdown after injected storage calls, wipes rejected and moved-from secret buffers, and permits nonblocking idempotent shutdown while documenting caller ownership of in-flight lifetime",
+    "request authorization now validates the dashboard bearer contract's exact encoded size using constant-time comparison semantics",
+    "the move-only prepared exchange represents either one bounded complete response or one SSE bootstrap plus unique subscription, has an explicit empty moved-from state, and validates compact and full frames independently",
+    "complete exchanges distinguish GET from HEAD body ownership, prohibit HEAD from owning a shutdown action, transfer post-delivery shutdown exactly once across nested and outer moves, and consume that action exactly once",
+    "SSE exchanges emit the exact initial comment ': connected realtime\\n\\n', treat null or empty frames as integrity failures, accept the exact maximum frame size, reject oversized frames as payload-too-large, and close subscriptions idempotently when ownership ends",
+    "the admission controller enforces one atomic global 8-short, 32-SSE, 40-total budget across listener generations, returns move-only RAII leases, atomically converts short leases to SSE leases, retains a short lease on failed conversion, and releases capacity on every tested destruction and unwind path",
+    "the dedicated ForgeConductor.Dashboard.Windows target keeps Windows admission implementation downstream of the platform-neutral dashboard protocol target",
+    "ADR P16-006 fixes the remaining dashboard application and transport ownership boundary: application handler through IManagerClient, separate bounded handler executor, one process-owned IOCP with four socket workers, literal loopback and exclusive bind, bounded deadlines, two-phase rebind, one retiring generation, and shutdown only after response delivery"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "d6047efe709fb40ce27a41963ddb96fa699c64297af1c4720a55193858efafee",
+    "include/ForgeConductor/Contracts/Contracts.h": "ed6ead187be6a610ec372796603a78250cef427300e14da99feb636fecc7f97d",
+    "include/ForgeConductor/Contracts/IDashboardBearerToken.h": "ae86fd8387a7cae4a086660af04b205e7fa28bafc4b0f3d1190d97050dbe6841",
+    "include/ForgeConductor/Dashboard/DashboardPreparedExchange.h": "5ea567e15b380c36724e811d26f383413a4cf411e348c66debb79cf45d1596ee",
+    "include/ForgeConductor/Dashboard/DashboardTransportLimits.h": "f511e27c354ca126719953a983dd2381c53cb0c148ee74de6cff8d63903c23d2",
+    "include/ForgeConductor/Dashboard/IDashboardConnectionApplication.h": "561f733db90bcde20253e61369d9247eec8824f458e72599046f795b1c904a50",
+    "include/ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h": "be72efcf7753299d592bd55825144fa295ff707b4a5d3bf6a3dc5fdcfa7c9628",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardBearerToken.h": "4a3d7f1a9ef7a1ffdff5a0ed90a361ea078bd12a8dbb217d1b623bfec7f7358a",
+    "src/Dashboard/DashboardRequestPolicy.cpp": "4c2ac1910c95ccd9c1c05b52c4e13fa5342f565407f9b5fad3ef447511a229db",
+    "src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp": "4505d7bd18aa3fee0c6245076dc2d497b7eac02d91801293ad73dfc2cdb8a647",
+    "src/Infrastructure/Windows/Detail/DashboardAdmissionController.h": "592edf1609577997226f84596a2d52571d4e365a8e68aa726d3ed7b16a4eecdd",
+    "src/Infrastructure/Windows/WindowsDashboardBearerToken.cpp": "ea708905cf1e4cbf54bf9a6514cbab999595de60dfc4dbc268e73024f56ebe2d",
+    "tests/Dashboard/DashboardAdmissionControllerTests.cpp": "2524aca0ad7be878553d2d82b5349f23430d3dc60721494a5c239f5fba2bedcf",
+    "tests/Dashboard/DashboardPreparedExchangeTests.cpp": "34ccbc8c80d5bfe1706b194802f20f7af4a91a573c2134fef8964299c3175989",
+    "tests/Dashboard/WindowsDashboardBearerTokenTests.cpp": "9629c27626626e3a963a3edfc9daa0eef93da01d1087b06d194143278cacbeaf",
+    ".forge-codex/state/decisions/P16-006-dashboard-application-and-iocp-ownership-boundaries.md": "e1bd6e4733165c2f76c7ad9750daae1a363d7193fcbcf3093c49f9f06a1b9416"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.PreparedExchangeTests.exe": "937f5da6738cd60db6b24a50d99489889cb45ea297404623b385a4211582d3d2",
+    "ForgeConductor.Dashboard.AdmissionControllerTests.exe": "c654e1a0271c3211f1713bcc2919fe69936a7e9986ce320c82dc65646ac5a81f",
+    "ForgeConductor.Dashboard.RequestPolicyTests.exe": "d3bbb9bab4f5c1b9a7876f19d45a573fd43ee064a12e6c4f38626819f1f0ebe8",
+    "ForgeConductor.Dashboard.WindowsBearerTokenTests.exe": "9d365ff2898093eaa42cb2a3b069b7a61ddab7964fa34ade4b2af2ff6eb31454",
+    "ForgeConductor.Contracts.HeaderSelfContainment.exe": "eeae5dcf6cd59bf83bfb1e515af00ecf0e8f6467c070ecd9836917868148b2e2",
+    "ForgeConductor.Infrastructure.HeaderSelfContainment.exe": "a58466a5005adeda18196ed0f97883bf87e3165bf99b70e5501af47157f605f6"
+  },
+  "remaining_limitations": [
+    "This checkpoint uses injected fake secure storage for dashboard-bearer lifecycle tests; an application composition test covering create, DPAPI CurrentUser persistence, and reload remains pending, while DPAPI secure storage itself was qualified in an earlier phase.",
+    "DashboardPreparedExchange is a transport/application contract; the concrete application handler and operational JSON codecs are not implemented by this checkpoint.",
+    "The overlapped Winsock listener, AcceptEx pool, process-owned IOCP workers, deadline scheduler, live overload responses, and shutdown drain are not implemented by this checkpoint.",
+    "The capacity-one SSE publisher and subscription implementation, compact/full cadence, keepalive, and runtime diagnostics projection remain pending.",
+    "The application-owned asset store, functional static shell, and retained UI automation remain pending.",
+    "Two-phase listener rebind, manager runtime composition, and generation retirement remain pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}
