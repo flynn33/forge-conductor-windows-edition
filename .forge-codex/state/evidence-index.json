@@ -151,6 +151,36 @@
       "path": ".forge-codex/state/validator-reports/P14-G14.json",
       "sha256": "7fdb1195213b2db7d06ba6d2b85507777d550bad108990729b3a1cb7acd0a56e",
       "summary": "Independent Validator passed G14 from the single authoritative 13/13 build-and-test record, verified all pinned source and artifact hashes, and performed zero Validator rebuilds or test runs."
+    },
+    {
+      "id": "P15-G15-validation-summary",
+      "type": "report",
+      "phase": "P15",
+      "gate": "G15",
+      "created_at": "2026-08-27T16:40:43.2790000+00:00",
+      "path": ".forge-codex/state/evidence/P15/g15-validation-summary.json",
+      "sha256": "9c94d91511ebddfb0dd8caf64c5b6b6d2380c210401e6be0eaed2cf5ad866220",
+      "summary": "G15 qualification summary reconciles the single authoritative build-and-test pass, corrective evidence chain, 1,938 final assertions, and successful seventh real-host deployment."
+    },
+    {
+      "id": "P15-G15-real-host",
+      "type": "test",
+      "phase": "P15",
+      "gate": "G15",
+      "created_at": "2026-08-27T16:40:43.2790000+00:00",
+      "path": ".forge-codex/state/evidence/P15/windows-lm-studio-real-host.json",
+      "sha256": "19431840113b670fb4f0a8680e26758753d8f5e425cb5c2aa306c7bb582424d9",
+      "summary": "Current-machine real-host evidence proves transactional LM Studio deployment, exact revision synchronization, preserved foreign content, supported activation, and zero transaction residue."
+    },
+    {
+      "id": "P15-G15-validator-report",
+      "type": "report",
+      "phase": "P15",
+      "gate": "G15",
+      "created_at": "2026-08-27T16:49:57.0122916+00:00",
+      "path": ".forge-codex/state/validator-reports/P15-G15.json",
+      "sha256": "8a825f46e5171ccb6da12fb5ce0467d1e145f984fb6101475b4e542e2b3206bb",
+      "summary": "Independent Validator passed G15 after verifying the authoritative build-and-test evidence, all corrective records and hashes, the successful real-host result, and current host residue without performing another build or test."
     }
   ]
 }

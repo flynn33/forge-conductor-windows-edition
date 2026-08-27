@@ -2,9 +2,9 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-27T12:35:09.2467583+00:00",
+  "updated_at": "2026-08-27T16:56:50.6251249+00:00",
   "status": "in_progress",
-  "active_role": "builder",
+  "active_role": "validator",
   "active_phase": "P15",
   "session_number": 0,
   "phases": [
@@ -560,22 +560,17 @@
     },
     {
       "id": "P15",
-      "status": "in_progress",
+      "status": "passed",
       "evidence": [
-        ".forge-codex/state/gate-results/G14.json",
-        ".forge-codex/instructions/plans/phases.json",
-        ".forge-codex/instructions/plans/gates.json",
-        ".forge-codex/instructions/plans/test-matrix.json",
-        ".forge-codex/instructions/architecture/MCP_AND_LM_STUDIO.md",
-        ".forge-codex/instructions/architecture/OOP_AND_OWNERSHIP.md",
-        ".forge-codex/state/decisions/OWNER-002-alpha-release-qualification-scope.md",
+        ".forge-codex/state/gate-results/G15.json",
+        ".forge-codex/state/validator-reports/P15-G15.json",
+        ".forge-codex/state/evidence/P15/g15-validation-summary.json",
+        ".forge-codex/state/evidence/P15/windows-lm-studio-real-host.json",
+        ".forge-codex/state/commands/20260827T164043279Z-b202ffac.json",
         ".forge-codex/state/decisions/P15-001-evidence-based-lm-studio-deployment-and-maintenance-authority.md",
-        ".forge-codex/state/evidence/P15/windows-lm-studio-host-baseline.json",
-        ".forge-codex/state/commands/20260827T123222434Z-6a51667c.json",
-        "include/ForgeConductor/Contracts/ILMStudioEnvironment.h",
-        "include/ForgeConductor/Contracts/ILMStudioDeploymentService.h",
-        "include/ForgeConductor/Domain/EnvironmentModels.h",
-        ".forge-codex/state/baseline/p02-source-files.json"
+        ".forge-codex/state/decisions/P15-004-lmstudio-configuration-file-object-transaction.md",
+        ".forge-codex/instructions/plans/feature-parity-matrix.json",
+        ".forge-codex/instructions/plans/feature-parity-matrix.tsv"
       ]
     },
     {
@@ -1189,11 +1184,35 @@
     },
     {
       "id": "G15",
-      "status": "in_progress",
+      "status": "passed",
       "evidence": [
+        ".forge-codex/state/validator-reports/P15-G15.json",
+        ".forge-codex/state/commands/20260827T164043279Z-b202ffac.json",
+        ".forge-codex/state/commands/20260827T164043279Z-b202ffac.stdout.txt",
+        ".forge-codex/state/commands/20260827T164043279Z-b202ffac.stderr.txt",
+        ".forge-codex/state/evidence/P15/g15-validation-summary.json",
+        ".forge-codex/state/evidence/P15/windows-lm-studio-real-host.json",
+        ".forge-codex/state/commands/20260827T141837131Z-e0c0a3a9.json",
+        ".forge-codex/state/commands/20260827T141837131Z-e0c0a3a9.stdout.txt",
+        ".forge-codex/state/commands/20260827T141837131Z-e0c0a3a9.stderr.txt",
+        ".forge-codex/state/decisions/OWNER-002-alpha-release-qualification-scope.md",
         ".forge-codex/state/decisions/P15-001-evidence-based-lm-studio-deployment-and-maintenance-authority.md",
-        ".forge-codex/state/evidence/P15/windows-lm-studio-host-baseline.json",
-        ".forge-codex/state/commands/20260827T123222434Z-6a51667c.json"
+        ".forge-codex/state/decisions/P15-002-packaged-localappdata-process-path-equivalence.md",
+        ".forge-codex/state/decisions/P15-003-lmstudio-preflight-runtime-environment-and-packaged-storage.md",
+        ".forge-codex/state/decisions/P15-004-lmstudio-configuration-file-object-transaction.md",
+        ".forge-codex/instructions/plans/feature-parity-matrix.json",
+        ".forge-codex/instructions/plans/feature-parity-matrix.tsv",
+        ".forge-codex/state/evidence-index.json",
+        "scripts/validation/Test-G15LMStudioDeployment.ps1",
+        "src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp",
+        "src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp",
+        "src/Infrastructure/Windows/WindowsLMStudioHostActivator.cpp",
+        "src/Infrastructure/Windows/WindowsLMStudioEnvironment.cpp",
+        "src/Infrastructure/Windows/WindowsLMStudioServeVerifier.cpp",
+        "tests/Application/LMStudioDeploymentServiceTests.cpp",
+        "tests/Infrastructure/LMStudioConfigurationCodecTests.cpp",
+        "tests/Infrastructure/WindowsLMStudioHostActivatorTests.cpp",
+        "tests/Infrastructure/WindowsLMStudioRealHostTests.cpp"
       ]
     },
     {
@@ -1272,7 +1291,7 @@
       "evidence": []
     }
   ],
-  "latest_handoff": ".forge-codex\\state\\handoffs\\20260825T082027055Z-5a8a372b.json",
+  "latest_handoff": ".forge-codex\\state\\handoffs\\20260827T165650467Z-4e3482a6.json",
   "open_blockers": [],
   "notes": []
 }
