@@ -41,22 +41,32 @@ public:
         const Domain::CheckpointRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        return complete(
-            ContinuityCall::Checkpoint,
-            &request.handoff.project.projectId,
-            context,
-            checkpointResult);
+        try {
+            lastCheckpointRequest_ = request;
+            return complete(
+                ContinuityCall::Checkpoint,
+                &request.handoff.project.projectId,
+                context,
+                checkpointResult);
+        } catch (...) {
+            return recordingFailure<Domain::CheckpointOutcome>();
+        }
     }
 
     [[nodiscard]] Domain::Result<Domain::CheckpointOutcome> prepareHandoff(
         const Domain::CheckpointRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        return complete(
-            ContinuityCall::PrepareHandoff,
-            &request.handoff.project.projectId,
-            context,
-            prepareHandoffResult);
+        try {
+            lastCheckpointRequest_ = request;
+            return complete(
+                ContinuityCall::PrepareHandoff,
+                &request.handoff.project.projectId,
+                context,
+                prepareHandoffResult);
+        } catch (...) {
+            return recordingFailure<Domain::CheckpointOutcome>();
+        }
     }
 
     [[nodiscard]] Domain::Result<std::optional<Domain::ContinuityHandoff>>
@@ -210,6 +220,12 @@ public:
         return lastAcknowledgement_;
     }
 
+    [[nodiscard]] const std::optional<Domain::CheckpointRequest>&
+    lastCheckpointRequest() const noexcept
+    {
+        return lastCheckpointRequest_;
+    }
+
     [[nodiscard]] const std::optional<Domain::OperationId>&
     lastCancelledOperationId() const noexcept
     {
@@ -265,6 +281,7 @@ private:
     std::optional<Domain::OperationId> lastOperationId_;
     std::optional<Domain::ContinuityOperationId> lastContinuityOperationId_;
     std::optional<Domain::HandoffAcknowledgement> lastAcknowledgement_;
+    std::optional<Domain::CheckpointRequest> lastCheckpointRequest_;
     std::optional<Domain::OperationId> lastCancelledOperationId_;
     Domain::MonotonicTimePoint now_{};
     std::size_t cancelCalls_{};

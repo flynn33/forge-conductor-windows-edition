@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "mcp_routing_toolpack_and_continuity_guard",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T03:56:21.1484785+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2"
+  },
+  "build_command_record": ".forge-codex/state/commands/20260827T035549337Z-63fdd812.json",
+  "command_record": ".forge-codex/state/commands/20260827T035619648Z-47888d8b.json",
+  "exit_code": 0,
+  "measured_result": {
+    "tests_selected": 8,
+    "tests_passed": 8,
+    "tests_failed": 0,
+    "ctest_real_seconds": 0.56
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Mcp.lib",
+      "bytes": 76821932,
+      "sha256": "13765777f3e8ce1ff3160abc1196ec8de34441b0405b4d3cb5937560b04c41b4"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.CatalogCodecTests.exe",
+      "bytes": 1450496,
+      "sha256": "069576e52081de6106a2e1ada538690919ff6bc818663ce137d6c1f768f86637"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ExecutionServicesTests.exe",
+      "bytes": 805376,
+      "sha256": "47cbd094163ff5bc35fecb31bbb80b7022eff20473eca35efff87ffac265ab0c"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolRouterTests.exe",
+      "bytes": 1312768,
+      "sha256": "6cff12112dd2e433fad3f077c79e8c9742a176c67b00a98a26703ee004f644d7"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.InvocationGuardTests.exe",
+      "bytes": 1643520,
+      "sha256": "bbba8b0d10890f06ebd2de606ff35f90319feeac92859f530c306db3e1beeb04"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolPackAdapterTests.exe",
+      "bytes": 4238336,
+      "sha256": "64d942e2b2988b59cec125ddd60890e8d972fd5cfb471a40bda030a73b412438"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Continuity.DocumentCodecTests.exe",
+      "bytes": 1683456,
+      "sha256": "ef4409a81aea4c5a89c0c321dcaf74fb2fdbc779b2ea98af03f40cdd701395a9"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Continuity.CoordinatorTests.exe",
+      "bytes": 1707520,
+      "sha256": "8c0be1d6248f35b8990325e72c2c46ee9b7f1f84a0e50af7aa582dfcdc2bd29f"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.ContractTests.exe",
+      "bytes": 4119552,
+      "sha256": "3c234de01a9b2925982653bbb56cce8d6cad921b98601c309ffdefe5eb07396d"
+    }
+  ],
+  "qualified_surface": [
+    "exact catalog-to-handler registration with bounded active operation ownership",
+    "project authority resolution and immutable per-call capability issuance",
+    "typed adapters for all 53 catalog tools across ten source packs",
+    "bounded identical-call prevention and coalesced automatic continuity persistence",
+    "caller idempotency and finite remaining-budget continuity round trips",
+    "typed process-failure receipts and sub-one-MiB UTF-8 read pagination"
+  ],
+  "remaining_limitations": [
+    "CLI serve and executable composition",
+    "real primary and fallback process semantic snapshots",
+    "client-scoped context_get workspace adoption",
+    "legacy projection receipt paths and authoritative continuity status projection",
+    "complete per-tool semantic fixtures and remaining G14 evidence"
+  ]
+}

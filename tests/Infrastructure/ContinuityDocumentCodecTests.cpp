@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <stop_token>
@@ -109,6 +110,7 @@ void typedEncodingPreservesRequiredEmptyCommandAndNullableSession()
     handoff.successorSession.reset();
     handoff.nextActions.front().command.clear();
     handoff.hostState.persistedContinuityStateName.reset();
+    handoff.hostState.remainingBudgetEstimate = 12'345.5;
 
     const auto encoded = take(subject->encode(handoff, context()));
     REQUIRE(encoded.canonicalUtf8.find("\"command\":\"\"") !=
@@ -117,9 +119,14 @@ void typedEncodingPreservesRequiredEmptyCommandAndNullableSession()
             std::string::npos);
     REQUIRE(encoded.canonicalUtf8.find("\"provider\":\"local\"") !=
             std::string::npos);
+    REQUIRE(encoded.canonicalUtf8.find(
+                "\"remaining_budget_estimate\":12345.5") !=
+            std::string::npos);
     REQUIRE(encoded.canonicalUtf8.find("\\nstate") != std::string::npos);
-    REQUIRE(take(subject->decode(encoded.canonicalUtf8, context())).canonicalUtf8 ==
-            encoded.canonicalUtf8);
+    const auto decoded = take(subject->decode(encoded.canonicalUtf8, context()));
+    REQUIRE(decoded.canonicalUtf8 == encoded.canonicalUtf8);
+    REQUIRE(decoded.handoff.hostState.remainingBudgetEstimate ==
+            std::optional<double>{12'345.5});
 }
 
 void malformedDocumentsFailClosed()
@@ -205,6 +212,11 @@ void domainRetryAndSemanticValidation()
 
     handoff = take(subject->decode(ProjectV1Handoff, context())).handoff;
     handoff.hostState.contextBudgetSource = " \r\n ";
+    REQUIRE(!subject->encode(handoff, context()));
+
+    handoff = take(subject->decode(ProjectV1Handoff, context())).handoff;
+    handoff.hostState.remainingBudgetEstimate =
+        std::numeric_limits<double>::infinity();
     REQUIRE(!subject->encode(handoff, context()));
 
     handoff = take(subject->decode(ProjectV1Handoff, context())).handoff;

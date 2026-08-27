@@ -1,0 +1,33 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  1: ForgeConductor.Mcp.CatalogCodecTests
+1/8 Test  #1: ForgeConductor.Mcp.CatalogCodecTests ...........   Passed    0.14 sec
+    Start  4: ForgeConductor.Mcp.ExecutionServicesTests
+2/8 Test  #4: ForgeConductor.Mcp.ExecutionServicesTests ......   Passed    0.01 sec
+    Start  5: ForgeConductor.Mcp.ToolRouterTests
+3/8 Test  #5: ForgeConductor.Mcp.ToolRouterTests .............   Passed    0.06 sec
+    Start  6: ForgeConductor.Mcp.InvocationGuardTests
+4/8 Test  #6: ForgeConductor.Mcp.InvocationGuardTests ........   Passed    0.07 sec
+    Start  7: ForgeConductor.Mcp.ToolPackAdapterTests
+5/8 Test  #7: ForgeConductor.Mcp.ToolPackAdapterTests ........   Passed    0.18 sec
+    Start 13: ForgeConductor.Contracts.ContractTests
+6/8 Test #13: ForgeConductor.Contracts.ContractTests .........   Passed    0.02 sec
+    Start 25: ForgeConductor.Continuity.DocumentCodecTests
+7/8 Test #25: ForgeConductor.Continuity.DocumentCodecTests ...   Passed    0.04 sec
+    Start 27: ForgeConductor.Continuity.CoordinatorTests
+8/8 Test #27: ForgeConductor.Continuity.CoordinatorTests .....   Passed    0.03 sec
+
+100% tests passed out of 8
+
+Label Time Summary:
+G05              =   0.02 sec*proc (1 test)
+G11              =   0.07 sec*proc (2 tests)
+G14              =   0.45 sec*proc (5 tests)
+T-CONT           =   0.14 sec*proc (3 tests)
+T-INTEGRATION    =   0.18 sec*proc (1 test)
+T-MCP            =   0.45 sec*proc (5 tests)
+T-PARITY         =   0.18 sec*proc (1 test)
+T-SEC            =   0.11 sec*proc (3 tests)
+T-STRESS         =   0.16 sec*proc (3 tests)
+T-UNIT           =   0.54 sec*proc (8 tests)
+
+Total Test time (real) =   0.56 sec

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -628,6 +629,10 @@ void validateJsonTree(const Json& value, const std::size_t depth)
     hostState["continuity_state"] = stateText(
         handoff.hostState.continuityState,
         handoff.hostState.persistedContinuityStateName);
+    if (handoff.hostState.remainingBudgetEstimate) {
+        hostState["remaining_budget_estimate"] =
+            *handoff.hostState.remainingBudgetEstimate;
+    }
     hostState["retry"] = std::move(retry);
 
     Json integritySection = Json::object();
@@ -814,7 +819,8 @@ void validateJsonTree(const Json& value, const std::size_t depth)
     const auto& hostJson = requiredField(root, "host_state");
     requireObjectKeys(
         hostJson,
-        {"adapter_id", "continuity_state", "context_budget_source", "retry"});
+        {"adapter_id", "continuity_state", "context_budget_source", "retry"},
+        {"remaining_budget_estimate"});
     const auto stateName = requiredString(hostJson, "continuity_state");
     auto parsedState = Domain::parseContinuityStateWireName(stateName);
     if (!parsedState) {
@@ -838,6 +844,18 @@ void validateJsonTree(const Json& value, const std::size_t depth)
         retryResumeState = parsed.value();
         retryResumeStateName = *encoded;
     }
+    std::optional<double> remainingBudgetEstimate;
+    const auto remainingBudget = hostJson.find("remaining_budget_estimate");
+    if (remainingBudget != hostJson.end()) {
+        if (!remainingBudget->is_number()) {
+            invalid("The continuity remaining budget estimate is not numeric.");
+        }
+        const auto parsed = remainingBudget->get<double>();
+        if (!std::isfinite(parsed)) {
+            invalid("The continuity remaining budget estimate is not finite.");
+        }
+        remainingBudgetEstimate = parsed;
+    }
     Domain::ContinuityHostState hostState{
         parseIdentifier<Domain::AdapterId>(
             requiredString(hostJson, "adapter_id"), "adapter identifier"),
@@ -849,7 +867,8 @@ void validateJsonTree(const Json& value, const std::size_t depth)
             retryAt,
             retryResumeState,
             retryResumeStateName},
-        stateName};
+        stateName,
+        remainingBudgetEstimate};
 
     const auto& integrityJson = requiredField(root, "integrity");
     requireObjectKeys(

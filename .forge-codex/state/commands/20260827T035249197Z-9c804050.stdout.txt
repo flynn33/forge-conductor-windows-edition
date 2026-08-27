@@ -1,0 +1,314 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  GraphicsModels.cpp
+  DeploymentModels.cpp
+  LegacyContinuityModels.cpp
+  ProcessModels.cpp
+  EnvironmentModels.cpp
+  ContinuityModels.cpp
+  Identifiers.cpp
+  LegacyMemoryModels.cpp
+  ManagerModels.cpp
+  ToolModels.cpp
+  TelemetryModels.cpp
+  AgentModels.cpp
+  SessionHostModels.cpp
+  DiagnosticsModels.cpp
+  FileSystemModels.cpp
+  ProjectMemoryModels.cpp
+  ConfigurationModels.cpp
+  Compiling...
+  ConfigurationModels.cpp
+  AgentModels.cpp
+  EnvironmentModels.cpp
+  LegacyContinuityModels.cpp
+  ToolModels.cpp
+  Identifiers.cpp
+  ManagerModels.cpp
+  DeploymentModels.cpp
+  ContinuityModels.cpp
+  DiagnosticsModels.cpp
+  GraphicsModels.cpp
+  FileSystemModels.cpp
+  ProcessModels.cpp
+  ProjectMemoryModels.cpp
+  TelemetryModels.cpp
+  LegacyMemoryModels.cpp
+  SessionHostModels.cpp
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  GroupedFakeContractTests.cpp
+  FoundationTelemetryFakeContractTests.cpp
+  main.cpp
+  Compiling...
+  FoundationTelemetryFakeContractTests.cpp
+  GroupedFakeContractTests.cpp
+  main.cpp
+  ForgeConductor.Contracts.ContractTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Contracts.ContractTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  OperationGuard.cpp
+  BCryptSha256Hasher.cpp
+  WindowsConfigurationStore.cpp
+  WindowsContinuityDocumentCodec.cpp
+  WindowsUnicodeCanonicalizer.cpp
+  UniqueRegistryKey.cpp
+  DeadlineScheduler.cpp
+  OperationContextGuard.cpp
+  UtfConversion.cpp
+  WindowsRuntimeDiagnostics.cpp
+  JobObject.cpp
+  CommandLineBuilder.cpp
+  WindowsNativeSessionLedger.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  WindowsWorkspaceAuthority.cpp
+  WindowsApplicationPaths.cpp
+  WindowsPathResolver.cpp
+  OverlappedPipeReader.cpp
+  Win32Error.cpp
+  DpapiSecureStorage.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  AtomicReplaceEngine.cpp
+  WindowsProcessSupervisor.cpp
+  SystemClock.cpp
+  WindowsDiagnosticSink.cpp
+  BoundedSerialExecutor.cpp
+  WindowsAtomicFileStore.cpp
+  EtwProvider.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  WindowsUuidGenerator.cpp
+  SecretRedactor.cpp
+  Compiling...
+  DeadlineScheduler.cpp
+  BCryptSha256Hasher.cpp
+  WindowsAtomicFileStore.cpp
+  WindowsApplicationPaths.cpp
+  DpapiSecureStorage.cpp
+  Win32Error.cpp
+  AtomicReplaceEngine.cpp
+  SystemClock.cpp
+  SecretRedactor.cpp
+  BoundedSerialExecutor.cpp
+  OperationGuard.cpp
+  WindowsWorkspaceAuthority.cpp
+  WindowsDiagnosticSink.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  EtwProvider.cpp
+  UniqueRegistryKey.cpp
+  CommandLineBuilder.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  JobObject.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  WindowsNativeSessionLedger.cpp
+  WindowsConfigurationStore.cpp
+  WindowsPathResolver.cpp
+  WindowsRuntimeDiagnostics.cpp
+  UtfConversion.cpp
+  OperationContextGuard.cpp
+  WindowsUnicodeCanonicalizer.cpp
+  WindowsContinuityDocumentCodec.cpp
+  OverlappedPipeReader.cpp
+  WindowsProcessSupervisor.cpp
+  WindowsUuidGenerator.cpp
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ContinuityDocumentCodecTests.cpp
+  Compiling...
+  ContinuityDocumentCodecTests.cpp
+  ForgeConductor.Continuity.DocumentCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Continuity.DocumentCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  AgentSessionService.cpp
+  AgentCatalog.cpp
+  LegacyMemoryService.cpp
+  ContinuityCoordinator.cpp
+  ProjectMemoryRepositoryCache.cpp
+  ProjectMemoryService.cpp
+  ContinuityAutomation.cpp
+  LegacyContextContinuityService.cpp
+  Compiling...
+  ProjectMemoryRepositoryCache.cpp
+  ContinuityAutomation.cpp
+  AgentSessionService.cpp
+  AgentCatalog.cpp
+  ContinuityCoordinator.cpp
+  LegacyMemoryService.cpp
+  ProjectMemoryService.cpp
+  LegacyContextContinuityService.cpp
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ContinuityCoordinatorTests.cpp
+  Compiling...
+  ContinuityCoordinatorTests.cpp
+  ForgeConductor.Continuity.CoordinatorTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Continuity.CoordinatorTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpInvocationGuard.cpp
+  McpExecutionServices.cpp
+  WindowsStdioMcpTransport.cpp
+  McpToolPackAdapter.cpp
+  McpJsonCodec.cpp
+  McpToolRouter.cpp
+  McpToolCatalog.cpp
+  McpServer.cpp
+  Compiling...
+  McpToolRouter.cpp
+  McpToolCatalog.cpp
+  McpExecutionServices.cpp
+  WindowsStdioMcpTransport.cpp
+  McpToolPackAdapter.cpp
+  McpInvocationGuard.cpp
+  McpServer.cpp
+  McpJsonCodec.cpp
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpCatalogCodecTests.cpp
+  Compiling...
+  McpCatalogCodecTests.cpp
+  ForgeConductor.Mcp.CatalogCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.CatalogCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpExecutionServicesTests.cpp
+  Compiling...
+  McpExecutionServicesTests.cpp
+  ForgeConductor.Mcp.ExecutionServicesTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.ExecutionServicesTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpToolRouterTests.cpp
+  Compiling...
+  McpToolRouterTests.cpp
+  ForgeConductor.Mcp.ToolRouterTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.ToolRouterTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpInvocationGuardTests.cpp
+  Compiling...
+  McpInvocationGuardTests.cpp
+  ForgeConductor.Mcp.InvocationGuardTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.InvocationGuardTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpToolPackAdapterTests.cpp
+  Compiling...
+  McpToolPackAdapterTests.cpp
+  ForgeConductor.Mcp.ToolPackAdapterTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.ToolPackAdapterTests.exe
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  1: ForgeConductor.Mcp.CatalogCodecTests
+1/8 Test  #1: ForgeConductor.Mcp.CatalogCodecTests ...........   Passed    0.16 sec
+    Start  4: ForgeConductor.Mcp.ExecutionServicesTests
+2/8 Test  #4: ForgeConductor.Mcp.ExecutionServicesTests ......   Passed    0.03 sec
+    Start  5: ForgeConductor.Mcp.ToolRouterTests
+3/8 Test  #5: ForgeConductor.Mcp.ToolRouterTests .............   Passed    0.05 sec
+    Start  6: ForgeConductor.Mcp.InvocationGuardTests
+4/8 Test  #6: ForgeConductor.Mcp.InvocationGuardTests ........   Passed    0.09 sec
+    Start  7: ForgeConductor.Mcp.ToolPackAdapterTests
+5/8 Test  #7: ForgeConductor.Mcp.ToolPackAdapterTests ........***Failed    0.20 sec
+MCP tool-pack adapter tests failed after 254 assertions: Requirement failed: result
+
+    Start 13: ForgeConductor.Contracts.ContractTests
+6/8 Test #13: ForgeConductor.Contracts.ContractTests .........   Passed    0.04 sec
+    Start 25: ForgeConductor.Continuity.DocumentCodecTests
+7/8 Test #25: ForgeConductor.Continuity.DocumentCodecTests ...   Passed    0.06 sec
+    Start 27: ForgeConductor.Continuity.CoordinatorTests
+8/8 Test #27: ForgeConductor.Continuity.CoordinatorTests .....   Passed    0.05 sec
+
+88% tests passed, 1 tests failed out of 8
+
+Label Time Summary:
+G05              =   0.04 sec*proc (1 test)
+G11              =   0.11 sec*proc (2 tests)
+G14              =   0.53 sec*proc (5 tests)
+T-CONT           =   0.20 sec*proc (3 tests)
+T-INTEGRATION    =   0.20 sec*proc (1 test)
+T-MCP            =   0.53 sec*proc (5 tests)
+T-PARITY         =   0.20 sec*proc (1 test)
+T-SEC            =   0.15 sec*proc (3 tests)
+T-STRESS         =   0.19 sec*proc (3 tests)
+T-UNIT           =   0.69 sec*proc (8 tests)
+
+Total Test time (real) =   0.70 sec
+
+The following tests FAILED:
+	  7 - ForgeConductor.Mcp.ToolPackAdapterTests (Failed)  G14 T-INTEGRATION T-MCP T-PARITY T-UNIT

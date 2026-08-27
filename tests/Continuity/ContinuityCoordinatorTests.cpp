@@ -920,6 +920,66 @@ void exactAcknowledgementAndResumeAreBoundToTheSuccessor()
     REQUIRE(resumed.handoff.handoffId == acknowledged.handoff.handoffId);
 }
 
+void checkpointHonorsCallerIdempotencyAndKeepsDeterministicDefault()
+{
+    Scenario explicitScenario{22U};
+    const auto explicitKey = take(Domain::IdempotencyKey::create(
+        "caller-supplied-checkpoint-key"));
+    Application::ContinuityCoordinator explicitCoordinator{
+        explicitScenario.registry,
+        explicitScenario.factory,
+        explicitScenario.host,
+        explicitScenario.clock};
+    const auto explicitCheckpoint = take(explicitCoordinator.checkpoint(
+        Domain::CheckpointRequest{explicitScenario.handoff, explicitKey},
+        explicitScenario.context));
+    REQUIRE(explicitCheckpoint.operation.idempotencyKey == explicitKey);
+    REQUIRE(explicitScenario.repository->storedOperation()->idempotencyKey ==
+            explicitKey);
+
+    Scenario defaultScenario{23U};
+    const auto derivedKey = take(Domain::IdempotencyKey::create(
+        defaultScenario.handoff.operationId.value()));
+    Application::ContinuityCoordinator defaultCoordinator{
+        defaultScenario.registry,
+        defaultScenario.factory,
+        defaultScenario.host,
+        defaultScenario.clock};
+    const auto defaultCheckpoint = take(defaultCoordinator.checkpoint(
+        Domain::CheckpointRequest{defaultScenario.handoff},
+        defaultScenario.context));
+    REQUIRE(defaultCheckpoint.operation.idempotencyKey == derivedKey);
+    REQUIRE(defaultScenario.repository->storedOperation()->idempotencyKey ==
+            derivedKey);
+
+    Scenario recoveryScenario{24U};
+    const auto recoveryKey = take(Domain::IdempotencyKey::create(
+        "caller-supplied-recovery-key"));
+    auto recoveringOperation = take(recoveryScenario.repository->createOperation(
+        recoveryScenario.handoff,
+        recoveryKey,
+        recoveryScenario.context));
+    take(recoveryScenario.repository->storeHandoff(
+        recoveryScenario.handoff, recoveryScenario.context));
+    recoveringOperation = transition(
+        recoveryScenario,
+        recoveringOperation,
+        Domain::ContinuityState::CheckpointPreparing);
+    Application::ContinuityCoordinator recoveryCoordinator{
+        recoveryScenario.registry,
+        recoveryScenario.factory,
+        recoveryScenario.host,
+        recoveryScenario.clock};
+    const auto recovered = take(recoveryCoordinator.requestRollover(
+        Domain::RolloverRequest{
+            recoveryScenario.handoff.project.projectId,
+            recoveryScenario.handoff.operationId},
+        recoveryScenario.context));
+    REQUIRE(recovered.operation.state == Domain::ContinuityState::Completed);
+    REQUIRE(recovered.operation.idempotencyKey == recoveryKey);
+    REQUIRE(recoveryScenario.host.physicalCreateCount() == 1U);
+}
+
 void resumeReconciliationPrecedesMutationAndSupportsIdempotentCreate()
 {
     Scenario failedQuery{22U};
@@ -1252,6 +1312,8 @@ int main()
          recoverEveryCommittedCrashBoundary},
         {"exact_acknowledgement_and_resume_are_bound_to_the_successor",
          exactAcknowledgementAndResumeAreBoundToTheSuccessor},
+        {"checkpoint_honors_caller_idempotency_and_keeps_deterministic_default",
+         checkpointHonorsCallerIdempotencyAndKeepsDeterministicDefault},
         {"resume_reconciliation_precedes_mutation_and_supports_idempotent_create",
          resumeReconciliationPrecedesMutationAndSupportsIdempotentCreate},
         {"capability_failure_does_not_weaken_the_durable_checkpoint",

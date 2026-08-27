@@ -91,8 +91,11 @@ public:
         if (!valid) {
             return propagate<Domain::CheckpointOutcome>(std::move(valid));
         }
-        auto key = Domain::IdempotencyKey::create(
-            request.handoff.operationId.value());
+        auto key = request.idempotencyKey
+            ? Domain::Result<Domain::IdempotencyKey>::success(
+                  *request.idempotencyKey)
+            : Domain::IdempotencyKey::create(
+                  request.handoff.operationId.value());
         if (!key) {
             return propagate<Domain::CheckpointOutcome>(std::move(key));
         }
@@ -271,7 +274,10 @@ public:
                         "The rollover has no durable checkpoint handoff.");
                 }
                 auto prepared = checkpoint(
-                    Domain::CheckpointRequest{*std::move(durable).value()}, context);
+                    Domain::CheckpointRequest{
+                        *std::move(durable).value(),
+                        operation.idempotencyKey},
+                    context);
                 if (!prepared) {
                     return propagate<Domain::RolloverOutcome>(std::move(prepared));
                 }

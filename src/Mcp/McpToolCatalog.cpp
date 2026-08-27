@@ -193,6 +193,7 @@ using Property = std::pair<std::string_view, Json>;
         return objectSchema(
             {{"path", string},
              {"offset", Json{{"type", "integer"}, {"description", "1-based start line for a partial read"}}},
+             {"byte_offset", Json{{"type", "integer"}, {"description", "UTF-8 byte offset returned by next_byte_offset for an oversized line"}}},
              {"length", Json{{"type", "integer"}, {"description", "Number of lines to return (alias: limit)"}}},
              {"limit", Json{{"type", "integer"}, {"description", dash}}}},
             {"path"});

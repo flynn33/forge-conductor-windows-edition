@@ -82,6 +82,13 @@ struct ToolCallOutcome final {
     std::string canonicalPayload;
 };
 
+// A missing immediate outcome admits the invocation. A present outcome is a
+// fully formed policy response returned without authorizing or dispatching the
+// requested handler.
+struct ToolInvocationAdmission final {
+    std::optional<ToolCallOutcome> immediateOutcome;
+};
+
 [[nodiscard]] Result<void> validateToolDescriptor(const ToolDescriptor& descriptor);
 [[nodiscard]] Result<void> validateMcpFrame(
     const McpFrame& frame,

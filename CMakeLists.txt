@@ -265,10 +265,14 @@ target_include_directories(ForgeNativeSessionHostPlugin PUBLIC
 target_link_libraries(ForgeNativeSessionHostPlugin PRIVATE
     ForgeConductor::SessionHost.Core)
 add_library(ForgeConductor.Mcp STATIC
+    src/Mcp/McpExecutionServices.cpp
+    src/Mcp/McpInvocationGuard.cpp
     src/Mcp/McpJsonCodec.cpp
     src/Mcp/McpProtocol.cpp
     src/Mcp/McpServer.cpp
     src/Mcp/McpToolCatalog.cpp
+    src/Mcp/McpToolPackAdapter.cpp
+    src/Mcp/McpToolRouter.cpp
     src/Mcp/WindowsStdioMcpTransport.cpp
 )
 forge_add_layer(ForgeConductor.Mcp ForgeConductor::Mcp
@@ -409,6 +413,64 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ProtocolServerTests>)
     set_tests_properties(ForgeConductor.Mcp.ProtocolServerTests PROPERTIES
         LABELS "G14;T-MCP;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.ExecutionServicesTests
+        tests/Mcp/McpExecutionServicesTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Mcp.ExecutionServicesTests)
+    target_include_directories(
+        ForgeConductor.Mcp.ExecutionServicesTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.Mcp.ExecutionServicesTests PRIVATE
+        ForgeConductor::Mcp)
+    add_test(
+        NAME ForgeConductor.Mcp.ExecutionServicesTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ExecutionServicesTests>)
+    set_tests_properties(ForgeConductor.Mcp.ExecutionServicesTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-SEC"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.ToolRouterTests
+        tests/Mcp/McpToolRouterTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Mcp.ToolRouterTests)
+    target_include_directories(ForgeConductor.Mcp.ToolRouterTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.Mcp.ToolRouterTests PRIVATE
+        ForgeConductor::Mcp)
+    add_test(
+        NAME ForgeConductor.Mcp.ToolRouterTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ToolRouterTests>)
+    set_tests_properties(ForgeConductor.Mcp.ToolRouterTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-STRESS;T-SEC"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.InvocationGuardTests
+        tests/Mcp/McpInvocationGuardTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Mcp.InvocationGuardTests)
+    target_link_libraries(ForgeConductor.Mcp.InvocationGuardTests PRIVATE
+        ForgeConductor::Mcp
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Mcp.InvocationGuardTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.InvocationGuardTests>)
+    set_tests_properties(ForgeConductor.Mcp.InvocationGuardTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-STRESS;T-CONT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.ToolPackAdapterTests
+        tests/Mcp/McpToolPackAdapterTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Mcp.ToolPackAdapterTests)
+    target_include_directories(
+        ForgeConductor.Mcp.ToolPackAdapterTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.Mcp.ToolPackAdapterTests PRIVATE
+        ForgeConductor::Mcp
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Mcp.ToolPackAdapterTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ToolPackAdapterTests>)
+    set_tests_properties(ForgeConductor.Mcp.ToolPackAdapterTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-INTEGRATION;T-PARITY"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Agents.CatalogTests

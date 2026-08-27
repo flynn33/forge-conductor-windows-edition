@@ -80,6 +80,7 @@ public:
 
     [[nodiscard]] virtual Domain::Result<Domain::ToolCallOutcome> handle(
         const AuthorizedToolCall& authorizedCall,
+        const WorkspaceAuthority& authority,
         const Domain::OperationContext& context) noexcept = 0;
 };
 
@@ -88,6 +89,26 @@ public:
     virtual ~IToolCatalog() = default;
 
     [[nodiscard]] virtual std::span<const Domain::McpToolDescriptor> tools() const noexcept = 0;
+};
+
+class IToolInvocationGuard {
+public:
+    virtual ~IToolInvocationGuard() = default;
+
+    [[nodiscard]] virtual Domain::Result<Domain::ToolInvocationAdmission>
+    beforeInvoke(
+        const Domain::ToolCallRequest& request,
+        const Domain::ToolDescriptor& descriptor,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<Domain::ToolCallOutcome> afterInvoke(
+        const Domain::ToolCallRequest& request,
+        const Domain::ToolDescriptor& descriptor,
+        Domain::Result<Domain::ToolCallOutcome> outcome,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    virtual void cancel(const Domain::OperationId& operationId) noexcept = 0;
+    virtual void shutdown() noexcept = 0;
 };
 
 class IMcpExecutionContextResolver {

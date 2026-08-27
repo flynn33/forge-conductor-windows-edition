@@ -1,0 +1,33 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpToolPackAdapterTests.cpp
+  Compiling...
+  McpToolPackAdapterTests.cpp
+  ForgeConductor.Mcp.ToolPackAdapterTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Mcp.ToolPackAdapterTests.exe
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 7: ForgeConductor.Mcp.ToolPackAdapterTests
+1/1 Test #7: ForgeConductor.Mcp.ToolPackAdapterTests ...   Passed    0.19 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+G14              =   0.19 sec*proc (1 test)
+T-INTEGRATION    =   0.19 sec*proc (1 test)
+T-MCP            =   0.19 sec*proc (1 test)
+T-PARITY         =   0.19 sec*proc (1 test)
+T-UNIT           =   0.19 sec*proc (1 test)
+
+Total Test time (real) =   0.20 sec

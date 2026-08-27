@@ -97,6 +97,7 @@ FORGE_ASSERT_INTERFACE(Contracts::ITelemetryService);
 FORGE_ASSERT_INTERFACE(Contracts::IToolAuthorizer);
 FORGE_ASSERT_INTERFACE(Contracts::IToolHandler);
 FORGE_ASSERT_INTERFACE(Contracts::IToolCatalog);
+FORGE_ASSERT_INTERFACE(Contracts::IToolInvocationGuard);
 FORGE_ASSERT_INTERFACE(Contracts::IMcpExecutionContextResolver);
 FORGE_ASSERT_INTERFACE(Contracts::IToolRouter);
 
@@ -582,13 +583,14 @@ void testAuthorizedToolCapability(const Fixture& fixture)
         context.deadline,
         cancellation.get_token(),
         fixture.correlationId};
-    const auto cancelled = handler.handle(authorization, cancelledContext);
+    const auto cancelled = handler.handle(
+        authorization, authority, cancelledContext);
     expect(
         !cancelled && cancelled.error().code == Domain::ErrorCodes::Cancelled,
         "tool handler ignored operation cancellation");
 
     handler.setNow(context.deadline);
-    const auto expired = handler.handle(authorization, context);
+    const auto expired = handler.handle(authorization, authority, context);
     expect(
         !expired &&
             expired.error().code == Domain::ErrorCodes::DeadlineExceeded,

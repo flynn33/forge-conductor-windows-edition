@@ -153,6 +153,7 @@ struct ContinuityHostState final {
     // Imported documents retain their exact state spelling so their canonical
     // bytes and digest survive a lossless read/write cycle.
     std::optional<std::string> persistedContinuityStateName;
+    std::optional<double> remainingBudgetEstimate;
 };
 
 struct ContinuityEvidenceReference final {
@@ -326,6 +327,7 @@ struct HostRecoveryReport final {
 
 struct CheckpointRequest final {
     ContinuityHandoff handoff;
+    std::optional<IdempotencyKey> idempotencyKey;
 };
 
 struct CheckpointOutcome final {

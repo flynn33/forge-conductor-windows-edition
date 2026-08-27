@@ -351,6 +351,12 @@ Result<void> validateContinuityHandoff(
             ErrorCodes::InvalidRequest,
             "Continuity context budget source is invalid."));
     }
+    if (handoff.hostState.remainingBudgetEstimate &&
+        !std::isfinite(*handoff.hostState.remainingBudgetEstimate)) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Continuity remaining budget estimate must be finite."));
+    }
     if (handoff.hostState.persistedContinuityStateName) {
         const auto parsed = parseContinuityStateWireName(
             *handoff.hostState.persistedContinuityStateName);

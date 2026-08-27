@@ -134,6 +134,7 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ToolCallOutcome> handle(
         const Contracts::AuthorizedToolCall& authorizedCall,
+        const Contracts::WorkspaceAuthority& authority,
         const Domain::OperationContext& context) noexcept override
     {
         try {
@@ -153,6 +154,11 @@ public:
                 return failure(
                     Domain::ErrorCodes::Unauthorized,
                     "The authorized tool correlation does not match the operation.");
+            }
+            if (!authorizedCall.matches(authority, context)) {
+                return failure(
+                    Domain::ErrorCodes::Unauthorized,
+                    "The authorized tool does not match workspace authority.");
             }
             const auto descriptor = std::find_if(
                 descriptors_.begin(),
@@ -276,7 +282,7 @@ public:
                 return Domain::Result<Domain::ToolCallOutcome>::failure(
                     std::move(authorized).error());
             }
-            return handler_.handle(authorized.value(), context);
+            return handler_.handle(authorized.value(), authority, context);
         } catch (...) {
             return failure(Domain::ErrorCodes::InternalFailure,
                 "The deterministic tool invocation could not be routed.");

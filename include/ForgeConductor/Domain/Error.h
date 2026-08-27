@@ -32,6 +32,7 @@ inline constexpr std::string_view Unauthorized = "unauthorized";
 inline constexpr std::string_view PathOutsideAuthority = "path_outside_authority";
 inline constexpr std::string_view ShellDisabled = "shell_disabled";
 inline constexpr std::string_view ProcessLaunchFailed = "process_launch_failed";
+inline constexpr std::string_view ProcessExitNonzero = "process_exit_nonzero";
 inline constexpr std::string_view ProcessTimeout = "process_timeout";
 inline constexpr std::string_view ProcessTerminationUnconfirmed =
     "process_termination_unconfirmed";

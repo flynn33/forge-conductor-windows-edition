@@ -145,6 +145,8 @@ void testSourceSchemasAndWindowsDelta()
     REQUIRE(fsRead.at("required") == Json::array({"path"}));
     REQUIRE(fsRead.at("properties").at("offset").at("description") ==
         "1-based start line for a partial read");
+    REQUIRE(fsRead.at("properties").at("byte_offset").at("description") ==
+        "UTF-8 byte offset returned by next_byte_offset for an oversized line");
     REQUIRE(fsRead.at("properties").at("length").at("description") ==
         "Number of lines to return (alias: limit)");
 

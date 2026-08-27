@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T035249197Z-9c804050",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "cmake --build --preset windows-msvc-x64-debug --target ForgeConductor.Contracts.ContractTests ForgeConductor.Continuity.DocumentCodecTests ForgeConductor.Continuity.CoordinatorTests ForgeConductor.Mcp.CatalogCodecTests ForgeConductor.Mcp.ExecutionServicesTests ForgeConductor.Mcp.ToolRouterTests ForgeConductor.Mcp.InvocationGuardTests ForgeConductor.Mcp.ToolPackAdapterTests -- /m\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\nctest --preset windows-msvc-x64-debug -R \"^(ForgeConductor\\.Mcp\\.(CatalogCodec|ExecutionServices|ToolRouter|InvocationGuard|ToolPackAdapter)Tests|ForgeConductor\\.Continuity\\.(DocumentCodec|Coordinator)Tests|ForgeConductor\\.Contracts\\.ContractTests)$\" --output-on-failure\nexit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T03:52:49.2051666+00:00",
+  "end_utc": "2026-08-27T03:53:57.5210260+00:00",
+  "exit_code": 8,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T035249197Z-9c804050.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T035249197Z-9c804050.stderr.txt",
+  "stdout_sha256": "c246d2f318b20b3c733b5196630f8f53e5f1880a4183287147679595aa330a6a",
+  "stderr_sha256": "18e00877dc1071c85cd4f479d451bebeef8309022e46cf8c63b0bed5151984a4"
+}
