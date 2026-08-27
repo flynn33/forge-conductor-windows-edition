@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "phase": "P15",
+  "gate": "G15",
+  "checkpoint": "g15_attempt_2_predeployment_diagnostic",
+  "status": "resolved",
+  "recorded_utc": "2026-08-27T14:41:46.3729619+00:00",
+  "implementation_commit": "439b529e75948ac3d05d6e87e3ff552c183c78d5",
+  "resumed_attempt": {
+    "command_record": ".forge-codex/state/commands/20260827T143842697Z-c3dff953.json",
+    "command_record_sha256": "2616d14dc6d09ed03292ab40b16c57dc43b13917a3a26cbd7e18d065c3eb8ad4",
+    "stdout_sha256": "f573d80525a33842e36ebaa28d68299b903e73efd283d824306f026057c0355b",
+    "stderr_sha256": "6a3f4c2358e1ff929bdaa7d48505087c347a4e5cf295a6ce10448d13d7e5054e",
+    "exit_code": 1,
+    "timed_out": false,
+    "repeat_full_rebuild": false,
+    "repeat_full_g15_ctest": false,
+    "failed_real_host_evidence": ".forge-codex/state/evidence/P15/windows-lm-studio-real-host-attempt-2-failed.json",
+    "failed_real_host_evidence_sha256": "01f6be9dd3bc09b16f1cda35b419b25eee14f1da8f94a1608f71d6fef3398832"
+  },
+  "failure": {
+    "stage": "snapshot_file",
+    "error_code": "limit_exceeded",
+    "cause": "The x64 runner converted size_t::max() to signed LONGLONG while checking snapshot allocation capacity. The conversion produced -1, so every nonempty bounded snapshot was rejected.",
+    "deployment_started": false,
+    "deployment_left_installed": false,
+    "lm_studio_launched": false
+  },
+  "observed_impact": {
+    "lm_studio_process_count": 0,
+    "configuration_bytes": 23,
+    "configuration_sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02",
+    "configuration_matches_baseline": true,
+    "host_state_mutated": false
+  },
+  "correction": {
+    "description": "Check the nonnegative native file size through unsigned 64-bit comparisons before the bounded size_t allocation conversion.",
+    "focused_command_record": ".forge-codex/state/commands/20260827T144053220Z-295171a5.json",
+    "focused_command_record_sha256": "07b7addcbbc4d5838a80a3860f236536d1570b7024eee695be759e02fe79de8d",
+    "stdout_sha256": "d288d931d1cd2495dfc58408035f5d688d3c56a37e4eed3d48add2131f8ac88c",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "exit_code": 0,
+    "timed_out": false,
+    "focused_targets_built": [
+      "ForgeConductor.LMStudio.RealHostTests"
+    ],
+    "source_hashes": {
+      "tests/Infrastructure/WindowsLMStudioRealHostTests.cpp": "4e57c864b1656e3d65779a8984d0b4a39d8fa5713a83b7820c0abb75515bcecc"
+    }
+  },
+  "resume_policy": {
+    "authoritative_full_rebuild_invocations": 1,
+    "authoritative_full_test_invocations": 1,
+    "corrective_focused_build_invocations": 2,
+    "corrective_focused_test_invocations": 1,
+    "completed_real_host_attempts": 2,
+    "successful_real_host_qualifications": 0
+  }
+}

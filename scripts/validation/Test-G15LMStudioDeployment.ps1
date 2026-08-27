@@ -22,6 +22,15 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'Resume')]
     [string]$CorrectiveCommandRecordPath,
 
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$SecondFailedCommandRecordPath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$SecondFailedRealHostEvidencePath,
+
+    [Parameter(Mandatory, ParameterSetName = 'Resume')]
+    [string]$RunnerCorrectiveCommandRecordPath,
+
     [switch]$StaticOnly
 )
 
@@ -578,6 +587,10 @@ $priorCommandEvidence = $null
 $correctiveCommandEvidence = $null
 $priorFailedEvidenceCanonicalPath = $null
 $priorFailedEvidenceSha256 = $null
+$secondFailedCommandEvidence = $null
+$secondFailedEvidenceCanonicalPath = $null
+$secondFailedEvidenceSha256 = $null
+$runnerCorrectiveCommandEvidence = $null
 if ($Resume) {
     Write-Host 'G15: validating exact prior and corrective evidence for fail-closed resume.'
     Assert-True (-not [string]::Equals(
@@ -602,6 +615,26 @@ if ($Resume) {
         '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ' +
         "& 'out/build/windows-msvc-x64/bin/Debug/" +
         "ForgeConductor.Infrastructure.UnitTests.exe'; exit `$LASTEXITCODE"
+    $expectedSecondFailedCommand = $expectedPriorCommand + ' -Resume' +
+        " -PriorFailedCommandRecordPath '" + $PriorFailedCommandRecordPath + "'" +
+        " -PriorFailedRealHostEvidencePath '" + $PriorFailedRealHostEvidencePath + "'" +
+        " -CorrectiveCommandRecordPath '" + $CorrectiveCommandRecordPath + "'"
+    $expectedRunnerCorrectiveCommand =
+        "cmake --build 'out/build/windows-msvc-x64' --config Debug --target " +
+        'ForgeConductor.LMStudio.RealHostTests --parallel ' + $Parallel +
+        '; exit $LASTEXITCODE'
+    Assert-True ([string]::Equals(
+        $SecondFailedCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T143842697Z-c3dff953.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'second failed command uses its exact canonical record path'
+    Assert-True ([string]::Equals(
+        $RunnerCorrectiveCommandRecordPath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\commands\20260827T144053220Z-295171a5.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'runner correction uses its exact canonical record path'
     $priorCommandEvidence = Read-ValidatedCommandRecord `
         -Path $PriorFailedCommandRecordPath `
         -ExpectedCommand $expectedPriorCommand `
@@ -612,6 +645,16 @@ if ($Resume) {
         -ExpectedCommand $expectedCorrectiveCommand `
         -ExpectedExitCode 0 `
         -Message 'corrective focused command record'
+    $secondFailedCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $SecondFailedCommandRecordPath `
+        -ExpectedCommand $expectedSecondFailedCommand `
+        -ExpectedExitCode 1 `
+        -Message 'second failed resumed G15 command record'
+    $runnerCorrectiveCommandEvidence = Read-ValidatedCommandRecord `
+        -Path $RunnerCorrectiveCommandRecordPath `
+        -ExpectedCommand $expectedRunnerCorrectiveCommand `
+        -ExpectedExitCode 0 `
+        -Message 'runner-only corrective command record'
     Assert-CommandLedgerEvent `
         -RecordPath $priorCommandEvidence.RecordPath `
         -ExpectedExitCode 1 `
@@ -620,6 +663,14 @@ if ($Resume) {
         -RecordPath $correctiveCommandEvidence.RecordPath `
         -ExpectedExitCode 0 `
         -Message 'corrective focused command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $secondFailedCommandEvidence.RecordPath `
+        -ExpectedExitCode 1 `
+        -Message 'second failed resumed G15 command'
+    Assert-CommandLedgerEvent `
+        -RecordPath $runnerCorrectiveCommandEvidence.RecordPath `
+        -ExpectedExitCode 0 `
+        -Message 'runner-only corrective command'
 
     $priorFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
         $PriorFailedRealHostEvidencePath `
@@ -685,6 +736,70 @@ if ($Resume) {
         'preserved first-attempt error is bounded and nonempty'
     $priorFailedEvidenceSha256 = Get-FileSha256 `
         $priorFailedEvidenceCanonicalPath
+
+    Assert-True ([string]::Equals(
+        $SecondFailedRealHostEvidencePath,
+        (Join-Path $WorkspaceRoot `
+            '.forge-codex\state\evidence\P15\windows-lm-studio-real-host-attempt-2-failed.json'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'second failed evidence uses its exact canonical path'
+    Assert-True (-not [string]::Equals(
+        $SecondFailedRealHostEvidencePath,
+        $RealHostEvidencePath,
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'preserved second failed evidence is distinct from the next evidence target'
+    $secondFailedEvidenceCanonicalPath = Resolve-CanonicalStateFile `
+        $SecondFailedRealHostEvidencePath `
+        'preserved second-attempt real-host evidence' `
+        $maximumRealHostEvidenceBytes
+    Assert-True ([string]::Equals(
+        (Split-Path -Parent $secondFailedEvidenceCanonicalPath),
+        (Join-Path $WorkspaceRoot '.forge-codex\state\evidence\P15'),
+        [StringComparison]::OrdinalIgnoreCase)) `
+        'preserved second-attempt evidence is in the P15 evidence directory'
+    Assert-Exact ([IO.Path]::GetFileName($secondFailedEvidenceCanonicalPath)) `
+        'windows-lm-studio-real-host-attempt-2-failed.json' `
+        'preserved second-attempt evidence canonical leaf'
+    $secondFailedEvidence = Get-Content -Raw -LiteralPath `
+        $secondFailedEvidenceCanonicalPath | ConvertFrom-Json
+    Assert-Set @($secondFailedEvidence.PSObject.Properties.Name) @(
+        'schema_version', 'bounded', 'gate', 'phase', 'result', 'runner', 'sanitized') `
+        'preserved second failed real-host evidence schema'
+    Assert-Set @($secondFailedEvidence.result.PSObject.Properties.Name) @(
+        'deployment_left_installed', 'error', 'error_code', 'retryable',
+        'rollback_requested', 'stage', 'status') `
+        'preserved second failed real-host result schema'
+    Assert-Exact ([int]$secondFailedEvidence.schema_version) 1 `
+        'preserved second failed evidence schema version'
+    Assert-Exact ([string]$secondFailedEvidence.phase) 'P15' `
+        'preserved second failed evidence phase'
+    Assert-Exact ([string]$secondFailedEvidence.gate) 'G15' `
+        'preserved second failed evidence gate'
+    Assert-Exact ([string]$secondFailedEvidence.runner) `
+        'ForgeConductor.LMStudio.RealHostTests' `
+        'preserved second failed evidence runner'
+    Assert-True ([bool]$secondFailedEvidence.bounded) `
+        'preserved second failed evidence remained bounded'
+    Assert-True ([bool]$secondFailedEvidence.sanitized) `
+        'preserved second failed evidence remained sanitized'
+    Assert-Exact ([string]$secondFailedEvidence.result.status) 'failed' `
+        'preserved second-attempt result status'
+    Assert-Exact ([string]$secondFailedEvidence.result.stage) 'snapshot_file' `
+        'preserved second-attempt failure stage'
+    Assert-Exact ([string]$secondFailedEvidence.result.error_code) 'limit_exceeded' `
+        'preserved second-attempt failure code'
+    Assert-Exact ([bool]$secondFailedEvidence.result.retryable) $false `
+        'preserved second-attempt failure retryability'
+    Assert-Exact ([bool]$secondFailedEvidence.result.deployment_left_installed) $false `
+        'second attempt performed no deployment mutation'
+    Assert-Exact ([bool]$secondFailedEvidence.result.rollback_requested) $false `
+        'second attempt required no rollback'
+    Assert-True (-not [string]::IsNullOrWhiteSpace(
+        [string]$secondFailedEvidence.result.error) -and
+        ([string]$secondFailedEvidence.result.error).Length -le 1024) `
+        'preserved second-attempt error is bounded and nonempty'
+    $secondFailedEvidenceSha256 = Get-FileSha256 `
+        $secondFailedEvidenceCanonicalPath
 
     $buildMarker = 'G15: running the single authoritative affected-target Debug rebuild.'
     $testMarker = 'G15: running the deterministic G15 CTest suite once.'
@@ -754,6 +869,27 @@ if ($Resume) {
     Assert-NoMatch $correctiveCommandEvidence.StdoutText `
         '(?m)^\[FAIL\]' 'corrective focused command contains no failed unit test' `
         -CaseSensitive
+
+    Assert-LiteralOccurrenceCount $secondFailedCommandEvidence.StdoutText `
+        'G15: validating exact prior and corrective evidence for fail-closed resume.' 1 `
+        'second attempt prior/corrective evidence validation marker'
+    Assert-LiteralOccurrenceCount $secondFailedCommandEvidence.StdoutText `
+        'G15: prior full build/CTest and corrective focused pass validated; execution is not repeated.' 1 `
+        'second attempt no-repeat confirmation marker'
+    Assert-LiteralOccurrenceCount $secondFailedCommandEvidence.StdoutText `
+        $buildMarker 0 'second attempt full-build marker exclusion'
+    Assert-LiteralOccurrenceCount $secondFailedCommandEvidence.StdoutText `
+        $testMarker 0 'second attempt full-CTest marker exclusion'
+    Assert-LiteralOccurrenceCount $secondFailedCommandEvidence.StdoutText `
+        $runnerMarker 1 'second real-host runner marker'
+
+    Assert-Exact $runnerCorrectiveCommandEvidence.StderrBytes 0L `
+        'runner-only correction stderr bytes'
+    Assert-Exact $runnerCorrectiveCommandEvidence.StderrSha256 $emptySha256 `
+        'runner-only correction empty stderr SHA-256'
+    Assert-LiteralOccurrenceCount $runnerCorrectiveCommandEvidence.StdoutText `
+        'ForgeConductor.LMStudio.RealHostTests.vcxproj ->' 1 `
+        'runner-only correction target completion'
 } else {
     $buildScript = Join-Path $WorkspaceRoot 'scripts\build.ps1'
     Write-Host 'G15: running the single authoritative affected-target Debug rebuild.'
@@ -949,14 +1085,14 @@ $summaryScope = [ordered]@{
     security_hardening_deferred = $true
     authoritative_build_invocations = 1
     authoritative_test_invocations = 1
-    real_host_invocations = if ($Resume) { 2 } else { 1 }
+    real_host_invocations = if ($Resume) { 3 } else { 1 }
     gui_automation_used_against_lm_studio = $false
 }
 if ($Resume) {
     $summaryScope['resumed'] = $true
-    $summaryScope['corrective_focused_build_invocations'] = 1
+    $summaryScope['corrective_focused_build_invocations'] = 2
     $summaryScope['corrective_focused_test_invocations'] = 1
-    $summaryScope['total_real_host_attempts'] = 2
+    $summaryScope['total_real_host_attempts'] = 3
     $summaryScope['successful_real_host_qualifications'] = 1
 }
 $summary = [ordered]@{
@@ -1012,6 +1148,30 @@ if ($Resume) {
         corrective_command_stderr = Get-RelativePathPortable `
             -BasePath $WorkspaceRoot -TargetPath $correctiveCommandEvidence.StderrPath
         corrective_command_stderr_sha256 = $correctiveCommandEvidence.StderrSha256
+        second_failed_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $secondFailedCommandEvidence.RecordPath
+        second_failed_command_record_sha256 = $secondFailedCommandEvidence.RecordSha256
+        second_failed_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $secondFailedCommandEvidence.StdoutPath
+        second_failed_command_stdout_sha256 = $secondFailedCommandEvidence.StdoutSha256
+        second_failed_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $secondFailedCommandEvidence.StderrPath
+        second_failed_command_stderr_sha256 = $secondFailedCommandEvidence.StderrSha256
+        second_failed_real_host_evidence = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $secondFailedEvidenceCanonicalPath
+        second_failed_real_host_evidence_sha256 = $secondFailedEvidenceSha256
+        runner_corrective_command_record = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $runnerCorrectiveCommandEvidence.RecordPath
+        runner_corrective_command_record_sha256 = `
+            $runnerCorrectiveCommandEvidence.RecordSha256
+        runner_corrective_command_stdout = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $runnerCorrectiveCommandEvidence.StdoutPath
+        runner_corrective_command_stdout_sha256 = `
+            $runnerCorrectiveCommandEvidence.StdoutSha256
+        runner_corrective_command_stderr = Get-RelativePathPortable `
+            -BasePath $WorkspaceRoot -TargetPath $runnerCorrectiveCommandEvidence.StderrPath
+        runner_corrective_command_stderr_sha256 = `
+            $runnerCorrectiveCommandEvidence.StderrSha256
     }
 }
 Write-JsonFileAtomic -Path $summaryPath -Value $summary

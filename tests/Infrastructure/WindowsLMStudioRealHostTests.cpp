@@ -529,13 +529,18 @@ struct FileSnapshot final {
              "A snapshot target is not a regular non-reparse file.");
     }
     LARGE_INTEGER size{};
-    if (::GetFileSizeEx(raw, &size) == FALSE || size.QuadPart < 0 ||
-        static_cast<std::uint64_t>(size.QuadPart) > maximumBytes ||
-        size.QuadPart > static_cast<LONGLONG>((std::numeric_limits<std::size_t>::max)())) {
+    if (::GetFileSizeEx(raw, &size) == FALSE || size.QuadPart < 0) {
         fail("snapshot_file", Domain::ErrorCodes::LimitExceeded,
              "A real-host snapshot file exceeds its configured byte bound.");
     }
-    std::vector<std::byte> content(static_cast<std::size_t>(size.QuadPart));
+    const auto unsignedSize = static_cast<std::uint64_t>(size.QuadPart);
+    if (unsignedSize > maximumBytes ||
+        unsignedSize > static_cast<std::uint64_t>(
+            (std::numeric_limits<std::size_t>::max)())) {
+        fail("snapshot_file", Domain::ErrorCodes::LimitExceeded,
+             "A real-host snapshot file exceeds its configured byte bound.");
+    }
+    std::vector<std::byte> content(static_cast<std::size_t>(unsignedSize));
     std::size_t offset{};
     while (offset < content.size()) {
         const DWORD requested = static_cast<DWORD>((std::min)(
