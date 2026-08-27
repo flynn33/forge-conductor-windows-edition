@@ -12,7 +12,6 @@
 #include "Fakes/RecordingContinuityCoordinator.h"
 #include "Fakes/RecordingProjectMemoryService.h"
 #include "Fakes/ShellServiceFake.h"
-#include "Fakes/TelemetryFakes.h"
 #include "Fakes/TextSearchServiceFake.h"
 #include "Fakes/ToolServiceFakes.h"
 
@@ -307,6 +306,46 @@ public:
     void shutdown() noexcept override {}
 };
 
+class RecordingForgeStatusRepository final
+    : public Contracts::IForgeStatusRepository {
+public:
+    void setProjection(Domain::ForgeStatusProjection projection)
+    {
+        projection_ = std::move(projection);
+        failureCode_.reset();
+    }
+
+    void setFailure(std::string code)
+    {
+        failureCode_ = std::move(code);
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ForgeStatusProjection> snapshot(
+        const Domain::OperationContext&) noexcept override
+    {
+        ++calls_;
+        if (failureCode_) {
+            return Domain::Result<Domain::ForgeStatusProjection>::failure(
+                Domain::makeError(
+                    *failureCode_,
+                    "The scripted Forge status projection failed."));
+        }
+        return Domain::Result<Domain::ForgeStatusProjection>::success(
+            projection_);
+    }
+
+    void close() noexcept override { closed_ = true; }
+
+    [[nodiscard]] std::size_t calls() const noexcept { return calls_; }
+    [[nodiscard]] bool closed() const noexcept { return closed_; }
+
+private:
+    Domain::ForgeStatusProjection projection_;
+    std::optional<std::string> failureCode_;
+    std::size_t calls_{};
+    bool closed_{};
+};
+
 void testHandlerContract()
 {
     static_assert(std::is_final_v<Mcp::McpToolPackAdapter>);
@@ -410,6 +449,10 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto catalog = take(Mcp::McpToolCatalog::create());
     Fakes::RecordingApplicationPathsFake applicationPaths;
     Fakes::RecordingAgentCatalogFake agentCatalog;
+    applicationPaths.dataRootResult.set(
+        Domain::Result<Domain::PathText>::success(root));
+    agentCatalog.allResult.set(
+        Domain::Result<std::vector<Domain::AgentSpec>>::success({}));
     Fakes::RecordingAgentSessionServiceFake agentSessions;
     PassiveReportInspector reportInspector;
     PassiveLegacyContinuity legacyContinuity;
@@ -434,7 +477,13 @@ void testRuntimeDispatchAndSchemaPolicy()
     Fakes::RecordingContinuityCoordinator continuity;
     PassiveContinuityCodec continuityCodec;
     PassiveContinuityAutomation continuityAutomation;
-    Fakes::RecordingTelemetryService telemetry;
+    RecordingForgeStatusRepository forgeStatus;
+    const auto firstOpenSession = parse<Domain::SessionId>(
+        "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    const auto secondOpenSession = parse<Domain::SessionId>(
+        "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    forgeStatus.setProjection(Domain::ForgeStatusProjection{
+        3U, {firstOpenSession, secondOpenSession}});
     Fakes::FakeClock clock{
         Domain::UtcTimePoint{}, Domain::MonotonicTimePoint{}};
     Fakes::SequenceUuidGenerator uuidGenerator{
@@ -465,7 +514,7 @@ void testRuntimeDispatchAndSchemaPolicy()
             continuity,
             continuityCodec,
             continuityAutomation,
-            telemetry,
+            forgeStatus,
             clock,
             uuidGenerator,
             Domain::ProjectMemoryLimits{},
@@ -515,6 +564,40 @@ void testRuntimeDispatchAndSchemaPolicy()
             requestId,
             authority);
     };
+
+    auto forgeStatusCall = authorize(
+        "forge_status",
+        Domain::ToolEffect::Read,
+        "{}",
+        "request-forge-status");
+    auto forgeStatusResult = adapter->handle(
+        forgeStatusCall, authority, context);
+    REQUIRE(forgeStatusResult);
+    const auto forgeStatusPayload = Json::parse(
+        forgeStatusResult.value().canonicalPayload);
+    REQUIRE(forgeStatusPayload.at("ok") == true);
+    REQUIRE(forgeStatusPayload.at("home") == root.value());
+    REQUIRE(forgeStatusPayload.at("presence_count") == 3U);
+    REQUIRE(forgeStatusPayload.at("open_sessions") == 2U);
+    REQUIRE(forgeStatusPayload.at("open_session_ids") == Json::array(
+        {firstOpenSession.value(), secondOpenSession.value()}));
+    REQUIRE(forgeStatus.calls() == 1U);
+
+    forgeStatus.setFailure(
+        std::string{Domain::ErrorCodes::DatabaseBusy});
+    auto failedForgeStatusCall = authorize(
+        "forge_status",
+        Domain::ToolEffect::Read,
+        "{}",
+        "request-forge-status-failure");
+    auto failedForgeStatus = adapter->handle(
+        failedForgeStatusCall, authority, context);
+    REQUIRE(!failedForgeStatus);
+    REQUIRE(failedForgeStatus.error().code ==
+            Domain::ErrorCodes::DatabaseBusy);
+    REQUIRE(forgeStatus.calls() == 2U);
+    forgeStatus.setProjection(Domain::ForgeStatusProjection{
+        3U, {firstOpenSession, secondOpenSession}});
 
     const auto handoffId = parse<Domain::LegacyHandoffId>(
         "recovered-adapter-context");

@@ -16,6 +16,8 @@ class WindowsDatabaseStore;
 class WindowsLegacyMemoryRepository;
 class WindowsAgentSessionRepository;
 class WindowsLegacyContinuityRepository;
+class WindowsAuditRepository;
+class WindowsForgeStatusRepository;
 
 class WindowsCentralDatabase final {
 public:
@@ -47,6 +49,8 @@ private:
     friend class WindowsLegacyMemoryRepository;
     friend class WindowsAgentSessionRepository;
     friend class WindowsLegacyContinuityRepository;
+    friend class WindowsAuditRepository;
+    friend class WindowsForgeStatusRepository;
 
     explicit WindowsCentralDatabase(std::unique_ptr<Impl> implementation) noexcept;
 

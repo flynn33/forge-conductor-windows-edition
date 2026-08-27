@@ -459,6 +459,42 @@ void agentAndLegacyMemoryParity()
     REQUIRE(!Domain::validateLegacyMemoryProjection(projected, true));
 }
 
+void forgeStatusProjectionBoundaries()
+{
+    Domain::ForgeStatusProjection empty;
+    REQUIRE(Domain::validateForgeStatusProjection(empty));
+
+    Domain::ForgeStatusProjection bounded;
+    bounded.presenceCount = 7U;
+    bounded.openSessionIds.reserve(
+        Domain::ForgeStatusLimits::MaximumOpenSessionIds);
+    for (std::size_t index{};
+         index < Domain::ForgeStatusLimits::MaximumOpenSessionIds;
+         ++index) {
+        const auto suffix = std::to_string(index);
+        bounded.openSessionIds.push_back(parsed<Domain::SessionId>(
+            "00000000-0000-4000-8000-" +
+            std::string(12U - suffix.size(), '0') + suffix));
+    }
+    REQUIRE(Domain::validateForgeStatusProjection(bounded));
+
+    Domain::ForgeStatusProjection duplicate{
+        1U,
+        {bounded.openSessionIds.front(), bounded.openSessionIds.front()}};
+    const auto duplicateResult =
+        Domain::validateForgeStatusProjection(duplicate);
+    REQUIRE(!duplicateResult);
+    REQUIRE(duplicateResult.error().code ==
+            Domain::ErrorCodes::IntegrityFailure);
+
+    bounded.openSessionIds.push_back(parsed<Domain::SessionId>(
+        "ffffffff-ffff-4fff-8fff-ffffffffffff"));
+    const auto oversizedResult =
+        Domain::validateForgeStatusProjection(bounded);
+    REQUIRE(!oversizedResult);
+    REQUIRE(oversizedResult.error().code == Domain::ErrorCodes::LimitExceeded);
+}
+
 void projectMemoryBoundaries()
 {
     const auto limits = Domain::projectMemoryLimitsForProfile(
@@ -1256,6 +1292,7 @@ int main()
         {"path_boundaries", pathBoundaries},
         {"resource_and_configuration_boundaries", resourceAndConfigurationBoundaries},
         {"agent_and_legacy_memory_parity", agentAndLegacyMemoryParity},
+        {"forge_status_projection_boundaries", forgeStatusProjectionBoundaries},
         {"project_memory_boundaries", projectMemoryBoundaries},
         {"continuity_state_and_integrity", continuityStateAndIntegrity},
         {"process_tool_telemetry_and_manager_bounds", processToolTelemetryAndManagerBounds},

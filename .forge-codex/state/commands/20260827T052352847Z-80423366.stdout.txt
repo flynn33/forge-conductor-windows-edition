@@ -1,0 +1,4 @@
+Ledger validation passed: 151 event(s).
+No-attribution gate passed.
+No-Python gate passed.
+P14 checkpoint integrity validation passed.

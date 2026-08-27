@@ -6,13 +6,13 @@
 #include "ForgeConductor/Contracts/IContinuityDocumentCodec.h"
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/IFoundationServices.h"
+#include "ForgeConductor/Contracts/IForgeStatusRepository.h"
 #include "ForgeConductor/Contracts/ILegacyContextContinuityService.h"
 #include "ForgeConductor/Contracts/ILegacyMemoryService.h"
 #include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"
 #include "ForgeConductor/Contracts/INativeToolServices.h"
 #include "ForgeConductor/Contracts/IPathGlobService.h"
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
-#include "ForgeConductor/Contracts/ITelemetryService.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
 
 #include <cstdint>
@@ -48,7 +48,7 @@ struct McpToolPackDependencies final {
     Contracts::IContinuityCoordinator& continuity;
     Contracts::IContinuityDocumentCodec& continuityCodec;
     Contracts::IContinuityAutomation& continuityAutomation;
-    Contracts::ITelemetryService& telemetry;
+    Contracts::IForgeStatusRepository& forgeStatus;
     Contracts::IClock& clock;
     Contracts::IUuidGenerator& uuidGenerator;
     Domain::ProjectMemoryLimits projectMemoryLimits;

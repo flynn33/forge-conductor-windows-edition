@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "authoritative_mcp_runtime_persistence",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T05:20:40.8360062+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "msbuild": "17.14.40+3e7442088",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2",
+    "sqlite": "Windows SDK winsqlite3"
+  },
+  "build_command_record": ".forge-codex/state/commands/20260827T051933035Z-a5353193.json",
+  "command_record": ".forge-codex/state/commands/20260827T052009026Z-5792fdf6.json",
+  "validation_command_record": ".forge-codex/state/commands/20260827T052352847Z-80423366.json",
+  "diagnostic_command_records": [
+    ".forge-codex/state/commands/20260827T051638910Z-d90c38e6.json"
+  ],
+  "exit_code": 0,
+  "measured_result": {
+    "build_targets": 8,
+    "tests_selected": 8,
+    "tests_passed": 8,
+    "tests_failed": 0,
+    "ctest_real_seconds": 7.41,
+    "maximum_recent_audit_entries": 200,
+    "maximum_retained_audit_entries": 10000,
+    "maximum_open_sessions": 10000,
+    "maximum_legacy_session_page_size": 128
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Domain.lib",
+      "bytes": 11721894,
+      "sha256": "bb2f8242b9db7b816d965d6326d8ed062b24da66b7f874fa79ac200e5f9b0883"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Mcp.lib",
+      "bytes": 80282548,
+      "sha256": "855b5d48d823227e4b53f91f58a81709284ad5b4ef2b9ba66cd6201ebbbc8f21"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Persistence.Windows.lib",
+      "bytes": 116662428,
+      "sha256": "30e597536fd6c5eb9767615b28085cad4a1e2c5fff4a2bed6a80e036dc36aa2d"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Agents.RepositoryWindowsTests.exe",
+      "bytes": 4588032,
+      "sha256": "a88aa4bfe8dc7d9e5116cab61d501dd33abf9675dbb7aceb24eb6f1724659966"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.ContractTests.exe",
+      "bytes": 4119552,
+      "sha256": "51612975a8c60898d731c2d460cdd4dd75c5c70c7a6b7b63662f37c38f080da8"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.HeaderSelfContainment.exe",
+      "bytes": 163840,
+      "sha256": "6e7354b3ec790140a48320909cad8691db9e37282a77488752a116494322732b"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Domain.UnitTests.exe",
+      "bytes": 1925120,
+      "sha256": "3891bbc15face188fc56c031e4d950d63a2f6eabd096b7e7b787d2a190a7ed9f"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolPackAdapterTests.exe",
+      "bytes": 4321280,
+      "sha256": "c60764a77d6aa60a8e0a494dd2e3ce7a11572bea86411b94ba04d3246783d881"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Persistence.AuditRepositoryWindowsTests.exe",
+      "bytes": 2987520,
+      "sha256": "ebf43246173ccc777040e642ad19e2766a10a7efa19225a3f170196a6ae38db1"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests.exe",
+      "bytes": 2891776,
+      "sha256": "54900f5aa16948dec0fa55a36fc856d4a6626a2027ec23734dfb5ba5c920d076"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Persistence.HeaderSelfContainment.exe",
+      "bytes": 81408,
+      "sha256": "7340bcdf2849b987da5838abf4e58f028516b21e7988b0a4b9fbce0b5ad4369a"
+    }
+  ],
+  "qualified_surface": [
+    "bounded atomic audit append and retention against the shared central database without retaining raw arguments",
+    "bounded newest-first audit retrieval from the authoritative current schema with legacy column mirroring",
+    "authoritative client-scoped legacy continuity session discovery and open-state checks",
+    "validated active-projection binding with latest-owned-open-session fallback and no persistence repair side effects",
+    "direct central-database forge status projection for current client presence and deterministically ordered open sessions",
+    "MCP forge_status error propagation without a dependency on later telemetry phases",
+    "contract and aggregate-header self-containment for the new persistence boundary"
+  ],
+  "remaining_limitations": [
+    "CLI serve and executable production composition",
+    "client presence lifecycle persistence and stale-presence policy",
+    "legacy continuity statusSummary and auto-continuity status parity",
+    "real legacy projection inspection and persistence receipts",
+    "primary and fallback process semantic snapshots",
+    "complete per-tool semantic fixtures and remaining G14 evidence"
+  ]
+}

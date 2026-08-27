@@ -1460,7 +1460,15 @@ private:
             memoryRequest.includeBody = false;
             memoryRequest.requestedLimit = 1;
             auto memory = dependencies_.legacyMemory.list(memoryRequest, context);
-            const auto snapshot = dependencies_.telemetry.latest();
+            auto status = dependencies_.forgeStatus.snapshot(context);
+            if (!status) {
+                return propagate<Json>(std::move(status));
+            }
+            auto validStatus =
+                Domain::validateForgeStatusProjection(status.value());
+            if (!validStatus) {
+                return propagate<Json>(std::move(validStatus));
+            }
             Json agents = Json::array();
             for (const auto& spec : catalog.value()) {
                 agents.push_back(spec.id.value());
@@ -1470,14 +1478,8 @@ private:
                 tools.push_back(item.tool.name);
             }
             Json openIds = Json::array();
-            std::size_t presenceCount{};
-            if (snapshot) {
-                presenceCount = snapshot->forge.presenceCount;
-                for (const auto& session : snapshot->forge.agentSessions) {
-                    if (Domain::isOpen(session.status)) {
-                        openIds.push_back(session.id.value());
-                    }
-                }
+            for (const auto& sessionId : status.value().openSessionIds) {
+                openIds.push_back(sessionId.value());
             }
             const std::size_t memoryCount = memory
                 ? memory.value().visibleTotal
@@ -1491,7 +1493,7 @@ private:
                 {"agents", std::move(agents)},
                 {"tools", std::move(tools)},
                 {"memory_note_count", memoryCount},
-                {"presence_count", presenceCount},
+                {"presence_count", status.value().presenceCount},
                 {"open_sessions", openIds.size()},
                 {"open_session_ids", std::move(openIds)},
                 {"continuity",

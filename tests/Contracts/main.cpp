@@ -58,6 +58,7 @@ FORGE_ASSERT_INTERFACE(Contracts::IInstallerDeploymentService);
 FORGE_ASSERT_INTERFACE(Contracts::ILMStudioDeploymentService);
 FORGE_ASSERT_INTERFACE(Contracts::ILMStudioEnvironment);
 FORGE_ASSERT_INTERFACE(Contracts::IForgeApplicationLifecycle);
+FORGE_ASSERT_INTERFACE(Contracts::IForgeStatusRepository);
 FORGE_ASSERT_INTERFACE(Contracts::IClock);
 FORGE_ASSERT_INTERFACE(Contracts::IUuidGenerator);
 FORGE_ASSERT_INTERFACE(Contracts::IHasher);
@@ -187,6 +188,10 @@ using AgentStatusSignature = Domain::Result<Domain::AgentSession> (
         const Contracts::WorkspaceAuthority&,
         const Contracts::AuthorizedToolCall&,
         const Domain::OperationContext&) noexcept;
+using ForgeStatusSnapshotSignature =
+    Domain::Result<Domain::ForgeStatusProjection> (
+        Contracts::IForgeStatusRepository::*)(
+            const Domain::OperationContext&) noexcept;
 
 static_assert(std::is_same_v<
     decltype(&Contracts::IDeadlineScheduler::waitUntil),
@@ -200,6 +205,9 @@ static_assert(std::is_same_v<
 static_assert(std::is_same_v<
     decltype(&Contracts::IAgentSessionService::status),
     AgentStatusSignature>);
+static_assert(std::is_same_v<
+    decltype(&Contracts::IForgeStatusRepository::snapshot),
+    ForgeStatusSnapshotSignature>);
 
 void expect(const bool condition, const std::string_view message)
 {

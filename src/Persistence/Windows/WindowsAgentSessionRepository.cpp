@@ -45,6 +45,8 @@ constexpr std::size_t MaximumTagsJsonBytes = 16U * 1024U;
 constexpr std::size_t MaximumPersistedIdentifierBytes = 256U;
 constexpr std::size_t MaximumBoundedRows =
     Domain::AgentSessionLimits::MaximumSessionQueryRows;
+constexpr std::string_view LegacyResumeHint =
+    "agent_run_status then continue";
 constexpr std::string_view OpenStatusPredicate =
     "status IN ('open','active','running','started')";
 constexpr std::string_view RunColumns =
@@ -667,6 +669,39 @@ template <typename SqlOwner>
     return run;
 }
 
+[[nodiscard]] Domain::LegacyAgentContinuitySnapshot legacySnapshot(
+    const Domain::AgentRunRecord& run)
+{
+    Domain::LegacyAgentContinuitySnapshot snapshot{
+        run.session.id,
+        run.session.agentId,
+        run.goal.value_or(std::string{}),
+        run.workingDirectory
+            ? std::optional<std::string>{run.workingDirectory->value()}
+            : std::nullopt,
+        std::string{Domain::wireName(run.session.status)},
+        run.session.updatedAt,
+        std::string{LegacyResumeHint}};
+    take(Domain::validateLegacyAgentContinuitySnapshot(snapshot));
+    return snapshot;
+}
+
+[[nodiscard]] std::optional<Domain::LegacyActiveBindingSnapshot>
+legacyBinding(const Domain::AgentRunRecord& run)
+{
+    if (!run.goal) {
+        return std::nullopt;
+    }
+    Domain::LegacyActiveBindingSnapshot binding{
+        run.session.id,
+        *run.goal,
+        run.workingDirectory
+            ? std::optional<std::string>{run.workingDirectory->value()}
+            : std::nullopt};
+    take(Domain::validateLegacyActiveBindingSnapshot(binding));
+    return binding;
+}
+
 template <typename SqlOwner>
 [[nodiscard]] std::optional<Domain::AgentRunRecord> selectRunById(
     SqlOwner& owner,
@@ -1151,6 +1186,7 @@ template <typename SqlOwner>
     SqlOwner& owner,
     const Domain::ClientId& clientId,
     const std::optional<Domain::SessionId>& except,
+    const std::size_t maximumCount,
     const Domain::OperationContext& context)
 {
     std::string sql{"SELECT "};
@@ -1168,17 +1204,18 @@ template <typename SqlOwner>
         take(statement.bindText(parameter++, except->value()));
     }
     take(statement.bindInt64(
-        parameter, static_cast<std::int64_t>(MaximumBoundedRows + 1U)));
+        parameter, static_cast<std::int64_t>(maximumCount + 1U)));
     std::vector<Domain::AgentRunRecord> runs;
+    runs.reserve(maximumCount);
     for (;;) {
         const auto stepped = take(statement.step());
         if (stepped == WinsqliteStepResult::Done) {
             break;
         }
-        if (runs.size() == MaximumBoundedRows) {
+        if (runs.size() == maximumCount) {
             fail(Domain::makeError(
                 Domain::ErrorCodes::LimitExceeded,
-                "Open agent sessions exceed the bounded transaction limit."));
+                "Open agent sessions exceed the requested bounded limit."));
         }
         runs.push_back(readRunRow(statement));
     }
@@ -1194,7 +1231,7 @@ template <typename SqlOwner>
     const Domain::OperationContext& context)
 {
     auto runs = selectOpenRunsForClient(
-        transaction, clientId, except, context);
+        transaction, clientId, except, MaximumBoundedRows, context);
     for (auto& run : runs) {
         const auto effectiveClosedAt =
             (std::max)(closedAt, run.session.updatedAt);
@@ -2181,6 +2218,119 @@ WindowsAgentSessionRepository::closeStale(
                         AgentSessionTransactionKind::CloseStale,
                         AgentSessionTransactionCheckpoint::AfterCommit);
                     return Domain::AgentStaleCloseOutcome{std::move(closed)};
+                });
+            }));
+    });
+}
+
+Domain::Result<std::vector<Domain::LegacyAgentContinuitySnapshot>>
+WindowsAgentSessionRepository::listOpenForClient(
+    const Domain::ClientId& clientId,
+    const std::size_t maximumCount,
+    const Domain::OperationContext& context) noexcept
+{
+    return guarded<std::vector<Domain::LegacyAgentContinuitySnapshot>>([&]() {
+        if (maximumCount == 0U ||
+            maximumCount >
+                Domain::LegacyContinuityLimits::MaximumAgentSnapshots) {
+            fail(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The legacy agent-session snapshot limit is invalid."));
+        }
+        auto& store = requireStore(
+            implementation_ ? implementation_->repositoryStore() : nullptr);
+        return take(runOnStore<
+            std::vector<Domain::LegacyAgentContinuitySnapshot>>(
+            store,
+            "List open legacy continuity agent sessions",
+            context,
+            [&](WinsqliteConnection& connection) noexcept {
+                return guarded<
+                    std::vector<Domain::LegacyAgentContinuitySnapshot>>([&]() {
+                    auto runs = selectOpenRunsForClient(
+                        connection,
+                        clientId,
+                        std::nullopt,
+                        maximumCount,
+                        context);
+                    std::vector<Domain::LegacyAgentContinuitySnapshot> snapshots;
+                    snapshots.reserve(runs.size());
+                    for (const auto& run : runs) {
+                        snapshots.push_back(legacySnapshot(run));
+                    }
+                    return snapshots;
+                });
+            }));
+    });
+}
+
+Domain::Result<bool> WindowsAgentSessionRepository::isOpen(
+    const Domain::SessionId& sessionId,
+    const Domain::OperationContext& context) noexcept
+{
+    return guarded<bool>([&]() {
+        auto& store = requireStore(
+            implementation_ ? implementation_->repositoryStore() : nullptr);
+        return take(runOnStore<bool>(
+            store,
+            "Read legacy continuity agent-session state",
+            context,
+            [&](WinsqliteConnection& connection) noexcept {
+                return guarded<bool>([&]() {
+                    const auto run = selectRunById(
+                        connection, sessionId, context);
+                    return run && Domain::isOpen(run->session.status);
+                });
+            }));
+    });
+}
+
+Domain::Result<std::optional<Domain::LegacyActiveBindingSnapshot>>
+WindowsAgentSessionRepository::binding(
+    const Domain::ClientId& clientId,
+    const Domain::OperationContext& context) noexcept
+{
+    return guarded<
+        std::optional<Domain::LegacyActiveBindingSnapshot>>([&]() {
+        auto& store = requireStore(
+            implementation_ ? implementation_->repositoryStore() : nullptr);
+        return take(runOnStore<
+            std::optional<Domain::LegacyActiveBindingSnapshot>>(
+            store,
+            "Read legacy continuity active binding",
+            context,
+            [&](WinsqliteConnection& connection) noexcept {
+                return guarded<
+                    std::optional<Domain::LegacyActiveBindingSnapshot>>([&]() {
+                    const auto stored = selectMemoryProjection(
+                        connection, activeProjectionKey(clientId), context);
+                    if (stored) {
+                        const auto projected = decodeActiveProjection(*stored);
+                        const auto run = selectRunById(
+                            connection, projected.sessionId, context);
+                        if (run && Domain::isOpen(run->session.status) &&
+                            run->session.clientId ==
+                                std::optional<Domain::ClientId>{clientId} &&
+                            run->session.agentId == projected.agentId &&
+                            exactProjectionTags(
+                                *stored, "agent_active", run->session.agentId)) {
+                            return legacyBinding(*run);
+                        }
+                    }
+
+                    std::string sql{"SELECT "};
+                    sql += RunColumns;
+                    sql += " FROM agent_sessions WHERE client_id=? AND ";
+                    sql += OpenStatusPredicate;
+                    sql +=
+                        " ORDER BY julianday(updated_at) DESC,id DESC LIMIT 1";
+                    auto statement = take(connection.prepare(sql, context));
+                    take(statement.bindText(1, clientId.value()));
+                    if (take(statement.step()) == WinsqliteStepResult::Done) {
+                        return std::optional<
+                            Domain::LegacyActiveBindingSnapshot>{};
+                    }
+                    return legacyBinding(readRunRow(statement));
                 });
             }));
     });

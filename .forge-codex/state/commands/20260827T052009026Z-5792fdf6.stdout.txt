@@ -1,0 +1,34 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  8: ForgeConductor.Mcp.ToolPackAdapterTests
+1/8 Test  #8: ForgeConductor.Mcp.ToolPackAdapterTests ........................   Passed    0.21 sec
+    Start 11: ForgeConductor.Agents.RepositoryWindowsTests
+2/8 Test #11: ForgeConductor.Agents.RepositoryWindowsTests ...................   Passed    5.76 sec
+    Start 12: ForgeConductor.Domain.UnitTests
+3/8 Test #12: ForgeConductor.Domain.UnitTests ................................   Passed    0.14 sec
+    Start 14: ForgeConductor.Contracts.ContractTests
+4/8 Test #14: ForgeConductor.Contracts.ContractTests .........................   Passed    0.04 sec
+    Start 16: ForgeConductor.Contracts.HeaderSelfContainment
+5/8 Test #16: ForgeConductor.Contracts.HeaderSelfContainment .................   Passed    0.03 sec
+    Start 22: ForgeConductor.Persistence.AuditRepositoryWindowsTests
+6/8 Test #22: ForgeConductor.Persistence.AuditRepositoryWindowsTests .........   Passed    0.42 sec
+    Start 23: ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests
+7/8 Test #23: ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests ...   Passed    0.74 sec
+    Start 25: ForgeConductor.Persistence.HeaderSelfContainment
+8/8 Test #25: ForgeConductor.Persistence.HeaderSelfContainment ...............   Passed    0.04 sec
+
+100% tests passed out of 8
+
+Label Time Summary:
+G05              =   0.22 sec*proc (3 tests)
+G07              =   0.04 sec*proc (1 test)
+G10              =   5.76 sec*proc (1 test)
+G14              =   1.37 sec*proc (3 tests)
+T-AGENT          =   5.76 sec*proc (1 test)
+T-DB             =   6.92 sec*proc (3 tests)
+T-INTEGRATION    =   1.37 sec*proc (3 tests)
+T-MCP            =   1.37 sec*proc (3 tests)
+T-PARITY         =   0.21 sec*proc (1 test)
+T-SEC            =   6.92 sec*proc (3 tests)
+T-UNIT           =   7.38 sec*proc (8 tests)
+
+Total Test time (real) =   7.41 sec

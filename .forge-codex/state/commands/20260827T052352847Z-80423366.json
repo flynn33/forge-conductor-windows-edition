@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T052352847Z-80423366",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "$ErrorActionPreference = \"Stop\"\n$workspace = (Get-Location).Path\n& \"$workspace\\.forge-codex\\instructions\\scripts\\Verify-Ledger.ps1\" -WorkspaceRoot $workspace\n$jsonPaths = @(\n  '.forge-codex/state/run-state.json',\n  '.forge-codex/state/evidence/P14/authoritative-mcp-runtime-persistence-checkpoint.json',\n  '.forge-codex/state/commands/20260827T051638910Z-d90c38e6.json',\n  '.forge-codex/state/commands/20260827T051933035Z-a5353193.json',\n  '.forge-codex/state/commands/20260827T052009026Z-5792fdf6.json'\n)\nforeach ($relative in $jsonPaths) {\n  $null = Get-Content -Raw -LiteralPath (Join-Path $workspace $relative) | ConvertFrom-Json\n}\n& \"$workspace\\.forge-codex\\instructions\\scripts\\Validate-NoAttribution.ps1\" -WorkspaceRoot $workspace\n& \"$workspace\\.forge-codex\\instructions\\scripts\\Validate-NoPython.ps1\" -WorkspaceRoot $workspace\n& git diff --check\nif ($LASTEXITCODE -ne 0) { throw \"git diff --check failed with exit code $LASTEXITCODE.\" }\n$textPaths = @(\n  '.forge-codex/state/event-ledger.jsonl',\n  '.forge-codex/state/run-state.json',\n  '.forge-codex/state/decisions/P14-005-authoritative-mcp-runtime-persistence.md',\n  '.forge-codex/state/evidence/P14/authoritative-mcp-runtime-persistence-checkpoint.json',\n  'CMakeLists.txt',\n  'include/ForgeConductor/Contracts/IForgeStatusRepository.h',\n  'include/ForgeConductor/Domain/ForgeStatusModels.h',\n  'include/ForgeConductor/Persistence/Windows/WindowsAuditRepository.h',\n  'include/ForgeConductor/Persistence/Windows/WindowsForgeStatusRepository.h',\n  'src/Domain/ForgeStatusModels.cpp',\n  'src/Persistence/Windows/WindowsAuditRepository.cpp',\n  'src/Persistence/Windows/WindowsForgeStatusRepository.cpp',\n  'tests/Persistence/AuditRepositoryWindowsTests.cpp',\n  'tests/Persistence/ForgeStatusRepositoryWindowsTests.cpp'\n)\nforeach ($relative in $textPaths) {\n  $path = Join-Path $workspace $relative\n  $bytes = [System.IO.File]::ReadAllBytes($path)\n  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xef -and $bytes[1] -eq 0xbb -and $bytes[2] -eq 0xbf) {\n    throw \"$relative contains a UTF-8 BOM.\"\n  }\n  $text = [System.Text.UTF8Encoding]::new($false, $true).GetString($bytes)\n  if ([regex]::IsMatch($text, '(?<!\\r)\\n|\\r(?!\\n)')) {\n    throw \"$relative contains a non-CRLF line ending.\"\n  }\n}\nWrite-Host \"P14 checkpoint integrity validation passed.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T05:23:52.8551133+00:00",
+  "end_utc": "2026-08-27T05:23:57.5383410+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T052352847Z-80423366.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T052352847Z-80423366.stderr.txt",
+  "stdout_sha256": "9191bdf8d0fa5ca74f45daff3fab6e7efe9c450f7e5df232d14f7d4997ba4aed",
+  "stderr_sha256": "3a4c033fbf52085c5220c1eb9cb0c6584f4b24ed3110c5a6694eab8b2474fcdc"
+}

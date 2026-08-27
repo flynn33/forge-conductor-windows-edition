@@ -9,6 +9,7 @@
 #include "ForgeConductor/Contracts/IDiagnosticsServices.h"
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/IForgeApplicationLifecycle.h"
+#include "ForgeConductor/Contracts/IForgeStatusRepository.h"
 #include "ForgeConductor/Contracts/IGraphicsServices.h"
 #include "ForgeConductor/Contracts/IInstallerDeploymentService.h"
 #include "ForgeConductor/Contracts/IFoundationServices.h"

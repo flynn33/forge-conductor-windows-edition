@@ -1067,6 +1067,239 @@ void timestampOrderingMonotonicTouchAndMaximumReport()
         "maximum report was duplicated into the bounded run projection");
 }
 
+void legacyContinuitySessionSourceIsAuthoritativeAndBounded()
+{
+    Support::ScopedTestDirectory directory{L"agent-session-legacy-source"};
+    RepositoryFixture fixture{directory.path()};
+    Contracts::ILegacyContinuitySessionSource& source = *fixture.repository;
+    const auto owner = parse<Domain::ClientId>("client-legacy-source");
+    const auto foreign = parse<Domain::ClientId>("client-legacy-foreign");
+    const auto openId = parse<Domain::SessionId>(
+        "39000000-0000-4000-8000-000000000001");
+    const auto activeId = parse<Domain::SessionId>(
+        "39000000-0000-4000-8000-000000000002");
+    const auto runningId = parse<Domain::SessionId>(
+        "39000000-0000-4000-8000-000000000003");
+    const auto startedId = parse<Domain::SessionId>(
+        "39000000-0000-4000-8000-000000000004");
+    const auto closedId = parse<Domain::SessionId>(
+        "39000000-0000-4000-8000-000000000005");
+    const auto foreignId = parse<Domain::SessionId>(
+        "39000000-0000-4000-8000-000000000006");
+    const auto unknownId = parse<Domain::SessionId>(
+        "39000000-0000-4000-8000-000000000007");
+
+    const auto started = start(
+        fixture,
+        openId,
+        owner,
+        "p14-legacy-source-open",
+        "authoritative initial goal");
+    const auto agentId = started.run.session.agentId;
+    const auto createdAt = fixture.clock->utcNow();
+    const auto saveSession = [&](
+                                 const Domain::SessionId& id,
+                                 const Domain::ClientId& clientId,
+                                 const Domain::SessionStatus status,
+                                 const Domain::UtcTimePoint updatedAt,
+                                 const std::string_view correlation) {
+        take(fixture.repository->save(
+            Domain::AgentSession{
+                id,
+                agentId,
+                clientId,
+                status,
+                std::nullopt,
+                createdAt,
+                updatedAt},
+            activeContext(*fixture.clock, correlation)));
+    };
+
+    fixture.clock->advance(1s);
+    saveSession(
+        activeId,
+        owner,
+        Domain::SessionStatus::Active,
+        fixture.clock->utcNow(),
+        "p14-legacy-source-active");
+    fixture.clock->advance(1s);
+    const auto tiedUpdatedAt = fixture.clock->utcNow();
+    saveSession(
+        runningId,
+        owner,
+        Domain::SessionStatus::Running,
+        tiedUpdatedAt,
+        "p14-legacy-source-running");
+    saveSession(
+        startedId,
+        owner,
+        Domain::SessionStatus::Started,
+        tiedUpdatedAt,
+        "p14-legacy-source-started");
+    fixture.clock->advance(1s);
+    saveSession(
+        closedId,
+        owner,
+        Domain::SessionStatus::Closed,
+        fixture.clock->utcNow(),
+        "p14-legacy-source-closed");
+    saveSession(
+        foreignId,
+        foreign,
+        Domain::SessionStatus::Open,
+        fixture.clock->utcNow(),
+        "p14-legacy-source-foreign");
+
+    const auto snapshots = take(source.listOpenForClient(
+        owner,
+        4U,
+        activeContext(*fixture.clock, "p14-legacy-source-list")));
+    require(snapshots.size() == 4U,
+            "legacy source did not return every owned open-status alias");
+    require(
+        snapshots[0].sessionId == startedId &&
+            snapshots[0].status == "started" &&
+            snapshots[1].sessionId == runningId &&
+            snapshots[1].status == "running" &&
+            snapshots[2].sessionId == activeId &&
+            snapshots[2].status == "active" &&
+            snapshots[3].sessionId == openId &&
+            snapshots[3].status == "open",
+        "legacy source filtering or stable timestamp/id order is incorrect");
+    require(
+        snapshots[3].goal == "authoritative initial goal" &&
+            snapshots[3].workingDirectory ==
+                std::optional<std::string>{"D:/work/forge"} &&
+            snapshots[3].updatedAt ==
+                std::optional<Domain::UtcTimePoint>{createdAt} &&
+            snapshots[3].resumeHint ==
+                "agent_run_status then continue",
+        "legacy source did not map authoritative run metadata exactly");
+    require(take(source.isOpen(
+                openId,
+                activeContext(*fixture.clock, "p14-legacy-source-is-open"))),
+            "legacy source reported an owned open run as closed");
+    require(!take(source.isOpen(
+                closedId,
+                activeContext(*fixture.clock, "p14-legacy-source-is-closed"))),
+            "legacy source reported a closed run as open");
+    require(!take(source.isOpen(
+                unknownId,
+                activeContext(*fixture.clock, "p14-legacy-source-is-unknown"))),
+            "legacy source fabricated an unknown run");
+
+    const auto overflow = source.listOpenForClient(
+        owner,
+        3U,
+        activeContext(*fixture.clock, "p14-legacy-source-overflow"));
+    require(!overflow &&
+                overflow.error().code == Domain::ErrorCodes::LimitExceeded,
+            "legacy source silently truncated a max-plus-one result");
+    const auto zeroLimit = source.listOpenForClient(
+        owner,
+        0U,
+        activeContext(*fixture.clock, "p14-legacy-source-zero-limit"));
+    require(!zeroLimit &&
+                zeroLimit.error().code == Domain::ErrorCodes::InvalidRequest,
+            "legacy source accepted a zero row limit");
+    const auto oversizedLimit = source.listOpenForClient(
+        owner,
+        Domain::LegacyContinuityLimits::MaximumAgentSnapshots + 1U,
+        activeContext(*fixture.clock, "p14-legacy-source-oversized-limit"));
+    require(!oversizedLimit &&
+                oversizedLimit.error().code ==
+                    Domain::ErrorCodes::InvalidRequest,
+            "legacy source accepted an oversized snapshot limit");
+
+    const auto initialBinding = take(source.binding(
+        owner,
+        activeContext(*fixture.clock, "p14-legacy-source-binding")));
+    require(initialBinding && initialBinding->sessionId == openId &&
+                initialBinding->goal == "authoritative initial goal" &&
+                initialBinding->workingDirectory ==
+                    std::optional<std::string>{"D:/work/forge"},
+            "legacy source did not honor the valid durable active pointer");
+
+    {
+        SqliteDatabase database{directory.path() / L"store.sqlite", false};
+        const auto projectionBefore = requiredProjection(
+            database, activeProjectionKey(owner));
+        database.execute(
+            "UPDATE agent_sessions SET goal='authoritative changed goal',"
+            "cwd='D:/work/changed' WHERE id='" + openId.value() + "';");
+        const auto changedBinding = take(source.binding(
+            owner,
+            activeContext(*fixture.clock, "p14-legacy-source-binding-stale")));
+        require(changedBinding && changedBinding->sessionId == openId &&
+                    changedBinding->goal == "authoritative changed goal" &&
+                    changedBinding->workingDirectory ==
+                        std::optional<std::string>{"D:/work/changed"},
+                "legacy source trusted stale projection fields over the run row");
+        require(
+            requiredProjection(database, activeProjectionKey(owner)) ==
+                projectionBefore,
+            "legacy binding read repaired or otherwise mutated its projection");
+
+        database.execute(
+            "UPDATE agent_sessions SET goal='fallback authoritative goal',"
+            "cwd='D:/work/fallback' WHERE id='" + startedId.value() + "';");
+        database.execute(
+            "UPDATE agent_sessions SET status='closed' WHERE id='" +
+            openId.value() + "';");
+        const auto fallbackBinding = take(source.binding(
+            owner,
+            activeContext(*fixture.clock, "p14-legacy-source-binding-fallback")));
+        require(fallbackBinding && fallbackBinding->sessionId == startedId &&
+                    fallbackBinding->goal == "fallback authoritative goal" &&
+                    fallbackBinding->workingDirectory ==
+                        std::optional<std::string>{"D:/work/fallback"},
+                "legacy source retained a stale closed active pointer");
+        require(
+            requiredProjection(database, activeProjectionKey(owner)) ==
+                projectionBefore,
+            "legacy binding fallback repaired the stale active pointer");
+    }
+
+    std::stop_source cancellation;
+    cancellation.request_stop();
+    const auto cancelled = source.listOpenForClient(
+        owner,
+        4U,
+        activeContext(
+            *fixture.clock,
+            "p14-legacy-source-cancelled",
+            cancellation.get_token()));
+    require(!cancelled &&
+                cancelled.error().code == Domain::ErrorCodes::Cancelled,
+            "legacy source ignored pre-request cancellation");
+    const auto expired = source.isOpen(
+        startedId,
+        expiredContext(*fixture.clock, "p14-legacy-source-expired"));
+    require(!expired &&
+                expired.error().code == Domain::ErrorCodes::DeadlineExceeded,
+            "legacy source ignored an expired deadline");
+
+    fixture.repository->close();
+    const auto closedList = source.listOpenForClient(
+        owner,
+        4U,
+        activeContext(*fixture.clock, "p14-legacy-source-closed-list"));
+    const auto closedState = source.isOpen(
+        startedId,
+        activeContext(*fixture.clock, "p14-legacy-source-closed-state"));
+    const auto closedBinding = source.binding(
+        owner,
+        activeContext(*fixture.clock, "p14-legacy-source-closed-binding"));
+    require(
+        !closedList &&
+            closedList.error().code == Domain::ErrorCodes::InvalidRequest &&
+            !closedState &&
+            closedState.error().code == Domain::ErrorCodes::InvalidRequest &&
+            !closedBinding &&
+            closedBinding.error().code == Domain::ErrorCodes::InvalidRequest,
+        "closed legacy source admitted a read operation");
+}
+
 void staleCloseCancellationDeadlineAndSharedShutdown()
 {
     Support::ScopedTestDirectory directory{L"agent-session-bounds"};
@@ -1701,13 +1934,15 @@ int main(const int argumentCount, const char* const arguments[])
         std::cout << "PASS agent_session_repository.bounds_shutdown\n";
         timestampOrderingMonotonicTouchAndMaximumReport();
         std::cout << "PASS agent_session_repository.timestamp_report_bounds\n";
+        legacyContinuitySessionSourceIsAuthoritativeAndBounded();
+        std::cout << "PASS agent_session_repository.legacy_continuity_source\n";
         crashRollbackAndCommittedRecovery(processFixture);
         std::cout << "PASS agent_session_repository.crash_atomicity\n";
         completionCrashRetryIgnoresNewTimestamp(processFixture);
         std::cout << "PASS agent_session_repository.completion_crash_retry\n";
         crossProcessReattachCas(processFixture);
         std::cout << "PASS agent_session_repository.cross_process_cas\n";
-        std::cout << "SUMMARY passed=8 failed=0\n";
+        std::cout << "SUMMARY passed=9 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

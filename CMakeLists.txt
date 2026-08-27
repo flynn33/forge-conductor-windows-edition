@@ -93,6 +93,7 @@ set(FORGE_DOMAIN_SOURCES
     src/Domain/DiagnosticsModels.cpp
     src/Domain/EnvironmentModels.cpp
     src/Domain/FileSystemModels.cpp
+    src/Domain/ForgeStatusModels.cpp
     src/Domain/GraphicsModels.cpp
     src/Domain/Identifiers.cpp
     src/Domain/LegacyContinuityModels.cpp
@@ -191,7 +192,9 @@ set(FORGE_PERSISTENCE_WINDOWS_SOURCES
     src/Persistence/Windows/DatabaseBackupCoordinator.cpp
     src/Persistence/Windows/DatabaseQuarantine.cpp
     src/Persistence/Windows/WindowsAgentSessionRepository.cpp
+    src/Persistence/Windows/WindowsAuditRepository.cpp
     src/Persistence/Windows/WindowsCentralDatabase.cpp
+    src/Persistence/Windows/WindowsForgeStatusRepository.cpp
     src/Persistence/Windows/WindowsLegacyContinuityRepository.cpp
     src/Persistence/Windows/WindowsLegacyMemoryRepository.cpp
     src/Persistence/Windows/WindowsProjectDatabase.cpp
@@ -812,6 +815,50 @@ if(BUILD_TESTING)
     set_tests_properties(ForgeConductor.Persistence.UnitTests PROPERTIES
         LABELS "T-UNIT;T-DB;T-SEC;G07"
         TIMEOUT 240
+    )
+
+    add_executable(ForgeConductor.Persistence.AuditRepositoryWindowsTests
+        tests/Persistence/AuditRepositoryWindowsTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Persistence.AuditRepositoryWindowsTests)
+    target_include_directories(
+        ForgeConductor.Persistence.AuditRepositoryWindowsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Persistence.AuditRepositoryWindowsTests PRIVATE
+        ForgeConductor::Persistence.Windows)
+
+    add_test(
+        NAME ForgeConductor.Persistence.AuditRepositoryWindowsTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Persistence.AuditRepositoryWindowsTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Persistence.AuditRepositoryWindowsTests PROPERTIES
+        LABELS "G14;T-MCP;T-DB;T-UNIT;T-INTEGRATION;T-SEC"
+        TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests
+        tests/Persistence/ForgeStatusRepositoryWindowsTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests)
+    target_include_directories(
+        ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests PRIVATE
+        ForgeConductor::Persistence.Windows)
+
+    add_test(
+        NAME ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests PROPERTIES
+        LABELS "G14;T-MCP;T-DB;T-UNIT;T-INTEGRATION;T-SEC"
+        TIMEOUT 180
     )
 
     add_test(

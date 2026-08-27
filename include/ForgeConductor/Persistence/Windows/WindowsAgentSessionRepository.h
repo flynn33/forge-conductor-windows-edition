@@ -4,6 +4,7 @@
 #include "ForgeConductor/Contracts/IDiagnosticsServices.h"
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/IFoundationServices.h"
+#include "ForgeConductor/Contracts/ILegacyContinuitySessionSource.h"
 #include "ForgeConductor/Persistence/Windows/WindowsCentralDatabase.h"
 
 #include <memory>
@@ -35,7 +36,8 @@ public:
 };
 
 class WindowsAgentSessionRepository final
-    : public Contracts::IAgentSessionRepository {
+    : public Contracts::IAgentSessionRepository,
+      public Contracts::ILegacyContinuitySessionSource {
 public:
     [[nodiscard]] static Domain::Result<
         std::shared_ptr<WindowsAgentSessionRepository>> open(
@@ -106,6 +108,20 @@ public:
         const Domain::OperationContext& context) noexcept override;
     [[nodiscard]] Domain::Result<Domain::AgentStaleCloseOutcome> closeStale(
         const Domain::AgentStaleCloseRequest& request,
+        const Domain::OperationContext& context) noexcept override;
+    [[nodiscard]] Domain::Result<
+        std::vector<Domain::LegacyAgentContinuitySnapshot>>
+    listOpenForClient(
+        const Domain::ClientId& clientId,
+        std::size_t maximumCount,
+        const Domain::OperationContext& context) noexcept override;
+    [[nodiscard]] Domain::Result<bool> isOpen(
+        const Domain::SessionId& sessionId,
+        const Domain::OperationContext& context) noexcept override;
+    [[nodiscard]] Domain::Result<
+        std::optional<Domain::LegacyActiveBindingSnapshot>>
+    binding(
+        const Domain::ClientId& clientId,
         const Domain::OperationContext& context) noexcept override;
     [[nodiscard]] Domain::Result<void> quickCheck(
         const Domain::OperationContext& context) noexcept override;

@@ -9,6 +9,7 @@
 #include "ForgeConductor/Domain/EnvironmentModels.h"
 #include "ForgeConductor/Domain/Error.h"
 #include "ForgeConductor/Domain/FileSystemModels.h"
+#include "ForgeConductor/Domain/ForgeStatusModels.h"
 #include "ForgeConductor/Domain/GraphicsModels.h"
 #include "ForgeConductor/Domain/Identifiers.h"
 #include "ForgeConductor/Domain/LegacyMemoryModels.h"
