@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "phase": "P15",
+  "checkpoint": "windows_lm_studio_host_baseline",
+  "status": "passed",
+  "gate": "G15",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T12:32:23.7163087+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "observation_mode": "read_only",
+  "authoritative_command_record": ".forge-codex/state/commands/20260827T123222434Z-6a51667c.json",
+  "effective_exit_code": 0,
+  "timed_out": false,
+  "stdout_sha256": "3d805da470788e91badc752f6d73ce7dda00a0f19ac008f654ca6a4ef6bfe521",
+  "stderr_sha256": "2ce70d6c8c9ad6726c794690c8b14a2b83673648cac88edf4ff1acc50ec46348",
+  "lm_studio": {
+    "executable": "C:\\Users\\james\\AppData\\Local\\Programs\\LM Studio\\LM Studio.exe",
+    "executable_exists": true,
+    "file_version": "0.4.21.0",
+    "manifest_version": "0.4.21+2",
+    "bytes": 210352824,
+    "sha256": "428c46865482aef24712eb5bcbbc7b966e0d8173a946b0b2f307672e4c1529c1",
+    "manifest": "C:\\Users\\james\\AppData\\Local\\Programs\\LM Studio\\resources\\app\\package.json",
+    "manifest_name": "lm-studio",
+    "manifest_sha256": "feaa26bf739f6b94e3f53e89d4f9e205a060ba9410830c07adb8823da4bd42f6"
+  },
+  "lm_studio_cli": {
+    "executable": "C:\\Users\\james\\.lmstudio\\bin\\lms.exe",
+    "executable_exists": true,
+    "sha256": "976d4389f97b2cf95b38a4eb673855d8a846f2db21a20eb4fe5e79f7179722f5"
+  },
+  "configuration": {
+    "path": "C:\\Users\\james\\.lmstudio\\mcp.json",
+    "valid_json": true,
+    "bytes": 23,
+    "sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02",
+    "mcp_server_count": 0,
+    "forge_server_count": 0,
+    "reparse_point": false,
+    "synchronization_state_path": "C:\\Users\\james\\.lmstudio\\.internal\\last-synced-mcp-state.json",
+    "synchronization_state_exists": true,
+    "plugin_root": "C:\\Users\\james\\.lmstudio\\extensions\\plugins\\mcp",
+    "foreign_plugin_directories": [
+      "continuity",
+      "project-memory"
+    ]
+  },
+  "runtime": {
+    "lm_studio_process_count": 0,
+    "url_protocol_registered": true,
+    "supported_launch_executable_observed": true,
+    "supported_hot_reload_command_observed": false,
+    "gui_automation_used": false
+  },
+  "qualified_surface": [
+    "LM Studio executable, manifest, CLI, generic MCP configuration, synchronization state path, and plugin root exist on the owner machine",
+    "the pre-deployment MCP configuration contains zero Forge registrations and the plugin root contains two foreign directories that deployment must preserve",
+    "LM Studio was stopped, allowing later real-host deployment and supported launch evidence to begin from a captured before-state",
+    "the baseline inspection performed no writes, launches, process termination, or GUI automation"
+  ],
+  "diagnostic_history": [
+    {
+      "record": ".forge-codex/state/commands/20260827T123121921Z-0777f7df.json",
+      "exit_code": 1,
+      "cause": "Windows PowerShell could not autoload Microsoft.PowerShell.Security for Authenticode inspection; no product or host state changed"
+    },
+    {
+      "record": ".forge-codex/state/commands/20260827T123152094Z-3836864e.json",
+      "exit_code": 1,
+      "cause": "Windows PowerShell could not autoload Get-FileHash; the successful rerun used a bounded .NET SHA-256 implementation and no product or host state changed"
+    }
+  ],
+  "remaining_limitations": [
+    "This is a before-state inventory, not deployment, rollback, drift, or synchronization proof.",
+    "The host was stopped and had no Forge registration; G15 still requires real-host deployment and host-consumption evidence.",
+    "No supported hot-reload command was observed, so the current activation design may launch a stopped host but will not forcibly restart a running host.",
+    "This checkpoint is specific to the owner's current Windows 11 machine and is not a cross-machine compatibility claim."
+  ]
+}

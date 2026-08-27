@@ -1,0 +1,43 @@
+{
+    "observed_utc":  "2026-08-27T12:32:23.7163087+00:00",
+    "read_only":  true,
+    "lm_studio":  {
+                      "executable":  "C:\\Users\\james\\AppData\\Local\\Programs\\LM Studio\\LM Studio.exe",
+                      "exists":  true,
+                      "version":  "0.4.21.0",
+                      "bytes":  210352824,
+                      "sha256":  "428c46865482aef24712eb5bcbbc7b966e0d8173a946b0b2f307672e4c1529c1",
+                      "manifest":  "C:\\Users\\james\\AppData\\Local\\Programs\\LM Studio\\resources\\app\\package.json",
+                      "manifest_name":  "lm-studio",
+                      "manifest_version":  "0.4.21+2",
+                      "manifest_sha256":  "feaa26bf739f6b94e3f53e89d4f9e205a060ba9410830c07adb8823da4bd42f6"
+                  },
+    "cli":  {
+                "executable":  "C:\\Users\\james\\.lmstudio\\bin\\lms.exe",
+                "exists":  true,
+                "sha256":  "976d4389f97b2cf95b38a4eb673855d8a846f2db21a20eb4fe5e79f7179722f5"
+            },
+    "configuration":  {
+                          "path":  "C:\\Users\\james\\.lmstudio\\mcp.json",
+                          "valid_json":  true,
+                          "bytes":  23,
+                          "sha256":  "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02",
+                          "mcp_server_count":  0,
+                          "forge_server_count":  0,
+                          "reparse_point":  false,
+                          "synchronization_state_path":  "C:\\Users\\james\\.lmstudio\\.internal\\last-synced-mcp-state.json",
+                          "synchronization_state_exists":  true,
+                          "plugin_root":  "C:\\Users\\james\\.lmstudio\\extensions\\plugins\\mcp",
+                          "plugin_directories":  [
+                                                     "continuity",
+                                                     "project-memory"
+                                                 ]
+                      },
+    "runtime":  {
+                    "lm_studio_process_count":  0,
+                    "supported_launch_executable":  "C:\\Users\\james\\AppData\\Local\\Programs\\LM Studio\\LM Studio.exe",
+                    "url_protocol_registered":  true,
+                    "supported_hot_reload_command_observed":  false,
+                    "gui_automation_used":  false
+                }
+}

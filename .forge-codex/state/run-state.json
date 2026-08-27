@@ -2,10 +2,10 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-27T11:59:34.7789223+00:00",
+  "updated_at": "2026-08-27T12:35:09.2467583+00:00",
   "status": "in_progress",
-  "active_role": "validator",
-  "active_phase": "P14",
+  "active_role": "builder",
+  "active_phase": "P15",
   "session_number": 0,
   "phases": [
     {
@@ -560,8 +560,23 @@
     },
     {
       "id": "P15",
-      "status": "not_started",
-      "evidence": []
+      "status": "in_progress",
+      "evidence": [
+        ".forge-codex/state/gate-results/G14.json",
+        ".forge-codex/instructions/plans/phases.json",
+        ".forge-codex/instructions/plans/gates.json",
+        ".forge-codex/instructions/plans/test-matrix.json",
+        ".forge-codex/instructions/architecture/MCP_AND_LM_STUDIO.md",
+        ".forge-codex/instructions/architecture/OOP_AND_OWNERSHIP.md",
+        ".forge-codex/state/decisions/OWNER-002-alpha-release-qualification-scope.md",
+        ".forge-codex/state/decisions/P15-001-evidence-based-lm-studio-deployment-and-maintenance-authority.md",
+        ".forge-codex/state/evidence/P15/windows-lm-studio-host-baseline.json",
+        ".forge-codex/state/commands/20260827T123222434Z-6a51667c.json",
+        "include/ForgeConductor/Contracts/ILMStudioEnvironment.h",
+        "include/ForgeConductor/Contracts/ILMStudioDeploymentService.h",
+        "include/ForgeConductor/Domain/EnvironmentModels.h",
+        ".forge-codex/state/baseline/p02-source-files.json"
+      ]
     },
     {
       "id": "P16",
@@ -1174,8 +1189,12 @@
     },
     {
       "id": "G15",
-      "status": "not_started",
-      "evidence": []
+      "status": "in_progress",
+      "evidence": [
+        ".forge-codex/state/decisions/P15-001-evidence-based-lm-studio-deployment-and-maintenance-authority.md",
+        ".forge-codex/state/evidence/P15/windows-lm-studio-host-baseline.json",
+        ".forge-codex/state/commands/20260827T123222434Z-6a51667c.json"
+      ]
     },
     {
       "id": "G16",
