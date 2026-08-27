@@ -114,7 +114,8 @@ inline void runNativeToolBoundaryFakeContractTests()
     scriptedGitStatus.elapsed = std::chrono::milliseconds{17};
     git.statusResult.set(
         Domain::Result<Domain::ProcessResult>::success(scriptedGitStatus));
-    const auto gitStatus = Support::take(git.status(readPath, 8, context));
+    const auto gitStatus = Support::take(
+        git.status(readPath, authority, 8, context));
     Support::require(
         gitStatus.exitCode == scriptedGitStatus.exitCode &&
             gitStatus.stdoutUtf8 == scriptedGitStatus.stdoutUtf8 &&
@@ -139,7 +140,7 @@ inline void runNativeToolBoundaryFakeContractTests()
     git.diffResult.set(Domain::Result<Domain::ProcessResult>::success(
         std::move(oversizedGitDiff)));
     const auto boundedGitDiff = Support::take(
-        git.diff(readPath, {}, 4, context));
+        git.diff(readPath, authority, {}, 4, context));
     Support::require(
         boundedGitDiff.exitCode == 9 &&
             boundedGitDiff.stdoutUtf8 == "0123" &&
@@ -149,7 +150,7 @@ inline void runNativeToolBoundaryFakeContractTests()
         "git fake did not cap structured output and retain process status");
     const std::vector<std::string> tooManyArguments{"a", "b", "c"};
     Support::requireError(
-        git.diff(readPath, tooManyArguments, 8, context),
+        git.diff(readPath, authority, tooManyArguments, 8, context),
         Domain::ErrorCodes::LimitExceeded,
         "git diff exceeded its argument cap");
 

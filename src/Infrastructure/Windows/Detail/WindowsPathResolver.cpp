@@ -10,6 +10,7 @@
 #include <appmodel.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cwchar>
 #include <cwctype>
 #include <optional>
@@ -23,6 +24,8 @@ namespace
 {
 
 constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
+constexpr auto MaximumDirectoryAnchorOpenWait = std::chrono::milliseconds{500};
+constexpr DWORD DirectoryAnchorOpenRetrySliceMilliseconds = 10U;
 
 [[nodiscard]] Domain::Result<std::wstring> pathFailure(const std::string_view code,
                                                        std::string message)
@@ -400,7 +403,8 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
 
 [[nodiscard]] Domain::Result<UniqueHandle> openDirectoryAnchor(
     const std::wstring_view path, const bool allowChildFileCreation,
-    const AnchorSharePolicy sharePolicy) noexcept
+    const AnchorSharePolicy sharePolicy,
+    const std::chrono::steady_clock::time_point contentionDeadline) noexcept
 {
     try
     {
@@ -413,13 +417,36 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
         const DWORD shareAccess = sharePolicy == AnchorSharePolicy::AllowConcurrentWrite
                                       ? FILE_SHARE_READ | FILE_SHARE_WRITE
                                       : FILE_SHARE_READ;
-        UniqueHandle handle{::CreateFileW(
-            nativePath.c_str(), desiredAccess, shareAccess, nullptr, OPEN_EXISTING,
-            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
+        UniqueHandle handle;
+        DWORD nativeError{};
+        for (;;)
+        {
+            handle.reset(::CreateFileW(
+                nativePath.c_str(), desiredAccess, shareAccess, nullptr, OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
+            if (handle)
+            {
+                break;
+            }
+            nativeError = ::GetLastError();
+            if ((nativeError != ERROR_SHARING_VIOLATION &&
+                 nativeError != ERROR_LOCK_VIOLATION) ||
+                std::chrono::steady_clock::now() >= contentionDeadline)
+            {
+                break;
+            }
+            ::Sleep(DirectoryAnchorOpenRetrySliceMilliseconds);
+        }
         if (!handle)
         {
+            const bool transientContention =
+                nativeError == ERROR_SHARING_VIOLATION ||
+                nativeError == ERROR_LOCK_VIOLATION;
             return Domain::Result<UniqueHandle>::failure(makeWin32Error(
-                "anchor an app-owned directory against replacement", ::GetLastError()));
+                "anchor an app-owned directory against replacement", nativeError,
+                transientContention ? Domain::ErrorCodes::Conflict
+                                    : Domain::ErrorCodes::InternalFailure,
+                transientContention));
         }
         auto verified = verifyOpenedHandle(handle.get(), path, true);
         if (!verified)
@@ -450,13 +477,23 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
         }
 
         std::vector<UniqueHandle> anchors;
+        const auto contentionDeadline =
+            std::chrono::steady_clock::now() + MaximumDirectoryAnchorOpenWait;
         std::size_t componentEnd = 3U;
         for (;;)
         {
+            const bool finalParent = componentEnd == finalSeparator;
+            // Ancestors stay replacement-pinned by omitting FILE_SHARE_DELETE,
+            // while sibling operations may retain write-capable directory
+            // handles. The exact target parent keeps the caller's stricter
+            // concurrent-write policy.
             auto anchor =
                 openDirectoryAnchor(path.substr(0, componentEnd),
-                                    allowChildFileCreation && componentEnd == finalSeparator,
-                                    sharePolicy);
+                                    allowChildFileCreation && finalParent,
+                                    finalParent
+                                        ? sharePolicy
+                                        : AnchorSharePolicy::AllowConcurrentWrite,
+                                    contentionDeadline);
             if (!anchor)
             {
                 return Domain::Result<std::vector<UniqueHandle>>::failure(

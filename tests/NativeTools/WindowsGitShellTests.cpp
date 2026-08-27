@@ -4,6 +4,7 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsGitService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
@@ -54,6 +55,16 @@ using namespace std::chrono_literals;
         parse<Domain::CorrelationId>("p13-git-shell-tests")};
 }
 
+[[nodiscard]] bool containsRoot(
+    const Contracts::WorkspaceAuthority& authority,
+    const Domain::PathText& root) noexcept
+{
+    return std::find(
+               authority.trustedRoots().begin(),
+               authority.trustedRoots().end(),
+               root) != authority.trustedRoots().end();
+}
+
 class ScriptedProcessSupervisor final : public Contracts::IProcessSupervisor {
 public:
     [[nodiscard]] Domain::Result<Domain::ProcessResult> run(
@@ -63,6 +74,7 @@ public:
     {
         try {
             requests_.push_back(request);
+            authorities_.push_back(authority);
             authorityIds_.push_back(authority.authorityId());
             projectIds_.push_back(authority.projectId());
             operationIds_.push_back(operationContext.operationId);
@@ -114,6 +126,12 @@ public:
         return authorityIds_;
     }
 
+    [[nodiscard]] const std::vector<Contracts::WorkspaceAuthority>&
+    authorities() const noexcept
+    {
+        return authorities_;
+    }
+
     [[nodiscard]] const std::vector<Domain::ProjectId>& projectIds() const noexcept
     {
         return projectIds_;
@@ -142,6 +160,7 @@ public:
 private:
     std::deque<Domain::Result<Domain::ProcessResult>> outcomes_;
     std::vector<Domain::ProcessRequest> requests_;
+    std::vector<Contracts::WorkspaceAuthority> authorities_;
     std::vector<Domain::AuthorityId> authorityIds_;
     std::vector<Domain::ProjectId> projectIds_;
     std::vector<Domain::OperationId> operationIds_;
@@ -275,7 +294,7 @@ struct AuthorityFixture final {
     Fakes::DeterministicWorkspaceAuthority issuer{
         parse<Domain::AuthorityId>("30000000-0000-4000-8000-000000000001"),
         parse<Domain::ClientId>("p13-client"),
-        {workspaceRoot, toolsRoot},
+        {workspaceRoot},
         Domain::FileAccess::Execute,
         {
             Domain::FileAccess::Read,
@@ -347,37 +366,48 @@ void gitCommandsUseExactDirectArgv()
     AuthorityFixture fixture;
     auto supervisor = std::make_shared<ScriptedProcessSupervisor>();
     WindowsGitService git{
-        fixture.gitExecutable, fixture.authority, supervisor};
+        fixture.gitExecutable, supervisor};
 
     supervisor->enqueue(processResult(0, "## main\n"));
     require(
-        take(git.status(fixture.readRepository, 1'024U, context(10U))).stdoutUtf8 ==
+        take(git.status(
+            fixture.readRepository, fixture.authority, 1'024U,
+            context(10U))).stdoutUtf8 ==
             "## main\n",
         "Git status did not return stdout");
     supervisor->enqueue(processResult(0, "diff\n"));
     const std::vector<std::string> staged{"--cached"};
     require(
         take(git.diff(
-            fixture.readRepository, staged, 2'048U, context(11U))).stdoutUtf8 ==
+            fixture.readRepository, fixture.authority, staged, 2'048U,
+            context(11U))).stdoutUtf8 ==
             "diff\n",
         "Git staged diff did not return stdout");
     supervisor->enqueue(processResult(0, "abc title\n"));
     require(
-        take(git.log(fixture.readRepository, 20U, 4'096U, context(12U))).stdoutUtf8 ==
+        take(git.log(
+            fixture.readRepository, fixture.authority, 20U, 4'096U,
+            context(12U))).stdoutUtf8 ==
             "abc title\n",
         "Git log did not return stdout");
     supervisor->enqueue(processResult());
     require(
-        git.add(fixture.writeRepository, {}, context(13U)).hasValue(),
+        git.add(
+            fixture.writeRepository, fixture.authority, {},
+            context(13U)).hasValue(),
         "Git add -A failed");
     supervisor->enqueue(processResult());
     const std::vector<Contracts::AuthorizedPath> paths{fixture.readFile};
     require(
-        git.add(fixture.writeRepository, paths, context(14U)).hasValue(),
+        git.add(
+            fixture.writeRepository, fixture.authority, paths,
+            context(14U)).hasValue(),
         "Git add path failed");
     supervisor->enqueue(processResult(0, "committed\n"));
     require(
-        take(git.commit(fixture.writeRepository, {}, context(15U))).stdoutUtf8 ==
+        take(git.commit(
+            fixture.writeRepository, fixture.authority, {},
+            context(15U))).stdoutUtf8 ==
             "committed\n",
         "Git default commit failed");
 
@@ -428,6 +458,22 @@ void gitCommandsUseExactDirectArgv()
             supervisor->projectIds().front() == fixture.projectId &&
             supervisor->operationIds().front() == operationId(10U),
         "Git did not preserve authority, project, and operation binding");
+    for (const auto& authority : supervisor->authorities()) {
+        require(
+            authority.authorityId() == fixture.authority.authorityId() &&
+                authority.projectId() == fixture.authority.projectId() &&
+                authority.callerId() == fixture.authority.callerId() &&
+                authority.generation() == fixture.authority.generation() &&
+                authority.shellEnabled() &&
+                authority.grants() ==
+                    std::vector<Domain::FileAccess>{Domain::FileAccess::Execute} &&
+                containsRoot(authority, fixture.workspaceRoot) &&
+                containsRoot(authority, fixture.toolsRoot),
+            "Git did not derive the expected private per-call execution authority");
+    }
+    require(
+        !containsRoot(fixture.authority, fixture.toolsRoot),
+        "Git exposed its executable parent through caller authority");
 }
 
 void gitBoundsAndAuthorityFailBeforeProcessDispatch()
@@ -435,34 +481,44 @@ void gitBoundsAndAuthorityFailBeforeProcessDispatch()
     AuthorityFixture fixture;
     auto supervisor = std::make_shared<ScriptedProcessSupervisor>();
     WindowsGitService git{
-        fixture.gitExecutable, fixture.authority, supervisor};
+        fixture.gitExecutable, supervisor};
 
     requireError(
-        git.status(fixture.readRepository, 80'001U, context(20U)),
+        git.status(
+            fixture.readRepository, fixture.authority, 80'001U,
+            context(20U)),
         Domain::ErrorCodes::LimitExceeded,
         "Git accepted an excessive output bound");
     requireError(
-        git.log(fixture.readRepository, 201U, 1'024U, context(21U)),
+        git.log(
+            fixture.readRepository, fixture.authority, 201U, 1'024U,
+            context(21U)),
         Domain::ErrorCodes::LimitExceeded,
         "Git accepted more than 200 log entries");
     const std::vector<std::string> unsupported{"--stat"};
     requireError(
-        git.diff(fixture.readRepository, unsupported, 1'024U, context(22U)),
+        git.diff(
+            fixture.readRepository, fixture.authority, unsupported, 1'024U,
+            context(22U)),
         Domain::ErrorCodes::InvalidRequest,
         "Git diff accepted behavior outside the macOS staged option");
     requireError(
-        git.add(fixture.readRepository, {}, context(23U)),
+        git.add(
+            fixture.readRepository, fixture.authority, {}, context(23U)),
         Domain::ErrorCodes::Unauthorized,
         "Git add accepted a read-only repository capability");
     const std::vector<Contracts::AuthorizedPath> tooManyPaths(
         WindowsGitService::MaximumAddPaths + 1U, fixture.readFile);
     requireError(
-        git.add(fixture.writeRepository, tooManyPaths, context(24U)),
+        git.add(
+            fixture.writeRepository, fixture.authority, tooManyPaths,
+            context(24U)),
         Domain::ErrorCodes::LimitExceeded,
         "Git add accepted more than 200 paths");
     requireError(
         git.commit(
             fixture.writeRepository,
+            fixture.authority,
             std::string(WindowsGitService::MaximumArgumentBytes + 1U, 'x'),
             context(25U)),
         Domain::ErrorCodes::PayloadTooLarge,
@@ -471,7 +527,7 @@ void gitBoundsAndAuthorityFailBeforeProcessDispatch()
     Fakes::DeterministicWorkspaceAuthority otherIssuer{
         parse<Domain::AuthorityId>("30000000-0000-4000-8000-000000000002"),
         parse<Domain::ClientId>("p13-client"),
-        {fixture.workspaceRoot, fixture.toolsRoot},
+        {fixture.workspaceRoot},
         Domain::FileAccess::Read,
         {Domain::FileAccess::Read, Domain::FileAccess::Execute},
         {Domain::FileAccess::Delete},
@@ -488,15 +544,17 @@ void gitBoundsAndAuthorityFailBeforeProcessDispatch()
             false},
         context(27U)));
     requireError(
-        git.status(otherRepository, 1'024U, context(28U)),
+        git.status(
+            otherRepository, fixture.authority, 1'024U, context(28U)),
         Domain::ErrorCodes::Unauthorized,
         "Git accepted a repository with another authority identifier");
 
     WindowsGitService relativeExecutable{
-        path("git.exe"), fixture.authority, supervisor};
+        path("git.exe"), supervisor};
     requireError(
         relativeExecutable.status(
-            fixture.readRepository, 1'024U, context(28U)),
+            fixture.readRepository, fixture.authority, 1'024U,
+            context(28U)),
         Domain::ErrorCodes::InvalidRequest,
         "Git accepted ambient executable lookup");
     require(
@@ -509,11 +567,13 @@ void gitProcessOutcomesRemainStructuredAndBounded()
     AuthorityFixture fixture;
     auto supervisor = std::make_shared<ScriptedProcessSupervisor>();
     WindowsGitService git{
-        fixture.gitExecutable, fixture.authority, supervisor};
+        fixture.gitExecutable, supervisor};
 
     supervisor->enqueue(processResult(2, "partial", "fatal"));
     const auto nonzero = take(
-        git.status(fixture.readRepository, 1'024U, context(30U)));
+        git.status(
+            fixture.readRepository, fixture.authority, 1'024U,
+            context(30U)));
     require(
         nonzero.exitCode == 2 && nonzero.stdoutUtf8 == "partial" &&
             nonzero.stderrUtf8 == "fatal",
@@ -522,18 +582,24 @@ void gitProcessOutcomesRemainStructuredAndBounded()
     timeout.timedOut = true;
     supervisor->enqueue(std::move(timeout));
     require(
-        take(git.status(fixture.readRepository, 1'024U, context(31U))).timedOut,
+        take(git.status(
+            fixture.readRepository, fixture.authority, 1'024U,
+            context(31U))).timedOut,
         "Git discarded a process timeout flag");
     auto cancelled = processResult(1);
     cancelled.cancelled = true;
     supervisor->enqueue(std::move(cancelled));
     require(
-        take(git.status(fixture.readRepository, 1'024U, context(32U))).cancelled,
+        take(git.status(
+            fixture.readRepository, fixture.authority, 1'024U,
+            context(32U))).cancelled,
         "Git discarded a process cancellation flag");
     auto truncated = processResult(0, std::string(1'025U, 'p'));
     supervisor->enqueue(std::move(truncated));
     const auto bounded = take(
-        git.status(fixture.readRepository, 1'024U, context(33U)));
+        git.status(
+            fixture.readRepository, fixture.authority, 1'024U,
+            context(33U)));
     require(
         bounded.stdoutTruncated && bounded.stdoutUtf8.size() == 1'024U,
         "Git did not preserve a bounded structured process result");
@@ -541,7 +607,9 @@ void gitProcessOutcomesRemainStructuredAndBounded()
         Domain::ErrorCodes::DeadlineExceeded,
         "scripted deadline"));
     requireError(
-        git.status(fixture.readRepository, 1'024U, context(34U)),
+        git.status(
+            fixture.readRepository, fixture.authority, 1'024U,
+            context(34U)),
         Domain::ErrorCodes::DeadlineExceeded,
         "Git did not preserve the process supervisor error");
 }
@@ -551,7 +619,7 @@ void shellUsesFixedPowerShellAndClampedBudgets()
     AuthorityFixture fixture;
     auto supervisor = std::make_shared<ScriptedProcessSupervisor>();
     WindowsShellService shell{
-        fixture.powerShellExecutable, fixture.authority, supervisor};
+        fixture.powerShellExecutable, supervisor};
     Fakes::DeterministicWorkspaceAuthority callerIssuer{
         fixture.authority.authorityId(),
         fixture.authority.callerId(),
@@ -627,6 +695,16 @@ void shellUsesFixedPowerShellAndClampedBudgets()
         supervisor->authorityIds().front() == fixture.authority.authorityId() &&
             supervisor->projectIds().front() == fixture.projectId,
         "Shell did not keep its private execution authority bound to the caller identity");
+    const auto& privateAuthority = supervisor->authorities().front();
+    require(
+        privateAuthority.callerId() == callerAuthority.callerId() &&
+            privateAuthority.generation() == callerAuthority.generation() &&
+            privateAuthority.grants() ==
+                std::vector<Domain::FileAccess>{Domain::FileAccess::Execute} &&
+            containsRoot(privateAuthority, fixture.workspaceRoot) &&
+            containsRoot(privateAuthority, fixture.toolsRoot) &&
+            !containsRoot(callerAuthority, fixture.toolsRoot),
+        "Shell did not keep executable scope private while preserving caller identity");
 
     supervisor->enqueue(processResult());
     auto longTimeout = shellRequest(fixture, "Get-Location");
@@ -656,7 +734,7 @@ void shellPolicyAuthorityCancellationAndShutdownFailClosed()
     AuthorityFixture fixture;
     auto supervisor = std::make_shared<ScriptedProcessSupervisor>();
     WindowsShellService shell{
-        fixture.powerShellExecutable, fixture.authority, supervisor};
+        fixture.powerShellExecutable, supervisor};
 
     auto wrongExecutable = shellRequest(fixture, "Get-Location");
     wrongExecutable.executable = fixture.gitExecutable;
@@ -683,62 +761,41 @@ void shellPolicyAuthorityCancellationAndShutdownFailClosed()
         Domain::ErrorCodes::PathOutsideAuthority,
         "Shell accepted an unauthorized working directory");
 
-    const auto otherProject = parse<Domain::ProjectId>(
-        "20000000-0000-4000-8000-000000000002");
-    const auto wrongProjectAuthority = take(
-        fixture.issuer.authorityFor(otherProject, context(54U)));
-    requireError(
-        shell.execute(
-            shellRequest(fixture, "Get-Location"),
-            wrongProjectAuthority,
-            context(55U)),
-        Domain::ErrorCodes::ProjectScopeMismatch,
-        "Shell accepted authority from another project");
-
-    Fakes::DeterministicWorkspaceAuthority otherAuthorityIssuer{
-        parse<Domain::AuthorityId>("30000000-0000-4000-8000-000000000004"),
-        parse<Domain::ClientId>("p13-client"),
-        {fixture.workspaceRoot, fixture.toolsRoot},
-        Domain::FileAccess::Execute,
-        {
-            Domain::FileAccess::Read,
-            Domain::FileAccess::Write,
-            Domain::FileAccess::Execute},
-        {Domain::FileAccess::Delete},
-        true,
-        1U};
-    const auto otherAuthority = take(
-        otherAuthorityIssuer.authorityFor(fixture.projectId, context(56U)));
-    requireError(
-        shell.execute(
-            shellRequest(fixture, "Get-Location"),
-            otherAuthority,
-            context(57U)),
-        Domain::ErrorCodes::Unauthorized,
-        "Shell accepted a different authority identifier");
-
     Fakes::DeterministicWorkspaceAuthority disabledIssuer{
         parse<Domain::AuthorityId>("30000000-0000-4000-8000-000000000003"),
         parse<Domain::ClientId>("p13-client"),
-        {fixture.workspaceRoot, fixture.toolsRoot},
-        Domain::FileAccess::Execute,
-        {Domain::FileAccess::Read, Domain::FileAccess::Execute},
+        {fixture.workspaceRoot},
+        Domain::FileAccess::Read,
+        {Domain::FileAccess::Read},
         {Domain::FileAccess::Delete},
         false,
         1U};
     const auto disabledAuthority = take(
         disabledIssuer.authorityFor(fixture.projectId, context(58U)));
-    WindowsShellService disabledShell{
-        fixture.powerShellExecutable, disabledAuthority, supervisor};
+    const auto disabledRepository = take(disabledIssuer.authorize(
+        disabledAuthority,
+        Domain::PathAuthorizationRequest{
+            fixture.workspaceRoot,
+            std::optional<Domain::PathText>{fixture.workspaceRoot},
+            Domain::FileAccess::Read,
+            false},
+        context(59U)));
+    WindowsGitService git{fixture.gitExecutable, supervisor};
+    supervisor->enqueue(processResult());
+    require(
+        git.status(
+            disabledRepository, disabledAuthority, 1'024U,
+            context(60U)).hasValue(),
+        "Git incorrectly inherited the user-shell execution policy");
     requireError(
-        disabledShell.execute(
+        shell.execute(
             shellRequest(fixture, "Get-Location"),
             disabledAuthority,
-            context(59U)),
+            context(61U)),
         Domain::ErrorCodes::ShellDisabled,
         "Shell ignored the disabled-by-default authority policy");
 
-    const auto cancelledId = operationId(60U);
+    const auto cancelledId = operationId(62U);
     shell.cancel(cancelledId);
     require(
         supervisor->cancelled().empty(),
@@ -750,7 +807,7 @@ void shellPolicyAuthorityCancellationAndShutdownFailClosed()
         shell.execute(
             shellRequest(fixture, "Get-Location"),
             fixture.authority,
-            context(61U)),
+            context(63U)),
         Domain::ErrorCodes::Cancelled,
         "Shell did not preserve a supervisor cancellation error");
 
@@ -760,7 +817,7 @@ void shellPolicyAuthorityCancellationAndShutdownFailClosed()
         shell.execute(
             shellRequest(fixture, "Get-Location"),
             fixture.authority,
-            context(62U)),
+            context(64U)),
         Domain::ErrorCodes::Cancelled,
         "Shell accepted work after shutdown");
     require(
@@ -770,12 +827,102 @@ void shellPolicyAuthorityCancellationAndShutdownFailClosed()
         "Shell shutdown affected the shared supervisor or dispatched new work");
 }
 
+void servicesRebindPrivateExecutionScopePerProject()
+{
+    AuthorityFixture projectA;
+    const auto projectBRoot = path("C:\\workspace\\project-b");
+    const auto projectBId = parse<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    Fakes::DeterministicWorkspaceAuthority projectBIssuer{
+        parse<Domain::AuthorityId>(
+            "30000000-0000-4000-8000-000000000022"),
+        parse<Domain::ClientId>("p14-project-b-client"),
+        {projectBRoot},
+        Domain::FileAccess::Execute,
+        {
+            Domain::FileAccess::Read,
+            Domain::FileAccess::Write,
+            Domain::FileAccess::Execute},
+        {Domain::FileAccess::Delete},
+        true,
+        7U};
+    const auto projectBAuthority = take(
+        projectBIssuer.authorityFor(projectBId, context(70U)));
+    const auto projectBRepository = take(projectBIssuer.authorize(
+        projectBAuthority,
+        Domain::PathAuthorizationRequest{
+            projectBRoot,
+            std::optional<Domain::PathText>{projectBRoot},
+            Domain::FileAccess::Read,
+            false},
+        context(71U)));
+
+    auto supervisor = std::make_shared<ScriptedProcessSupervisor>();
+    WindowsGitService git{projectA.gitExecutable, supervisor};
+    require(
+        git.status(
+            projectA.readRepository, projectA.authority, 1'024U,
+            context(72U)).hasValue() &&
+            git.status(
+                projectBRepository, projectBAuthority, 1'024U,
+                context(73U)).hasValue(),
+        "One Git service instance did not execute consecutive project scopes");
+    requireError(
+        git.status(
+            projectBRepository, projectA.authority, 1'024U,
+            context(74U)),
+        Domain::ErrorCodes::Unauthorized,
+        "Git accepted a cross-project authorized path");
+
+    WindowsShellService shell{projectA.powerShellExecutable, supervisor};
+    auto projectARequest = shellRequest(projectA, "Get-Location");
+    Domain::ProcessRequest projectBRequest{projectA.powerShellExecutable};
+    projectBRequest.arguments = {"Get-Location"};
+    projectBRequest.workingDirectory = projectBRoot;
+    require(
+        shell.execute(
+            projectARequest, projectA.authority, context(75U)).hasValue() &&
+            shell.execute(
+                projectBRequest, projectBAuthority, context(76U)).hasValue(),
+        "One Shell service instance did not execute consecutive project scopes");
+
+    const auto& requests = supervisor->requests();
+    const auto& authorities = supervisor->authorities();
+    require(
+        requests.size() == 4U && authorities.size() == 4U &&
+            requests[0].workingDirectory == projectA.workspaceRoot &&
+            requests[1].workingDirectory == projectBRoot &&
+            requests[2].workingDirectory == projectA.workspaceRoot &&
+            requests[3].workingDirectory == projectBRoot,
+        "Per-project native execution did not preserve each working directory");
+    require(
+        authorities[0].projectId() == projectA.projectId &&
+            authorities[0].callerId() == projectA.authority.callerId() &&
+            authorities[0].generation() == projectA.authority.generation() &&
+            authorities[1].projectId() == projectBId &&
+            authorities[1].authorityId() ==
+                projectBAuthority.authorityId() &&
+            authorities[1].callerId() == projectBAuthority.callerId() &&
+            authorities[1].generation() == projectBAuthority.generation() &&
+            authorities[2].projectId() == projectA.projectId &&
+            authorities[3].projectId() == projectBId,
+        "Per-project private authority identity or generation drifted");
+    require(
+        !containsRoot(projectA.authority, projectA.toolsRoot) &&
+            !containsRoot(projectBAuthority, projectA.toolsRoot) &&
+            containsRoot(authorities[0], projectA.toolsRoot) &&
+            containsRoot(authorities[1], projectA.toolsRoot) &&
+            containsRoot(authorities[2], projectA.toolsRoot) &&
+            containsRoot(authorities[3], projectA.toolsRoot),
+        "Executable authority leaked to callers or was omitted from private scopes");
+}
+
 void shellShutdownCancelsBeforeSupervisorAdmission()
 {
     AuthorityFixture fixture;
     auto supervisor = std::make_shared<AdmissionBarrierProcessSupervisor>();
     auto shell = std::make_unique<WindowsShellService>(
-        fixture.powerShellExecutable, fixture.authority, supervisor);
+        fixture.powerShellExecutable, supervisor);
     auto* const shellView = shell.get();
     std::optional<Domain::Result<Domain::ProcessResult>> outcome;
     std::jthread execution{[&] {
@@ -835,9 +982,11 @@ int main()
         std::cout << "PASS native_tools.shell_fixed_powershell\n";
         shellPolicyAuthorityCancellationAndShutdownFailClosed();
         std::cout << "PASS native_tools.shell_policy_shutdown\n";
+        servicesRebindPrivateExecutionScopePerProject();
+        std::cout << "PASS native_tools.per_project_execution_scope\n";
         shellShutdownCancelsBeforeSupervisorAdmission();
         std::cout << "PASS native_tools.shell_admission_shutdown_race\n";
-        std::cout << "SUMMARY passed=6 failed=0\n";
+        std::cout << "SUMMARY passed=7 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

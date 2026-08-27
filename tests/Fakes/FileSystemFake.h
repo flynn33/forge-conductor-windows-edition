@@ -104,6 +104,11 @@ public:
                 return Domain::Result<void>::failure(boundaryPayloadTooLarge(
                     "The file write exceeds the capture bound."));
             }
+            if (nextWriteFailure_) {
+                auto error = std::move(*nextWriteFailure_);
+                nextWriteFailure_.reset();
+                return Domain::Result<void>::failure(std::move(error));
+            }
             return writeFileResult.get();
         } catch (...) {
             return voidFailure("The deterministic file write could not be captured.");
@@ -212,6 +217,11 @@ public:
         return lastCapture_;
     }
 
+    void failNextWrite(Domain::Error error)
+    {
+        nextWriteFailure_.emplace(std::move(error));
+    }
+
 private:
     void capture(
         const FileSystemCall call,
@@ -278,6 +288,7 @@ private:
     std::size_t captureBytesMaximum_;
     std::size_t captureItemsMaximum_;
     std::optional<FileSystemCapture> lastCapture_;
+    std::optional<Domain::Error> nextWriteFailure_;
 };
 
 } // namespace ForgeConductor::Tests::Fakes

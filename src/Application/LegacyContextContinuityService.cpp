@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <limits>
 #include <map>
@@ -91,6 +92,26 @@ template <typename T>
 {
     return status == "open" || status == "active" || status == "running" ||
            status == "started";
+}
+
+[[nodiscard]] Domain::UtcTimePoint canonicalPersistenceTimestamp(
+    const Domain::UtcTimePoint timestamp) noexcept
+{
+    return Domain::UtcTimePoint{
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            timestamp.time_since_epoch())};
+}
+
+void canonicalizePersistenceTimestamps(
+    Domain::LegacyHandoffPacket& packet) noexcept
+{
+    packet.createdAt = canonicalPersistenceTimestamp(packet.createdAt);
+    packet.updatedAt = canonicalPersistenceTimestamp(packet.updatedAt);
+    for (auto& agent : packet.agents) {
+        if (agent.updatedAt) {
+            agent.updatedAt = canonicalPersistenceTimestamp(*agent.updatedAt);
+        }
+    }
 }
 
 [[nodiscard]] Domain::Result<void> validateSnapshots(
@@ -1045,6 +1066,7 @@ private:
                 packet.narrative = std::move(narrative).value();
             }
 
+            canonicalizePersistenceTimestamps(packet);
             if (spec.finalize) packet.resumeReady = true;
             if ((!patch.resumeSeed && !packet.resumeSeedIsCustom) ||
                 (spec.finalize && packet.resumeSeed.empty())) {

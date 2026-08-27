@@ -89,6 +89,11 @@ public:
         monotonic_ += value;
     }
 
+    void setUtc(const Domain::UtcTimePoint value) noexcept
+    {
+        utc_ = value;
+    }
+
 private:
     Domain::UtcTimePoint utc_{std::chrono::seconds{1'787'650'000}};
     Domain::MonotonicTimePoint monotonic_{10h};
@@ -234,8 +239,23 @@ public:
                 documents.packetJson = found->second.documents.packetJson;
             }
             ++sequence_;
+            auto storedPacket = mutation.packet;
+            if (canonicalizeTimestamps_) {
+                const auto canonicalize = [](const Domain::UtcTimePoint value) {
+                    return Domain::UtcTimePoint{
+                        std::chrono::duration_cast<std::chrono::milliseconds>(
+                            value.time_since_epoch())};
+                };
+                storedPacket.createdAt = canonicalize(storedPacket.createdAt);
+                storedPacket.updatedAt = canonicalize(storedPacket.updatedAt);
+                for (auto& agent : storedPacket.agents) {
+                    if (agent.updatedAt) {
+                        agent.updatedAt = canonicalize(*agent.updatedAt);
+                    }
+                }
+            }
             Domain::LegacyContinuityRecord stored{
-                mutation.packet, sequence_, std::move(documents)};
+                std::move(storedPacket), sequence_, std::move(documents)};
             records_.insert_or_assign(mutation.packet.id.value(), stored);
             return Domain::Result<Domain::LegacyContinuityRecord>::success(
                 std::move(stored));
@@ -316,6 +336,11 @@ public:
         auto& record = records_.at(id.value());
         record.documents = {
             std::move(packetJson), std::nullopt, std::nullopt};
+    }
+
+    void canonicalizeTimestampsOnWrite() noexcept
+    {
+        canonicalizeTimestamps_ = true;
     }
 
     [[nodiscard]] std::optional<Domain::LegacyContinuityRecord> snapshot(
@@ -439,6 +464,7 @@ private:
     std::optional<Domain::LegacyHandoffId> resumePointer_;
     bool blockCompare_{};
     bool compareEntered_{};
+    bool canonicalizeTimestamps_{};
     std::atomic<std::size_t> compareCalls_{};
     std::atomic<std::size_t> getCalls_{};
     std::atomic<bool> closed_{};
@@ -1206,6 +1232,43 @@ void repairAndScopedConvergentResetPreserveUnrelatedData()
     REQUIRE(converged.verified);
 }
 
+void persistenceCanonicalizesSubMillisecondTimestampsBeforeCompareExchange()
+{
+    Fixture fixture;
+    fixture.repository.canonicalizeTimestampsOnWrite();
+    const auto observedAt =
+        Domain::UtcTimePoint{std::chrono::seconds{1'787'650'000}} +
+        std::chrono::microseconds{123'456};
+    fixture.clock.setUtc(observedAt);
+
+    auto active = snapshot(
+        "71111111-1111-4111-8111-111111111111",
+        "precision-agent",
+        "Preserve canonical timestamp equality");
+    active.updatedAt = observedAt + std::chrono::microseconds{321};
+    const auto expectedPacketTime = Domain::UtcTimePoint{
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            observedAt.time_since_epoch())};
+    const auto expectedAgentTime = Domain::UtcTimePoint{
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            active.updatedAt->time_since_epoch())};
+
+    const auto owner = clientId("timestamp-owner");
+    fixture.sessions.setSnapshots(owner, {active});
+    const auto checkpoint = take(fixture.service.checkpoint(
+        {std::nullopt,
+         Domain::LegacyContinuityPatch{
+             std::string{"Canonical persistence precision"}}},
+        owner,
+        Domain::LegacyHandoffSource::Model,
+        fixture.context("canonical-persistence-precision")));
+
+    REQUIRE(checkpoint.record.packet.createdAt == expectedPacketTime);
+    REQUIRE(checkpoint.record.packet.updatedAt == expectedPacketTime);
+    REQUIRE(checkpoint.record.packet.agents.size() == 1U);
+    REQUIRE(checkpoint.record.packet.agents.front().updatedAt == expectedAgentTime);
+}
+
 void cancellationDeadlineAndShutdownDrainOwnTheBoundary()
 {
     Fixture fixture;
@@ -1294,6 +1357,8 @@ int main()
          resumeSeedsAutomationNarrativeAndImportedDocumentsRemainCompatible},
         {"repair_and_scoped_convergent_reset_preserve_unrelated_data",
          repairAndScopedConvergentResetPreserveUnrelatedData},
+        {"persistence_canonicalizes_sub_millisecond_timestamps_before_compare_exchange",
+         persistenceCanonicalizesSubMillisecondTimestampsBeforeCompareExchange},
         {"cancellation_deadline_and_shutdown_drain_own_the_boundary",
          cancellationDeadlineAndShutdownDrainOwnTheBoundary}};
 

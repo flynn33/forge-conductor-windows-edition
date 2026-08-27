@@ -281,6 +281,13 @@ public:
     {
         return lastOperationId_;
     }
+
+    [[nodiscard]] const std::optional<Domain::OperationContext>&
+    lastContext() const noexcept
+    {
+        return lastContext_;
+    }
+
     [[nodiscard]] const std::optional<Contracts::WorkspaceAuthority>&
     lastExportAuthority() const noexcept
     {
@@ -310,6 +317,7 @@ private:
         try {
             ++calls_[static_cast<std::size_t>(call)];
             lastOperationId_ = context.operationId;
+            lastContext_ = context;
             if (projectId != nullptr) {
                 lastProjectId_ = *projectId;
             } else {
@@ -338,6 +346,7 @@ private:
         static_cast<std::size_t>(ProjectMemoryCall::Count)> calls_{};
     std::optional<Domain::ProjectId> lastProjectId_;
     std::optional<Domain::OperationId> lastOperationId_;
+    std::optional<Domain::OperationContext> lastContext_;
     std::optional<Contracts::WorkspaceAuthority> lastExportAuthority_;
     std::optional<Contracts::AuthorizedToolCall> lastExportAuthorization_;
     std::optional<Domain::DestructiveConfirmation> lastResetConfirmation_;

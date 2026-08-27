@@ -1,4 +1,5 @@
 #include "ForgeConductor/Mcp/McpClientWorkspaceContext.h"
+#include "ForgeConductor/Mcp/McpExecutionServices.h"
 
 #include <algorithm>
 #include <chrono>
@@ -157,6 +158,12 @@ public:
         return Domain::Result<void>::failure(unsupported());
     }
 
+    void addDescriptor(Domain::ProjectMemoryDescriptor descriptor)
+    {
+        std::lock_guard lock{mutex_};
+        descriptors_.push_back(std::move(descriptor));
+    }
+
     void blockFirstList() noexcept
     {
         std::lock_guard lock{mutex_};
@@ -220,6 +227,11 @@ public:
     {
     }
 
+    void addBinding(Binding binding)
+    {
+        bindings_.push_back(std::move(binding));
+    }
+
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> authorityFor(
         const Domain::ProjectId& projectId,
         const Domain::OperationContext&) noexcept override
@@ -247,17 +259,19 @@ public:
     }
 
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> narrow(
-        const Contracts::WorkspaceAuthority&,
-        const std::vector<Domain::PathText>&,
-        const std::vector<Domain::FileAccess>&,
-        bool,
-        std::uint64_t,
+        const Contracts::WorkspaceAuthority& authority,
+        const std::vector<Domain::PathText>& trustedRoots,
+        const std::vector<Domain::FileAccess>& grants,
+        const bool shellEnabled,
+        const std::uint64_t generation,
         const Domain::OperationContext&) noexcept override
     {
-        return Domain::Result<Contracts::WorkspaceAuthority>::failure(
-            Domain::makeError(
-                Domain::ErrorCodes::HostCapabilityUnavailable,
-                "The deterministic authority does not narrow capabilities."));
+        return narrowAuthority(
+            authority,
+            trustedRoots,
+            grants,
+            shellEnabled,
+            generation);
     }
 
     [[nodiscard]] Domain::Result<Contracts::AuthorizedPath> authorize(
@@ -483,6 +497,59 @@ void usesAbsoluteKeyFileFallbackAndClearsOnNoMatch()
     REQUIRE(!take(fixture.subject.snapshot(caller, context())).has_value());
 }
 
+void adoptsProjectRegisteredAfterContextConstruction()
+{
+    const auto rootA = path("C:\\workspace\\alpha");
+    const auto rootB = path("D:\\workspace\\beta");
+    RegistryFake registry{{Domain::ProjectMemoryDescriptor{
+        projectA(), "Alpha", std::nullopt, {rootA}}}};
+    WorkspaceAuthorityFake authority{{WorkspaceAuthorityFake::Binding{
+        projectA(),
+        id<Domain::AuthorityId>(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+        rootA}}};
+    FixedClock clock;
+    Mcp::McpClientWorkspaceContext subject{registry, authority, clock};
+    Mcp::McpExecutionContextResolver resolver{
+        authority, projectA(), clock, &subject};
+
+    registry.addDescriptor(Domain::ProjectMemoryDescriptor{
+        projectB(), "Beta", std::nullopt, {rootB}});
+    authority.addBinding(WorkspaceAuthorityFake::Binding{
+        projectB(),
+        id<Domain::AuthorityId>(
+            "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+        rootB});
+
+    const auto caller = client("registered-workspace-authority");
+    const auto adopted = take(subject.adopt(
+        caller,
+        record(
+            "late-project-handoff",
+            1U,
+            std::string{"D:\\workspace\\beta\\src"}),
+        context()));
+    REQUIRE(adopted.snapshot.has_value());
+    REQUIRE(adopted.snapshot->projectId == projectB());
+    REQUIRE(adopted.snapshot->authorityRoot == rootB);
+
+    const auto active = context();
+    const auto resolved = take(resolver.resolve(
+        Domain::ToolCallRequest{
+            Domain::McpRequestMetadata{
+                id<Domain::RequestId>("late-project-request"),
+                active.correlationId,
+                caller,
+                std::nullopt,
+                "2025-03-26"},
+            "fs_read",
+            R"({"path":"notes.txt"})"},
+        Domain::ToolEffect::Read,
+        active));
+    REQUIRE(resolved.projectId() == projectB());
+    REQUIRE(resolved.trustedRoots() == std::vector<Domain::PathText>{rootB});
+}
+
 void newerReservationSupersedesSlowerAdoption()
 {
     Fixture fixture;
@@ -581,6 +648,7 @@ int main()
             Mcp::McpClientWorkspaceContext>);
         adoptsCanonicalRootAndIsolatesClients();
         usesAbsoluteKeyFileFallbackAndClearsOnNoMatch();
+        adoptsProjectRegisteredAfterContextConstruction();
         newerReservationSupersedesSlowerAdoption();
         dependenciesRunOutsideStateLockAndStateIsBounded();
         std::cout << "MCP client workspace context tests passed.\n";

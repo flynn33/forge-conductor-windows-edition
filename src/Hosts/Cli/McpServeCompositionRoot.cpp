@@ -19,6 +19,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsNativeSessionLedger.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUnicodeCanonicalizer.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
@@ -247,17 +248,6 @@ void requireSuccess(Domain::Result<void> result)
     }
     buffer.resize(static_cast<std::size_t>(written));
     return pathText(take(strictWideToUtf8(buffer)));
-}
-
-[[nodiscard]] Domain::PathText parentDirectory(const Domain::PathText& path)
-{
-    const auto wide = take(strictUtf8ToWide(path.value()));
-    const auto parent = std::filesystem::path{wide}.parent_path().native();
-    if (parent.empty()) {
-        throw std::runtime_error{
-            "invalid_request: A native executable has no parent directory."};
-    }
-    return pathText(take(strictWideToUtf8(parent)));
 }
 
 [[nodiscard]] Domain::PathText childPath(
@@ -528,54 +518,13 @@ private:
             throw std::runtime_error{
                 "integrity_failure: The startup project has no canonical alias."};
         }
-        startupWorkspaceRoot_ = initialization.project.aliases.front();
-
-        const auto workspaceAuthorityId = Domain::AuthorityId{
-            nextUuid(*uuidGenerator_)};
-        std::vector<Domain::FileAccess> workspaceGrants{
-            Domain::FileAccess::Read,
-            Domain::FileAccess::Write,
-            Domain::FileAccess::Create,
-            Domain::FileAccess::Delete};
-        std::vector<Domain::FileAccess> workspaceDenials;
-        if (configuration_.shell.enabled) {
-            workspaceGrants.push_back(Domain::FileAccess::Execute);
-        } else {
-            workspaceDenials.push_back(Domain::FileAccess::Execute);
-        }
-        workspaceAuthority_ = std::make_shared<
-            InfrastructureWindows::WindowsWorkspaceAuthority>(
-            std::vector<InfrastructureWindows::WindowsWorkspaceAuthorityPolicy>{
-                authorityPolicy(
-                    workspaceAuthorityId, defaultProjectId_, clientId_,
-                    {startupWorkspaceRoot_}, Domain::FileAccess::Write,
-                    workspaceGrants, workspaceDenials,
-                    configuration_.shell.enabled)});
+        workspaceAuthority_ = std::make_unique<
+            InfrastructureWindows::WindowsProjectWorkspaceAuthority>(
+            *projectRegistry_, *uuidGenerator_, clientId_,
+            configuration_.shell.enabled);
 
         const auto gitExecutable = discoverExecutable(L"git.exe");
         const auto powerShellExecutable = discoverExecutable(L"powershell.exe");
-        std::vector<Domain::PathText> executionRoots{startupWorkspaceRoot_};
-        for (const auto& root : {
-                 parentDirectory(gitExecutable),
-                 parentDirectory(powerShellExecutable)}) {
-            if (std::find(executionRoots.begin(), executionRoots.end(), root) ==
-                executionRoots.end()) {
-                executionRoots.push_back(root);
-            }
-        }
-        nativeExecutionAuthority_ = std::make_unique<
-            InfrastructureWindows::WindowsWorkspaceAuthority>(
-            std::vector<InfrastructureWindows::WindowsWorkspaceAuthorityPolicy>{
-                authorityPolicy(
-                    workspaceAuthorityId, defaultProjectId_, clientId_,
-                    std::move(executionRoots), Domain::FileAccess::Execute,
-                    {Domain::FileAccess::Read, Domain::FileAccess::Write,
-                     Domain::FileAccess::Create, Domain::FileAccess::Delete,
-                     Domain::FileAccess::Execute},
-                    {}, true)});
-        const auto nativeExecutionScope = take(
-            nativeExecutionAuthority_->authorityFor(
-                defaultProjectId_, startupContext));
 
         auto centralDatabase = take(PersistenceWindows::WindowsCentralDatabase::open(
             applicationPaths_, runtimeDiagnostics_, clock_, startupContext));
@@ -610,9 +559,9 @@ private:
         pdf_ = std::make_unique<NativeToolsWindows::WindowsPdfService>(
             *atomicFileStore_);
         git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
-            gitExecutable, nativeExecutionScope, processSupervisor_);
+            gitExecutable, processSupervisor_);
         shell_ = std::make_unique<NativeToolsWindows::WindowsShellService>(
-            powerShellExecutable, nativeExecutionScope, processSupervisor_);
+            powerShellExecutable, processSupervisor_);
 
         projectArtifactStore_ = std::make_shared<
             PersistenceWindows::WindowsProjectMemoryArtifactStore>(
@@ -908,13 +857,12 @@ private:
         legacyMemoryRepository_.reset();
         agentSessionRepository_.reset();
 
+        workspaceAuthority_.reset();
         projectRegistry_.reset();
         if (configurationStore_) {
             configurationStore_->shutdown();
         }
         configurationStore_.reset();
-        nativeExecutionAuthority_.reset();
-        workspaceAuthority_.reset();
         dataAuthority_.reset();
 
         if (centralDatabase_) {
@@ -964,14 +912,11 @@ private:
     Domain::AppConfig configuration_;
     Domain::ProjectId defaultProjectId_{Domain::Uuid::parse(
         "00000000-0000-4000-8000-000000000000").value()};
-    Domain::PathText startupWorkspaceRoot_{pathText("C:\\")};
 
     std::shared_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
         dataAuthority_;
-    std::shared_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
+    std::unique_ptr<InfrastructureWindows::WindowsProjectWorkspaceAuthority>
         workspaceAuthority_;
-    std::unique_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
-        nativeExecutionAuthority_;
     std::shared_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
         projectionAuthority_;
     std::unique_ptr<InfrastructureWindows::WindowsConfigurationStore>

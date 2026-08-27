@@ -270,11 +270,11 @@
       "behavior": "Newline-delimited compact JSON and unbuffered output",
       "macos_evidence": "Sources/ForgeConductorCore/MCP/MCPServer.swift",
       "windows_acceptance": "Golden protocol tests",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpProtocol.cpp; src/Mcp/WindowsStdioMcpTransport.cpp; src/Hosts/Cli/McpServeCompositionRoot.cpp",
+      "tests": "tests/Mcp/McpProtocolServerTests.cpp; tests/Mcp/McpStdioTransportTests.cpp; tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "MCP-002",
@@ -283,11 +283,11 @@
       "behavior": "All canonical tools and schemas",
       "macos_evidence": "Sources/ForgeConductorCore/Application/Tools",
       "windows_acceptance": "Exact semantic snapshot",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolCatalog.cpp; src/Mcp/McpToolPackAdapter.cpp",
+      "tests": "tests/Mcp/McpCatalogCodecTests.cpp; tests/Mcp/McpToolContractMatrixTests.cpp; tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "MCP-003",
@@ -296,11 +296,11 @@
       "behavior": "Independent server identity and health",
       "macos_evidence": "Sources/ForgeConductorCore/MCP/MCPServer.swift",
       "windows_acceptance": "Role smoke",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Hosts/Cli/McpServeCompositionRoot.cpp; src/Mcp/McpServer.cpp",
+      "tests": "tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "MCP-004",
@@ -309,11 +309,11 @@
       "behavior": "Independent fallback identity and health",
       "macos_evidence": "Sources/ForgeConductorCore/MCP/MCPServer.swift",
       "windows_acceptance": "Role smoke",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Hosts/Cli/McpServeCompositionRoot.cpp; src/Mcp/McpServer.cpp",
+      "tests": "tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "MCP-005",
@@ -361,11 +361,11 @@
       "behavior": "Initialize/tools-list smoke",
       "macos_evidence": "Sources/ForgeConductorCore/MCP/MCPServeVerifier.swift",
       "windows_acceptance": "Primary/fallback verifier",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Hosts/Cli/McpServeCompositionRoot.cpp; src/Mcp/McpProtocol.cpp; src/Mcp/WindowsStdioMcpTransport.cpp",
+      "tests": "tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-001",
@@ -374,11 +374,11 @@
       "behavior": "Read/write/edit/list/glob/mkdir/delete/move",
       "macos_evidence": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
       "windows_acceptance": "Bounds and path auth",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolPackAdapter.cpp; src/NativeTools/Windows/WindowsFileSystem.cpp; src/NativeTools/Windows/WindowsPathGlobService.cpp",
+      "tests": "tests/Mcp/McpToolContractMatrixTests.cpp; tests/NativeTools/WindowsFileSystemSearchTests.cpp; tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-002",
@@ -387,11 +387,11 @@
       "behavior": "status/diff/log/add/commit",
       "macos_evidence": "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
       "windows_acceptance": "No shell composition",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolPackAdapter.cpp; src/NativeTools/Windows/WindowsGitService.cpp",
+      "tests": "tests/Mcp/McpToolContractMatrixTests.cpp; tests/NativeTools/WindowsGitShellTests.cpp; tests/NativeTools/WindowsGitShellIntegrationTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-003",
@@ -400,11 +400,11 @@
       "behavior": "Bounded recursive search",
       "macos_evidence": "Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift",
       "windows_acceptance": "Native walker",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolPackAdapter.cpp; src/NativeTools/Windows/WindowsTextSearchService.cpp",
+      "tests": "tests/Mcp/McpToolContractMatrixTests.cpp; tests/NativeTools/WindowsFileSystemSearchTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-004",
@@ -413,11 +413,11 @@
       "behavior": "Write PDF and convert text file",
       "macos_evidence": "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
       "windows_acceptance": "Native PDF output",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolPackAdapter.cpp; src/NativeTools/Windows/WindowsPdfService.cpp",
+      "tests": "tests/Mcp/McpToolContractMatrixTests.cpp; tests/NativeTools/WindowsPdfServiceTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-005",
@@ -426,11 +426,11 @@
       "behavior": "Opt-in bounded shell execution",
       "macos_evidence": "Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift",
       "windows_acceptance": "PowerShell/Job Object, disabled default",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolPackAdapter.cpp; src/NativeTools/Windows/WindowsShellService.cpp",
+      "tests": "tests/Mcp/McpToolContractMatrixTests.cpp; tests/NativeTools/WindowsGitShellTests.cpp; tests/NativeTools/WindowsGitShellIntegrationTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-006",
@@ -439,11 +439,11 @@
       "behavior": "Workspace root and shell policy",
       "macos_evidence": "Sources/ForgeConductorCore/Application/ToolAuthorizationService.swift",
       "windows_acceptance": "Negative security tests",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolRouter.cpp; src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp; src/NativeTools/Windows/NativeToolValidation.h",
+      "tests": "tests/Infrastructure/WindowsProjectWorkspaceAuthorityTests.cpp; tests/NativeTools/WindowsWorkspaceAuthorityTests.cpp; tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-007",
@@ -452,11 +452,11 @@
       "behavior": "Sanitized args, status, duration, error",
       "macos_evidence": "Sources/ForgeConductorCore/Infrastructure/AuditService.swift",
       "windows_acceptance": "Bounded retention",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpToolRouter.cpp; src/Persistence/Windows/WindowsAuditRepository.cpp",
+      "tests": "tests/Mcp/McpToolRouterTests.cpp; tests/Persistence/AuditRepositoryWindowsTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "TOOL-008",
@@ -465,11 +465,11 @@
       "behavior": "Checkpoint and hard block repeated loops",
       "macos_evidence": "Sources/ForgeConductorCore/Application/ToolRouter.swift",
       "windows_acceptance": "Deterministic tests",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Mcp/McpInvocationGuard.cpp; src/Mcp/McpToolRouter.cpp",
+      "tests": "tests/Mcp/McpInvocationGuardTests.cpp; tests/Mcp/McpToolRouterTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json; .forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json; .forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P14-008-source-compatible-mcp-semantics-and-windows-extensions.md; .forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md"
     },
     {
       "id": "AGENT-001",

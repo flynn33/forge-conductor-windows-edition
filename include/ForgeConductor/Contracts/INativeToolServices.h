@@ -33,24 +33,29 @@ public:
 
     [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> status(
         const AuthorizedPath& repository,
+        const WorkspaceAuthority& authority,
         std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept = 0;
     [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> diff(
         const AuthorizedPath& repository,
+        const WorkspaceAuthority& authority,
         std::span<const std::string> arguments,
         std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept = 0;
     [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> log(
         const AuthorizedPath& repository,
+        const WorkspaceAuthority& authority,
         std::size_t maximumEntries,
         std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept = 0;
     [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> add(
         const AuthorizedPath& repository,
+        const WorkspaceAuthority& authority,
         std::span<const AuthorizedPath> paths,
         const Domain::OperationContext& context) noexcept = 0;
     [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> commit(
         const AuthorizedPath& repository,
+        const WorkspaceAuthority& authority,
         std::string_view message,
         const Domain::OperationContext& context) noexcept = 0;
 };

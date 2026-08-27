@@ -13,6 +13,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsDiagnosticSink.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsNativeSessionLedger.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUnicodeCanonicalizer.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"

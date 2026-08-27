@@ -9,10 +9,18 @@
       "pack": "AgentToolPack",
       "operation": "status",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 2,
@@ -20,10 +28,18 @@
       "pack": "AgentToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 3,
@@ -31,10 +47,18 @@
       "pack": "AgentToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 4,
@@ -42,10 +66,18 @@
       "pack": "AgentToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 5,
@@ -53,10 +85,18 @@
       "pack": "AgentToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 6,
@@ -64,10 +104,18 @@
       "pack": "AgentToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 7,
@@ -75,10 +123,18 @@
       "pack": "AgentToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 8,
@@ -86,10 +142,18 @@
       "pack": "AgentToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 9,
@@ -97,10 +161,18 @@
       "pack": "FilesystemToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 10,
@@ -108,10 +180,18 @@
       "pack": "FilesystemToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 11,
@@ -119,10 +199,18 @@
       "pack": "FilesystemToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 12,
@@ -130,10 +218,18 @@
       "pack": "FilesystemToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 13,
@@ -141,10 +237,18 @@
       "pack": "FilesystemToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 14,
@@ -152,10 +256,18 @@
       "pack": "FilesystemToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 15,
@@ -163,10 +275,18 @@
       "pack": "FilesystemToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 16,
@@ -174,10 +294,18 @@
       "pack": "FilesystemToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/FilesystemToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 17,
@@ -185,10 +313,18 @@
       "pack": "GitToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 18,
@@ -196,10 +332,18 @@
       "pack": "GitToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 19,
@@ -207,10 +351,18 @@
       "pack": "GitToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 20,
@@ -218,10 +370,18 @@
       "pack": "GitToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 21,
@@ -229,10 +389,18 @@
       "pack": "GitToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/GitToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 22,
@@ -240,10 +408,18 @@
       "pack": "SearchToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/SearchToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 23,
@@ -251,10 +427,18 @@
       "pack": "DocsToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 24,
@@ -262,10 +446,18 @@
       "pack": "DocsToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/DocsToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 25,
@@ -273,10 +465,18 @@
       "pack": "ShellToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ShellToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 26,
@@ -284,10 +484,18 @@
       "pack": "MemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 27,
@@ -295,10 +503,18 @@
       "pack": "MemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 28,
@@ -306,10 +522,18 @@
       "pack": "MemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 29,
@@ -317,10 +541,18 @@
       "pack": "MemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 30,
@@ -328,10 +560,18 @@
       "pack": "MemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 31,
@@ -339,10 +579,18 @@
       "pack": "ContinuityToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 32,
@@ -350,10 +598,18 @@
       "pack": "ContinuityToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 33,
@@ -361,10 +617,18 @@
       "pack": "ContinuityToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 34,
@@ -372,10 +636,18 @@
       "pack": "ContinuityToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 35,
@@ -383,10 +655,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 36,
@@ -394,10 +674,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 37,
@@ -405,10 +693,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 38,
@@ -416,10 +712,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 39,
@@ -427,10 +731,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 40,
@@ -438,10 +750,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 41,
@@ -449,10 +769,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 42,
@@ -460,10 +788,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 43,
@@ -471,10 +807,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 44,
@@ -482,10 +826,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 45,
@@ -493,10 +845,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 46,
@@ -504,10 +864,18 @@
       "pack": "ProjectMemoryToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ProjectMemoryToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 47,
@@ -515,10 +883,18 @@
       "pack": "ContinuityLifecycleToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 48,
@@ -526,10 +902,18 @@
       "pack": "ContinuityLifecycleToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 49,
@@ -537,10 +921,18 @@
       "pack": "ContinuityLifecycleToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 50,
@@ -548,10 +940,18 @@
       "pack": "ContinuityLifecycleToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 51,
@@ -559,10 +959,18 @@
       "pack": "ContinuityLifecycleToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 52,
@@ -570,10 +978,18 @@
       "pack": "ContinuityLifecycleToolPack",
       "operation": "read",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     },
     {
       "index": 53,
@@ -581,10 +997,18 @@
       "pack": "ContinuityLifecycleToolPack",
       "operation": "write",
       "macos_source": "Sources/ForgeConductorCore/Application/Tools/ContinuityLifecycleToolPack.swift",
-      "windows_status": "not_started",
-      "windows_implementation": [],
-      "tests": [],
-      "evidence": []
+      "windows_status": "passed",
+      "windows_implementation": [
+        "src/Mcp/McpToolPackAdapter.cpp"
+      ],
+      "tests": [
+        "tests/Mcp/McpToolContractMatrixTests.cpp"
+      ],
+      "evidence": [
+        ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+        ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+        ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json"
+      ]
     }
   ]
 }

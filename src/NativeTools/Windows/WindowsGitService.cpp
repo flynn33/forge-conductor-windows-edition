@@ -87,16 +87,15 @@ void enforceOutputBounds(
 
 WindowsGitService::WindowsGitService(
     Domain::PathText gitExecutable,
-    Contracts::WorkspaceAuthority executionAuthority,
     std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor)
     : gitExecutable_{std::move(gitExecutable)},
-      executionAuthority_{std::move(executionAuthority)},
       processSupervisor_{std::move(processSupervisor)}
 {
 }
 
 Domain::Result<Domain::ProcessResult> WindowsGitService::run(
     const Contracts::AuthorizedPath& repository,
+    const Contracts::WorkspaceAuthority& authority,
     const Domain::FileAccess repositoryAccess,
     std::vector<std::string> arguments,
     const std::size_t maximumStdoutBytes,
@@ -114,17 +113,23 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::run(
                     Domain::ErrorCodes::InvalidRequest,
                     "The Git service requires a process supervisor owner."));
         }
-        auto executable = Detail::validateExecutable(
-            gitExecutable_, executionAuthority_, "Git");
+        auto executable = Detail::executableParent(gitExecutable_, "Git");
         if (!executable) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(executable).error());
         }
         auto repositoryCapability = Detail::validateAuthorizedPath(
-            repository, executionAuthority_, repositoryAccess, "Git repository");
+            repository, authority, repositoryAccess, "Git repository");
         if (!repositoryCapability) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(repositoryCapability).error());
+        }
+
+        auto privateAuthority = Detail::derivePrivateExecutionAuthority(
+            authority, gitExecutable_, "Git");
+        if (!privateAuthority) {
+            return Domain::Result<Domain::ProcessResult>::failure(
+                std::move(privateAuthority).error());
         }
 
         Domain::ProcessRequest request{gitExecutable_};
@@ -136,7 +141,8 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::run(
         request.maximumStdoutBytes = maximumStdoutBytes;
         request.maximumStderrBytes = MaximumErrorBytes;
         auto outcome =
-            processSupervisor_->run(request, executionAuthority_, context);
+            processSupervisor_->run(
+                request, privateAuthority.value(), context);
         if (!outcome) {
             return outcome;
         }
@@ -155,6 +161,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::run(
 
 Domain::Result<Domain::ProcessResult> WindowsGitService::status(
     const Contracts::AuthorizedPath& repository,
+    const Contracts::WorkspaceAuthority& authority,
     const std::size_t maximumBytes,
     const Domain::OperationContext& context) noexcept
 {
@@ -166,6 +173,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::status(
         }
         return run(
             repository,
+            authority,
             Domain::FileAccess::Read,
             {"status", "--porcelain=v1", "-b"},
             maximumBytes,
@@ -179,6 +187,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::status(
 
 Domain::Result<Domain::ProcessResult> WindowsGitService::diff(
     const Contracts::AuthorizedPath& repository,
+    const Contracts::WorkspaceAuthority& authority,
     const std::span<const std::string> arguments,
     const std::size_t maximumBytes,
     const Domain::OperationContext& context) noexcept
@@ -207,6 +216,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::diff(
             processArguments.end(), arguments.begin(), arguments.end());
         return run(
             repository,
+            authority,
             Domain::FileAccess::Read,
             std::move(processArguments),
             maximumBytes,
@@ -220,6 +230,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::diff(
 
 Domain::Result<Domain::ProcessResult> WindowsGitService::log(
     const Contracts::AuthorizedPath& repository,
+    const Contracts::WorkspaceAuthority& authority,
     const std::size_t maximumEntries,
     const std::size_t maximumBytes,
     const Domain::OperationContext& context) noexcept
@@ -242,6 +253,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::log(
         }
         return run(
             repository,
+            authority,
             Domain::FileAccess::Read,
             {"log", "-n", std::to_string(maximumEntries), "--oneline"},
             maximumBytes,
@@ -255,6 +267,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::log(
 
 Domain::Result<Domain::ProcessResult> WindowsGitService::add(
     const Contracts::AuthorizedPath& repository,
+    const Contracts::WorkspaceAuthority& authority,
     const std::span<const Contracts::AuthorizedPath> paths,
     const Domain::OperationContext& context) noexcept
 {
@@ -283,7 +296,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::add(
             arguments.reserve(paths.size() + 2U);
             for (const auto& path : paths) {
                 auto authorized = Detail::validateAuthorizedPath(
-                    path, executionAuthority_, Domain::FileAccess::Read, "Git add path");
+                    path, authority, Domain::FileAccess::Read, "Git add path");
                 if (!authorized) {
                     return Domain::Result<Domain::ProcessResult>::failure(
                         std::move(authorized).error());
@@ -314,6 +327,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::add(
 
         return run(
             repository,
+            authority,
             Domain::FileAccess::Write,
             std::move(arguments),
             MaximumOutputBytes,
@@ -327,6 +341,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::add(
 
 Domain::Result<Domain::ProcessResult> WindowsGitService::commit(
     const Contracts::AuthorizedPath& repository,
+    const Contracts::WorkspaceAuthority& authority,
     const std::string_view message,
     const Domain::OperationContext& context) noexcept
 {
@@ -339,6 +354,7 @@ Domain::Result<Domain::ProcessResult> WindowsGitService::commit(
         }
         return run(
             repository,
+            authority,
             Domain::FileAccess::Write,
             {"commit", "-m", std::string{selectedMessage}},
             MaximumOutputBytes,

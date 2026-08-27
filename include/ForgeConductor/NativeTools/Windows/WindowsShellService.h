@@ -19,7 +19,6 @@ public:
 
     WindowsShellService(
         Domain::PathText powerShellExecutable,
-        Contracts::WorkspaceAuthority executionAuthority,
         std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor);
     ~WindowsShellService() override;
 

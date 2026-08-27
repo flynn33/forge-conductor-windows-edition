@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ForgeConductor/Contracts/AuthorityCapabilities.h"
+#include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Domain/Domain.h"
 
 #include <algorithm>
@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace ForgeConductor::NativeTools::Windows::Detail {
@@ -126,53 +127,110 @@ namespace ForgeConductor::NativeTools::Windows::Detail {
            expected.generation() == actual.generation();
 }
 
-[[nodiscard]] inline Domain::Result<void> validateBoundAuthority(
-    const Contracts::WorkspaceAuthority& expected,
-    const Contracts::WorkspaceAuthority& actual) noexcept
-{
-    if (expected.projectId() != actual.projectId()) {
-        return Domain::Result<void>::failure(Domain::makeError(
-            Domain::ErrorCodes::ProjectScopeMismatch,
-            "The workspace authority belongs to a different project."));
+class PrivateExecutionAuthorityIssuer
+    : private Contracts::IWorkspaceAuthority {
+public:
+    [[nodiscard]] static Domain::Result<Contracts::WorkspaceAuthority> issue(
+        const Contracts::WorkspaceAuthority& caller,
+        std::vector<Domain::PathText> trustedRoots)
+    {
+        return issueAuthority(
+            caller.authorityId(),
+            caller.projectId(),
+            caller.callerId(),
+            std::move(trustedRoots),
+            Domain::FileAccess::Execute,
+            {Domain::FileAccess::Execute},
+            {},
+            true,
+            caller.generation());
     }
-    if (!authoritiesMatch(expected, actual)) {
-        return Domain::Result<void>::failure(Domain::makeError(
-            Domain::ErrorCodes::Unauthorized,
-            "The workspace authority does not match the service binding."));
-    }
-    return Domain::Result<void>::success();
-}
+};
 
-[[nodiscard]] inline Domain::Result<void> validateExecutable(
+[[nodiscard]] inline Domain::Result<Domain::PathText> executableParent(
     const Domain::PathText& executable,
-    const Contracts::WorkspaceAuthority& authority,
     const std::string_view toolName) noexcept
 {
     try {
         if (!normalizedLocalPathKey(executable)) {
-            return Domain::Result<void>::failure(Domain::makeError(
+            return Domain::Result<Domain::PathText>::failure(Domain::makeError(
                 Domain::ErrorCodes::InvalidRequest,
-                std::string{toolName} + " executable must be an explicit absolute local path."));
+                std::string{toolName} +
+                    " executable must be an explicit absolute local path."));
         }
-        if (!isAuthorizedLocalPath(executable, authority)) {
-            return Domain::Result<void>::failure(Domain::makeError(
-                Domain::ErrorCodes::Unauthorized,
-                std::string{toolName} + " executable is outside the bound authority roots."));
+        const auto separator = executable.value().find_last_of("\\/");
+        if (separator == std::string::npos || separator < 2U ||
+            separator + 1U >= executable.value().size()) {
+            return Domain::Result<Domain::PathText>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                std::string{toolName} +
+                    " executable must name a file in an absolute directory."));
         }
-        if (!authority.shellEnabled() ||
-            !containsAccess(authority.grants(), Domain::FileAccess::Execute) ||
-            containsAccess(authority.denials(), Domain::FileAccess::Execute)) {
-            return Domain::Result<void>::failure(Domain::makeError(
-                authority.shellEnabled()
-                    ? Domain::ErrorCodes::Unauthorized
-                    : Domain::ErrorCodes::ShellDisabled,
-                std::string{toolName} + " execution is not permitted by the bound authority."));
+        const auto parentLength = separator == 2U ? 3U : separator;
+        auto parent = Domain::PathText::create(
+            executable.value().substr(0U, parentLength));
+        if (!parent) {
+            return Domain::Result<Domain::PathText>::failure(
+                std::move(parent).error());
         }
-        return Domain::Result<void>::success();
+        return Domain::Result<Domain::PathText>::success(
+            std::move(parent).value());
     } catch (...) {
-        return Domain::Result<void>::failure(Domain::makeError(
+        return Domain::Result<Domain::PathText>::failure(Domain::makeError(
             Domain::ErrorCodes::InternalFailure,
-            "The native-tool executable binding could not be validated."));
+            "The native-tool executable parent could not be derived."));
+    }
+}
+
+[[nodiscard]] inline Domain::Result<Contracts::WorkspaceAuthority>
+derivePrivateExecutionAuthority(
+    const Contracts::WorkspaceAuthority& caller,
+    const Domain::PathText& executable,
+    const std::string_view toolName) noexcept
+{
+    try {
+        auto parent = executableParent(executable, toolName);
+        if (!parent) {
+            return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                std::move(parent).error());
+        }
+        std::vector<Domain::PathText> roots;
+        roots.reserve(caller.trustedRoots().size() + 1U);
+        for (const auto& root : caller.trustedRoots()) {
+            if (!normalizedLocalPathKey(root)) {
+                return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                    Domain::makeError(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The caller authority contains a non-local trusted root."));
+            }
+            roots.push_back(root);
+        }
+        const auto parentKey = normalizedLocalPathKey(parent.value());
+        const auto alreadyPresent = std::any_of(
+            roots.begin(), roots.end(), [&](const Domain::PathText& root) {
+                const auto rootKey = normalizedLocalPathKey(root);
+                return rootKey && parentKey && rootKey.value() == parentKey.value();
+            });
+        if (!alreadyPresent) {
+            roots.push_back(std::move(parent).value());
+        }
+        auto issued = PrivateExecutionAuthorityIssuer::issue(
+            caller, std::move(roots));
+        if (!issued) {
+            return issued;
+        }
+        if (!authoritiesMatch(caller, issued.value())) {
+            return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                Domain::makeError(
+                    Domain::ErrorCodes::InternalFailure,
+                    "The private execution authority identity did not match its caller."));
+        }
+        return issued;
+    } catch (...) {
+        return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+            Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The private native-tool execution authority could not be derived."));
     }
 }
 

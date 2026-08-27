@@ -97,10 +97,8 @@ public:
 
     Impl(
         Domain::PathText powerShellExecutable,
-        Contracts::WorkspaceAuthority executionAuthority,
         std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor)
         : powerShellExecutable{std::move(powerShellExecutable)},
-          executionAuthority{std::move(executionAuthority)},
           processSupervisor{std::move(processSupervisor)}
     {
     }
@@ -224,7 +222,6 @@ public:
     }
 
     const Domain::PathText powerShellExecutable;
-    const Contracts::WorkspaceAuthority executionAuthority;
     const std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor;
     std::mutex stateMutex;
     std::vector<ActiveOperation> activeOperations;
@@ -233,11 +230,9 @@ public:
 
 WindowsShellService::WindowsShellService(
     Domain::PathText powerShellExecutable,
-    Contracts::WorkspaceAuthority executionAuthority,
     std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor)
     : implementation_{std::make_shared<Impl>(
           std::move(powerShellExecutable),
-          std::move(executionAuthority),
           std::move(processSupervisor))}
 {
 }
@@ -269,13 +264,6 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(active).error());
         }
-        auto boundAuthority =
-            Detail::validateBoundAuthority(
-                implementation->executionAuthority, authority);
-        if (!boundAuthority) {
-            return Domain::Result<Domain::ProcessResult>::failure(
-                std::move(boundAuthority).error());
-        }
         if (!authority.shellEnabled()) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 Domain::makeError(
@@ -297,10 +285,8 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
                     Domain::ErrorCodes::InvalidRequest,
                     "The shell service requires a process supervisor owner."));
         }
-        auto executable = Detail::validateExecutable(
-            implementation->powerShellExecutable,
-            implementation->executionAuthority,
-            "PowerShell");
+        auto executable = Detail::executableParent(
+            implementation->powerShellExecutable, "PowerShell");
         if (!executable) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(executable).error());
@@ -317,12 +303,11 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(workingDirectory).error());
         }
-        auto executableWorkingDirectory = Detail::validateWorkingDirectory(
-            request.workingDirectory.value(),
-            implementation->executionAuthority);
-        if (!executableWorkingDirectory) {
+        auto privateAuthority = Detail::derivePrivateExecutionAuthority(
+            authority, implementation->powerShellExecutable, "PowerShell");
+        if (!privateAuthority) {
             return Domain::Result<Domain::ProcessResult>::failure(
-                std::move(executableWorkingDirectory).error());
+                std::move(privateAuthority).error());
         }
 
         Domain::ProcessRequest normalized{
@@ -360,7 +345,7 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
             operationCancellation->get_token(),
             context.correlationId};
         auto outcome = implementation->processSupervisor->run(
-            normalized, implementation->executionAuthority, supervisorContext);
+            normalized, privateAuthority.value(), supervisorContext);
         const auto cancelledLocally =
             implementation->release(context.operationId);
         admitted = false;

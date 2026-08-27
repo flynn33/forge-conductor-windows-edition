@@ -40,6 +40,7 @@
 #include <stop_token>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -1315,6 +1316,127 @@ void atomicReadPinsParentAncestryAndUsesRelativeLeafOpen()
     require(renameBlocked &&
                 (renameError == ERROR_SHARING_VIOLATION || renameError == ERROR_ACCESS_DENIED),
             "anchored read permitted parent substitution before the leaf open");
+}
+
+void pathResolverRetriesTransientDirectoryAnchorContention()
+{
+    constexpr auto MinimumObservedWait = std::chrono::milliseconds{75};
+    constexpr auto MaximumObservedWait = std::chrono::seconds{2};
+    constexpr DWORD BlockerAccess = DELETE | FILE_READ_ATTRIBUTES;
+    constexpr DWORD BlockerShare =
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+    constexpr DWORD DirectoryFlags =
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT;
+
+    {
+        TemporaryDirectory directory;
+        const auto sharedAncestor = directory.path() / L"shared-ancestor";
+        const auto owned = sharedAncestor / L"atomic-child";
+        require(std::filesystem::create_directories(owned),
+                "shared-ancestor fixture directories must be created");
+        const auto target = owned / L"state.bin";
+        auto readPath =
+            CapabilityIssuer::issue(owned, target, Domain::FileAccess::Read);
+        Infrastructure::Windows::Detail::UniqueHandle siblingWriter{::CreateFileW(
+            sharedAncestor.c_str(),
+            FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
+                FILE_ADD_FILE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+            DirectoryFlags, nullptr)};
+        require(static_cast<bool>(siblingWriter),
+                "shared-ancestor write-capable handle must open");
+
+        auto compatible = Infrastructure::Windows::Detail::WindowsPathResolver::
+            resolveAnchoredAuthorizedPath(
+                readPath, Domain::FileAccess::Read,
+                Infrastructure::Windows::Detail::MissingPathPolicy::AllowLeaf,
+                Infrastructure::Windows::Detail::AnchorSharePolicy::DenyConcurrentWrite);
+        require(static_cast<bool>(compatible),
+                compatible
+                    ? "a sibling writer must not block descendant anchoring"
+                    : "descendant anchoring failed with " +
+                          compatible.error().code + ": " +
+                          compatible.error().message);
+        require(static_cast<bool>(compatible.value().revalidateDirectoryAnchors()),
+                "descendant anchors did not revalidate with a sibling writer");
+    }
+
+    {
+        TemporaryDirectory directory;
+        const auto owned = directory.path() / L"transient-anchor-contention";
+        require(std::filesystem::create_directory(owned),
+                "transient anchor-contention fixture directory must be created");
+        const auto target = owned / L"state.bin";
+        auto readPath =
+            CapabilityIssuer::issue(owned, target, Domain::FileAccess::Read);
+        Infrastructure::Windows::Detail::UniqueHandle blocker{::CreateFileW(
+            owned.c_str(), BlockerAccess, BlockerShare, nullptr, OPEN_EXISTING,
+            DirectoryFlags, nullptr)};
+        require(static_cast<bool>(blocker),
+                "transient anchor-contention blocker must open");
+
+        Infrastructure::Windows::Detail::UniqueHandle conflictProbe{::CreateFileW(
+            owned.c_str(),
+            FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+            DirectoryFlags, nullptr)};
+        const DWORD probeError = conflictProbe ? ERROR_SUCCESS : ::GetLastError();
+        require(!conflictProbe && probeError == ERROR_SHARING_VIOLATION,
+                "transient anchor-contention fixture did not create Win32 error 32");
+
+        std::jthread release{[&blocker] {
+            ::Sleep(150U);
+            blocker.reset();
+        }};
+        const auto started = std::chrono::steady_clock::now();
+        auto recovered = Infrastructure::Windows::Detail::WindowsPathResolver::
+            resolveAnchoredAuthorizedPath(
+                readPath, Domain::FileAccess::Read,
+                Infrastructure::Windows::Detail::MissingPathPolicy::AllowLeaf,
+                Infrastructure::Windows::Detail::AnchorSharePolicy::AllowConcurrentWrite);
+        const auto elapsed = std::chrono::steady_clock::now() - started;
+        release.join();
+
+        require(static_cast<bool>(recovered),
+                recovered
+                    ? "directory anchor must recover after transient contention"
+                    : "directory anchor transient recovery failed with " +
+                          recovered.error().code + ": " + recovered.error().message);
+        require(elapsed >= MinimumObservedWait && elapsed < MaximumObservedWait,
+                "directory anchor transient recovery did not wait within its bound");
+        require(static_cast<bool>(recovered.value().revalidateDirectoryAnchors()),
+                "the recovered directory anchors did not revalidate");
+    }
+
+    {
+        TemporaryDirectory directory;
+        const auto owned = directory.path() / L"persistent-anchor-contention";
+        require(std::filesystem::create_directory(owned),
+                "persistent anchor-contention fixture directory must be created");
+        const auto target = owned / L"state.bin";
+        auto readPath =
+            CapabilityIssuer::issue(owned, target, Domain::FileAccess::Read);
+        Infrastructure::Windows::Detail::UniqueHandle blocker{::CreateFileW(
+            owned.c_str(), BlockerAccess, BlockerShare, nullptr, OPEN_EXISTING,
+            DirectoryFlags, nullptr)};
+        require(static_cast<bool>(blocker),
+                "persistent anchor-contention blocker must open");
+
+        const auto started = std::chrono::steady_clock::now();
+        const auto exhausted = Infrastructure::Windows::Detail::WindowsPathResolver::
+            resolveAnchoredAuthorizedPath(
+                readPath, Domain::FileAccess::Read,
+                Infrastructure::Windows::Detail::MissingPathPolicy::AllowLeaf,
+                Infrastructure::Windows::Detail::AnchorSharePolicy::AllowConcurrentWrite);
+        const auto elapsed = std::chrono::steady_clock::now() - started;
+        requireError(exhausted, Domain::ErrorCodes::Conflict,
+                     "persistent directory-anchor contention was not typed");
+        require(exhausted.error().retryable,
+                "persistent directory-anchor contention was not retryable");
+        require(elapsed >= std::chrono::milliseconds{350} &&
+                    elapsed < MaximumObservedWait,
+                "persistent directory-anchor contention did not honor its global bound");
+    }
 }
 
 void atomicRejectsCaseSensitiveDirectoryAuthority()
@@ -3074,6 +3196,8 @@ void registerStorageWindowsTests(TestRegistry &tests)
     addTest(tests, "storage.atomic.parent-anchor", atomicReplacePinsParentAncestry);
     addTest(tests, "storage.atomic.read-parent-anchor",
             atomicReadPinsParentAncestryAndUsesRelativeLeafOpen);
+    addTest(tests, "storage.path-resolver.directory-anchor-contention",
+            pathResolverRetriesTransientDirectoryAnchorContention);
     addTest(tests, "storage.atomic.case-sensitive-directory-policy",
             atomicRejectsCaseSensitiveDirectoryAuthority);
     addTest(tests, "storage.atomic.parent-reparse-no-stage",

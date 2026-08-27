@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "dynamic_multi_project_workspace_authority",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T11:39:07.3760284+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "cmake": "4.4.2",
+    "msbuild": "17.14.40+3e7442088",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2",
+    "sqlite": "Windows SDK winsqlite3"
+  },
+  "authoritative_command_record": ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+  "effective_exit_code": 0,
+  "timed_out": false,
+  "stdout_sha256": "0485fc49fb7bbd11a6fbd2c445532c41fe7e082507d3b345cbe943b0f872eecf",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "measured_result": {
+    "affected_build_targets": 13,
+    "selected_ctest_tests": 13,
+    "selected_ctest_passed": 13,
+    "selected_ctest_failed": 0,
+    "selected_ctest_real_seconds": 30.54,
+    "process_snapshot_assertions": 2685,
+    "adapter_assertions": 549,
+    "contract_matrix_assertions": 1737,
+    "contract_matrix_tools": 53,
+    "contract_matrix_cases": 212,
+    "contract_matrix_categories_per_tool": 4,
+    "infrastructure_tests_passed": 53,
+    "infrastructure_tests_total": 53,
+    "legacy_continuity_tests_passed": 8,
+    "legacy_continuity_tests_total": 8,
+    "git_shell_unit_tests_passed": 7,
+    "git_shell_unit_tests_total": 7,
+    "git_shell_integration_tests_passed": 1,
+    "git_shell_integration_tests_total": 1,
+    "dynamic_authority_tests_passed": 5,
+    "dynamic_authority_tests_total": 5,
+    "real_process_launches": 3,
+    "peak_simultaneous_processes": 2,
+    "tool_descriptors_per_process": 53,
+    "final_registry_projects": 2,
+    "final_registry_aliases": 2,
+    "project_memory_default_deadline_milliseconds": 60000,
+    "directory_anchor_retry_bound_milliseconds": 500,
+    "directory_anchor_retry_slice_milliseconds": 10,
+    "command_stdout_bytes": 24876,
+    "command_stderr_bytes": 0,
+    "last_test_log_bytes": 18896,
+    "last_test_log_sha256": "22683b388a74599d914ff44cfb73b028e15b3801cc0fd0bda4b8b900459a0256"
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/forge-conductor.exe",
+      "bytes": 13105664,
+      "sha256": "606df8f4e66528d97459c18d427b6bceac3b22f4cce80decc1c00dc845a4dc2a"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ServeProcessSnapshotTests.exe",
+      "bytes": 1647616,
+      "sha256": "34e40f132fdb641342b35cdc2c84ae649d1f92a660d2a704b7c0c482e8f7de77"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolPackAdapterTests.exe",
+      "bytes": 5316608,
+      "sha256": "174366d0cf86cdf7bc36bb43142186df476f9c9365194e721e6471676f646735"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolContractMatrixTests.exe",
+      "bytes": 4870144,
+      "sha256": "2d656f0e7137974f7765e3a199290136e93b08bfd50a709adc934ee9f3066e30"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests.exe",
+      "bytes": 1298432,
+      "sha256": "be4b175a928a61749fa7158f26dd4cab81ebe4f160299f017830eddc8342114c"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Infrastructure.UnitTests.exe",
+      "bytes": 3832320,
+      "sha256": "7cae427f61d12c00c627ca93c96b2ffd19aa9e0b792b33e28b70d711dcc507c0"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.NativeTools.GitShellTests.exe",
+      "bytes": 1200640,
+      "sha256": "6a60f5e330cdbcbf07f222dea42bd1482038defd3a947f99ef9833ed57b51263"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.NativeTools.GitShellIntegrationTests.exe",
+      "bytes": 1874432,
+      "sha256": "9b936d9b7d77aa5745a3f45923b4cf6fe4e623a976e5e13f090a287a2a040b60"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Continuity.LegacyApplicationTests.exe",
+      "bytes": 1624064,
+      "sha256": "530531dbd26c913d6ae4a514fd03c221693fef3429726e3858794d6e51c799d7"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Application.lib",
+      "bytes": 32973344,
+      "sha256": "062a9a17b58c119601efc1099ae2ee60ecf3e0e3884ce04d63568a980bfdfcc7"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Infrastructure.Windows.lib",
+      "bytes": 95443640,
+      "sha256": "3ccb1566f9a9e7d1bc4a3615dc46e9058c4b6604359a93953c2d1eb039574d0b"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.NativeTools.Windows.lib",
+      "bytes": 14539490,
+      "sha256": "3d2c974646bd0fd705247530460cb236f49289b04e8a9d5e7c317653acfd6607"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Mcp.lib",
+      "bytes": 82316402,
+      "sha256": "ef24cf7d6aad1a62185c2e474ed36d628b6d6b7036f38b2bc35f6806c906a636"
+    },
+    {
+      "path": "tests/fixtures/Mcp/mcp-tools-semantic-golden.json",
+      "bytes": 37659,
+      "sha256": "3a53160fcd2aa9d3c3d9aeb0a07cdf7d54b5fa5220276c26dd11af1b163c9289"
+    },
+    {
+      "path": "tests/fixtures/Mcp/mcp-tool-contract-cases.json",
+      "bytes": 38693,
+      "sha256": "d39d8a8dec2ad9f6cf10f9ebc0da8e22a035371cb412e6887db381179af35aea"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "63fcf69a89c8821cbce0f9970270adf9b2c865729939ac649a4de4a4abdddf43"
+    },
+    {
+      "path": "include/ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h",
+      "sha256": "7ee1c64d896b6b82ef88dc519a198b734cea0cf9a1688d9ff61cfcb536d01f5f"
+    },
+    {
+      "path": "src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp",
+      "sha256": "5ce805108cdd188b9ed79662a188663c8a1ecedd484c0697e0fcf0e50f93efe5"
+    },
+    {
+      "path": "src/Hosts/Cli/McpServeCompositionRoot.cpp",
+      "sha256": "7fa3c92a711a14b46d8510bbb324af25d1e74c36c01a39d984ba360af02737bf"
+    },
+    {
+      "path": "src/Infrastructure/Windows/Detail/WindowsPathResolver.cpp",
+      "sha256": "4e42c04a213058a5dfbe50bdcf723c6c545506fdddd8912a19a8c475dc479f66"
+    },
+    {
+      "path": "src/Mcp/McpToolPackAdapter.cpp",
+      "sha256": "389c56a88e948dac24105f1ac1a319e8e13f745ccdb3a3d31551f46fa8c3518d"
+    },
+    {
+      "path": "src/NativeTools/Windows/NativeToolValidation.h",
+      "sha256": "e2b2d2e2462c77ccfbeaee2fa1eac1db756e3a9a67c01ed7d020592ffe8a892f"
+    },
+    {
+      "path": "src/NativeTools/Windows/WindowsGitService.cpp",
+      "sha256": "db1af0c44f620143099a3339b4ef6d88ea9f05c7d8d8d387416386975c66d602"
+    },
+    {
+      "path": "src/NativeTools/Windows/WindowsShellService.cpp",
+      "sha256": "b4c659db974261725aba12b71399df7c1e51f65d9f09334e8c89d6d4608f0e26"
+    },
+    {
+      "path": "src/Application/LegacyContextContinuityService.cpp",
+      "sha256": "35375496e83f806fea7a6197778bc075d98b66c147d89151cb372069b9fe7a09"
+    },
+    {
+      "path": "tests/Infrastructure/StorageWindowsTests.cpp",
+      "sha256": "f851faa8fee496eb98f29623ffe273826d7f40b253f88242a94a9a9016280800"
+    },
+    {
+      "path": "tests/Infrastructure/WindowsProjectWorkspaceAuthorityTests.cpp",
+      "sha256": "0b03713724e240f508a5857372df50ec58adc522c00391de561e3dea41ae20b5"
+    },
+    {
+      "path": "tests/Mcp/McpServeProcessSnapshotTests.cpp",
+      "sha256": "fc1ca3113c17d38e4252ce7a6c321ee78e21519034a5a77a18026ff1e3059f12"
+    },
+    {
+      "path": "tests/Mcp/McpToolPackAdapterTests.cpp",
+      "sha256": "66d4cd5aabbe989152b2cc5adb5c200f1737c06e68376e6697a628eff3c4da20"
+    },
+    {
+      "path": "tests/NativeTools/WindowsGitShellTests.cpp",
+      "sha256": "03f8c36ecbb054555b5274ff3e06319f5aefb298040f063e153ccac24d6c4528"
+    }
+  ],
+  "qualified_surface": [
+    "simultaneous primary and fallback first startup converges on one Unicode home and startup project while both roles advertise the exact ordered 53-tool golden surface",
+    "a still-live verifier discovers project B registered after launch, initializes its project memory, checkpoints continuity, adopts B through context_get, and resolves a projectless relative fs_write only under B",
+    "the final atomic registry contains exactly two canonical projects with two distinct aliases and stable process-lifetime authority identities",
+    "Git and optional PowerShell derive bounded private execution scopes from each request authority; Git remains functional when shell execution is disabled",
+    "directory ancestor anchoring tolerates compatible sibling writers, recovers from transient sharing contention, and returns bounded retryable conflict for persistent contention",
+    "project-memory default deadlines, persisted continuity timestamp precision, and fs_write create/overwrite behavior are qualified through focused and real-process regressions"
+  ],
+  "diagnostic_resolution": [
+    "Initial simultaneous startup exposed Win32 sharing violation 32 while the central database retained a write-capable ancestor handle. Non-final directory ancestors now admit compatible write sharing while continuing to pin replacement by omitting FILE_SHARE_DELETE.",
+    "The dynamic project-memory initialize call exposed an inherited MCP deadline beyond the service maximum. Project-memory calls without deadline_ms now cap the derived context at 60000 milliseconds.",
+    "The real continuity checkpoint exposed sub-millisecond system-clock values that could not round-trip through the established millisecond JSON/SQLite representation. Packet and agent timestamps are canonicalized before compare-exchange while exact integrity comparisons remain intact.",
+    "The relative project-B proof write exposed overwrite-only authorization for a missing file. fs_write now retries only record_not_found with explicit create authority and leaves native create-versus-overwrite enforcement intact.",
+    "After those bounded fixes, the single authoritative affected-target rebuild and 13-test selection exited zero with no timeout and empty stderr; no successful gate rebuild was repeated."
+  ],
+  "remaining_limitations": [
+    "P16 manager IPC and final cross-process persistence ownership are not implemented; the alpha uses the P14-007 owner-approved direct stdio persistence architecture.",
+    "Post-alpha security hardening, clean-environment testing, a broad installer matrix, and bespoke UI polish remain owner-deferred; planned UI automation remains in scope for its later gate.",
+    "This checkpoint qualifies P14/G14 on the owner's current Windows 11 x64 machine in Debug configuration and is not a whole-application completion claim."
+  ]
+}

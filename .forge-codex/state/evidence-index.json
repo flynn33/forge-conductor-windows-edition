@@ -131,6 +131,26 @@
       "path": ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
       "sha256": "0ce0bfc6c46a71929e46312bce21aae2a6151bb692b0ea75a487e2b2a36a77fd",
       "summary": "Focused Debug build and 3/3 CTest pass qualified 53 MCP tools across 212 semantic cases, adapter integration, and recursive Windows glob compatibility; G14 remains open for dynamic multi-project authority."
+    },
+    {
+      "id": "P14-dynamic-multi-project-workspace-authority-checkpoint",
+      "type": "checkpoint",
+      "phase": "P14",
+      "gate": "G14",
+      "created_at": "2026-08-27T11:39:07.3760284+00:00",
+      "path": ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+      "sha256": "90dde575618a0a7dab8727cd4d55c12ce35c3c64f2a6a04475da2ad23207ec1a",
+      "summary": "One authoritative Debug rebuild passed 13/13 affected tests and qualified live two-project authority refresh, primary/fallback 53-tool parity, per-request Git/shell execution scope, continuity recovery, and project-B filesystem confinement."
+    },
+    {
+      "id": "P14-G14-validator-report",
+      "type": "report",
+      "phase": "P14",
+      "gate": "G14",
+      "created_at": "2026-08-27T11:54:57.0105713+00:00",
+      "path": ".forge-codex/state/validator-reports/P14-G14.json",
+      "sha256": "7fdb1195213b2db7d06ba6d2b85507777d550bad108990729b3a1cb7acd0a56e",
+      "summary": "Independent Validator passed G14 from the single authoritative 13/13 build-and-test record, verified all pinned source and artifact hashes, and performed zero Validator rebuilds or test runs."
     }
   ]
 }

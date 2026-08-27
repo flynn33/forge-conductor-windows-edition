@@ -152,6 +152,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp
     src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
+    src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp
     src/Infrastructure/Windows/WindowsRuntimeDiagnostics.cpp
     src/Infrastructure/Windows/WindowsUnicodeCanonicalizer.cpp
     src/Infrastructure/Windows/WindowsUuidGenerator.cpp
@@ -1556,6 +1557,28 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.NativeTools.WorkspaceAuthorityTests PROPERTIES
         LABELS "T-UNIT;T-SEC;G13"
+        TIMEOUT 180
+    )
+
+    add_executable(
+        ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests
+        tests/Infrastructure/WindowsProjectWorkspaceAuthorityTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests)
+    target_include_directories(
+        ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+    add_test(
+        NAME ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests PROPERTIES
+        LABELS "G14;T-UNIT;T-INTEGRATION;T-SEC;T-MCP"
         TIMEOUT 180
     )
 

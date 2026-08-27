@@ -220,7 +220,7 @@ void resolverRejectsMismatchedOrInsufficientAuthority()
     REQUIRE(wrongCaller.error().code == Domain::ErrorCodes::Unauthorized);
 }
 
-void recoveredWorkspaceSelectsImplicitProjectAndNarrowsAuthority()
+void explicitProjectPrecedesAdoptionWhichPrecedesStartupDefault()
 {
     FixedClock clock;
     auto issuer = authority(
@@ -233,6 +233,14 @@ void recoveredWorkspaceSelectsImplicitProjectAndNarrowsAuthority()
     const auto adoptedProject = id<Domain::ProjectId>(
         "55555555-5555-4555-8555-555555555555");
     const auto adoptedRoot = take(Domain::PathText::create("C:\\workspace"));
+    Mcp::McpExecutionContextResolver resolver{
+        issuer, defaultProject(), clock, &recovered};
+
+    const auto fallback = take(resolver.resolve(
+        request(), Domain::ToolEffect::Read, context()));
+    REQUIRE(fallback.projectId() == defaultProject());
+    REQUIRE(recovered.snapshotCalls() == 1U);
+
     recovered.setSnapshot(Domain::ClientWorkspaceSnapshot{
         client(),
         adoptedProject,
@@ -240,22 +248,19 @@ void recoveredWorkspaceSelectsImplicitProjectAndNarrowsAuthority()
         id<Domain::LegacyHandoffId>("execution-recovered-handoff"),
         17U,
         9U});
-    Mcp::McpExecutionContextResolver resolver{
-        issuer, defaultProject(), clock, &recovered};
-
     const auto implicit = take(resolver.resolve(
         request(), Domain::ToolEffect::Read, context()));
     REQUIRE(implicit.projectId() == adoptedProject);
     REQUIRE(implicit.trustedRoots().size() == 1U);
     REQUIRE(implicit.trustedRoots().front() == adoptedRoot);
     REQUIRE(implicit.generation() == 10U);
-    REQUIRE(recovered.snapshotCalls() == 1U);
+    REQUIRE(recovered.snapshotCalls() == 2U);
 
     const auto explicitScope = take(resolver.resolve(
         request(defaultProject()), Domain::ToolEffect::Read, context()));
     REQUIRE(explicitScope.projectId() == defaultProject());
     REQUIRE(explicitScope.generation() == 7U);
-    REQUIRE(recovered.snapshotCalls() == 1U);
+    REQUIRE(recovered.snapshotCalls() == 2U);
 }
 
 void cancellationDeadlineAndCorrelationFailClosed()
@@ -338,7 +343,7 @@ int main()
     try {
         resolvesDefaultAndExplicitProjectScopes();
         resolverRejectsMismatchedOrInsufficientAuthority();
-        recoveredWorkspaceSelectsImplicitProjectAndNarrowsAuthority();
+        explicitProjectPrecedesAdoptionWhichPrecedesStartupDefault();
         cancellationDeadlineAndCorrelationFailClosed();
         authorizerIssuesOnlyBoundCapabilities();
         std::cout << "MCP execution service tests passed.\n";

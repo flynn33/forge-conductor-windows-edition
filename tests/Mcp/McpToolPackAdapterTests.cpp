@@ -475,6 +475,8 @@ void testRuntimeDispatchAndSchemaPolicy()
     const auto correlationId = parse<Domain::CorrelationId>("adapter-runtime");
     const auto clientId = parse<Domain::ClientId>("adapter-client");
     const auto root = take(Domain::PathText::create("D:/workspace"));
+    const auto secondaryRoot =
+        take(Domain::PathText::create("E:/workspace-secondary"));
     const Domain::OperationContext context{
         operationId,
         Domain::MonotonicTimePoint{} + 5min,
@@ -484,7 +486,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     Fakes::DeterministicWorkspaceAuthority workspaceAuthority{
         authorityId,
         clientId,
-        {root},
+        {root, secondaryRoot},
         Domain::FileAccess::Read,
         {Domain::FileAccess::Read,
          Domain::FileAccess::Write,
@@ -498,7 +500,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     Fakes::DeterministicWorkspaceAuthority shellAuthorityIssuer{
         authorityId,
         clientId,
-        {root},
+        {root, secondaryRoot},
         Domain::FileAccess::Write,
         {Domain::FileAccess::Read,
          Domain::FileAccess::Write,
@@ -552,8 +554,6 @@ void testRuntimeDispatchAndSchemaPolicy()
         "status-resume-handoff");
     continuityStatus.openAgentSessions = 5U;
     legacyContinuity.setStatusSummary(std::move(continuityStatus));
-    const auto secondaryRoot =
-        take(Domain::PathText::create("D:/workspace-secondary"));
     continuityAutomation.setSnapshot(
         Domain::ContinuityAutomationStatusSnapshot{
             true,
@@ -858,14 +858,64 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(readPayload.at("content") == "beta");
     REQUIRE(readPayload.at("start_line") == 2);
     REQUIRE(readPayload.at("end_line") == 2);
-    REQUIRE(readPayload.at("line_count") == 1);
-    REQUIRE(readPayload.at("next_offset") == 3);
-    REQUIRE(readPayload.at("has_more") == true);
     REQUIRE(fileSystem.calls() == 1U);
     REQUIRE(fileSystem.lastCapture().has_value());
     REQUIRE(fileSystem.lastCapture()->primary.canonicalPath().value() ==
             "D:/workspace\\notes.txt");
 
+    auto secondAliasReadCall = authorize(
+        "fs_read",
+        Domain::ToolEffect::Read,
+        R"({"path":"E:/workspace-secondary/notes.txt"})",
+        "request-fs-read-second-alias");
+    auto secondAliasRead = adapter->handle(
+        secondAliasReadCall, authority, context);
+    REQUIRE(secondAliasRead);
+    REQUIRE(secondAliasRead.value().continuityObservation.has_value());
+    REQUIRE(secondAliasRead.value().continuityObservation->path ==
+            std::optional<Domain::PathText>{take(Domain::PathText::create(
+                "E:/workspace-secondary/notes.txt"))});
+    REQUIRE(secondAliasRead.value().continuityObservation->baseDirectory ==
+            std::optional<Domain::PathText>{secondaryRoot});
+    REQUIRE(fileSystem.calls() == 2U);
+    REQUIRE(fileSystem.lastCapture().has_value());
+    REQUIRE(fileSystem.lastCapture()->primary.canonicalPath().value() ==
+            "E:/workspace-secondary/notes.txt");
+
+    fileSystem.writeFileResult.set(Domain::Result<void>::success());
+    fileSystem.failNextWrite(Domain::makeError(
+        Domain::ErrorCodes::RecordNotFound,
+        "The target does not exist."));
+    const auto callsBeforeCreateWrite = fileSystem.calls();
+    auto createWriteCall = authorize(
+        "fs_write",
+        Domain::ToolEffect::Write,
+        R"({"content":"created","path":"created.txt"})",
+        "request-fs-write-create");
+    auto createWrite = adapter->handle(createWriteCall, authority, context);
+    REQUIRE(createWrite);
+    REQUIRE(Json::parse(createWrite.value().canonicalPayload).at(
+                "bytes_written") == 7U);
+    REQUIRE(fileSystem.calls() == callsBeforeCreateWrite + 2U);
+    REQUIRE(fileSystem.lastCapture().has_value());
+    REQUIRE(fileSystem.lastCapture()->call == Fakes::FileSystemCall::WriteFile);
+    REQUIRE(fileSystem.lastCapture()->primary.access() ==
+            Domain::FileAccess::Create);
+    REQUIRE(fileSystem.lastCapture()->primary.canonicalPath().value() ==
+            "D:/workspace\\created.txt");
+
+    auto mismatchedCwdCall = authorize(
+        "git_status",
+        Domain::ToolEffect::Read,
+        R"({"cwd":"F:/unregistered-project"})",
+        "request-git-mismatched-cwd");
+    auto mismatchedCwd = adapter->handle(
+        mismatchedCwdCall, authority, context);
+    REQUIRE(!mismatchedCwd);
+    REQUIRE(mismatchedCwd.error().code == Domain::ErrorCodes::Unauthorized);
+    REQUIRE(readPayload.at("line_count") == 1);
+    REQUIRE(readPayload.at("next_offset") == 3);
+    REQUIRE(readPayload.at("has_more") == true);
     const auto agentWorkingDirectory = take(Domain::PathText::create(
         "D:/workspace\\agent-work"));
     const auto agentId = parse<Domain::AgentId>("explore");
@@ -1063,6 +1113,10 @@ void testRuntimeDispatchAndSchemaPolicy()
         normalizedSearchCall, authority, context);
     REQUIRE(normalizedSearch);
     REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Search) == 1U);
+    REQUIRE(projectMemory.lastContext().has_value());
+    REQUIRE(projectMemory.lastContext()->deadline ==
+            Domain::MonotonicTimePoint{} +
+                Domain::MaximumProjectMemoryDeadline);
     const auto normalizedSearchPayload = Json::parse(
         normalizedSearch.value().canonicalPayload);
     REQUIRE(normalizedSearchPayload.at("project_id") == projectId.value());
@@ -1100,6 +1154,9 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(normalizedBatch);
     REQUIRE(projectMemory.callCount(
                 Fakes::ProjectMemoryCall::RememberBatch) == 1U);
+    REQUIRE(projectMemory.lastContext().has_value());
+    REQUIRE(projectMemory.lastContext()->deadline ==
+            Domain::MonotonicTimePoint{} + 5s);
     const auto normalizedBatchPayload = Json::parse(
         normalizedBatch.value().canonicalPayload);
     REQUIRE(normalizedBatchPayload.at("count") == 1U);
@@ -1410,6 +1467,25 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(normalizedHandoff.nextActions.at(0).action ==
             "Continue current work");
 
+    const auto requireCapturedGitAuthority = [&] (
+        const Fakes::GitServiceCall expectedCall) {
+        REQUIRE(git.lastCapture().has_value());
+        REQUIRE(git.lastCapture()->call == expectedCall);
+        REQUIRE(git.lastCapture()->authority.authorityId() ==
+                authority.authorityId());
+        REQUIRE(git.lastCapture()->authority.projectId() == authority.projectId());
+        REQUIRE(git.lastCapture()->authority.callerId() == authority.callerId());
+        REQUIRE(git.lastCapture()->authority.trustedRoots() ==
+                authority.trustedRoots());
+        REQUIRE(git.lastCapture()->authority.intent() == authority.intent());
+        REQUIRE(git.lastCapture()->authority.grants() == authority.grants());
+        REQUIRE(git.lastCapture()->authority.denials() == authority.denials());
+        REQUIRE(git.lastCapture()->authority.shellEnabled() ==
+                authority.shellEnabled());
+        REQUIRE(git.lastCapture()->authority.generation() ==
+                authority.generation());
+    };
+
     git.statusResult.set(Domain::Result<Domain::ProcessResult>::success(
         Domain::ProcessResult{
             0, "", "", false, false,
@@ -1429,6 +1505,59 @@ void testRuntimeDispatchAndSchemaPolicy()
             std::optional<Domain::PathText>{root});
     REQUIRE(defaultedGit.value().continuityObservation->baseDirectory ==
             std::optional<Domain::PathText>{root});
+    requireCapturedGitAuthority(Fakes::GitServiceCall::Status);
+
+    git.diffResult.set(Domain::Result<Domain::ProcessResult>::success(
+        Domain::ProcessResult{
+            0, "diff", "", false, false,
+            false, false, true, 1ms}));
+    auto gitDiffCall = authorize(
+        "git_diff",
+        Domain::ToolEffect::Read,
+        R"({"staged":true})",
+        "request-git-authority-diff");
+    auto gitDiff = adapter->handle(gitDiffCall, authority, context);
+    REQUIRE(gitDiff);
+    requireCapturedGitAuthority(Fakes::GitServiceCall::Diff);
+
+    git.logResult.set(Domain::Result<Domain::ProcessResult>::success(
+        Domain::ProcessResult{
+            0, "log", "", false, false,
+            false, false, true, 1ms}));
+    auto gitLogCall = authorize(
+        "git_log",
+        Domain::ToolEffect::Read,
+        R"({"limit":3})",
+        "request-git-authority-log");
+    auto gitLog = adapter->handle(gitLogCall, authority, context);
+    REQUIRE(gitLog);
+    requireCapturedGitAuthority(Fakes::GitServiceCall::Log);
+
+    git.addResult.set(Domain::Result<Domain::ProcessResult>::success(
+        Domain::ProcessResult{
+            0, "added", "", false, false,
+            false, false, true, 1ms}));
+    auto gitAddCall = authorize(
+        "git_add",
+        Domain::ToolEffect::Write,
+        R"({"path":"-A"})",
+        "request-git-authority-add");
+    auto gitAdd = adapter->handle(gitAddCall, authority, context);
+    REQUIRE(gitAdd);
+    requireCapturedGitAuthority(Fakes::GitServiceCall::Add);
+
+    git.commitResult.set(Domain::Result<Domain::ProcessResult>::success(
+        Domain::ProcessResult{
+            0, "committed", "", false, false,
+            false, false, true, 1ms}));
+    auto gitCommitCall = authorize(
+        "git_commit",
+        Domain::ToolEffect::Write,
+        "{}",
+        "request-git-authority-commit");
+    auto gitCommit = adapter->handle(gitCommitCall, authority, context);
+    REQUIRE(gitCommit);
+    requireCapturedGitAuthority(Fakes::GitServiceCall::Commit);
 
     git.statusResult.set(Domain::Result<Domain::ProcessResult>::success(
         Domain::ProcessResult{

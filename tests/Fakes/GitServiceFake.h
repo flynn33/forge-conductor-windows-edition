@@ -26,6 +26,7 @@ enum class GitServiceCall {
 struct GitServiceCapture final {
     GitServiceCall call;
     Contracts::AuthorizedPath repository;
+    Contracts::WorkspaceAuthority authority;
     std::vector<std::string> arguments;
     std::vector<Contracts::AuthorizedPath> paths;
     std::string message;
@@ -59,12 +60,14 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ProcessResult> status(
         const Contracts::AuthorizedPath& repository,
+        const Contracts::WorkspaceAuthority& authority,
         const std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept override
     {
         return simpleProcessCall(
             GitServiceCall::Status,
             repository,
+            authority,
             0,
             maximumBytes,
             statusResult,
@@ -73,6 +76,7 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ProcessResult> diff(
         const Contracts::AuthorizedPath& repository,
+        const Contracts::WorkspaceAuthority& authority,
         const std::span<const std::string> arguments,
         const std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept override
@@ -90,6 +94,7 @@ public:
             lastCapture_.emplace(GitServiceCapture{
                 GitServiceCall::Diff,
                 repository,
+                authority,
                 bounded
                     ? std::vector<std::string>{
                           arguments.begin(),
@@ -115,6 +120,7 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ProcessResult> log(
         const Contracts::AuthorizedPath& repository,
+        const Contracts::WorkspaceAuthority& authority,
         const std::size_t maximumEntries,
         const std::size_t maximumBytes,
         const Domain::OperationContext& context) noexcept override
@@ -129,6 +135,7 @@ public:
                 captureBasic(
                     GitServiceCall::Log,
                     repository,
+                    authority,
                     maximumEntries,
                     maximumBytes);
                 return Domain::Result<Domain::ProcessResult>::failure(
@@ -142,6 +149,7 @@ public:
         return simpleProcessCall(
             GitServiceCall::Log,
             repository,
+            authority,
             maximumEntries,
             maximumBytes,
             logResult,
@@ -150,6 +158,7 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ProcessResult> add(
         const Contracts::AuthorizedPath& repository,
+        const Contracts::WorkspaceAuthority& authority,
         const std::span<const Contracts::AuthorizedPath> paths,
         const Domain::OperationContext& context) noexcept override
     {
@@ -163,6 +172,7 @@ public:
             lastCapture_.emplace(GitServiceCapture{
                 GitServiceCall::Add,
                 repository,
+                authority,
                 {},
                 bounded
                     ? std::vector<Contracts::AuthorizedPath>{
@@ -188,6 +198,7 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ProcessResult> commit(
         const Contracts::AuthorizedPath& repository,
+        const Contracts::WorkspaceAuthority& authority,
         const std::string_view message,
         const Domain::OperationContext& context) noexcept override
     {
@@ -202,6 +213,7 @@ public:
             lastCapture_.emplace(GitServiceCapture{
                 GitServiceCall::Commit,
                 repository,
+                authority,
                 {},
                 {},
                 std::string{message.substr(0, capturedBytes)},
@@ -238,6 +250,7 @@ private:
     [[nodiscard]] Domain::Result<Domain::ProcessResult> simpleProcessCall(
         const GitServiceCall call,
         const Contracts::AuthorizedPath& repository,
+        const Contracts::WorkspaceAuthority& authority,
         const std::size_t maximumEntries,
         const std::size_t maximumBytes,
         const DeterministicResult<Domain::ProcessResult>& scripted,
@@ -249,7 +262,8 @@ private:
                 return Domain::Result<Domain::ProcessResult>::failure(
                     std::move(gate).error());
             }
-            captureBasic(call, repository, maximumEntries, maximumBytes);
+            captureBasic(
+                call, repository, authority, maximumEntries, maximumBytes);
             return boundedProcess(scripted, maximumBytes);
         } catch (...) {
             return processFailure(
@@ -260,12 +274,14 @@ private:
     void captureBasic(
         const GitServiceCall call,
         const Contracts::AuthorizedPath& repository,
+        const Contracts::WorkspaceAuthority& authority,
         const std::size_t maximumEntries,
         const std::size_t maximumBytes)
     {
         lastCapture_.emplace(GitServiceCapture{
             call,
             repository,
+            authority,
             {},
             {},
             {},

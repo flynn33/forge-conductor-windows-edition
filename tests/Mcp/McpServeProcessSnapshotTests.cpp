@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -569,6 +570,20 @@ void detachNoexcept(std::jthread& thread) noexcept
     return forgeStatus.dump() + '\n';
 }
 
+[[nodiscard]] std::string toolRequest(
+    const std::int64_t id,
+    const std::string_view name,
+    Json arguments)
+{
+    const Json request{
+        {"id", id},
+        {"jsonrpc", "2.0"},
+        {"method", "tools/call"},
+        {"params",
+         Json{{"arguments", std::move(arguments)}, {"name", std::string{name}}}}};
+    return request.dump() + '\n';
+}
+
 [[nodiscard]] std::vector<Json> parseProtocolFrames(
     const std::string_view bytes)
 {
@@ -836,6 +851,32 @@ private:
     return *response;
 }
 
+[[nodiscard]] Json successfulToolPayload(
+    const std::vector<Json>& frames,
+    const std::int64_t id)
+{
+    const auto& response = responseFor(frames, id);
+    REQUIRE(response.size() == 3U);
+    REQUIRE(response.at("jsonrpc") == "2.0");
+    REQUIRE(response.contains("result"));
+    REQUIRE(!response.contains("error"));
+    const auto& result = response.at("result");
+    REQUIRE(result.is_object());
+    if (!result.contains("isError") || result.at("isError") != false) {
+        throw std::runtime_error{
+            "Tool request " + std::to_string(id) +
+            " returned an error result: " + result.dump()};
+    }
+    REQUIRE(result.at("isError") == false);
+    REQUIRE(result.at("structuredContent").is_object());
+    REQUIRE(result.at("content").is_array());
+    REQUIRE(result.at("content").size() == 1U);
+    REQUIRE(result.at("content").front().at("type") == "text");
+    const auto serialized = result.at("content").front().at("text").get<std::string>();
+    REQUIRE(Json::parse(serialized) == result.at("structuredContent"));
+    return result.at("structuredContent");
+}
+
 void validateToolArray(const Json& tools)
 {
     REQUIRE(tools.is_array());
@@ -984,9 +1025,7 @@ void validateStatus(
     return value;
 }
 
-void validateRegistry(
-    const std::filesystem::path& home,
-    const std::filesystem::path& workspace)
+[[nodiscard]] Json loadRegistry(const std::filesystem::path& home)
 {
     const auto registryPath = home / "projects" / "registry.json";
     REQUIRE(std::filesystem::is_regular_file(registryPath));
@@ -999,34 +1038,96 @@ void validateRegistry(
     input.read(content.data(), static_cast<std::streamsize>(content.size()));
     REQUIRE(static_cast<std::size_t>(input.gcount()) == content.size());
 
-    const auto registry = Json::parse(content.begin(), content.end());
+    return Json::parse(content.begin(), content.end());
+}
+
+void storeRegistry(
+    const std::filesystem::path& home,
+    const Json& registry)
+{
+    const auto registryPath = home / "projects" / "registry.json";
+    const auto replacementPath = home / "projects" / "registry.process-test.json";
+    {
+        std::ofstream output{replacementPath, std::ios::binary | std::ios::trunc};
+        REQUIRE(output.is_open());
+        const auto serialized = registry.dump();
+        output.write(
+            serialized.data(), static_cast<std::streamsize>(serialized.size()));
+        output.flush();
+        REQUIRE(output.good());
+    }
+    if (::MoveFileExW(
+            replacementPath.c_str(),
+            registryPath.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == FALSE) {
+        throw win32Failure("MoveFileExW");
+    }
+}
+
+[[nodiscard]] std::string registerWorkspaceProject(
+    const std::filesystem::path& home,
+    const std::filesystem::path& workspace)
+{
+    constexpr std::string_view projectId{
+        "70000000-0000-4000-8000-000000000002"};
+    auto registry = loadRegistry(home);
+    REQUIRE(registry.is_object());
+    REQUIRE(registry.at("projects").is_array());
+    REQUIRE(registry.at("projects").size() == 1U);
+    auto project = registry.at("projects").front();
+    project["id"] = projectId;
+    project["displayName"] = "Dynamic Project B";
+    project["repositoryIdentity"] = nullptr;
+    project["aliases"] = Json::array(
+        {utf8Path(std::filesystem::canonical(workspace))});
+    registry.at("projects").push_back(std::move(project));
+    storeRegistry(home, registry);
+    return std::string{projectId};
+}
+
+void validateRegistry(
+    const std::filesystem::path& home,
+    const std::vector<std::filesystem::path>& workspaces)
+{
+    const auto registry = loadRegistry(home);
     REQUIRE(registry.is_object());
     REQUIRE(registry.size() == 2U);
     REQUIRE(registry.at("schemaVersion") == 1U);
     const auto& projects = registry.at("projects");
     REQUIRE(projects.is_array());
-    REQUIRE(projects.size() == 1U);
-    const auto& project = projects.front();
-    REQUIRE(project.is_object());
-    REQUIRE(project.size() == 6U);
-    REQUIRE(project.at("id").is_string());
-    REQUIRE(canonicalUuid(project.at("id").get_ref<const std::string&>()));
-    REQUIRE(project.at("displayName").is_string());
-    REQUIRE(!project.at("displayName").get_ref<const std::string&>().empty());
-    REQUIRE(project.at("repositoryIdentity").is_null() ||
-            project.at("repositoryIdentity").is_string());
-    REQUIRE(project.at("createdAt").is_string());
-    REQUIRE(!project.at("createdAt").get_ref<const std::string&>().empty());
-    REQUIRE(project.at("updatedAt").is_string());
-    REQUIRE(!project.at("updatedAt").get_ref<const std::string&>().empty());
-    const auto& aliases = project.at("aliases");
-    REQUIRE(aliases.is_array());
-    REQUIRE(aliases.size() == 1U);
-    REQUIRE(aliases.front().is_string());
-    const auto& alias = aliases.front().get_ref<const std::string&>();
-    REQUIRE(!alias.empty());
-    REQUIRE(normalizedPathKey(alias) == normalizedPathKey(
-        utf8Path(std::filesystem::canonical(workspace))));
+    REQUIRE(projects.size() == workspaces.size());
+    std::set<std::string, std::less<>> expectedAliases;
+    for (const auto& workspace : workspaces) {
+        expectedAliases.insert(normalizedPathKey(
+            utf8Path(std::filesystem::canonical(workspace))));
+    }
+    std::set<std::string, std::less<>> observedIds;
+    std::set<std::string, std::less<>> observedAliases;
+    for (const auto& project : projects) {
+        REQUIRE(project.is_object());
+        REQUIRE(project.size() == 6U);
+        REQUIRE(project.at("id").is_string());
+        const auto& id = project.at("id").get_ref<const std::string&>();
+        REQUIRE(canonicalUuid(id));
+        REQUIRE(observedIds.insert(id).second);
+        REQUIRE(project.at("displayName").is_string());
+        REQUIRE(!project.at("displayName").get_ref<const std::string&>().empty());
+        REQUIRE(project.at("repositoryIdentity").is_null() ||
+                project.at("repositoryIdentity").is_string());
+        REQUIRE(project.at("createdAt").is_string());
+        REQUIRE(!project.at("createdAt").get_ref<const std::string&>().empty());
+        REQUIRE(project.at("updatedAt").is_string());
+        REQUIRE(!project.at("updatedAt").get_ref<const std::string&>().empty());
+        const auto& aliases = project.at("aliases");
+        REQUIRE(aliases.is_array());
+        REQUIRE(aliases.size() == 1U);
+        REQUIRE(aliases.front().is_string());
+        const auto& alias = aliases.front().get_ref<const std::string&>();
+        REQUIRE(!alias.empty());
+        REQUIRE(observedAliases.insert(normalizedPathKey(alias)).second);
+    }
+    REQUIRE(observedIds.size() == workspaces.size());
+    REQUIRE(observedAliases == expectedAliases);
 }
 
 void run(
@@ -1091,9 +1192,78 @@ void run(
     REQUIRE(verifierObservation.tools == golden.at("tools"));
     verifier.send(statusRequest(3));
     validateStatus(verifier.awaitFrames(3U), 3, 1U);
-    verifier.finish(3U);
 
-    validateRegistry(home, workspace);
+    validateRegistry(home, {workspace});
+
+    // Keep this child alive while a second canonical project is registered and
+    // initialized. The subsequent context recovery must therefore force the
+    // live server to refresh its registry-backed authority rather than relying
+    // on a process-start snapshot.
+    const auto workspaceB = sharedRoot / L"workspace-b-\u52d5\u7684";
+    std::filesystem::create_directories(workspaceB);
+
+    const auto projectId = registerWorkspaceProject(home, workspaceB);
+    REQUIRE(canonicalUuid(projectId));
+    verifier.send(toolRequest(
+        4,
+        "project_memory.initialize",
+        Json{{"project_id", projectId},
+             {"project_path", utf8Path(workspaceB)},
+             {"idempotency_key", "p14-dynamic-project-initialize"}}));
+    const auto initialized = successfulToolPayload(
+        verifier.awaitFrames(4U), 4);
+    REQUIRE(initialized.at("ok") == true);
+    REQUIRE(initialized.at("project_id") == projectId);
+    REQUIRE(initialized.at("project").at("aliases").is_array());
+    REQUIRE(initialized.at("project").at("aliases").size() == 1U);
+
+    verifier.send(toolRequest(
+        5,
+        "session_checkpoint",
+        Json{{"project_id", projectId},
+             {"goal", "Recover the live dynamic workspace"},
+             {"status", "in_progress"},
+             {"cwd", utf8Path(workspaceB)},
+             {"narrative", "Project B was registered after launch."}}));
+    const auto checkpoint = successfulToolPayload(
+        verifier.awaitFrames(5U), 5);
+    REQUIRE(checkpoint.at("ok") == true);
+    REQUIRE(checkpoint.at("action") == "checkpoint");
+    REQUIRE(checkpoint.at("handoff_id").is_string());
+
+    verifier.send(toolRequest(6, "context_get", Json::object()));
+    const auto recovered = successfulToolPayload(
+        verifier.awaitFrames(6U), 6);
+    REQUIRE(recovered.at("ok") == true);
+    REQUIRE(recovered.at("found") == true);
+    REQUIRE(recovered.at("workspace_project_id") == projectId);
+    REQUIRE(normalizedPathKey(
+                recovered.at("workspace_adopted").get<std::string>()) ==
+            normalizedPathKey(utf8Path(std::filesystem::canonical(workspaceB))));
+
+    constexpr std::string_view dynamicFileName{"dynamic-project-proof.txt"};
+    constexpr std::string_view dynamicContent{"project B resolved in-process"};
+    verifier.send(toolRequest(
+        7,
+        "fs_write",
+        Json{{"path", std::string{dynamicFileName}},
+             {"content", std::string{dynamicContent}}}));
+    const auto written = successfulToolPayload(verifier.awaitFrames(7U), 7);
+    REQUIRE(written.at("ok") == true);
+    REQUIRE(written.at("bytes_written") == dynamicContent.size());
+    const auto dynamicFile = workspaceB / std::string{dynamicFileName};
+    REQUIRE(normalizedPathKey(written.at("path").get<std::string>()) ==
+            normalizedPathKey(utf8Path(dynamicFile)));
+    REQUIRE(std::filesystem::is_regular_file(dynamicFile));
+    REQUIRE(!std::filesystem::exists(workspace / std::string{dynamicFileName}));
+    std::ifstream dynamicInput{dynamicFile, std::ios::binary};
+    REQUIRE(dynamicInput.is_open());
+    std::string dynamicBytes{
+        std::istreambuf_iterator<char>{dynamicInput}, std::istreambuf_iterator<char>{}};
+    REQUIRE(dynamicBytes == dynamicContent);
+    verifier.finish(7U);
+
+    validateRegistry(home, {workspace, workspaceB});
 }
 
 } // namespace

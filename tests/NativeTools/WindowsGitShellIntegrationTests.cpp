@@ -197,7 +197,6 @@ void exerciseGitAndShell(
     const auto gitExecutable = pathText(gitPath);
     const auto gitRoot = pathText(gitPath.parent_path());
     const auto powerShellExecutable = pathText(powerShellPath);
-    const auto powerShellRoot = pathText(powerShellPath.parent_path());
 
     Infrastructure::SystemClock clock;
     const auto budgets = Domain::budgetsForProfile(
@@ -211,22 +210,29 @@ void exerciseGitAndShell(
         parse<Domain::ClientId>("p13-native-tool-integration-client");
     const auto gitProject = parse<Domain::ProjectId>(
         "61616161-6161-4161-8161-616161616161");
+    const auto gitSetupAuthority = makeAuthority(
+        parse<Domain::AuthorityId>(
+            "70707070-7070-4070-8070-707070707070"),
+        gitProject,
+        clientId,
+        {workspacePath, gitRoot},
+        context(19U));
     const auto gitAuthority = makeAuthority(
         parse<Domain::AuthorityId>(
             "71717171-7171-4171-8171-717171717171"),
         gitProject,
         clientId,
-        {workspacePath, gitRoot},
+        {workspacePath},
         context(1U));
 
     static_cast<void>(runSetupGit(
-        *supervisor, gitExecutable, workspacePath, gitAuthority,
+        *supervisor, gitExecutable, workspacePath, gitSetupAuthority,
         {"init", "--quiet"}, 2U));
     static_cast<void>(runSetupGit(
-        *supervisor, gitExecutable, workspacePath, gitAuthority,
+        *supervisor, gitExecutable, workspacePath, gitSetupAuthority,
         {"config", "user.name", "Forge Conductor Test"}, 3U));
     static_cast<void>(runSetupGit(
-        *supervisor, gitExecutable, workspacePath, gitAuthority,
+        *supervisor, gitExecutable, workspacePath, gitSetupAuthority,
         {"config", "user.email", "forge-conductor-test@invalid.example"}, 4U));
 
     const auto trackedFile = workspace.path() / L"tracked.txt";
@@ -246,37 +252,40 @@ void exerciseGitAndShell(
         gitAuthority, pathText(trackedFile), workspacePath,
         Domain::FileAccess::Read, 7U);
     NativeTools::WindowsGitService git{
-        gitExecutable, gitAuthority, supervisor};
+        gitExecutable, supervisor};
 
-    const auto status = take(git.status(repositoryRead, 8'192U, context(8U)));
+    const auto status = take(git.status(
+        repositoryRead, gitAuthority, 8'192U, context(8U)));
     require(status.exitCode == 0 &&
                 status.stdoutUtf8.find("tracked.txt") != std::string::npos,
             "Git status omitted the untracked fixture");
     const auto added = take(git.add(
         repositoryWrite,
+        gitAuthority,
         std::span<const Contracts::AuthorizedPath>{&fileRead, 1U},
         context(9U)));
     require(added.exitCode == 0,
             "Git add failed through the production adapter");
     const std::vector<std::string> cached{"--cached"};
     const auto diff = take(git.diff(
-        repositoryRead, cached, 16'384U, context(10U)));
+        repositoryRead, gitAuthority, cached, 16'384U, context(10U)));
     require(diff.exitCode == 0 &&
                 diff.stdoutUtf8.find("native Git adapter integration") !=
                     std::string::npos,
             "Git cached diff omitted the fixture content");
     const auto committed = take(git.commit(
-        repositoryWrite, "P13 native Git integration", context(11U)));
+        repositoryWrite, gitAuthority, "P13 native Git integration",
+        context(11U)));
     require(committed.exitCode == 0,
             "Git commit returned a nonzero process outcome");
     const auto log = take(git.log(
-        repositoryRead, 1U, 8'192U, context(12U)));
+        repositoryRead, gitAuthority, 1U, 8'192U, context(12U)));
     require(log.exitCode == 0 &&
                 log.stdoutUtf8.find("P13 native Git integration") !=
                     std::string::npos,
             "Git log omitted the committed message");
     const auto nonzero = take(git.commit(
-        repositoryWrite, "P13 no-op commit", context(13U)));
+        repositoryWrite, gitAuthority, "P13 no-op commit", context(13U)));
     require(nonzero.exitCode != 0 &&
                 (!nonzero.stdoutUtf8.empty() || !nonzero.stderrUtf8.empty()),
             "Git integration discarded a real nonzero process payload");
@@ -288,10 +297,10 @@ void exerciseGitAndShell(
             "91919191-9191-4191-8191-919191919191"),
         shellProject,
         clientId,
-        {workspacePath, powerShellRoot},
+        {workspacePath},
         context(14U));
     NativeTools::WindowsShellService shell{
-        powerShellExecutable, shellAuthority, supervisor};
+        powerShellExecutable, supervisor};
 
     Domain::ProcessRequest shellRequest{powerShellExecutable};
     shellRequest.arguments = {"Write-Output 'p13-shell-ok'"};
@@ -330,7 +339,7 @@ void exerciseGitAndShell(
         quote += 2U;
     }
     auto activeShell = std::make_unique<NativeTools::WindowsShellService>(
-        powerShellExecutable, shellAuthority, supervisor);
+        powerShellExecutable, supervisor);
     auto* const activeShellView = activeShell.get();
     Domain::ProcessRequest activeRequest{powerShellExecutable};
     activeRequest.arguments = {

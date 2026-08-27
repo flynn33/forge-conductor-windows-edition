@@ -825,7 +825,7 @@ private:
     const ContinuityPathRole role = ContinuityPathRole::Path)
 {
     std::optional<Domain::PathText> base;
-    if (!authority.trustedRoots().empty()) {
+    if (!isAbsoluteToolPath(encoded) && !authority.trustedRoots().empty()) {
         base = authority.trustedRoots().front();
     }
     const auto anchored = anchoredToolPath(
@@ -1662,7 +1662,8 @@ public:
             if (!schema) {
                 return propagate<Domain::ToolCallOutcome>(std::move(schema));
             }
-            auto operationContext = derivedContext(arguments, context);
+            auto operationContext = derivedContext(
+                authorizedCall.toolName(), arguments, context);
             if (!operationContext) {
                 return propagate<Domain::ToolCallOutcome>(
                     std::move(operationContext));
@@ -1760,12 +1761,24 @@ private:
     }
 
     [[nodiscard]] Domain::Result<Domain::OperationContext> derivedContext(
+        const std::string_view toolName,
         const Json& arguments,
         const Domain::OperationContext& parent) const
     {
         const auto deadline = strictInteger(arguments, "deadline_ms");
         if (!deadline) {
-            return Domain::Result<Domain::OperationContext>::success(parent);
+            if (!toolName.starts_with("project_memory.")) {
+                return Domain::Result<Domain::OperationContext>::success(parent);
+            }
+            return Domain::Result<Domain::OperationContext>::success(
+                Domain::OperationContext{
+                    parent.operationId,
+                    (std::min)(
+                        parent.deadline,
+                        dependencies_.clock.monotonicNow() +
+                            Domain::MaximumProjectMemoryDeadline),
+                    parent.cancellation,
+                    parent.correlationId});
         }
         if (*deadline < Domain::MinimumProjectMemoryDeadline.count() ||
             *deadline > Domain::MaximumProjectMemoryDeadline.count()) {
@@ -2458,6 +2471,29 @@ private:
             const auto bytes = std::as_bytes(std::span{content.data(), content.size()});
             auto written = dependencies_.fileSystem.writeFile(
                 authorized.value(), bytes, context);
+            if (!written &&
+                written.error().code == Domain::ErrorCodes::RecordNotFound) {
+                auto creatable = authorizePath(
+                    dependencies_.workspaceAuthority,
+                    authority,
+                    encodedPath,
+                    Domain::FileAccess::Create,
+                    false,
+                    context,
+                    &observation);
+                if (!creatable) {
+                    return propagate<Json>(std::move(creatable));
+                }
+                auto created = dependencies_.fileSystem.writeFile(
+                    creatable.value(), bytes, context);
+                if (!created) {
+                    return propagate<Json>(std::move(created));
+                }
+                return Domain::Result<Json>::success(Json{
+                    {"ok", true},
+                    {"path", creatable.value().canonicalPath().value()},
+                    {"bytes_written", content.size()}});
+            }
             if (!written) {
                 return propagate<Json>(std::move(written));
             }
@@ -2702,14 +2738,16 @@ private:
                 "The requested Git tool is not supported.");
         if (name == "git_status") {
             result = dependencies_.git.status(
-                authorizedRepository.value(), MaximumGitOutputBytes, context);
+                authorizedRepository.value(), authority,
+                MaximumGitOutputBytes, context);
         } else if (name == "git_diff") {
             std::vector<std::string> extra;
             if (strictBoolean(arguments, "staged").value_or(false)) {
                 extra.emplace_back("--cached");
             }
             result = dependencies_.git.diff(
-                authorizedRepository.value(), extra, MaximumGitOutputBytes, context);
+                authorizedRepository.value(), authority, extra,
+                MaximumGitOutputBytes, context);
         } else if (name == "git_log") {
             const auto encodedLimit = legacyInteger(arguments, "limit").value_or(20);
             if (encodedLimit < 1) {
@@ -2720,7 +2758,8 @@ private:
             const auto limit = (std::min)(
                 static_cast<std::size_t>(encodedLimit), MaximumGitLogEntries);
             result = dependencies_.git.log(
-                authorizedRepository.value(), limit, MaximumGitOutputBytes, context);
+                authorizedRepository.value(), authority, limit,
+                MaximumGitOutputBytes, context);
         } else if (name == "git_add") {
             std::vector<Contracts::AuthorizedPath> paths;
             const auto requested = legacyString(arguments, "path");
@@ -2742,10 +2781,11 @@ private:
                 paths.push_back(std::move(authorizedPath).value());
             }
             result = dependencies_.git.add(
-                authorizedRepository.value(), paths, context);
+                authorizedRepository.value(), authority, paths, context);
         } else if (name == "git_commit") {
             result = dependencies_.git.commit(
                 authorizedRepository.value(),
+                authority,
                 legacyString(arguments, "message").value_or(
                     "chore: forge-conductor commit"),
                 context);

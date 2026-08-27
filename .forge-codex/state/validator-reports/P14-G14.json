@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "report_id": "P14-G14-independent-validator",
+  "created_at": "2026-08-27T11:54:57.0105713+00:00",
+  "role": "validator",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "phase": "P14",
+  "gate": "G14",
+  "acceptance": "Initialize and exact 53-tool semantic snapshot pass in primary/fallback roles.",
+  "decision": "pass",
+  "owner_scope": {
+    "decision": ".forge-codex/state/decisions/OWNER-002-alpha-release-qualification-scope.md",
+    "authoritative_affected_target_build_runs": 1,
+    "validator_build_runs": 0,
+    "validator_test_runs": 0,
+    "configuration": "Windows 11 x64 Debug",
+    "machine_scope": "current owner machine"
+  },
+  "measured_results": {
+    "affected_build_targets": 13,
+    "selected_ctest_tests": 13,
+    "selected_ctest_passed": 13,
+    "selected_ctest_failed": 0,
+    "selected_ctest_real_seconds": 30.54,
+    "process_snapshot_assertions": 2685,
+    "adapter_assertions": 549,
+    "contract_matrix_assertions": 1737,
+    "contract_matrix_tools": 53,
+    "contract_matrix_cases": 212,
+    "contract_matrix_categories_per_tool": 4,
+    "real_process_launches": 3,
+    "peak_simultaneous_processes": 2,
+    "tool_descriptors_per_process": 53,
+    "final_registry_projects": 2,
+    "final_registry_aliases": 2,
+    "artifact_hashes_verified": 15,
+    "source_hashes_verified": 15,
+    "ledger_events_verified": 214
+  },
+  "verified_hashes": {
+    "command_record_sha256": "aae8ea0da5bc43d4b3b7da23ed529692ceee003c1d1e963978e497802be5a82b",
+    "command_stdout_sha256": "0485fc49fb7bbd11a6fbd2c445532c41fe7e082507d3b345cbe943b0f872eecf",
+    "command_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "dynamic_checkpoint_sha256": "90dde575618a0a7dab8727cd4d55c12ce35c3c64f2a6a04475da2ad23207ec1a",
+    "decision_sha256": "5eab90aa64f8b4cf4747f94762e393f700703d47dd69cb5f0d0fb6f74520abf9",
+    "last_test_log_sha256": "22683b388a74599d914ff44cfb73b028e15b3801cc0fd0bda4b8b900459a0256"
+  },
+  "independent_checks": [
+    "The authoritative P14 command record and both streams were read and independently hashed through Common.ps1. The record exited 0 without timeout, stdout matched both the record and checkpoint, and stderr was empty with the canonical empty-file SHA-256.",
+    "The SHA-256 and byte count of all 15 checkpoint artifacts matched; the SHA-256 of all 15 source-evidence files matched; the mutable LastTest.log also matched its recorded byte count and SHA-256.",
+    "The pinned stdout reports 13 of 13 selected CTest registrations passing, including the primary/fallback real-process snapshot and exact 53-tool semantic contract matrix selections.",
+    "The dynamic checkpoint records three real-process launches, two simultaneous processes, 53 tool descriptors per process, and a 53-tool by four-category matrix totaling 212 semantic cases.",
+    "Verify-Ledger.ps1 completed read-only with a valid 214-event hash chain.",
+    "This Validator performed zero builds, zero test runs, and no mutation outside this report."
+  ],
+  "evidence": [
+    ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.json",
+    ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.stdout.txt",
+    ".forge-codex/state/commands/20260827T112918356Z-a8f5616a.stderr.txt",
+    ".forge-codex/state/evidence/P14/dynamic-multi-project-workspace-authority-checkpoint.json",
+    ".forge-codex/state/evidence/P14/mcp-tool-contract-matrix-checkpoint.json",
+    ".forge-codex/state/decisions/P14-009-dynamic-project-authority-and-private-execution-scopes.md",
+    ".forge-codex/state/decisions/OWNER-002-alpha-release-qualification-scope.md",
+    ".forge-codex/state/event-ledger.jsonl",
+    "out/build/windows-msvc-x64/Testing/Temporary/LastTest.log"
+  ],
+  "limitations": [
+    "P16 manager IPC and final cross-process persistence ownership remain unimplemented; the alpha retains the owner-approved direct stdio persistence architecture.",
+    "This pass is limited to P14/G14 on the owner's current Windows 11 x64 machine in Debug configuration; it does not qualify another machine, Release, ARM64, or a clean environment.",
+    "Post-alpha security hardening, clean-environment testing, the broad installer matrix, and bespoke UI polish remain owner-deferred; planned UI automation remains in scope for its later gate.",
+    "Passing G14 is not a whole-application completion claim and does not qualify the GUI, Manager, installer, packaging, or final alpha release."
+  ],
+  "failures": []
+}
