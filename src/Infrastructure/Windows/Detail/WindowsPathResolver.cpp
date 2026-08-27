@@ -399,7 +399,8 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
 }
 
 [[nodiscard]] Domain::Result<UniqueHandle> openDirectoryAnchor(
-    const std::wstring_view path, const bool allowChildFileCreation) noexcept
+    const std::wstring_view path, const bool allowChildFileCreation,
+    const AnchorSharePolicy sharePolicy) noexcept
 {
     try
     {
@@ -409,9 +410,11 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
         {
             desiredAccess |= FILE_ADD_FILE | FILE_DELETE_CHILD;
         }
+        const DWORD shareAccess = sharePolicy == AnchorSharePolicy::AllowConcurrentWrite
+                                      ? FILE_SHARE_READ | FILE_SHARE_WRITE
+                                      : FILE_SHARE_READ;
         UniqueHandle handle{::CreateFileW(
-            nativePath.c_str(), desiredAccess, FILE_SHARE_READ | FILE_SHARE_WRITE,
-            nullptr, OPEN_EXISTING,
+            nativePath.c_str(), desiredAccess, shareAccess, nullptr, OPEN_EXISTING,
             FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
         if (!handle)
         {
@@ -433,7 +436,8 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
 }
 
 [[nodiscard]] Domain::Result<std::vector<UniqueHandle>> anchorExistingParentDirectories(
-    const std::wstring_view path, const bool allowChildFileCreation) noexcept
+    const std::wstring_view path, const bool allowChildFileCreation,
+    const AnchorSharePolicy sharePolicy) noexcept
 {
     try
     {
@@ -451,7 +455,8 @@ constexpr std::size_t MaximumNativePathCharacters = 32U * 1024U;
         {
             auto anchor =
                 openDirectoryAnchor(path.substr(0, componentEnd),
-                                    allowChildFileCreation && componentEnd == finalSeparator);
+                                    allowChildFileCreation && componentEnd == finalSeparator,
+                                    sharePolicy);
             if (!anchor)
             {
                 return Domain::Result<std::vector<UniqueHandle>>::failure(
@@ -780,7 +785,7 @@ Domain::Result<std::wstring> WindowsPathResolver::resolveAuthorizedPath(
 
 Domain::Result<AnchoredAuthorizedPath> WindowsPathResolver::resolveAnchoredAuthorizedPath(
     const Contracts::AuthorizedPath &path, const Domain::FileAccess requiredAccess,
-    const MissingPathPolicy policy) noexcept
+    const MissingPathPolicy policy, const AnchorSharePolicy sharePolicy) noexcept
 {
     try
     {
@@ -791,7 +796,8 @@ Domain::Result<AnchoredAuthorizedPath> WindowsPathResolver::resolveAnchoredAutho
         }
         const bool allowChildFileCreation = requiredAccess == Domain::FileAccess::Write ||
                                             requiredAccess == Domain::FileAccess::Create;
-        auto anchors = anchorExistingParentDirectories(resolved.value(), allowChildFileCreation);
+        auto anchors = anchorExistingParentDirectories(resolved.value(), allowChildFileCreation,
+                                                        sharePolicy);
         if (!anchors)
         {
             return Domain::Result<AnchoredAuthorizedPath>::failure(std::move(anchors).error());

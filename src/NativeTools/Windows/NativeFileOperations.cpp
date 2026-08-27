@@ -301,7 +301,8 @@ Domain::Result<OpenedNativeObject> openAuthorizedObject(
           std::move(valid).error());
     }
     auto anchored = InfrastructureDetail::WindowsPathResolver::
-        resolveAnchoredAuthorizedPath(path, requiredAccess, missingPolicy);
+        resolveAnchoredAuthorizedPath(path, requiredAccess, missingPolicy,
+            InfrastructureDetail::AnchorSharePolicy::AllowConcurrentWrite);
     if (!anchored) {
       return Domain::Result<OpenedNativeObject>::failure(
           std::move(anchored).error());

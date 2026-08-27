@@ -19,6 +19,12 @@ enum class MissingPathPolicy
     AllowDescendants
 };
 
+enum class AnchorSharePolicy
+{
+    DenyConcurrentWrite,
+    AllowConcurrentWrite
+};
+
 class AnchoredAuthorizedPath final
 {
   public:
@@ -64,7 +70,7 @@ class WindowsPathResolver final
 
     [[nodiscard]] static Domain::Result<AnchoredAuthorizedPath> resolveAnchoredAuthorizedPath(
         const Contracts::AuthorizedPath &path, Domain::FileAccess requiredAccess,
-        MissingPathPolicy policy) noexcept;
+        MissingPathPolicy policy, AnchorSharePolicy sharePolicy) noexcept;
 
     [[nodiscard]] static Domain::Result<Domain::PathText> toPathText(
         std::wstring_view canonicalPath) noexcept;

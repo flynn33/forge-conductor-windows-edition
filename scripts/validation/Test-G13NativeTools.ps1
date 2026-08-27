@@ -531,6 +531,12 @@ $nativeOperationsHeader = Get-Content -Raw -LiteralPath (
     Join-Path $nativeSourceRoot 'NativeFileOperations.h')
 $fileSystemSource = Get-Content -Raw -LiteralPath (
     Join-Path $nativeSourceRoot 'WindowsFileSystem.cpp')
+$pathResolverHeader = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
+    'src\Infrastructure\Windows\Detail\WindowsPathResolver.h')
+$pathResolverSource = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
+    'src\Infrastructure\Windows\Detail\WindowsPathResolver.cpp')
+$atomicReplaceSource = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
+    'src\Infrastructure\Windows\Detail\AtomicReplaceEngine.cpp')
 Assert-Match $fileSystemSource `
     'Domain::DirectoryListing\s*\{\s*std::move\(result\)\s*,\s*truncated\s*\}' `
     'filesystem returns a sorted bounded prefix with truncation metadata' `
@@ -561,10 +567,60 @@ Assert-Match $nativeOperationsHeader 'authorizedPathOwner' `
     'opened native objects retain their anchored authority owner' -CaseSensitive
 Assert-Match $nativeOperations 'revalidateDirectoryAnchors' `
     'native filesystem revalidates retained directory anchors' -CaseSensitive
+Assert-Match $pathResolverHeader `
+    'enum class AnchorSharePolicy\s*\{\s*DenyConcurrentWrite\s*,\s*AllowConcurrentWrite\s*\}' `
+    'anchored paths require an explicit typed write-sharing policy' -CaseSensitive
+Assert-NoMatch $pathResolverHeader `
+    'AnchorSharePolicy\s+sharePolicy\s*=' `
+    'anchored path write-sharing policy has no implicit default' -CaseSensitive
+$directoryAnchor = [regex]::Match(
+    $pathResolverSource,
+    '(?<body>\[\[nodiscard\]\]\s+Domain::Result<UniqueHandle>\s+openDirectoryAnchor[\s\S]*?\r?\n})\r?\n\r?\n\[\[nodiscard\]\]\s+Domain::Result<std::vector<UniqueHandle>>',
+    [Text.RegularExpressions.RegexOptions]::CultureInvariant)
+Assert-True $directoryAnchor.Success 'directory-anchor source slice'
+$directoryAnchorBody = $directoryAnchor.Groups['body'].Value
+Assert-Match $directoryAnchorBody `
+    'sharePolicy\s*==\s*AnchorSharePolicy::AllowConcurrentWrite[\s\S]*?[?]\s*FILE_SHARE_READ\s*[|]\s*FILE_SHARE_WRITE[\s\S]*?:\s*FILE_SHARE_READ' `
+    'path resolver isolates P06 and P13 directory write-sharing semantics' `
+    -CaseSensitive
+Assert-Exact ([regex]::Matches(
+    $atomicReplaceSource,
+    'AnchorSharePolicy::DenyConcurrentWrite',
+    [Text.RegularExpressions.RegexOptions]::CultureInvariant).Count) 2 `
+    'both P06 atomic operations explicitly deny concurrent directory writes'
+Assert-Exact ([regex]::Matches(
+    $nativeOperations,
+    'AnchorSharePolicy::AllowConcurrentWrite',
+    [Text.RegularExpressions.RegexOptions]::CultureInvariant).Count) 1 `
+    'the P13 workspace boundary explicitly allows ordinary concurrent writes'
+Assert-NoMatch $directoryAnchorBody '\bFILE_SHARE_DELETE\b' `
+    'anchored path policies never permit ancestor delete sharing' -CaseSensitive
 Assert-NoMatch ($nativeOperations + [Environment]::NewLine + $fileSystemSource + `
     [Environment]::NewLine + $searchSource) `
     '\bFILE_SHARE_DELETE\b' `
     'active filesystem operations deny delete-sharing namespace races' `
+    -CaseSensitive
+$moveDestinationAnchor = [regex]::Match(
+    $fileSystemSource,
+    '(?<body>\[\[nodiscard\]\]\s+Domain::Result<MoveDestinationParent>[\s\S]*?\r?\n})\r?\n\r?\n}\s*// namespace',
+    [Text.RegularExpressions.RegexOptions]::CultureInvariant)
+Assert-True $moveDestinationAnchor.Success `
+    'move destination ancestry lease source slice'
+$moveDestinationAnchorBody = $moveDestinationAnchor.Groups['body'].Value
+Assert-Match $fileSystemSource `
+    'std::vector<Detail::OpenedNativeObject>\s+directoryAnchors' `
+    'move destination lease retains every opened ancestor' -CaseSensitive
+Assert-Exact ([regex]::Matches(
+    $moveDestinationAnchorBody,
+    'result[.]directoryAnchors[.]push_back',
+    [Text.RegularExpressions.RegexOptions]::CultureInvariant).Count) 2 `
+    'move destination lease retains its root and each descendant anchor'
+Assert-NoMatch $moveDestinationAnchorBody `
+    '\bFILE_(?:ADD_FILE|ADD_SUBDIRECTORY|DELETE_CHILD)\b' `
+    'move destination anchors avoid conflicting insertion access' -CaseSensitive
+Assert-Match $moveDestinationAnchorBody `
+    'FILE_LIST_DIRECTORY\s*[|]\s*FILE_TRAVERSE\s*[|]\s*FILE_READ_ATTRIBUTES[\s\S]*?FILE_SHARE_READ\s*[|]\s*FILE_SHARE_WRITE' `
+    'move destination anchors use read-only desired access with write sharing' `
     -CaseSensitive
 
 $gitSource = Get-Content -Raw -LiteralPath (

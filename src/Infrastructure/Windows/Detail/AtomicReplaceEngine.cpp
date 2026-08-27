@@ -1656,7 +1656,8 @@ Domain::Result<std::vector<std::byte>> AtomicReplaceEngine::read(
             return Domain::Result<std::vector<std::byte>>::failure(std::move(lease).error());
         }
         auto resolved = WindowsPathResolver::resolveAnchoredAuthorizedPath(
-            path, Domain::FileAccess::Read, MissingPathPolicy::Reject);
+            path, Domain::FileAccess::Read, MissingPathPolicy::Reject,
+            AnchorSharePolicy::DenyConcurrentWrite);
         if (!resolved)
         {
             return Domain::Result<std::vector<std::byte>>::failure(std::move(resolved).error());
@@ -1812,7 +1813,8 @@ Domain::Result<void> AtomicReplaceEngine::replace(const Contracts::AuthorizedPat
             return Domain::Result<void>::failure(std::move(lease).error());
         }
         auto resolved = WindowsPathResolver::resolveAnchoredAuthorizedPath(
-            path, path.access(), MissingPathPolicy::AllowLeaf);
+            path, path.access(), MissingPathPolicy::AllowLeaf,
+            AnchorSharePolicy::DenyConcurrentWrite);
         if (!resolved)
         {
             return Domain::Result<void>::failure(std::move(resolved).error());

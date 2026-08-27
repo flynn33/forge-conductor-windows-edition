@@ -254,7 +254,16 @@ renameOpenedObject(const HANDLE source, const HANDLE destinationDirectory,
   }
 }
 
-[[nodiscard]] Domain::Result<Detail::OpenedNativeObject>
+struct MoveDestinationParent final {
+  std::vector<Detail::OpenedNativeObject> directoryAnchors;
+
+  [[nodiscard]] HANDLE handle() const noexcept {
+    return directoryAnchors.empty() ? nullptr
+                                    : directoryAnchors.back().handle.get();
+  }
+};
+
+[[nodiscard]] Domain::Result<MoveDestinationParent>
 openMoveDestinationParent(const std::wstring_view destinationPath,
                           const Domain::PathText &authorityRoot,
                           const Domain::OperationContext &context) noexcept {
@@ -262,13 +271,13 @@ openMoveDestinationParent(const std::wstring_view destinationPath,
     auto root = InfrastructureDetail::WindowsPathResolver::resolveAppOwnedRoot(
         authorityRoot.value());
     if (!root) {
-      return Domain::Result<Detail::OpenedNativeObject>::failure(
+      return Domain::Result<MoveDestinationParent>::failure(
           std::move(root).error());
     }
     const auto finalSeparator = destinationPath.find_last_of(L'\\');
     if (finalSeparator == std::wstring_view::npos ||
         finalSeparator < root.value().size()) {
-      return Domain::Result<Detail::OpenedNativeObject>::failure(
+      return Domain::Result<MoveDestinationParent>::failure(
           Domain::makeError(
               Domain::ErrorCodes::PathOutsideAuthority,
               "The move destination has no authorized parent directory."));
@@ -276,14 +285,17 @@ openMoveDestinationParent(const std::wstring_view destinationPath,
     const auto parentPath = destinationPath.substr(0U, finalSeparator);
     auto current = Detail::openCanonicalDirectory(
         root.value(),
-        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
-            FILE_ADD_FILE | FILE_ADD_SUBDIRECTORY | FILE_DELETE_CHILD,
+        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES,
         FILE_SHARE_READ | FILE_SHARE_WRITE, context);
     if (!current) {
-      return current;
+      return Domain::Result<MoveDestinationParent>::failure(
+          std::move(current).error());
     }
+    MoveDestinationParent result;
+    result.directoryAnchors.push_back(std::move(current).value());
     if (Detail::samePath(parentPath, root.value())) {
-      return current;
+      return Domain::Result<MoveDestinationParent>::success(
+          std::move(result));
     }
     std::size_t start = root.value().size() + 1U;
     std::wstring currentPath{root.value()};
@@ -295,29 +307,29 @@ openMoveDestinationParent(const std::wstring_view destinationPath,
       currentPath.push_back(L'\\');
       currentPath.append(component);
       auto next = Detail::openChildObject(
-          current.value().handle.get(), component, currentPath,
-          FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
-              FILE_ADD_FILE | FILE_ADD_SUBDIRECTORY | FILE_DELETE_CHILD,
+          result.handle(), component, currentPath,
+          FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES,
           FILE_SHARE_READ | FILE_SHARE_WRITE, context);
       if (!next) {
-        return next;
+        return Domain::Result<MoveDestinationParent>::failure(
+            std::move(next).error());
       }
       if (!next.value().isDirectory()) {
-        return Domain::Result<Detail::OpenedNativeObject>::failure(
+        return Domain::Result<MoveDestinationParent>::failure(
             Domain::makeError(
                 Domain::ErrorCodes::Conflict,
                 "The move destination parent changed filesystem-object type.",
                 true));
       }
-      current = std::move(next);
+      result.directoryAnchors.push_back(std::move(next).value());
       if (separator == std::wstring_view::npos) {
         break;
       }
       start = separator + 1U;
     }
-    return current;
+    return Domain::Result<MoveDestinationParent>::success(std::move(result));
   } catch (...) {
-    return Domain::Result<Detail::OpenedNativeObject>::failure(
+    return Domain::Result<MoveDestinationParent>::failure(
         Domain::makeError(
             Domain::ErrorCodes::InternalFailure,
             "The move destination parent could not be anchored."));
@@ -646,6 +658,11 @@ WindowsFileSystem::move(const Contracts::AuthorizedPath &source,
     if (!destinationPath) {
       return Domain::Result<void>::failure(std::move(destinationPath).error());
     }
+    if (!openedSource.value().authorizedPathOwner.has_value()) {
+      return Domain::Result<void>::failure(Domain::makeError(
+          Domain::ErrorCodes::IntegrityFailure,
+          "The move source did not retain its authorized ancestry."));
+    }
     auto destinationParent = openMoveDestinationParent(
         destinationPath.value(), destination.authorityRoot(), context);
     if (!destinationParent) {
@@ -661,7 +678,7 @@ WindowsFileSystem::move(const Contracts::AuthorizedPath &source,
     }
     return renameOpenedObject(
         openedSource.value().handle.get(),
-        destinationParent.value().handle.get(),
+        destinationParent.value().handle(),
         std::wstring_view{destinationPath.value()}.substr(separator + 1U),
         Detail::samePath(
             std::wstring_view{sourcePath.value()}.substr(

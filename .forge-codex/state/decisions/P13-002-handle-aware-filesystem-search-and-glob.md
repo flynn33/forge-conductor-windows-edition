@@ -42,6 +42,11 @@ grep, excludes `.git` and `node_modules`, and truncates after collecting output.
   not only the leaf handle. Active filesystem operations share for ordinary
   reads and writes but deny delete sharing, so an ancestor cannot be renamed
   out of the authority namespace during the effect.
+- Anchor sharing is an explicit per-caller policy. P06 atomic storage denies
+  concurrent directory writes because its publication boundary must exclude
+  in-place reparse mutation. P13 workspace operations permit ordinary
+  concurrent writes while continuing to deny delete sharing and ancestor
+  rename. Neither caller inherits the other's semantics implicitly.
 - `fs_glob` implements component-aware `*`, `?`, and `**`. This corrects the
   macOS implementation defect while preserving the documented feature.
 - Text search is a native case-sensitive UTF-8 regular-expression search using
@@ -55,7 +60,10 @@ grep, excludes `.git` and `node_modules`, and truncates after collecting output.
   no-match failure.
 - Recursive delete never follows reparses and cannot target an authority root.
   Move requires separately authorized source and destination capabilities and
-  opens destination parents for both file and directory insertion.
+  retains every opened destination-parent ancestor through the native rename.
+  Those destination anchors request only listing, traversal, and attribute
+  access while sharing reads and writes; the native rename performs the
+  file-versus-directory insertion access check without a self-conflicting open.
 
 ## Consequences
 
