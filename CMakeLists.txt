@@ -138,6 +138,7 @@ target_include_directories(ForgeConductor.Application PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
 
 set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
+    src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp
     src/Infrastructure/Windows/BCryptSha256Hasher.cpp
     src/Infrastructure/Windows/DeadlineScheduler.cpp
     src/Infrastructure/Windows/DpapiSecureStorage.cpp
@@ -150,6 +151,10 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsContinuityDocumentCodec.cpp
     src/Infrastructure/Windows/WindowsDiagnosticSink.cpp
     src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp
+    src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp
+    src/Infrastructure/Windows/WindowsLMStudioEnvironment.cpp
+    src/Infrastructure/Windows/WindowsLMStudioHostActivator.cpp
+    src/Infrastructure/Windows/WindowsLMStudioServeVerifier.cpp
     src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
     src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp
@@ -189,6 +194,7 @@ target_link_libraries(ForgeConductor.Infrastructure.Windows PRIVATE
     ntdll
     ole32
     shell32
+    version
     winhttp)
 
 set(FORGE_PERSISTENCE_WINDOWS_SOURCES
@@ -667,7 +673,8 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Contracts.ContractTests>
     )
     set_tests_properties(ForgeConductor.Contracts.ContractTests PROPERTIES
-        LABELS "T-UNIT;G05"
+        LABELS "T-UNIT;T-LMS;G05;G15"
+        TIMEOUT 60
     )
 
     add_test(
@@ -717,13 +724,19 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Contracts.HeaderSelfContainment>
     )
     set_tests_properties(ForgeConductor.Contracts.HeaderSelfContainment PROPERTIES
-        LABELS "T-UNIT;G05"
+        LABELS "T-UNIT;T-LMS;G05;G15"
+        TIMEOUT 60
     )
 
     add_executable(ForgeConductor.Infrastructure.UnitTests
+        tests/Application/LMStudioDeploymentServiceTests.cpp
         tests/Infrastructure/FoundationWindowsTests.cpp
         tests/Infrastructure/InfrastructureTestMain.cpp
+        tests/Infrastructure/LMStudioConfigurationCodecTests.cpp
         tests/Infrastructure/StorageWindowsTests.cpp
+        tests/Infrastructure/WindowsLMStudioEnvironmentTests.cpp
+        tests/Infrastructure/WindowsLMStudioHostActivatorTests.cpp
+        tests/Infrastructure/WindowsLMStudioServeVerifierTests.cpp
         tests/Infrastructure/WindowsUnicodeCanonicalizerTests.cpp
         tests/Infrastructure/WindowsDiagnosticSinkTests.cpp)
     forge_configure_native_target(ForgeConductor.Infrastructure.UnitTests)
@@ -739,8 +752,8 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.UnitTests>
     )
     set_tests_properties(ForgeConductor.Infrastructure.UnitTests PROPERTIES
-        LABELS "T-UNIT;T-SEC;G06"
-        TIMEOUT 120
+        LABELS "T-UNIT;T-SEC;T-LMS;G06;G15"
+        TIMEOUT 180
     )
 
     add_executable(ForgeConductor.Infrastructure.ShutdownTests
@@ -782,8 +795,27 @@ if(BUILD_TESTING)
             "$<TARGET_FILE:ForgeConductor.ProcessFixture>"
     )
     set_tests_properties(ForgeConductor.Infrastructure.ProcessTests PROPERTIES
-        LABELS "T-PROC;T-SEC;G06"
+        LABELS "T-PROC;T-SEC;T-LMS;G06;G15"
+        TIMEOUT 180
     )
+
+    add_executable(ForgeConductor.LMStudio.RealHostTests
+        tests/Infrastructure/WindowsLMStudioRealHostTests.cpp)
+    forge_configure_native_target(ForgeConductor.LMStudio.RealHostTests)
+    target_include_directories(
+        ForgeConductor.LMStudio.RealHostTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.LMStudio.RealHostTests PRIVATE
+        ForgeConductor::Infrastructure.Windows
+        ForgeConductor::Mcp
+        ForgeConductor::NativeTools.Windows
+        nlohmann_json::nlohmann_json)
+    add_dependencies(
+        ForgeConductor.LMStudio.RealHostTests
+        ForgeConductor.Cli)
+    # This mutating machine-local qualification is intentionally not a CTest.
+    # The G15 validator invokes it exactly once after deterministic tests pass.
 
     file(GLOB _forge_infrastructure_windows_headers CONFIGURE_DEPENDS
         "${PROJECT_SOURCE_DIR}/include/ForgeConductor/Infrastructure/Windows/*.h")
@@ -822,7 +854,8 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.HeaderSelfContainment>
     )
     set_tests_properties(ForgeConductor.Infrastructure.HeaderSelfContainment PROPERTIES
-        LABELS "T-UNIT;G06"
+        LABELS "T-UNIT;T-LMS;G06;G15"
+        TIMEOUT 120
     )
 
     add_executable(ForgeConductor.Persistence.ProcessFixture

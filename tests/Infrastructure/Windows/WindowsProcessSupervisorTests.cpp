@@ -575,6 +575,93 @@ void testEnvironmentAndWorkingDirectory(const FixtureContext& fixture)
             "authorized working directory did not reach CreateProcessW");
 }
 
+void testBoundedStandardInputDelivery(const FixtureContext& fixture)
+{
+    const auto budgets =
+        Domain::budgetsForProfile(Domain::ResourceProfile::Constrained8GiB);
+    auto validationRequest = fixture.request({"--exit", "0"});
+    validationRequest.stdinUtf8.assign(Domain::MaximumProcessStdinBytes, 'x');
+    require(Domain::validateProcessRequest(validationRequest, budgets).hasValue(),
+            "the exact process stdin byte ceiling was rejected");
+    validationRequest.stdinUtf8.push_back('x');
+    requireError(Domain::validateProcessRequest(validationRequest, budgets),
+                 Domain::ErrorCodes::PayloadTooLarge,
+                 "the process stdin byte ceiling plus one was accepted");
+    validationRequest.stdinUtf8.assign(1U, '\0');
+    requireError(Domain::validateProcessRequest(validationRequest, budgets),
+                 Domain::ErrorCodes::InvalidRequest,
+                 "NUL in process stdin was accepted");
+    validationRequest.stdinUtf8.assign(1U, static_cast<char>(0xff));
+    requireError(Domain::validateProcessRequest(validationRequest, budgets),
+                 Domain::ErrorCodes::InvalidRequest,
+                 "invalid UTF-8 in process stdin was accepted");
+
+    std::wstring systemDirectory(32U * 1024U, L'\0');
+    const auto systemDirectoryLength = ::GetSystemDirectoryW(
+        systemDirectory.data(), static_cast<UINT>(systemDirectory.size()));
+    require(systemDirectoryLength > 0U && systemDirectoryLength < systemDirectory.size(),
+            "GetSystemDirectoryW failed for the stdin fixture");
+    systemDirectory.resize(systemDirectoryLength);
+
+    TemporaryProcessTree tree;
+    const auto copiedCommand = tree.path() / L"stdin-reader.exe";
+    const auto command = std::filesystem::path{systemDirectory} / L"sort.exe";
+    require(::CopyFileW(command.c_str(), copiedCommand.c_str(), TRUE) != FALSE,
+            "sort.exe could not be copied into the stdin fixture authority");
+    const FixtureContext stdinFixture{copiedCommand.wstring()};
+
+    auto request = stdinFixture.request({});
+    request.stdinUtf8 = "forge-stdin-round-trip\n";
+    ProcessSupervisorHarness harness;
+    const auto result = take(harness.supervisor().run(
+        request, stdinFixture.authority, context(12U)));
+    require(result.exitCode == 0, "the stdin-reading process returned a nonzero exit code");
+    require(result.stdoutUtf8 == "forge-stdin-round-trip\r\n",
+            "the bounded UTF-8 stdin payload did not reach the child exactly");
+    require(result.stderrUtf8.empty(), "the stdin-reading process emitted stderr");
+
+    auto blockedWriter = fixture.request({"--sleep", "30000"});
+    blockedWriter.stdinUtf8.assign(Domain::MaximumProcessStdinBytes, 'w');
+    blockedWriter.timeout = 100ms;
+    const auto blockedStarted = std::chrono::steady_clock::now();
+    const auto blockedResult = take(harness.supervisor().run(
+        blockedWriter, fixture.authority, context(13U)));
+    const auto blockedElapsed = std::chrono::steady_clock::now() - blockedStarted;
+    require(blockedResult.timedOut && blockedResult.terminationConfirmed,
+            "the blocked stdin writer did not end through bounded process timeout");
+    require(blockedElapsed < 7s,
+            "the blocked overlapped stdin writer was not cancelled and reaped in time");
+}
+
+void testDescendantRetainedStdinDoesNotHang(const FixtureContext& fixture)
+{
+    ProcessSupervisorHarness harness;
+    auto request = fixture.request({"--spawn-descendant"});
+    request.stdinUtf8.assign(Domain::MaximumProcessStdinBytes, 'd');
+    request.timeout = 10s;
+
+    TestHandle completed{::CreateEventW(nullptr, TRUE, FALSE, nullptr)};
+    require(completed.valid(), "CreateEventW failed for retained-stdin completion");
+    std::optional<Domain::Result<Domain::ProcessResult>> result;
+    std::jthread runner{[&] {
+        result.emplace(harness.supervisor().run(request, fixture.authority, context(41U)));
+        static_cast<void>(::SetEvent(completed.get()));
+    }};
+
+    const auto completedQuickly =
+        ::WaitForSingleObject(completed.get(), 5'000U) == WAIT_OBJECT_0;
+    if (!completedQuickly) {
+        harness.supervisor().shutdown();
+    }
+    runner.join();
+
+    require(completedQuickly,
+            "a descendant retaining stdin kept the supervisor blocked after direct-child exit");
+    require(result.has_value(), "the retained-stdin run did not publish a result");
+    requireError(result.value(), Domain::ErrorCodes::TransportClosed,
+                 "early child exit with incomplete stdin was not reported as transport_closed");
+}
+
 void testOutputCapsAndConcurrentDrain(const FixtureContext& fixture)
 {
     ProcessSupervisorHarness harness;
@@ -1037,6 +1124,10 @@ void registerProcessWindowsTests(TestRegistry& tests, const std::wstring& fixtur
     addTest(tests, "process.command_line_quoting", [fixture] { testCommandLineQuoting(fixture); });
     addTest(tests, "process.environment_and_working_directory",
             [fixture] { testEnvironmentAndWorkingDirectory(fixture); });
+    addTest(tests, "process.bounded_standard_input",
+            [fixture] { testBoundedStandardInputDelivery(fixture); });
+    addTest(tests, "process.descendant_retained_stdin",
+            [fixture] { testDescendantRetainedStdinDoesNotHang(fixture); });
     addTest(tests, "process.launch-path-ancestry",
             [fixture] { testLaunchPinsAncestryOnlyThroughCreateProcess(fixture); });
     addTest(tests, "process.launch-hard-link-denial",

@@ -17,9 +17,11 @@
 #include <bit>
 #include <chrono>
 #include <climits>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -29,6 +31,7 @@
 #include <stop_token>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -54,6 +57,9 @@ using namespace std::chrono_literals;
 constexpr auto TerminationConfirmationTimeout = 5s;
 constexpr auto ReaderShutdownTimeout = 2s;
 constexpr auto SupervisorShutdownTimeout = 15s;
+constexpr auto StdinWriterShutdownTimeout = 2s;
+constexpr DWORD StdinWriterShutdownTimeoutMilliseconds = 2'000U;
+constexpr std::size_t StdinWriteChunkBytes = 16U * 1024U;
 
 [[nodiscard]] bool containsAccess(const std::vector<Domain::FileAccess>& accesses,
                                   const Domain::FileAccess candidate) noexcept
@@ -531,6 +537,325 @@ void closeWritersAndStop(PipeEndpoints& stdoutPipe, PipeEndpoints& stderrPipe) n
     }
 }
 
+class StdinWriteState final {
+public:
+    StdinWriteState(UniqueHandle writer, UniqueHandle completionEvent) noexcept
+        : writer_{std::move(writer)}, completionEvent_{std::move(completionEvent)}
+    {
+    }
+
+    ~StdinWriteState() = default;
+    StdinWriteState(const StdinWriteState&) = delete;
+    StdinWriteState& operator=(const StdinWriteState&) = delete;
+    StdinWriteState(StdinWriteState&&) = delete;
+    StdinWriteState& operator=(StdinWriteState&&) = delete;
+
+    void write(const std::string_view payload, const std::stop_token stopToken) noexcept
+    {
+        std::size_t offset{};
+        DWORD finalError{ERROR_SUCCESS};
+        while (offset < payload.size()) {
+            {
+                std::scoped_lock lock{mutex_};
+                if (cancelRequested_ || stopToken.stop_requested()) {
+                    finalError = ERROR_OPERATION_ABORTED;
+                    break;
+                }
+                if (::ResetEvent(completionEvent_.get()) == FALSE) {
+                    finalError = ::GetLastError();
+                    break;
+                }
+                overlapped_ = {};
+                overlapped_.hEvent = completionEvent_.get();
+                pending_ = true;
+                const auto count = static_cast<DWORD>(
+                    (std::min)(StdinWriteChunkBytes, payload.size() - offset));
+                const auto started = ::WriteFile(writer_.get(), payload.data() + offset, count,
+                                                 nullptr, &overlapped_);
+                const auto writeError = started ? ERROR_SUCCESS : ::GetLastError();
+                if (started == FALSE && writeError != ERROR_IO_PENDING) {
+                    pending_ = false;
+                    finalError = writeError;
+                    break;
+                }
+            }
+
+            // The event is owned for the full thread lifetime. Cancellation uses CancelIoEx on
+            // this exact OVERLAPPED, so a blocked named-pipe write always has a kernel wake path.
+            if (::WaitForSingleObject(completionEvent_.get(), INFINITE) != WAIT_OBJECT_0) {
+                std::terminate();
+            }
+
+            DWORD written{};
+            {
+                std::scoped_lock lock{mutex_};
+                const auto completed =
+                    ::GetOverlappedResult(writer_.get(), &overlapped_, &written, FALSE);
+                const auto completionError = completed ? ERROR_SUCCESS : ::GetLastError();
+                pending_ = false;
+                if (completed == FALSE) {
+                    finalError = completionError;
+                    break;
+                }
+            }
+            if (written == 0U) {
+                finalError = ERROR_WRITE_FAULT;
+                break;
+            }
+            offset += static_cast<std::size_t>(written);
+            bytesWritten_.store(offset, std::memory_order_release);
+        }
+
+        {
+            std::scoped_lock lock{mutex_};
+            if (finalError == ERROR_SUCCESS && offset < payload.size()) {
+                finalError = cancelRequested_ || stopToken.stop_requested()
+                                 ? ERROR_OPERATION_ABORTED
+                                 : ERROR_WRITE_FAULT;
+            }
+            if (finalError != ERROR_SUCCESS) {
+                error_.store(finalError, std::memory_order_release);
+            }
+            writer_.reset();
+            done_ = true;
+        }
+        doneCondition_.notify_all();
+    }
+
+    void cancel() noexcept
+    {
+        try {
+            std::scoped_lock lock{mutex_};
+            cancelRequested_ = true;
+            if (pending_ && ::CancelIoEx(writer_.get(), &overlapped_) == FALSE) {
+                const auto cancelError = ::GetLastError();
+                if (cancelError != ERROR_NOT_FOUND) {
+                    error_.store(cancelError, std::memory_order_release);
+                }
+            }
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+    [[nodiscard]] bool waitUntilDone(const std::chrono::milliseconds timeout) noexcept
+    {
+        try {
+            std::unique_lock lock{mutex_};
+            return doneCondition_.wait_for(lock, timeout, [this] { return done_; });
+        } catch (...) {
+            return false;
+        }
+    }
+
+    [[nodiscard]] std::size_t bytesWritten() const noexcept
+    {
+        return bytesWritten_.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] DWORD error() const noexcept
+    {
+        return error_.load(std::memory_order_acquire);
+    }
+
+private:
+    UniqueHandle writer_;
+    UniqueHandle completionEvent_;
+    mutable std::mutex mutex_;
+    std::condition_variable doneCondition_;
+    OVERLAPPED overlapped_{};
+    std::atomic<std::size_t> bytesWritten_{};
+    std::atomic<DWORD> error_{ERROR_SUCCESS};
+    bool pending_{};
+    bool cancelRequested_{};
+    bool done_{};
+};
+
+struct StdinPipe final {
+    UniqueHandle childReader;
+    std::shared_ptr<StdinWriteState> writer;
+};
+
+[[nodiscard]] Domain::Result<void> cancelAndReapStdinConnection(
+    const HANDLE server, OVERLAPPED& connection)
+{
+    const auto cancelled = ::CancelIoEx(server, &connection);
+    const auto cancelError = cancelled ? ERROR_SUCCESS : ::GetLastError();
+    if (::WaitForSingleObject(connection.hEvent, StdinWriterShutdownTimeoutMilliseconds) !=
+        WAIT_OBJECT_0) {
+        // The stack-owned OVERLAPPED cannot be released while the kernel can still reference it.
+        std::terminate();
+    }
+    DWORD ignored{};
+    if (::GetOverlappedResult(server, &connection, &ignored, FALSE) == FALSE) {
+        const auto completionError = ::GetLastError();
+        if (completionError == ERROR_IO_INCOMPLETE) {
+            std::terminate();
+        }
+        if (completionError != ERROR_OPERATION_ABORTED && completionError != ERROR_PIPE_CONNECTED) {
+            return Domain::Result<void>::failure(win32Failure(
+                Domain::ErrorCodes::ProcessLaunchFailed,
+                "GetOverlappedResult while reaping child standard-input connection",
+                completionError));
+        }
+    }
+    if (cancelled == FALSE && cancelError != ERROR_NOT_FOUND) {
+        return Domain::Result<void>::failure(win32Failure(
+            Domain::ErrorCodes::ProcessLaunchFailed,
+            "CancelIoEx for child standard-input connection", cancelError));
+    }
+    return Domain::Result<void>::success();
+}
+
+[[nodiscard]] Domain::Result<StdinPipe> createStdinPipe(const std::wstring& pipeName)
+{
+    UniqueHandle writer{::CreateNamedPipeW(
+        pipeName.c_str(),
+        PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
+        PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1,
+        static_cast<DWORD>(StdinWriteChunkBytes), static_cast<DWORD>(StdinWriteChunkBytes), 0,
+        nullptr)};
+    if (!writer) {
+        return Domain::Result<StdinPipe>::failure(win32Failure(
+            Domain::ErrorCodes::ProcessLaunchFailed,
+            "CreateNamedPipeW for child standard input", ::GetLastError()));
+    }
+    if (::SetHandleInformation(writer.get(), HANDLE_FLAG_INHERIT, 0U) == FALSE) {
+        return Domain::Result<StdinPipe>::failure(win32Failure(
+            Domain::ErrorCodes::ProcessLaunchFailed,
+            "SetHandleInformation for child standard-input writer", ::GetLastError()));
+    }
+
+    UniqueHandle connectionEvent{::CreateEventW(nullptr, TRUE, FALSE, nullptr)};
+    if (!connectionEvent) {
+        return Domain::Result<StdinPipe>::failure(win32Failure(
+            Domain::ErrorCodes::ProcessLaunchFailed,
+            "CreateEventW for child standard-input connection", ::GetLastError()));
+    }
+    OVERLAPPED connection{};
+    connection.hEvent = connectionEvent.get();
+    const auto connectionStarted = ::ConnectNamedPipe(writer.get(), &connection);
+    const auto connectionError = connectionStarted ? ERROR_SUCCESS : ::GetLastError();
+    const bool connectionPending =
+        connectionStarted == FALSE && connectionError == ERROR_IO_PENDING;
+    if (connectionStarted == FALSE && !connectionPending &&
+        connectionError != ERROR_PIPE_CONNECTED) {
+        return Domain::Result<StdinPipe>::failure(win32Failure(
+            Domain::ErrorCodes::ProcessLaunchFailed,
+            "ConnectNamedPipe for child standard input", connectionError));
+    }
+
+    SECURITY_ATTRIBUTES inheritable{};
+    inheritable.nLength = sizeof(inheritable);
+    inheritable.bInheritHandle = TRUE;
+    UniqueHandle childReader{::CreateFileW(pipeName.c_str(), GENERIC_READ, 0, &inheritable,
+                                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+    if (!childReader) {
+        const auto readerError = ::GetLastError();
+        if (connectionPending) {
+            auto reaped = cancelAndReapStdinConnection(writer.get(), connection);
+            if (!reaped) {
+                return Domain::Result<StdinPipe>::failure(std::move(reaped).error());
+            }
+        }
+        return Domain::Result<StdinPipe>::failure(win32Failure(
+            Domain::ErrorCodes::ProcessLaunchFailed,
+            "CreateFileW for child standard-input reader", readerError));
+    }
+
+    if (connectionPending) {
+        const auto waitResult =
+            ::WaitForSingleObject(connectionEvent.get(), StdinWriterShutdownTimeoutMilliseconds);
+        if (waitResult != WAIT_OBJECT_0) {
+            const auto waitError = waitResult == WAIT_FAILED ? ::GetLastError() : ERROR_TIMEOUT;
+            childReader.reset();
+            auto reaped = cancelAndReapStdinConnection(writer.get(), connection);
+            if (!reaped) {
+                return Domain::Result<StdinPipe>::failure(std::move(reaped).error());
+            }
+            return Domain::Result<StdinPipe>::failure(win32Failure(
+                Domain::ErrorCodes::ProcessLaunchFailed,
+                "WaitForSingleObject for child standard-input connection", waitError));
+        }
+        DWORD ignored{};
+        if (::GetOverlappedResult(writer.get(), &connection, &ignored, FALSE) == FALSE) {
+            const auto completionError = ::GetLastError();
+            if (completionError == ERROR_IO_INCOMPLETE) {
+                std::terminate();
+            }
+            if (completionError != ERROR_PIPE_CONNECTED) {
+                return Domain::Result<StdinPipe>::failure(win32Failure(
+                    Domain::ErrorCodes::ProcessLaunchFailed,
+                    "GetOverlappedResult for child standard-input connection",
+                    completionError));
+            }
+        }
+    }
+
+    UniqueHandle writeEvent{::CreateEventW(nullptr, TRUE, FALSE, nullptr)};
+    if (!writeEvent) {
+        return Domain::Result<StdinPipe>::failure(win32Failure(
+            Domain::ErrorCodes::ProcessLaunchFailed,
+            "CreateEventW for child standard-input writes", ::GetLastError()));
+    }
+    auto writeState = std::make_shared<StdinWriteState>(std::move(writer), std::move(writeEvent));
+    return Domain::Result<StdinPipe>::success(
+        StdinPipe{std::move(childReader), std::move(writeState)});
+}
+
+class StdinWriterThread final {
+public:
+    StdinWriterThread() noexcept = default;
+    ~StdinWriterThread() noexcept { cancelAndJoin(); }
+    StdinWriterThread(const StdinWriterThread&) = delete;
+    StdinWriterThread& operator=(const StdinWriterThread&) = delete;
+    StdinWriterThread(StdinWriterThread&&) = delete;
+    StdinWriterThread& operator=(StdinWriterThread&&) = delete;
+
+    [[nodiscard]] Domain::Result<void> start(std::shared_ptr<StdinWriteState> state,
+                                             const std::string_view payload)
+    {
+        if (!state || thread_.joinable()) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::Conflict,
+                "The process standard-input writer was started with invalid ownership."));
+        }
+        state_ = std::move(state);
+        try {
+            thread_ = std::jthread{[state = state_, payload](const std::stop_token stopToken) {
+                state->write(payload, stopToken);
+            }};
+        } catch (...) {
+            state_.reset();
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The process standard-input writer thread could not be created."));
+        }
+        return Domain::Result<void>::success();
+    }
+
+    void cancelAndJoin() noexcept
+    {
+        if (!thread_.joinable()) {
+            state_.reset();
+            return;
+        }
+        thread_.request_stop();
+        state_->cancel();
+        if (!state_->waitUntilDone(StdinWriterShutdownTimeout)) {
+            // Joining without a completion acknowledgement could hang shutdown, while releasing
+            // state could free an OVERLAPPED still owned by the kernel. Fail closed instead.
+            std::terminate();
+        }
+        thread_.join();
+        state_.reset();
+    }
+
+private:
+    std::shared_ptr<StdinWriteState> state_;
+    std::jthread thread_;
+};
+
 [[nodiscard]] std::string lossyUtf8(const std::string_view bytes)
 {
     if (bytes.empty() || bytes.size() > static_cast<std::size_t>(INT_MAX)) {
@@ -786,17 +1111,31 @@ public:
         }
         state->setReaders(stdoutPipe.reader, stderrPipe.reader);
 
-        SECURITY_ATTRIBUTES inheritable{};
-        inheritable.nLength = sizeof(inheritable);
-        inheritable.bInheritHandle = TRUE;
-        UniqueHandle childStdin{::CreateFileW(L"NUL", GENERIC_READ,
-                                              FILE_SHARE_READ | FILE_SHARE_WRITE, &inheritable,
-                                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
-        if (!childStdin) {
-            closeWritersAndStop(stdoutPipe, stderrPipe);
-            return Domain::Result<Domain::ProcessResult>::failure(
-                win32Failure(Domain::ErrorCodes::ProcessLaunchFailed,
-                             "CreateFileW for child standard input", ::GetLastError()));
+        UniqueHandle childStdin;
+        std::shared_ptr<StdinWriteState> stdinWriteState;
+        if (request.stdinUtf8.empty()) {
+            SECURITY_ATTRIBUTES inheritable{};
+            inheritable.nLength = sizeof(inheritable);
+            inheritable.bInheritHandle = TRUE;
+            childStdin.reset(::CreateFileW(L"NUL", GENERIC_READ,
+                                           FILE_SHARE_READ | FILE_SHARE_WRITE, &inheritable,
+                                           OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+            if (!childStdin) {
+                closeWritersAndStop(stdoutPipe, stderrPipe);
+                return Domain::Result<Domain::ProcessResult>::failure(
+                    win32Failure(Domain::ErrorCodes::ProcessLaunchFailed,
+                                 "CreateFileW for child standard input", ::GetLastError()));
+            }
+        } else {
+            auto inputPipe = createStdinPipe(pipeNames_.make(L"stdin"));
+            if (!inputPipe) {
+                closeWritersAndStop(stdoutPipe, stderrPipe);
+                return Domain::Result<Domain::ProcessResult>::failure(
+                    std::move(inputPipe).error());
+            }
+            auto pipe = std::move(inputPipe).value();
+            childStdin = std::move(pipe.childReader);
+            stdinWriteState = std::move(pipe.writer);
         }
 
         std::array<HANDLE, 3> inheritedHandles{childStdin.get(), stdoutPipe.childWriter.get(),
@@ -914,6 +1253,27 @@ public:
         }
         primaryThread.reset();
 
+        StdinWriterThread stdinWriterThread;
+        if (stdinWriteState) {
+            auto writerStarted =
+                stdinWriterThread.start(stdinWriteState, std::string_view{request.stdinUtf8});
+            if (!writerStarted) {
+                auto startFailure = std::move(writerStarted).error();
+                state->requestTermination(TerminationReason::Cancelled);
+                const auto directChildStopped =
+                    ::WaitForSingleObject(process.get(),
+                                          static_cast<DWORD>(TerminationConfirmationTimeout.count() *
+                                                             1'000)) == WAIT_OBJECT_0;
+                closeWritersAndStop(stdoutPipe, stderrPipe);
+                const auto processTreeStopped =
+                    jobCompletion->waitUntilEmpty(TerminationConfirmationTimeout);
+                if (!directChildStopped || !processTreeStopped) {
+                    return terminationUnconfirmed();
+                }
+                return Domain::Result<Domain::ProcessResult>::failure(std::move(startFailure));
+            }
+        }
+
         std::array<HANDLE, 2> waits{process.get(), state->cancellationEvent()};
         const auto waitResult =
             ::WaitForMultipleObjects(static_cast<DWORD>(waits.size()), waits.data(), FALSE,
@@ -939,6 +1299,7 @@ public:
             state->stopReadersImmediately();
             stdoutPipe.reader->cancelAndWait();
             stderrPipe.reader->cancelAndWait();
+            stdinWriterThread.cancelAndJoin();
             return terminationUnconfirmed();
         }
 
@@ -946,6 +1307,7 @@ public:
         if (!::GetExitCodeProcess(process.get(), &nativeExitCode)) {
             const auto exitCodeError = ::GetLastError();
             static_cast<void>(operationJob->terminate(ERROR_CANCELLED));
+            stdinWriterThread.cancelAndJoin();
             state->stopReadersImmediately();
             closeWritersAndStop(stdoutPipe, stderrPipe);
             if (!jobCompletion->waitUntilEmpty(TerminationConfirmationTimeout)) {
@@ -955,8 +1317,11 @@ public:
                 Domain::ErrorCodes::InternalFailure, "GetExitCodeProcess", exitCodeError));
         }
 
-        state->finishReadersAfterDirectChildExit();
+        // A direct child may exit after spawning a descendant that inherited stdin. Terminate the
+        // job tree before reaping the cancellable write so no descendant can retain the read end.
         static_cast<void>(operationJob->terminate(nativeExitCode));
+        stdinWriterThread.cancelAndJoin();
+        state->finishReadersAfterDirectChildExit();
         if (!stdoutPipe.reader->waitUntilIdle(ReaderShutdownTimeout)) {
             stdoutPipe.reader->cancelAndWait();
         }
@@ -990,6 +1355,13 @@ public:
         }
 
         const auto reason = state->reason();
+        if (reason == TerminationReason::None && stdinWriteState &&
+            stdinWriteState->bytesWritten() != request.stdinUtf8.size()) {
+            const auto writeError = stdinWriteState->error();
+            return Domain::Result<Domain::ProcessResult>::failure(win32Failure(
+                Domain::ErrorCodes::TransportClosed, "WriteFile for process stdin",
+                writeError == ERROR_SUCCESS ? ERROR_WRITE_FAULT : writeError));
+        }
         return Domain::Result<Domain::ProcessResult>::success(Domain::ProcessResult{
             std::bit_cast<std::int32_t>(nativeExitCode), lossyUtf8(stdoutCapture.bytes),
             lossyUtf8(stderrCapture.bytes), reason == TerminationReason::ProcessTimeout,

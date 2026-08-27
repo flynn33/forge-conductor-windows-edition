@@ -19,6 +19,7 @@ inline constexpr std::size_t MaximumProcessEnvironmentVariableCount = 128U;
 inline constexpr std::size_t MaximumProcessEnvironmentNameBytes = 128U;
 inline constexpr std::size_t MaximumProcessEnvironmentValueBytes = 4U * 1024U;
 inline constexpr std::size_t MaximumProcessEnvironmentBytes = 24U * 1024U;
+inline constexpr std::size_t MaximumProcessStdinBytes = 1U * 1024U * 1024U;
 inline constexpr std::size_t MaximumConcurrentProcessOperations = 64U;
 inline constexpr std::size_t MaximumProcessCommandLineUtf16CodeUnitsIncludingTerminator = 32'767U;
 inline constexpr std::size_t MaximumProcessEnvironmentBlockUtf16CodeUnitsIncludingTerminators =
@@ -42,6 +43,7 @@ struct ProcessRequest final {
     std::chrono::milliseconds timeout{30'000};
     std::size_t maximumStdoutBytes{80'000};
     std::size_t maximumStderrBytes{20'000};
+    std::string stdinUtf8;
 };
 
 struct ProcessResult final {

@@ -155,7 +155,7 @@ because LM Studio is installed on this machine.
 - `include/ForgeConductor/Contracts/ILMStudioEnvironment.h`
 - `include/ForgeConductor/Contracts/ILMStudioDeploymentService.h`
 - `include/ForgeConductor/Domain/EnvironmentModels.h`
-- `.forge-inputs/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Telemetry/LMStudioEnvironment.swift`
-- `.forge-inputs/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Install/LMStudioMCPPluginInstaller.swift`
-- `.forge-inputs/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Install/LMStudioDeployService.swift`
-- `.forge-inputs/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Install/MCPServeVerifier.swift`
+- `.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Telemetry/LMStudioEnvironment.swift`
+- `.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Telemetry/LMStudioMCPPluginInstaller.swift`
+- `.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Telemetry/LMStudioDeployService.swift`
+- `.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/MCP/MCPServeVerifier.swift`

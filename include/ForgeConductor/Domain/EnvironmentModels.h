@@ -6,12 +6,27 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace ForgeConductor::Domain {
 
 enum class LMStudioConnectorRole { Primary, Fallback };
 enum class LMStudioConnectionState { Ready, PrimaryOnly, FallbackPromoted, Unavailable };
+enum class LMStudioDiscoverySource {
+    ExplicitConfiguration,
+    InstalledApplication,
+    KnownUserLocation,
+    RunningProcess
+};
+
+struct LMStudioDiscoveryEvidence final {
+    LMStudioDiscoverySource source{LMStudioDiscoverySource::KnownUserLocation};
+    PathText path;
+    bool valid{};
+    bool selected{};
+    std::string detail;
+};
 
 struct LMStudioConnectorHealth final {
     LMStudioConnectorRole role{LMStudioConnectorRole::Primary};
@@ -31,6 +46,8 @@ struct LMStudioEnvironmentStatus final {
     std::optional<PathText> installationRoot;
     std::optional<PathText> configurationPath;
     std::optional<std::string> version;
+    std::optional<PathText> applicationExecutable;
+    std::vector<LMStudioDiscoveryEvidence> discoveryEvidence;
 };
 
 struct LMStudioPluginStatus final {
@@ -78,5 +95,6 @@ struct LMStudioHostActivationResult final {
 
 [[nodiscard]] LMStudioConnectionState deriveLMStudioConnectionState(
     const std::vector<LMStudioConnectorHealth>& roles) noexcept;
+[[nodiscard]] std::string_view wireName(LMStudioDiscoverySource source) noexcept;
 
 } // namespace ForgeConductor::Domain

@@ -1,4 +1,5 @@
 #include "ForgeConductor/Domain/ProcessModels.h"
+#include "ForgeConductor/Domain/Utf8.h"
 
 namespace ForgeConductor::Domain {
 
@@ -28,6 +29,17 @@ Result<void> validateProcessRequest(
         return Result<void>::failure(makeError(
             ErrorCodes::LimitExceeded,
             "Process environment variable count exceeds 128."));
+    }
+    if (request.stdinUtf8.size() > MaximumProcessStdinBytes) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::PayloadTooLarge,
+            "Process standard input exceeds 1048576 UTF-8 bytes."));
+    }
+    if (request.stdinUtf8.find('\0') != std::string::npos ||
+        !isValidUtf8(request.stdinUtf8)) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Process standard input must be valid UTF-8 without NUL."));
     }
 
     std::size_t argumentBytes = 0U;

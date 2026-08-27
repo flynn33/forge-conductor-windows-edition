@@ -19,6 +19,8 @@
 #include "ForgeConductor/Contracts/ILegacyMemoryService.h"
 #include "ForgeConductor/Contracts/ILMStudioDeploymentService.h"
 #include "ForgeConductor/Contracts/ILMStudioEnvironment.h"
+#include "ForgeConductor/Contracts/ILMStudioHostActivator.h"
+#include "ForgeConductor/Contracts/ILMStudioServeVerifier.h"
 #include "ForgeConductor/Contracts/IManagerServices.h"
 #include "ForgeConductor/Contracts/IMcpServer.h"
 #include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"

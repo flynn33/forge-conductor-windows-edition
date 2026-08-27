@@ -8,7 +8,12 @@ namespace ForgeConductor::Tests {
 void registerFoundationWindowsTests(TestRegistry& tests);
 void registerStorageWindowsTests(TestRegistry& tests);
 void registerDiagnosticWindowsTests(TestRegistry& tests);
+void registerLMStudioDeploymentServiceTests(TestRegistry& tests);
+void registerLMStudioConfigurationCodecTests(TestRegistry& tests);
+void registerLMStudioServeVerifierTests(TestRegistry& tests);
 void registerUnicodeCanonicalizerWindowsTests(TestRegistry& tests);
+void registerWindowsLMStudioEnvironmentTests(TestRegistry& tests);
+void registerWindowsLMStudioHostActivatorTests(TestRegistry& tests);
 
 } // namespace ForgeConductor::Tests
 
@@ -18,7 +23,12 @@ int main()
     ForgeConductor::Tests::registerFoundationWindowsTests(tests);
     ForgeConductor::Tests::registerStorageWindowsTests(tests);
     ForgeConductor::Tests::registerDiagnosticWindowsTests(tests);
+    ForgeConductor::Tests::registerLMStudioDeploymentServiceTests(tests);
+    ForgeConductor::Tests::registerLMStudioConfigurationCodecTests(tests);
+    ForgeConductor::Tests::registerLMStudioServeVerifierTests(tests);
     ForgeConductor::Tests::registerUnicodeCanonicalizerWindowsTests(tests);
+    ForgeConductor::Tests::registerWindowsLMStudioEnvironmentTests(tests);
+    ForgeConductor::Tests::registerWindowsLMStudioHostActivatorTests(tests);
 
     std::size_t passed = 0U;
     for (const auto& [name, run] : tests) {
