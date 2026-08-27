@@ -19,6 +19,7 @@
 #include "ForgeConductor/Contracts/ILMStudioEnvironment.h"
 #include "ForgeConductor/Contracts/IManagerServices.h"
 #include "ForgeConductor/Contracts/IMcpServer.h"
+#include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"
 #include "ForgeConductor/Contracts/IMcpTransport.h"
 #include "ForgeConductor/Contracts/INativeToolServices.h"
 #include "ForgeConductor/Contracts/INativeSessionHostServices.h"

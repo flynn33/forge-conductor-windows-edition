@@ -1,0 +1,4 @@
+Available configure presets:
+
+  "windows-msvc-x64"   - Windows MSVC v143 x64
+  "windows-msvc-arm64" - Windows MSVC v143 ARM64

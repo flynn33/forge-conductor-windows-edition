@@ -2,6 +2,7 @@
 
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/IFoundationServices.h"
+#include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
 
 namespace ForgeConductor::Mcp {
@@ -14,7 +15,8 @@ public:
     McpExecutionContextResolver(
         Contracts::IWorkspaceAuthority& workspaceAuthority,
         Domain::ProjectId defaultProjectId,
-        const Contracts::IClock& clock);
+        const Contracts::IClock& clock,
+        Contracts::IMcpClientWorkspaceContext* clientWorkspaceContext = nullptr);
 
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> resolve(
         const Domain::ToolCallRequest& request,
@@ -25,6 +27,7 @@ private:
     Contracts::IWorkspaceAuthority& workspaceAuthority_;
     const Domain::ProjectId defaultProjectId_;
     const Contracts::IClock& clock_;
+    Contracts::IMcpClientWorkspaceContext* const clientWorkspaceContext_;
 };
 
 // Issues an immutable capability only after the router-selected tool effect,

@@ -1,0 +1,134 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DeploymentModels.cpp
+  AgentModels.cpp
+  LegacyContinuityModels.cpp
+  DiagnosticsModels.cpp
+  TelemetryModels.cpp
+  ManagerModels.cpp
+  GraphicsModels.cpp
+  FileSystemModels.cpp
+  ContinuityModels.cpp
+  ConfigurationModels.cpp
+  Identifiers.cpp
+  LegacyMemoryModels.cpp
+  SessionHostModels.cpp
+  EnvironmentModels.cpp
+  ProcessModels.cpp
+  ToolModels.cpp
+  ProjectMemoryModels.cpp
+  Compiling...
+  ContinuityModels.cpp
+  AgentModels.cpp
+  SessionHostModels.cpp
+  EnvironmentModels.cpp
+  LegacyMemoryModels.cpp
+  ProcessModels.cpp
+  DeploymentModels.cpp
+  DiagnosticsModels.cpp
+  ManagerModels.cpp
+  LegacyContinuityModels.cpp
+  ConfigurationModels.cpp
+  GraphicsModels.cpp
+  Identifiers.cpp
+  FileSystemModels.cpp
+  ToolModels.cpp
+  TelemetryModels.cpp
+  ProjectMemoryModels.cpp
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  AgentSessionService.cpp
+  ContinuityCoordinator.cpp
+  AgentCatalog.cpp
+  ContinuityAutomation.cpp
+  LegacyContextContinuityService.cpp
+  LegacyMemoryService.cpp
+  ProjectMemoryRepositoryCache.cpp
+  ProjectMemoryService.cpp
+  Compiling...
+  ProjectMemoryRepositoryCache.cpp
+  ContinuityAutomation.cpp
+  LegacyMemoryService.cpp
+  ContinuityCoordinator.cpp
+  AgentSessionService.cpp
+  ProjectMemoryService.cpp
+  LegacyContextContinuityService.cpp
+  AgentCatalog.cpp
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpExecutionServices.cpp
+  McpJsonCodec.cpp
+  McpServer.cpp
+  McpToolPackAdapter.cpp
+  McpInvocationGuard.cpp
+  McpToolRouter.cpp
+  McpClientWorkspaceContext.cpp
+  McpToolCatalog.cpp
+  WindowsStdioMcpTransport.cpp
+  Compiling...
+  McpClientWorkspaceContext.cpp
+  McpToolPackAdapter.cpp
+  McpToolCatalog.cpp
+  McpInvocationGuard.cpp
+  McpServer.cpp
+  McpToolRouter.cpp
+  McpJsonCodec.cpp
+  McpExecutionServices.cpp
+  WindowsStdioMcpTransport.cpp
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpClientWorkspaceContextTests.cpp
+  Compiling...
+  McpClientWorkspaceContextTests.cpp
+C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xmemory(730,14): error C2672: 'std::construct_at': no matching overloaded function found [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Mcp.ClientWorkspaceContextTests.vcxproj]
+  (compiling source file '../../../tests/Mcp/McpClientWorkspaceContextTests.cpp')
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xutility(461,16):
+      could be '_Ty *std::construct_at(_Ty *const ,_Types ...) noexcept(<expr>)'
+          C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xmemory(730,14):
+          the associated constraints are not satisfied
+              C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xutility(459,50):
+              'ForgeConductor::Domain::ProjectMemoryDescriptor::ProjectMemoryDescriptor(void)': attempting to reference a deleted function
+                  D:\GitHub\Forge-Conductor-Windows-Edition\include\ForgeConductor\Domain\ProjectMemoryModels.h(61,1):
+                  'ForgeConductor::Domain::ProjectMemoryDescriptor::ProjectMemoryDescriptor(void)': function was implicitly deleted because a data member 'ForgeConductor::Domain::ProjectMemoryDescriptor::id' has either no appropriate default constructor or overload resolution was ambiguous
+                  D:\GitHub\Forge-Conductor-Windows-Edition\include\ForgeConductor\Domain\ProjectMemoryModels.h(57,15):
+                  see declaration of 'ForgeConductor::Domain::ProjectMemoryDescriptor::id'
+              D:\GitHub\Forge-Conductor-Windows-Edition\include\ForgeConductor\Domain\ProjectMemoryModels.h(61,1):
+              compiler has generated 'ForgeConductor::Domain::ProjectMemoryDescriptor::ProjectMemoryDescriptor' here
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xmemory(730,14):
+      the template instantiation context (the oldest one first) is
+          D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpClientWorkspaceContextTests.cpp(199,50):
+          see reference to class template instantiation 'std::vector<ForgeConductor::Domain::ProjectMemoryDescriptor,std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>>' being compiled
+          C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\vector(1628,23):
+          while compiling class template member function 'void std::vector<ForgeConductor::Domain::ProjectMemoryDescriptor,std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>>::resize(const unsigned __int64)'
+              D:\GitHub\Forge-Conductor-Windows-Edition\tests\Mcp\McpClientWorkspaceContextTests.cpp(137,30):
+              see the first reference to 'std::vector<ForgeConductor::Domain::ProjectMemoryDescriptor,std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>>::resize' in '`anonymous-namespace'::RegistryFake::list'
+          C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\vector(1630,9):
+          see reference to function template instantiation 'void std::vector<ForgeConductor::Domain::ProjectMemoryDescriptor,std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>>::_Resize<std::_Value_init_tag>(const unsigned __int64,const _Ty2 &)' being compiled
+          with
+          [
+              _Ty2=std::_Value_init_tag
+          ]
+          C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\vector(1618,27):
+          see reference to function template instantiation 'ForgeConductor::Domain::ProjectMemoryDescriptor *std::_Uninitialized_value_construct_n<std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>>(ForgeConductor::Domain::ProjectMemoryDescriptor *,unsigned __int64,_Alloc &)' being compiled
+          with
+          [
+              _Alloc=std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>
+          ]
+          C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xmemory(2094,18):
+          see reference to function template instantiation 'void std::_Uninitialized_backout_al<std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>>::_Emplace_back<>(void)' being compiled
+          C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xmemory(1844,35):
+          see reference to function template instantiation 'void std::_Default_allocator_traits<_Alloc>::construct<_Ty,>(_Alloc &,_Objty *const )' being compiled
+          with
+          [
+              _Alloc=std::allocator<ForgeConductor::Domain::ProjectMemoryDescriptor>,
+              _Ty=ForgeConductor::Domain::ProjectMemoryDescriptor,
+              _Objty=ForgeConductor::Domain::ProjectMemoryDescriptor
+          ]
+  

@@ -511,16 +511,28 @@ public:
             }
 
             const bool succeeded = outcome && outcome.value().receipt.ok;
-            if (pending->toolName == "context_get" && succeeded) {
-                clearBlock(pending->clientId);
-            }
-
             auto current = validateContext(context, clock_);
             if (!current || isStopping()) {
                 return outcome;
             }
 
             auto finalOutcome = std::move(outcome);
+            if (pending->toolName == "context_get" && succeeded) {
+                const auto& recovery = finalOutcome.value().contextRecovery;
+                if (recovery && recovery->clientId != pending->clientId) {
+                    return failure<Domain::ToolCallOutcome>(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The recovered context receipt belongs to another client.");
+                }
+                if (recovery) {
+                    const bool cleared = clearBlockIfMatches(
+                        pending->clientId, recovery->handoffId);
+                    finalOutcome = annotate(
+                        request,
+                        std::move(finalOutcome),
+                        Json{{"context_budget_cleared", cleared}});
+                }
+            }
             if (!pending->continuityTool &&
                 pending->loopCount == policy_.softIdenticalCallCount) {
                 auto persisted = continuity_.budgetHandoff(
@@ -833,17 +845,24 @@ private:
         state.resumeSeed = receipt.resumeSeed;
     }
 
-    void clearBlock(const Domain::ClientId& clientId)
+    [[nodiscard]] bool clearBlockIfMatches(
+        const Domain::ClientId& clientId,
+        const Domain::LegacyHandoffId& handoffId)
     {
         std::lock_guard lock{mutex_};
         const auto state = continuityStates_.find(clientId.value());
-        if (state == continuityStates_.end()) {
-            return;
+        if (stopping_ || state == continuityStates_.end() ||
+            !state->second.blocked || !state->second.handoffId ||
+            *state->second.handoffId != handoffId.value()) {
+            return false;
         }
         state->second.blocked = false;
+        state->second.handoffId.reset();
+        state->second.resumeSeed.reset();
         state->second.progressCount = 0U;
         state->second.lastCheckpointCount = 0U;
         state->second.lastHandoffCount = 0U;
+        return true;
     }
 
     [[nodiscard]] std::optional<PendingCall> takePending(

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T044256559Z-b12fecf9",
+  "phase": "P14",
+  "role": "Validator",
+  "command": "& .forge-codex/instructions/scripts/Validate-NoAttribution.ps1 -WorkspaceRoot (Get-Location).Path; & .forge-codex/instructions/scripts/Validate-NoPython.ps1 -WorkspaceRoot (Get-Location).Path; git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T04:42:56.5679116+00:00",
+  "end_utc": "2026-08-27T04:43:01.1921851+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T044256559Z-b12fecf9.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T044256559Z-b12fecf9.stderr.txt",
+  "stdout_sha256": "348fcaa87bd5b396ddfa77f0edbc83139dda1be9514055b10c8610330e567293",
+  "stderr_sha256": "0ea55edf09d239edd06ccf523a83a4b48f76ecb75292772bb14af2a91ccfa691"
+}

@@ -64,6 +64,58 @@ private:
     Domain::MonotonicTimePoint now_{1s};
 };
 
+class ClientWorkspaceContextFake final
+    : public Contracts::IMcpClientWorkspaceContext {
+public:
+    void setSnapshot(Domain::ClientWorkspaceSnapshot snapshot)
+    {
+        snapshot_ = std::move(snapshot);
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ClientWorkspaceAdoption> adopt(
+        const Domain::ClientId&,
+        const Domain::LegacyContinuityRecord&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Domain::ClientWorkspaceAdoption>::failure(
+            Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The execution resolver test does not adopt contexts."));
+    }
+
+    [[nodiscard]] Domain::Result<
+        std::optional<Domain::ClientWorkspaceSnapshot>> snapshot(
+        const Domain::ClientId& clientId,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++snapshotCalls_;
+        if (snapshot_ && snapshot_->clientId == clientId) {
+            return Domain::Result<
+                std::optional<Domain::ClientWorkspaceSnapshot>>::success(
+                    snapshot_);
+        }
+        return Domain::Result<
+            std::optional<Domain::ClientWorkspaceSnapshot>>::success(
+                std::nullopt);
+    }
+
+    void clear(const Domain::ClientId&) noexcept override
+    {
+        snapshot_.reset();
+    }
+
+    void shutdown() noexcept override { snapshot_.reset(); }
+
+    [[nodiscard]] std::size_t snapshotCalls() const noexcept
+    {
+        return snapshotCalls_;
+    }
+
+private:
+    std::optional<Domain::ClientWorkspaceSnapshot> snapshot_;
+    std::size_t snapshotCalls_{};
+};
+
 [[nodiscard]] Domain::ProjectId defaultProject()
 {
     return id<Domain::ProjectId>(
@@ -168,6 +220,44 @@ void resolverRejectsMismatchedOrInsufficientAuthority()
     REQUIRE(wrongCaller.error().code == Domain::ErrorCodes::Unauthorized);
 }
 
+void recoveredWorkspaceSelectsImplicitProjectAndNarrowsAuthority()
+{
+    FixedClock clock;
+    auto issuer = authority(
+        Domain::FileAccess::Write,
+        {Domain::FileAccess::Read,
+         Domain::FileAccess::Write,
+         Domain::FileAccess::Delete,
+         Domain::FileAccess::Execute});
+    ClientWorkspaceContextFake recovered;
+    const auto adoptedProject = id<Domain::ProjectId>(
+        "55555555-5555-4555-8555-555555555555");
+    const auto adoptedRoot = take(Domain::PathText::create("C:\\workspace"));
+    recovered.setSnapshot(Domain::ClientWorkspaceSnapshot{
+        client(),
+        adoptedProject,
+        adoptedRoot,
+        id<Domain::LegacyHandoffId>("execution-recovered-handoff"),
+        17U,
+        9U});
+    Mcp::McpExecutionContextResolver resolver{
+        issuer, defaultProject(), clock, &recovered};
+
+    const auto implicit = take(resolver.resolve(
+        request(), Domain::ToolEffect::Read, context()));
+    REQUIRE(implicit.projectId() == adoptedProject);
+    REQUIRE(implicit.trustedRoots().size() == 1U);
+    REQUIRE(implicit.trustedRoots().front() == adoptedRoot);
+    REQUIRE(implicit.generation() == 10U);
+    REQUIRE(recovered.snapshotCalls() == 1U);
+
+    const auto explicitScope = take(resolver.resolve(
+        request(defaultProject()), Domain::ToolEffect::Read, context()));
+    REQUIRE(explicitScope.projectId() == defaultProject());
+    REQUIRE(explicitScope.generation() == 7U);
+    REQUIRE(recovered.snapshotCalls() == 1U);
+}
+
 void cancellationDeadlineAndCorrelationFailClosed()
 {
     FixedClock clock;
@@ -248,6 +338,7 @@ int main()
     try {
         resolvesDefaultAndExplicitProjectScopes();
         resolverRejectsMismatchedOrInsufficientAuthority();
+        recoveredWorkspaceSelectsImplicitProjectAndNarrowsAuthority();
         cancellationDeadlineAndCorrelationFailClosed();
         authorizerIssuesOnlyBoundCapabilities();
         std::cout << "MCP execution service tests passed.\n";

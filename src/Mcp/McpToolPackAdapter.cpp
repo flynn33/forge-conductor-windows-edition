@@ -851,6 +851,38 @@ void optionalTimestamp(
     return result;
 }
 
+[[nodiscard]] Json legacyGetJson(
+    const Domain::LegacyContinuityRecord& record,
+    const Domain::ClientWorkspaceAdoption& adoption)
+{
+    const auto& packet = record.packet;
+    Json result{
+        {"ok", true},
+        {"action", "get"},
+        {"found", true},
+        {"handoff_id", packet.id.value()},
+        {"resume_ready", packet.resumeReady},
+        {"packet", legacyPacketJson(packet)},
+        {"resume_seed", packet.resumeSeed},
+        {"projection_checked", false},
+        {"projection_ok", nullptr},
+        {"projection_status", "unverified"},
+        {"paths", Json::object()}};
+    if (adoption.snapshot) {
+        result["workspace_adopted"] =
+            adoption.snapshot->authorityRoot.value();
+        result["workspace_project_id"] =
+            adoption.snapshot->projectId.value();
+        result["workspace_generation"] = adoption.snapshot->generation;
+    } else {
+        result["workspace_adopted"] = nullptr;
+    }
+    if (adoption.warning) {
+        result["workspace_adoption_warning"] = adoption.warning->message;
+    }
+    return result;
+}
+
 [[nodiscard]] Json projectDescriptorJson(
     const Domain::ProjectMemoryDescriptor& descriptor)
 {
@@ -1278,6 +1310,26 @@ public:
                     Domain::ErrorCodes::InternalFailure,
                     "The MCP tool adapter produced a non-object payload.");
             }
+            std::optional<Domain::ContextRecoveryReceipt> contextRecovery;
+            if (authorizedCall.toolName() == "context_get" &&
+                payload.value().value("found", false)) {
+                const auto handoffId = payload.value().find("handoff_id");
+                if (handoffId == payload.value().end() ||
+                    !handoffId->is_string()) {
+                    return failure<Domain::ToolCallOutcome>(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The recovered context payload has no handoff id.");
+                }
+                auto parsed = Domain::LegacyHandoffId::parse(
+                    handoffId->get_ref<const std::string&>());
+                if (!parsed) {
+                    return propagate<Domain::ToolCallOutcome>(
+                        std::move(parsed));
+                }
+                contextRecovery.emplace(Domain::ContextRecoveryReceipt{
+                    authorizedCall.clientId(),
+                    std::move(parsed).value()});
+            }
             auto encoded = codec.canonicalize(payload.value().dump());
             if (!encoded) {
                 return propagate<Domain::ToolCallOutcome>(std::move(encoded));
@@ -1297,7 +1349,8 @@ public:
                         ok,
                         std::move(receiptError),
                         elapsed},
-                    std::move(encoded).value()});
+                    std::move(encoded).value(),
+                    std::move(contextRecovery)});
         } catch (...) {
             return failure<Domain::ToolCallOutcome>(
                 Domain::ErrorCodes::InternalFailure,
@@ -1354,7 +1407,8 @@ private:
         }
         if (name == "session_checkpoint" || name == "session_handoff" ||
             name == "context_get" || name == "context_list") {
-            return legacyContinuity(name, call, arguments, context);
+            return legacyContinuity(
+                name, call, authority, arguments, context);
         }
         if (name.starts_with("fs_")) {
             return fileSystem(name, authority, arguments, context);
@@ -3714,6 +3768,7 @@ private:
     [[nodiscard]] Domain::Result<Json> legacyContinuity(
         const std::string_view name,
         const Contracts::AuthorizedToolCall& call,
+        const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
         const Domain::OperationContext& context)
     {
@@ -3788,16 +3843,29 @@ private:
                     {"bootstrap",
                      Json::array({"forge_status", "session_checkpoint when you have a goal"})}});
             }
-            Domain::LegacyContinuityPersistOutcome projection{
+            if (authority.callerId() != call.clientId()) {
+                return failure<Json>(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The recovered context caller does not match workspace authority.");
+            }
+            auto adoption = dependencies_.clientWorkspaceContext.adopt(
+                call.clientId(), *result.value().record, context);
+            if (!adoption) {
+                return propagate<Json>(std::move(adoption));
+            }
+            if (adoption.value().superseded) {
+                if (adoption.value().warning) {
+                    return Domain::Result<Json>::failure(
+                        *adoption.value().warning);
+                }
+                return failure<Json>(
+                    Domain::ErrorCodes::Conflict,
+                    "A newer recovered workspace superseded this context.",
+                    true);
+            }
+            return Domain::Result<Json>::success(legacyGetJson(
                 *result.value().record,
-                false,
-                true,
-                false,
-                std::nullopt,
-                {}};
-            auto payload = legacyPersistJson(projection, "get");
-            payload["found"] = true;
-            return Domain::Result<Json>::success(std::move(payload));
+                adoption.value()));
         }
         if (name == "context_list") {
             auto result = dependencies_.legacyContinuity.list(

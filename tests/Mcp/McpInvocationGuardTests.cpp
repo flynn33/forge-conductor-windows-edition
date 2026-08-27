@@ -376,7 +376,8 @@ private:
 }
 
 [[nodiscard]] Domain::ToolCallOutcome successOutcome(
-    const Domain::ToolCallRequest& call)
+    const Domain::ToolCallRequest& call,
+    std::optional<Domain::ContextRecoveryReceipt> contextRecovery = std::nullopt)
 {
     return Domain::ToolCallOutcome{
         Domain::ToolExecutionReceipt{
@@ -385,7 +386,8 @@ private:
             true,
             std::nullopt,
             1ms},
-        R"json({"ok":true})json"};
+        R"json({"ok":true})json",
+        std::move(contextRecovery)};
 }
 
 [[nodiscard]] Json payload(const Domain::ToolCallOutcome& outcome)
@@ -396,7 +398,8 @@ private:
 [[nodiscard]] Domain::Result<Domain::ToolCallOutcome> execute(
     Mcp::McpInvocationGuard& guard,
     const Domain::ToolCallRequest& call,
-    const Domain::OperationContext& operation)
+    const Domain::OperationContext& operation,
+    std::optional<Domain::ContextRecoveryReceipt> contextRecovery = std::nullopt)
 {
     auto admission = guard.beforeInvoke(call, descriptor(call), operation);
     if (!admission) {
@@ -411,7 +414,7 @@ private:
         call,
         descriptor(call),
         Domain::Result<Domain::ToolCallOutcome>::success(
-            successOutcome(call)),
+            successOutcome(call, std::move(contextRecovery))),
         operation);
 }
 
@@ -457,13 +460,84 @@ void identicalCallsSoftHandoffHardBlockAndResume()
     REQUIRE(payload(*blockedBudget.immediateOutcome).at("resume_seed") ==
             "resume-seed-2");
 
-    const auto resume = request(
+    const auto missingResume = request(
         caller, "context_get", R"json({})json", 11U);
-    REQUIRE(take(execute(*guard, resume, context(resume, 11U))).receipt.ok);
+    const auto missingResumeOutcome = take(execute(
+        *guard,
+        missingResume,
+        context(missingResume, 11U)));
+    REQUIRE(missingResumeOutcome.receipt.ok);
+    REQUIRE(!payload(missingResumeOutcome).contains(
+        "context_budget_cleared"));
+
+    const auto stillBlocked = request(
+        caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 12U);
+    const auto stillBlockedAdmission = take(guard->beforeInvoke(
+        stillBlocked, descriptor(stillBlocked), context(stillBlocked, 12U)));
+    REQUIRE(stillBlockedAdmission.immediateOutcome.has_value());
+    REQUIRE(payload(*stillBlockedAdmission.immediateOutcome).at("code") ==
+            "context_budget_exceeded");
+
+    const auto staleResume = request(
+        caller, "context_get", R"json({})json", 13U);
+    const auto staleOutcome = take(execute(
+        *guard,
+        staleResume,
+        context(staleResume, 13U),
+        Domain::ContextRecoveryReceipt{
+            caller,
+            id<Domain::LegacyHandoffId>("handoff-1")}));
+    REQUIRE(staleOutcome.receipt.ok);
+    REQUIRE(payload(staleOutcome).at("context_budget_cleared") == false);
+
+    const auto blockedAfterStale = request(
+        caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 14U);
+    REQUIRE(take(guard->beforeInvoke(
+        blockedAfterStale,
+        descriptor(blockedAfterStale),
+        context(blockedAfterStale, 14U))).immediateOutcome.has_value());
+
+    const auto expiredResume = request(
+        caller, "context_get", R"json({})json", 15U);
+    const auto expiredContext = context(expiredResume, 15U);
+    const auto expiredAdmission = take(guard->beforeInvoke(
+        expiredResume, descriptor(expiredResume), expiredContext));
+    REQUIRE(!expiredAdmission.immediateOutcome.has_value());
+    clock.setNow(Domain::MonotonicTimePoint{1'001s});
+    const auto expiredOutcome = take(guard->afterInvoke(
+        expiredResume,
+        descriptor(expiredResume),
+        Domain::Result<Domain::ToolCallOutcome>::success(successOutcome(
+            expiredResume,
+            Domain::ContextRecoveryReceipt{
+                caller,
+                id<Domain::LegacyHandoffId>("handoff-2")})),
+        expiredContext));
+    REQUIRE(!payload(expiredOutcome).contains("context_budget_cleared"));
+    clock.setNow(Domain::MonotonicTimePoint{1s});
+
+    const auto blockedAfterExpiry = request(
+        caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 16U);
+    REQUIRE(take(guard->beforeInvoke(
+        blockedAfterExpiry,
+        descriptor(blockedAfterExpiry),
+        context(blockedAfterExpiry, 16U))).immediateOutcome.has_value());
+
+    const auto resume = request(
+        caller, "context_get", R"json({})json", 17U);
+    const auto resumeOutcome = take(execute(
+        *guard,
+        resume,
+        context(resume, 17U),
+        Domain::ContextRecoveryReceipt{
+            caller,
+            id<Domain::LegacyHandoffId>("handoff-2")}));
+    REQUIRE(resumeOutcome.receipt.ok);
+    REQUIRE(payload(resumeOutcome).at("context_budget_cleared") == true);
 
     const auto resumed = request(
-        caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 12U);
-    REQUIRE(take(execute(*guard, resumed, context(resumed, 12U))).receipt.ok);
+        caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 18U);
+    REQUIRE(take(execute(*guard, resumed, context(resumed, 18U))).receipt.ok);
     REQUIRE(guard->pendingCallCount() == 0U);
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ForgeConductor/Mcp/McpClientWorkspaceContext.h"
 #include "ForgeConductor/Mcp/McpExecutionServices.h"
 #include "ForgeConductor/Mcp/McpInvocationGuard.h"
 #include "ForgeConductor/Mcp/McpJsonCodec.h"

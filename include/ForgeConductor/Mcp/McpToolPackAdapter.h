@@ -8,6 +8,7 @@
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/ILegacyContextContinuityService.h"
 #include "ForgeConductor/Contracts/ILegacyMemoryService.h"
+#include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"
 #include "ForgeConductor/Contracts/INativeToolServices.h"
 #include "ForgeConductor/Contracts/IPathGlobService.h"
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
@@ -32,6 +33,7 @@ struct McpToolPackDependencies final {
     Contracts::IAgentSessionService& agentSessions;
     Contracts::IAgentCompletionReportInspector& reportInspector;
     Contracts::ILegacyContextContinuityService& legacyContinuity;
+    Contracts::IMcpClientWorkspaceContext& clientWorkspaceContext;
     Contracts::IWorkspaceAuthority& workspaceAuthority;
     Contracts::IFileSystem& fileSystem;
     Contracts::ITextFileEditService& textFileEditor;

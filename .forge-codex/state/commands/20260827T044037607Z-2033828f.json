@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T044037607Z-2033828f",
+  "phase": "P14",
+  "role": "Implementer",
+  "command": "cmake --build --preset windows-msvc-x64-debug --target ForgeConductor.Mcp.ClientWorkspaceContextTests ForgeConductor.Mcp.ExecutionServicesTests ForgeConductor.Mcp.InvocationGuardTests ForgeConductor.Mcp.ToolPackAdapterTests ForgeConductor.Mcp.ToolRouterTests ForgeConductor.Mcp.CatalogCodecTests ForgeConductor.Contracts.ContractTests",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T04:40:37.6157126+00:00",
+  "end_utc": "2026-08-27T04:40:55.9240178+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T044037607Z-2033828f.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T044037607Z-2033828f.stderr.txt",
+  "stdout_sha256": "2d72d4eb248807c6aac34393775437462fc153eb5357aad8e9183c88caea28bb",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

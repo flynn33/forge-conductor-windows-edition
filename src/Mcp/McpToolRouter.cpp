@@ -567,11 +567,10 @@ private:
                 Domain::ErrorCodes::ProjectScopeMismatch,
                 "The MCP project does not match the resolved authority.");
         }
-        if (descriptor.requiresProject &&
-            (!request.metadata.projectId || authority.trustedRoots().empty())) {
+        if (descriptor.requiresProject && authority.trustedRoots().empty()) {
             return failure<void>(
                 Domain::ErrorCodes::ProjectScopeMismatch,
-                "The MCP tool requires an explicitly resolved project authority.");
+                "The MCP tool requires a resolved project authority.");
         }
 
         const auto requiredAccess = accessFor(descriptor.effect);
@@ -637,39 +636,50 @@ private:
         const Domain::OperationContext& context) noexcept
     {
         ToolOutcomeResult outcome = [&]() -> ToolOutcomeResult {
-            auto authorityValidation = validateAuthority(
-                request, registration.descriptor.tool, authority);
-            if (!authorityValidation) {
-                return ToolOutcomeResult::failure(
-                    std::move(authorityValidation).error());
-            }
-            auto authorized = authorizer_.authorize(
-                Domain::ToolAuthorizationRequest{
-                    request,
-                    registration.descriptor.tool.effect,
-                    Domain::AuthorityReference{
-                        authority.authorityId(), authority.generation()}},
-                authority,
-                context);
-            if (!authorized) {
-                return ToolOutcomeResult::failure(
-                    std::move(authorized).error());
-            }
-            if (!authorized.value().matches(request) ||
-                !authorized.value().matches(authority, context) ||
-                authorized.value().effect() !=
-                    registration.descriptor.tool.effect) {
+            try {
+                auto authorityValidation = validateAuthority(
+                    request, registration.descriptor.tool, authority);
+                if (!authorityValidation) {
+                    return ToolOutcomeResult::failure(
+                        std::move(authorityValidation).error());
+                }
+                auto scopedRequest = request;
+                if (registration.descriptor.tool.requiresProject &&
+                    !scopedRequest.metadata.projectId) {
+                    scopedRequest.metadata.projectId = authority.projectId();
+                }
+                auto authorized = authorizer_.authorize(
+                    Domain::ToolAuthorizationRequest{
+                        scopedRequest,
+                        registration.descriptor.tool.effect,
+                        Domain::AuthorityReference{
+                            authority.authorityId(), authority.generation()}},
+                    authority,
+                    context);
+                if (!authorized) {
+                    return ToolOutcomeResult::failure(
+                        std::move(authorized).error());
+                }
+                if (!authorized.value().matches(scopedRequest) ||
+                    !authorized.value().matches(authority, context) ||
+                    authorized.value().effect() !=
+                        registration.descriptor.tool.effect) {
+                    return failure<Domain::ToolCallOutcome>(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The tool authorizer returned a mismatched capability.");
+                }
+                auto current = validateContext(context);
+                if (!current) {
+                    return ToolOutcomeResult::failure(
+                        std::move(current).error());
+                }
+                return registration.handler->handle(
+                    authorized.value(), authority, context);
+            } catch (...) {
                 return failure<Domain::ToolCallOutcome>(
-                    Domain::ErrorCodes::IntegrityFailure,
-                    "The tool authorizer returned a mismatched capability.");
+                    Domain::ErrorCodes::InternalFailure,
+                    "The resolved MCP tool scope could not be dispatched.");
             }
-            auto current = validateContext(context);
-            if (!current) {
-                return ToolOutcomeResult::failure(
-                    std::move(current).error());
-            }
-            return registration.handler->handle(
-                authorized.value(), authority, context);
         }();
 
         auto current = validateContext(context);

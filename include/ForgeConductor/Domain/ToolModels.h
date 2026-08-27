@@ -77,9 +77,34 @@ struct ToolExecutionReceipt final {
     std::chrono::milliseconds elapsed{};
 };
 
+struct ClientWorkspaceSnapshot final {
+    ClientId clientId;
+    ProjectId projectId;
+    PathText authorityRoot;
+    LegacyHandoffId handoffId;
+    std::uint64_t writeSequence{};
+    std::uint64_t generation{};
+
+    bool operator==(const ClientWorkspaceSnapshot&) const = default;
+};
+
+struct ClientWorkspaceAdoption final {
+    std::optional<ClientWorkspaceSnapshot> snapshot;
+    std::optional<Error> warning;
+    bool superseded{};
+};
+
+struct ContextRecoveryReceipt final {
+    ClientId clientId;
+    LegacyHandoffId handoffId;
+
+    bool operator==(const ContextRecoveryReceipt&) const = default;
+};
+
 struct ToolCallOutcome final {
     ToolExecutionReceipt receipt;
     std::string canonicalPayload;
+    std::optional<ContextRecoveryReceipt> contextRecovery;
 };
 
 // A missing immediate outcome admits the invocation. A present outcome is a

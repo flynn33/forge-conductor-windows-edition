@@ -1,8 +1,11 @@
 #include "ForgeConductor/Mcp/McpExecutionServices.h"
 
 #include <algorithm>
+#include <limits>
+#include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace ForgeConductor::Mcp {
 namespace {
@@ -107,10 +110,12 @@ template <typename T>
 McpExecutionContextResolver::McpExecutionContextResolver(
     Contracts::IWorkspaceAuthority& workspaceAuthority,
     Domain::ProjectId defaultProjectId,
-    const Contracts::IClock& clock)
+    const Contracts::IClock& clock,
+    Contracts::IMcpClientWorkspaceContext* const clientWorkspaceContext)
     : workspaceAuthority_{workspaceAuthority},
       defaultProjectId_{std::move(defaultProjectId)},
-      clock_{clock}
+      clock_{clock},
+      clientWorkspaceContext_{clientWorkspaceContext}
 {
 }
 
@@ -132,9 +137,28 @@ McpExecutionContextResolver::resolve(
                 "The MCP request correlation does not match its operation.");
         }
 
+        std::optional<Domain::ClientWorkspaceSnapshot> adoptedWorkspace;
+        if (!request.metadata.projectId && clientWorkspaceContext_ != nullptr) {
+            auto snapshot = clientWorkspaceContext_->snapshot(
+                request.metadata.clientId, context);
+            if (!snapshot) {
+                return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                    std::move(snapshot).error());
+            }
+            adoptedWorkspace = std::move(snapshot).value();
+            if (adoptedWorkspace &&
+                adoptedWorkspace->clientId != request.metadata.clientId) {
+                return failure<Contracts::WorkspaceAuthority>(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The recovered MCP workspace belongs to another client.");
+            }
+        }
+
         const auto& projectId = request.metadata.projectId
             ? request.metadata.projectId.value()
-            : defaultProjectId_;
+            : adoptedWorkspace
+                ? adoptedWorkspace->projectId
+                : defaultProjectId_;
         auto issued = workspaceAuthority_.authorityFor(projectId, context);
         if (!issued) {
             return issued;
@@ -146,6 +170,50 @@ McpExecutionContextResolver::resolve(
                 std::move(current).error());
         }
         auto authority = std::move(issued).value();
+        if (adoptedWorkspace) {
+            if (adoptedWorkspace->projectId != projectId) {
+                return failure<Contracts::WorkspaceAuthority>(
+                    Domain::ErrorCodes::ProjectScopeMismatch,
+                    "The recovered MCP workspace belongs to another project.");
+            }
+            if (std::find(
+                    authority.trustedRoots().begin(),
+                    authority.trustedRoots().end(),
+                    adoptedWorkspace->authorityRoot) ==
+                authority.trustedRoots().end()) {
+                return failure<Contracts::WorkspaceAuthority>(
+                    Domain::ErrorCodes::Unauthorized,
+                    "The recovered MCP workspace is no longer a trusted project root.");
+            }
+            const auto generation = (std::max)(
+                authority.generation(), adoptedWorkspace->generation);
+            if (generation ==
+                (std::numeric_limits<std::uint64_t>::max)()) {
+                return failure<Contracts::WorkspaceAuthority>(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The recovered MCP workspace generation is exhausted.");
+            }
+            auto narrowed = workspaceAuthority_.narrow(
+                authority,
+                std::vector<Domain::PathText>{
+                    adoptedWorkspace->authorityRoot},
+                authority.grants(),
+                authority.shellEnabled(),
+                generation + 1U,
+                context);
+            if (!narrowed) {
+                return narrowed;
+            }
+            auto recoveredAuthority = std::move(narrowed).value();
+            auto binding = validateAuthority(
+                request, effect, recoveredAuthority);
+            if (!binding) {
+                return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                    std::move(binding).error());
+            }
+            return Domain::Result<Contracts::WorkspaceAuthority>::success(
+                std::move(recoveredAuthority));
+        }
         auto binding = validateAuthority(request, effect, authority);
         if (!binding) {
             return Domain::Result<Contracts::WorkspaceAuthority>::failure(

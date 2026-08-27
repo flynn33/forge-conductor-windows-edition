@@ -91,6 +91,11 @@ public:
 class PassiveLegacyContinuity final
     : public Contracts::ILegacyContextContinuityService {
 public:
+    void setGetOutcome(Domain::LegacyContinuityGetOutcome outcome)
+    {
+        getOutcome_ = std::move(outcome);
+    }
+
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityPersistOutcome>
     checkpoint(
         const Domain::LegacyContinuityWriteRequest&,
@@ -133,6 +138,10 @@ public:
         const Domain::LegacyContinuityGetRequest&,
         const Domain::OperationContext&) noexcept override
     {
+        if (getOutcome_) {
+            return Domain::Result<Domain::LegacyContinuityGetOutcome>::success(
+                *getOutcome_);
+        }
         return unavailable<Domain::LegacyContinuityGetOutcome>(message_);
     }
 
@@ -163,6 +172,64 @@ public:
 private:
     static constexpr const char* message_ =
         "Legacy continuity is not configured for this test.";
+    std::optional<Domain::LegacyContinuityGetOutcome> getOutcome_;
+};
+
+class RecordingClientWorkspaceContext final
+    : public Contracts::IMcpClientWorkspaceContext {
+public:
+    void setAdoption(Domain::ClientWorkspaceAdoption adoption)
+    {
+        adoption_ = std::move(adoption);
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ClientWorkspaceAdoption> adopt(
+        const Domain::ClientId& clientId,
+        const Domain::LegacyContinuityRecord& record,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++adoptCalls_;
+        lastClientId_ = clientId;
+        lastHandoffId_ = record.packet.id;
+        return Domain::Result<Domain::ClientWorkspaceAdoption>::success(
+            adoption_);
+    }
+
+    [[nodiscard]] Domain::Result<
+        std::optional<Domain::ClientWorkspaceSnapshot>> snapshot(
+        const Domain::ClientId&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<
+            std::optional<Domain::ClientWorkspaceSnapshot>>::success(
+                adoption_.snapshot);
+    }
+
+    void clear(const Domain::ClientId&) noexcept override {}
+    void shutdown() noexcept override {}
+
+    [[nodiscard]] std::size_t adoptCalls() const noexcept
+    {
+        return adoptCalls_;
+    }
+
+    [[nodiscard]] const std::optional<Domain::ClientId>&
+    lastClientId() const noexcept
+    {
+        return lastClientId_;
+    }
+
+    [[nodiscard]] const std::optional<Domain::LegacyHandoffId>&
+    lastHandoffId() const noexcept
+    {
+        return lastHandoffId_;
+    }
+
+private:
+    Domain::ClientWorkspaceAdoption adoption_;
+    std::size_t adoptCalls_{};
+    std::optional<Domain::ClientId> lastClientId_;
+    std::optional<Domain::LegacyHandoffId> lastHandoffId_;
 };
 
 class PassiveFileTextServices final
@@ -346,6 +413,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     Fakes::RecordingAgentSessionServiceFake agentSessions;
     PassiveReportInspector reportInspector;
     PassiveLegacyContinuity legacyContinuity;
+    RecordingClientWorkspaceContext clientWorkspaceContext;
     Fakes::RecordingFileSystemFake fileSystem{3U * 1024U * 1024U};
     PassiveFileTextServices fileTextServices;
     Fakes::RecordingGitServiceFake git;
@@ -382,6 +450,7 @@ void testRuntimeDispatchAndSchemaPolicy()
             agentSessions,
             reportInspector,
             legacyContinuity,
+            clientWorkspaceContext,
             workspaceAuthority,
             fileSystem,
             fileTextServices,
@@ -446,6 +515,111 @@ void testRuntimeDispatchAndSchemaPolicy()
             requestId,
             authority);
     };
+
+    const auto handoffId = parse<Domain::LegacyHandoffId>(
+        "recovered-adapter-context");
+    Domain::LegacyHandoffPacket recoveredPacket{
+        handoffId,
+        Domain::LegacyContinuityLimits::SchemaVersion,
+        Domain::UtcTimePoint{},
+        Domain::UtcTimePoint{},
+        Domain::LegacyHandoffSource::Model,
+        true,
+        std::nullopt,
+        clientId,
+        "Continue the adapter test",
+        "ready_for_new_chat",
+        std::nullopt,
+        root.value(),
+        {},
+        {"Run the recovered tool"},
+        {"D:/workspace/recovered.cpp"},
+        {},
+        {},
+        "Recovered context",
+        "Resume the adapter test.",
+        false};
+    Domain::LegacyContinuityRecord recoveredRecord{
+        recoveredPacket, 7U, {}};
+    legacyContinuity.setGetOutcome(
+        Domain::LegacyContinuityGetOutcome{recoveredRecord, false});
+    clientWorkspaceContext.setAdoption(Domain::ClientWorkspaceAdoption{
+        Domain::ClientWorkspaceSnapshot{
+            clientId,
+            projectId,
+            root,
+            handoffId,
+            recoveredRecord.writeSequence,
+            12U},
+        std::nullopt,
+        false});
+
+    auto contextGetCall = authorize(
+        "context_get",
+        Domain::ToolEffect::Read,
+        "{}",
+        "request-context-get");
+    auto contextGetResult = adapter->handle(
+        contextGetCall, authority, context);
+    REQUIRE(contextGetResult);
+    REQUIRE(contextGetResult.value().contextRecovery.has_value());
+    REQUIRE(contextGetResult.value().contextRecovery->clientId == clientId);
+    REQUIRE(contextGetResult.value().contextRecovery->handoffId == handoffId);
+    const auto contextPayload = Json::parse(
+        contextGetResult.value().canonicalPayload);
+    REQUIRE(contextPayload.at("found") == true);
+    REQUIRE(contextPayload.at("workspace_adopted") == root.value());
+    REQUIRE(contextPayload.at("workspace_project_id") == projectId.value());
+    REQUIRE(contextPayload.at("projection_checked") == false);
+    REQUIRE(contextPayload.at("projection_ok").is_null());
+    REQUIRE(contextPayload.at("paths").empty());
+    REQUIRE(!contextPayload.contains("context_budget_cleared"));
+    REQUIRE(clientWorkspaceContext.adoptCalls() == 1U);
+    REQUIRE(clientWorkspaceContext.lastClientId() == clientId);
+    REQUIRE(clientWorkspaceContext.lastHandoffId() == handoffId);
+
+    clientWorkspaceContext.setAdoption(Domain::ClientWorkspaceAdoption{
+        Domain::ClientWorkspaceSnapshot{
+            clientId,
+            projectId,
+            root,
+            parse<Domain::LegacyHandoffId>("newer-adapter-context"),
+            recoveredRecord.writeSequence + 1U,
+            13U},
+        Domain::makeError(
+            Domain::ErrorCodes::Conflict,
+            "A newer recovered workspace superseded this adoption.",
+            true),
+        true});
+    auto supersededContextCall = authorize(
+        "context_get",
+        Domain::ToolEffect::Read,
+        "{}",
+        "request-context-get-superseded");
+    auto supersededContextResult = adapter->handle(
+        supersededContextCall, authority, context);
+    REQUIRE(!supersededContextResult);
+    REQUIRE(supersededContextResult.error().code ==
+            Domain::ErrorCodes::Conflict);
+    REQUIRE(supersededContextResult.error().retryable);
+    REQUIRE(clientWorkspaceContext.adoptCalls() == 2U);
+
+    legacyContinuity.setGetOutcome(
+        Domain::LegacyContinuityGetOutcome{std::nullopt, false});
+    auto missingContextCall = authorize(
+        "context_get",
+        Domain::ToolEffect::Read,
+        "{}",
+        "request-context-get-missing");
+    auto missingContextResult = adapter->handle(
+        missingContextCall, authority, context);
+    REQUIRE(missingContextResult);
+    REQUIRE(!missingContextResult.value().contextRecovery.has_value());
+    const auto missingContextPayload = Json::parse(
+        missingContextResult.value().canonicalPayload);
+    REQUIRE(missingContextPayload.at("found") == false);
+    REQUIRE(!missingContextPayload.contains("context_budget_cleared"));
+    REQUIRE(clientWorkspaceContext.adoptCalls() == 2U);
 
     const std::string fileText = "alpha\nbeta\ngamma";
     std::vector<std::byte> fileBytes;

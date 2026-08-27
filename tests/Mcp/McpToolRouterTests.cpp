@@ -494,6 +494,7 @@ public:
                 std::unique_lock lock{mutex_};
                 ++calls_;
                 lastGeneration_ = authority.generation();
+                lastProjectId_ = authorizedCall.projectId();
                 capabilityMatched_ =
                     authorizedCall.matches(authority, context) &&
                     authorizedCall.authorityId() == authority.authorityId();
@@ -560,12 +561,19 @@ public:
         return lastGeneration_;
     }
 
+    [[nodiscard]] std::optional<Domain::ProjectId> lastProjectId() const
+    {
+        std::lock_guard lock{mutex_};
+        return lastProjectId_;
+    }
+
 private:
     std::vector<Domain::McpToolDescriptor> tools_;
     mutable std::mutex mutex_;
     std::condition_variable callsChanged_;
     std::size_t calls_{};
     std::uint64_t lastGeneration_{};
+    std::optional<Domain::ProjectId> lastProjectId_;
     bool capabilityMatched_{};
 };
 
@@ -682,6 +690,43 @@ void routedAuthorityGuardAndAuditAreExact()
     REQUIRE(!events.front().error.has_value());
 }
 
+void resolvedAuthorityScopesProjectlessToolCall()
+{
+    const auto tool = descriptor("implicit_project_tool");
+    CatalogFake catalog{{tool}};
+    HandlerFake handler{{tool}};
+    std::array<Contracts::IToolHandler*, 1U> handlers{&handler};
+    AuthorizerFake authorizer;
+    InvocationGuardFake guard;
+    AuditRepositoryFake audit;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto router = createRouter(
+        catalog, handlers, authorizer, guard, audit, hasher, clock);
+
+    const auto projectless = requestFor(tool, 1U, false);
+    REQUIRE(!projectless.metadata.projectId.has_value());
+    AuthorityIssuer issuer;
+    const auto resolvedAuthority = issuer.issue(
+        projectless,
+        Domain::FileAccess::Read,
+        {Domain::FileAccess::Read});
+    const auto outcome = router->invoke(
+        projectless,
+        resolvedAuthority,
+        contextFor(projectless));
+
+    REQUIRE(outcome.hasValue());
+    REQUIRE(outcome.value().receipt.ok);
+    REQUIRE(handler.calls() == 1U);
+    REQUIRE(handler.capabilityMatched());
+    REQUIRE(handler.lastProjectId().has_value());
+    REQUIRE(handler.lastProjectId().value() ==
+            resolvedAuthority.projectId());
+    REQUIRE(authorizer.calls() == 1U);
+    REQUIRE(audit.events().back().status == "ok");
+}
+
 void policyAndAuthorityFailuresDoNotDispatch()
 {
     const auto tool = descriptor("read_tool");
@@ -697,13 +742,16 @@ void policyAndAuthorityFailuresDoNotDispatch()
         catalog, handlers, authorizer, guard, audit, hasher, clock);
     AuthorityIssuer issuer;
 
-    const auto projectless = requestFor(tool, 1U, false);
+    const auto authorityRequest = requestFor(tool, 1U);
     const auto readAuthority = issuer.issue(
-        projectless,
+        authorityRequest,
         Domain::FileAccess::Read,
         {Domain::FileAccess::Read});
+    auto projectMismatch = authorityRequest;
+    projectMismatch.metadata.projectId = id<Domain::ProjectId>(
+        "20000000-0000-0000-0000-000000000099");
     auto denied = router->invoke(
-        projectless, readAuthority, contextFor(projectless));
+        projectMismatch, readAuthority, contextFor(projectMismatch));
     requireError(denied, Domain::ErrorCodes::ProjectScopeMismatch);
     REQUIRE(handler.calls() == 0U);
     REQUIRE(authorizer.calls() == 0U);
@@ -1042,6 +1090,7 @@ int main()
     try {
         registrationIsExactAndComplete();
         routedAuthorityGuardAndAuditAreExact();
+        resolvedAuthorityScopesProjectlessToolCall();
         policyAndAuthorityFailuresDoNotDispatch();
         guardOutcomesAndAuditFailureAreBoundarySafe();
         cancellationDuplicateAndShutdownDrain();

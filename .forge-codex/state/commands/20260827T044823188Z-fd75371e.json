@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T044823188Z-fd75371e",
+  "phase": "P14",
+  "role": "Validator",
+  "command": "$ErrorActionPreference = \"Stop\"; & .forge-codex/instructions/scripts/Verify-Ledger.ps1 -WorkspaceRoot (Get-Location).Path; $null = Get-Content -Raw -LiteralPath .forge-codex/state/run-state.json | ConvertFrom-Json; $null = Get-Content -Raw -LiteralPath .forge-codex/state/evidence/P14/client-workspace-context-recovery-checkpoint.json | ConvertFrom-Json; & .forge-codex/instructions/scripts/Validate-NoAttribution.ps1 -WorkspaceRoot (Get-Location).Path; & .forge-codex/instructions/scripts/Validate-NoPython.ps1 -WorkspaceRoot (Get-Location).Path; git diff --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T04:48:23.1971517+00:00",
+  "end_utc": "2026-08-27T04:48:27.5981016+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T044823188Z-fd75371e.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T044823188Z-fd75371e.stderr.txt",
+  "stdout_sha256": "0e6739e685fc47907b0e1a25069ae1ee876b77b8a189504c62de42d19930b820",
+  "stderr_sha256": "e6afc316e7c5e54e243ae19f0b1bbb6d9936bbbcaa66291c854f913140baa242"
+}

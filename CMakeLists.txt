@@ -265,6 +265,7 @@ target_include_directories(ForgeNativeSessionHostPlugin PUBLIC
 target_link_libraries(ForgeNativeSessionHostPlugin PRIVATE
     ForgeConductor::SessionHost.Core)
 add_library(ForgeConductor.Mcp STATIC
+    src/Mcp/McpClientWorkspaceContext.cpp
     src/Mcp/McpExecutionServices.cpp
     src/Mcp/McpInvocationGuard.cpp
     src/Mcp/McpJsonCodec.cpp
@@ -413,6 +414,24 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ProtocolServerTests>)
     set_tests_properties(ForgeConductor.Mcp.ProtocolServerTests PROPERTIES
         LABELS "G14;T-MCP;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Mcp.ClientWorkspaceContextTests
+        tests/Mcp/McpClientWorkspaceContextTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Mcp.ClientWorkspaceContextTests)
+    target_include_directories(
+        ForgeConductor.Mcp.ClientWorkspaceContextTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Mcp.ClientWorkspaceContextTests PRIVATE
+        ForgeConductor::Mcp)
+    add_test(
+        NAME ForgeConductor.Mcp.ClientWorkspaceContextTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ClientWorkspaceContextTests>)
+    set_tests_properties(
+        ForgeConductor.Mcp.ClientWorkspaceContextTests PROPERTIES
+        LABELS "G14;T-MCP;T-UNIT;T-STRESS;T-SEC;T-CONT"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Mcp.ExecutionServicesTests

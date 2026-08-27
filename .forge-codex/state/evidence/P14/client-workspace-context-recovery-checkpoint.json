@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "checkpoint": "client_scoped_mcp_context_recovery",
+  "status": "passed",
+  "gate": "G14",
+  "gate_status": "open",
+  "recorded_utc": "2026-08-27T04:44:22.7723929+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "msbuild": "17.14.40+3e7442088",
+    "compiler": "MSVC 19.44.35223.0",
+    "platform": "x64",
+    "configuration": "Debug",
+    "vcpkg_triplet": "x64-windows",
+    "nlohmann_json": "3.12.0#2"
+  },
+  "configure_command_record": ".forge-codex/state/commands/20260827T042823132Z-9436e913.json",
+  "build_command_record": ".forge-codex/state/commands/20260827T044125881Z-66ec7eb1.json",
+  "command_record": ".forge-codex/state/commands/20260827T044230392Z-8a391847.json",
+  "validation_command_record": ".forge-codex/state/commands/20260827T044823188Z-fd75371e.json",
+  "diagnostic_command_records": [
+    ".forge-codex/state/commands/20260827T042804494Z-a3673f96.json",
+    ".forge-codex/state/commands/20260827T042843269Z-2804023b.json",
+    ".forge-codex/state/commands/20260827T044037607Z-2033828f.json",
+    ".forge-codex/state/commands/20260827T044805672Z-d9e6a1e7.json"
+  ],
+  "exit_code": 0,
+  "measured_result": {
+    "tests_selected": 7,
+    "tests_passed": 7,
+    "tests_failed": 0,
+    "ctest_real_seconds": 0.66,
+    "maximum_tracked_clients": 128,
+    "maximum_active_adoptions": 128,
+    "maximum_registered_projects": 1024,
+    "maximum_aliases_per_project": 32,
+    "maximum_recovery_candidates": 32,
+    "maximum_registry_alias_bytes": 4194304,
+    "maximum_recovery_comparison_bytes": 8388608
+  },
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Domain.lib",
+      "bytes": 10936392,
+      "sha256": "ec81b6c4cc8a467e130f9b5180bf50021272051f20b5f2274c5d8dced9cedccb"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Debug/ForgeConductor.Mcp.lib",
+      "bytes": 80204798,
+      "sha256": "f70848d032ca48f806bf0e1db4dcebfe63c8605abb19a359fd27ff7ebbd84d62"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.CatalogCodecTests.exe",
+      "bytes": 1450496,
+      "sha256": "7b5afd5ed8e7857331ccf98725595ca349b128c3ced0bbc69ec0f60bea2abbb0"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ClientWorkspaceContextTests.exe",
+      "bytes": 1126912,
+      "sha256": "8b0bf4404aabc9b9412641675edb8f19df1f7bde6ba239b96efc3386bab6f2e6"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ExecutionServicesTests.exe",
+      "bytes": 843776,
+      "sha256": "1511570b55d63847a2dc936ec054dd81e39ae2c2a93cae7ea84dfec41ce43c87"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolRouterTests.exe",
+      "bytes": 1330688,
+      "sha256": "4b7b4f68ef39bec42eb4b3a2aa2062ec558fc7517b27aa2e6bc54adc47945d3d"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.InvocationGuardTests.exe",
+      "bytes": 1676800,
+      "sha256": "58ad150afd8e943830fbc751ab7b6c28a4313dbf6232d72010db5c8aac42b54a"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Mcp.ToolPackAdapterTests.exe",
+      "bytes": 4321280,
+      "sha256": "aeb1fe89a867909ea8d6ac8e19d92cc7cdf94922a9a4d1516e816530d4ccc627"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Debug/ForgeConductor.Contracts.ContractTests.exe",
+      "bytes": 4119552,
+      "sha256": "2ba16c2f3822c16ba9119ec1a03129d65f8863d2529ea96337838c5046981ce0"
+    }
+  ],
+  "qualified_surface": [
+    "bounded per-client recovered workspace ownership and shutdown",
+    "hostile packet cwd and key-file mapping only through registered aliases and workspace authority",
+    "explicit-project precedence plus adopted implicit project authority narrowed to one canonical root with a fresh generation",
+    "resolved-authority project binding for legacy project-required tool schemas without project metadata",
+    "exact client and handoff receipt matching before a continuity block is cleared",
+    "truthful unverified projection status without fabricated projection paths or receipts",
+    "latest-reservation-wins concurrency with retryable supersession and bounded matching work"
+  ],
+  "remaining_limitations": [
+    "CLI serve and executable composition",
+    "production audit repository, legacy session source, status, and telemetry composition",
+    "real legacy projection inspection and persistence receipts",
+    "primary and fallback process semantic snapshots",
+    "complete per-tool semantic fixtures and remaining G14 evidence"
+  ]
+}

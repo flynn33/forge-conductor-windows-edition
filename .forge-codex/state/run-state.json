@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-27T03:56:21.1484785+00:00",
+  "updated_at": "2026-08-27T04:44:22.7723929+00:00",
   "status": "in_progress",
   "active_role": "builder",
   "active_phase": "P14",
@@ -470,7 +470,13 @@
         ".forge-codex/state/decisions/P14-003-authority-routed-tool-packs-and-continuity-guard.md",
         ".forge-codex/state/commands/20260827T035549337Z-63fdd812.json",
         ".forge-codex/state/commands/20260827T035619648Z-47888d8b.json",
-        ".forge-codex/state/evidence/P14/mcp-routing-toolpack-continuity-checkpoint.json"
+        ".forge-codex/state/evidence/P14/mcp-routing-toolpack-continuity-checkpoint.json",
+        ".forge-codex/state/decisions/P14-004-client-scoped-context-recovery-and-authority.md",
+        ".forge-codex/state/commands/20260827T042823132Z-9436e913.json",
+        ".forge-codex/state/commands/20260827T044125881Z-66ec7eb1.json",
+        ".forge-codex/state/commands/20260827T044230392Z-8a391847.json",
+        ".forge-codex/state/commands/20260827T044823188Z-fd75371e.json",
+        ".forge-codex/state/evidence/P14/client-workspace-context-recovery-checkpoint.json"
       ]
     },
     {
@@ -1007,10 +1013,14 @@
         ".forge-codex/state/decisions/P14-001-mcp-catalog-codec-and-wire-precedence.md",
         ".forge-codex/state/decisions/P14-002-bounded-mcp-server-and-stdio-lifetimes.md",
         ".forge-codex/state/decisions/P14-003-authority-routed-tool-packs-and-continuity-guard.md",
+        ".forge-codex/state/decisions/P14-004-client-scoped-context-recovery-and-authority.md",
         ".forge-codex/state/evidence/P14/mcp-server-stdio-checkpoint.json",
         ".forge-codex/state/evidence/P14/mcp-routing-toolpack-continuity-checkpoint.json",
+        ".forge-codex/state/evidence/P14/client-workspace-context-recovery-checkpoint.json",
         ".forge-codex/state/commands/20260827T035549337Z-63fdd812.json",
-        ".forge-codex/state/commands/20260827T035619648Z-47888d8b.json"
+        ".forge-codex/state/commands/20260827T035619648Z-47888d8b.json",
+        ".forge-codex/state/commands/20260827T044125881Z-66ec7eb1.json",
+        ".forge-codex/state/commands/20260827T044230392Z-8a391847.json"
       ]
     },
     {
