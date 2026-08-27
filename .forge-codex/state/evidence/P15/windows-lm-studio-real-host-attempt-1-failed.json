@@ -1,0 +1,17 @@
+{
+  "bounded": true,
+  "gate": "G15",
+  "phase": "P15",
+  "result": {
+    "deployment_left_installed": false,
+    "error": "The file read bound exceeds its native tool bound.",
+    "error_code": "limit_exceeded",
+    "retryable": false,
+    "rollback_requested": false,
+    "stage": "inspect_lmstudio_environment",
+    "status": "failed"
+  },
+  "runner": "ForgeConductor.LMStudio.RealHostTests",
+  "sanitized": true,
+  "schema_version": 1
+}

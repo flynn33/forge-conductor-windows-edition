@@ -1048,7 +1048,8 @@ public:
     {
         if (options_.maximumCandidates == 0U || options_.maximumCandidates > 256U ||
             options_.maximumConfigurationBytes == 0U ||
-            options_.maximumConfigurationBytes > Contracts::IAtomicFileStore::MaximumBytes ||
+            options_.maximumConfigurationBytes >
+                WindowsLMStudioEnvironmentOptions::DefaultMaximumConfigurationBytes ||
             options_.maximumJsonDepth == 0U || options_.maximumJsonDepth > 128U) {
             constructionError_ = Domain::makeError(
                 Domain::ErrorCodes::InvalidRequest,

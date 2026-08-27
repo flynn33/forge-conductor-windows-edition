@@ -1,0 +1,253 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  WindowsAgentCompletionReportInspector.cpp
+  WindowsLMStudioEnvironment.cpp
+  Compiling...
+  WindowsAgentCompletionReportInspector.cpp
+  WindowsLMStudioEnvironment.cpp
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  WindowsLMStudioEnvironmentTests.cpp
+  Compiling...
+  WindowsLMStudioEnvironmentTests.cpp
+  ForgeConductor.Infrastructure.UnitTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Infrastructure.UnitTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Performing build step for 'forsetti_external'
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Infrastructure.Windows.lib
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.NativeTools.Windows.lib
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Mcp.lib
+    1>Checking Build System
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Debug\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Debug\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Debug\ForsettiHostTemplate.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.SessionHost.Core.lib
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpServeCompositionRoot.cpp
+  Compiling...
+  McpServeCompositionRoot.cpp
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\forge-conductor.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  WindowsLMStudioRealHostTests.cpp
+  Compiling...
+  WindowsLMStudioRealHostTests.cpp
+  ForgeConductor.LMStudio.RealHostTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.LMStudio.RealHostTests.exe
+[RUN] foundation.clocks_and_deadline_gate
+[PASS] foundation.clocks_and_deadline_gate
+[RUN] foundation.uuid_and_sha256
+[PASS] foundation.uuid_and_sha256
+[RUN] foundation.secret_redaction
+[PASS] foundation.secret_redaction
+[RUN] foundation.utf_and_handle_owners
+[PASS] foundation.utf_and_handle_owners
+[RUN] foundation.application_paths_and_override_policy
+[PASS] foundation.application_paths_and_override_policy
+[RUN] foundation.path_resolver_rejects_unsafe_forms
+[PASS] foundation.path_resolver_rejects_unsafe_forms
+[RUN] storage.atomic.roundtrip-backup-bounds
+[PASS] storage.atomic.roundtrip-backup-bounds
+[RUN] storage.atomic.security-cancellation
+[PASS] storage.atomic.security-cancellation
+[RUN] storage.atomic.parent-anchor
+[PASS] storage.atomic.parent-anchor
+[RUN] storage.atomic.read-parent-anchor
+[PASS] storage.atomic.read-parent-anchor
+[RUN] storage.path-resolver.directory-anchor-contention
+[PASS] storage.path-resolver.directory-anchor-contention
+[RUN] storage.atomic.case-sensitive-directory-policy
+[EVIDENCE] atomic_case_sensitive_directory_supported=1 native_error=0
+[PASS] storage.atomic.case-sensitive-directory-policy
+[RUN] storage.atomic.parent-reparse-no-stage
+[PASS] storage.atomic.parent-reparse-no-stage
+[RUN] storage.atomic.old-handle-new-identity
+[PASS] storage.atomic.old-handle-new-identity
+[RUN] storage.atomic.reader-without-delete-share
+[PASS] storage.atomic.reader-without-delete-share
+[RUN] storage.atomic.final-leaf-swap-containment
+[PASS] storage.atomic.final-leaf-swap-containment
+[RUN] storage.atomic.final-stage-hard-link-rejection
+[PASS] storage.atomic.final-stage-hard-link-rejection
+[RUN] storage.atomic.target-reparse-swap
+[PASS] storage.atomic.target-reparse-swap
+[RUN] storage.atomic.backup-identity-swap
+[PASS] storage.atomic.backup-identity-swap
+[RUN] storage.atomic.unsupported-posix-no-stage
+[PASS] storage.atomic.unsupported-posix-no-stage
+[RUN] storage.atomic.metadata-policy
+[PASS] storage.atomic.metadata-policy
+[RUN] storage.atomic.security-identity-ea-policy
+[EVIDENCE] atomic_extended_attributes_supported=1 native_error=0
+[EVIDENCE] atomic_mandatory_label_fixture_supported=1 native_error=0
+[PASS] storage.atomic.security-identity-ea-policy
+[RUN] storage.atomic.hard-link-authority
+[PASS] storage.atomic.hard-link-authority
+[RUN] storage.atomic.stale-temp-recovery
+[PASS] storage.atomic.stale-temp-recovery
+[RUN] storage.atomic.crash-restart-recovery
+[PASS] storage.atomic.crash-restart-recovery
+[RUN] storage.atomic.entropy-collision-bound
+[PASS] storage.atomic.entropy-collision-bound
+[RUN] storage.atomic.backup-before-target-failure
+[PASS] storage.atomic.backup-before-target-failure
+[RUN] storage.atomic.target-prepublish-cancellation
+[PASS] storage.atomic.target-prepublish-cancellation
+[RUN] storage.config.unknown-field-preservation
+[PASS] storage.config.unknown-field-preservation
+[RUN] storage.config.valid-backup-recovery
+[PASS] storage.config.valid-backup-recovery
+[RUN] storage.config.hostile-json
+[PASS] storage.config.hostile-json
+[RUN] storage.config.commit-before-publish
+[PASS] storage.config.commit-before-publish
+[RUN] storage.config.bounds-defaults-shutdown
+[PASS] storage.config.bounds-defaults-shutdown
+[RUN] storage.dpapi.roundtrip-bounds-shutdown
+[PASS] storage.dpapi.roundtrip-bounds-shutdown
+[RUN] storage.dpapi.different-sid-denial
+[EVIDENCE] dpapi_owner_sid=S-1-5-21-889735064-1610704881-2895938129-1001 alternate_sid=S-1-5-7 unprotect_error=5
+[PASS] storage.dpapi.different-sid-denial
+[RUN] storage.dpapi.entry-cap-corruption
+[PASS] storage.dpapi.entry-cap-corruption
+[RUN] storage.dpapi.catalog-integrity
+[PASS] storage.dpapi.catalog-integrity
+[RUN] diagnostics.active-destructor-dependency-lifetime
+[PASS] diagnostics.active-destructor-dependency-lifetime
+[RUN] diagnostics.directory-creation-parent-anchor
+[PASS] diagnostics.directory-creation-parent-anchor
+[RUN] diagnostics.relative-file-operations
+[PASS] diagnostics.relative-file-operations
+[RUN] diagnostics.hard-link-leaf-rejection
+[PASS] diagnostics.hard-link-leaf-rejection
+[RUN] diagnostics.case-sensitive-root-rejection
+[PASS] diagnostics.case-sensitive-root-rejection
+[RUN] diagnostics.final-root-protected-transaction
+[PASS] diagnostics.final-root-protected-transaction
+[RUN] diagnostics.redaction-all-surfaces
+[PASS] diagnostics.redaction-all-surfaces
+[RUN] diagnostics.restart-export-create-write
+[PASS] diagnostics.restart-export-create-write
+[RUN] diagnostics.concurrent-rotation-downshift
+[PASS] diagnostics.concurrent-rotation-downshift
+[RUN] diagnostics.rotation-exclusive-cancellation
+[PASS] diagnostics.rotation-exclusive-cancellation
+[RUN] diagnostics.rotation-stage-hard-link-rejection
+[PASS] diagnostics.rotation-stage-hard-link-rejection
+[RUN] diagnostics.rotation-crash-restart
+[PASS] diagnostics.rotation-crash-restart
+[RUN] diagnostics.bounds-cancel-shutdown
+[PASS] diagnostics.bounds-cancel-shutdown
+[RUN] lmstudio.deploy.transaction-and-fallback-order
+[PASS] lmstudio.deploy.transaction-and-fallback-order
+[RUN] lmstudio.deploy.fresh-revision-and-drift
+[PASS] lmstudio.deploy.fresh-revision-and-drift
+[RUN] lmstudio.deploy.atomic-post-smoke-rollback
+[PASS] lmstudio.deploy.atomic-post-smoke-rollback
+[RUN] lmstudio.deploy.fresh-and-ambiguous-move-rollback
+[PASS] lmstudio.deploy.fresh-and-ambiguous-move-rollback
+[RUN] lmstudio.deploy.complete-mutation-fault-matrix
+[PASS] lmstudio.deploy.complete-mutation-fault-matrix
+[RUN] lmstudio.deploy.rollback-cleanup-integrity
+[PASS] lmstudio.deploy.rollback-cleanup-integrity
+[RUN] lmstudio.deploy.status-rejects-missing-nonbinary
+[PASS] lmstudio.deploy.status-rejects-missing-nonbinary
+[RUN] lmstudio.deploy.status-propagates-systemic-authority-fault
+[PASS] lmstudio.deploy.status-propagates-systemic-authority-fault
+[RUN] lmstudio.deploy.cancel-deadline-rollback
+[PASS] lmstudio.deploy.cancel-deadline-rollback
+[RUN] lmstudio.deploy.malformed-and-authorization
+[PASS] lmstudio.deploy.malformed-and-authorization
+[RUN] lmstudio.deploy.activation-and-shutdown-drain
+[PASS] lmstudio.deploy.activation-and-shutdown-drain
+[RUN] lmstudio.codec.preserve-foreign-and-unknown
+[PASS] lmstudio.codec.preserve-foreign-and-unknown
+[RUN] lmstudio.codec.strict-malformed-shapes
+[PASS] lmstudio.codec.strict-malformed-shapes
+[RUN] lmstudio.codec.drift-matrix
+[PASS] lmstudio.codec.drift-matrix
+[RUN] lmstudio.codec.fresh-revision
+[PASS] lmstudio.codec.fresh-revision
+[RUN] lmstudio.verifier.success-and-request-shape
+[PASS] lmstudio.verifier.success-and-request-shape
+[RUN] lmstudio.verifier.fail-closed
+[PASS] lmstudio.verifier.fail-closed
+[RUN] lmstudio.verifier.cancellation-and-shutdown
+[PASS] lmstudio.verifier.cancellation-and-shutdown
+[RUN] lmstudio.verifier.pre-admission-cancellation
+[PASS] lmstudio.verifier.pre-admission-cancellation
+[RUN] lmstudio.verifier.shutdown-drain
+[PASS] lmstudio.verifier.shutdown-drain
+[RUN] foundation.unicode_canonical_equivalence_and_typed_ordering
+[PASS] foundation.unicode_canonical_equivalence_and_typed_ordering
+[RUN] foundation.unicode_nfc_without_compatibility_folding
+[PASS] foundation.unicode_nfc_without_compatibility_folding
+[RUN] foundation.unicode_invalid_and_oversized_input_fails_typed
+[PASS] foundation.unicode_invalid_and_oversized_input_fails_typed
+[RUN] lm_studio_environment.explicit_and_installed_precedence
+[PASS] lm_studio_environment.explicit_and_installed_precedence
+[RUN] lm_studio_environment.invalid_candidates_fall_back_with_evidence
+[PASS] lm_studio_environment.invalid_candidates_fall_back_with_evidence
+[RUN] lm_studio_environment.candidate_fallback_and_systemic_faults
+[PASS] lm_studio_environment.candidate_fallback_and_systemic_faults
+[RUN] lm_studio_environment.missing_host_without_guessing
+[PASS] lm_studio_environment.missing_host_without_guessing
+[RUN] lm_studio_environment.connection_health_cache
+[PASS] lm_studio_environment.connection_health_cache
+[RUN] lm_studio_environment.cancellation_and_candidate_bound
+[PASS] lm_studio_environment.cancellation_and_candidate_bound
+[RUN] lm_studio_environment.native_source_read_only_smoke
+[PASS] lm_studio_environment.native_source_read_only_smoke
+[RUN] lmstudio.host.launch-and-lazy-sync
+[PASS] lmstudio.host.launch-and-lazy-sync
+[RUN] lmstudio.host.hot-sync-no-restart
+[PASS] lmstudio.host.hot-sync-no-restart
+[RUN] lmstudio.host.stale-revision-no-unsupported-restart
+[PASS] lmstudio.host.stale-revision-no-unsupported-restart
+[RUN] lmstudio.host.duplicate-sync-keys
+[PASS] lmstudio.host.duplicate-sync-keys
+[RUN] lmstudio.host.live-sync-identity
+[PASS] lmstudio.host.live-sync-identity
+[RUN] lmstudio.host.atomic-launch-and-wakeable-cancel
+[PASS] lmstudio.host.atomic-launch-and-wakeable-cancel
+[RUN] lmstudio.host.cancel-evidence-shutdown
+[PASS] lmstudio.host.cancel-evidence-shutdown
+[RUN] lmstudio.host.shutdown-drains-active-observation
+[PASS] lmstudio.host.shutdown-drains-active-observation
+88/88 Windows infrastructure unit tests passed.

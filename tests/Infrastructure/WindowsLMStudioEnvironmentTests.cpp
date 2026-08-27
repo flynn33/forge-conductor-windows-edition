@@ -1,6 +1,7 @@
 #include "TestSupport.h"
 
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioEnvironment.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsFileSystem.h"
 #include "Fakes/DeterministicWorkspaceAuthority.h"
 
 #include <algorithm>
@@ -29,6 +30,9 @@ using Infrastructure::Windows::WindowsLMStudioEnvironmentOptions;
 
 static_assert(std::is_final_v<WindowsLMStudioEnvironment>);
 static_assert(!std::is_copy_constructible_v<WindowsLMStudioEnvironment>);
+static_assert(
+    WindowsLMStudioEnvironmentOptions::DefaultMaximumConfigurationBytes ==
+    NativeTools::Windows::WindowsFileSystem::MaximumTextFileBytes);
 
 [[nodiscard]] Domain::PathText path(const std::string_view value)
 {

@@ -73,7 +73,7 @@ private:
 
 struct WindowsLMStudioEnvironmentOptions final {
     static constexpr std::size_t DefaultMaximumCandidates = 64U;
-    static constexpr std::size_t DefaultMaximumConfigurationBytes = 4U * 1024U * 1024U;
+    static constexpr std::size_t DefaultMaximumConfigurationBytes = 2U * 1024U * 1024U;
     static constexpr std::size_t DefaultMaximumJsonDepth = 32U;
 
     std::size_t maximumCandidates{DefaultMaximumCandidates};

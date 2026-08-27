@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "phase": "P15",
+  "gate": "G15",
+  "checkpoint": "g15_attempt_1_predeployment_diagnostic",
+  "status": "resolved",
+  "recorded_utc": "2026-08-27T14:25:41.6156593+00:00",
+  "implementation_commit": "d6e00a2f7c6d430bf0c2eb6f439a037f8fb5de5b",
+  "authoritative_attempt": {
+    "command_record": ".forge-codex/state/commands/20260827T141837131Z-e0c0a3a9.json",
+    "command_record_sha256": "39bc0a8a467d7c20026b5e1f79f86228c95d535bde7e96db1ed22dc0e891c77a",
+    "stdout_sha256": "a9206b87ee2c34d6d804621257428340c6dbf3f528d6ea5bfddcd6353026ebf8",
+    "stderr_sha256": "126ff7f2f93ab0568f386fe6fbccb0bb947c7b8358340f30ef8116c8bdfa8219",
+    "exit_code": 1,
+    "timed_out": false,
+    "affected_target_rebuild_passed": true,
+    "g15_ctest_selected": 5,
+    "g15_ctest_passed": 5,
+    "g15_ctest_failed": 0,
+    "failed_real_host_evidence": ".forge-codex/state/evidence/P15/windows-lm-studio-real-host-attempt-1-failed.json",
+    "failed_real_host_evidence_sha256": "93de0d761384cad3fe221f3a451238bbd2827cda8b92fceb165b6a525dc4aaf6"
+  },
+  "failure": {
+    "stage": "inspect_lmstudio_environment",
+    "error_code": "limit_exceeded",
+    "cause": "WindowsLMStudioEnvironment requested its 4 MiB default configuration read ceiling from the production WindowsFileSystem, whose native text-file contract permits at most 2 MiB.",
+    "deployment_started": false,
+    "deployment_left_installed": false,
+    "lm_studio_launched": false
+  },
+  "observed_impact": {
+    "lm_studio_process_count": 0,
+    "configuration_bytes": 23,
+    "configuration_sha256": "d8e397af03b5b032f21d0aa967086f0c78b33c87b76f2e9898ae0a144df7de02",
+    "configuration_matches_baseline": true,
+    "host_state_mutated": false
+  },
+  "correction": {
+    "description": "Align the LM Studio configuration ceiling and constructor validation with the 2 MiB production native filesystem contract, with a compile-time regression assertion against that contract.",
+    "focused_command_record": ".forge-codex/state/commands/20260827T142234017Z-0ec43363.json",
+    "focused_command_record_sha256": "7ce00d4efd0f69e5d9b49416f62be8b5f548dab0edf5e4bfee87ab30930b60af",
+    "stdout_sha256": "f64a0ffac90826c2e38c199568b72cec3e9de53e499f03c18c150696bb6ad4f0",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "exit_code": 0,
+    "timed_out": false,
+    "focused_targets_built": [
+      "ForgeConductor.Infrastructure.UnitTests",
+      "ForgeConductor.LMStudio.RealHostTests"
+    ],
+    "infrastructure_tests_passed": 88,
+    "infrastructure_tests_failed": 0,
+    "source_hashes": {
+      "include/ForgeConductor/Infrastructure/Windows/WindowsLMStudioEnvironment.h": "b0db7b7c8ad5d3b658c005155dc4ae8e95a582eefc5dbc8a0d62582ef03468c1",
+      "src/Infrastructure/Windows/WindowsLMStudioEnvironment.cpp": "31d98cda434f905a6e2a290cf1fa5410c37719177a6b4065f03a32c6f04e7bc4",
+      "tests/Infrastructure/WindowsLMStudioEnvironmentTests.cpp": "a0c97de4618595a6b167c988195ec8fa478d94bac63d1a531d0bb6ec3a4b39f9"
+    }
+  },
+  "resume_policy": {
+    "repeat_full_rebuild": false,
+    "repeat_full_g15_ctest": false,
+    "reason": "The owner directed that a passing rebuild not be repeated. The resumed gate must validate the pinned attempt and corrective records before running only the live qualification path."
+  }
+}
