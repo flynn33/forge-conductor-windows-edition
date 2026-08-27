@@ -60,6 +60,16 @@ struct ManagerSettingsPatch final {
     std::optional<LogLevel> logLevel;
 };
 
+// One serialized manager settings mutation produces this complete outcome.
+// Keeping binding-change and status metadata with the settings value prevents
+// clients from reconstructing a racy result through separate observations.
+struct ManagerSettingsUpdateOutcome final {
+    ManagerSettings settings;
+    bool applied{};
+    bool bindingChanged{};
+    ManagerStatus status;
+};
+
 struct ManagerControlRequest final { ManagerControlAction action{ManagerControlAction::Start}; };
 
 [[nodiscard]] Result<void> validateManagerSettings(const ManagerSettings& settings);

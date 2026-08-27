@@ -19,7 +19,8 @@ public:
         const Domain::ManagerControlRequest& request,
         const Domain::OperationContext& context) noexcept = 0;
 
-    [[nodiscard]] virtual Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] virtual Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch& patch,
         bool applyImmediately,
         const Domain::OperationContext& context) noexcept = 0;

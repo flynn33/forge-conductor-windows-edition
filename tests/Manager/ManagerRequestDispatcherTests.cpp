@@ -184,7 +184,8 @@ public:
         return Domain::Result<Domain::ManagerStatus>::success(statusValue());
     }
 
-    [[nodiscard]] Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch& patch,
         const bool applyImmediately,
         const Domain::OperationContext&) noexcept override
@@ -192,7 +193,17 @@ public:
         ++updateCalls_;
         lastPatch_ = patch;
         lastApplyImmediately_ = applyImmediately;
-        return Domain::Result<Domain::ManagerSettings>::success(settingsValue());
+        auto settings = settingsValue();
+        if (patch.dashboardPort) {
+            settings.dashboardPort = *patch.dashboardPort;
+        }
+        auto status = statusValue();
+        status.dashboardPort = settings.dashboardPort;
+        return Domain::Result<Domain::ManagerSettingsUpdateOutcome>::success({
+            std::move(settings),
+            applyImmediately,
+            patch.dashboardPort.has_value(),
+            std::move(status)});
     }
 
     [[nodiscard]] Domain::Result<Domain::ManagerControllerSnapshot>
@@ -369,9 +380,18 @@ void testPayloadMappingAndControllerFailures()
         *clock,
         4U,
         Manager::ManagerSettingsUpdateRequest{patch, true}));
+    const auto* updateOutcome =
+        responseValue<Domain::ManagerSettingsUpdateOutcome>(update);
+    require(updateOutcome != nullptr, "settings update outcome result");
     require(
-        responseValue<Domain::ManagerSettings>(update) != nullptr,
-        "settings update result");
+        responseValue<Domain::ManagerSettings>(update) == nullptr,
+        "settings update must not collapse to the settings GET result type");
+    require(updateOutcome->settings.dashboardPort == 8888U, "updated settings");
+    require(updateOutcome->applied, "settings update applied metadata");
+    require(updateOutcome->bindingChanged, "settings binding metadata");
+    require(
+        updateOutcome->status.dashboardPort == 8888U,
+        "settings update status metadata");
     require(
         controller->lastPatch_.dashboardPort == 8888,
         "settings patch forwarding");

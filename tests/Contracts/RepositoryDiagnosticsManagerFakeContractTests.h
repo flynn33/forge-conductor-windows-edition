@@ -960,8 +960,14 @@ inline void testManager(const Fixture& fixture)
         Domain::Result<Domain::ManagerSettings>::success(settings));
     client.controlResult.set(
         Domain::Result<Domain::ManagerStatus>::success(status));
+    const Domain::ManagerSettingsUpdateOutcome settingsUpdate{
+        settings,
+        true,
+        true,
+        status};
     client.updateSettingsResult.set(
-        Domain::Result<Domain::ManagerSettings>::success(settings));
+        Domain::Result<Domain::ManagerSettingsUpdateOutcome>::success(
+            settingsUpdate));
     require(client.status(fixture.activeContext()).hasValue(),
             "manager client did not return its scripted status");
     const Domain::ManagerControlRequest controlRequest{
@@ -987,9 +993,15 @@ inline void testManager(const Fixture& fixture)
         std::nullopt,
         std::nullopt,
         std::nullopt};
-    require(client.updateSettings(
-                patch, true, fixture.activeContext()).hasValue(),
-            "manager client did not return its scripted settings");
+    const auto updated = client.updateSettings(
+        patch, true, fixture.activeContext());
+    require(updated.hasValue() &&
+                updated.value().settings.dashboardPort ==
+                    settings.dashboardPort &&
+                updated.value().applied &&
+                updated.value().bindingChanged &&
+                updated.value().status.home == status.home,
+            "manager client did not return its complete scripted update outcome");
     require(client.lastSettingsPatch() &&
                 client.lastSettingsPatch()->dashboardPort == patch.dashboardPort &&
                 client.lastApplyImmediately().value_or(false),

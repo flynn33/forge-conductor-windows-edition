@@ -1030,6 +1030,53 @@ void validateStatus(const Domain::ManagerStatus& status)
     return status;
 }
 
+void validateSettingsUpdateOutcome(
+    const Domain::ManagerSettingsUpdateOutcome& outcome)
+{
+    validateSettings(outcome.settings);
+    validateStatus(outcome.status);
+    if (outcome.settings.dashboardHost != outcome.status.dashboardHost ||
+        outcome.settings.dashboardPort != outcome.status.dashboardPort ||
+        outcome.settings.dashboardRefreshInterval !=
+            outcome.status.dashboardRefreshInterval ||
+        outcome.settings.autoRestart != outcome.status.autoRestart ||
+        outcome.settings.watchdogInterval != outcome.status.watchdogInterval ||
+        outcome.settings.openBrowserOnStart !=
+            outcome.status.openBrowserOnStart) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            "Manager settings update outcome disagrees with its status projection.");
+    }
+}
+
+[[nodiscard]] Json settingsUpdateOutcomeJson(
+    const Domain::ManagerSettingsUpdateOutcome& outcome)
+{
+    validateSettingsUpdateOutcome(outcome);
+    Json value = Json::object();
+    value["applied"] = outcome.applied;
+    value["binding_changed"] = outcome.bindingChanged;
+    value["settings"] = settingsJson(outcome.settings);
+    value["status"] = statusJson(outcome.status);
+    return value;
+}
+
+[[nodiscard]] Domain::ManagerSettingsUpdateOutcome parseSettingsUpdateOutcome(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"applied", "binding_changed", "settings", "status"},
+        "Manager settings update outcome");
+    Domain::ManagerSettingsUpdateOutcome outcome{
+        parseSettings(member(value, "settings")),
+        booleanMember(value, "applied"),
+        booleanMember(value, "binding_changed"),
+        parseStatus(member(value, "status"))};
+    validateSettingsUpdateOutcome(outcome);
+    return outcome;
+}
+
 [[nodiscard]] Json requestDocument(const ManagerRequest& request)
 {
     validateVersion(request.version);
@@ -1197,6 +1244,10 @@ void validateStatus(const Domain::ManagerStatus& status)
             } else if constexpr (std::is_same_v<Value, Domain::ManagerSettings>) {
                 wrapper["type"] = "settings";
                 wrapper["value"] = settingsJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, Domain::ManagerSettingsUpdateOutcome>) {
+                wrapper["type"] = "settings_update";
+                wrapper["value"] = settingsUpdateOutcomeJson(value);
             } else if constexpr (std::is_same_v<Value, ManagerAcknowledgement>) {
                 wrapper["type"] = "acknowledgement";
                 Json acknowledgement = Json::object();
@@ -1218,6 +1269,9 @@ void validateStatus(const Domain::ManagerStatus& status)
     }
     if (type == "settings") {
         return ManagerResult{parseSettings(value)};
+    }
+    if (type == "settings_update") {
+        return ManagerResult{parseSettingsUpdateOutcome(value)};
     }
     if (type == "acknowledgement") {
         requireExactFields(

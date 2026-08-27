@@ -59,6 +59,7 @@ struct ManagerAcknowledgement final {
 using ManagerResult = std::variant<
     Domain::ManagerStatus,
     Domain::ManagerSettings,
+    Domain::ManagerSettingsUpdateOutcome,
     ManagerAcknowledgement>;
 
 using ManagerResponseBody = std::variant<ManagerResult, Domain::Error>;

@@ -399,12 +399,13 @@ private:
                         request, controller_->control(payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerSettingsUpdateRequest>) {
+                    auto outcome = controller_->updateSettings(
+                        payload.patch,
+                        payload.applyImmediately,
+                        context);
                     return controllerResponse(
                         request,
-                        controller_->updateSettings(
-                            payload.patch,
-                            payload.applyImmediately,
-                            context));
+                        std::move(outcome));
                 } else {
                     return responseWithError(
                         request,

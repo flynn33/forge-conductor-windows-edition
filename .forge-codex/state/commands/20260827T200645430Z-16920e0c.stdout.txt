@@ -1,0 +1,203 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ConfigurationModels.cpp
+  ManagerModels.cpp
+  Compiling...
+  ManagerModels.cpp
+  ConfigurationModels.cpp
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerRequestDispatcher.cpp
+  ManagerDeadlineMapper.cpp
+  ManagerProtocolCodec.cpp
+  Compiling...
+  ManagerDeadlineMapper.cpp
+  ManagerRequestDispatcher.cpp
+  ManagerProtocolCodec.cpp
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerRequestDispatcherTests.cpp
+  Compiling...
+  ManagerRequestDispatcherTests.cpp
+  ForgeConductor.Manager.RequestDispatcherTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Manager.RequestDispatcherTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerProtocolCodecTests.cpp
+  Compiling...
+  ManagerProtocolCodecTests.cpp
+  ForgeConductor.Manager.ProtocolTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Manager.ProtocolTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  AgentCatalog.cpp
+  ManagerController.cpp
+  AgentSessionService.cpp
+  ProjectMemoryService.cpp
+  ClientPresenceLifecycle.cpp
+  ContinuityCoordinator.cpp
+  ProjectMemoryRepositoryCache.cpp
+  LegacyContextContinuityService.cpp
+  ContinuityAutomation.cpp
+  Compiling...
+  ProjectMemoryRepositoryCache.cpp
+  AgentSessionService.cpp
+  LegacyContextContinuityService.cpp
+  ClientPresenceLifecycle.cpp
+  ManagerController.cpp
+  ProjectMemoryService.cpp
+  ContinuityAutomation.cpp
+  ContinuityCoordinator.cpp
+  AgentCatalog.cpp
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerControllerTests.cpp
+  Compiling...
+  ManagerControllerTests.cpp
+  ForgeConductor.Manager.ControllerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Manager.ControllerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  BCryptSha256Hasher.cpp
+  WindowsContinuityDocumentCodec.cpp
+  WindowsManagerNamedPipeClient.cpp
+  WindowsLMStudioServeVerifier.cpp
+  DeadlineScheduler.cpp
+  WindowsUuidGenerator.cpp
+  WindowsDiagnosticSink.cpp
+  SystemClock.cpp
+  SecretRedactor.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  WindowsCurrentUserIdentity.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  WindowsLMStudioDeploymentService.cpp
+  WindowsLMStudioHostActivator.cpp
+  WindowsManagerNamedPipeServer.cpp
+  WindowsNativeSessionLedger.cpp
+  WindowsProcessSupervisor.cpp
+  WindowsProjectWorkspaceAuthority.cpp
+  WindowsRuntimeDiagnostics.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  Compiling...
+  DeadlineScheduler.cpp
+  SecretRedactor.cpp
+  WindowsCurrentUserIdentity.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  WindowsContinuityDocumentCodec.cpp
+  WindowsRuntimeDiagnostics.cpp
+  WindowsLMStudioDeploymentService.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  BCryptSha256Hasher.cpp
+  WindowsLMStudioServeVerifier.cpp
+  WindowsManagerNamedPipeServer.cpp
+  WindowsDiagnosticSink.cpp
+  SystemClock.cpp
+  WindowsLMStudioHostActivator.cpp
+  WindowsManagerNamedPipeClient.cpp
+  WindowsNativeSessionLedger.cpp
+  WindowsUuidGenerator.cpp
+  WindowsProcessSupervisor.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  WindowsProjectWorkspaceAuthority.cpp
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerPipeInfrastructureTests.cpp
+  WindowsManagerAuthenticationTests.cpp
+  WindowsManagerOwnershipTests.cpp
+  WindowsManagerInfrastructureTestMain.cpp
+  Compiling...
+  WindowsManagerInfrastructureTestMain.cpp
+  WindowsManagerAuthenticationTests.cpp
+  WindowsManagerOwnershipTests.cpp
+  ManagerPipeInfrastructureTests.cpp
+  ForgeConductor.Manager.WindowsInfrastructureTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Manager.WindowsInfrastructureTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  WindowsManagerNamedPipeRoundTripTests.cpp
+  Compiling...
+  WindowsManagerNamedPipeRoundTripTests.cpp
+  ForgeConductor.Manager.NamedPipeRoundTripTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Manager.NamedPipeRoundTripTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerProcessHost.cpp
+  Compiling...
+  ManagerProcessHost.cpp
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerProcessHostTests.cpp
+  Compiling...
+  ManagerProcessHostTests.cpp
+  ForgeConductor.Manager.ProcessHostTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Manager.ProcessHostTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Debug\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  GroupedFakeContractTests.cpp
+  FoundationTelemetryFakeContractTests.cpp
+  main.cpp
+  Compiling...
+  main.cpp
+  FoundationTelemetryFakeContractTests.cpp
+  GroupedFakeContractTests.cpp
+D:\GitHub\Forge-Conductor-Windows-Edition\tests\Contracts\GroupedFakeContractTests.cpp(1,1): error C1128: number of sections exceeded object file format limit: compile with /bigobj [D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.Contracts.ContractTests.vcxproj]

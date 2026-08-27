@@ -220,7 +220,8 @@ public:
         }
     }
 
-    [[nodiscard]] Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch& patch,
         const bool applyImmediately,
         const Domain::OperationContext&) noexcept override
@@ -229,14 +230,31 @@ public:
             std::lock_guard lock{mutex_};
             auto updated = Domain::applyManagerSettingsPatch(settings_, patch);
             if (!updated) {
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(updated).error());
             }
+            const bool bindingChanged =
+                settings_.dashboardHost != updated.value().dashboardHost ||
+                settings_.dashboardPort != updated.value().dashboardPort;
             settings_ = std::move(updated).value();
             lastApplyImmediately_ = applyImmediately;
-            return Domain::Result<Domain::ManagerSettings>::success(settings_);
+            status_.autoRestart = settings_.autoRestart;
+            status_.watchdogInterval = settings_.watchdogInterval;
+            status_.openBrowserOnStart = settings_.openBrowserOnStart;
+            status_.dashboardHost = settings_.dashboardHost;
+            status_.dashboardPort = settings_.dashboardPort;
+            status_.dashboardRefreshInterval =
+                settings_.dashboardRefreshInterval;
+            return Domain::Result<
+                Domain::ManagerSettingsUpdateOutcome>::success({
+                settings_,
+                applyImmediately,
+                bindingChanged,
+                status_});
         } catch (...) {
-            return Domain::Result<Domain::ManagerSettings>::failure(
+            return Domain::Result<
+                Domain::ManagerSettingsUpdateOutcome>::failure(
                 Domain::makeError(
                     Domain::ErrorCodes::InternalFailure,
                     "The round-trip settings update fake failed."));
@@ -475,25 +493,42 @@ void testAuthenticatedNamedPipeRoundTrip()
     patch.dashboardPort = static_cast<std::uint16_t>(8899U);
     const auto updated = take(client->updateSettings(patch, true, context(5U)));
     require(
-        updated.dashboardPort == 8899U &&
+        updated.settings.dashboardPort == 8899U &&
+            updated.applied &&
+            updated.bindingChanged &&
+            updated.status.dashboardPort == 8899U &&
+            updated.status.processId == 4242U &&
             controller->lastApplyImmediately(),
-        "The manager settings update was not dispatched.");
+        "The complete manager settings-update outcome did not round trip.");
+
+    Domain::ManagerSettingsPatch deferredPatch;
+    deferredPatch.dashboardPort = static_cast<std::uint16_t>(9900U);
+    const auto deferred = take(
+        client->updateSettings(deferredPatch, false, context(6U)));
+    require(
+        deferred.settings.dashboardPort == 9900U &&
+            !deferred.applied &&
+            deferred.bindingChanged &&
+            deferred.status.dashboardPort == 9900U &&
+            deferred.status.processId == 4242U &&
+            !controller->lastApplyImmediately(),
+        "The deferred manager settings-update outcome did not round trip.");
 
     auto wrongNonceClient = take(
         Infrastructure::WindowsManagerNamedPipeClient::create(
             clock, pipeName, nonce('b'), limits));
     requireError(
-        wrongNonceClient->status(context(6U)),
+        wrongNonceClient->status(context(7U)),
         Domain::ErrorCodes::Unauthorized,
         "The wrong manager nonce");
     require(
-        take(client->status(context(7U))).processId == 4242U,
+        take(client->status(context(8U))).processId == 4242U,
         "A rejected nonce damaged later authenticated requests.");
     wrongNonceClient->shutdown();
 
     controller->armBlockedStatus();
     const auto cancellationStart = std::chrono::steady_clock::now();
-    const auto cancelled = client->status(context(8U, 200ms));
+    const auto cancelled = client->status(context(9U, 200ms));
     const auto cancellationElapsed = std::chrono::steady_clock::now() -
         cancellationStart;
     requireError(
@@ -514,7 +549,7 @@ void testAuthenticatedNamedPipeRoundTrip()
         "The cancelled manager request did not drain.");
 
     requireSuccess(
-        client->requestShutdown(context(9U, 5s)),
+        client->requestShutdown(context(10U, 5s)),
         "The remote manager shutdown acknowledgement was lost");
     require(
         controller->waitForShutdownRequest(2s),

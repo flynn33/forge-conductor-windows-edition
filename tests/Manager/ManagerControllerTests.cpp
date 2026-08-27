@@ -680,14 +680,27 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
     nonbinding.sessionIdleTtl = 600s;
     nonbinding.shellTimeout = 50s;
     nonbinding.logLevel = Domain::LogLevel::Debug;
-    const auto applied = take(fixture.controller.updateSettings(
+    const auto nonbindingOutcome = take(fixture.controller.updateSettings(
         nonbinding, true, fixture.context()));
-    require(applied.dashboardRefreshInterval == 13s &&
-                !applied.autoRestart && applied.watchdogInterval == 9s &&
-                applied.openBrowserOnStart && applied.sessionIdleTtl == 600s &&
-                applied.shellTimeout == 50s &&
-                applied.logLevel == Domain::LogLevel::Debug,
+    require(nonbindingOutcome.settings.dashboardRefreshInterval == 13s &&
+                !nonbindingOutcome.settings.autoRestart &&
+                nonbindingOutcome.settings.watchdogInterval == 9s &&
+                nonbindingOutcome.settings.openBrowserOnStart &&
+                nonbindingOutcome.settings.sessionIdleTtl == 600s &&
+                nonbindingOutcome.settings.shellTimeout == 50s &&
+                nonbindingOutcome.settings.logLevel == Domain::LogLevel::Debug,
             "Nonbinding settings were not returned from persisted AppConfig.");
+    require(nonbindingOutcome.applied &&
+                !nonbindingOutcome.bindingChanged &&
+                nonbindingOutcome.status.state ==
+                    Domain::ManagerServiceState::Running &&
+                nonbindingOutcome.status.desiredRunning &&
+                nonbindingOutcome.status.httpListening &&
+                nonbindingOutcome.status.serviceActive &&
+                nonbindingOutcome.status.dashboardRefreshInterval == 13s &&
+                !nonbindingOutcome.status.autoRestart &&
+                nonbindingOutcome.status.watchdogInterval == 9s,
+            "Nonbinding update metadata was not captured with its stable status.");
     require(fixture.runtime->applyCalls() == 1U &&
                 fixture.runtime->rebindCalls() == 0U,
             "Nonbinding settings incorrectly rebound the listener.");
@@ -707,22 +720,41 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
     Domain::ManagerSettingsPatch binding;
     binding.dashboardHost = "::1";
     binding.dashboardPort = static_cast<std::uint16_t>(8450U);
-    static_cast<void>(take(
-        fixture.controller.updateSettings(binding, true, fixture.context())));
-    require(fixture.runtime->rebindCalls() == 1U &&
+    const auto bindingOutcome = take(
+        fixture.controller.updateSettings(binding, true, fixture.context()));
+    require(bindingOutcome.applied && bindingOutcome.bindingChanged &&
+                bindingOutcome.settings.dashboardHost == "::1" &&
+                bindingOutcome.settings.dashboardPort == 8450U &&
+                bindingOutcome.status.dashboardHost == "::1" &&
+                bindingOutcome.status.dashboardPort == 8450U &&
+                bindingOutcome.status.state ==
+                    Domain::ManagerServiceState::Running &&
+                bindingOutcome.status.httpListening &&
+                bindingOutcome.status.serviceActive &&
+                bindingOutcome.status.restartCount == 1U &&
+                fixture.runtime->rebindCalls() == 1U &&
                 fixture.runtime->applyCalls() == 1U,
-            "A binding change did not select exactly one runtime rebind.");
+            "Binding update metadata was not captured after the runtime rebind.");
 
     Domain::ManagerSettingsPatch deferred;
     deferred.dashboardPort = static_cast<std::uint16_t>(8451U);
     deferred.watchdogInterval = 10s;
-    const auto deferredSettings = take(fixture.controller.updateSettings(
+    const auto deferredOutcome = take(fixture.controller.updateSettings(
         deferred, false, fixture.context()));
-    require(deferredSettings.dashboardPort == 8451U &&
-                deferredSettings.watchdogInterval == 10s &&
+    require(deferredOutcome.settings.dashboardPort == 8451U &&
+                deferredOutcome.settings.watchdogInterval == 10s &&
+                !deferredOutcome.applied && deferredOutcome.bindingChanged &&
+                deferredOutcome.status.dashboardHost == "::1" &&
+                deferredOutcome.status.dashboardPort == 8451U &&
+                deferredOutcome.status.watchdogInterval == 10s &&
+                deferredOutcome.status.state ==
+                    Domain::ManagerServiceState::Running &&
+                deferredOutcome.status.httpListening &&
+                deferredOutcome.status.serviceActive &&
+                deferredOutcome.status.restartCount == 1U &&
                 fixture.runtime->rebindCalls() == 1U &&
                 fixture.runtime->applyCalls() == 1U,
-            "Deferred settings touched the runtime or failed to persist first.");
+            "Deferred update metadata was not captured without touching runtime.");
 }
 
 void invalidAndFailedSettingsRemainAtomic()
@@ -733,10 +765,12 @@ void invalidAndFailedSettingsRemainAtomic()
 
     Domain::ManagerSettingsPatch invalid;
     invalid.dashboardHost = "0.0.0.0";
+    const auto invalidResult =
+        fixture.controller.updateSettings(invalid, true, fixture.context());
     requireError(
-        fixture.controller.updateSettings(invalid, true, fixture.context()),
+        invalidResult,
         Domain::ErrorCodes::InvalidRequest,
-        "An invalid manager patch reached persistence.");
+        "An invalid manager patch returned an outcome or reached persistence.");
     require(fixture.store->updateCalls() == 0U &&
                 fixture.runtime->applyCalls() == 0U &&
                 fixture.runtime->rebindCalls() == 0U,
@@ -745,10 +779,12 @@ void invalidAndFailedSettingsRemainAtomic()
     fixture.store->failUpdate(failure("store update fault"));
     Domain::ManagerSettingsPatch storeFault;
     storeFault.watchdogInterval = 12s;
+    const auto storeFailure =
+        fixture.controller.updateSettings(storeFault, true, fixture.context());
     requireError(
-        fixture.controller.updateSettings(storeFault, true, fixture.context()),
+        storeFailure,
         Domain::ErrorCodes::InternalFailure,
-        "A configuration-store failure was not propagated.");
+        "A configuration-store failure returned an outcome or was not propagated.");
     require(take(fixture.controller.settings(fixture.context())).watchdogInterval ==
                 original.watchdogInterval &&
                 fixture.runtime->applyCalls() == 0U,
@@ -758,10 +794,12 @@ void invalidAndFailedSettingsRemainAtomic()
     auto invalidReturned = Domain::defaultAppConfig();
     invalidReturned.dashboard.host = "example.test";
     fixture.store->returnConfig(invalidReturned);
+    const auto invalidPersistedResult =
+        fixture.controller.updateSettings(storeFault, true, fixture.context());
     requireError(
-        fixture.controller.updateSettings(storeFault, true, fixture.context()),
+        invalidPersistedResult,
         Domain::ErrorCodes::InvalidRequest,
-        "An invalid persisted configuration was accepted.");
+        "An invalid persisted configuration returned an outcome or was accepted.");
     require(take(fixture.controller.settings(fixture.context())).watchdogInterval ==
                 original.watchdogInterval &&
                 fixture.runtime->applyCalls() == 0U,
@@ -773,11 +811,12 @@ void invalidAndFailedSettingsRemainAtomic()
     runtimeFixture.runtime->failApply(failure("runtime apply fault"));
     Domain::ManagerSettingsPatch runtimeFault;
     runtimeFault.watchdogInterval = 14s;
+    const auto runtimeFailure = runtimeFixture.controller.updateSettings(
+        runtimeFault, true, runtimeFixture.context());
     requireError(
-        runtimeFixture.controller.updateSettings(
-            runtimeFault, true, runtimeFixture.context()),
+        runtimeFailure,
         Domain::ErrorCodes::InternalFailure,
-        "A runtime settings failure was not propagated.");
+        "A runtime settings failure returned an outcome or was not propagated.");
     const auto persisted = take(
         runtimeFixture.controller.settings(runtimeFixture.context()));
     const auto failed = take(
@@ -947,7 +986,8 @@ void mutationAdmissionIsBoundedAndCallbacksAreReentrant()
     fixture.store->blockUpdate();
     Domain::ManagerSettingsPatch patch;
     patch.watchdogInterval = 17s;
-    std::optional<Domain::Result<Domain::ManagerSettings>> updateResult;
+    std::optional<Domain::Result<Domain::ManagerSettingsUpdateOutcome>>
+        updateResult;
     std::jthread worker{[&]() {
         updateResult.emplace(
             fixture.controller.updateSettings(patch, false, fixture.context()));

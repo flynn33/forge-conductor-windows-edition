@@ -162,12 +162,13 @@ public:
         return unavailable<Domain::ManagerStatus>();
     }
 
-    [[nodiscard]] Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch&,
         bool,
         const Domain::OperationContext&) noexcept override
     {
-        return unavailable<Domain::ManagerSettings>();
+        return unavailable<Domain::ManagerSettingsUpdateOutcome>();
     }
 
     [[nodiscard]] Domain::Result<Domain::ManagerControllerSnapshot>

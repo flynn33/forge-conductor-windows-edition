@@ -19,7 +19,8 @@ public:
     DeterministicResult<Domain::ManagerStatus> statusResult;
     DeterministicResult<Domain::ManagerSettings> settingsResult;
     DeterministicResult<Domain::ManagerStatus> controlResult;
-    DeterministicResult<Domain::ManagerSettings> updateSettingsResult;
+    DeterministicResult<Domain::ManagerSettingsUpdateOutcome>
+        updateSettingsResult;
     DeterministicResult<void> requestShutdownResult;
 
     [[nodiscard]] Domain::Result<Domain::ManagerStatus> status(
@@ -46,7 +47,8 @@ public:
         }
     }
 
-    [[nodiscard]] Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch& patch,
         const bool applyImmediately,
         const Domain::OperationContext& context) noexcept override
@@ -56,7 +58,7 @@ public:
             lastApplyImmediately_ = applyImmediately;
             return finish(context, updateSettingsResult);
         } catch (...) {
-            return fakeInternalFailure<Domain::ManagerSettings>();
+            return fakeInternalFailure<Domain::ManagerSettingsUpdateOutcome>();
         }
     }
 

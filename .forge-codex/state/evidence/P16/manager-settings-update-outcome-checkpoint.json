@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "atomic-manager-settings-update-outcome",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "MSVC 19.44.35223 / Visual Studio 2022 17.14 generator, v143, Windows SDK 10.0.26100.0, CMake preset windows-msvc-x64-debug, CTest Debug",
+  "command_record": ".forge-codex/state/commands/20260827T200823139Z-3d71511e.json",
+  "command_record_sha256": "2847f6cada71df4a0b2a498174c634cec76fd3f809a56fddd3c11ea8117f7466",
+  "exit_code": 0,
+  "timed_out": false,
+  "measured_result": {
+    "targets_built": 8,
+    "tests_passed": 7,
+    "tests_failed": 0,
+    "real_seconds": 1.43,
+    "stdout_sha256": "b587eee0897d0cd561c98dee5f9c350ccd077ac2dc2c682e81c820812e6ac07d",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "supplemental_verification": {
+    "reason": "Independent review added an explicit deferred settings-update named-pipe round-trip assertion after the integrated checkpoint.",
+    "command_record": ".forge-codex/state/commands/20260827T201543435Z-a4db4326.json",
+    "command_record_sha256": "642c5cf8001743a286a7dab92fe6dece0e51e3cfdd3ac86362c6b575d08ffb98",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 1,
+    "tests_failed": 0,
+    "real_seconds": 0.26,
+    "stdout_sha256": "8bda701da2229c354aff89dce40147fb820e07fc34a560ebf3dd164afb19915b",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "diagnosed_build_correction": {
+    "failed_command_record": ".forge-codex/state/commands/20260827T200645430Z-16920e0c.json",
+    "failed_command_record_sha256": "f477c55503ca9fd38f4513027cc4cb51f8f72d05821a52596df4b26b1cdc0d46",
+    "failure": "MSVC C1128 while compiling the grouped contract tests because the standard COFF section count was exhausted.",
+    "correction": "The contract-test target now compiles with the MSVC /bigobj option; the same affected build and test checkpoint then passed."
+  },
+  "behavior_proved": [
+    "manager settings updates return one immutable outcome containing settings, applied, bindingChanged, and the matching status snapshot",
+    "the controller computes binding changes from the pre-update snapshot and validated persisted configuration, then publishes the outcome under the existing serialized mutation lease",
+    "deferred updates report applied=false without invoking runtime application while preserving the binding-change result",
+    "applied updates report status only after runtime apply or rebind has completed and the new configuration is published",
+    "failed updates return no value rather than a partially reconstructed outcome",
+    "the named-pipe protocol uses the distinct settings_update result discriminator and a closed four-field value object",
+    "protocol decoding rejects malformed or inconsistent nested settings and status values while preserving all four valid boolean combinations",
+    "the Windows named-pipe client requires the exact settings-update outcome variant and round trips all outcome fields for both applied and deferred binding changes",
+    "manager controller, protocol, dispatcher, Windows infrastructure, named-pipe round trip, process-host, contract fake, and header-isolation builds agree on the new contract"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "dc44c38a581427435cad46d7556f20a4a08aec19e131c59d84e6e30094701edf",
+    "include/ForgeConductor/Application/ManagerController.h": "d465359450b735a26163a66e3f04f92a635e6abff41800b18bae03124255b037",
+    "include/ForgeConductor/Contracts/IManagerRuntime.h": "7614a5810e37d6b1a3c0f85cb81d8f7c780103923f8a8dff5add0dfb3a451cc5",
+    "include/ForgeConductor/Contracts/IManagerServices.h": "c7500f7014065eb4b6fa7960ab7ecb09ebcec0b29d3464bbc9b7c30ad16abd34",
+    "include/ForgeConductor/Domain/ManagerModels.h": "02cf9693386ffde462b7b7c7a21c6892c33fe35c1a4fb1a9a325e242569f4b41",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h": "00a1de88f084789f8542cf63b26a43c6a8c66e79aba290ddf4aa0ed371ed9756",
+    "include/ForgeConductor/Manager/ManagerProtocolCodec.h": "cec117aa187432606a417597ef3826de9a3a1b78175b01a7b4bd004f35370123",
+    "src/Application/ManagerController.cpp": "f0c98ce1c00624cf2b766a5797552a6ce9ca44fc40e8948650d376c45af9c88a",
+    "src/Infrastructure/Windows/WindowsManagerNamedPipeClient.cpp": "e36784ecd62d18ba532a42df7fb031a22a3c0dd879c987dbce3d9e00cae47176",
+    "src/Manager/ManagerProtocolCodec.cpp": "6945a537cc8ae85198fb9051f02841aff95cf18b15d94a99b4dfdd833363235a",
+    "src/Manager/ManagerRequestDispatcher.cpp": "957649e57779664dc1bd7b3891fa85853f72cf69a832589d4633bdebe789fbc5",
+    "tests/Contracts/RepositoryDiagnosticsManagerFakeContractTests.h": "f3370e8bcc8ebdf38f45865681694124acf04d7dd7497b237211867b7e4039ff",
+    "tests/Fakes/ManagerFakes.h": "8f7f35705ba32f264130716d07f3961cb3abc26bc55471e48c0a490e7ce381c9",
+    "tests/Manager/ManagerControllerTests.cpp": "cc41fbf06195918b9d047ba7c649783d00731c8bd016957cb881f3a1d30ef84c",
+    "tests/Manager/ManagerPipeInfrastructureTests.cpp": "9b967b9c2b6c6f6f8a496b3411201dac1daeb98a1eb241aa7c0a792441d6e489",
+    "tests/Manager/ManagerProcessHostTests.cpp": "08b5854ec521c6041320e7d6e67707036a9285bbcd68c69d7183a3b5d65a7144",
+    "tests/Manager/ManagerProtocolCodecTests.cpp": "cd5e106a27429b662e36560df6f4f39ecbf6d1b3f096e845efc4061af655a9ed",
+    "tests/Manager/ManagerRequestDispatcherTests.cpp": "8a02cc245f71938695c1ae3a744fb9158e6f70a2feb32358659639e5a2c0fe1a",
+    "tests/Manager/WindowsManagerNamedPipeRoundTripTests.cpp": "ea835e2c4bd9eef646f5a229b9c1837a02970291a2b5e749a273d828fe508adc"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Manager.RequestDispatcherTests.exe": "f174b5a72b7c9997fe9b539011f3feb9f51f136ce7c9e7380e0cfa57c3734cb4",
+    "ForgeConductor.Manager.ProtocolTests.exe": "0c7f8f4536a6f789bdb946cfe7350e53644695a9e62b5ec24c184b1e2cd2d93f",
+    "ForgeConductor.Manager.ControllerTests.exe": "07b74a92d21739c865804ad712bf71821b2049bd2f1671159b9645b6096b16e6",
+    "ForgeConductor.Manager.WindowsInfrastructureTests.exe": "243b7832edc4ccee33740930f9f7ad1764149318be9d7f8f861d831b21d54f11",
+    "ForgeConductor.Manager.NamedPipeRoundTripTests.exe": "9767efde76a4c5fb47dc97d6fca3477a13e5412c02913f775bdcced8105e9de3",
+    "ForgeConductor.Manager.ProcessHostTests.exe": "9203b89f524d7f17a03777ce7de2508e27124f750c1a72878f78aeab1641e386",
+    "ForgeConductor.Contracts.ContractTests.exe": "d0b5d6d00dfead93e58161468d29c2c4e8e02ddbcdaa1d8d16094073166aa7f3"
+  },
+  "remaining_limitations": [
+    "The dashboard JSON codec, route composition, static shell, Windows socket listener, DPAPI dashboard bearer store, SSE delivery, and production manager runtime remain P16-B work.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "The authoritative G16 invocation has not been run."
+  ]
+}

@@ -41,7 +41,8 @@ public:
         const Domain::ManagerControlRequest& request,
         const Domain::OperationContext& context) noexcept override;
 
-    [[nodiscard]] Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch& patch,
         bool applyImmediately,
         const Domain::OperationContext& context) noexcept override;

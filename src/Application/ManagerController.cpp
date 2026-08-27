@@ -344,7 +344,8 @@ public:
         }
     }
 
-    [[nodiscard]] Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch& patch,
         const bool applyImmediately,
         const Domain::OperationContext& context) noexcept
@@ -352,7 +353,8 @@ public:
         try {
             auto admitted = admitMutation(context, "Update manager settings");
             if (!admitted) {
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(admitted).error());
             }
             auto lease = std::move(admitted).value();
@@ -361,42 +363,52 @@ public:
             const auto before = cachedState();
             auto prospective = Domain::applyConfigPatch(before.configuration, mapped);
             if (!prospective) {
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(prospective).error());
             }
 
             auto persisted = configurationStore_->update(mapped, context);
             if (!persisted) {
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(persisted).error());
             }
             auto validConfig = Domain::validateAppConfig(persisted.value());
             if (!validConfig) {
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(validConfig).error());
             }
 
             Domain::AppConfig config = std::move(persisted).value();
+            const bool changedBinding =
+                bindingChanged(before.configuration, config);
             publishConfiguration(config);
             auto contextState = validateContext(
                 context, *clock_, "Update manager settings");
             if (!contextState) {
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(contextState).error());
             }
             if (!applyImmediately) {
-                return Domain::Result<Domain::ManagerSettings>::success(
-                    settingsFromConfig(config));
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::success({
+                    settingsFromConfig(config),
+                    false,
+                    changedBinding,
+                    statusSnapshot()});
             }
 
-            const bool changedBinding = bindingChanged(before.configuration, config);
             Domain::Result<Domain::ManagerRuntimeSnapshot> applied = changedBinding
                 ? runtime_->rebind(config, before.desiredRunning, context)
                 : runtime_->applySettings(config, context);
             if (!applied) {
                 auto error = std::move(applied).error();
                 publishFailure(error, before.desiredRunning, context, true);
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(error));
             }
 
@@ -408,7 +420,8 @@ public:
             if (!runtimeState) {
                 auto error = std::move(runtimeState).error();
                 publishFailure(error, before.desiredRunning, context, true);
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(error));
             }
             publishStableSuccess(applied.value(), before.desiredRunning);
@@ -416,13 +429,19 @@ public:
             contextState = validateContext(
                 context, *clock_, "Update manager settings");
             if (!contextState) {
-                return Domain::Result<Domain::ManagerSettings>::failure(
+                return Domain::Result<
+                    Domain::ManagerSettingsUpdateOutcome>::failure(
                     std::move(contextState).error());
             }
-            return Domain::Result<Domain::ManagerSettings>::success(
-                settingsFromConfig(config));
+            return Domain::Result<
+                Domain::ManagerSettingsUpdateOutcome>::success({
+                settingsFromConfig(config),
+                true,
+                changedBinding,
+                statusSnapshot()});
         } catch (...) {
-            return Domain::Result<Domain::ManagerSettings>::failure(
+            return Domain::Result<
+                Domain::ManagerSettingsUpdateOutcome>::failure(
                 controllerError(
                     Domain::ErrorCodes::InternalFailure,
                     "Manager settings failed at the application boundary."));
@@ -1102,7 +1121,8 @@ Domain::Result<Domain::ManagerStatus> ManagerController::control(
     return implementation_->control(request, context);
 }
 
-Domain::Result<Domain::ManagerSettings> ManagerController::updateSettings(
+Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+ManagerController::updateSettings(
     const Domain::ManagerSettingsPatch& patch,
     const bool applyImmediately,
     const Domain::OperationContext& context) noexcept

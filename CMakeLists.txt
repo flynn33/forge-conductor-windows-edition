@@ -831,6 +831,7 @@ if(BUILD_TESTING)
         tests/Contracts/GroupedFakeContractTests.cpp
         tests/Contracts/main.cpp)
     forge_configure_standard_target(ForgeConductor.Contracts.ContractTests)
+    target_compile_options(ForgeConductor.Contracts.ContractTests PRIVATE /bigobj)
     target_include_directories(ForgeConductor.Contracts.ContractTests PRIVATE
         "${PROJECT_SOURCE_DIR}/tests")
     target_link_libraries(ForgeConductor.Contracts.ContractTests PRIVATE

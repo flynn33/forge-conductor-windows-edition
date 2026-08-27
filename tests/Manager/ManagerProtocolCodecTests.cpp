@@ -162,6 +162,14 @@ void replaceOne(
         "0.9.0-alpha"};
 }
 
+[[nodiscard]] Domain::ManagerSettingsUpdateOutcome sampleSettingsUpdateOutcome(
+    const bool applied,
+    const bool bindingChanged)
+{
+    return Domain::ManagerSettingsUpdateOutcome{
+        sampleSettings(), applied, bindingChanged, sampleStatus()};
+}
+
 [[nodiscard]] Manager::ManagerRequest request(
     Manager::ManagerRequestPayload payload)
 {
@@ -356,6 +364,44 @@ void testResponseResultAndErrorRoundTrips()
             std::get<Domain::Error>(errorResponse.body));
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedError)) ==
             errorFrame);
+}
+
+void testSettingsUpdateOutcomeRoundTrips()
+{
+    for (const bool applied : {false, true}) {
+        for (const bool bindingChanged : {false, true}) {
+            const auto original = sampleSettingsUpdateOutcome(
+                applied, bindingChanged);
+            const auto frame = take(
+                Manager::ManagerProtocolCodec::encodeResponse(response(
+                    Manager::ManagerResult{original})));
+            const auto root = Json::parse(payloadText(frame));
+            REQUIRE(root.at("result").at("type") == "settings_update");
+            const auto& encoded = root.at("result").at("value");
+            REQUIRE(encoded.size() == 4U);
+            REQUIRE(encoded.at("applied") == applied);
+            REQUIRE(encoded.at("binding_changed") == bindingChanged);
+            REQUIRE(encoded.at("settings").is_object());
+            REQUIRE(encoded.at("status").is_object());
+
+            const auto decoded = take(
+                Manager::ManagerProtocolCodec::decodeResponse(frame));
+            const auto& result = std::get<Manager::ManagerResult>(decoded.body);
+            REQUIRE(std::holds_alternative<
+                    Domain::ManagerSettingsUpdateOutcome>(result));
+            const auto& outcome =
+                std::get<Domain::ManagerSettingsUpdateOutcome>(result);
+            REQUIRE(outcome.applied == applied);
+            REQUIRE(outcome.bindingChanged == bindingChanged);
+            REQUIRE(outcome.settings.dashboardHost == "::1");
+            REQUIRE(outcome.settings.dashboardPort == 65'535U);
+            REQUIRE(outcome.settings.logLevel == Domain::LogLevel::Critical);
+            REQUIRE(outcome.status.state == Domain::ManagerServiceState::Running);
+            REQUIRE(outcome.status.processId == 42'424U);
+            REQUIRE(take(
+                Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+        }
+    }
 }
 
 void testNullOptionalFieldsAreLossless()
@@ -735,6 +781,73 @@ void testHostileResponseSchemasAndModelsAreRejected()
     expectInvalid(root);
 }
 
+void testHostileSettingsUpdateOutcomeIsRejected()
+{
+    const auto expectInvalid = [](Json root) {
+        requireError(
+            Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(root)),
+            Domain::ErrorCodes::InvalidRequest);
+    };
+    const auto valid = [] {
+        return responseJson(Manager::ManagerResult{
+            sampleSettingsUpdateOutcome(true, false)});
+    };
+
+    auto root = valid();
+    root["result"]["value"].erase("settings");
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"].erase("applied");
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"].erase("binding_changed");
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"].erase("status");
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["unknown"] = true;
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["applied"] = "true";
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["binding_changed"] = 1;
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["settings"] = nullptr;
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["status"] = Json::array();
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["settings"]["dashboard_host"] = "0.0.0.0";
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["status"]["state"] = "unknown";
+    expectInvalid(root);
+
+    root = valid();
+    root["result"]["value"]["settings"]["dashboard_host"] = "127.0.0.1";
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["settings"]["dashboard_port"] = 7788;
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["settings"]
+        ["dashboard_refresh_interval_seconds"] = 18;
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["settings"]["auto_restart"] = true;
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["settings"]["watchdog_interval_seconds"] = 12;
+    expectInvalid(root);
+    root = valid();
+    root["result"]["value"]["settings"]["open_browser_on_start"] = false;
+    expectInvalid(root);
+}
+
 void testInvalidTypedModelsFailClosed()
 {
     auto invalidVersion = request(Manager::ManagerStatusRequest{});
@@ -767,6 +880,13 @@ void testInvalidTypedModelsFailClosed()
     requireError(
         Manager::ManagerProtocolCodec::encodeResponse(response(
             Manager::ManagerResult{invalidSettings})),
+        Domain::ErrorCodes::InvalidRequest);
+
+    auto inconsistentOutcome = sampleSettingsUpdateOutcome(false, true);
+    inconsistentOutcome.settings.dashboardPort = 7788U;
+    requireError(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{inconsistentOutcome})),
         Domain::ErrorCodes::InvalidRequest);
 
     auto invalidStatus = sampleStatus();
@@ -852,11 +972,15 @@ int main()
         {"type-and-prefix", testTypeAndPrefixContract},
         {"request-round-trips", testEveryRequestMethodRoundTripsDeterministically},
         {"response-round-trips", testResponseResultAndErrorRoundTrips},
+        {"settings-update-outcome-round-trips",
+         testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},
         {"timestamp-precision-bounds", testTimestampPrecisionAndRepresentableBounds},
         {"hostile-framing-json", testHostileFramingAndJsonAreRejected},
         {"hostile-request", testHostileRequestSchemaAndIdentityAreRejected},
         {"hostile-response", testHostileResponseSchemasAndModelsAreRejected},
+        {"hostile-settings-update-outcome",
+         testHostileSettingsUpdateOutcomeIsRejected},
         {"invalid-models", testInvalidTypedModelsFailClosed},
         {"exact-maximum", testExactMaximumBoundBehavior}};
 

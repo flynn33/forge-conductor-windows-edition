@@ -208,7 +208,8 @@ public:
         return Domain::Result<Domain::ManagerStatus>::success(std::move(*status));
     }
 
-    [[nodiscard]] Domain::Result<Domain::ManagerSettings> updateSettings(
+    [[nodiscard]] Domain::Result<Domain::ManagerSettingsUpdateOutcome>
+    updateSettings(
         const Domain::ManagerSettingsPatch& patch,
         const bool applyImmediately,
         const Domain::OperationContext& context) noexcept
@@ -217,14 +218,17 @@ public:
             Manager::ManagerSettingsUpdateRequest{patch, applyImmediately},
             context);
         if (!result) {
-            return failure<Domain::ManagerSettings>(std::move(result).error());
+            return failure<Domain::ManagerSettingsUpdateOutcome>(
+                std::move(result).error());
         }
-        auto* settings = std::get_if<Domain::ManagerSettings>(&result.value());
-        if (settings == nullptr) {
-            return failure<Domain::ManagerSettings>(wrongResponseTypeError());
+        auto* outcome =
+            std::get_if<Domain::ManagerSettingsUpdateOutcome>(&result.value());
+        if (outcome == nullptr) {
+            return failure<Domain::ManagerSettingsUpdateOutcome>(
+                wrongResponseTypeError());
         }
-        return Domain::Result<Domain::ManagerSettings>::success(
-            std::move(*settings));
+        return Domain::Result<Domain::ManagerSettingsUpdateOutcome>::success(
+            std::move(*outcome));
     }
 
     [[nodiscard]] Domain::Result<void> requestShutdown(
@@ -750,7 +754,7 @@ WindowsManagerNamedPipeClient::control(
     }
 }
 
-Domain::Result<Domain::ManagerSettings>
+Domain::Result<Domain::ManagerSettingsUpdateOutcome>
 WindowsManagerNamedPipeClient::updateSettings(
     const Domain::ManagerSettingsPatch& patch,
     const bool applyImmediately,
@@ -759,14 +763,14 @@ WindowsManagerNamedPipeClient::updateSettings(
     try {
         const auto implementation = implementation_;
         if (!implementation) {
-            return failure<Domain::ManagerSettings>(clientError(
+            return failure<Domain::ManagerSettingsUpdateOutcome>(clientError(
                 Domain::ErrorCodes::TransportClosed,
                 "The manager client transport is unavailable."));
         }
         return implementation->updateSettings(
             patch, applyImmediately, context);
     } catch (...) {
-        return failure<Domain::ManagerSettings>(clientError(
+        return failure<Domain::ManagerSettingsUpdateOutcome>(clientError(
             Domain::ErrorCodes::InternalFailure,
             "The manager settings update failed unexpectedly."));
     }
