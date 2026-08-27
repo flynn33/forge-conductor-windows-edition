@@ -927,6 +927,53 @@ void writeSystem(BoundedJsonWriter& writer, const Domain::SystemMetrics& system)
     writer.character('}');
 }
 
+void writeCompactSystem(
+    BoundedJsonWriter& writer,
+    const Domain::SystemMetrics& system)
+{
+    writer.character('{');
+    bool first{true};
+    writer.member(first, "ts");
+    writer.number(unixUtcSeconds(system.timestamp));
+    writer.member(first, "host");
+    writer.string(system.host);
+    writer.member(first, "platform");
+    writer.string(system.platform);
+    writer.member(first, "arch");
+    writer.string(system.architecture);
+    writer.member(first, "cpu");
+    writeCpu(writer, system.cpu);
+    writer.member(first, "ram");
+    writeRam(writer, system.ram);
+    writer.member(first, "disk");
+    writer.character('[');
+    for (std::size_t index{}; index < system.disks.size(); ++index) {
+        if (index != 0U) writer.character(',');
+        writeDiskVolume(writer, system.disks[index]);
+    }
+    writer.character(']');
+    writer.member(first, "disk_io");
+    writeDiskIo(writer, system.diskIo);
+    writer.member(first, "gpu");
+    writer.character('[');
+    for (std::size_t index{}; index < system.gpus.size(); ++index) {
+        if (index != 0U) writer.character(',');
+        writeGpu(writer, system.gpus[index]);
+    }
+    writer.character(']');
+    writer.member(first, "processes");
+    writer.character('[');
+    const auto processCount = (std::min)(
+        system.processes.size(),
+        DashboardTelemetryJsonCodec::MaximumCompactProcesses);
+    for (std::size_t index{}; index < processCount; ++index) {
+        if (index != 0U) writer.character(',');
+        writeProcess(writer, system.processes[index]);
+    }
+    writer.character(']');
+    writer.character('}');
+}
+
 void writeTool(BoundedJsonWriter& writer, const Domain::ToolDescriptor& tool)
 {
     const auto health = toolHealth(tool.availability);
@@ -1200,6 +1247,40 @@ void writeFrame(
     writer.character('}');
 }
 
+void writeCompactFrame(
+    BoundedJsonWriter& writer,
+    const Domain::TelemetrySnapshot& snapshot,
+    const std::optional<double> measuredSampleHz)
+{
+    writer.character('{');
+    bool first{true};
+    writer.member(first, "updated");
+    writer.number(unixUtcSeconds(snapshot.updatedAt));
+    writer.member(first, "runtime");
+    writer.string(snapshot.runtime);
+    writer.member(first, "system");
+    writeCompactSystem(writer, snapshot.system);
+    writer.member(first, "history");
+    writer.character('[');
+    const auto historyStart = snapshot.history.size() >
+            DashboardTelemetryJsonCodec::MaximumCompactHistoryPoints
+        ? snapshot.history.size() -
+            DashboardTelemetryJsonCodec::MaximumCompactHistoryPoints
+        : 0U;
+    for (std::size_t index = historyStart;
+         index < snapshot.history.size();
+         ++index) {
+        if (index != historyStart) writer.character(',');
+        writeHistoryPoint(writer, snapshot.history[index]);
+    }
+    writer.character(']');
+    writer.member(first, "stream");
+    writer.string("realtime");
+    writer.member(first, "sample_hz");
+    writeOptionalNumber(writer, measuredSampleHz);
+    writer.character('}');
+}
+
 void validateHealth(
     const Domain::TelemetryHealthReport& report,
     const std::size_t maximumEncodedBytes)
@@ -1350,6 +1431,24 @@ DashboardTelemetryJsonCodec::encodeServerSentEvent(
         [&](BoundedJsonWriter& writer) {
             writer.raw("event: telemetry\ndata: ");
             writeFrame(writer, snapshot, measuredSampleHz);
+            writer.raw("\n\n");
+        });
+}
+
+Domain::Result<std::string>
+DashboardTelemetryJsonCodec::encodeCompactServerSentEvent(
+    const Domain::TelemetrySnapshot& snapshot,
+    const std::optional<double> measuredSampleHz,
+    const std::size_t maximumEncodedBytes) noexcept
+{
+    return encode(
+        maximumEncodedBytes,
+        [&] {
+            validateSnapshot(snapshot, measuredSampleHz, maximumEncodedBytes);
+        },
+        [&](BoundedJsonWriter& writer) {
+            writer.raw("event: telemetry\ndata: ");
+            writeCompactFrame(writer, snapshot, measuredSampleHz);
             writer.raw("\n\n");
         });
 }

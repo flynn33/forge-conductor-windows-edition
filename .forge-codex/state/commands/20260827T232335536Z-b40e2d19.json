@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T232335536Z-b40e2d19",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$files = @(\n    'CMakeLists.txt',\n    'include\\ForgeConductor\\Dashboard\\DashboardPreparedExchange.h',\n    'include\\ForgeConductor\\Dashboard\\DashboardResponseComposer.h',\n    'include\\ForgeConductor\\Dashboard\\DashboardSseBroadcaster.h',\n    'include\\ForgeConductor\\Dashboard\\DashboardSseFrameEncoder.h',\n    'include\\ForgeConductor\\Dashboard\\DashboardStaticAssetStore.h',\n    'include\\ForgeConductor\\Dashboard\\DashboardTelemetryJsonCodec.h',\n    'include\\ForgeConductor\\Dashboard\\IDashboardAssetStore.h',\n    'src\\Dashboard\\DashboardResponseComposer.cpp',\n    'src\\Dashboard\\DashboardSseBroadcaster.cpp',\n    'src\\Dashboard\\DashboardSseFrameEncoder.cpp',\n    'src\\Dashboard\\DashboardStaticAssetStore.cpp',\n    'src\\Dashboard\\DashboardTelemetryJsonCodec.cpp',\n    'tests\\Dashboard\\DashboardPreparedExchangeTests.cpp',\n    'tests\\Dashboard\\DashboardResponseComposerTests.cpp',\n    'tests\\Dashboard\\DashboardSseBroadcasterTests.cpp',\n    'tests\\Dashboard\\DashboardStaticAssetStoreTests.cpp',\n    'tests\\Dashboard\\DashboardTelemetryJsonCodecTests.cpp',\n    '.forge-codex\\state\\decisions\\P16-007-bounded-dashboard-assets-and-sse-publication.md'\n)\n$utf8 = [Text.UTF8Encoding]::new($false, $true)\nforeach ($file in $files) {\n    $data = [IO.File]::ReadAllBytes($file)\n    if ($data.Length -ge 3 -and $data[0] -eq 0xef -and $data[1] -eq 0xbb -and $data[2] -eq 0xbf) {\n        throw \"$file contains a UTF-8 BOM.\"\n    }\n    $null = $utf8.GetString($data)\n    for ($index = 0; $index -lt $data.Length; ++$index) {\n        if ($data[$index] -eq 10 -and ($index -eq 0 -or $data[$index - 1] -ne 13)) {\n            throw \"$file contains a bare LF.\"\n        }\n        if ($data[$index] -eq 13 -and ($index + 1 -ge $data.Length -or $data[$index + 1] -ne 10)) {\n            throw \"$file contains a bare CR.\"\n        }\n    }\n    if ($data.Length -lt 2 -or $data[$data.Length - 2] -ne 13 -or $data[$data.Length - 1] -ne 10) {\n        throw \"$file does not end with CRLF.\"\n    }\n}\nWrite-Output \"Text policy passed for $($files.Count) files.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T23:23:35.5460621+00:00",
+  "end_utc": "2026-08-27T23:23:37.3244051+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T232335536Z-b40e2d19.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T232335536Z-b40e2d19.stderr.txt",
+  "stdout_sha256": "d14b8f36e823b5680443e06f1d27d3f44aeb238ddd81cd428bb277a39fdd283a",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}

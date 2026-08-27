@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-response-assets-sse",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "final_build": {
+    "command_record": ".forge-codex/state/commands/20260827T232227574Z-1bb24a66.json",
+    "command_record_sha256": "c315a4b1a49db653a5f262007d70126cb7c2c4cba375467bb5db6b338c7fa3bb",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 5,
+    "configuration": "Debug",
+    "stdout_sha256": "dc57935ba3da8b10609f044f061b56c098bcd2ac80f63f55e3a39a7bb765b97a",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "final_validation": {
+    "command_record": ".forge-codex/state/commands/20260827T232300245Z-09687725.json",
+    "command_record_sha256": "7dfe7200091b36b49f4d506f5ccc7abf706a060e6551fc7a3aad5f13380513ac",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 5,
+    "tests_failed": 0,
+    "explicit_assertions_passed": 1059,
+    "real_seconds": 0.57,
+    "assertions_by_test": {
+      "ForgeConductor.Dashboard.PreparedExchangeTests": 160,
+      "ForgeConductor.Dashboard.ResponseComposerTests": 73,
+      "ForgeConductor.Dashboard.SseBroadcasterTests": 520,
+      "ForgeConductor.Dashboard.StaticAssetStoreTests": 78,
+      "ForgeConductor.Dashboard.TelemetryJsonCodecTests": 228
+    },
+    "stdout_sha256": "d2875b812f8e0702398fb1dc61a298d7d5f75066d982bea2de066b84c8095be6",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "superseded_validation": {
+    "reason": "An initial green focused run was superseded after independent source inspection identified and corrected two ownership-boundary defects. No gate claim relies on the earlier binaries.",
+    "build_command_record": ".forge-codex/state/commands/20260827T231311185Z-051b71de.json",
+    "test_command_record": ".forge-codex/state/commands/20260827T231424241Z-5c18936a.json"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260827T231511031Z-99ec8267.json",
+      "command_record_sha256": "2b2d7cfdf59c8d8c9158204026099f286e167e0327926506c1f955eef9118651",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260827T231514336Z-32d376e0.json",
+      "command_record_sha256": "2c1c45761ad0defea343119bff363b2777b5dbcadd7735af88f718339a66e64c",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 19 implementation and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260827T232335536Z-b40e2d19.json",
+      "command_record_sha256": "9f9540125f621cee967ced491a8224b44083261835f27870cbc0f92a261e9680",
+      "exit_code": 0,
+      "files_passed": 19
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260827T232621153Z-43b6f08f.json",
+      "command_record_sha256": "ece3be1890bc17cbcac3bff50c2145a21905d28f4f8d816d5ee2c01adb2bd265",
+      "exit_code": 0
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260827T232716001Z-9e1eef59.json",
+      "command_record_sha256": "43949582fc2a6019d8af3f7de695f8b0c5ae2b6dae29d88288bb72fafd0b7286",
+      "exit_code": 0,
+      "events_verified": 313
+    }
+  ],
+  "independent_review": {
+    "scope": "dashboard response composition, static assets, compact/full telemetry frames, latest-value broadcaster, prepared-exchange closure, tests, and CMake layering",
+    "initial_findings": [
+      "The frame-pair factory retained caller-supplied shared byte vectors after one size check, allowing a retained mutable alias to alter or resize published data.",
+      "The prepared SSE exchange accepted any non-null type-erased subscription without revalidating its advertised finite 1-to-2 Hz delivery rate."
+    ],
+    "corrections": [
+      "The frame-pair factory now accepts caller vectors by const reference, validates them before allocation, and deep-copies both into private shared immutable storage; regression coverage mutates and resizes both caller buffers after construction.",
+      "The subscription interface owns the inclusive 1 and 2 Hz constants, and SSE exchange creation validates finite in-range delivery before publication while closing rejected ownership exactly once; finite out-of-range, infinity, and NaN cases are covered."
+    ],
+    "post_correction_result": "Independent source-only confirmation found neither issue remaining and found no other concrete layering, bounds, response-composition, broadcaster-lifetime, static-store, or CMake discrepancy in this slice."
+  },
+  "behavior_proved": [
+    "complete response composition reserves the entire 16,384-byte header ceiling and rejects bodies above 2,080,768 bytes without truncation",
+    "GET response bodies are owned independently, HEAD responses advertise the would-be representation length without a body, and shutdown actions remain one-shot and forbidden on HEAD",
+    "JSON rejections preserve approved headers and replace malformed, oversized, or unsupported internal metadata with one fixed small 500 response",
+    "static assets are validated once, sorted by canonical path, retained as shared immutable handles, bounded to 128 entries, 8 MiB aggregate, and 2,080,768 bytes per asset, and shell mappings form a closed four-identifier set",
+    "compact SSE events preserve the realtime system surface, retain the first eight process rows and newest twenty history points, and omit Forge and power detail while full events preserve the complete existing schema",
+    "one producer snapshot becomes one shared compact/full frame pair whose private bytes cannot be changed through retained caller buffers after validation",
+    "the broadcaster admits at most 32 subscriptions, seeds each mailbox, validates its 1-to-2 Hz delivery rate, stores only the newest pair, signals bounded ready edges outside locks, and signals a replacement sink once for an already-pending pair",
+    "per-connection delivery cadence selects compact bytes for delivered frames 1 through 9 and full bytes for frame 10, with null takes and replaced unsent frames excluded from the cadence",
+    "broadcaster moves retain live subscription ownership, close is idempotent, concurrent publish/take/close races preserve capacity one, and shutdown does not wait for an in-flight ready signal",
+    "the prepared exchange revalidates type-erased subscription rate and closes invalid finite or nonfinite implementations before publication"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "0b1799caf84167947ad28b79d31ef90ad6e6288e1a16f99c64b39e1df2a4fc71",
+    "include/ForgeConductor/Dashboard/DashboardPreparedExchange.h": "a20836a2e0bd710df4cdce216a18fcce7f8fc36017fa5776a232ff3ef9b3ebcb",
+    "include/ForgeConductor/Dashboard/DashboardResponseComposer.h": "f5992540539f74ba14139fd39edd2066b49dd565bf5dc20f20c3e9c0254f2aba",
+    "include/ForgeConductor/Dashboard/DashboardSseBroadcaster.h": "43ea47a9df4160172be1a87ca42954a681a9bd3ff0e8699314b03fd2bd65873b",
+    "include/ForgeConductor/Dashboard/DashboardSseFrameEncoder.h": "1a045b556992bc32859770dc59484aa2f824e74c61269a43bdf9cf87cfa98b76",
+    "include/ForgeConductor/Dashboard/DashboardStaticAssetStore.h": "01e92e8fb97c838e94396236f2d2aaa06377549fbb2318214c49951911b616b1",
+    "include/ForgeConductor/Dashboard/DashboardTelemetryJsonCodec.h": "b50f5beac743f9c9dfa7548d295e43be1b9ef7e53f3271caf76c2c9c775b1255",
+    "include/ForgeConductor/Dashboard/IDashboardAssetStore.h": "6967a915311e8f3eeb26054eb5e441f81e26767ab3c9c99ceaabcb58160d3fdc",
+    "src/Dashboard/DashboardResponseComposer.cpp": "bcd8c49b821325e32c90abf88c157746a98b7a91087d2a290d2fc06f0b74e1f6",
+    "src/Dashboard/DashboardSseBroadcaster.cpp": "6064a4ea18f33da03d7ee8fa22180a55e1c1132d3b8a1e7c5339d8a0df5cd7b1",
+    "src/Dashboard/DashboardSseFrameEncoder.cpp": "22c9ef2fbf52dc6cedcfe9d8eab35491c34e3073dba5d1193da7de99eb702956",
+    "src/Dashboard/DashboardStaticAssetStore.cpp": "ce8f08519dc10816fcca83a60b229965b77e5b374c274be11cb59ea51d5e2449",
+    "src/Dashboard/DashboardTelemetryJsonCodec.cpp": "f848e4fc757e5538692c9ebb8dfe29bad340e69bb9e06b2ba2424749610150af",
+    "tests/Dashboard/DashboardPreparedExchangeTests.cpp": "c09ec55d6227e9d3267777d86ae870fe2c82840c92641d817119fed14b766841",
+    "tests/Dashboard/DashboardResponseComposerTests.cpp": "7c99682dbe109e8371f7e01b37d9cdf8093732de364caafd43a142d8d8499837",
+    "tests/Dashboard/DashboardSseBroadcasterTests.cpp": "251aa13eec3ffdc55a1c8a9a058144823eae9147933a0d141af011196186080b",
+    "tests/Dashboard/DashboardStaticAssetStoreTests.cpp": "41f331e4147fba96a9e11c7b57e733914e4d99080d83ddd6bd92b7f1f4ea2be9",
+    "tests/Dashboard/DashboardTelemetryJsonCodecTests.cpp": "c8de0aee6170e942d3acd125d47a24eaf18cdf82a102542181534bb5329548f4",
+    ".forge-codex/state/decisions/P16-007-bounded-dashboard-assets-and-sse-publication.md": "5d058a3dc0358eb0a008f86929ddc2f9bfa35a0706dc2df12603385394e59a5e"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.PreparedExchangeTests.exe": "989cead4140155856c4099f0633e455d584a21fd58714e1e693f435d2a946e36",
+    "ForgeConductor.Dashboard.ResponseComposerTests.exe": "95f093c124f10716259837d18ed7c683867c5552b8af2d5eec924fa909274837",
+    "ForgeConductor.Dashboard.SseBroadcasterTests.exe": "0cabf5a59cf34ca1c3e4e486e1a568ced4452d131b1184d62268180dbacab1a0",
+    "ForgeConductor.Dashboard.StaticAssetStoreTests.exe": "1e48d4f999271f3ad68b7e89fcd0bc294d9b12307a03685e9da6159a54e378e9",
+    "ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe": "68b173e1950b9d2c2df3c24d2b089b40163f417dd65d6a51c49826da37d4463e"
+  },
+  "remaining_limitations": [
+    "The concrete dashboard connection application, operational JSON codecs, telemetry source, operational facade, and production composition are not implemented by this checkpoint.",
+    "The store contains no functional alpha frontend assets yet; production composition must embed assets and register all four shell aliases.",
+    "The overlapped Winsock listener, process-owned IOCP workers, handler executor, connection deadline ownership, overload responses, keepalive scheduling, and shutdown drain remain unimplemented.",
+    "Two-phase listener rebind, manager runtime composition, and generation retirement remain pending.",
+    "Existing telemetry producer models still lack several macOS dashboard detail fields identified by the handler architecture audit; this checkpoint does not claim those values are populated.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

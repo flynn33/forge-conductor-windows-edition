@@ -22,6 +22,8 @@ public:
     static constexpr std::size_t MaximumAgentSessions =
         Domain::AgentSessionLimits::MaximumSessionQueryRows;
     static constexpr std::size_t MaximumHistoryPoints = 7'200U;
+    static constexpr std::size_t MaximumCompactProcesses = 8U;
+    static constexpr std::size_t MaximumCompactHistoryPoints = 20U;
 
     [[nodiscard]] static Domain::Result<std::string> encodeHealth(
         const Domain::TelemetryHealthReport& report,
@@ -55,6 +57,17 @@ public:
     // One complete SSE telemetry event. The framing bytes count toward the
     // same bound as the JSON payload.
     [[nodiscard]] static Domain::Result<std::string> encodeServerSentEvent(
+        const Domain::TelemetrySnapshot& snapshot,
+        std::optional<double> measuredSampleHz = std::nullopt,
+        std::size_t maximumEncodedBytes = DefaultMaximumEncodedBytes) noexcept;
+
+    // Compact SSE frames preserve the realtime system surface while omitting
+    // Forge detail, power, all but the first eight process rows, and all but
+    // the newest twenty history points. The caller still supplies one complete
+    // immutable snapshot so compact and full representations describe the
+    // same producer event.
+    [[nodiscard]] static Domain::Result<std::string>
+    encodeCompactServerSentEvent(
         const Domain::TelemetrySnapshot& snapshot,
         std::optional<double> measuredSampleHz = std::nullopt,
         std::size_t maximumEncodedBytes = DefaultMaximumEncodedBytes) noexcept;

@@ -3,6 +3,7 @@
 #include "ForgeConductor/Dashboard/DashboardHttpResponse.h"
 #include "ForgeConductor/Domain/Result.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -40,20 +41,19 @@ public:
 
     [[nodiscard]] static Domain::Result<ImmutableFrame> create(
         std::uint64_t sourceSequence,
-        ImmutableBytes compactBytes,
-        ImmutableBytes fullBytes) noexcept
+        const std::vector<std::byte>& compactBytes,
+        const std::vector<std::byte>& fullBytes) noexcept
     {
         try {
-            if (compactBytes == nullptr || fullBytes == nullptr ||
-                compactBytes->empty() || fullBytes->empty()) {
+            if (compactBytes.empty() || fullBytes.empty()) {
                 return Domain::Result<ImmutableFrame>::failure(
                     Domain::makeError(
                         Domain::ErrorCodes::IntegrityFailure,
                         "The telemetry producer supplied a missing or empty "
                         "dashboard SSE frame."));
             }
-            if (compactBytes->size() > MaximumFrameBytes ||
-                fullBytes->size() > MaximumFrameBytes) {
+            if (compactBytes.size() > MaximumFrameBytes ||
+                fullBytes.size() > MaximumFrameBytes) {
                 return Domain::Result<ImmutableFrame>::failure(
                     Domain::makeError(
                         Domain::ErrorCodes::PayloadTooLarge,
@@ -63,8 +63,8 @@ public:
 
             ImmutableFrame frame{new DashboardSseFramePair{
                 sourceSequence,
-                std::move(compactBytes),
-                std::move(fullBytes)}};
+                std::make_shared<const std::vector<std::byte>>(compactBytes),
+                std::make_shared<const std::vector<std::byte>>(fullBytes)}};
             return Domain::Result<ImmutableFrame>::success(std::move(frame));
         } catch (...) {
             return Domain::Result<ImmutableFrame>::failure(Domain::makeError(
@@ -111,7 +111,15 @@ private:
 // idempotent and must remain safe when an owner closes before destruction.
 class IDashboardSseSubscription {
 public:
+    static constexpr double MinimumDeliveryHz = 1.0;
+    static constexpr double MaximumDeliveryHz = 2.0;
+
     virtual ~IDashboardSseSubscription() noexcept = default;
+
+    // The validated per-connection delivery rate survives application-to-
+    // transport type erasure. Implementations return a finite value in the
+    // closed Windows profile range [1, 2] Hz.
+    [[nodiscard]] virtual double deliveryHz() const noexcept = 0;
 
     virtual void attachReadySink(
         std::weak_ptr<IDashboardSseReadySink> sink) noexcept = 0;
@@ -253,10 +261,16 @@ public:
         std::unique_ptr<IDashboardSseSubscription> subscription) noexcept
     {
         try {
+            const auto deliveryHz = subscription == nullptr
+                ? 0.0
+                : subscription->deliveryHz();
             if (!encodedHead.hasValue() ||
                 encodedHead.kind() !=
                     DashboardHttpEncodingResult::Kind::SseBootstrapHead ||
-                encodedHead.bytes().empty() || subscription == nullptr) {
+                encodedHead.bytes().empty() || subscription == nullptr ||
+                !std::isfinite(deliveryHz) ||
+                deliveryHz < IDashboardSseSubscription::MinimumDeliveryHz ||
+                deliveryHz > IDashboardSseSubscription::MaximumDeliveryHz) {
                 closeSubscription(subscription);
                 return Domain::Result<DashboardSseExchange>::failure(
                     invalidExchangeError());
@@ -331,7 +345,7 @@ private:
         return Domain::makeError(
             Domain::ErrorCodes::IntegrityFailure,
             "An SSE dashboard exchange requires a successful SSE bootstrap "
-            "encoding and a unique subscription.");
+            "encoding and a unique subscription with a valid delivery rate.");
     }
 
     [[nodiscard]] static Domain::Error internalExchangeError()

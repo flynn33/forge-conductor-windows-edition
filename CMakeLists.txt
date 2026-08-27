@@ -166,7 +166,11 @@ add_library(ForgeConductor.Dashboard.Protocol STATIC
     src/Dashboard/DashboardManagerJsonCodec.cpp
     src/Dashboard/DashboardRequestPolicy.cpp
     src/Dashboard/DashboardRequestPlanner.cpp
+    src/Dashboard/DashboardResponseComposer.cpp
     src/Dashboard/DashboardRouteCatalog.cpp
+    src/Dashboard/DashboardSseBroadcaster.cpp
+    src/Dashboard/DashboardSseFrameEncoder.cpp
+    src/Dashboard/DashboardStaticAssetStore.cpp
     src/Dashboard/DashboardStaticResourcePath.cpp
     src/Dashboard/DashboardStreamQueryDecoder.cpp
     src/Dashboard/DashboardTelemetryJsonCodec.cpp)
@@ -573,6 +577,52 @@ if(BUILD_TESTING)
         ForgeConductor.Dashboard.PreparedExchangeTests PROPERTIES
         LABELS "G16;T-MGR;T-TEL;T-UNIT"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.ResponseComposerTests
+        tests/Dashboard/DashboardResponseComposerTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.ResponseComposerTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.ResponseComposerTests PRIVATE
+        ForgeConductor::Dashboard.Protocol
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Dashboard.ResponseComposerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ResponseComposerTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ResponseComposerTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.SseBroadcasterTests
+        tests/Dashboard/DashboardSseBroadcasterTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.SseBroadcasterTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.SseBroadcasterTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.SseBroadcasterTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.SseBroadcasterTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.SseBroadcasterTests PROPERTIES
+        LABELS "G16;T-MGR;T-TEL;T-UNIT;T-STRESS"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.StaticAssetStoreTests
+        tests/Dashboard/DashboardStaticAssetStoreTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.StaticAssetStoreTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.StaticAssetStoreTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.StaticAssetStoreTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.StaticAssetStoreTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.StaticAssetStoreTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-UNIT;T-STRESS"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.AdmissionControllerTests
         tests/Dashboard/DashboardAdmissionControllerTests.cpp)

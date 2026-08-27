@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <stop_token>
@@ -55,6 +56,8 @@ static_assert(std::is_nothrow_move_assignable_v<
               Dashboard::DashboardPreparedExchange>);
 static_assert(noexcept(std::declval<Dashboard::IDashboardSseReadySink&>().signal()));
 static_assert(noexcept(
+    std::declval<const Dashboard::IDashboardSseSubscription&>().deliveryHz()));
+static_assert(noexcept(
     std::declval<Dashboard::IDashboardSseSubscription&>().attachReadySink(
         std::declval<std::weak_ptr<Dashboard::IDashboardSseReadySink>>())));
 static_assert(noexcept(
@@ -86,12 +89,6 @@ static_assert(noexcept(
             return static_cast<std::byte>(character);
         });
     return result;
-}
-
-[[nodiscard]] Dashboard::DashboardSseFramePair::ImmutableBytes immutableBytes(
-    const std::string_view value)
-{
-    return std::make_shared<const std::vector<std::byte>>(bytes(value));
 }
 
 [[nodiscard]] Dashboard::DashboardHttpEncodingResult completeEncoding()
@@ -134,12 +131,20 @@ private:
 
 class LatestSubscription final : public Dashboard::IDashboardSseSubscription {
 public:
-    explicit LatestSubscription(SubscriptionCounters& counters) noexcept
-        : counters_{counters}
+    explicit LatestSubscription(
+        SubscriptionCounters& counters,
+        const double deliveryHz = 2.0) noexcept
+        : counters_{counters},
+          deliveryHz_{deliveryHz}
     {
     }
 
     ~LatestSubscription() noexcept override { ++counters_.destructions; }
+
+    [[nodiscard]] double deliveryHz() const noexcept override
+    {
+        return deliveryHz_;
+    }
 
     void attachReadySink(
         std::weak_ptr<Dashboard::IDashboardSseReadySink> sink) noexcept override
@@ -196,6 +201,7 @@ private:
     }
 
     SubscriptionCounters& counters_;
+    const double deliveryHz_{};
     std::weak_ptr<Dashboard::IDashboardSseReadySink> sink_;
     Dashboard::DashboardSseFramePair::ImmutableFrame pending_;
     bool closed_{};
@@ -207,7 +213,7 @@ private:
     const std::string_view full)
 {
     auto created = Dashboard::DashboardSseFramePair::create(
-        sequence, immutableBytes(compact), immutableBytes(full));
+        sequence, bytes(compact), bytes(full));
     REQUIRE(created.hasValue());
     return std::move(created).value();
 }
@@ -349,18 +355,30 @@ void transfersDirectCompleteExchangeActionsExactlyOnce()
 
 void validatesImmutableSharedFramePairs()
 {
-    const auto compact = immutableBytes("data: {\"compact\":true}\n\n");
-    const auto full = immutableBytes("data: {\"full\":true}\n\n");
+    const auto compact = bytes("data: {\"compact\":true}\n\n");
+    const auto full = bytes("data: {\"full\":true}\n\n");
     auto created = Dashboard::DashboardSseFramePair::create(
         42U, compact, full);
     REQUIRE(created.hasValue());
     const auto pair = std::move(created).value();
     REQUIRE(pair != nullptr);
     REQUIRE(pair->sourceSequence() == 42U);
-    REQUIRE(pair->compactBytes() == compact);
-    REQUIRE(pair->fullBytes() == full);
-    REQUIRE(*pair->compactBytes() == bytes("data: {\"compact\":true}\n\n"));
-    REQUIRE(*pair->fullBytes() == bytes("data: {\"full\":true}\n\n"));
+    REQUIRE(*pair->compactBytes() == compact);
+    REQUIRE(*pair->fullBytes() == full);
+
+    auto mutableCompact = bytes("data: retained-compact\n\n");
+    auto mutableFull = bytes("data: retained-full\n\n");
+    const auto expectedCompact = mutableCompact;
+    const auto expectedFull = mutableFull;
+    auto retainedAlias = Dashboard::DashboardSseFramePair::create(
+        43U, mutableCompact, mutableFull);
+    REQUIRE(retainedAlias.hasValue());
+    mutableCompact.assign(
+        Dashboard::DashboardSseFramePair::MaximumFrameBytes + 1U,
+        std::byte{0x61});
+    mutableFull.clear();
+    REQUIRE(*retainedAlias.value()->compactBytes() == expectedCompact);
+    REQUIRE(*retainedAlias.value()->fullBytes() == expectedFull);
 
     auto missingCompact = Dashboard::DashboardSseFramePair::create(
         1U, {}, full);
@@ -372,8 +390,7 @@ void validatesImmutableSharedFramePairs()
     REQUIRE(!missingFull.hasValue());
     REQUIRE(missingFull.error().code == Domain::ErrorCodes::IntegrityFailure);
 
-    const auto empty =
-        std::make_shared<const std::vector<std::byte>>();
+    const std::vector<std::byte> empty;
     auto emptyCompact = Dashboard::DashboardSseFramePair::create(
         1U, empty, full);
     REQUIRE(!emptyCompact.hasValue());
@@ -384,10 +401,9 @@ void validatesImmutableSharedFramePairs()
     REQUIRE(!emptyFull.hasValue());
     REQUIRE(emptyFull.error().code == Domain::ErrorCodes::IntegrityFailure);
 
-    const auto exactLimit =
-        std::make_shared<const std::vector<std::byte>>(
-            Dashboard::DashboardSseFramePair::MaximumFrameBytes,
-            std::byte{0x41});
+    const std::vector<std::byte> exactLimit(
+        Dashboard::DashboardSseFramePair::MaximumFrameBytes,
+        std::byte{0x41});
     auto exactCompact = Dashboard::DashboardSseFramePair::create(
         2U, exactLimit, full);
     REQUIRE(exactCompact.hasValue());
@@ -401,7 +417,7 @@ void validatesImmutableSharedFramePairs()
         exactFull.value()->fullBytes()->size() ==
         Dashboard::DashboardSseFramePair::MaximumFrameBytes);
 
-    const auto overLimit = std::make_shared<const std::vector<std::byte>>(
+    const std::vector<std::byte> overLimit(
         Dashboard::DashboardSseFramePair::MaximumFrameBytes + 1U,
         std::byte{0x41});
     auto oversized = Dashboard::DashboardSseFramePair::create(
@@ -452,6 +468,7 @@ void ownsSseBootstrapCommentAndCapacityOneSubscription()
             Dashboard::DashboardSseExchange::ConnectedCommentText ==
             ": connected realtime\n\n");
         REQUIRE(owner.sseExchange()->subscription() == concreteSubscription);
+        REQUIRE(owner.sseExchange()->subscription()->deliveryHz() == 2.0);
 
         const auto sink = std::make_shared<ReadySink>();
         owner.sseExchange()->subscription()->attachReadySink(sink);
@@ -507,6 +524,28 @@ void rejectsInvalidSseExchangeInputsAndClosesOwnedSubscriptions()
     REQUIRE(failedHead.error().code == Domain::ErrorCodes::IntegrityFailure);
     REQUIRE(failedHeadCounters.closeCalls == 1U);
     REQUIRE(failedHeadCounters.destructions == 1U);
+
+    const std::vector<double> invalidDeliveryRates{
+        0.0,
+        0.999,
+        2.001,
+        std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(),
+        std::numeric_limits<double>::quiet_NaN(),
+    };
+    for (const auto deliveryHz : invalidDeliveryRates) {
+        SubscriptionCounters invalidRateCounters;
+        auto invalidRate = Dashboard::DashboardPreparedExchange::createSse(
+            Dashboard::DashboardHttpResponseEncoder::encodeSseBootstrap(),
+            std::make_unique<LatestSubscription>(
+                invalidRateCounters,
+                deliveryHz));
+        REQUIRE(!invalidRate.hasValue());
+        REQUIRE(
+            invalidRate.error().code == Domain::ErrorCodes::IntegrityFailure);
+        REQUIRE(invalidRateCounters.closeCalls == 1U);
+        REQUIRE(invalidRateCounters.destructions == 1U);
+    }
 }
 
 void emptiesMoveSourcesAndClosesAcrossAlternativeAssignment()

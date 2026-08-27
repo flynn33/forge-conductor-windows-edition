@@ -1,4 +1,5 @@
 #include "ForgeConductor/Dashboard/DashboardTelemetryJsonCodec.h"
+#include "ForgeConductor/Dashboard/DashboardSseFrameEncoder.h"
 
 #include <nlohmann/json.hpp>
 
@@ -407,6 +408,134 @@ void preservesRouteAliasesAndSseFraming()
     REQUIRE(Json::parse(payload).at("stream") == "realtime");
 }
 
+void emitsBoundedMacCompatibleCompactSseFrames()
+{
+    auto snapshot = richSnapshot();
+    const auto processSeed = snapshot.system.processes.front();
+    snapshot.system.processes.clear();
+    for (std::uint32_t index{}; index < 12U; ++index) {
+        auto process = processSeed;
+        process.processId = 100U + index;
+        process.name = "process-" + std::to_string(index);
+        snapshot.system.processes.push_back(std::move(process));
+    }
+
+    const auto historySeed = snapshot.history.front();
+    snapshot.history.clear();
+    for (std::size_t index{}; index < 25U; ++index) {
+        auto point = historySeed;
+        point.timestamp = utc() + std::chrono::seconds{index};
+        point.cpuPercent = static_cast<double>(index);
+        point.mcpEvents = index;
+        snapshot.history.push_back(std::move(point));
+    }
+
+    const auto compact = take(
+        Dashboard::DashboardTelemetryJsonCodec::
+            encodeCompactServerSentEvent(snapshot, 2.0));
+    constexpr std::string_view Prefix{"event: telemetry\ndata: "};
+    constexpr std::string_view Suffix{"\n\n"};
+    REQUIRE(compact.starts_with(Prefix));
+    REQUIRE(compact.ends_with(Suffix));
+    const auto payload = compact.substr(
+        Prefix.size(), compact.size() - Prefix.size() - Suffix.size());
+    const auto document = Json::parse(payload);
+
+    REQUIRE(keys(document) == std::set<std::string>({
+        "history", "runtime", "sample_hz", "stream", "system", "updated"}));
+    REQUIRE(!document.contains("forge"));
+    REQUIRE(keys(document.at("system")) == std::set<std::string>({
+        "arch", "cpu", "disk", "disk_io", "gpu", "host", "platform",
+        "processes", "ram", "ts"}));
+    REQUIRE(!document.at("system").contains("power"));
+    REQUIRE(document.at("system").at("processes").size() ==
+            Dashboard::DashboardTelemetryJsonCodec::MaximumCompactProcesses);
+    REQUIRE(document.at("system").at("processes").front().at("pid") == 100U);
+    REQUIRE(document.at("system").at("processes").back().at("pid") == 107U);
+    REQUIRE(document.at("history").size() ==
+            Dashboard::DashboardTelemetryJsonCodec::MaximumCompactHistoryPoints);
+    REQUIRE(document.at("history").front().at("mcp") == 5U);
+    REQUIRE(document.at("history").back().at("mcp") == 24U);
+    REQUIRE(document.at("stream") == "realtime");
+    REQUIRE(document.at("sample_hz") == 2.0);
+
+    const auto full = take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeServerSentEvent(
+            snapshot, 2.0));
+    REQUIRE(compact.size() < full.size());
+    const auto fullPayload = full.substr(
+        Prefix.size(), full.size() - Prefix.size() - Suffix.size());
+    const auto fullDocument = Json::parse(fullPayload);
+    REQUIRE(fullDocument.contains("forge"));
+    REQUIRE(fullDocument.at("system").contains("power"));
+    REQUIRE(fullDocument.at("system").at("processes").size() == 12U);
+    REQUIRE(fullDocument.at("history").size() == 25U);
+
+    const auto exact = Dashboard::DashboardTelemetryJsonCodec::
+        encodeCompactServerSentEvent(snapshot, 2.0, compact.size());
+    REQUIRE(exact);
+    REQUIRE(exact.value() == compact);
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::
+            encodeCompactServerSentEvent(snapshot, 2.0, compact.size() - 1U),
+        Domain::ErrorCodes::PayloadTooLarge);
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::
+            encodeCompactServerSentEvent(snapshot, 2.0, 0U),
+        Domain::ErrorCodes::InvalidRequest);
+}
+
+[[nodiscard]] std::string textOf(
+    const Dashboard::DashboardSseFramePair::ImmutableBytes& bytes)
+{
+    if (bytes == nullptr || bytes->empty()) {
+        return {};
+    }
+    return std::string{
+        reinterpret_cast<const char*>(bytes->data()), bytes->size()};
+}
+
+void createsOneImmutableCompactAndFullFramePair()
+{
+    auto snapshot = richSnapshot();
+    const auto expectedCompact = take(
+        Dashboard::DashboardTelemetryJsonCodec::
+            encodeCompactServerSentEvent(snapshot, 2.0));
+    const auto expectedFull = take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeServerSentEvent(
+            snapshot, 2.0));
+    REQUIRE(expectedCompact.size() < expectedFull.size());
+
+    const auto pair = take(Dashboard::DashboardSseFrameEncoder::encode(
+        77U, snapshot, 2.0));
+    REQUIRE(pair != nullptr);
+    REQUIRE(pair->sourceSequence() == 77U);
+    REQUIRE(pair->compactBytes() != nullptr);
+    REQUIRE(pair->fullBytes() != nullptr);
+    REQUIRE(pair->compactBytes() != pair->fullBytes());
+    REQUIRE(textOf(pair->compactBytes()) == expectedCompact);
+    REQUIRE(textOf(pair->fullBytes()) == expectedFull);
+
+    snapshot.runtime = "changed-after-encoding";
+    REQUIRE(textOf(pair->compactBytes()) == expectedCompact);
+    REQUIRE(textOf(pair->fullBytes()) == expectedFull);
+
+    const auto exact = Dashboard::DashboardSseFrameEncoder::encode(
+        78U, richSnapshot(), 2.0, expectedFull.size());
+    REQUIRE(exact);
+    REQUIRE(textOf(exact.value()->fullBytes()) == expectedFull);
+    requireError(
+        Dashboard::DashboardSseFrameEncoder::encode(
+            79U, richSnapshot(), 2.0, expectedFull.size() - 1U),
+        Domain::ErrorCodes::PayloadTooLarge);
+    requireError(
+        Dashboard::DashboardSseFrameEncoder::encode(
+            80U,
+            richSnapshot(),
+            std::numeric_limits<double>::quiet_NaN()),
+        Domain::ErrorCodes::InvalidRequest);
+}
+
 void enforcesTheEncodedResponseCeilingDuringSerialization()
 {
     const Domain::TelemetryHealthReport report{
@@ -611,6 +740,8 @@ int main()
         mapsTheCompleteMacCompatibleFrameContract();
         exposesHealthAndStandaloneViews();
         preservesRouteAliasesAndSseFraming();
+        emitsBoundedMacCompatibleCompactSseFrames();
+        createsOneImmutableCompactAndFullFramePair();
         enforcesTheEncodedResponseCeilingDuringSerialization();
         rejectsNonfiniteValuesInvalidTextAndNoncanonicalTimestamps();
         escapesValidTextDeterministically();

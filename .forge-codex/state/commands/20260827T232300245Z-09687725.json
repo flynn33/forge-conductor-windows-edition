@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T232300245Z-09687725",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "ctest --test-dir out\\build\\windows-msvc-x64 -C Debug --output-on-failure --verbose -R '^ForgeConductor\\.Dashboard\\.(ResponseComposerTests|StaticAssetStoreTests|PreparedExchangeTests|TelemetryJsonCodecTests|SseBroadcasterTests)$'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T23:23:00.2528937+00:00",
+  "end_utc": "2026-08-27T23:23:01.7915268+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T232300245Z-09687725.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T232300245Z-09687725.stderr.txt",
+  "stdout_sha256": "d2875b812f8e0702398fb1dc61a298d7d5f75066d982bea2de066b84c8095be6",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
