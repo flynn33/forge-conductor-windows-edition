@@ -107,10 +107,11 @@ hardening.
   capacity one: a newer frame replaces an unsent frame. Slow consumers never
   create a callback or frame backlog. Keepalive comments do not raise the
   telemetry sampling rate.
-- All responses use deterministic lengths or SSE framing, `no-store`,
-  `nosniff`, same-origin resource policy, no-referrer policy, and a
-  self-contained same-origin content-security policy. Exceptions are converted
-  to typed HTTP errors at the router/transport boundary.
+- Complete responses use deterministic lengths and `no-store`; SSE uses its
+  macOS-compatible `no-cache, no-transform` framing. Both use `nosniff`,
+  same-origin resource policy, no-referrer policy, and a self-contained
+  same-origin content-security policy. Exceptions are converted to typed HTTP
+  errors at the router/transport boundary.
 
 ### Route and lifecycle ownership
 

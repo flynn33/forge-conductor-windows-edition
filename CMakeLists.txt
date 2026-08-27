@@ -162,9 +162,13 @@ target_link_libraries(ForgeConductor.Manager.Host PUBLIC
 
 add_library(ForgeConductor.Dashboard.Protocol STATIC
     src/Dashboard/DashboardHttpParser.cpp
+    src/Dashboard/DashboardHttpResponse.cpp
     src/Dashboard/DashboardManagerJsonCodec.cpp
     src/Dashboard/DashboardRequestPolicy.cpp
+    src/Dashboard/DashboardRequestPlanner.cpp
     src/Dashboard/DashboardRouteCatalog.cpp
+    src/Dashboard/DashboardStaticResourcePath.cpp
+    src/Dashboard/DashboardStreamQueryDecoder.cpp
     src/Dashboard/DashboardTelemetryJsonCodec.cpp)
 forge_add_layer(
     ForgeConductor.Dashboard.Protocol
@@ -608,6 +612,63 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.TelemetryJsonCodecTests>)
     set_tests_properties(
         ForgeConductor.Dashboard.TelemetryJsonCodecTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.HttpResponseTests
+        tests/Dashboard/DashboardHttpResponseTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Dashboard.HttpResponseTests)
+    target_link_libraries(ForgeConductor.Dashboard.HttpResponseTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.HttpResponseTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.HttpResponseTests>)
+    set_tests_properties(ForgeConductor.Dashboard.HttpResponseTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.StaticResourcePathTests
+        tests/Dashboard/DashboardStaticResourcePathTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.StaticResourcePathTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.StaticResourcePathTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.StaticResourcePathTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.StaticResourcePathTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.StaticResourcePathTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.StreamQueryDecoderTests
+        tests/Dashboard/DashboardStreamQueryDecoderTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.StreamQueryDecoderTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.StreamQueryDecoderTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.StreamQueryDecoderTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.StreamQueryDecoderTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.StreamQueryDecoderTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.RequestPlannerTests
+        tests/Dashboard/DashboardRequestPlannerTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.RequestPlannerTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.RequestPlannerTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.RequestPlannerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.RequestPlannerTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.RequestPlannerTests PROPERTIES
         LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT"
         TIMEOUT 60)
 

@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-request-planning-response",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "MSVC 19.44.35223 / Visual Studio 2022 17.14 generator, v143, Windows SDK 10.0.26100.0, CMake 4.4.2, C++20 Debug with /W4 /WX /permissive-, CTest Debug",
+  "final_build": {
+    "command_record": ".forge-codex/state/commands/20260827T214205879Z-3de55b68.json",
+    "command_record_sha256": "a3a6eaf43991bd7d51378efbbcb56fb500aa0d4584afe76a992b89697e152b91",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 4,
+    "configuration": "Debug",
+    "stdout_sha256": "b2baf69fa660ff0bbcdd570bd3661e27cce4967abea6c2618c66e6086b40a7a8",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "final_validation": {
+    "command_record": ".forge-codex/state/commands/20260827T214225861Z-0e712eb9.json",
+    "command_record_sha256": "098357ef703567175d6048687273fce4313ac2a762b8146872de4f3c4baf344c",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 4,
+    "tests_failed": 0,
+    "assertions_passed": 2518,
+    "real_seconds": 0.16,
+    "assertions_by_test": {
+      "ForgeConductor.Dashboard.HttpResponseTests": 377,
+      "ForgeConductor.Dashboard.StaticResourcePathTests": 1313,
+      "ForgeConductor.Dashboard.StreamQueryDecoderTests": 593,
+      "ForgeConductor.Dashboard.RequestPlannerTests": 235
+    },
+    "stdout_sha256": "81039f41ed65200b273a59d2f1dc18847d01f5cc42b39e8e299bfcfc9895397d",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260827T214347557Z-5017ecee.json",
+      "command_record_sha256": "26d87c17a58ac81fd394c51b598cc8ee8219dc31d649f861cdf26a81ddd41e78",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260827T214405079Z-df7d0c5c.json",
+      "command_record_sha256": "0acd982c6d31bf3d2a5fd9d64263148627ef4562b2dcaad61884c269e0b9a817",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 15 text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260827T214433067Z-dda41f08.json",
+      "command_record_sha256": "81301168aa131d980be8286eff9403fccfc9c4930af89c96cd654e81a2cab447",
+      "exit_code": 0,
+      "files_passed": 15
+    },
+    {
+      "scope": "Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260827T214441195Z-769782ee.json",
+      "command_record_sha256": "c5d4db012e55fe80ba138a7aae5763fbd0ecb579a752f89428fc56190b489c29",
+      "exit_code": 0
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260827T214706505Z-d0cdf86d.json",
+      "command_record_sha256": "9e51351a0779fffbfb2f7734e946cd0b0e6f0217f09a4b966a103f7be2a843b8",
+      "exit_code": 0,
+      "events_verified": 290
+    }
+  ],
+  "diagnosed_test_correction": {
+    "failed_command_record": ".forge-codex/state/commands/20260827T213206599Z-b9c0933e.json",
+    "failed_command_record_sha256": "baf0fddb12fcadea8936d2e5271a2455f232441d1bd3907a34aa4d3c107dd2c8",
+    "exit_code": 1,
+    "timed_out": false,
+    "failure": "The production planner compiled, but the new test translation unit used braced two-field header temporaries directly inside a one-argument REQUIRE macro; the preprocessor treated the field comma as an extra macro argument.",
+    "diagnosis": "This was test syntax rather than a product defect.",
+    "correction": "The comparison expressions were parenthesized, after which the same target built and the final four-target validation passed."
+  },
+  "independent_review": {
+    "scope": "response model, static decoder, stream decoder, planner, tests, and CMake integration",
+    "initial_result": "No security, precedence, path-authority, boundedness, OOP/ownership, stream-normalization, or CMake blocker found.",
+    "finding": "The initial response encoder emitted Content-Length: 0 for 204 and lacked an explicit HEAD-only response representation.",
+    "correction": "204 now omits Content-Length; the distinct bounded HEAD response advertises representation length and cannot own or emit representation bytes.",
+    "post_correction_result": "No blockers; aggregate response, independent header, noexcept exception-boundary, 204, and HEAD semantics re-reviewed."
+  },
+  "behavior_proved": [
+    "the response encoder performs checked measurement before one exact allocation, caps complete head-plus-body output at 2 MiB, independently caps heads at 16 KiB, owns deterministic framing and security headers, and accepts only a bounded supplemental-header allowlist",
+    "204 responses omit Content-Length and reject nonzero representations; a distinct HEAD response reports a bounded representation length while owning and emitting no body bytes",
+    "SSE bootstrap is a distinct model with no Content-Length, keep-alive framing, macOS-compatible no-cache/no-transform semantics, bounded headers, and no permissive CORS",
+    "static-resource decoding runs only beneath the raw /static/ namespace, strips no data itself beyond decoding its supplied path, accepts public cache-buster queries because the planner supplies request.path(), and produces an owned lowercase-ASCII relative path with a closed MIME mapping",
+    "static decoding rejects traversal, empty and dot segments, encoded separators, backslashes, invalid UTF-8, controls, query and fragment delimiters, drive and UNC forms, alternate data streams, Windows device stems, platform aliases, overlong paths and segments, and unapproved extensions",
+    "stream decoding preserves macOS default, explicit-hz, and legacy-interval normalization before applying the exact 1 or 2 Hz Windows profile ceiling, while rejecting percent encoding, extra components, invalid numeric grammar, non-finite values, underflow, overflow, classification mismatch, and invalid budgets",
+    "the immutable request plan applies Host, bearer, media-type, origin, and fetch policy before route and route-specific errors; it owns all derived data and represents exactly one rejection, ordinary dispatch, static dispatch, or SSE dispatch",
+    "route disposition maps to stable 400, 404, 405, or 503 rejections, includes exact Allow metadata for known routes, and deliberately makes unavailable routes and invalid static paths indistinguishable from not found"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "0501fa82121f234132e5a5929959008489e2d37bdce390ce12a81a38e6c13df2",
+    "include/ForgeConductor/Dashboard/DashboardHttpResponse.h": "050259ce5f3a05c0ae5496b74c874277811d831aa16be023a0ca58abbe3e155c",
+    "include/ForgeConductor/Dashboard/DashboardRequestPlanner.h": "fd15ed8f43eab9a43236a9917c537687ad240d9c86028c4716ce6af3981dd114",
+    "include/ForgeConductor/Dashboard/DashboardStaticResourcePath.h": "42b3d2db7d085c1d153cddb58a7c62211ce29cb3f2e22c64828494aefccb7ba9",
+    "include/ForgeConductor/Dashboard/DashboardStreamQueryDecoder.h": "7d3f3855aac75529f9a9c1e4fd18b59e96e096a20fac6ed98e9da4e8183edafe",
+    "src/Dashboard/DashboardHttpResponse.cpp": "dcb84c0a957ae843d4e355ebcfce4f2c5e46503c23d57c5609454373e7454438",
+    "src/Dashboard/DashboardRequestPlanner.cpp": "0c542e0eacdf32c4fb8bdbc994c0203a5996d658663c1013610df52ab434946d",
+    "src/Dashboard/DashboardStaticResourcePath.cpp": "d436cacfb24defa16414b27810bb2922cec3c41c31ef68ced72604604684b095",
+    "src/Dashboard/DashboardStreamQueryDecoder.cpp": "ecd552f33657b5c39ffae283753f99af709e018c6c17dfa2bcc3498d2dccde38",
+    "tests/Dashboard/DashboardHttpResponseTests.cpp": "7ae3e35b53e3cbbe5a8df5d75e90100ea7be4e09be0b63576486e73d81264ba8",
+    "tests/Dashboard/DashboardRequestPlannerTests.cpp": "df3aeb645574f5d92c56dfd0e327bb54778829f33f755934171f27bfef37e306",
+    "tests/Dashboard/DashboardStaticResourcePathTests.cpp": "c19caf6a9552384a602e27231e0622ad0efb489aef4a8b6c57af192e9ce42a9f",
+    "tests/Dashboard/DashboardStreamQueryDecoderTests.cpp": "6970f9158cbea731d6cc4e617bed7e7391ff80d087da09839854bebe0049d6f1",
+    ".forge-codex/state/decisions/P16-004-bounded-loopback-dashboard-protocol-and-authentication.md": "ba2e7a3367813bd8d46183636be6052863c90d47b5a46de013129ea3237d5d39",
+    ".forge-codex/state/decisions/P16-005-bounded-dashboard-request-planning-and-response-encoding.md": "c77f056791e1d002a1585357a91f72e94759044f5b263256566cf884050ea41e"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.HttpResponseTests.exe": "a4df30ecf9ba288c1d0550baade75e30b2279de6b190159ef53f5df33412d847",
+    "ForgeConductor.Dashboard.StaticResourcePathTests.exe": "02d74cd44f2b834f2f1e9a33ea14abc4deb350647a3408042afd5b795ab59247",
+    "ForgeConductor.Dashboard.StreamQueryDecoderTests.exe": "37675017decacbb0fd055ec6a6469077b5e1c93e140b1bede6fe50db55cc4716",
+    "ForgeConductor.Dashboard.RequestPlannerTests.exe": "eb33f9ef7800599e3633868c5a8cabb7716eed0c755383a1b80b54f10b9446c5"
+  },
+  "remaining_limitations": [
+    "This checkpoint does not execute route handlers or prove the live router composition, application-owned static asset store, functional static shell, operational route codecs, or manager route client calls.",
+    "The DPAPI dashboard bearer store, asynchronous loopback listener, socket transport, connection and SSE admission limits, request and stream deadlines, two-phase listener rebind, listener retirement, and shutdown-after-delivery behavior remain P16-B work.",
+    "SSE still needs a capacity-one latest-value mailbox per producer and consumer, bounded keepalives, compact frames, and a full frame every tenth event.",
+    "Health composition still needs live sample-rate, stream-state, and bounded runtime-diagnostics fields; the broader Forge snapshot model still lacks several macOS telemetry details recorded in the prior codec checkpoint.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused pure-protocol checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}
