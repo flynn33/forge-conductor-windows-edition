@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "authenticated-manager-named-pipe-transport",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "MSVC 19.44 / Visual Studio 2022 17.14, CMake preset windows-msvc-x64-debug, CTest Debug",
+  "command_record": ".forge-codex/state/commands/20260827T185421915Z-c1f07fdf.json",
+  "command_record_sha256": "a24fc87fc9f06b8666762665ea243be5356cbf63778ebb9bc0239b875b710d8e",
+  "exit_code": 0,
+  "timed_out": false,
+  "measured_result": {
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "real_seconds": 1.19,
+    "stdout_sha256": "3a317bd9cd5d43ba9c891fcf109f906e3a55d3105197eae8b3cb694cb3a21ee9",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "behavior_proved": [
+    "current-user DACL and impersonated SID verification",
+    "strict bounded manager protocol and UTC deadline mapping",
+    "typed status, settings, control, and settings-update round trips",
+    "wrong nonce rejection without damaging later authenticated requests",
+    "response and remote-shutdown acknowledgement delivery receipts",
+    "caller deadline return without synchronous cancellation overrun",
+    "asynchronous idempotent cancellation and dispatcher drain",
+    "bounded server return for a non-cooperative controller callback",
+    "exactly-once controller close under release/shutdown races",
+    "orderly remote shutdown and reusable pipe name"
+  ],
+  "binary_sha256": {
+    "ForgeConductor.Manager.DeadlineMapperTests.exe": "db8d2080c120f5f06fa3928f6d98e9eb0ea84c3dd8e6f569bdced7a3fa7ac43f",
+    "ForgeConductor.Manager.RequestDispatcherTests.exe": "5ff6c4ebdceddd2780886524fc48ac4e8d3c4cfd9fdf49fddd25d3846a4dd2be",
+    "ForgeConductor.Manager.ProtocolTests.exe": "9c3099385edec959437f79f61d54989d0b4613770b1e681a04ce64697bfddc60",
+    "ForgeConductor.Manager.ControllerTests.exe": "90cb5ffcaa9a9365be4a2e1cf35c18291db753996fe2735106ec02709d10ec62",
+    "ForgeConductor.Manager.WindowsInfrastructureTests.exe": "a5fea4a9d3e493ff4ab9287f30143ccf2d569d6e3e68ee56c1db83bce0c05306",
+    "ForgeConductor.Manager.NamedPipeRoundTripTests.exe": "77f793281e85dcfbd3344d92b6e21ec4c8966ac83f97d2a4fe0df0afd55a9d1a"
+  },
+  "remaining_limitations": [
+    "P16 manager host composition is not yet implemented.",
+    "P16-B dashboard and P16-C watchdog/startup/recovery are not yet implemented.",
+    "A controller callback that never returns retains one bounded detached worker and its owned pipe/runtime state until callback return or process exit.",
+    "The authoritative G16 invocation has not been run."
+  ]
+}

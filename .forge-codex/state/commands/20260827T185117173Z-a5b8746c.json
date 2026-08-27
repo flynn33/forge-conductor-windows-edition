@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T185117173Z-a5b8746c",
+  "phase": "P16",
+  "role": "builder",
+  "command": "ctest --test-dir out/build/windows-msvc-x64 -C Debug -R '^ForgeConductor\\.Manager\\.NamedPipeRoundTripTests$' --output-on-failure\nexit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T18:51:17.1809330+00:00",
+  "end_utc": "2026-08-27T18:51:18.3771150+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T185117173Z-a5b8746c.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T185117173Z-a5b8746c.stderr.txt",
+  "stdout_sha256": "2928a2cf3afb62cc30a018d0e7c22105808b7cf9bf5d78c862b1df5b438d1e92",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

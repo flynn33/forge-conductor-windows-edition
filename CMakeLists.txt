@@ -139,6 +139,8 @@ target_include_directories(ForgeConductor.Application PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
 
 add_library(ForgeConductor.Manager.Protocol STATIC
+    src/Manager/ManagerDeadlineMapper.cpp
+    src/Manager/ManagerRequestDispatcher.cpp
     src/Manager/ManagerProtocolCodec.cpp)
 forge_add_layer(ForgeConductor.Manager.Protocol ForgeConductor::Manager.Protocol
     ForgeConductor::Contracts)
@@ -169,6 +171,8 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsLMStudioServeVerifier.cpp
     src/Infrastructure/Windows/WindowsManagerAuthentication.cpp
     src/Infrastructure/Windows/WindowsManagerInstanceLease.cpp
+    src/Infrastructure/Windows/WindowsManagerNamedPipeClient.cpp
+    src/Infrastructure/Windows/WindowsManagerNamedPipeServer.cpp
     src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
     src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp
@@ -180,8 +184,10 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp
     src/Infrastructure/Windows/Detail/BoundedSerialExecutor.cpp
     src/Infrastructure/Windows/Detail/CommandLineBuilder.cpp
+    src/Infrastructure/Windows/Detail/CurrentUserPipeSecurity.cpp
     src/Infrastructure/Windows/Detail/EtwProvider.cpp
     src/Infrastructure/Windows/Detail/JobObject.cpp
+    src/Infrastructure/Windows/Detail/ManagerPipeIo.cpp
     src/Infrastructure/Windows/Detail/OperationContextGuard.cpp
     src/Infrastructure/Windows/Detail/OperationGuard.cpp
     src/Infrastructure/Windows/Detail/OverlappedPipeReader.cpp
@@ -194,7 +200,8 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
 add_library(ForgeConductor.Infrastructure.Windows STATIC
     ${FORGE_INFRASTRUCTURE_WINDOWS_SOURCES})
 forge_add_layer(ForgeConductor.Infrastructure.Windows ForgeConductor::Infrastructure.Windows
-    ForgeConductor::Contracts)
+    ForgeConductor::Contracts
+    ForgeConductor::Manager.Protocol)
 forge_configure_native_target(ForgeConductor.Infrastructure.Windows)
 target_include_directories(ForgeConductor.Infrastructure.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
@@ -408,6 +415,30 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 )
 
 if(BUILD_TESTING)
+    add_executable(ForgeConductor.Manager.DeadlineMapperTests
+        tests/Manager/ManagerDeadlineMapperTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Manager.DeadlineMapperTests)
+    target_link_libraries(ForgeConductor.Manager.DeadlineMapperTests PRIVATE
+        ForgeConductor::Manager.Protocol)
+    add_test(
+        NAME ForgeConductor.Manager.DeadlineMapperTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.DeadlineMapperTests>)
+    set_tests_properties(ForgeConductor.Manager.DeadlineMapperTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.RequestDispatcherTests
+        tests/Manager/ManagerRequestDispatcherTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Manager.RequestDispatcherTests)
+    target_link_libraries(ForgeConductor.Manager.RequestDispatcherTests PRIVATE
+        ForgeConductor::Manager.Protocol)
+    add_test(
+        NAME ForgeConductor.Manager.RequestDispatcherTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.RequestDispatcherTests>)
+    set_tests_properties(ForgeConductor.Manager.RequestDispatcherTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Manager.ProtocolTests
         tests/Manager/ManagerProtocolCodecTests.cpp)
     forge_configure_standard_target(ForgeConductor.Manager.ProtocolTests)
@@ -434,6 +465,7 @@ if(BUILD_TESTING)
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Manager.WindowsInfrastructureTests
+        tests/Manager/ManagerPipeInfrastructureTests.cpp
         tests/Manager/WindowsManagerAuthenticationTests.cpp
         tests/Manager/WindowsManagerInfrastructureTestMain.cpp
         tests/Manager/WindowsManagerOwnershipTests.cpp)
@@ -453,6 +485,25 @@ if(BUILD_TESTING)
         ForgeConductor.Manager.WindowsInfrastructureTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-UNIT;T-STRESS"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.NamedPipeRoundTripTests
+        tests/Manager/WindowsManagerNamedPipeRoundTripTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.NamedPipeRoundTripTests)
+    target_include_directories(
+        ForgeConductor.Manager.NamedPipeRoundTripTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.NamedPipeRoundTripTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.NamedPipeRoundTripTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.NamedPipeRoundTripTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.NamedPipeRoundTripTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-INTEGRATION;T-STRESS"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Mcp.CatalogCodecTests
         tests/Mcp/McpCatalogCodecTests.cpp)

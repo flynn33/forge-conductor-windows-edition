@@ -7,6 +7,7 @@ namespace ForgeConductor::Tests {
 
 void registerWindowsManagerAuthenticationTests(TestRegistry& tests);
 void registerWindowsManagerOwnershipTests(TestRegistry& tests);
+void registerManagerPipeInfrastructureTests(TestRegistry& tests);
 
 } // namespace ForgeConductor::Tests
 
@@ -15,6 +16,7 @@ int main()
     ForgeConductor::Tests::TestRegistry tests;
     ForgeConductor::Tests::registerWindowsManagerAuthenticationTests(tests);
     ForgeConductor::Tests::registerWindowsManagerOwnershipTests(tests);
+    ForgeConductor::Tests::registerManagerPipeInfrastructureTests(tests);
 
     std::size_t passed = 0U;
     for (const auto& [name, run] : tests) {

@@ -24,6 +24,11 @@ public:
         bool applyImmediately,
         const Domain::OperationContext& context) noexcept = 0;
 
+    // Requests an orderly shutdown of the remote manager. This is distinct
+    // from shutdown(), which only closes this client transport instance.
+    [[nodiscard]] virtual Domain::Result<void> requestShutdown(
+        const Domain::OperationContext& context) noexcept = 0;
+
     virtual void shutdown() noexcept = 0;
 };
 
