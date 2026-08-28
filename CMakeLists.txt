@@ -126,6 +126,8 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/ContinuityAutomation.cpp
     src/Application/ContinuityCoordinator.cpp
     src/Application/DashboardConnectionApplication.cpp
+    src/Application/DashboardOperationalService.cpp
+    src/Application/DashboardTelemetrySource.cpp
     src/Application/LegacyContextContinuityService.cpp
     src/Application/LegacyMemoryService.cpp
     src/Application/ManagerController.cpp
@@ -191,7 +193,9 @@ target_link_libraries(ForgeConductor.Application PUBLIC
     ForgeConductor::Dashboard.Protocol)
 
 add_library(ForgeConductor.Dashboard.Windows STATIC
-    src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp)
+    src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp
+    src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp
+    src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp)
 forge_add_layer(
     ForgeConductor.Dashboard.Windows
     ForgeConductor::Dashboard.Windows
@@ -647,6 +651,36 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT;T-STRESS"
         TIMEOUT 120)
 
+    add_executable(ForgeConductor.Dashboard.OperationalServiceTests
+        tests/Application/DashboardOperationalServiceTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.OperationalServiceTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.OperationalServiceTests PRIVATE
+        ForgeConductor::Application)
+    add_test(
+        NAME ForgeConductor.Dashboard.OperationalServiceTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.OperationalServiceTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.OperationalServiceTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-UNIT;T-STRESS"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.TelemetrySourceTests
+        tests/Application/DashboardTelemetrySourceTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.TelemetrySourceTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.TelemetrySourceTests PRIVATE
+        ForgeConductor::Application)
+    add_test(
+        NAME ForgeConductor.Dashboard.TelemetrySourceTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.TelemetrySourceTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.TelemetrySourceTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-TEL;T-UNIT;T-STRESS"
+        TIMEOUT 120)
+
     add_executable(ForgeConductor.Dashboard.ResponseComposerTests
         tests/Dashboard/DashboardResponseComposerTests.cpp)
     forge_configure_standard_target(
@@ -709,6 +743,37 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Dashboard.AdmissionControllerTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.DeadlineSchedulerTests
+        tests/Dashboard/WindowsDashboardDeadlineSchedulerTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.DeadlineSchedulerTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.DeadlineSchedulerTests PRIVATE
+        ForgeConductor::Dashboard.Windows
+        ForgeConductor::Infrastructure.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.DeadlineSchedulerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.DeadlineSchedulerTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.DeadlineSchedulerTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.HandlerExecutorTests
+        tests/Dashboard/WindowsDashboardHandlerExecutorTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.HandlerExecutorTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.HandlerExecutorTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.HandlerExecutorTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.HandlerExecutorTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.HandlerExecutorTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.HttpParserTests

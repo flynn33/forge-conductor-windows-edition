@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T005926884Z-5786ded3",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "& '.forge-codex\\instructions\\scripts\\Verify-Ledger.ps1' -WorkspaceRoot 'D:\\GitHub\\Forge-Conductor-Windows-Edition'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T00:59:26.8921056+00:00",
+  "end_utc": "2026-08-28T00:59:28.5054874+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T005926884Z-5786ded3.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T005926884Z-5786ded3.stderr.txt",
+  "stdout_sha256": "f9c3377414cf079f808ab942034c9751a8616a2c01c4794b221f672c8cc7c445",
+  "stderr_sha256": "a0addc46a8d7b4220351f70644d66c1d08cc97283ab11e236bb04c5260826212"
+}

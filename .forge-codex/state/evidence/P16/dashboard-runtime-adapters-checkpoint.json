@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-runtime-adapters",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "initial_combined_build": {
+    "command_record": ".forge-codex/state/commands/20260828T003953533Z-1c98596a.json",
+    "command_record_sha256": "d62d4c82680cdfe57b3f49482c4f271a52f15c790c8ce577650d948c23522183",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 4,
+    "configuration": "Debug",
+    "stdout_sha256": "0e18bac5593d90d0cce40760c5c562ce4a9842477515d4445b846087ad83fab1",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "initial_combined_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T004035053Z-06820372.json",
+    "command_record_sha256": "de659d58ead945f0d56645d2792ac90e497dd97bae2b1021b50dcf7f551461da",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 4,
+    "tests_failed": 0,
+    "explicit_assertions_passed": 2862,
+    "real_seconds": 1.02,
+    "assertions_by_test": {
+      "ForgeConductor.Dashboard.OperationalServiceTests": 789,
+      "ForgeConductor.Dashboard.TelemetrySourceTests": 164,
+      "ForgeConductor.Dashboard.DeadlineSchedulerTests": 50,
+      "ForgeConductor.Dashboard.HandlerExecutorTests": 1859
+    },
+    "stdout_sha256": "5de7e91798c45367cd0e7f2901113d509d0653bbd5a1ec2df2043b0fb2f7b2d9",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "corrective_build": {
+    "reason": "The pre-checkpoint concurrency audit found that caller-provided arm sequences could be reused after dequeue and that concurrent shutdown callers needed a shared worker-exit barrier.",
+    "command_record": ".forge-codex/state/commands/20260828T005649047Z-1010ea14.json",
+    "command_record_sha256": "21bdd90683b20a6afef010b317f5627cbf00d5f37204955ec920c690ab3a9a70",
+    "exit_code": 0,
+    "timed_out": false,
+    "target_built": "ForgeConductor.Dashboard.DeadlineSchedulerTests",
+    "configuration": "Debug",
+    "stdout_sha256": "1c33aec17adc42931b8c98bfdabdfc7db5e1f9b524538026a225c70e93e06f93",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "corrective_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T005652790Z-524843e1.json",
+    "command_record_sha256": "3c4fe3bc65729f4cbafc6feeca3e83d67dfdc3d02fa58c0508a55f9fd852d1b1",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 1,
+    "tests_failed": 0,
+    "explicit_assertions_passed": 69,
+    "real_seconds": 0.57,
+    "stdout_sha256": "f01ce6b8c86af4a41a99324aeb7e220eb037577454dcd718ae80c07173a5843d",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260828T004102561Z-714eb697.json",
+      "command_record_sha256": "403528af715dbf05001b330e257d29e088c516407c22d7296b0062dd9f70be14",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260828T004105365Z-e878d73e.json",
+      "command_record_sha256": "62dbe056ec4a516d1648ebcb5a84ea6e5bbc8dda6f48670678b91a65bebd80cd",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 14 implementation, test, build, and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260828T004207786Z-a63f6b98.json",
+      "command_record_sha256": "69bdfa6fb330ec46ef47e9db3e7868f8bfc1b3185f6312937a24a1c929bd66c0",
+      "exit_code": 0,
+      "files_passed": 14
+    },
+    {
+      "scope": "post-correction CRLF, strict UTF-8, no BOM, and final CRLF for the decision plus the three corrected deadline scheduler files",
+      "command_record": ".forge-codex/state/commands/20260828T005841351Z-f8cf3553.json",
+      "command_record_sha256": "5aea368251bed2d251b7f566ba592bf3d1cd66441fba82d814685ed6810f6a94",
+      "exit_code": 0,
+      "files_passed": 4
+    },
+    {
+      "scope": "tamper-evident event ledger through the corrected checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260828T005926884Z-5786ded3.json",
+      "command_record_sha256": "8a6ca9ee1ddffe4e2601af0d8aeb51ee0e8406e44da9adeebb8b80afb5594d32",
+      "exit_code": 0,
+      "events_verified": 334
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260828T010108482Z-7499f5b2.json",
+      "command_record_sha256": "efb4551812ddf2bd48f15f6dd7ee8fabd89d65ad8e5498b14604c256bb1e81e8",
+      "exit_code": 0
+    }
+  ],
+  "concurrency_and_lifetime_audit": {
+    "corrections": [
+      "Deadline ownership now uses an exact nonzero {registrationId, armSequence} token whose sequence is assigned globally by the scheduler. Every accepted replacement receives a unique returned token, and cancellation removes only the exact live arm, so an expired arm or delayed cancel cannot affect its successor even after dequeue.",
+      "Handler and deadline worker closures retain shared implementation ownership. A completion callback may release the outer owner without invalidating the running worker state or self-joining.",
+      "Every off-worker deadline shutdown call waits on the shared worker-exit barrier even when another caller claimed the thread handle; a worker-reentrant shutdown never waits on itself.",
+      "Adapter shutdown is documented as a composition-order close and drain boundary, not permission to destroy an adapter under an active member call."
+    ],
+    "required_composition_order": "Stop admission and dashboard telemetry forwarding, retain adapters while handlers and fan-out callbacks drain, invoke operational shutdown from a non-admitted owner thread, destroy application/adapters, then destroy injected dependencies.",
+    "external_review_status": "A CodeRabbit CLI review was attempted but its CLI is unavailable on this Windows host; it produced no source assessment and no repository changes."
+  },
+  "behavior_proved": [
+    "the operational facade obtains one atomic bounded open/recent/presence projection, validates dependency success payloads without truncation, and preserves the released administrative close and prune semantics",
+    "the telemetry adapter never steals or restarts the collector consumer; one explicit ingress creates one immutable compact/full pair and fans out to at most 32 capacity-one replaceable subscriber mailboxes",
+    "the handler executor owns exactly four persistent workers and an eight-item FIFO pending queue; submission is nonblocking and saturation, cancellation, deadline, exception, kind mismatch, and shutdown paths return typed completions",
+    "the deadline scheduler owns one worker and a pre-reserved sorted vector capped at 43 live arms; replacement does not accumulate stale entries and delivery retains the exact arm token",
+    "expired weak completion sinks and reentrant outer-owner release are safe for both the handler executor and deadline scheduler",
+    "all four adapters have bounded shutdown behavior and explicit owner-side lifetime ordering"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "b076a219622011ddf569804597b0d9c6066db40b59b97b58b4d9397766bcd304",
+    ".forge-codex/state/decisions/P16-009-bounded-dashboard-adapters-execution-and-deadlines.md": "37add4bcbc4450ee4c5230284e303dec54949551933dc1d048ea91917e91bf8e",
+    "include/ForgeConductor/Application/DashboardOperationalService.h": "a789d2d11147e828354fc476553523b52834bda3c6cf961d00c546fde5b560ba",
+    "include/ForgeConductor/Application/DashboardTelemetrySource.h": "888fbfabf42b4be879e83dd5724eb79c1f67aac78ca6a5a7b4879f476357fd21",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.h": "545fa15712147b4d68e698e615ef28651e7d2de209cecb512db42956297fee52",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardHandlerExecutor.h": "fdcaa775843a7f9aa65c6902e65d35bef35e7ab9a99064c381616b7f0fd08c93",
+    "src/Application/DashboardOperationalService.cpp": "f5d13a3fea7774f31bfaca7d345c172073c9521709ef5364f1374e9cacc57114",
+    "src/Application/DashboardTelemetrySource.cpp": "32c8f06ae62680407ff21e3371446c1427b1bd873dc9b99770e5c660c8130f9e",
+    "src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp": "6757ced699244b7a17077b327fb3133b4d3bf7d4fd750b189d19845d67886d42",
+    "src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp": "932c49366ce1aa55d56d5b24c56709aef04c60a1dd362ec04c19504b8da6e8e3",
+    "tests/Application/DashboardOperationalServiceTests.cpp": "43221be2bfa95ca24acf1b5af1a118f474145fb60925e5bcf697b987dfecbc90",
+    "tests/Application/DashboardTelemetrySourceTests.cpp": "b028359da517d592f38107117edde7b3ccdfc88a3909d538b0a1a0da125adb81",
+    "tests/Dashboard/WindowsDashboardDeadlineSchedulerTests.cpp": "38a9d5f6f4ed76ef6a0c59b0d5bac5c3f85cb55af4323380aa6aca7494e65608",
+    "tests/Dashboard/WindowsDashboardHandlerExecutorTests.cpp": "0399ff55e4f2764990a44103685a1c4bdabec1720118e12ba80cc8ad46ee6759"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.OperationalServiceTests.exe": "f6edbdb92b582a2e0c48f285a6fc5d7c2c8cac6994b4eb458444dd33afe4eea9",
+    "ForgeConductor.Dashboard.TelemetrySourceTests.exe": "4799bccd12dd1d16b922e0978cda50929bb090d2eca7318a40c485d5241ea785",
+    "ForgeConductor.Dashboard.DeadlineSchedulerTests.exe": "1570e7324315e4a88f0c935062b5c6df692703c0a293914350abc88034605ffe",
+    "ForgeConductor.Dashboard.HandlerExecutorTests.exe": "9459957029f1b5e649ff2d1b6812956b1f7176e7f573941c218e2aa325ff531d"
+  },
+  "remaining_limitations": [
+    "The production manager composition has not yet implemented the operational data source or sole-consumer telemetry fan-out wiring.",
+    "The overlapped Winsock listener, shared IOCP workers, connection state machine, overload response delivery, SSE socket flow, and bounded shutdown drain remain pending.",
+    "Two-phase listener rebind, generation retirement, and disconnect-sensitive post-delivery scheduling remain pending.",
+    "The store contains no functional alpha frontend shell yet; retained UI automation remains pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

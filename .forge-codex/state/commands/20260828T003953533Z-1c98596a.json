@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T003953533Z-1c98596a",
+  "phase": "P16",
+  "role": "Builder",
+  "command": "cmake --build out\\build\\windows-msvc-x64 --config Debug --target ForgeConductor.Dashboard.OperationalServiceTests ForgeConductor.Dashboard.TelemetrySourceTests ForgeConductor.Dashboard.DeadlineSchedulerTests ForgeConductor.Dashboard.HandlerExecutorTests -- /m:3",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T00:39:53.5420204+00:00",
+  "end_utc": "2026-08-28T00:40:23.0806020+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T003953533Z-1c98596a.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T003953533Z-1c98596a.stderr.txt",
+  "stdout_sha256": "0e18bac5593d90d0cce40760c5c562ce4a9842477515d4445b846087ad83fab1",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

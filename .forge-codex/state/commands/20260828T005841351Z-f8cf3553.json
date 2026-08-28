@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T005841351Z-f8cf3553",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$files = @('.forge-codex/state/decisions/P16-009-bounded-dashboard-adapters-execution-and-deadlines.md','include/ForgeConductor/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.h','src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp','tests/Dashboard/WindowsDashboardDeadlineSchedulerTests.cpp')\n$utf8 = [Text.UTF8Encoding]::new($false, $true)\nforeach ($file in $files) {\n  $bytes = [IO.File]::ReadAllBytes($file)\n  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xef -and $bytes[1] -eq 0xbb -and $bytes[2] -eq 0xbf) { throw \"$file contains a UTF-8 BOM.\" }\n  $null = $utf8.GetString($bytes)\n  for ($index = 0; $index -lt $bytes.Length; ++$index) {\n    if ($bytes[$index] -eq 10 -and ($index -eq 0 -or $bytes[$index - 1] -ne 13)) { throw \"$file contains a bare LF.\" }\n    if ($bytes[$index] -eq 13 -and ($index + 1 -ge $bytes.Length -or $bytes[$index + 1] -ne 10)) { throw \"$file contains a bare CR.\" }\n  }\n  if ($bytes.Length -lt 2 -or $bytes[$bytes.Length - 2] -ne 13 -or $bytes[$bytes.Length - 1] -ne 10) { throw \"$file does not end with CRLF.\" }\n}\nWrite-Output \"Post-correction text policy passed for $($files.Count) files.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T00:58:41.3574002+00:00",
+  "end_utc": "2026-08-28T00:58:42.6990361+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T005841351Z-f8cf3553.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T005841351Z-f8cf3553.stderr.txt",
+  "stdout_sha256": "24d1ff20ea99cc5582318dd491649b69bfeaa41d826c192b7e19d45ab28ab5f4",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}

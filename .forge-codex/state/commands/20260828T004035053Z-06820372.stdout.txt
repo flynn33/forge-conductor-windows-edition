@@ -1,0 +1,59 @@
+UpdateCTestConfiguration  from :D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Parse Config file:D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 13
+    Start 13: ForgeConductor.Dashboard.OperationalServiceTests
+
+13: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.OperationalServiceTests.exe
+13: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+13: Test timeout computed to be: 120
+13: Dashboard operational service tests passed: 789 assertions.
+1/4 Test #13: ForgeConductor.Dashboard.OperationalServiceTests ...   Passed    0.47 sec
+test 14
+    Start 14: ForgeConductor.Dashboard.TelemetrySourceTests
+
+14: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.TelemetrySourceTests.exe
+14: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+14: Test timeout computed to be: 120
+14: Dashboard telemetry source tests passed (164 assertions).
+2/4 Test #14: ForgeConductor.Dashboard.TelemetrySourceTests ......   Passed    0.05 sec
+test 19
+    Start 19: ForgeConductor.Dashboard.DeadlineSchedulerTests
+
+19: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.DeadlineSchedulerTests.exe
+19: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+19: Test timeout computed to be: 60
+19: Windows dashboard deadline scheduler tests passed (50 assertions).
+3/4 Test #19: ForgeConductor.Dashboard.DeadlineSchedulerTests ....   Passed    0.32 sec
+test 20
+    Start 20: ForgeConductor.Dashboard.HandlerExecutorTests
+
+20: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.HandlerExecutorTests.exe
+20: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+20: Test timeout computed to be: 120
+20: Windows dashboard handler executor tests passed: 1859 assertions
+4/4 Test #20: ForgeConductor.Dashboard.HandlerExecutorTests ......   Passed    0.16 sec
+
+The following tests passed:
+	ForgeConductor.Dashboard.OperationalServiceTests
+	ForgeConductor.Dashboard.TelemetrySourceTests
+	ForgeConductor.Dashboard.DeadlineSchedulerTests
+	ForgeConductor.Dashboard.HandlerExecutorTests
+
+100% tests passed out of 4
+
+Label Time Summary:
+G16         =   1.00 sec*proc (4 tests)
+T-MGR       =   1.00 sec*proc (4 tests)
+T-PARITY    =   0.52 sec*proc (2 tests)
+T-STRESS    =   1.00 sec*proc (4 tests)
+T-TEL       =   0.05 sec*proc (1 test)
+T-UNIT      =   1.00 sec*proc (4 tests)
+
+Total Test time (real) =   1.02 sec

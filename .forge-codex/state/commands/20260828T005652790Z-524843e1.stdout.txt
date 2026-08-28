@@ -1,0 +1,30 @@
+UpdateCTestConfiguration  from :D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Parse Config file:D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 19
+    Start 19: ForgeConductor.Dashboard.DeadlineSchedulerTests
+
+19: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.DeadlineSchedulerTests.exe
+19: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+19: Test timeout computed to be: 60
+19: Windows dashboard deadline scheduler tests passed (69 assertions).
+1/1 Test #19: ForgeConductor.Dashboard.DeadlineSchedulerTests ...   Passed    0.56 sec
+
+The following tests passed:
+	ForgeConductor.Dashboard.DeadlineSchedulerTests
+
+100% tests passed out of 1
+
+Label Time Summary:
+G16         =   0.56 sec*proc (1 test)
+T-MGR       =   0.56 sec*proc (1 test)
+T-STRESS    =   0.56 sec*proc (1 test)
+T-UNIT      =   0.56 sec*proc (1 test)
+
+Total Test time (real) =   0.57 sec

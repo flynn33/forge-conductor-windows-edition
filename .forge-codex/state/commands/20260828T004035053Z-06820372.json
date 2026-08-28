@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T004035053Z-06820372",
+  "phase": "P16",
+  "role": "Builder",
+  "command": "ctest --test-dir out\\build\\windows-msvc-x64 -C Debug --output-on-failure --verbose -R '^ForgeConductor\\.Dashboard\\.(OperationalServiceTests|TelemetrySourceTests|DeadlineSchedulerTests|HandlerExecutorTests)$'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T00:40:35.0620883+00:00",
+  "end_utc": "2026-08-28T00:40:37.0275390+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T004035053Z-06820372.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T004035053Z-06820372.stderr.txt",
+  "stdout_sha256": "5de7e91798c45367cd0e7f2901113d509d0653bbd5a1ec2df2043b0fb2f7b2d9",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
