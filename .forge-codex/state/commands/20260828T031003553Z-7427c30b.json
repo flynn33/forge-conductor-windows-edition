@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T031003553Z-7427c30b",
+  "phase": "P16",
+  "role": "Builder",
+  "command": "cmake --build --preset windows-msvc-x64-debug --target ForgeConductor.Dashboard.IoCompletionPortTests ForgeConductor.Dashboard.IocpWorkerKernelTests ForgeConductor.Dashboard.ListeningSocketTests ForgeConductor.Dashboard.WinsockExtensionsTests ForgeConductor.Dashboard.AcceptSlotTests ForgeConductor.Dashboard.AcceptSlotSetTests --parallel",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T03:10:03.5614299+00:00",
+  "end_utc": "2026-08-28T03:10:36.1941989+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T031003553Z-7427c30b.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T031003553Z-7427c30b.stderr.txt",
+  "stdout_sha256": "4c9e30df2ef18f9636df356d5849e42ea63fea32538d923a7f29992c542d5575",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T031104162Z-1f72ab3a",
+  "phase": "P16",
+  "role": "Tester",
+  "command": "ctest --preset windows-msvc-x64-debug -R \"^ForgeConductor\\.Dashboard\\.(IoCompletionPort|IocpWorkerKernel|ListeningSocket|WinsockExtensions|AcceptSlot|AcceptSlotSet)Tests$\" --verbose",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T03:11:04.1697137+00:00",
+  "end_utc": "2026-08-28T03:11:06.1802923+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T031104162Z-1f72ab3a.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T031104162Z-1f72ab3a.stderr.txt",
+  "stdout_sha256": "ba3734b037fcc6da371677a8da4c13bf8c922963b12d6767568469d9f3ba9448",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

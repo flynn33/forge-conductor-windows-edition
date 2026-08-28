@@ -1,0 +1,75 @@
+UpdateCTestConfiguration  from :D:/GitHub/Forge-Conductor-Windows-Edition/DartConfiguration.tcl
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 22
+    Start 22: ForgeConductor.Dashboard.IoCompletionPortTests
+
+22: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.IoCompletionPortTests.exe
+22: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+22: Test timeout computed to be: 120
+22: Dashboard IOCP owner tests passed: 213 assertions
+1/6 Test #22: ForgeConductor.Dashboard.IoCompletionPortTests ....   Passed    0.05 sec
+test 23
+    Start 23: ForgeConductor.Dashboard.IocpWorkerKernelTests
+
+23: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.IocpWorkerKernelTests.exe
+23: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+23: Test timeout computed to be: 120
+23: Dashboard IOCP worker kernel tests passed: 69 assertions
+2/6 Test #23: ForgeConductor.Dashboard.IocpWorkerKernelTests ....   Passed    0.85 sec
+test 24
+    Start 24: ForgeConductor.Dashboard.ListeningSocketTests
+
+24: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.ListeningSocketTests.exe
+24: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+24: Test timeout computed to be: 120
+24: Dashboard listening socket tests passed: 414 assertions
+3/6 Test #24: ForgeConductor.Dashboard.ListeningSocketTests .....   Passed    0.04 sec
+test 25
+    Start 25: ForgeConductor.Dashboard.WinsockExtensionsTests
+
+25: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.WinsockExtensionsTests.exe
+25: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+25: Test timeout computed to be: 120
+25: Dashboard Winsock extension tests passed: 396 assertions.
+4/6 Test #25: ForgeConductor.Dashboard.WinsockExtensionsTests ...   Passed    0.04 sec
+test 26
+    Start 26: ForgeConductor.Dashboard.AcceptSlotTests
+
+26: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.AcceptSlotTests.exe
+26: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+26: Test timeout computed to be: 120
+26: Dashboard accept slot tests passed: 370 assertions
+5/6 Test #26: ForgeConductor.Dashboard.AcceptSlotTests ..........   Passed    0.03 sec
+test 27
+    Start 27: ForgeConductor.Dashboard.AcceptSlotSetTests
+
+27: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.AcceptSlotSetTests.exe
+27: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+27: Test timeout computed to be: 120
+27: DashboardAcceptSlotSetTests passed 22 cases with 330 assertions.
+6/6 Test #27: ForgeConductor.Dashboard.AcceptSlotSetTests .......   Passed    0.05 sec
+
+The following tests passed:
+	ForgeConductor.Dashboard.IoCompletionPortTests
+	ForgeConductor.Dashboard.IocpWorkerKernelTests
+	ForgeConductor.Dashboard.ListeningSocketTests
+	ForgeConductor.Dashboard.WinsockExtensionsTests
+	ForgeConductor.Dashboard.AcceptSlotTests
+	ForgeConductor.Dashboard.AcceptSlotSetTests
+
+100% tests passed out of 6
+
+Label Time Summary:
+G16         =   1.06 sec*proc (6 tests)
+T-MGR       =   1.06 sec*proc (6 tests)
+T-SEC       =   0.16 sec*proc (4 tests)
+T-STRESS    =   1.06 sec*proc (6 tests)
+T-UNIT      =   1.06 sec*proc (6 tests)
+
+Total Test time (real) =   1.08 sec

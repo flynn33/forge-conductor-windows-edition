@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-iocp-listener-acceptex",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260828T031003553Z-7427c30b.json",
+    "command_record_sha256": "c68254893027c75eae519182088813aa50d30ce93d3d55d054d15e60cf20b27c",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 6,
+    "configuration": "Debug",
+    "stdout_sha256": "4c9e30df2ef18f9636df356d5849e42ea63fea32538d923a7f29992c542d5575",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T031104162Z-1f72ab3a.json",
+    "command_record_sha256": "5a9da2e85bb406554eb9fc5a8ea3a9c3e221d7d4f49852a88b2f24b650ebc428",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "explicit_assertions_passed": 1792,
+    "real_seconds": 1.08,
+    "assertions_by_test": {
+      "ForgeConductor.Dashboard.IoCompletionPortTests": 213,
+      "ForgeConductor.Dashboard.IocpWorkerKernelTests": 69,
+      "ForgeConductor.Dashboard.ListeningSocketTests": 414,
+      "ForgeConductor.Dashboard.WinsockExtensionsTests": 396,
+      "ForgeConductor.Dashboard.AcceptSlotTests": 370,
+      "ForgeConductor.Dashboard.AcceptSlotSetTests": 330
+    },
+    "stdout_sha256": "ba3734b037fcc6da371677a8da4c13bf8c922963b12d6767568469d9f3ba9448",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260828T031121824Z-abff5ac9.json",
+      "command_record_sha256": "4464c0ad9b42c5d55ba5ef9670079666d0401b97e57122bfbcf434cbf6211e95",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260828T031133584Z-e8713333.json",
+      "command_record_sha256": "c30c2da51a4a465817ddfbd0cd2d7029e16999bd739bb40e206f47eb4bd902b9",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 20 implementation, test, build, and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260828T031159088Z-b8abe168.json",
+      "command_record_sha256": "8f011bfb8b805db224e57227591b7aebd74e3ef6e9c575c14dbb7ff7b84a484e",
+      "exit_code": 0,
+      "files_passed": 20
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260828T031441534Z-b2496edc.json",
+      "command_record_sha256": "b5b3fcc03538e0c75f574b1fe1fa125dd2135a83ad3e11a76aa03626f556ae28",
+      "exit_code": 0,
+      "events_verified": 350
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260828T031707459Z-4e8a46cb.json",
+      "command_record_sha256": "fe876a2f02f4f6c77a07560b284619c99e0d55c3ec6e4e45dd887dad7c30b9a3",
+      "exit_code": 0
+    }
+  ],
+  "invariant_audit": {
+    "corrections": [
+      "Workers no longer exit on a finite dequeue timeout while an admitted native call still delays shutdown-control posting.",
+      "Reserved shutdown control packets use an allocation-free fixed result, so native post failure still activates the bounded timeout fallback under resource pressure.",
+      "A matching nonzero-byte AcceptEx completion is consumed and its exact slot drained before the integrity failure closes the generation.",
+      "Cancellation snapshots and public close results contain fixed lifecycle classifications while the complete first typed error remains owned for an explicit diagnostic copy.",
+      "Successful accepts pause their slots and return one-shot identity/index/sequence tokens; no replacement AcceptEx is issued before external connection admission.",
+      "Closing with a token outstanding retains that slot as awaiting return and cannot report full drain until the token returns without issuing new work."
+    ],
+    "independent_review_status": "Independent lifecycle and next-slice integration audits found and closed the worker barrier, allocation-free control-post, malformed completion consumption, retained diagnostics, caller-controlled accept resume, four-token saturation, cross-set token, and close-versus-resume evidence gaps before the retained build."
+  },
+  "behavior_proved": [
+    "one IOCP is created with concurrency four and exactly four persistent workers enter before startup succeeds",
+    "shutdown closes native-call admission, preserves workers across finite waits until admitted calls leave, posts exactly four fixed control packets, and has a five-second total drain bound",
+    "fatal dequeue state is retained and delivered once, including re-entrant shutdown from the completion sink",
+    "IPv4 and IPv6 listeners bind only the exact configured loopback address with exclusive address use, IPv6-only mode, exact bound-address verification, and backlog 40",
+    "AcceptEx and GetAcceptExSockaddrs are discovered from the exact listener provider and enforce zero receive bytes plus exact padded address regions",
+    "each heap-stable accept slot retains its socket, address buffer, and OVERLAPPED through issue, cancellation request, and exact completion reap",
+    "the listener generation associates before exactly four initial accepts, preserves partial-start operations, and drains cancellation without freeing referenced storage",
+    "successful accepts transfer owned validated local/remote addresses and a move-only socket while withholding a one-shot resume token",
+    "four withheld tokens leave zero issued accepts and four paused obligations; cross-set, duplicate, malformed, and closed-generation token paths cannot exceed the fixed slot bound",
+    "automatic retry is restricted to retryable per-client transport closure; listener-wide and explicit replacement failures close admission and cancel peers",
+    "real IPv4 and IPv6 create, connect, AcceptEx, context update, address extraction, explicit resume, cancellation, reap, and full-drain paths pass on this Windows 11 machine"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "e9eb24e70b25a7013e4424ee8f90db067e64179b69e4dbb903e4018c75f62252",
+    ".forge-codex/state/decisions/P16-011-fixed-iocp-listener-and-acceptex-lifetimes.md": "ac1630fe8fc6825de059bdba73370cab4e2b22106fb73f7f5a3b323c3d9095f7",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlot.h": "a8be929a71e9a2001fb3438ded1adbc22359a2bb8c272057f2df323533e4bf36",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlot.cpp": "5f45576c8e94eefb1b969e861d6397be6116ee154cef4e236c849a74b5ead79d",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.h": "83c01aba21f26c585c04caae79ff1fe7be784fd4b90b3351585af0ef92127fa6",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.cpp": "b74d32e6a1e920b9dceccf69d339edbd60b29b6fc467d8554af0936dd4f1a4ef",
+    "src/Infrastructure/Windows/Detail/DashboardIoCompletionPort.h": "784bbef3738c2046e8b61e068d5e1a2aef185970f5dc39481611427f30028f20",
+    "src/Infrastructure/Windows/Detail/DashboardIoCompletionPort.cpp": "9e88ef0d24579f6a75bc993f075a87ef9e85b11b3802cb8139b9650d7eb5f013",
+    "src/Infrastructure/Windows/Detail/DashboardIocpWorkerKernel.h": "472d40fe65dcaabf5fa8885401d846f3577ff4039b366eb986e69b9cfc05f460",
+    "src/Infrastructure/Windows/Detail/DashboardIocpWorkerKernel.cpp": "c87a410e6d3740843775422da0ebd79001aacd9cd3d7ad27a2ad13cf041ba864",
+    "src/Infrastructure/Windows/Detail/DashboardListeningSocket.h": "72d3aeadc7620fdadf6cb3ba29a7677a14a4bde20150f33c914ca7d056498bc2",
+    "src/Infrastructure/Windows/Detail/DashboardListeningSocket.cpp": "206604a4ba488b77982dae053a748a74d4eb1dbd66ebbf07dafe5b222c33c7fe",
+    "src/Infrastructure/Windows/Detail/DashboardWinsockExtensions.h": "04f9ed643620db3610e8c892478cf7529b00d8c931d6990da836ad9cecc5b04c",
+    "src/Infrastructure/Windows/Detail/DashboardWinsockExtensions.cpp": "1b66cf167632d149474d78a89b8d37a938e86931f961997fb48dae4c04eaf628",
+    "tests/Dashboard/DashboardAcceptSlotTests.cpp": "72ef763d01410b942352e10e2107e95a9e91e86715fad46b80186b10b1075817",
+    "tests/Dashboard/DashboardAcceptSlotSetTests.cpp": "197febb999a9b02e038870a616e1bf1a704db16881550b528a399f60310f3d32",
+    "tests/Dashboard/DashboardIoCompletionPortTests.cpp": "cddc12dd8ca576ba56daa593cfc044ef7564b77f8eebc2fc4d916b2929214c49",
+    "tests/Dashboard/DashboardIocpWorkerKernelTests.cpp": "88c7b9d2d2288a0f96c8fa21f3c12f0fe1f066e962c7da9e76caf2889eb774bb",
+    "tests/Dashboard/DashboardListeningSocketTests.cpp": "20a3e482b9def7c3ff33cbd8a2006351a373c2f4441504d70ba26775b9a9e921",
+    "tests/Dashboard/DashboardWinsockExtensionsTests.cpp": "09d2247d1dac4562baee3487742bc079c169bc0b92bd07e0ac722a59f3b03aea"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.IoCompletionPortTests.exe": "a29edccd479e7a540918039b8a03c17d258583c709eea25d34132d65d0ee93c2",
+    "ForgeConductor.Dashboard.IocpWorkerKernelTests.exe": "280ed0fdd9077ac7a74dc0fad380f8ded199615cd138e9720a02bb5e23e6410d",
+    "ForgeConductor.Dashboard.ListeningSocketTests.exe": "74ab697050f71df3ba8d9c53046e6075c4b7e1b5225b8de3cae76a94e7b88010",
+    "ForgeConductor.Dashboard.WinsockExtensionsTests.exe": "1b2c8d40c9d505f810eb02f4c397f2fd4dabf6cb115e1646fb7f91c5845c6eb2",
+    "ForgeConductor.Dashboard.AcceptSlotTests.exe": "aeed0bd15a3397f9321493ed985ba0098932a60911b8503596b1fd550aa7339b",
+    "ForgeConductor.Dashboard.AcceptSlotSetTests.exe": "5b19e4b807d99512e28d3640c48cb3a70796b3bf2a84460a20ed960858be2355"
+  },
+  "remaining_limitations": [
+    "The deadline-to-IOCP bridge, bounded connection receive/send state machine, four fixed overload responders, and post-delivery executor reservation remain pending.",
+    "Two-generation listener rebind, generation retirement, graceful connection drain, SSE socket flow, and production dashboard-server composition remain pending.",
+    "The production manager composition has not yet wired the operational data source or sole-consumer telemetry fan-out.",
+    "The store contains no functional alpha frontend shell yet; retained UI automation remains pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

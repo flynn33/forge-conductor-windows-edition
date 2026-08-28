@@ -195,8 +195,14 @@ target_link_libraries(ForgeConductor.Application PUBLIC
 
 add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp
+    src/Infrastructure/Windows/Detail/DashboardAcceptSlot.cpp
+    src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.cpp
     src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.cpp
+    src/Infrastructure/Windows/Detail/DashboardIoCompletionPort.cpp
+    src/Infrastructure/Windows/Detail/DashboardIocpWorkerKernel.cpp
+    src/Infrastructure/Windows/Detail/DashboardListeningSocket.cpp
     src/Infrastructure/Windows/Detail/DashboardLoopbackEndpoint.cpp
+    src/Infrastructure/Windows/Detail/DashboardWinsockExtensions.cpp
     src/Infrastructure/Windows/Detail/DashboardWinsockRuntime.cpp
     src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp
     src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp)
@@ -803,6 +809,114 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Dashboard.WinsockRuntimeTests PROPERTIES
         LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.IoCompletionPortTests
+        tests/Dashboard/DashboardIoCompletionPortTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.IoCompletionPortTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.IoCompletionPortTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.IoCompletionPortTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.IoCompletionPortTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.IoCompletionPortTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.IoCompletionPortTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.IocpWorkerKernelTests
+        tests/Dashboard/DashboardIocpWorkerKernelTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.IocpWorkerKernelTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.IocpWorkerKernelTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.IocpWorkerKernelTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.IocpWorkerKernelTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.IocpWorkerKernelTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.IocpWorkerKernelTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ListeningSocketTests
+        tests/Dashboard/DashboardListeningSocketTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ListeningSocketTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ListeningSocketTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ListeningSocketTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ListeningSocketTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ListeningSocketTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ListeningSocketTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.WinsockExtensionsTests
+        tests/Dashboard/DashboardWinsockExtensionsTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.WinsockExtensionsTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.WinsockExtensionsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.WinsockExtensionsTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.WinsockExtensionsTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.WinsockExtensionsTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.WinsockExtensionsTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.AcceptSlotTests
+        tests/Dashboard/DashboardAcceptSlotTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.AcceptSlotTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.AcceptSlotTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.AcceptSlotTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.AcceptSlotTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.AcceptSlotTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.AcceptSlotTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.AcceptSlotSetTests
+        tests/Dashboard/DashboardAcceptSlotSetTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.AcceptSlotSetTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.AcceptSlotSetTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.AcceptSlotSetTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.AcceptSlotSetTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.AcceptSlotSetTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.AcceptSlotSetTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.DeadlineSchedulerTests

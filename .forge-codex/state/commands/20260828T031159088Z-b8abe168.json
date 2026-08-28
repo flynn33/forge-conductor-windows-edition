@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T031159088Z-b8abe168",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$files = @(\n  'CMakeLists.txt',\n  '.forge-codex\\state\\decisions\\P16-011-fixed-iocp-listener-and-acceptex-lifetimes.md',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardAcceptSlot.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardAcceptSlot.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardAcceptSlotSet.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardAcceptSlotSet.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardIoCompletionPort.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardIoCompletionPort.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardIocpWorkerKernel.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardIocpWorkerKernel.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardListeningSocket.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardListeningSocket.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardWinsockExtensions.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardWinsockExtensions.cpp',\n  'tests\\Dashboard\\DashboardAcceptSlotTests.cpp',\n  'tests\\Dashboard\\DashboardAcceptSlotSetTests.cpp',\n  'tests\\Dashboard\\DashboardIoCompletionPortTests.cpp',\n  'tests\\Dashboard\\DashboardIocpWorkerKernelTests.cpp',\n  'tests\\Dashboard\\DashboardListeningSocketTests.cpp',\n  'tests\\Dashboard\\DashboardWinsockExtensionsTests.cpp'\n)\n$utf8 = [System.Text.UTF8Encoding]::new($false, $true)\nforeach ($file in $files) {\n  $bytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) $file))\n  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { throw \"UTF-8 BOM: $file\" }\n  $text = $utf8.GetString($bytes)\n  if ($text -match '(?<!\\r)\\n' -or $text -match '\\r(?!\\n)') { throw \"Non-CRLF line ending: $file\" }\n  if (-not $text.EndsWith(\"`r`n\", [System.StringComparison]::Ordinal)) { throw \"Missing final CRLF: $file\" }\n}\n\"Text policy passed for $($files.Count) files.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T03:11:59.0954724+00:00",
+  "end_utc": "2026-08-28T03:12:00.3184088+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T031159088Z-b8abe168.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T031159088Z-b8abe168.stderr.txt",
+  "stdout_sha256": "b17c6c854ceea0d4918abbd581a53079243e518e11511d591e85b8188b57d042",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}
