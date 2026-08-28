@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T000048987Z-10dea88d",
+  "phase": "P16",
+  "role": "Builder",
+  "command": "$files = @('CMakeLists.txt','.forge-codex/state/decisions/P16-008-closed-dashboard-application-dispatch-and-json-boundary.md','include/ForgeConductor/Application/DashboardConnectionApplication.h','include/ForgeConductor/Dashboard/DashboardApplicationErrorMapper.h','include/ForgeConductor/Dashboard/DashboardApplicationJsonCodec.h','include/ForgeConductor/Dashboard/DashboardApplicationModels.h','include/ForgeConductor/Dashboard/DashboardSessionCloseRequest.h','include/ForgeConductor/Dashboard/DashboardSessionCloseRequestDecoder.h','include/ForgeConductor/Dashboard/IDashboardOperationalService.h','include/ForgeConductor/Dashboard/IDashboardTelemetrySource.h','src/Application/DashboardConnectionApplication.cpp','src/Dashboard/DashboardApplicationErrorMapper.cpp','src/Dashboard/DashboardApplicationJsonCodec.cpp','src/Dashboard/DashboardSessionCloseRequestDecoder.cpp','tests/Application/DashboardConnectionApplicationTests.cpp','tests/Dashboard/DashboardApplicationErrorMapperTests.cpp','tests/Dashboard/DashboardApplicationJsonCodecTests.cpp','tests/Dashboard/DashboardSessionCloseRequestDecoderTests.cpp'); $utf8 = [Text.UTF8Encoding]::new($false, $true); foreach ($file in $files) { $bytes = [IO.File]::ReadAllBytes((Join-Path (Get-Location) $file)); if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { throw \"UTF-8 BOM found: $file\" }; $text = $utf8.GetString($bytes); if ($text -match '(?<!\\r)\\n' -or $text -match '\\r(?!\\n)') { throw \"Non-CRLF line ending found: $file\" }; if (-not $text.EndsWith(\"`r`n\")) { throw \"Missing final CRLF: $file\" } }; Write-Output \"CRLF UTF-8 no-BOM validation passed for $($files.Count) files.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T00:00:48.9955578+00:00",
+  "end_utc": "2026-08-28T00:00:50.3032272+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T000048987Z-10dea88d.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T000048987Z-10dea88d.stderr.txt",
+  "stdout_sha256": "34bd7a19598d95fa3728f39cb646c77ae063b36ee3e2006f959af2b0028aa1f5",
+  "stderr_sha256": "2ce70d6c8c9ad6726c794690c8b14a2b83673648cac88edf4ff1acc50ec46348"
+}

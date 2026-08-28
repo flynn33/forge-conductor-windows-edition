@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-application-boundary",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "final_build": {
+    "command_record": ".forge-codex/state/commands/20260827T235857569Z-53abd77e.json",
+    "command_record_sha256": "4654a90c69a07fa6c98a1d931e746e0f533c2badf230127b9c428c09fad878a8",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 4,
+    "configuration": "Debug",
+    "stdout_sha256": "4b9097e6820162b7dc3b87d965e50ca8c2629fd7fefa37730304752c6c7eb424",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "final_validation": {
+    "command_record": ".forge-codex/state/commands/20260827T235943096Z-0131a613.json",
+    "command_record_sha256": "df01617fec55d27e435d13555592c17644a722453e84847291ffa7c1e2fab8a8",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 4,
+    "tests_failed": 0,
+    "explicit_assertions_passed": 2690,
+    "real_seconds": 0.25,
+    "assertions_by_test": {
+      "ForgeConductor.Dashboard.ApplicationErrorMapperTests": 217,
+      "ForgeConductor.Dashboard.ApplicationJsonCodecTests": 138,
+      "ForgeConductor.Dashboard.SessionCloseRequestDecoderTests": 634,
+      "ForgeConductor.Dashboard.ConnectionApplicationTests": 1701
+    },
+    "stdout_sha256": "5a5218a476883a239f3828f685e7fda3720447eeea84dd4ce99370b876116c95",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260828T000014277Z-bc6e7d58.json",
+      "command_record_sha256": "3c8de2aa28c9e58fada79a5149eca2ed35d5cd2280692d283fb9ad0042aa39ba",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260828T000014476Z-29f7aff7.json",
+      "command_record_sha256": "6474443a18f509967dd62de5164aae1cea2c46026a8b37cf3284b6be6cb2c379",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 18 implementation, test, build, and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260828T000048987Z-10dea88d.json",
+      "command_record_sha256": "5aedc5ff5b48481a53d5499ca7f83833a9967135f41df992d9514a6784554e22",
+      "exit_code": 0,
+      "files_passed": 18
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event and first verification attempt",
+      "command_record": ".forge-codex/state/commands/20260828T000333140Z-9ce8de9c.json",
+      "command_record_sha256": "0f3507143341f56b46fefab104cdfe215a9fd9c45557111f0136b528bd926511",
+      "exit_code": 0,
+      "events_verified": 321,
+      "superseded_command_record": ".forge-codex/state/commands/20260828T000309769Z-4adae481.json",
+      "superseded_command_record_sha256": "7a77b3a94b6e4ca0045d555e8361b0762b28a9c24a4f93e5e817975442806d67",
+      "superseded_reason": "The first invocation supplied the script's parameter as StateRoot instead of WorkspaceRoot and exited 1 before reading the ledger. The corrected invocation verified the chain through that failed command event."
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260828T000446551Z-38a88e22.json",
+      "command_record_sha256": "66e67b7d98ffbd612db3035c8a40129403c3f387aeb6eefcbc82979e8fd6d14f",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "scope": "dashboard application models and ports, bounded JSON projections, session-close decoding, error mapping, route dispatch, context propagation, exchange ownership, tests, and CMake layering",
+    "initial_findings": [
+      "The first codec draft used local doctor and audit budgets instead of the shared application limits, accepted terminal rows in open-session projections, and emitted fractional seconds unlike the released macOS Internet-date-time encoder.",
+      "The first handler draft supplied Cache-Control as an extra asset header even though the response encoder owns and emits that policy, causing otherwise valid shell/static responses to close as bounded 500 errors."
+    ],
+    "corrections": [
+      "The codec now uses the shared 128-check, 512 KiB audit/doctor, and identity budgets; validates Domain::isOpen for open collections; requires nonzero identity/presence process identifiers; and emits second-resolution timestamps.",
+      "Asset dispatch now supplies no cache-control extra header and relies on the response encoder's single no-store policy. Every released route then passed the concrete boundary suite."
+    ],
+    "post_correction_result": "Two independent source/test reviews found no remaining application-boundary P1/P2 issue. An additional CodeRabbit CLI review was attempted but unavailable because its installer rejects this Windows host and no WSL distribution is installed; it produced no source assessment and no repository changes."
+  },
+  "behavior_proved": [
+    "the application boundary is final and noncopyable, owns immutable listener-generation policy/identity values, and depends only on injected transport-neutral ports",
+    "all released shell, static, telemetry, status, operational, manager, settings, control, and shutdown routes dispatch through one closed route switch",
+    "policy, route, decoder, and stopped-service rejections short-circuit without touching dependencies; every HEAD rejection has the corresponding representation length, no body, and no post-delivery action",
+    "status uses one operation context and short-circuits in operational-telemetry-manager order while preserving exact top-level manager and service_active fields",
+    "telemetry aliases use one owned observation per request, reject a successful null observation safely, and SSE subscription ownership closes exactly once on capacity, invalid-rate, or response-boundary failure",
+    "dependency messages and evidence identifiers are never reflected; request, dependency, stream, and response-encoding failures map to closed public response metadata",
+    "application JSON preserves released field names, null/omission behavior, agent-body exclusion, second-resolution UTC timestamps, and exact prune and shutdown acknowledgements",
+    "session-close decoding rejects oversized, malformed, deeply nested, duplicate, unknown, invalid UTF-8, NUL, noncanonical identifier, and overlong-summary bodies while retaining the released missing-id and default-summary behavior",
+    "manager shutdown is not called during prepare; the acknowledgement owns only RequestManagerShutdown, which executes after delivery with a fresh context and propagates post-delivery failure",
+    "all response and source limits reject rather than truncate, including open-session semantics and the 20/40/80/100 status/session/audit/diagnostic collection caps"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "bd158d5b39843a1d5ffbf6933f338d84dde61141cd53e2a1015e968539570fe4",
+    ".forge-codex/state/decisions/P16-008-closed-dashboard-application-dispatch-and-json-boundary.md": "34d3bcf6b5059055061d0216c8f85781e0fc98bdb6bfa5970afe060109fed57a",
+    "include/ForgeConductor/Application/DashboardConnectionApplication.h": "47197f78fdd9a03f379475c8ff8bb670eab57900738786b57afc48d4e8fbffd0",
+    "include/ForgeConductor/Dashboard/DashboardApplicationErrorMapper.h": "1e75f053c23423240c8875ecfb290b4457a2862d7651fa6925c68c21861d0977",
+    "include/ForgeConductor/Dashboard/DashboardApplicationJsonCodec.h": "1455d2ff87b908293dbf8308db5775cdf7a80776340302c4a8ba5adf6d011aff",
+    "include/ForgeConductor/Dashboard/DashboardApplicationModels.h": "237711d6fd83e1a4b38d90c3ffaf29a1e18a2fcae0f567f68a5ab6c40970f6c4",
+    "include/ForgeConductor/Dashboard/DashboardSessionCloseRequest.h": "0143e0f1290a06fb36bcb80ddd9b63a5cfb0c2364f5b9288cfcbeb0c40f01173",
+    "include/ForgeConductor/Dashboard/DashboardSessionCloseRequestDecoder.h": "e65d68c06a299d19141c5bed6a73d32ca78b94f1da502007df03ced3dd29cec4",
+    "include/ForgeConductor/Dashboard/IDashboardOperationalService.h": "e1038bab059b1638da257729911849b12d8dbe671cfe2a824b77d1acd8cc96ed",
+    "include/ForgeConductor/Dashboard/IDashboardTelemetrySource.h": "079203cfe9c6a1f5dfbfd58c7d43b45efce7b3b1006c2ad6ee7584f1acf98d2e",
+    "src/Application/DashboardConnectionApplication.cpp": "816f4d76f84c684188310c16062a1b5199b0244bafbc1acd838d0b1c67d1a6c7",
+    "src/Dashboard/DashboardApplicationErrorMapper.cpp": "cd58a46ce9a9d53e246972163ef87785fdef64da384f4229a5071740989dccd5",
+    "src/Dashboard/DashboardApplicationJsonCodec.cpp": "b356ebbb3f9e4b0c8ec78c28188f3df4d7137ffa82dc72dba395b3566cf9542b",
+    "src/Dashboard/DashboardSessionCloseRequestDecoder.cpp": "0bbf11c6575dd03e592930aeb077feb34c69e5afca33139fd378c3f7dde73f5c",
+    "tests/Application/DashboardConnectionApplicationTests.cpp": "7ffd05e01e4a9893504f4f1400367556971ce2313612316e60bf7470c84999ee",
+    "tests/Dashboard/DashboardApplicationErrorMapperTests.cpp": "dae47a4a450b0af73470de0d643f999bbb7f80349dbb949a996600c1be31aed9",
+    "tests/Dashboard/DashboardApplicationJsonCodecTests.cpp": "3a34cb7665de58b356a34dd5ff6378e8a3fb80faa687ea98cd983814bc73d605",
+    "tests/Dashboard/DashboardSessionCloseRequestDecoderTests.cpp": "c6c67b6b76ebf9ea69e023b19293966dd5643f5cecc53ca087fd7f09f07c2a69"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.ApplicationErrorMapperTests.exe": "dd0d0ace21daaf2a49c87759b9def3cd130e7b435edec11526e4891fdfe39504",
+    "ForgeConductor.Dashboard.ApplicationJsonCodecTests.exe": "21506fc3daceddaf39d76fbdc986a815e97ca023a6f51712422c26604bb729c3",
+    "ForgeConductor.Dashboard.SessionCloseRequestDecoderTests.exe": "cf6f2e13a28ad2bd04b74858f4362339b1d5aa395269407cf68562dc18ecbb77",
+    "ForgeConductor.Dashboard.ConnectionApplicationTests.exe": "1683dd0573927f781e48ad66941e44c5da9160ce91aa151b3ceeda423acb490f"
+  },
+  "remaining_limitations": [
+    "Concrete adapters for telemetry and operational services are not implemented or composed into the manager runtime by this checkpoint.",
+    "The bounded four-worker handler executor, overlapped Winsock listener, shared IOCP workers, connection deadlines, overload responses, SSE keepalive/delivery, and shutdown drain remain unimplemented.",
+    "Two-phase listener rebind, generation retirement, concrete manager composition, and disconnect-sensitive post-delivery scheduling remain pending.",
+    "The store contains no functional alpha frontend assets yet; production composition and retained UI automation remain pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

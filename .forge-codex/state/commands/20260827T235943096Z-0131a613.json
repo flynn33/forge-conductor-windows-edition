@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260827T235943096Z-0131a613",
+  "phase": "P16",
+  "role": "Builder",
+  "command": "ctest --test-dir out\\build\\windows-msvc-x64 -C Debug --output-on-failure -R '^ForgeConductor\\.Dashboard\\.(ApplicationErrorMapperTests|ApplicationJsonCodecTests|SessionCloseRequestDecoderTests|ConnectionApplicationTests)$'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-27T23:59:43.1036883+00:00",
+  "end_utc": "2026-08-27T23:59:44.3252870+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260827T235943096Z-0131a613.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260827T235943096Z-0131a613.stderr.txt",
+  "stdout_sha256": "5a5218a476883a239f3828f685e7fda3720447eeea84dd4ce99370b876116c95",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

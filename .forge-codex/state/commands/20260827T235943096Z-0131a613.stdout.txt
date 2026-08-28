@@ -1,0 +1,22 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  9: ForgeConductor.Dashboard.ApplicationErrorMapperTests
+1/4 Test  #9: ForgeConductor.Dashboard.ApplicationErrorMapperTests .......   Passed    0.03 sec
+    Start 10: ForgeConductor.Dashboard.ApplicationJsonCodecTests
+2/4 Test #10: ForgeConductor.Dashboard.ApplicationJsonCodecTests .........   Passed    0.05 sec
+    Start 11: ForgeConductor.Dashboard.SessionCloseRequestDecoderTests
+3/4 Test #11: ForgeConductor.Dashboard.SessionCloseRequestDecoderTests ...   Passed    0.07 sec
+    Start 12: ForgeConductor.Dashboard.ConnectionApplicationTests
+4/4 Test #12: ForgeConductor.Dashboard.ConnectionApplicationTests ........   Passed    0.08 sec
+
+100% tests passed out of 4
+
+Label Time Summary:
+G16         =   0.23 sec*proc (4 tests)
+T-MGR       =   0.23 sec*proc (4 tests)
+T-PARITY    =   0.23 sec*proc (4 tests)
+T-SEC       =   0.20 sec*proc (3 tests)
+T-STRESS    =   0.08 sec*proc (1 test)
+T-TEL       =   0.13 sec*proc (2 tests)
+T-UNIT      =   0.23 sec*proc (4 tests)
+
+Total Test time (real) =   0.25 sec

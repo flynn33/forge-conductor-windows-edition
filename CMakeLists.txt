@@ -125,6 +125,7 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/ClientPresenceLifecycle.cpp
     src/Application/ContinuityAutomation.cpp
     src/Application/ContinuityCoordinator.cpp
+    src/Application/DashboardConnectionApplication.cpp
     src/Application/LegacyContextContinuityService.cpp
     src/Application/LegacyMemoryService.cpp
     src/Application/ManagerController.cpp
@@ -161,6 +162,8 @@ target_link_libraries(ForgeConductor.Manager.Host PUBLIC
     ForgeConductor::Manager.Protocol)
 
 add_library(ForgeConductor.Dashboard.Protocol STATIC
+    src/Dashboard/DashboardApplicationErrorMapper.cpp
+    src/Dashboard/DashboardApplicationJsonCodec.cpp
     src/Dashboard/DashboardHttpParser.cpp
     src/Dashboard/DashboardHttpResponse.cpp
     src/Dashboard/DashboardManagerJsonCodec.cpp
@@ -168,6 +171,7 @@ add_library(ForgeConductor.Dashboard.Protocol STATIC
     src/Dashboard/DashboardRequestPlanner.cpp
     src/Dashboard/DashboardResponseComposer.cpp
     src/Dashboard/DashboardRouteCatalog.cpp
+    src/Dashboard/DashboardSessionCloseRequestDecoder.cpp
     src/Dashboard/DashboardSseBroadcaster.cpp
     src/Dashboard/DashboardSseFrameEncoder.cpp
     src/Dashboard/DashboardStaticAssetStore.cpp
@@ -183,6 +187,8 @@ target_include_directories(ForgeConductor.Dashboard.Protocol PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(ForgeConductor.Dashboard.Protocol PRIVATE
     nlohmann_json::nlohmann_json)
+target_link_libraries(ForgeConductor.Application PUBLIC
+    ForgeConductor::Dashboard.Protocol)
 
 add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp)
@@ -577,6 +583,69 @@ if(BUILD_TESTING)
         ForgeConductor.Dashboard.PreparedExchangeTests PROPERTIES
         LABELS "G16;T-MGR;T-TEL;T-UNIT"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.ApplicationErrorMapperTests
+        tests/Dashboard/DashboardApplicationErrorMapperTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.ApplicationErrorMapperTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.ApplicationErrorMapperTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.ApplicationErrorMapperTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ApplicationErrorMapperTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ApplicationErrorMapperTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.ApplicationJsonCodecTests
+        tests/Dashboard/DashboardApplicationJsonCodecTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.ApplicationJsonCodecTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.ApplicationJsonCodecTests PRIVATE
+        ForgeConductor::Dashboard.Protocol
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Dashboard.ApplicationJsonCodecTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ApplicationJsonCodecTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ApplicationJsonCodecTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.SessionCloseRequestDecoderTests
+        tests/Dashboard/DashboardSessionCloseRequestDecoderTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.SessionCloseRequestDecoderTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.SessionCloseRequestDecoderTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.SessionCloseRequestDecoderTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.SessionCloseRequestDecoderTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.SessionCloseRequestDecoderTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionApplicationTests
+        tests/Application/DashboardConnectionApplicationTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.ConnectionApplicationTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionApplicationTests PRIVATE
+        ForgeConductor::Application
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionApplicationTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionApplicationTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionApplicationTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT;T-STRESS"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.ResponseComposerTests
         tests/Dashboard/DashboardResponseComposerTests.cpp)
