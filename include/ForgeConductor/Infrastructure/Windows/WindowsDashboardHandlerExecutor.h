@@ -86,14 +86,48 @@ public:
 };
 
 // Fixed blocking-work boundary for the loopback dashboard. The executor owns
-// exactly four persistent workers and up to eight pending move-only tasks. It
-// never creates a thread for a connection. Submission and completion posting
-// are nonblocking.
+// exactly four persistent workers. Pending move-only tasks and live
+// post-delivery reservations share one capacity of eight. It never creates a
+// thread for a connection. Submission and completion posting are nonblocking.
 class WindowsDashboardHandlerExecutor final {
+private:
+    class Impl;
+
 public:
     static constexpr std::size_t WorkerCount = 4U;
     static constexpr std::size_t QueueCapacity = 8U;
     static constexpr auto ShutdownDrainTimeout = std::chrono::seconds{5};
+
+    // Move-only ownership of one future PostDelivery queue position. A live
+    // reservation shares the executor's fixed queue capacity with pending
+    // tasks. Validation failures preserve ownership; only a successful FIFO
+    // enqueue consumes it. Destruction or release returns unused capacity.
+    class Reservation final {
+    public:
+        Reservation() noexcept = default;
+        ~Reservation() noexcept;
+
+        Reservation(const Reservation&) = delete;
+        Reservation& operator=(const Reservation&) = delete;
+        Reservation(Reservation&& other) noexcept;
+        Reservation& operator=(Reservation&& other) noexcept;
+
+        [[nodiscard]] bool valid() const noexcept;
+
+        [[nodiscard]] Domain::Result<void> trySubmit(
+            std::unique_ptr<IDashboardHandlerOperation> operation,
+            Domain::OperationContext context,
+            std::weak_ptr<IDashboardHandlerCompletionSink> completionSink)
+            && noexcept;
+
+        void release() noexcept;
+
+    private:
+        friend class Impl;
+
+        std::shared_ptr<Impl> implementation_;
+        bool ownsCapacity_{};
+    };
 
     [[nodiscard]] static Domain::Result<
         std::unique_ptr<WindowsDashboardHandlerExecutor>>
@@ -116,12 +150,21 @@ public:
         std::weak_ptr<IDashboardHandlerCompletionSink> completionSink)
         noexcept;
 
+    // Reserves one of the eight pending positions before transport delivery
+    // begins. The resulting token can convert that position into exactly one
+    // PostDelivery task without another capacity race.
+    [[nodiscard]] Domain::Result<Reservation> tryReservePostDelivery()
+        noexcept;
+
     [[nodiscard]] std::size_t pendingCount() const noexcept;
+    [[nodiscard]] std::size_t reservationCount() const noexcept;
     [[nodiscard]] std::size_t activeCount() const noexcept;
     [[nodiscard]] bool isShuttingDown() const noexcept;
 
     // beginShutdown is nonblocking and safe from a worker completion sink. It
-    // rejects new tasks and requests cancellation for queued and active work.
+    // rejects new tasks and reservations, invalidates live reservations for
+    // submission, and requests cancellation for queued and active work. Live
+    // tokens remain safe capacity owners until they release or destruct.
     void beginShutdown() noexcept;
 
     // shutdown cancellation-drains accepted tasks and joins every worker when
@@ -134,8 +177,6 @@ public:
     void shutdown() noexcept;
 
 private:
-    class Impl;
-
     explicit WindowsDashboardHandlerExecutor(
         std::shared_ptr<Impl> implementation) noexcept;
 

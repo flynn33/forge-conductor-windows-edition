@@ -72,6 +72,13 @@ namespace {
         "The dashboard handler task returned the wrong completion kind.");
 }
 
+[[nodiscard]] Domain::Error invalidReservationError()
+{
+    return executorError(
+        Domain::ErrorCodes::Conflict,
+        "The dashboard post-delivery reservation no longer owns capacity.");
+}
+
 class StopRelay final {
 public:
     explicit StopRelay(std::stop_source source) noexcept
@@ -304,12 +311,12 @@ public:
                         "The dashboard handler task changed kind during "
                         "admission."));
                 }
-                if (pending_.size() >=
+                if (pending_.size() + reservationCount_ >=
                     WindowsDashboardHandlerExecutor::QueueCapacity) {
                     return Domain::Result<void>::failure(executorError(
                         Domain::ErrorCodes::LimitExceeded,
-                        "The dashboard handler queue reached its configured "
-                        "capacity.",
+                        "The dashboard handler queue and reservations reached "
+                        "their configured capacity.",
                         true));
                 }
                 pending_.push_back(std::move(task));
@@ -323,11 +330,164 @@ public:
         }
     }
 
+    [[nodiscard]] Domain::Result<
+        WindowsDashboardHandlerExecutor::Reservation>
+    tryReservePostDelivery() noexcept
+    {
+        try {
+            WindowsDashboardHandlerExecutor::Reservation reservation;
+            reservation.implementation_ = shared_from_this();
+            {
+                const std::lock_guard lock{stateMutex_};
+                if (stopping_) {
+                    return Domain::Result<
+                        WindowsDashboardHandlerExecutor::Reservation>::failure(
+                        executorError(
+                            Domain::ErrorCodes::TransportClosed,
+                            "The dashboard handler executor is shutting "
+                            "down."));
+                }
+                if (pending_.size() + reservationCount_ >=
+                    WindowsDashboardHandlerExecutor::QueueCapacity) {
+                    return Domain::Result<
+                        WindowsDashboardHandlerExecutor::Reservation>::failure(
+                        executorError(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "The dashboard handler queue and reservations "
+                            "reached their configured capacity.",
+                            true));
+                }
+                ++reservationCount_;
+                reservation.ownsCapacity_ = true;
+            }
+            return Domain::Result<
+                WindowsDashboardHandlerExecutor::Reservation>::success(
+                std::move(reservation));
+        } catch (...) {
+            return Domain::Result<
+                WindowsDashboardHandlerExecutor::Reservation>::failure(
+                executorError(
+                    Domain::ErrorCodes::InternalFailure,
+                    "The dashboard post-delivery capacity could not be "
+                    "reserved safely."));
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> trySubmitReservedPostDelivery(
+        WindowsDashboardHandlerExecutor::Reservation& reservation,
+        std::unique_ptr<IDashboardHandlerOperation> operation,
+        Domain::OperationContext context,
+        std::weak_ptr<IDashboardHandlerCompletionSink> completionSink) noexcept
+    {
+        try {
+            if (!reservation.ownsCapacity_ ||
+                reservation.implementation_.get() != this) {
+                return Domain::Result<void>::failure(
+                    invalidReservationError());
+            }
+            if (operation == nullptr || completionSink.expired()) {
+                return Domain::Result<void>::failure(executorError(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "A reserved dashboard post-delivery task requires an "
+                    "operation and a live completion sink."));
+            }
+            const auto kind = operation->completionKind();
+            if (kind != DashboardHandlerCompletionKind::PostDelivery) {
+                return Domain::Result<void>::failure(executorError(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "A dashboard post-delivery reservation accepts only a "
+                    "PostDelivery operation."));
+            }
+            if (context.isCancellationRequested()) {
+                return Domain::Result<void>::failure(cancellationError());
+            }
+            if (context.isExpired(std::chrono::steady_clock::now())) {
+                return Domain::Result<void>::failure(deadlineError());
+            }
+
+            auto task = std::make_unique<OwnedHandlerTask>(
+                std::move(operation),
+                std::move(context),
+                std::move(completionSink));
+
+            {
+                const std::lock_guard lock{stateMutex_};
+                if (!reservation.ownsCapacity_ ||
+                    reservation.implementation_.get() != this) {
+                    return Domain::Result<void>::failure(
+                        invalidReservationError());
+                }
+                if (stopping_) {
+                    return Domain::Result<void>::failure(executorError(
+                        Domain::ErrorCodes::TransportClosed,
+                        "The dashboard handler executor is shutting down."));
+                }
+                if (task->kind() != kind) {
+                    return Domain::Result<void>::failure(executorError(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The reserved dashboard handler task changed kind "
+                        "during admission."));
+                }
+                if (reservationCount_ == 0U ||
+                    pending_.size() + reservationCount_ >
+                        WindowsDashboardHandlerExecutor::QueueCapacity) {
+                    return Domain::Result<void>::failure(executorError(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The dashboard post-delivery reservation accounting "
+                        "was inconsistent."));
+                }
+                pending_.push_back(std::move(task));
+                --reservationCount_;
+                reservation.ownsCapacity_ = false;
+            }
+            workAvailable_.notify_one();
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return Domain::Result<void>::failure(executorError(
+                Domain::ErrorCodes::InternalFailure,
+                "The reserved dashboard post-delivery task could not be "
+                "admitted safely."));
+        }
+    }
+
+    void releaseReservation() noexcept
+    {
+        try {
+            const std::lock_guard lock{stateMutex_};
+            if (reservationCount_ == 0U) {
+                std::terminate();
+            }
+            --reservationCount_;
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+    [[nodiscard]] bool reservationValid() const noexcept
+    {
+        try {
+            const std::lock_guard lock{stateMutex_};
+            return !stopping_;
+        } catch (...) {
+            return false;
+        }
+    }
+
     [[nodiscard]] std::size_t pendingCount() const noexcept
     {
         try {
             const std::lock_guard lock{stateMutex_};
             return pending_.size();
+        } catch (...) {
+            return 0U;
+        }
+    }
+
+    [[nodiscard]] std::size_t reservationCount() const noexcept
+    {
+        try {
+            const std::lock_guard lock{stateMutex_};
+            return reservationCount_;
         } catch (...) {
             return 0U;
         }
@@ -526,8 +686,71 @@ private:
     std::size_t startedWorkerCount_{};
     std::size_t exitedWorkerCount_{};
     std::size_t activeTaskCount_{};
+    std::size_t reservationCount_{};
     bool stopping_{};
 };
+
+WindowsDashboardHandlerExecutor::Reservation::~Reservation() noexcept
+{
+    release();
+}
+
+WindowsDashboardHandlerExecutor::Reservation::Reservation(
+    Reservation&& other) noexcept
+    : implementation_{std::move(other.implementation_)},
+      ownsCapacity_{std::exchange(other.ownsCapacity_, false)}
+{
+}
+
+WindowsDashboardHandlerExecutor::Reservation&
+WindowsDashboardHandlerExecutor::Reservation::operator=(
+    Reservation&& other) noexcept
+{
+    if (this != &other) {
+        release();
+        implementation_ = std::move(other.implementation_);
+        ownsCapacity_ = std::exchange(other.ownsCapacity_, false);
+    }
+    return *this;
+}
+
+bool WindowsDashboardHandlerExecutor::Reservation::valid() const noexcept
+{
+    return ownsCapacity_ && implementation_ != nullptr &&
+           implementation_->reservationValid();
+}
+
+Domain::Result<void>
+WindowsDashboardHandlerExecutor::Reservation::trySubmit(
+    std::unique_ptr<IDashboardHandlerOperation> operation,
+    Domain::OperationContext context,
+    std::weak_ptr<IDashboardHandlerCompletionSink> completionSink) && noexcept
+{
+    if (!ownsCapacity_ || implementation_ == nullptr) {
+        return Domain::Result<void>::failure(invalidReservationError());
+    }
+    auto submitted = implementation_->trySubmitReservedPostDelivery(
+        *this,
+        std::move(operation),
+        std::move(context),
+        std::move(completionSink));
+    if (submitted) {
+        implementation_.reset();
+    }
+    return submitted;
+}
+
+void WindowsDashboardHandlerExecutor::Reservation::release() noexcept
+{
+    if (!ownsCapacity_ || implementation_ == nullptr) {
+        ownsCapacity_ = false;
+        implementation_.reset();
+        return;
+    }
+    ownsCapacity_ = false;
+    auto implementation = std::move(implementation_);
+    implementation->releaseReservation();
+}
 
 Domain::Result<std::unique_ptr<WindowsDashboardHandlerExecutor>>
 WindowsDashboardHandlerExecutor::create() noexcept
@@ -576,9 +799,20 @@ Domain::Result<void> WindowsDashboardHandlerExecutor::trySubmit(
         std::move(completionSink));
 }
 
+Domain::Result<WindowsDashboardHandlerExecutor::Reservation>
+WindowsDashboardHandlerExecutor::tryReservePostDelivery() noexcept
+{
+    return implementation_->tryReservePostDelivery();
+}
+
 std::size_t WindowsDashboardHandlerExecutor::pendingCount() const noexcept
 {
     return implementation_->pendingCount();
+}
+
+std::size_t WindowsDashboardHandlerExecutor::reservationCount() const noexcept
+{
+    return implementation_->reservationCount();
 }
 
 std::size_t WindowsDashboardHandlerExecutor::activeCount() const noexcept

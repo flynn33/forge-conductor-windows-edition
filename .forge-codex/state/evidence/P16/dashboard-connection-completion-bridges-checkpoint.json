@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-connection-completion-bridges",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260828T041216179Z-8a52b0c4.json",
+    "command_record_sha256": "9d478466562a13700e01b93531704227c87df3385486918e26c9e471323aac7a",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 4,
+    "configuration": "Debug",
+    "stdout_sha256": "9cbd814ccc359acc701bdd437466e1ff16113576aef20c8c05b54fb9be43567a",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T041257742Z-d3584270.json",
+    "command_record_sha256": "0b117428fa9217c6ffe0247a517435afb7aa261f3f39b02efb377ffe5119835f",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 4,
+    "tests_failed": 0,
+    "real_seconds": 0.61,
+    "tests": [
+      "ForgeConductor.Dashboard.HandlerExecutorTests",
+      "ForgeConductor.Dashboard.DeadlineIocpBridgeTests",
+      "ForgeConductor.Dashboard.ConnectionSocketTests",
+      "ForgeConductor.Dashboard.ConnectionEventBridgeTests"
+    ],
+    "stdout_sha256": "775d657088319c42373b902c765a61c92bc32c2cd2a81c6a7e4dfc4b515dce68",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260828T041323687Z-811c06c9.json",
+      "command_record_sha256": "32ed9b9d50b0d8b615b72661a2630306de0691f0b294d26a285678058eb5ceb2",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260828T041342101Z-2c1bedd4.json",
+      "command_record_sha256": "8b015161e606b2caf87d1fd0b3feaf9b1ab7723a8b498f99be400ebd839195d7",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 14 implementation, test, build, and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260828T041401768Z-09515ac9.json",
+      "command_record_sha256": "631cc5079408a1fe9fb4269c6993f9ea1626ac71758f70320e13c3dbbb7fe645",
+      "exit_code": 0,
+      "files_passed": 14
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260828T041722758Z-f2e1f133.json",
+      "command_record_sha256": "10ec36c5f3626954e87848983cfde9f8dac3bd9c0cff9bb4afbae49cd65a43e0",
+      "exit_code": 0,
+      "events_verified": 360
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260828T041817037Z-c706faef.json",
+      "command_record_sha256": "72f246e170436a92c1a76d754f9729bcbebe97fcb05e4b21efc7f7d9697d61c8",
+      "exit_code": 0
+    }
+  ],
+  "invariant_audit": {
+    "corrections": [
+      "Issue-time WSAEWOULDBLOCK is classified as a retryable conflict for both receive and send instead of a non-retryable internal failure.",
+      "Real IPv4 and IPv6 smoke clients use nonblocking connect, send, and receive with one absolute five-second deadline.",
+      "Real IOCP receives accumulate bounded partial completions to the exact expected length before comparing every byte.",
+      "Synchronous overlapped send success retains issued state and its borrowed buffer until the exact IOCP completion is reaped.",
+      "Move-only handler-completion destruction and fatal callbacks execute outside the connection-event bridge mutex.",
+      "Matching malformed synthetic and native completions consume their sole dequeued ownership obligation before reporting integrity failure."
+    ],
+    "independent_review_status": "Independent lifecycle reviews found and closed temporary Winsock saturation classification, short-prefix TCP validation, unbounded real-socket test waits, and synchronous-send retention coverage before the recorded build. No remaining actionable finding was reported for this checkpoint."
+  },
+  "behavior_proved": [
+    "queued handler work and live post-delivery reservations share exactly eight pending positions behind four persistent workers",
+    "a move-only reservation converts atomically into exactly one FIFO PostDelivery task and safely releases or outlives the public executor facade",
+    "exactly 43 heap-stable deadline notification operations match the scheduler and mailbox hard maximum and coalesce per-owner arms into one posted packet",
+    "deadline owner retirement and shutdown retain posted tombstones until exact reap, while matching malformed packets consume their sole obligation before fatal shutdown",
+    "an accepted connection retains its entire socket and endpoint evidence with one stable OVERLAPPED, one stable WSABUF, and one fixed 16-KiB receive buffer",
+    "synchronous and pending overlapped receive and send paths retain operation storage until exact IOCP reap and reject simultaneous operations",
+    "partial send, EOF, zero-byte send, cancellation races, shutdown, foreign pointers, wrong keys, impossible byte counts, and temporary Winsock saturation have typed bounded outcomes",
+    "real IPv4 and IPv6 AcceptEx-to-IOCP receive, send, cancellation, exact-byte accumulation, and deadline-bounded client flows pass on this Windows 11 machine",
+    "each admitted connection can coalesce one move-only handler completion and one SSE-ready bit behind one stable synthetic OVERLAPPED and one queued IOCP packet",
+    "connection-event bridge shutdown preserves posted tombstones and re-entrant payload destruction or fatal callbacks cannot execute under its mutex"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "ddeb3cc3737dbabaa28bcf52aca56e0293a52c0ab38b7daf26ee57256ffb266f",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardHandlerExecutor.h": "5fb76977b0ba13eb629867459972d935de007b767e939c91026090d7cbfeb333",
+    "src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp": "0ce348beefdd8774783b52e9fd98c7edef2f2a73a95ce52fab7d9cf23c11e002",
+    "tests/Dashboard/WindowsDashboardHandlerExecutorTests.cpp": "0b271b67b855d73305d7203de9c795ca0c18f37b288f8ef7380f3c0d9f70889c",
+    ".forge-codex/state/decisions/P16-012-bounded-dashboard-connection-completion-bridges.md": "c701ed66bb0c834198098a3eb5e92e6483256ca0d62473852d69172eb437f0da",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionEventBridge.cpp": "b730516ac69effc0494d916d950d07960139320f97840e51a3c8e1bb37703c26",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionEventBridge.h": "bb9e13540885eaaeea7bae10b6fff495b6a431d04e8427034224d248b41030b2",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionSocket.cpp": "23a646a0fb0176ec466964d5e2b010b6e50be3a065050d80f7f727d1b093c4c0",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionSocket.h": "93093aba84a16fea44b1b4d0922a06db930f087a66993ab6cb6b2366ab9db54d",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.cpp": "243a36aee0b8725e8b1cd994667910016f9310b5a175e2f6bc480cd67140ab95",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.h": "a03d4ac38a0437d1862c9ae1be8ab4eb9b1801ee8a3ee965c22a1c6a9132e935",
+    "tests/Dashboard/DashboardConnectionEventBridgeTests.cpp": "1330af1c68e47639ce656101f69fd975bae9d1767cc85a752e52bc41ca1af9e2",
+    "tests/Dashboard/DashboardConnectionSocketTests.cpp": "4a82ee393a138c872ebc16dc46b21a39fc78bedd8daef3ba73f9db94d1e08abe",
+    "tests/Dashboard/DashboardDeadlineIocpBridgeTests.cpp": "b55dc5694a37083625b0328d5cf2369ddcfaab2f0f900985996ea7228c1eb67a"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.HandlerExecutorTests.exe": "fc079b246d9c6829c6d319b589a1d5899750356173663395f511eae44d5a0a6b",
+    "ForgeConductor.Dashboard.DeadlineIocpBridgeTests.exe": "9ae712afb395580414cf55696ec57c814c955da32725b28bc0b3db1e13455473",
+    "ForgeConductor.Dashboard.ConnectionSocketTests.exe": "26e1fea60e2e2d6390355bacc92e30dced7d7710a78c87ccd15b35aaa9a05a7a",
+    "ForgeConductor.Dashboard.ConnectionEventBridgeTests.exe": "fd4258ecfc56b7023e115c2cc8cb96c97f6cf6d7d2b8db4e31260cb7637dbab1"
+  },
+  "remaining_limitations": [
+    "The bounded connection lifecycle, central registry, request/response sequencing, SSE bootstrap and frame delivery, and dispatcher integration remain pending.",
+    "Two-generation listener rebind, generation retirement, graceful connection drain, fixed overload responders, and production dashboard-server composition remain pending.",
+    "The production manager composition has not yet wired the operational data source or sole-consumer telemetry fan-out.",
+    "The store contains no functional alpha frontend shell yet; retained UI automation remains pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

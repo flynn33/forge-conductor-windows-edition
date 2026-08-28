@@ -33,6 +33,7 @@ using Completion = Windows::DashboardHandlerCompletion;
 using CompletionKind = Windows::DashboardHandlerCompletionKind;
 using Executor = Windows::WindowsDashboardHandlerExecutor;
 using Operation = Windows::IDashboardHandlerOperation;
+using Reservation = Windows::WindowsDashboardHandlerExecutor::Reservation;
 using Sink = Windows::IDashboardHandlerCompletionSink;
 
 using namespace std::chrono_literals;
@@ -57,12 +58,22 @@ static_assert(std::is_nothrow_move_constructible_v<Completion>);
 static_assert(std::is_nothrow_move_assignable_v<Completion>);
 static_assert(!std::is_copy_constructible_v<Executor>);
 static_assert(!std::is_move_constructible_v<Executor>);
+static_assert(!std::is_copy_constructible_v<Reservation>);
+static_assert(!std::is_copy_assignable_v<Reservation>);
+static_assert(std::is_nothrow_move_constructible_v<Reservation>);
+static_assert(std::is_nothrow_move_assignable_v<Reservation>);
 static_assert(noexcept(std::declval<Sink&>().tryPost(
     std::declval<Completion>())));
 static_assert(noexcept(std::declval<Executor&>().trySubmit(
     std::declval<std::unique_ptr<Operation>>(),
     std::declval<Domain::OperationContext>(),
     std::declval<std::weak_ptr<Sink>>())));
+static_assert(noexcept(std::declval<Executor&>().tryReservePostDelivery()));
+static_assert(noexcept(std::declval<Reservation&&>().trySubmit(
+    std::declval<std::unique_ptr<Operation>>(),
+    std::declval<Domain::OperationContext>(),
+    std::declval<std::weak_ptr<Sink>>())));
+static_assert(noexcept(std::declval<Reservation&>().release()));
 
 [[nodiscard]] Domain::OperationContext context(
     const std::uint64_t sequence,
@@ -562,6 +573,275 @@ void fourWorkersAndEightPendingTasksSaturateImmediately()
     require(owner->pendingCount() == 0U, "pending tasks remained after shutdown");
 }
 
+void reservationsShareEightPendingPositionsAndConvertOnce()
+{
+    auto gate = std::make_shared<WaitGate>();
+    auto owner = executor();
+    const auto sink = std::make_shared<RecordingSink>();
+
+    for (std::size_t index{}; index < Executor::WorkerCount; ++index) {
+        require(
+            owner->trySubmit(
+                     std::make_unique<GateOperation>(gate),
+                     context(50U + index),
+                     sink)
+                .hasValue(),
+            "reservation blocker was rejected");
+    }
+    require(
+        gate->waitUntilEntered(Executor::WorkerCount),
+        "reservation blockers did not occupy all workers");
+
+    std::vector<Reservation> reservations;
+    reservations.reserve(3U);
+    for (std::size_t index{}; index < 3U; ++index) {
+        auto reserved = owner->tryReservePostDelivery();
+        require(reserved.hasValue(), "post-delivery reservation was rejected");
+        reservations.push_back(std::move(reserved).value());
+    }
+    require(owner->reservationCount() == 3U, "reservation count was not three");
+
+    for (std::size_t index{}; index < 5U; ++index) {
+        require(
+            owner->trySubmit(
+                     std::make_unique<ImmediateOperation>(),
+                     context(60U + index),
+                     sink)
+                .hasValue(),
+            "mixed-capacity pending task was rejected");
+    }
+    require(owner->pendingCount() == 5U, "mixed pending count was not five");
+
+    auto saturatedReservation = owner->tryReservePostDelivery();
+    require(!saturatedReservation, "ninth mixed position was reserved");
+    require(
+        saturatedReservation.error().code ==
+            Domain::ErrorCodes::LimitExceeded,
+        "mixed reservation saturation returned wrong error");
+    require(
+        saturatedReservation.error().retryable,
+        "mixed reservation saturation was not retryable");
+
+    auto saturatedSubmission = owner->trySubmit(
+        std::make_unique<ImmediateOperation>(),
+        context(70U),
+        sink);
+    require(!saturatedSubmission, "ninth mixed position was submitted");
+    require(
+        saturatedSubmission.error().code == Domain::ErrorCodes::LimitExceeded,
+        "mixed submission saturation returned wrong error");
+
+    auto nullReservedSubmission = std::move(reservations[0]).trySubmit(
+        {}, context(71U), sink);
+    require(!nullReservedSubmission, "reserved null operation was accepted");
+    require(
+        nullReservedSubmission.error().code ==
+            Domain::ErrorCodes::InvalidRequest,
+        "reserved null operation returned wrong error");
+    require(
+        reservations[0].valid(),
+        "reserved null validation consumed capacity");
+
+    auto wrongKind = std::move(reservations[0]).trySubmit(
+        std::make_unique<PreparedOperation>(),
+        context(72U),
+        sink);
+    require(!wrongKind, "prepared work used a post-delivery reservation");
+    require(
+        wrongKind.error().code == Domain::ErrorCodes::InvalidRequest,
+        "reserved wrong kind returned wrong error");
+    require(
+        reservations[0].valid(),
+        "reserved wrong-kind validation consumed capacity");
+
+    std::stop_source cancelledSource;
+    static_cast<void>(cancelledSource.request_stop());
+    auto cancelled = std::move(reservations[0]).trySubmit(
+        std::make_unique<ImmediateOperation>(),
+        context(73U, 5s, cancelledSource.get_token()),
+        sink);
+    require(!cancelled, "cancelled reserved work was accepted");
+    require(
+        cancelled.error().code == Domain::ErrorCodes::Cancelled,
+        "cancelled reserved work returned wrong error");
+    require(
+        reservations[0].valid(),
+        "cancelled reserved validation consumed capacity");
+
+    std::atomic_size_t postDeliveryExecutions{};
+    auto converted = std::move(reservations[0]).trySubmit(
+        std::make_unique<ImmediateOperation>(&postDeliveryExecutions),
+        context(74U),
+        sink);
+    require(converted.hasValue(), "reserved position did not convert");
+    require(!reservations[0].valid(), "converted reservation stayed valid");
+    require(owner->reservationCount() == 2U, "conversion did not consume once");
+    require(owner->pendingCount() == 6U, "conversion did not enqueue once");
+
+    auto doubleConversion = std::move(reservations[0]).trySubmit(
+        std::make_unique<ImmediateOperation>(&postDeliveryExecutions),
+        context(75U),
+        sink);
+    require(!doubleConversion, "reservation converted twice");
+    require(
+        doubleConversion.error().code == Domain::ErrorCodes::Conflict,
+        "double conversion returned wrong error");
+    require(owner->pendingCount() == 6U, "double conversion changed the queue");
+
+    Reservation moved{std::move(reservations[1])};
+    require(!reservations[1].valid(), "moved-from reservation stayed valid");
+    require(moved.valid(), "moved reservation lost capacity");
+    auto movedFromUse = std::move(reservations[1]).trySubmit(
+        std::make_unique<ImmediateOperation>(),
+        context(76U),
+        sink);
+    require(!movedFromUse, "moved-from reservation submitted work");
+    require(
+        movedFromUse.error().code == Domain::ErrorCodes::Conflict,
+        "moved-from reservation returned wrong error");
+    moved.release();
+    moved.release();
+    require(owner->reservationCount() == 1U, "release was not exactly once");
+
+    Reservation assigned;
+    assigned = std::move(reservations[2]);
+    require(!reservations[2].valid(), "move-assigned source stayed valid");
+    require(assigned.valid(), "move-assigned reservation lost capacity");
+    assigned.release();
+    require(owner->reservationCount() == 0U, "assigned release leaked capacity");
+
+    std::vector<Reservation> finalReservations;
+    finalReservations.reserve(2U);
+    for (std::size_t index{}; index < 2U; ++index) {
+        auto reserved = owner->tryReservePostDelivery();
+        require(reserved.hasValue(), "replacement reservation was rejected");
+        finalReservations.push_back(std::move(reserved).value());
+    }
+    require(
+        owner->pendingCount() + owner->reservationCount() ==
+            Executor::QueueCapacity,
+        "replacement reservations did not restore exact saturation");
+    finalReservations[0].release();
+    require(
+        owner->trySubmit(
+                 std::make_unique<ImmediateOperation>(),
+                 context(77U),
+                 sink)
+            .hasValue(),
+        "released reservation did not restore ordinary capacity");
+    require(
+        owner->pendingCount() + owner->reservationCount() ==
+            Executor::QueueCapacity,
+        "ordinary submission did not reuse exactly one position");
+
+    auto finalConversion = std::move(finalReservations[1]).trySubmit(
+        std::make_unique<ImmediateOperation>(&postDeliveryExecutions),
+        context(78U),
+        sink);
+    require(finalConversion.hasValue(), "saturated reservation did not convert");
+    require(owner->reservationCount() == 0U, "final conversion leaked reservation");
+    require(owner->pendingCount() == 8U, "final conversion changed total capacity");
+
+    auto ninthAfterConversion = owner->trySubmit(
+        std::make_unique<ImmediateOperation>(),
+        context(79U),
+        sink);
+    require(!ninthAfterConversion, "conversion opened a ninth queue position");
+    require(
+        ninthAfterConversion.error().code ==
+            Domain::ErrorCodes::LimitExceeded,
+        "post-conversion saturation returned wrong error");
+
+    gate->release();
+    require(sink->waitFor(12U), "mixed reserved work did not drain");
+    owner->shutdown();
+    require(
+        postDeliveryExecutions.load(std::memory_order_acquire) == 2U,
+        "one-shot reservations executed the wrong number of tasks");
+    require(owner->pendingCount() == 0U, "reserved work remained pending");
+    require(owner->reservationCount() == 0U, "reserved capacity remained live");
+}
+
+void shutdownInvalidatesReservationsAndRejectsNewOnes()
+{
+    auto owner = executor();
+    const auto sink = std::make_shared<RecordingSink>();
+    auto reserved = owner->tryReservePostDelivery();
+    require(reserved.hasValue(), "shutdown reservation was rejected");
+    auto reservation = std::move(reserved).value();
+    require(reservation.valid(), "fresh shutdown reservation was invalid");
+    require(owner->reservationCount() == 1U, "shutdown reservation was not counted");
+
+    owner->beginShutdown();
+    require(!reservation.valid(), "shutdown left reservation valid");
+    auto submitted = std::move(reservation).trySubmit(
+        std::make_unique<ImmediateOperation>(),
+        context(80U),
+        sink);
+    require(!submitted, "shutdown reservation submitted new work");
+    require(
+        submitted.error().code == Domain::ErrorCodes::TransportClosed,
+        "shutdown reservation returned wrong error");
+    require(
+        owner->reservationCount() == 1U,
+        "failed shutdown submission silently consumed reservation");
+    reservation.release();
+    require(owner->reservationCount() == 0U, "shutdown release leaked capacity");
+
+    auto afterShutdown = owner->tryReservePostDelivery();
+    require(!afterShutdown, "shutdown executor issued another reservation");
+    require(
+        afterShutdown.error().code == Domain::ErrorCodes::TransportClosed,
+        "post-shutdown reservation returned wrong error");
+
+    Reservation empty;
+    auto emptySubmit = std::move(empty).trySubmit(
+        std::make_unique<ImmediateOperation>(),
+        context(81U),
+        sink);
+    require(!emptySubmit, "empty reservation submitted work");
+    require(
+        emptySubmit.error().code == Domain::ErrorCodes::Conflict,
+        "empty reservation returned wrong error");
+    owner->shutdown();
+}
+
+void unusedReservationSafelyOutlivesOuterExecutor()
+{
+    Reservation survivor;
+    {
+        auto owner = executor();
+        auto reserved = owner->tryReservePostDelivery();
+        require(reserved.hasValue(), "lifetime reservation was rejected");
+        survivor = std::move(reserved).value();
+        require(survivor.valid(), "lifetime reservation started invalid");
+        require(owner->reservationCount() == 1U, "lifetime token was not counted");
+
+        owner.reset();
+        require(
+            !survivor.valid(),
+            "reservation stayed valid after outer executor destruction");
+    }
+
+    survivor.release();
+    survivor.release();
+    require(!survivor.valid(), "released lifetime reservation became valid");
+
+    {
+        Reservation destructionOnly;
+        auto owner = executor();
+        auto reserved = owner->tryReservePostDelivery();
+        require(
+            reserved.hasValue(),
+            "destruction-only lifetime reservation was rejected");
+        destructionOnly = std::move(reserved).value();
+        owner.reset();
+        require(
+            !destructionOnly.valid(),
+            "destruction-only token stayed valid after outer destruction");
+    }
+}
+
 void pendingTasksDequeueFifoWhileOtherWorkersRemainBusy()
 {
     auto owner = executor();
@@ -867,6 +1147,154 @@ void enqueueShutdownRaceRetainsEveryAcceptedCompletion()
     require(owner->pendingCount() == 0U, "race retained queued tasks");
 }
 
+void reservationReleaseSubmitShutdownRaceStaysBounded()
+{
+    auto owner = executor();
+    const auto sink = std::make_shared<RecordingSink>();
+    auto gate = std::make_shared<WaitGate>();
+    for (std::size_t index{}; index < Executor::WorkerCount; ++index) {
+        require(
+            owner->trySubmit(
+                     std::make_unique<GateOperation>(gate),
+                     context(3'000U + index),
+                     sink)
+                .hasValue(),
+            "reservation-race blocker was rejected");
+    }
+    require(
+        gate->waitUntilEntered(Executor::WorkerCount),
+        "reservation-race blockers did not start");
+
+    constexpr std::size_t ProducerCount = 8U;
+    constexpr std::size_t AttemptsPerProducer = 100U;
+    std::latch start{1};
+    std::atomic_size_t firstAttempts{};
+    std::atomic_size_t reservationSuccesses{};
+    std::atomic_size_t reservationFailures{};
+    std::atomic_size_t submissionSuccesses{};
+    std::atomic_size_t submissionFailures{};
+    std::atomic_size_t explicitReleases{};
+    std::atomic_size_t implicitReleases{};
+    std::atomic_size_t taskExecutions{};
+    std::atomic_bool malformedResult{};
+    std::vector<std::jthread> producers;
+    producers.reserve(ProducerCount);
+
+    for (std::size_t producer{}; producer < ProducerCount; ++producer) {
+        producers.emplace_back([&, producer](std::stop_token) {
+            start.wait();
+            for (std::size_t attempt{};
+                 attempt < AttemptsPerProducer;
+                 ++attempt) {
+                auto reserved = owner->tryReservePostDelivery();
+                if (!reserved) {
+                    const auto& code = reserved.error().code;
+                    if (code != Domain::ErrorCodes::LimitExceeded &&
+                        code != Domain::ErrorCodes::TransportClosed) {
+                        malformedResult.store(true, std::memory_order_release);
+                    }
+                    reservationFailures.fetch_add(
+                        1U, std::memory_order_relaxed);
+                } else {
+                    reservationSuccesses.fetch_add(
+                        1U, std::memory_order_relaxed);
+                    auto reservation = std::move(reserved).value();
+                    switch ((producer + attempt) % 3U) {
+                    case 0U: {
+                        const auto sequence =
+                            3'100U + producer * AttemptsPerProducer + attempt;
+                        auto submitted = std::move(reservation).trySubmit(
+                            std::make_unique<ImmediateOperation>(
+                                &taskExecutions),
+                            context(sequence),
+                            sink);
+                        if (submitted) {
+                            submissionSuccesses.fetch_add(
+                                1U, std::memory_order_relaxed);
+                        } else {
+                            if (submitted.error().code !=
+                                Domain::ErrorCodes::TransportClosed) {
+                                malformedResult.store(
+                                    true, std::memory_order_release);
+                            }
+                            submissionFailures.fetch_add(
+                                1U, std::memory_order_relaxed);
+                        }
+                        break;
+                    }
+                    case 1U:
+                        reservation.release();
+                        explicitReleases.fetch_add(
+                            1U, std::memory_order_relaxed);
+                        break;
+                    default:
+                        implicitReleases.fetch_add(
+                            1U, std::memory_order_relaxed);
+                        break;
+                    }
+                }
+                if (attempt == 0U) {
+                    firstAttempts.fetch_add(1U, std::memory_order_release);
+                    firstAttempts.notify_all();
+                }
+            }
+        });
+    }
+
+    std::jthread shutdownThread{[&](std::stop_token) {
+        start.wait();
+        auto observed = firstAttempts.load(std::memory_order_acquire);
+        while (observed != ProducerCount) {
+            firstAttempts.wait(observed, std::memory_order_acquire);
+            observed = firstAttempts.load(std::memory_order_acquire);
+        }
+        owner->shutdown();
+    }};
+
+    start.count_down();
+    producers.clear();
+    shutdownThread.join();
+
+    const auto reservedCount =
+        reservationSuccesses.load(std::memory_order_acquire);
+    const auto reservationFailureCount =
+        reservationFailures.load(std::memory_order_acquire);
+    const auto submittedCount =
+        submissionSuccesses.load(std::memory_order_acquire);
+    const auto submissionFailureCount =
+        submissionFailures.load(std::memory_order_acquire);
+    const auto explicitlyReleasedCount =
+        explicitReleases.load(std::memory_order_acquire);
+    const auto implicitlyReleasedCount =
+        implicitReleases.load(std::memory_order_acquire);
+
+    require(
+        reservedCount + reservationFailureCount ==
+            ProducerCount * AttemptsPerProducer,
+        "reservation race lost an admission result");
+    require(reservedCount > 0U, "reservation race reserved no capacity");
+    require(
+        reservedCount == submittedCount + submissionFailureCount +
+                             explicitlyReleasedCount + implicitlyReleasedCount,
+        "reservation race lost a token disposition");
+    require(submittedCount > 0U, "reservation race submitted no work");
+    require(
+        !malformedResult.load(std::memory_order_acquire),
+        "reservation race returned an unexpected error");
+    require(
+        sink->waitFor(Executor::WorkerCount + submittedCount),
+        "reservation race lost an accepted completion");
+    require(
+        sink->records().size() == Executor::WorkerCount + submittedCount,
+        "reservation race completion count differed from admission");
+    require(
+        taskExecutions.load(std::memory_order_acquire) == 0U,
+        "shutdown executed queued reserved application work");
+    require(owner->pendingCount() == 0U, "reservation race retained pending work");
+    require(owner->reservationCount() == 0U, "reservation race leaked capacity");
+    require(owner->activeCount() == 0U, "reservation race retained active work");
+}
+
 class LifetimeSink final : public Sink {
 public:
     LifetimeSink(
@@ -1093,11 +1521,15 @@ int main()
     try {
         exactBoundsAndImmediateAdmissionValidation();
         fourWorkersAndEightPendingTasksSaturateImmediately();
+        reservationsShareEightPendingPositionsAndConvertOnce();
+        shutdownInvalidatesReservationsAndRejectsNewOnes();
+        unusedReservationSafelyOutlivesOuterExecutor();
         pendingTasksDequeueFifoWhileOtherWorkersRemainBusy();
         taskExceptionsAndKindMismatchBecomeTypedCompletions();
         callerCancellationAndDeadlineReachRunningOperations();
         shutdownCancelsQueuedAndActiveWorkThenJoins();
         enqueueShutdownRaceRetainsEveryAcceptedCompletion();
+        reservationReleaseSubmitShutdownRaceStaysBounded();
         sinksAreWeakAndWorkerShutdownIsReentrantSafe();
         std::cout << "Windows dashboard handler executor tests passed: "
                   << assertionCount.load() << " assertions\n";

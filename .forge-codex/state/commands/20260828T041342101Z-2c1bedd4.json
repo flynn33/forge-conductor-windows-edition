@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T041342101Z-2c1bedd4",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "& .\\.forge-codex\\instructions\\scripts\\Validate-NoPython.ps1 -WorkspaceRoot (Get-Location).Path",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T04:13:42.1090277+00:00",
+  "end_utc": "2026-08-28T04:13:46.0728924+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T041342101Z-2c1bedd4.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T041342101Z-2c1bedd4.stderr.txt",
+  "stdout_sha256": "0a0dbd0412948956abeb894b2b0b43d723961b3a2182a09f54ef1bdfa3d5fe4d",
+  "stderr_sha256": "4b7da9dda079ec50ecb2c4b3cb2de42eb5949bcbf05bbf82f47aeda909ef9102"
+}

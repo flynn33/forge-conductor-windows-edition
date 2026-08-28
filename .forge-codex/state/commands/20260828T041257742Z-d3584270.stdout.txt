@@ -1,0 +1,20 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 20: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+1/4 Test #20: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ......   Passed    0.23 sec
+    Start 29: ForgeConductor.Dashboard.ConnectionSocketTests
+2/4 Test #29: ForgeConductor.Dashboard.ConnectionSocketTests ........   Passed    0.08 sec
+    Start 30: ForgeConductor.Dashboard.ConnectionEventBridgeTests
+3/4 Test #30: ForgeConductor.Dashboard.ConnectionEventBridgeTests ...   Passed    0.04 sec
+    Start 32: ForgeConductor.Dashboard.HandlerExecutorTests
+4/4 Test #32: ForgeConductor.Dashboard.HandlerExecutorTests .........   Passed    0.23 sec
+
+100% tests passed out of 4
+
+Label Time Summary:
+G16         =   0.59 sec*proc (4 tests)
+T-MGR       =   0.59 sec*proc (4 tests)
+T-SEC       =   0.08 sec*proc (1 test)
+T-STRESS    =   0.59 sec*proc (4 tests)
+T-UNIT      =   0.59 sec*proc (4 tests)
+
+Total Test time (real) =   0.61 sec

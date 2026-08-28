@@ -197,6 +197,9 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp
     src/Infrastructure/Windows/Detail/DashboardAcceptSlot.cpp
     src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.cpp
+    src/Infrastructure/Windows/Detail/DashboardConnectionEventBridge.cpp
+    src/Infrastructure/Windows/Detail/DashboardConnectionSocket.cpp
+    src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.cpp
     src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.cpp
     src/Infrastructure/Windows/Detail/DashboardIoCompletionPort.cpp
     src/Infrastructure/Windows/Detail/DashboardIocpWorkerKernel.cpp
@@ -775,6 +778,25 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
+    add_executable(ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+        tests/Dashboard/DashboardDeadlineIocpBridgeTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.DeadlineIocpBridgeTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.DeadlineIocpBridgeTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.DeadlineIocpBridgeTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.DeadlineIocpBridgeTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.DeadlineIocpBridgeTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
     add_executable(ForgeConductor.Dashboard.LoopbackEndpointTests
         tests/Dashboard/DashboardLoopbackEndpointTests.cpp)
     forge_configure_native_target(
@@ -917,6 +939,43 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Dashboard.AcceptSlotSetTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionSocketTests
+        tests/Dashboard/DashboardConnectionSocketTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ConnectionSocketTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ConnectionSocketTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionSocketTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionSocketTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionSocketTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionSocketTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionEventBridgeTests
+        tests/Dashboard/DashboardConnectionEventBridgeTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ConnectionEventBridgeTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ConnectionEventBridgeTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionEventBridgeTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionEventBridgeTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionEventBridgeTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionEventBridgeTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.DeadlineSchedulerTests

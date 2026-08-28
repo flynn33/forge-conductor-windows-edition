@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T041401768Z-09515ac9",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$files = @(\n  'CMakeLists.txt',\n  'include\\ForgeConductor\\Infrastructure\\Windows\\WindowsDashboardHandlerExecutor.h',\n  'src\\Infrastructure\\Windows\\WindowsDashboardHandlerExecutor.cpp',\n  'tests\\Dashboard\\WindowsDashboardHandlerExecutorTests.cpp',\n  '.forge-codex\\state\\decisions\\P16-012-bounded-dashboard-connection-completion-bridges.md',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionEventBridge.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionEventBridge.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionSocket.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionSocket.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardDeadlineIocpBridge.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardDeadlineIocpBridge.h',\n  'tests\\Dashboard\\DashboardConnectionEventBridgeTests.cpp',\n  'tests\\Dashboard\\DashboardConnectionSocketTests.cpp',\n  'tests\\Dashboard\\DashboardDeadlineIocpBridgeTests.cpp'\n)\n$utf8 = [System.Text.UTF8Encoding]::new($false, $true)\nforeach ($file in $files) {\n  $bytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) $file))\n  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { throw \"UTF-8 BOM: $file\" }\n  $text = $utf8.GetString($bytes)\n  if ($text -match '(?<!\\r)\\n' -or $text -match '\\r(?!\\n)') { throw \"Non-CRLF line ending: $file\" }\n  if (-not $text.EndsWith(\"`r`n\", [System.StringComparison]::Ordinal)) { throw \"Missing final CRLF: $file\" }\n}\n\"Text policy passed for $($files.Count) files.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T04:14:01.7754584+00:00",
+  "end_utc": "2026-08-28T04:14:03.1027455+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T041401768Z-09515ac9.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T041401768Z-09515ac9.stderr.txt",
+  "stdout_sha256": "72081868fc4ed47440426e0c29f5bac755a634b98a157388bcc9f74f63185eb3",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}
