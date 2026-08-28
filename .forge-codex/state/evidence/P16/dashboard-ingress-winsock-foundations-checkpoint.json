@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-ingress-winsock-foundations",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260828T012453625Z-f0dc10bf.json",
+    "command_record_sha256": "ef32a5185966b303eda63bba2d56a64bb26501996f4ef0679f296b56bbe16f03",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 4,
+    "configuration": "Debug",
+    "stdout_sha256": "a8e4f320c39ebe8ab588492e3585875c003ecafab9feb95f760e0e53a89eddda",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T012525167Z-39165b57.json",
+    "command_record_sha256": "173ed039965b8c6b1e3a89bdbbc26e2b98957316925d2d0a9c2e9e37b7466f63",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 4,
+    "tests_failed": 0,
+    "explicit_assertions_passed": 1849,
+    "real_seconds": 0.17,
+    "assertions_by_test": {
+      "ForgeConductor.Dashboard.DeadlineNotificationMailboxTests": 58,
+      "ForgeConductor.Dashboard.LoopbackEndpointTests": 160,
+      "ForgeConductor.Dashboard.WinsockRuntimeTests": 177,
+      "ForgeConductor.Dashboard.HttpParserSessionTests": 1454
+    },
+    "stdout_sha256": "3d67bfea72850ea57fa166c731595dd217ba4e862a2ed534a45f270ede263107",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260828T012545914Z-a699bd60.json",
+      "command_record_sha256": "cbd1345ba4b35f3e4b240a9b23a0d10f9c45a1137c6400e6cd1d8b3aa01124ce",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260828T012559301Z-8fe8c4e7.json",
+      "command_record_sha256": "6cb490f220841d6aed4cab61ccce8dde5a1f119cc19b7acaf62d8bc026bc45d5",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 14 implementation, test, build, and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260828T012638437Z-90aadf64.json",
+      "command_record_sha256": "59662081958159539b8218a4f8edccab5bf20fb09385e5c90faacdb1257868bd",
+      "exit_code": 0,
+      "files_passed": 14
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260828T012903350Z-419c78a3.json",
+      "command_record_sha256": "210e4fdf478a373e9760ba158c0004360bdf7fe87a2aa8dee766919e26f6937f",
+      "exit_code": 0,
+      "events_verified": 342
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260828T013000650Z-1e0ef91c.json",
+      "command_record_sha256": "931b1f610c6ade68d8aeb13dee53ec54aac5e68e2d94b14c60fff3923dda061e",
+      "exit_code": 0
+    }
+  ],
+  "invariant_audit": {
+    "corrections": [
+      "Rejected parser sessions now release their bounded ingress allocation immediately while preserving the typed canonical rejection.",
+      "Trailing-byte and pipelining rejection is produced by DashboardHttpParser over the completed wire plus one bounded lookahead byte, eliminating duplicated HTTP policy.",
+      "Mailbox registrations must be strictly greater than every previously accepted identifier, preventing delayed scheduler publication from targeting a successor owner.",
+      "UniqueDashboardSocket exposes no raw release path; its shared initialized state forces closesocket to precede WSACleanup."
+    ],
+    "posting_failure_contract": "The IOCP adapter must post once for NotificationRequired. On PostQueuedCompletionStatus failure it must retire and take the returned exact handle so no pending tombstone remains.",
+    "external_review_status": "A CodeRabbit CLI assessment was attempted but its installer does not support this native Windows host and no WSL distribution is installed; it produced no source assessment and no repository changes."
+  },
+  "behavior_proved": [
+    "incremental header scanning is linear in received bytes and invokes the canonical parser only at framing boundaries",
+    "one parser session accepts exactly one request, rejects trailing or pipelined bytes through canonical policy, and exposes expected byte counts only after a validated header",
+    "request storage is bounded to the maximum accepted wire size plus one classification byte and is released on rejection, internal failure, or successful extraction",
+    "loopback endpoint construction accepts only literal 127.0.0.1 or ::1 with a nonzero port and rejects non-exact bound or peer addresses",
+    "Winsock startup negotiates version 2.2, socket creation applies overlapped and non-inheritable flags, and every socket retains startup lifetime through close",
+    "the fixed 43-slot deadline mailbox has at most one pending notification per owner, coalesces to the latest exact deadline, rejects stale handles and non-monotonic owner identifiers, and bounds retirement tombstones"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "69acce0ba7860e8cca77f077a8f5449fcdb6535cb61ca3f82d4054fff9ab9ee0",
+    ".forge-codex/state/decisions/P16-010-bounded-dashboard-ingress-and-winsock-foundations.md": "8058b184ec64b28fb497a4ed11033e4f5dab0046f471a6f8dfd416f74773703e",
+    "include/ForgeConductor/Dashboard/DashboardHttpParserSession.h": "ea9564b44fa72e9b971e25a56981449981f51d344b8be4088849b3baaae913ff",
+    "src/Dashboard/DashboardHttpParserSession.cpp": "b16620c13bc1b0eaedb3af094296d3b1c9e10edce740f1b5a6eeb08778f838d5",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.h": "4ccbb596c120926b7f11db57e760015068360b25b0c3d4da5da4abba2e04c7f6",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.cpp": "d05110dc41b99734a1b83c5182a63b93816be725caf5994c2933ae1dee144aa3",
+    "src/Infrastructure/Windows/Detail/DashboardLoopbackEndpoint.h": "1460482a263e34ca2e40980d79e34317ec8c1258162f4a15ed0c2a7cca020bf8",
+    "src/Infrastructure/Windows/Detail/DashboardLoopbackEndpoint.cpp": "2fa7b44e195d90e13973286748659a4dd9dc7c1dd81afe1a62cf4eb412cdd25b",
+    "src/Infrastructure/Windows/Detail/DashboardWinsockRuntime.h": "c905517d861bf2e013b06a9794966d8fc7e0868cf32ea1716e44894f0159b579",
+    "src/Infrastructure/Windows/Detail/DashboardWinsockRuntime.cpp": "faa280bf902b0e99d6286b5694ee944db02caea21003f384f7f583ce45a53d20",
+    "tests/Dashboard/DashboardDeadlineNotificationMailboxTests.cpp": "3d0d8c273790e3fece9c3ffda197970c087da30c3260914fec1da16daf478652",
+    "tests/Dashboard/DashboardHttpParserSessionTests.cpp": "25b3a7a1b7d2aad5df82f3eeb42fac4b630a1187382cc829481b9e0886b85f6a",
+    "tests/Dashboard/DashboardLoopbackEndpointTests.cpp": "4a46398b79f2689784754ca67065ba651f8150c9e283e5f2285583d286a63b81",
+    "tests/Dashboard/DashboardWinsockRuntimeTests.cpp": "90feccd7991b0940293806ed33ca712fde6f14420771e86aec049e6ac88f6e32"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.HttpParserSessionTests.exe": "1e56286dbba1d9d60e18b825831319236ffa945e05ac40a45385a10ea8b9c86f",
+    "ForgeConductor.Dashboard.DeadlineNotificationMailboxTests.exe": "452ebe2e9d6725c64f46e3417cc420af7f1b0321faff51b043d158a1feae9bb2",
+    "ForgeConductor.Dashboard.LoopbackEndpointTests.exe": "2c926ba21f75a02da6ad4988ae6d4cbd92ed3181639197b5b5280e6f7460fa79",
+    "ForgeConductor.Dashboard.WinsockRuntimeTests.exe": "969a260d35779ab8a17c8160912fdb10522af7dd010c3dcd6fe84f1e37479c7d"
+  },
+  "remaining_limitations": [
+    "The shared IOCP owner, exactly four worker threads, four runtime-owned AcceptEx slots, extension-function discovery, connection state machine, and send/receive operations remain pending.",
+    "Two-phase listener rebind, listener generation retirement, overload response delivery, SSE socket flow, and bounded shutdown drain remain pending.",
+    "The production manager composition has not yet wired the operational data source or sole-consumer telemetry fan-out.",
+    "The store contains no functional alpha frontend shell yet; retained UI automation remains pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

@@ -167,6 +167,7 @@ add_library(ForgeConductor.Dashboard.Protocol STATIC
     src/Dashboard/DashboardApplicationErrorMapper.cpp
     src/Dashboard/DashboardApplicationJsonCodec.cpp
     src/Dashboard/DashboardHttpParser.cpp
+    src/Dashboard/DashboardHttpParserSession.cpp
     src/Dashboard/DashboardHttpResponse.cpp
     src/Dashboard/DashboardManagerJsonCodec.cpp
     src/Dashboard/DashboardRequestPolicy.cpp
@@ -194,6 +195,9 @@ target_link_libraries(ForgeConductor.Application PUBLIC
 
 add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp
+    src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.cpp
+    src/Infrastructure/Windows/Detail/DashboardLoopbackEndpoint.cpp
+    src/Infrastructure/Windows/Detail/DashboardWinsockRuntime.cpp
     src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp
     src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp)
 forge_add_layer(
@@ -204,6 +208,7 @@ forge_configure_native_target(ForgeConductor.Dashboard.Windows)
 target_include_directories(ForgeConductor.Dashboard.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(ForgeConductor.Dashboard.Windows PRIVATE ws2_32)
 
 set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp
@@ -745,6 +750,61 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
+    add_executable(ForgeConductor.Dashboard.DeadlineNotificationMailboxTests
+        tests/Dashboard/DashboardDeadlineNotificationMailboxTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.DeadlineNotificationMailboxTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.DeadlineNotificationMailboxTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.DeadlineNotificationMailboxTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.DeadlineNotificationMailboxTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.DeadlineNotificationMailboxTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.DeadlineNotificationMailboxTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.LoopbackEndpointTests
+        tests/Dashboard/DashboardLoopbackEndpointTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.LoopbackEndpointTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.LoopbackEndpointTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.LoopbackEndpointTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.LoopbackEndpointTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.LoopbackEndpointTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.LoopbackEndpointTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.WinsockRuntimeTests
+        tests/Dashboard/DashboardWinsockRuntimeTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.WinsockRuntimeTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.WinsockRuntimeTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.WinsockRuntimeTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.WinsockRuntimeTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.WinsockRuntimeTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.WinsockRuntimeTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
     add_executable(ForgeConductor.Dashboard.DeadlineSchedulerTests
         tests/Dashboard/WindowsDashboardDeadlineSchedulerTests.cpp)
     forge_configure_native_target(
@@ -787,6 +847,21 @@ if(BUILD_TESTING)
     set_tests_properties(ForgeConductor.Dashboard.HttpParserTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-UNIT"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.HttpParserSessionTests
+        tests/Dashboard/DashboardHttpParserSessionTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.HttpParserSessionTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.HttpParserSessionTests PRIVATE
+        ForgeConductor::Dashboard.Protocol)
+    add_test(
+        NAME ForgeConductor.Dashboard.HttpParserSessionTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.HttpParserSessionTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.HttpParserSessionTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.RequestPolicyTests
         tests/Dashboard/DashboardRequestPolicyTests.cpp)
