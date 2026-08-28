@@ -39,6 +39,8 @@ using Registry = Detail::DashboardConnectionRegistry;
 using RegistryFailureKind =
     Detail::DashboardConnectionRegistryFailureKind;
 using Target = Detail::IDashboardConnectionDispatchTarget;
+using AuxiliaryTarget = Detail::IDashboardAuxiliaryDeadlineTarget;
+using RegistryFailFast = Detail::IDashboardConnectionRegistryFailFast;
 
 class TestClock final : public ForgeConductor::Contracts::IClock {
 public:
@@ -59,14 +61,32 @@ static_assert(std::is_base_of_v<Detail::IDashboardIocpCompletionSink, Registry>)
 static_assert(std::is_base_of_v<
               Detail::IDashboardConnectionEventFatalSink,
               Registry>);
+static_assert(std::is_base_of_v<
+              Detail::IDashboardConnectionDrainObserver,
+              Registry>);
 static_assert(!std::is_copy_constructible_v<Registry>);
 static_assert(!std::is_move_constructible_v<Registry>);
 static_assert(Registry::MaximumConnectionCount == 40U);
+static_assert(Registry::MaximumAuxiliaryDeadlineTargetCount == 4U);
 static_assert(noexcept(Registry::create(Key{1U})));
 static_assert(noexcept(std::declval<Registry&>().bindDeadlineBridge(nullptr)));
+static_assert(noexcept(
+    std::declval<Registry&>().bindGenerationDrainObserver({})));
 static_assert(noexcept(std::declval<Registry&>().registerConnection(nullptr)));
+static_assert(noexcept(
+    std::declval<Registry&>().registerAuxiliaryDeadlineTarget(nullptr)));
+static_assert(noexcept(
+    std::declval<Registry&>().unregisterAuxiliaryDeadlineTarget(
+        std::declval<const std::shared_ptr<AuxiliaryTarget>&>())));
 static_assert(noexcept(std::declval<Registry&>().removeIfDrained(
     std::declval<const std::shared_ptr<Target>&>())));
+static_assert(noexcept(
+    std::declval<const Registry&>().connectionCountForGeneration(1U)));
+static_assert(noexcept(
+    std::declval<Registry&>().beginShutdownGeneration(1U)));
+static_assert(noexcept(
+    std::declval<Registry&>().connectionMayHaveDrained(
+        Key{1U}, 1U, 1U)));
 static_assert(noexcept(std::declval<Registry&>().consume(
     Packet{}, ERROR_SUCCESS)));
 static_assert(noexcept(std::declval<Registry&>().fatal(ERROR_INVALID_DATA)));
@@ -75,6 +95,8 @@ static_assert(noexcept(std::declval<Registry&>().fatal(
 static_assert(noexcept(std::declval<const Registry&>().snapshot()));
 static_assert(!noexcept(std::declval<const Registry&>().fullFailure()));
 static_assert(noexcept(std::declval<Registry&>().beginShutdown()));
+static_assert(noexcept(
+    std::declval<Registry&>().finalizeDeadlineRouting()));
 static_assert(noexcept(std::declval<const Bridge&>().completionKey()));
 
 constexpr Key DeadlineKey{0x444541444C494E45U};
@@ -95,6 +117,19 @@ void require(const bool condition, const std::string_view message)
         fail(message);
     }
 }
+
+class RecordingRegistryFailFast final : public RegistryFailFast {
+public:
+    void failFast() noexcept override { calls_.fetch_add(1U); }
+
+    [[nodiscard]] std::size_t calls() const noexcept
+    {
+        return calls_.load();
+    }
+
+private:
+    std::atomic_size_t calls_{};
+};
 
 template <typename Predicate>
 [[nodiscard]] bool waitUntil(Predicate&& predicate)
@@ -151,6 +186,21 @@ public:
     [[nodiscard]] std::uint64_t generationId() const noexcept override
     {
         return generationId_;
+    }
+
+    [[nodiscard]] Domain::Result<void> bindDrainObserver(
+        std::weak_ptr<Detail::IDashboardConnectionDrainObserver> observer)
+        noexcept override
+    {
+        const std::lock_guard lock{mutex_};
+        if (drainObserverBound_ || observer.expired()) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::Conflict,
+                "fake target drain observer binding failed"));
+        }
+        drainObserver_ = std::move(observer);
+        drainObserverBound_ = true;
+        return Domain::Result<void>::success();
     }
 
     [[nodiscard]] Domain::Result<void> start() noexcept override
@@ -376,6 +426,20 @@ public:
         drained_ = true;
     }
 
+    void markDrainedAndNotify() noexcept
+    {
+        std::shared_ptr<Detail::IDashboardConnectionDrainObserver> observer;
+        {
+            const std::lock_guard lock{mutex_};
+            drained_ = true;
+            observer = drainObserver_.lock();
+        }
+        if (observer != nullptr) {
+            observer->connectionMayHaveDrained(
+                key_, registrationId_, generationId_);
+        }
+    }
+
     void observeNextDrainCheck() noexcept
     {
         drainObserved_.store(false, std::memory_order_release);
@@ -459,6 +523,8 @@ private:
     std::condition_variable changed_;
     std::weak_ptr<Registry> registry_;
     std::weak_ptr<Registry> destructorRegistry_;
+    std::weak_ptr<Detail::IDashboardConnectionDrainObserver>
+        drainObserver_;
     OVERLAPPED operation_{};
     OVERLAPPED* lastOperation_{};
     std::optional<Windows::WindowsDashboardDeadline> lastDeadline_;
@@ -489,7 +555,136 @@ private:
     bool deadlineDispatchEntered_{};
     bool releaseDeadline_{};
     bool drained_{};
+    bool drainObserverBound_{};
     bool shutdownRequested_{};
+};
+
+class FakeAuxiliaryDeadlineTarget final : public AuxiliaryTarget {
+public:
+    explicit FakeAuxiliaryDeadlineTarget(
+        const std::uint64_t registrationId) noexcept
+        : registrationId_{registrationId}
+    {
+    }
+
+    [[nodiscard]] std::uint64_t registrationId() const noexcept override
+    {
+        return registrationId_;
+    }
+
+    void dispatchDeadline(
+        const Windows::WindowsDashboardDeadline deadline) noexcept override
+    {
+        std::unique_lock lock{mutex_};
+        ++deadlineCount_;
+        lastDeadline_ = deadline;
+        deadlineEntered_ = true;
+        changed_.notify_all();
+        if (blockDeadline_) {
+            static_cast<void>(changed_.wait_for(
+                lock,
+                TestTimeout,
+                [this] { return releaseDeadline_; }));
+        }
+    }
+
+    void beginShutdown() noexcept override
+    {
+        const std::scoped_lock lock{mutex_};
+        ++shutdownCount_;
+        changed_.notify_all();
+    }
+
+    void blockDeadline() noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        blockDeadline_ = true;
+    }
+
+    [[nodiscard]] bool waitForDeadlineEntry() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(
+            lock, TestTimeout, [this] { return deadlineEntered_; });
+    }
+
+    void releaseDeadline() noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        releaseDeadline_ = true;
+        changed_.notify_all();
+    }
+
+    [[nodiscard]] std::size_t deadlineCount() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return deadlineCount_;
+    }
+
+    [[nodiscard]] std::size_t shutdownCount() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return shutdownCount_;
+    }
+
+    [[nodiscard]] std::optional<Windows::WindowsDashboardDeadline>
+    lastDeadline() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return lastDeadline_;
+    }
+
+private:
+    const std::uint64_t registrationId_{};
+    mutable std::mutex mutex_;
+    std::condition_variable changed_;
+    std::optional<Windows::WindowsDashboardDeadline> lastDeadline_;
+    std::size_t deadlineCount_{};
+    std::size_t shutdownCount_{};
+    bool blockDeadline_{};
+    bool deadlineEntered_{};
+    bool releaseDeadline_{};
+};
+
+class RecordingGenerationDrainObserver final
+    : public Detail::IDashboardConnectionGenerationDrainObserver {
+public:
+    void attachRegistry(const std::shared_ptr<Registry>& registry) noexcept
+    {
+        registry_ = registry;
+    }
+
+    void generationConnectionsMayHaveDrained(
+        const std::uint64_t generationId) noexcept override
+    {
+        lastGeneration_.store(generationId, std::memory_order_release);
+        callbackCount_.fetch_add(1U, std::memory_order_acq_rel);
+        if (auto registry = registry_.lock(); registry != nullptr) {
+            static_cast<void>(registry->snapshot());
+            reentered_.store(true, std::memory_order_release);
+        }
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        return callbackCount_.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] std::uint64_t lastGeneration() const noexcept
+    {
+        return lastGeneration_.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] bool reentered() const noexcept
+    {
+        return reentered_.load(std::memory_order_acquire);
+    }
+
+private:
+    std::weak_ptr<Registry> registry_;
+    std::atomic_size_t callbackCount_{};
+    std::atomic_uint64_t lastGeneration_{};
+    std::atomic_bool reentered_{};
 };
 
 class FakeCompletionPortApi final : public Api {
@@ -684,6 +879,7 @@ struct DeadlineFixture final {
                         packet->operation},
                     ERROR_SUCCESS);
             }
+            static_cast<void>(registry->finalizeDeadlineRouting());
         }
         bridge.reset();
         if (kernel != nullptr) {
@@ -810,6 +1006,11 @@ void validatesFixedContractsAndReservedKey()
     require(!reserved, "reserved shutdown key was accepted");
     require(reserved.error().code == Domain::ErrorCodes::InvalidRequest,
             "reserved key used the wrong error");
+    auto missingFailFast = Registry::create(DeadlineKey, nullptr);
+    require(!missingFailFast &&
+                missingFailFast.error().code ==
+                    Domain::ErrorCodes::InvalidRequest,
+            "null registry fail-fast boundary was accepted");
     registry->beginShutdown();
 }
 
@@ -1034,12 +1235,14 @@ void malformedAndUnknownRoutingRetainFatalState()
                 "unknown event fatal owner was ignored");
     }
     {
-        auto registry = take(Registry::create(DeadlineKey));
+        auto failFast = std::make_shared<RecordingRegistryFailFast>();
+        auto registry = take(Registry::create(DeadlineKey, failFast));
         registry->fatal(ERROR_INVALID_HANDLE);
         const auto snapshot = registry->snapshot();
         require(snapshot.isFatal() && snapshot.failure() != nullptr &&
                     snapshot.failure()->nativeError ==
-                        static_cast<DWORD>(ERROR_INVALID_HANDLE),
+                        static_cast<DWORD>(ERROR_INVALID_HANDLE) &&
+                    failFast->calls() == 1U,
                 "kernel native fatal error was not retained exactly");
     }
 }
@@ -1213,6 +1416,283 @@ void routesLiveAndRetiredDeadlinePackets()
                 reaped.retiredAwaitingReapCount() == 0U &&
                 reaped.registeredOwnerCount() == 0U,
             "retired notification did not release its fixed bridge slot");
+}
+
+void forceClosesOnlyTheExactListenerGeneration()
+{
+    DeadlineFixture fixture;
+    auto observer =
+        std::make_shared<RecordingGenerationDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindGenerationDrainObserver(observer)),
+            "generation-drain observer could not bind");
+    auto first = target(451U, 4'501U, 45U);
+    auto second = target(452U, 4'502U, 45U);
+    auto other = target(453U, 4'503U, 46U);
+    require(static_cast<bool>(fixture.registry->registerConnection(first)) &&
+                static_cast<bool>(
+                    fixture.registry->registerConnection(second)) &&
+                static_cast<bool>(
+                    fixture.registry->registerConnection(other)),
+            "generation-close fixtures were not registered");
+    require(fixture.registry->connectionCountForGeneration(45U) == 2U &&
+                fixture.registry->connectionCountForGeneration(46U) == 1U,
+            "generation connection counts did not preserve ownership");
+
+    require(fixture.registry->beginShutdownGeneration(45U) == 2U,
+            "exact generation shutdown did not select both owners");
+    require(first->shutdownCount() == 1U &&
+                second->shutdownCount() == 1U &&
+                other->shutdownCount() == 0U,
+            "generation shutdown crossed its listener identity");
+    require(fixture.registry->connectionCountForGeneration(45U) == 0U &&
+                fixture.registry->connectionCountForGeneration(46U) == 1U &&
+                fixture.registry->snapshot().registeredConnectionCount() ==
+                    1U,
+            "generation shutdown removed the wrong registry entries");
+    require(observer->callbackCount() == 1U &&
+                observer->lastGeneration() == 45U &&
+                observer->reentered(),
+            "zero-generation drain edge was not invoked once outside the registry lock");
+    require(fixture.registry->beginShutdownGeneration(45U) == 0U &&
+                first->shutdownCount() == 1U &&
+                second->shutdownCount() == 1U &&
+                observer->callbackCount() == 1U,
+            "repeated generation shutdown redelivered stale ownership");
+}
+
+void offRegistryDrainEdgeRemovesTheExactOwnerWithoutPolling()
+{
+    DeadlineFixture fixture;
+    auto observer =
+        std::make_shared<RecordingGenerationDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindGenerationDrainObserver(observer)),
+            "off-registry generation observer could not bind");
+
+    auto owner = target(471U, 4'701U, 47U);
+    require(static_cast<bool>(fixture.registry->registerConnection(owner)),
+            "off-registry drain owner was rejected");
+    owner->markDrainedAndNotify();
+
+    require(fixture.registry->snapshot().registeredConnectionCount() == 0U &&
+                fixture.bridge->snapshot().registeredOwnerCount() == 0U,
+            "off-registry drain edge retained registry or deadline ownership");
+    require(observer->callbackCount() == 1U &&
+                observer->lastGeneration() == 47U && observer->reentered(),
+            "off-registry drain did not publish the exact generation-zero edge outside locks");
+
+    owner->markDrainedAndNotify();
+    fixture.registry->connectionMayHaveDrained(
+        Key{owner->completionKey().value() + 1U},
+        owner->registrationId(),
+        owner->generationId());
+    require(fixture.registry->snapshot().registeredConnectionCount() == 0U &&
+                observer->callbackCount() == 1U,
+            "stale or foreign drain identity redelivered removal");
+}
+
+[[nodiscard]] Windows::WindowsDashboardDeadline listenerDeadline(
+    const std::uint64_t registrationId,
+    const std::uint64_t armSequence) noexcept
+{
+    return Windows::WindowsDashboardDeadline{
+        registrationId,
+        armSequence,
+        Windows::WindowsDashboardDeadlineKind::ListenerRetirement,
+        Domain::MonotonicTimePoint{std::chrono::seconds{45}}};
+}
+
+[[nodiscard]] Windows::WindowsDashboardDeadline overloadDeadline(
+    const std::uint64_t registrationId,
+    const std::uint64_t armSequence) noexcept
+{
+    return Windows::WindowsDashboardDeadline{
+        registrationId,
+        armSequence,
+        Windows::WindowsDashboardDeadlineKind::OverloadResponse,
+        Domain::MonotonicTimePoint{std::chrono::seconds{50}}};
+}
+
+void routesAndExactlyRetiresAuxiliaryDeadlineOwners()
+{
+    DeadlineFixture fixture;
+    auto owner = std::make_shared<FakeAuxiliaryDeadlineTarget>(90'101U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
+            "auxiliary deadline owner was rejected");
+    require(
+        fixture.registry->snapshot().
+                registeredAuxiliaryDeadlineTargetCount() == 1U &&
+            fixture.bridge->snapshot().registeredOwnerCount() == 1U,
+        "auxiliary deadline ownership was not committed to both registries");
+
+    fixture.bridge->signal(listenerDeadline(owner->registrationId(), 7U));
+    const auto packet = fixture.takePacket();
+    fixture.registry->consume(
+        Packet{
+            packet.transferredBytes,
+            Key{static_cast<std::uintptr_t>(packet.completionKey)},
+            packet.operation},
+        ERROR_SUCCESS);
+    const auto delivered = owner->lastDeadline();
+    require(owner->deadlineCount() == 1U && delivered.has_value() &&
+                delivered->registrationId == owner->registrationId() &&
+                delivered->armSequence == 7U &&
+                delivered->kind == Windows::
+                    WindowsDashboardDeadlineKind::ListenerRetirement,
+            "listener retirement deadline did not reach its exact owner");
+
+    auto imposter =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(
+            owner->registrationId());
+    require(!fixture.registry->unregisterAuxiliaryDeadlineTarget(imposter),
+            "same-registration auxiliary imposter retired the live owner");
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
+            "exact auxiliary deadline owner did not retire");
+    require(
+        fixture.registry->snapshot().
+                registeredAuxiliaryDeadlineTargetCount() == 0U &&
+            fixture.bridge->snapshot().registeredOwnerCount() == 0U,
+        "auxiliary deadline retirement retained registry ownership");
+}
+
+void auxiliarySignalFirstRetirementDrainsATombstone()
+{
+    DeadlineFixture fixture;
+    auto owner = std::make_shared<FakeAuxiliaryDeadlineTarget>(90'201U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
+            "signal-first auxiliary owner was rejected");
+    fixture.bridge->signal(listenerDeadline(owner->registrationId(), 9U));
+    const auto packet = fixture.takePacket();
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
+            "signal-first auxiliary owner did not retire");
+    require(fixture.bridge->snapshot().retiredAwaitingReapCount() == 1U,
+            "signal-first auxiliary retirement lost its posted tombstone");
+
+    fixture.registry->consume(
+        Packet{
+            packet.transferredBytes,
+            Key{static_cast<std::uintptr_t>(packet.completionKey)},
+            packet.operation},
+        ERROR_SUCCESS);
+    require(owner->deadlineCount() == 0U,
+            "retired auxiliary deadline reached its old owner");
+    require(fixture.registry->snapshot().retiredDeadlineDrainCount() == 1U &&
+                fixture.bridge->snapshot().postedOperationCount() == 0U,
+            "auxiliary deadline tombstone did not drain exactly once");
+}
+
+void auxiliaryRoutingPinsTheOwnerAcrossConcurrentUnregistration()
+{
+    DeadlineFixture fixture;
+    auto owner = std::make_shared<FakeAuxiliaryDeadlineTarget>(90'301U);
+    owner->blockDeadline();
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
+            "blocking auxiliary owner was rejected");
+    fixture.bridge->signal(listenerDeadline(owner->registrationId(), 11U));
+    const auto packet = fixture.takePacket();
+
+    std::thread consumeThread{[&] {
+        fixture.registry->consume(
+            Packet{
+                packet.transferredBytes,
+                Key{static_cast<std::uintptr_t>(packet.completionKey)},
+                packet.operation},
+            ERROR_SUCCESS);
+    }};
+    require(owner->waitForDeadlineEntry(),
+            "auxiliary deadline callback did not enter");
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
+            "live auxiliary callback owner could not unregister");
+    auto* const borrowed = owner.get();
+    std::weak_ptr<FakeAuxiliaryDeadlineTarget> weakOwner{owner};
+    owner.reset();
+    require(!weakOwner.expired(),
+            "unregistration destroyed a running auxiliary callback owner");
+    borrowed->releaseDeadline();
+    consumeThread.join();
+    require(weakOwner.expired(),
+            "auxiliary callback pin outlived completed dispatch");
+}
+
+void auxiliaryCapacityAndShutdownStayFixedAndNonfatal()
+{
+    DeadlineFixture fixture;
+    std::array<
+        std::shared_ptr<FakeAuxiliaryDeadlineTarget>,
+        Registry::MaximumAuxiliaryDeadlineTargetCount> owners{
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'401U),
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'402U),
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'403U),
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'404U)};
+    for (const auto& owner : owners) {
+        require(static_cast<bool>(
+                    fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
+                "fixed auxiliary deadline owner was rejected");
+    }
+    auto overflow =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'405U);
+    const auto rejected =
+        fixture.registry->registerAuxiliaryDeadlineTarget(overflow);
+    require(!rejected &&
+                rejected.error().code ==
+                    Domain::ErrorCodes::LimitExceeded &&
+                rejected.error().retryable &&
+                overflow->shutdownCount() == 1U,
+            "fifth auxiliary owner was not rejected and closed safely");
+    require(!fixture.registry->snapshot().isFatal(),
+            "ordinary auxiliary capacity rejection became fatal");
+
+    fixture.registry->beginShutdown();
+    for (const auto& owner : owners) {
+        require(owner->shutdownCount() == 1U,
+                "registered auxiliary owner did not receive shutdown once");
+    }
+    require(
+        fixture.registry->snapshot().
+                registeredAuxiliaryDeadlineTargetCount() ==
+                    Registry::MaximumAuxiliaryDeadlineTargetCount &&
+            fixture.bridge->snapshot().registeredOwnerCount() ==
+                Registry::MaximumAuxiliaryDeadlineTargetCount &&
+            !fixture.bridge->snapshot().isShutdown() &&
+            !fixture.registry->finalizeDeadlineRouting(),
+        "registry shutdown retired live auxiliary watchdog routing");
+
+    fixture.bridge->signal(
+        overloadDeadline(owners[0U]->registrationId(), 21U));
+    fixture.bridge->signal(
+        listenerDeadline(owners[1U]->registrationId(), 22U));
+    for (std::size_t index{}; index < 2U; ++index) {
+        const auto packet = fixture.takePacket();
+        fixture.registry->consume(
+            Packet{
+                packet.transferredBytes,
+                Key{static_cast<std::uintptr_t>(packet.completionKey)},
+                packet.operation},
+            ERROR_SUCCESS);
+    }
+    require(owners[0U]->deadlineCount() == 1U &&
+                owners[0U]->lastDeadline().has_value() &&
+                owners[0U]->lastDeadline()->kind == Windows::
+                    WindowsDashboardDeadlineKind::OverloadResponse &&
+                owners[1U]->deadlineCount() == 1U &&
+                owners[1U]->lastDeadline().has_value() &&
+                owners[1U]->lastDeadline()->kind == Windows::
+                    WindowsDashboardDeadlineKind::ListenerRetirement,
+            "shutdown did not route retained overload and listener watchdogs");
+    for (const auto& owner : owners) {
+        require(
+            fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
+            "drained auxiliary owner could not unregister after shutdown");
+    }
+    require(fixture.registry->finalizeDeadlineRouting() &&
+                fixture.bridge->snapshot().isShutdown(),
+            "drained auxiliary routing did not finalize exactly once");
 }
 
 void deadlineRoutingSerializesLiveReapAndConcurrentRetirement()
@@ -1416,12 +1896,18 @@ constexpr std::array TestCases{
     TestCase{"forty capacity", enforcesExactlyFortyWithoutFatalOverload},
     TestCase{"duplicate fatal", duplicateIdentityIsFatalAndClosesOutsideLock},
     TestCase{"connection route identity", routesConnectionAndRejectsStaleRemovalIdentity},
+    TestCase{"generation force close", forceClosesOnlyTheExactListenerGeneration},
+    TestCase{"off-registry drain edge", offRegistryDrainEdgeRemovesTheExactOwnerWithoutPolling},
     TestCase{"malformed routes", malformedAndUnknownRoutingRetainFatalState},
     TestCase{"event fatal", knownEventFatalShutsDownReentrantly},
     TestCase{"destructor reentry", destroysAutoRemovedTargetOnlyAfterUnlock},
     TestCase{"shutdown route race", shutdownAndConcurrentRoutingDoNotShareRegistryLock},
     TestCase{"deadline binding", validatesOneShotAndExactDeadlineBridgeBinding},
     TestCase{"deadline routing", routesLiveAndRetiredDeadlinePackets},
+    TestCase{"auxiliary deadline routing", routesAndExactlyRetiresAuxiliaryDeadlineOwners},
+    TestCase{"auxiliary deadline tombstone", auxiliarySignalFirstRetirementDrainsATombstone},
+    TestCase{"auxiliary deadline callback pin", auxiliaryRoutingPinsTheOwnerAcrossConcurrentUnregistration},
+    TestCase{"auxiliary deadline capacity", auxiliaryCapacityAndShutdownStayFixedAndNonfatal},
     TestCase{"deadline routing lock order", deadlineRoutingSerializesLiveReapAndConcurrentRetirement},
     TestCase{"deadline retire-first race", retireFirstSuppressesAnExtractedSchedulerDeadline},
     TestCase{"deadline retirement failure", failedExactRetirementRetainsTheEntryAndHandle},

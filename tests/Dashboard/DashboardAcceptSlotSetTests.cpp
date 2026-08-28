@@ -1144,10 +1144,102 @@ void cancellationFailureDrainsWithoutReprime()
             "shutdown cancellation was re-primed");
     require(reaped.acceptFailure() != nullptr &&
                 reaped.acceptFailure()->code ==
-                    Domain::ErrorCodes::Cancelled,
+                    Domain::ErrorCodes::Cancelled &&
+                reaped.cancellationRequestedForSlot(),
             "shutdown cancellation lost its typed error");
     require(context.extensionState.issueCalls == 4U,
             "shutdown cancellation issued a replacement");
+}
+
+void unsolicitedAbortHasNoExactCancellationProvenance()
+{
+    FakeContext context;
+    require(static_cast<bool>(context.start()), "slot set did not start");
+    context.acceptApi->failCancelCall = 1U;
+    context.acceptApi->systemError = ERROR_ACCESS_DENIED;
+    const auto closeFailure =
+        context.set->closeAdmissionAndRequestCancellation();
+    require(closeFailure.has_value() &&
+                closeFailure->kind ==
+                    Detail::DashboardAcceptLifecycleFailureKind::Unauthorized,
+            "injected cancellation failure was not returned");
+    require(!context.set->closeAdmissionAndRequestCancellation().has_value() &&
+                context.acceptApi->cancelCalls == Set::SlotCount,
+            "ordinary repeated close retried a failed CancelIoEx");
+    requireSnapshotCounts(
+        context.set->snapshot(), 1U, 0U, 0U, 0U, 3U, 0U,
+        "failed cancellation did not retain one exact issued slot");
+
+    auto reaped = take(context.set->reap(
+        ListenerKey,
+        0U,
+        context.extensionState.uniqueOperations[0U],
+        ERROR_OPERATION_ABORTED));
+    require(reaped.disposition() == ReapDisposition::FailureDrained &&
+                reaped.acceptFailure() != nullptr &&
+                reaped.acceptFailure()->code ==
+                    Domain::ErrorCodes::Cancelled,
+            "unsolicited abort lost its native cancellation diagnostic");
+    require(!reaped.cancellationRequestedForSlot(),
+            "generation-wide close invented per-slot cancellation provenance");
+}
+
+void listenerForceCloseBoundsOneAndRepeatedCancellationFailures()
+{
+    const auto runCase = [](const bool failRetry) {
+        FakeContext context;
+        require(static_cast<bool>(context.start()),
+                "slot set did not start");
+        context.acceptApi->failCancelCall = 1U;
+        context.acceptApi->systemError = ERROR_ACCESS_DENIED;
+        const auto firstFailure =
+            context.set->closeAdmissionAndRequestCancellation();
+        require(firstFailure.has_value() &&
+                    firstFailure->kind ==
+                        Detail::DashboardAcceptLifecycleFailureKind::Unauthorized,
+                "first CancelIoEx failure was not retained");
+
+        context.acceptApi->failCancelCall = failRetry ? 5U : 0U;
+        const auto forceFailure =
+            context.set->forceCloseListenerAndRequestCancellation();
+        require(forceFailure.has_value() == failRetry,
+                "force-close cancellation retry used the wrong result");
+        require(context.acceptApi->cancelCalls == 5U,
+                "force close did not perform one bounded cancellation retry");
+        const auto forced = context.set->snapshot();
+        require(forced.listenerForceClosed() &&
+                    !forced.fullyDrained(),
+                "listener force close released native slot ownership");
+        requireSnapshotCounts(
+            forced, 0U, 0U, 0U, 0U, 4U, 0U,
+            "listener close did not record exact outstanding-slot provenance");
+        require(context.winsock->closeCalls == 1U &&
+                    context.winsock->closedSockets[0U] ==
+                        context.listenerSocket,
+                "listener force close did not invalidate the exact RAII handle");
+
+        for (std::size_t index{}; index < Set::SlotCount; ++index) {
+            auto reaped = take(context.set->reap(
+                ListenerKey,
+                0U,
+                context.extensionState.uniqueOperations[index],
+                index == 0U ? ERROR_SUCCESS
+                            : ERROR_OPERATION_ABORTED));
+            require(reaped.cancellationRequestedForSlot(),
+                    "listener-close reap lost exact per-slot provenance");
+            if (index == 0U) {
+                require(reaped.disposition() ==
+                            ReapDisposition::FailureDrained &&
+                            context.acceptApi->updateCalls == 0U,
+                        "late success reused an invalidated listener handle");
+            }
+        }
+        require(context.set->snapshot().fullyDrained(),
+                "listener close did not retain storage through exact reaps");
+    };
+
+    runCase(false);
+    runCase(true);
 }
 
 void wrongKeyAndForeignPointerAreNonMutating()
@@ -1619,7 +1711,7 @@ struct TestCase final {
     void (*run)();
 };
 
-constexpr std::array<TestCase, 21U> TestCases{{
+constexpr std::array<TestCase, 23U> TestCases{{
     {"factory exact-listener discovery",
      &factoryDiscoversExtensionsFromTheOwnedListener},
     {"associate before exactly four issues",
@@ -1637,6 +1729,8 @@ constexpr std::array<TestCase, 21U> TestCases{{
     {"retryable client failure", &retryableClientFailureReissuesTheExactSameSlot},
     {"listener failure retirement", &retryableListenerFailureClosesAdmissionInsteadOfSpinning},
     {"shutdown failure drain", &cancellationFailureDrainsWithoutReprime},
+    {"unsolicited abort provenance", &unsolicitedAbortHasNoExactCancellationProvenance},
+    {"listener force-close drain", &listenerForceCloseBoundsOneAndRepeatedCancellationFailures},
     {"misrouting rejection", &wrongKeyAndForeignPointerAreNonMutating},
     {"nonzero packet consume", &nonzeroBytePacketIsConsumedThenRetiresTheGeneration},
     {"explicit resume issue failure", &explicitResumeIssueFailurePreservesConnectionAndClosesAdmission},

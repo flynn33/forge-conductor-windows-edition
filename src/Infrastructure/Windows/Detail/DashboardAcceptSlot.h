@@ -23,6 +23,8 @@
 
 namespace ForgeConductor::Infrastructure::Windows::Detail {
 
+class DashboardAcceptSlotSet;
+
 // Narrow native seam for the two post-issue operations owned by an accept
 // slot. Socket-option and kernel error domains remain separate so an error is
 // always read from the API that produced it.
@@ -82,6 +84,10 @@ public:
     {
         return socket_.get();
     }
+
+    // Closes the accepted client immediately while preserving the move-only
+    // handoff object and its exact AcceptEx resume obligation.
+    void closeNativeSocket() noexcept { socket_.reset(); }
 
     [[nodiscard]] const DashboardAcceptedAddresses& addresses() const noexcept
     {
@@ -157,11 +163,14 @@ public:
         DWORD nativeError) noexcept;
 
 private:
+    friend class DashboardAcceptSlotSet;
+
     explicit DashboardAcceptSlot(
         std::shared_ptr<IDashboardAcceptSlotApi> api) noexcept;
 
     [[nodiscard]] Domain::Result<void> validateCompletion(
         const OVERLAPPED* completedOperation) const noexcept;
+    void recordListenerCloseCancellation() noexcept;
     void resetAfterReap() noexcept;
 
     std::shared_ptr<IDashboardAcceptSlotApi> api_;
@@ -174,6 +183,7 @@ private:
     DWORD addressRegionLength_{};
     DWORD addressBufferLength_{};
     std::optional<DashboardLoopbackEndpoint> listenerEndpoint_;
+    bool listenerForceClosed_{};
     std::atomic<DashboardAcceptSlotState> state_{
         DashboardAcceptSlotState::Idle};
     mutable std::mutex mutex_;

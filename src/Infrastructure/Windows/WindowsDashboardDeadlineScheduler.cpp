@@ -49,6 +49,7 @@ constexpr auto MaximumClockRecheckInterval = std::chrono::milliseconds{250};
     case WindowsDashboardDeadlineKind::SocketLifetime:
     case WindowsDashboardDeadlineKind::ServerSentEventsLifetime:
     case WindowsDashboardDeadlineKind::ServerSentEventsDelivery:
+    case WindowsDashboardDeadlineKind::OverloadResponse:
     case WindowsDashboardDeadlineKind::ListenerRetirement:
     case WindowsDashboardDeadlineKind::ShutdownDrain:
         return true;

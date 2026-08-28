@@ -300,6 +300,7 @@ Domain::Result<DashboardAcceptIssueDisposition> DashboardAcceptSlot::issue(
 
         acceptedSocket_.emplace(std::move(socketResult).value());
         listenerSocket_ = listener.borrowedNativeSocket();
+        listenerForceClosed_ = false;
         addressFamily_ = family;
         addressRegionLength_ = addressRegionLength(family);
         addressBufferLength_ = addressRegionLength_ * 2U;
@@ -377,6 +378,25 @@ DashboardAcceptSlot::requestCancellation() noexcept
         cancellationError(code));
 }
 
+void DashboardAcceptSlot::recordListenerCloseCancellation() noexcept
+{
+    const std::scoped_lock lock{mutex_};
+    const auto current = state_.load(std::memory_order_relaxed);
+    if (current == DashboardAcceptSlotState::Issued) {
+        state_.store(
+            DashboardAcceptSlotState::CancellationRequested,
+            std::memory_order_release);
+    }
+    if (current == DashboardAcceptSlotState::Issued ||
+        current == DashboardAcceptSlotState::CancellationRequested) {
+        // The RAII listener owner has closed this handle. Never retain its
+        // numeric value because Winsock may reuse it before a late success
+        // completion reaches this slot.
+        listenerSocket_ = INVALID_SOCKET;
+        listenerForceClosed_ = true;
+    }
+}
+
 Domain::Result<void> DashboardAcceptSlot::validateCompletion(
     const OVERLAPPED* const completedOperation) const noexcept
 {
@@ -391,9 +411,12 @@ Domain::Result<void> DashboardAcceptSlot::validateCompletion(
             Domain::ErrorCodes::IntegrityFailure,
             "A dashboard accept completion did not match its slot OVERLAPPED."));
     }
+    const bool listenerStateValid = listenerForceClosed_
+        ? listenerSocket_ == INVALID_SOCKET
+        : listenerSocket_ != INVALID_SOCKET;
     if (!acceptedSocket_.has_value() ||
         !static_cast<bool>(*acceptedSocket_) ||
-        listenerSocket_ == INVALID_SOCKET ||
+        !listenerStateValid ||
         (addressFamily_ != AF_INET && addressFamily_ != AF_INET6) ||
         addressRegionLength_ == 0U ||
         addressBufferLength_ == 0U ||
@@ -415,6 +438,12 @@ DashboardAcceptSlot::reapSuccessful(
     if (!validation) {
         return Domain::Result<DashboardAcceptedConnection>::failure(
             validation.error());
+    }
+
+    if (listenerForceClosed_) {
+        resetAfterReap();
+        return Domain::Result<DashboardAcceptedConnection>::failure(
+            completionError(ERROR_OPERATION_ABORTED));
     }
 
     if (api_->updateAcceptContext(
@@ -483,6 +512,7 @@ void DashboardAcceptSlot::resetAfterReap() noexcept
 {
     acceptedSocket_.reset();
     listenerSocket_ = INVALID_SOCKET;
+    listenerForceClosed_ = false;
     addressFamily_ = AF_UNSPEC;
     addressRegionLength_ = 0U;
     addressBufferLength_ = 0U;

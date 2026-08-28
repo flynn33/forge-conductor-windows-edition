@@ -29,7 +29,7 @@ using Mailbox = Detail::DashboardDeadlineNotificationMailbox;
 static_assert(std::is_final_v<Mailbox>);
 static_assert(!std::is_copy_constructible_v<Mailbox>);
 static_assert(!std::is_move_constructible_v<Mailbox>);
-static_assert(Mailbox::HardMaximumOwnerCount == 43U);
+static_assert(Mailbox::HardMaximumOwnerCount == 44U);
 static_assert(noexcept(Mailbox::create()));
 static_assert(noexcept(std::declval<Mailbox&>().registerOwner(1U)));
 static_assert(noexcept(std::declval<Mailbox&>().publish({})));

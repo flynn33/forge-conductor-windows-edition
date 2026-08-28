@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T094724947Z-a91ca2f8",
+  "phase": "P16",
+  "role": "tester",
+  "command": "ctest --test-dir out/build/windows-msvc-x64 -C Debug -V -R '^ForgeConductor\\.Dashboard\\.(AcceptSlot|AcceptSlotSet|AcceptedConnectionHandoff|IocpCompletionRouter|OverloadResponderSet|ListenerGeneration|DeadlineNotificationMailbox|DeadlineIocpBridge|ConnectionState|ConnectionRegistry|DeadlineScheduler)Tests$'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T09:47:24.9561290+00:00",
+  "end_utc": "2026-08-28T09:47:34.3265119+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T094724947Z-a91ca2f8.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T094724947Z-a91ca2f8.stderr.txt",
+  "stdout_sha256": "281c92ae827d79bd57733e861379626538de929f1ed560a18e722cd5d6153dd8",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

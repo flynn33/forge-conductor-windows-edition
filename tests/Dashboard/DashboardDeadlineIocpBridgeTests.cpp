@@ -45,7 +45,7 @@ static_assert(std::is_base_of_v<
               Bridge>);
 static_assert(!std::is_copy_constructible_v<Bridge>);
 static_assert(!std::is_move_constructible_v<Bridge>);
-static_assert(Bridge::SlotCount == 43U);
+static_assert(Bridge::SlotCount == 44U);
 static_assert(
     Bridge::SlotCount ==
     Windows::WindowsDashboardDeadlineScheduler::HardMaximumScheduledCount);
@@ -560,7 +560,7 @@ private:
     return *packet;
 }
 
-void constructionAndAllFortyThreeSlotsAreBounded()
+void constructionAndAllFortyFourSlotsAreBounded()
 {
     Harness owner;
     const auto reserved = Bridge::create(
@@ -570,7 +570,7 @@ void constructionAndAllFortyThreeSlotsAreBounded()
             "the reserved key used the wrong typed error");
 
     auto snapshot = owner.bridge().snapshot();
-    require(snapshot.maximumOwnerCount() == 43U,
+    require(snapshot.maximumOwnerCount() == Bridge::SlotCount,
             "the bridge did not retain its exact hard capacity");
     require(snapshot.registeredOwnerCount() == 0U &&
                 snapshot.postedOperationCount() == 0U &&
@@ -593,11 +593,12 @@ void constructionAndAllFortyThreeSlotsAreBounded()
                 "registration returned a zero generation");
     }
     snapshot = owner.bridge().snapshot();
-    require(snapshot.registeredOwnerCount() == 43U,
-            "the bridge did not register all 43 owners");
+    require(snapshot.registeredOwnerCount() == Bridge::SlotCount,
+            "the bridge did not register all bounded owners");
 
-    const auto overflow = owner.bridge().registerOwner(44U);
-    require(!overflow, "a forty-fourth owner exceeded fixed capacity");
+    const auto overflow = owner.bridge().registerOwner(
+        Bridge::SlotCount + 1U);
+    require(!overflow, "an owner exceeded fixed capacity");
     require(overflow.error().code == Domain::ErrorCodes::LimitExceeded &&
                 overflow.error().retryable,
             "capacity exhaustion used the wrong typed failure");
@@ -610,7 +611,8 @@ void constructionAndAllFortyThreeSlotsAreBounded()
                 snapshot.postedOperationCount() == 0U,
             "idle retirement did not vacate every fixed slot");
 
-    const auto replacement = take(owner.bridge().registerOwner(44U));
+    const auto replacement = take(owner.bridge().registerOwner(
+        Bridge::SlotCount + 1U));
     require(replacement.slotIndex == handles.front().slotIndex,
             "the first available stable slot was not reused");
     require(replacement.generation != handles.front().generation,
@@ -737,17 +739,17 @@ void allFortyThreePendingOwnersRemainFixedAndCoalesced()
         owner.bridge().signal(deadline(registrationId, 1U));
         owner.bridge().signal(deadline(registrationId, 2U));
     }
-    require(owner.api().pendingDataCount() == 43U &&
-                owner.api().dataPostSuccessCount() == 43U,
-            "43 owners did not produce exactly 43 pending packets");
+    require(owner.api().pendingDataCount() == Bridge::SlotCount &&
+                owner.api().dataPostSuccessCount() == Bridge::SlotCount,
+            "all owners did not produce exactly one pending packet");
     auto snapshot = owner.bridge().snapshot();
-    require(snapshot.registeredOwnerCount() == 43U &&
-                snapshot.postedOperationCount() == 43U &&
-                snapshot.coalescedSignalCount() == 43U,
+    require(snapshot.registeredOwnerCount() == Bridge::SlotCount &&
+                snapshot.postedOperationCount() == Bridge::SlotCount &&
+                snapshot.coalescedSignalCount() == Bridge::SlotCount,
             "the fully occupied bridge exceeded or lost fixed capacity");
 
     const auto packets = owner.api().takeAllDataPackets();
-    require(packets.size() == 43U,
+    require(packets.size() == Bridge::SlotCount,
             "the fixed native packet set had the wrong size");
     std::vector<OVERLAPPED*> addresses;
     addresses.reserve(packets.size());
@@ -768,9 +770,9 @@ void allFortyThreePendingOwnersRemainFixedAndCoalesced()
     }
     snapshot = owner.bridge().snapshot();
     require(snapshot.postedOperationCount() == 0U &&
-                snapshot.deliveredDeadlineCount() == 43U &&
+                snapshot.deliveredDeadlineCount() == Bridge::SlotCount &&
                 !snapshot.isFatal(),
-            "draining all 43 fixed slots left a pending operation");
+            "draining all fixed slots left a pending operation");
     for (const auto& handle : handles) {
         take(owner.bridge().retireOwner(handle));
     }
@@ -1071,7 +1073,7 @@ void retirementRacingSignalNeverLeaksAnOperation()
 void shutdownRacingSignalsRetainsOnlyDrainablePackets()
 {
     Harness owner;
-    constexpr std::size_t OwnerCount = 43U;
+    constexpr std::size_t OwnerCount = Bridge::SlotCount;
     std::array<Handle, OwnerCount> handles{};
     for (std::size_t index{}; index < OwnerCount; ++index) {
         handles[index] = take(owner.bridge().registerOwner(4'000U + index));
@@ -1125,7 +1127,7 @@ void shutdownRacingSignalsRetainsOnlyDrainablePackets()
 int main()
 {
     try {
-        constructionAndAllFortyThreeSlotsAreBounded();
+        constructionAndAllFortyFourSlotsAreBounded();
         onePostCoalescesAndDeliversTheLatestArm();
         retirementAndReuseValidateTheExactMailboxGeneration();
         allFortyThreePendingOwnersRemainFixedAndCoalesced();

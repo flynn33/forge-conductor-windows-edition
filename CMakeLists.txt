@@ -197,6 +197,7 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardAdmissionController.cpp
     src/Infrastructure/Windows/Detail/DashboardAcceptSlot.cpp
     src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.cpp
+    src/Infrastructure/Windows/Detail/DashboardAcceptedConnectionHandoff.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionEventBridge.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionResponseCatalog.cpp
@@ -207,9 +208,13 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.cpp
     src/Infrastructure/Windows/Detail/DashboardHandlerOperations.cpp
     src/Infrastructure/Windows/Detail/DashboardIoCompletionPort.cpp
+    src/Infrastructure/Windows/Detail/DashboardIocpCompletionRouter.cpp
     src/Infrastructure/Windows/Detail/DashboardIocpWorkerKernel.cpp
+    src/Infrastructure/Windows/Detail/DashboardListenerGeneration.cpp
+    src/Infrastructure/Windows/Detail/DashboardListenerGenerationCoordinator.cpp
     src/Infrastructure/Windows/Detail/DashboardListeningSocket.cpp
     src/Infrastructure/Windows/Detail/DashboardLoopbackEndpoint.cpp
+    src/Infrastructure/Windows/Detail/DashboardOverloadResponderSet.cpp
     src/Infrastructure/Windows/Detail/DashboardWinsockExtensions.cpp
     src/Infrastructure/Windows/Detail/DashboardWinsockRuntime.cpp
     src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp
@@ -874,6 +879,24 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
+    add_executable(ForgeConductor.Dashboard.IocpCompletionRouterTests
+        tests/Dashboard/DashboardIocpCompletionRouterTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.IocpCompletionRouterTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.IocpCompletionRouterTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.IocpCompletionRouterTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.IocpCompletionRouterTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.IocpCompletionRouterTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.IocpCompletionRouterTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
     add_executable(ForgeConductor.Dashboard.ListeningSocketTests
         tests/Dashboard/DashboardListeningSocketTests.cpp)
     forge_configure_native_target(
@@ -943,6 +966,60 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.AcceptSlotSetTests>)
     set_tests_properties(
         ForgeConductor.Dashboard.AcceptSlotSetTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.AcceptedConnectionHandoffTests
+        tests/Dashboard/DashboardAcceptedConnectionHandoffTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.AcceptedConnectionHandoffTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.AcceptedConnectionHandoffTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.AcceptedConnectionHandoffTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.AcceptedConnectionHandoffTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.AcceptedConnectionHandoffTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.AcceptedConnectionHandoffTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.OverloadResponderSetTests
+        tests/Dashboard/DashboardOverloadResponderSetTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.OverloadResponderSetTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.OverloadResponderSetTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.OverloadResponderSetTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.OverloadResponderSetTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.OverloadResponderSetTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.OverloadResponderSetTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ListenerGenerationTests
+        tests/Dashboard/DashboardListenerGenerationTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ListenerGenerationTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ListenerGenerationTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ListenerGenerationTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ListenerGenerationTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ListenerGenerationTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ListenerGenerationTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
         TIMEOUT 120)
 

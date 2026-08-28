@@ -92,6 +92,11 @@ public:
         return socket_.get();
     }
 
+    // Invalidates the RAII owner immediately. Any already-issued AcceptEx
+    // OVERLAPPED storage remains owned by its accept-slot set until exact
+    // completion reaping.
+    void closeNativeSocket() noexcept { socket_.reset(); }
+
 private:
     DashboardListeningSocket(
         UniqueDashboardSocket socket,

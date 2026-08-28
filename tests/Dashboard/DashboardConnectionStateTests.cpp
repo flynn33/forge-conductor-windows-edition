@@ -278,7 +278,7 @@ public:
         OVERLAPPED* const operation,
         const DWORD nativeError) noexcept override
     {
-        const std::scoped_lock lock{mutex_};
+        std::unique_lock lock{mutex_};
         if (!(key == key_) || operation != &operation_ ||
             state_ == Detail::DashboardConnectionSocketState::Idle ||
             static_cast<std::size_t>(transferredBytes) > activeLength_) {
@@ -289,6 +289,16 @@ public:
         const auto kind = activeKind_;
         state_ = Detail::DashboardConnectionSocketState::Idle;
         activeLength_ = 0U;
+        if (blockNextReapAfterIdle_) {
+            reapAfterIdleBlocked_ = true;
+            stateGateChanged_.notify_all();
+            stateGateChanged_.wait(lock, [this] {
+                return releaseReapAfterIdle_;
+            });
+            blockNextReapAfterIdle_ = false;
+            reapAfterIdleBlocked_ = false;
+            releaseReapAfterIdle_ = false;
+        }
         if (nativeError != ERROR_SUCCESS) {
             return reapFailure(
                 nativeError == ERROR_OPERATION_ABORTED
@@ -376,6 +386,32 @@ public:
         stateGateChanged_.notify_all();
     }
 
+    void blockNextReapAfterIdle() noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        blockNextReapAfterIdle_ = true;
+        reapAfterIdleBlocked_ = false;
+        releaseReapAfterIdle_ = false;
+    }
+
+    void waitUntilReapAfterIdleBlocked()
+    {
+        std::unique_lock lock{mutex_};
+        if (!stateGateChanged_.wait_for(lock, 5s, [this] {
+                return reapAfterIdleBlocked_;
+            })) {
+            throw std::runtime_error{
+                "socket reap did not enter its post-idle gate"};
+        }
+    }
+
+    void releaseReapAfterIdle() noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        releaseReapAfterIdle_ = true;
+        stateGateChanged_.notify_all();
+    }
+
 private:
     [[nodiscard]] static Domain::Result<
         Detail::DashboardConnectionSocketIssueDisposition>
@@ -423,6 +459,9 @@ private:
     mutable bool blockNextStateObservation_{};
     mutable bool stateObservationBlocked_{};
     mutable bool releaseStateObservation_{};
+    bool blockNextReapAfterIdle_{};
+    bool reapAfterIdleBlocked_{};
+    bool releaseReapAfterIdle_{};
 };
 
 class CompleteApplication final
@@ -850,6 +889,77 @@ private:
     std::weak_ptr<Detail::IDashboardConnectionDispatchTarget> target_;
 };
 
+class RecordingConnectionDrainObserver final
+    : public Detail::IDashboardConnectionDrainObserver {
+public:
+    void attachTarget(
+        std::weak_ptr<Detail::IDashboardConnectionDispatchTarget> target)
+        noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        target_ = std::move(target);
+    }
+
+    void connectionMayHaveDrained(
+        const Detail::DashboardIoCompletionKey completionKey,
+        const std::uint64_t registrationId,
+        const std::uint64_t generationId) noexcept override
+    {
+        std::shared_ptr<Detail::IDashboardConnectionDispatchTarget> target;
+        {
+            const std::scoped_lock lock{mutex_};
+            completionKey_ = completionKey;
+            registrationId_ = registrationId;
+            generationId_ = generationId;
+            ++callbackCount_;
+            target = target_.lock();
+        }
+        if (target != nullptr) {
+            static_cast<void>(target->snapshot());
+            reentered_.store(true, std::memory_order_release);
+        }
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return callbackCount_;
+    }
+
+    [[nodiscard]] Detail::DashboardIoCompletionKey completionKey()
+        const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return completionKey_;
+    }
+
+    [[nodiscard]] std::uint64_t registrationId() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return registrationId_;
+    }
+
+    [[nodiscard]] std::uint64_t generationId() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return generationId_;
+    }
+
+    [[nodiscard]] bool reentered() const noexcept
+    {
+        return reentered_.load(std::memory_order_acquire);
+    }
+
+private:
+    mutable std::mutex mutex_;
+    std::weak_ptr<Detail::IDashboardConnectionDispatchTarget> target_;
+    Detail::DashboardIoCompletionKey completionKey_{0U};
+    std::uint64_t registrationId_{};
+    std::uint64_t generationId_{};
+    std::size_t callbackCount_{};
+    std::atomic_bool reentered_{};
+};
+
 struct RealStateFixture final {
     explicit RealStateFixture(
         const Dashboard::DashboardPostDeliveryAction action =
@@ -869,13 +979,17 @@ struct RealStateFixture final {
           operationalState{std::make_shared<ActiveOperationalState>()},
           application{std::move(connectionApplication)},
           kernelSink{std::make_shared<ForwardingKernelSink>()},
-          deadlineSink{std::make_shared<ForwardingDeadlineSink>()}
+          deadlineSink{std::make_shared<ForwardingDeadlineSink>()},
+          drainObserver{
+              std::make_shared<RecordingConnectionDrainObserver>()}
     {
         runtimeServices = take(
             Detail::DashboardConnectionRuntimeServices::create(
                 clock,
                 uuidGenerator,
                 operationalState));
+        admissionController = take(
+            Detail::DashboardAdmissionController::create());
         responseCatalog =
             take(Detail::DashboardConnectionResponseCatalog::create());
         handlerExecutor =
@@ -890,9 +1004,13 @@ struct RealStateFixture final {
         auto io = std::make_unique<FakeConnectionIo>(
             identity.completionKey);
         socket = io.get();
+        auto admissionLease = take(admissionController->tryAccept());
+        admittedAt = clock->monotonicNow();
         state = take(Detail::DashboardConnectionState::create(
             3U,
             identity,
+            admittedAt,
+            std::move(admissionLease),
             std::move(io),
             *kernel,
             *deadlineScheduler,
@@ -900,6 +1018,10 @@ struct RealStateFixture final {
             *runtimeServices,
             application,
             *responseCatalog));
+        auto drainBound = state->bindDrainObserver(drainObserver);
+        require(static_cast<bool>(drainBound),
+                "real state drain observer failed to bind");
+        drainObserver->attachTarget(state);
         kernelSink->setTarget(state);
         deadlineSink->setTarget(state);
     }
@@ -965,8 +1087,11 @@ struct RealStateFixture final {
     std::shared_ptr<CompleteApplication> completeApplication;
     std::shared_ptr<ForwardingKernelSink> kernelSink;
     std::shared_ptr<ForwardingDeadlineSink> deadlineSink;
+    std::shared_ptr<RecordingConnectionDrainObserver> drainObserver;
     std::unique_ptr<Detail::DashboardConnectionRuntimeServices>
         runtimeServices;
+    std::unique_ptr<Detail::DashboardAdmissionController>
+        admissionController;
     std::unique_ptr<Detail::DashboardConnectionResponseCatalog>
         responseCatalog;
     std::unique_ptr<Windows::WindowsDashboardHandlerExecutor>
@@ -975,6 +1100,7 @@ struct RealStateFixture final {
         deadlineScheduler;
     std::unique_ptr<Detail::DashboardIocpWorkerKernel> kernel;
     Detail::DashboardConnectionRuntimeIdentity identity{};
+    Domain::MonotonicTimePoint admittedAt{};
     FakeConnectionIo* socket{};
     std::shared_ptr<Detail::DashboardConnectionState> state;
 };
@@ -996,6 +1122,13 @@ public:
     [[nodiscard]] std::uint64_t generationId() const noexcept override
     {
         return 7U;
+    }
+
+    [[nodiscard]] Domain::Result<void> bindDrainObserver(
+        std::weak_ptr<Detail::IDashboardConnectionDrainObserver>)
+        noexcept override
+    {
+        return Domain::Result<void>::success();
     }
 
     [[nodiscard]] Domain::Result<void> start() noexcept override
@@ -1064,6 +1197,9 @@ static_assert(!std::is_move_constructible_v<Detail::DashboardConnectionState>);
 static_assert(std::has_virtual_destructor_v<
               Detail::IDashboardConnectionDispatchTarget>);
 static_assert(std::has_virtual_destructor_v<Detail::IDashboardConnectionIo>);
+static_assert(noexcept(std::declval<
+                       Detail::IDashboardConnectionDispatchTarget&>()
+                           .bindDrainObserver({})));
 static_assert(noexcept(std::declval<
                        Detail::IDashboardConnectionDispatchTarget&>()
                            .dispatchIocp(0U, nullptr, ERROR_SUCCESS)));
@@ -1340,6 +1476,11 @@ void runsSseBootstrapLatestValuePacingCadenceAndLifetime()
                     SendingSseBootstrap;
         },
         "SSE exchange did not enter bootstrap delivery");
+    const auto streamAdmission = take(
+        fixture.admissionController->snapshot());
+    require(streamAdmission.shortConnectionCount() == 0U &&
+                streamAdmission.sseConnectionCount() == 1U,
+            "SSE preparation did not convert the owned admission lease");
     require(application->prepareCalls() == 1U,
             "SSE application prepare was not called once");
     require(fixture.socket->sendIssueCount() == 1U,
@@ -1449,6 +1590,108 @@ void runsSseBootstrapLatestValuePacingCadenceAndLifetime()
     require(control->isClosed(), "expired SSE subscription was not closed");
     require(fixture.state->snapshot().hasFailure(),
             "SSE lifetime expiry was not retained");
+    const auto drainedAdmission = take(
+        fixture.admissionController->snapshot());
+    require(drainedAdmission.totalConnectionCount() == 0U,
+            "drained SSE state retained its admission lease");
+}
+
+void cleanShutdownRacingPostNativeReapDoesNotRecordFailure()
+{
+    RealStateFixture fixture;
+    fixture.start();
+    fixture.socket->stageReceive(bytes("x"));
+    fixture.socket->blockNextReapAfterIdle();
+    std::jthread completion{[&fixture] {
+        fixture.state->dispatchIocp(
+            1U,
+            fixture.socket->borrowedOperation(),
+            ERROR_SUCCESS);
+    }};
+    fixture.socket->waitUntilReapAfterIdleBlocked();
+
+    fixture.state->beginShutdown();
+    require(fixture.state->isDrained(),
+            "shutdown did not drain after native reap released the socket");
+    fixture.socket->releaseReapAfterIdle();
+    completion.join();
+    require(!fixture.state->fullFailure().has_value(),
+            "post-drain socket delivery retained a false integrity failure");
+}
+
+void admissionDelayCannotRestartTheHeaderIngressCeiling()
+{
+    RealStateFixture fixture;
+    fixture.clock->advance(
+        Detail::DashboardConnectionState::HeaderIngressLifetime);
+    const auto started = fixture.state->start();
+    require(!started &&
+                started.error().code ==
+                    Domain::ErrorCodes::DeadlineExceeded,
+            "expired admission received a fresh header-ingress window");
+    require(fixture.state->isDrained() &&
+                fixture.socket->state() ==
+                    Detail::DashboardConnectionSocketState::Idle,
+            "pre-start ingress expiry issued native socket work");
+    const auto failure = fixture.state->fullFailure();
+    require(failure.has_value() &&
+                failure->code == Domain::ErrorCodes::DeadlineExceeded,
+            "pre-start ingress expiry did not retain its exact cause");
+}
+
+void sendsFixed503WhenSseAdmissionConversionIsExhausted()
+{
+    auto control = std::make_shared<SseSubscriptionControl>(2.0);
+    auto application = std::make_shared<SseApplication>(control);
+    RealStateFixture fixture{application};
+
+    std::vector<Detail::DashboardAdmissionController::Lease> blockers;
+    blockers.reserve(
+        fixture.admissionController->limits().maximumSseConnections);
+    for (std::size_t index{};
+         index < fixture.admissionController->limits().maximumSseConnections;
+        ++index) {
+        auto lease = take(fixture.admissionController->tryAccept());
+        const auto converted = lease.convertToSse();
+        require(converted.hasValue(),
+                "test could not saturate SSE admission");
+        blockers.push_back(std::move(lease));
+    }
+
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    waitUntil(
+        [&fixture] {
+            return fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::SendingComplete;
+        },
+        "SSE admission exhaustion did not begin a fixed response");
+    const auto response = text(fixture.socket->sendIssue(0U));
+    require(response.starts_with(
+                "HTTP/1.1 503 Service Unavailable\r\n"),
+            "SSE admission exhaustion did not send the fixed 503");
+    const auto saturated = take(
+        fixture.admissionController->snapshot());
+    require(saturated.shortConnectionCount() == 1U &&
+                saturated.sseConnectionCount() ==
+                    fixture.admissionController->limits().
+                        maximumSseConnections,
+            "failed SSE conversion corrupted admission accounting");
+
+    fixture.completeSend(
+        static_cast<DWORD>(fixture.socket->activeLength()));
+    waitUntil(
+        [&fixture] { return fixture.state->isDrained(); },
+        "SSE admission exhaustion response did not drain");
+    const auto afterDrain = take(
+        fixture.admissionController->snapshot());
+    require(afterDrain.shortConnectionCount() == 0U &&
+                afterDrain.sseConnectionCount() == blockers.size(),
+            "drained fallback state retained its short admission");
+    blockers.clear();
+    require(take(fixture.admissionController->snapshot()).
+                totalConnectionCount() == 0U,
+            "SSE saturation fixtures did not release admission");
 }
 
 void consumesExactHeaderIngressDeadlineAndDrainsCancellation()
@@ -1573,6 +1816,63 @@ void fatalLatchContentionClosesAfterSnapshotWithoutBlockingOrScheduling()
             "fatal latch created or retained a scheduler wake");
 }
 
+void offRegistryFatalPublishesOneExactDrainEdgeAfterUnlock()
+{
+    auto control = std::make_shared<SseSubscriptionControl>(2.0);
+    auto application = std::make_shared<SseApplication>(control);
+    RealStateFixture fixture{application};
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    waitUntil(
+        [&fixture] {
+            return fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::
+                    SendingSseBootstrap;
+        },
+        "drain-edge SSE bootstrap did not begin");
+    fixture.completeSend(
+        static_cast<DWORD>(fixture.socket->activeLength()));
+    fixture.completeSend(
+        static_cast<DWORD>(fixture.socket->activeLength()));
+    waitUntil(
+        [&fixture] {
+            return fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::SseIdle;
+        },
+        "drain-edge stream did not reach idle");
+
+    fixture.state->fatal(
+        Detail::DashboardConnectionEventFatalNotification{
+            fixture.identity.registrationId,
+            Detail::DashboardConnectionEventFailure{
+                Detail::DashboardConnectionEventFailureKind::
+                    LimitExceeded,
+                true}});
+    waitUntil(
+        [&fixture] { return fixture.state->isDrained(); },
+        "off-registry fatal did not drain the idle connection");
+    require(fixture.drainObserver->callbackCount() == 1U &&
+                fixture.drainObserver->completionKey() ==
+                    fixture.identity.completionKey &&
+                fixture.drainObserver->registrationId() ==
+                    fixture.identity.registrationId &&
+                fixture.drainObserver->generationId() == 3U,
+            "off-registry fatal lost or duplicated exact drain identity");
+    require(fixture.drainObserver->reentered(),
+            "connection drain observer ran while the state lock was held");
+
+    fixture.state->beginShutdown();
+    fixture.state->fatal(
+        Detail::DashboardConnectionEventFatalNotification{
+            fixture.identity.registrationId,
+            Detail::DashboardConnectionEventFailure{
+                Detail::DashboardConnectionEventFailureKind::
+                    InternalFailure,
+                false}});
+    require(fixture.drainObserver->callbackCount() == 1U,
+            "terminal connection redelivered its one-shot drain edge");
+}
+
 void sendsFixed503WithoutActionWhenReservationCapacityIsExhausted()
 {
     auto application = std::make_shared<GatedActionApplication>();
@@ -1626,16 +1926,20 @@ int main()
         exposesEveryExactLifecycleState();
         exposesMockableFixedDispatchBoundary();
         publishesBoundedTimingContracts();
+        admissionDelayCannotRestartTheHeaderIngressCeiling();
         runsRealIngressPreparePartialSendAndDrain();
         reservesBeforeByteOneAndRunsPostDeliveryAfterSuccess();
         suppressesReservedActionWhenSendFails();
         sendsFixed503WithoutActionWhenReservationCapacityIsExhausted();
         ignoresStaleDeadlineAndCancellationDrainsOutstandingReceive();
+        cleanShutdownRacingPostNativeReapDoesNotRecordFailure();
         malformedForeignCompletionClosesButRetainsExactSocketObligation();
         runsSseBootstrapLatestValuePacingCadenceAndLifetime();
+        sendsFixed503WhenSseAdmissionConversionIsExhausted();
         consumesExactHeaderIngressDeadlineAndDrainsCancellation();
         consumesExactHandlerDeadlineAndCancelsBlockingApplication();
         fatalLatchContentionClosesAfterSnapshotWithoutBlockingOrScheduling();
+        offRegistryFatalPublishesOneExactDrainEdgeAfterUnlock();
         std::cout << "Dashboard connection state tests passed ("
                   << assertions << " assertions).\n";
         return 0;

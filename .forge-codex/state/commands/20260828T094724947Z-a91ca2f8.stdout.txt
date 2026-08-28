@@ -1,0 +1,121 @@
+UpdateCTestConfiguration  from :D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Parse Config file:D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 19
+      Start 19: ForgeConductor.Dashboard.DeadlineNotificationMailboxTests
+
+19: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.DeadlineNotificationMailboxTests.exe
+19: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+19: Test timeout computed to be: 120
+19: Dashboard deadline notification mailbox tests passed (63 assertions).
+ 1/11 Test #19: ForgeConductor.Dashboard.DeadlineNotificationMailboxTests ...   Passed    0.05 sec
+test 20
+      Start 20: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+
+20: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.DeadlineIocpBridgeTests.exe
+20: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+20: Test timeout computed to be: 120
+20: Dashboard deadline IOCP bridge tests passed (3386 assertions).
+ 2/11 Test #20: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ............   Passed    0.22 sec
+test 25
+      Start 25: ForgeConductor.Dashboard.IocpCompletionRouterTests
+
+25: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.IocpCompletionRouterTests.exe
+25: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+25: Test timeout computed to be: 120
+25: Dashboard IOCP completion router tests passed (36 assertions).
+ 3/11 Test #25: ForgeConductor.Dashboard.IocpCompletionRouterTests ..........   Passed    0.04 sec
+test 28
+      Start 28: ForgeConductor.Dashboard.AcceptSlotTests
+
+28: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.AcceptSlotTests.exe
+28: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+28: Test timeout computed to be: 120
+28: Dashboard accept slot tests passed: 370 assertions
+ 4/11 Test #28: ForgeConductor.Dashboard.AcceptSlotTests ....................   Passed    0.04 sec
+test 29
+      Start 29: ForgeConductor.Dashboard.AcceptSlotSetTests
+
+29: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.AcceptSlotSetTests.exe
+29: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+29: Test timeout computed to be: 120
+29: DashboardAcceptSlotSetTests passed 24 cases with 380 assertions.
+ 5/11 Test #29: ForgeConductor.Dashboard.AcceptSlotSetTests .................   Passed    0.05 sec
+test 30
+      Start 30: ForgeConductor.Dashboard.AcceptedConnectionHandoffTests
+
+30: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.AcceptedConnectionHandoffTests.exe
+30: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+30: Test timeout computed to be: 120
+30: Dashboard accepted-connection handoff tests passed with 65 assertions.
+ 6/11 Test #30: ForgeConductor.Dashboard.AcceptedConnectionHandoffTests .....   Passed    0.04 sec
+test 31
+      Start 31: ForgeConductor.Dashboard.OverloadResponderSetTests
+
+31: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.OverloadResponderSetTests.exe
+31: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+31: Test timeout computed to be: 120
+31: Dashboard overload-responder tests passed with 456 assertions.
+ 7/11 Test #31: ForgeConductor.Dashboard.OverloadResponderSetTests ..........   Passed    2.08 sec
+test 32
+      Start 32: ForgeConductor.Dashboard.ListenerGenerationTests
+
+32: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.ListenerGenerationTests.exe
+32: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+32: Test timeout computed to be: 120
+32: Dashboard listener generation tests passed (265 assertions).
+ 8/11 Test #32: ForgeConductor.Dashboard.ListenerGenerationTests ............   Passed    0.04 sec
+test 38
+      Start 38: ForgeConductor.Dashboard.ConnectionStateTests
+
+38: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.ConnectionStateTests.exe
+38: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+38: Test timeout computed to be: 120
+38: Dashboard connection state tests passed (170 assertions).
+ 9/11 Test #38: ForgeConductor.Dashboard.ConnectionStateTests ...............   Passed    4.91 sec
+test 39
+      Start 39: ForgeConductor.Dashboard.ConnectionRegistryTests
+
+39: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.ConnectionRegistryTests.exe
+39: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+39: Test timeout computed to be: 120
+39: DashboardConnectionRegistryTests passed: 24 cases, 216 assertions
+10/11 Test #39: ForgeConductor.Dashboard.ConnectionRegistryTests ............   Passed    0.07 sec
+test 40
+      Start 40: ForgeConductor.Dashboard.DeadlineSchedulerTests
+
+40: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Debug\ForgeConductor.Dashboard.DeadlineSchedulerTests.exe
+40: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+40: Test timeout computed to be: 60
+40: Windows dashboard deadline scheduler tests passed (102 assertions).
+11/11 Test #40: ForgeConductor.Dashboard.DeadlineSchedulerTests .............   Passed    1.02 sec
+
+The following tests passed:
+	ForgeConductor.Dashboard.DeadlineNotificationMailboxTests
+	ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+	ForgeConductor.Dashboard.IocpCompletionRouterTests
+	ForgeConductor.Dashboard.AcceptSlotTests
+	ForgeConductor.Dashboard.AcceptSlotSetTests
+	ForgeConductor.Dashboard.AcceptedConnectionHandoffTests
+	ForgeConductor.Dashboard.OverloadResponderSetTests
+	ForgeConductor.Dashboard.ListenerGenerationTests
+	ForgeConductor.Dashboard.ConnectionStateTests
+	ForgeConductor.Dashboard.ConnectionRegistryTests
+	ForgeConductor.Dashboard.DeadlineSchedulerTests
+
+100% tests passed out of 11
+
+Label Time Summary:
+G16         =   8.55 sec*proc (11 tests)
+T-MGR       =   8.55 sec*proc (11 tests)
+T-SEC       =   7.23 sec*proc (7 tests)
+T-STRESS    =   8.55 sec*proc (11 tests)
+T-UNIT      =   8.55 sec*proc (11 tests)
+
+Total Test time (real) =   8.58 sec

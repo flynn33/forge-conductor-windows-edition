@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T094857755Z-e93c3a42",
+  "phase": "P16",
+  "role": "validator",
+  "command": "$paths = @(git status --porcelain=v1 | ForEach-Object { $_.Substring(3) }) | Where-Object { $_ -eq 'CMakeLists.txt' -or $_ -like 'include/*' -or $_ -like 'src/*' -or $_ -like 'tests/*' -or $_ -eq '.forge-codex/state/decisions/P16-014-bounded-dashboard-listener-generations-and-overload-routing.md' } | Sort-Object -Unique\n$strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)\n$violations = [System.Collections.Generic.List[string]]::new()\nforeach ($relativePath in $paths) {\n    $fullPath = Join-Path (Get-Location).Path $relativePath\n    $bytes = [System.IO.File]::ReadAllBytes($fullPath)\n    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { $violations.Add(\"${relativePath}: UTF-8 BOM present\") }\n    try { $text = $strictUtf8.GetString($bytes) } catch { $violations.Add(\"${relativePath}: invalid UTF-8\"); continue }\n    if ([regex]::IsMatch($text, '(?<!\\r)\\n')) { $violations.Add(\"${relativePath}: bare LF present\") }\n    if ([regex]::IsMatch($text, '\\r(?!\\n)')) { $violations.Add(\"${relativePath}: bare CR present\") }\n    if (-not $text.EndsWith(\"`r`n\", [System.StringComparison]::Ordinal)) { $violations.Add(\"${relativePath}: missing final CRLF\") }\n}\nif ($paths.Count -ne 35) { throw \"Expected 35 checkpoint text files, found $($paths.Count).\" }\nif ($violations.Count -ne 0) { throw ($violations -join [Environment]::NewLine) }\nWrite-Output \"Validated 35 checkpoint text files as UTF-8 without BOM, CRLF-only, with final CRLF.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T09:48:57.7631566+00:00",
+  "end_utc": "2026-08-28T09:48:59.1585985+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T094857755Z-e93c3a42.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T094857755Z-e93c3a42.stderr.txt",
+  "stdout_sha256": "3cf5372e9c5207486d14a5443064a1f449b1a3574e6f56b8b16ce84a9e0fac75",
+  "stderr_sha256": "2ce70d6c8c9ad6726c794690c8b14a2b83673648cac88edf4ff1acc50ec46348"
+}

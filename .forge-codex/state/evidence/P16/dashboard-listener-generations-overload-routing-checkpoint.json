@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-listener-generations-overload-routing",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator using Visual Studio 2022 Build Tools 17 with MSVC 19.44.35223 from VC Tools 14.44.35207 and Windows SDK 10.0.26100.0; CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug. The configured vcpkg compiler-detection path independently resolved Visual Studio 18 Community VC Tools 14.51.36231 during dependency validation.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260828T094650402Z-ae81b22a.json",
+    "command_record_sha256": "16fccd29db2b2ccaf3febff605150daf2bc3dadc1b1fa505cea9ebd5a317204d",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 11,
+    "configuration": "Debug",
+    "stdout_sha256": "876e3d8f9dd4089283522e72a535d4bfddb89afd9d55a96ced9e185cef3904f6",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T094724947Z-a91ca2f8.json",
+    "command_record_sha256": "b341cf0094466d5ee82b0c965e6fe74d23413c9932590787d1cc0a0ed8f5e0a5",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 11,
+    "tests_failed": 0,
+    "assertions_passed": 5509,
+    "real_seconds": 8.58,
+    "tests": [
+      "ForgeConductor.Dashboard.DeadlineNotificationMailboxTests",
+      "ForgeConductor.Dashboard.DeadlineIocpBridgeTests",
+      "ForgeConductor.Dashboard.IocpCompletionRouterTests",
+      "ForgeConductor.Dashboard.AcceptSlotTests",
+      "ForgeConductor.Dashboard.AcceptSlotSetTests",
+      "ForgeConductor.Dashboard.AcceptedConnectionHandoffTests",
+      "ForgeConductor.Dashboard.OverloadResponderSetTests",
+      "ForgeConductor.Dashboard.ListenerGenerationTests",
+      "ForgeConductor.Dashboard.ConnectionStateTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests",
+      "ForgeConductor.Dashboard.DeadlineSchedulerTests"
+    ],
+    "stdout_sha256": "281c92ae827d79bd57733e861379626538de929f1ed560a18e722cd5d6153dd8",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260828T094748241Z-821b6cad.json",
+      "command_record_sha256": "6662b3cbe75f3345cf4888d19073989311e9e085a83667b68f65c63b2e6d7626",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260828T094757225Z-0cd869e4.json",
+      "command_record_sha256": "71a340b8e15aa5747420d14667c31f697c0102416de966b952ba56a3a4bca2c7",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 35 implementation, test, build, and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260828T094857755Z-e93c3a42.json",
+      "command_record_sha256": "66c83d1bcb8d29b952b12644148efc5fb9f695caecfafcda9cfffb0ebda7e5f0",
+      "exit_code": 0,
+      "files_passed": 35
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint validation events",
+      "command_record": ".forge-codex/state/commands/20260828T095657470Z-08f384bb.json",
+      "command_record_sha256": "ea6134d0566ca75860fdc340b78e1cac5f1e659a275f22836d3073b5ac7be06d",
+      "exit_code": 0,
+      "events_verified": 378
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260828T095755710Z-a0a5ab1d.json",
+      "command_record_sha256": "ce0d034e3a25bb7d068f12b9a19e66a74c52d1627fbc3365df05cddaa34f7025",
+      "exit_code": 0
+    }
+  ],
+  "diagnostic_history": [
+    {
+      "command_record": ".forge-codex/state/commands/20260828T094836004Z-5d440ee4.json",
+      "command_record_sha256": "2253fa9f2af6c89f5fef1d2adc8f0d1a05313af3de26816278135ad6154c6637",
+      "exit_code": 1,
+      "diagnosis": "The first text-policy command used an ambiguous PowerShell variable interpolation before a colon and failed at parse time without inspecting repository files.",
+      "resolution": "The variable was explicitly delimited and the same 35-file audit was rerun successfully in command 20260828T094857755Z-e93c3a42."
+    }
+  ],
+  "invariant_audit": {
+    "corrections": [
+      "Accepted sockets now transfer through an explicit move-only handoff identity and cannot be silently duplicated or abandoned during listener admission.",
+      "Exactly eight fixed overload responders own their sockets, OVERLAPPED values, operation tokens, fifteen-second response deadlines, five-second cancellation-reap watchdogs, and deterministic IOCP association pins.",
+      "Unexpected native cancellation and shutdown failures retain exact asynchronous ownership until a matching completion or the injected process fail-fast boundary resolves the invariant breach.",
+      "Accept slots retain per-operation cancellation provenance, perform bounded two-attempt cancellation, invalidate listener handles without releasing OVERLAPPED storage, and enforce a five-second cancellation-reap watchdog.",
+      "Listener generations publish deadline schedules through an explicit drain handshake and invoke reentrant callbacks only after releasing their transition mutex.",
+      "The coordinator owns at most one active and one retiring generation and refuses collection or rebinding while terminal or provisional completion ownership remains pending.",
+      "Overload terminal state is staged under the responder mutex and pumped outside responder and listener transition locks, including generation-independent fatal owner edges.",
+      "A provisional completion hold closes the zero-visible-ownership race before asynchronous overload token completion exposes terminal failure.",
+      "Normal overload shutdown is serialized across concurrent callers and distinguished from terminal shutdown so expected work rejection cannot be misclassified as corruption.",
+      "Registry shutdown now stops admission and fans out cancellation while preserving auxiliary deadline routing until every posted owner, tombstone, connection, and bridge packet is gone."
+    ],
+    "independent_review_status": "Independent read-only concurrency, lifetime, lock-order, OVERLAPPED ownership, token, lease, terminal-routing, and shutdown-classification reviews found and closed staged-terminal publication, provisional completion, empty-pool terminal routing, concurrent normal shutdown, and retryability defects. The final review reported no remaining actionable finding within this listener-generation slice."
+  },
+  "behavior_proved": [
+    "accepted connection handoff preserves unique socket ownership and bounded admission outcomes",
+    "fixed IOCP completion keys route listener, overload, connection, and deadline traffic without dynamic-key reuse inside the tested router",
+    "overload responses use eight reusable owners with bounded response and cancellation-reap deadlines",
+    "late exact overload completions remain safe after watchdog-triggered fail-fast in deterministic tests",
+    "accept cancellation records exact provenance and retains every native operation owner until exact reap",
+    "listener callbacks may reenter without deadlocking the transition gate",
+    "one active and one retiring listener generation can coexist while retirement waits for exact accept and overload ownership drain",
+    "terminal overload state crosses owner boundaries only after lock release and forces one-shot shutdown of both active and retiring generations",
+    "normal responder shutdown is nonfatal, idempotent, and serialized even when pool-first, coordinator-first, and concurrent-caller orders are exercised",
+    "provisional completion ownership blocks premature generation collection and reports a retryable conflict until completion settles",
+    "connection-registry shutdown preserves fixed auxiliary and deadline routing until explicit final routing teardown"
+  ],
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-014-bounded-dashboard-listener-generations-and-overload-routing.md": "117b5b1a04e05bb2bd39530f86e4bdb83187f0758e7144b259ba4d875dd9206e",
+    "CMakeLists.txt": "38b64be66296b2273c7d72b563edd797fd7340f2befdc04fe13c79ad49b6b253",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.h": "81d3459583dad8ba4e4ca8a431f0f647f8e214aadfa4239d9a05241d2fb8c77e",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptedConnectionHandoff.cpp": "9b89f43bf54939942c943cba29564565ed67a19461d0e7ccae2b08e2ea7766ad",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptedConnectionHandoff.h": "7072861844c1199e864b3b3ed60d4a3b265a17cf02a2cbb2b4f756050ab8c447",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlot.cpp": "70e61f50d785096540a1339351505df7290963f9db55abc2ddd74d433a0ee15d",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlot.h": "7e40cc62b7737023ee995e765d038ce5ce8d35014b918527e9e6cb51250bcf38",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.cpp": "3781a510c7a33512f7fc8cfd9bda558b29be10b4043d06a0892680ca1e4f12ee",
+    "src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.h": "fab62621d8c36b68e221a2feb5aab1a130fd41cb16b8f19319a07675492f2776",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp": "7227175c15dabc332fd44a2dc47fca951b3a6e5001848bf99b604ffbc8dfdf20",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.h": "2507c628272f13df145c074e5a873e392c934c7b00c36cb72ab2a7baedcbcb13",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionState.cpp": "19a73d7f8577e9cb26644fbfd799eaa51970e630a48706f9eeea28749495b144",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionState.h": "15c5a31ea3138b44424f77b6ebfe81f8873263033e015d0daaa0df516469ee5b",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.cpp": "e2bc53f0cb3dc206f032a11580e84d8a740656e9951ae01ecccdf31ab8d91b19",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.h": "19ee8a13aefe85b82f67e3bee306748ce9f171df5173e56636310034725f1594",
+    "src/Infrastructure/Windows/Detail/DashboardIocpCompletionRouter.cpp": "7a515b87681401731a3ba7276f7fde8cb792dd13c5d79407e3f270612444eaa0",
+    "src/Infrastructure/Windows/Detail/DashboardIocpCompletionRouter.h": "b3da3d22df4b27e8a299b907d6174498b10186669883d414cbbdc8ae4922b778",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGeneration.cpp": "941220268ad190044eea8ab9ae8f988a42b9241176af2b6d4611abba12cfe5e4",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGeneration.h": "d9e26f4663852f075a01eb0076975160b1d25a1af580aa72f6cd3682fbc9a1bf",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGenerationCoordinator.cpp": "cdd1ceafa5076a2e89aeab8a85de69064c3d33c4f20236875d99c0b9e72a4a1e",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGenerationCoordinator.h": "f21ebd52d7545f35664bf0b18af47fb6999b9b73aa046e0e23a5608c699d531a",
+    "src/Infrastructure/Windows/Detail/DashboardListeningSocket.h": "0b5664ed96966131c704cdcba492389d7a0ae8f95fe018baae6fdcbd258536ba",
+    "src/Infrastructure/Windows/Detail/DashboardOverloadResponderSet.cpp": "632463373516f8001dfaebec86e8970a2c28f1aba52ba3db96f328b1d2939b51",
+    "src/Infrastructure/Windows/Detail/DashboardOverloadResponderSet.h": "e6430d974347e5ef2696589cbe67a4ea566453e456403e01918417dde6d8525e",
+    "src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp": "92b707186e99ba0bc2ba1fcce48fe6449c7a1f4fefa9d642c325fc6f02e9f8f9",
+    "tests/Dashboard/DashboardAcceptedConnectionHandoffTests.cpp": "3da43cb9d4eea6efe795de377ac3df93295c84d22a27df6908fa1eb6e1eb0c53",
+    "tests/Dashboard/DashboardAcceptSlotSetTests.cpp": "2e4bb9dfe6762d760c2d566181e88d1556ab8c2444ad43ed43aecbb24b1cc3b0",
+    "tests/Dashboard/DashboardConnectionRegistryTests.cpp": "99af3b8b219af7c9776cd71cf3791f90bbcb68583afc1849bb6fcadf47e102c4",
+    "tests/Dashboard/DashboardConnectionStateTests.cpp": "a1c0eaae577964d2da4356f2c59cc29548a3eb22208c8b46293f8204ffd56ff6",
+    "tests/Dashboard/DashboardDeadlineIocpBridgeTests.cpp": "0c8605634eb4f1a824f9e1ed2a893c1ad02b6ffcbb161baec1056455e74fe2a5",
+    "tests/Dashboard/DashboardDeadlineNotificationMailboxTests.cpp": "7156b4fc210369bf26eae7979905b004857109b9a30b6c81cd6cf3b63d46a402",
+    "tests/Dashboard/DashboardIocpCompletionRouterTests.cpp": "a79102787fdbb7ce88d1b7bc5be298415103e6c10a0dff0071c8786d4755e1de",
+    "tests/Dashboard/DashboardListenerGenerationTests.cpp": "0acf609140aa53879817ae1833db046597f09f9bdf0594f747de0bf9ca1c8606",
+    "tests/Dashboard/DashboardOverloadResponderSetTests.cpp": "646663f261ba8ec363179c56801dbe30060c2e4a63ddd90c120119f5cd65a804",
+    "tests/Dashboard/WindowsDashboardDeadlineSchedulerTests.cpp": "bf447ad5fecc7bdb4fab7b741e31825b65273e256f02810ff290d77f919a6e41"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.AcceptSlotTests.exe": "3886c82116c5b721e34e2956e88e0684161502b251f112f15d78d4b21481026a",
+    "ForgeConductor.Dashboard.AcceptSlotSetTests.exe": "c28c8cf29ab4347c5e92b77556b47b01387f4b629769109db03be43d43dd635f",
+    "ForgeConductor.Dashboard.AcceptedConnectionHandoffTests.exe": "b1f3b0a6e2bf77a2bc8a9a8c241f89c6bda35aa9f5bfe53bde5d4448bb04c2e0",
+    "ForgeConductor.Dashboard.IocpCompletionRouterTests.exe": "94ffe433cdd609540b53ec7fd9426e313102c9ce9fe90bb4cfecdacea906fabe",
+    "ForgeConductor.Dashboard.OverloadResponderSetTests.exe": "ab2f720e5a25ac8d5d3cc2935dbb9ace9a5e368051f644bc56c245b101178daa",
+    "ForgeConductor.Dashboard.ListenerGenerationTests.exe": "94a7efe5ba500c80304b2c7d39f1f8618b21f64aaf5d67938d014278076c14bc",
+    "ForgeConductor.Dashboard.DeadlineNotificationMailboxTests.exe": "6b3f317a9eaf124b8db3e2dd9436cfed39d11a438f1d4d89321bc8e134003fb7",
+    "ForgeConductor.Dashboard.DeadlineIocpBridgeTests.exe": "db1a4f738ed55e55ca19f5731b95e323e218d7e16c9c1ca6180c673f06693c96",
+    "ForgeConductor.Dashboard.ConnectionStateTests.exe": "f699eed5bac17b33fdb7f73e1bd9499dff0e85de72ff67710acd1480f58e8155",
+    "ForgeConductor.Dashboard.ConnectionRegistryTests.exe": "5b59667dfc7ce2092155613f08a24a5e614f3825d09e9e9338bcfe5ddeda5f04",
+    "ForgeConductor.Dashboard.DeadlineSchedulerTests.exe": "b64eaaa592025ab0fa6592d99efa02e326459ed1a2248e3a3a98a870182079a5"
+  },
+  "remaining_limitations": [
+    "P16-006 process-wide graceful shutdown is not yet composed: already-prepared short sends do not yet receive a bounded five-second drain owner before cancellation.",
+    "The concrete process composition has not yet supplied and proved every fixed listener, overload, and deadline completion key against dynamic connection-key allocation.",
+    "The production listener-generation factory and manager dashboard runtime composition remain pending.",
+    "The store contains no functional alpha frontend shell yet; retained UI automation remains pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

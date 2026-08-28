@@ -16,6 +16,42 @@
 
 namespace ForgeConductor::Infrastructure::Windows::Detail {
 
+// Fixed listener-generation, overload-response, or process-shutdown deadline
+// owner. The shared bridge and registry retain its exact mailbox generation so
+// all 44 scheduler
+// entries use one IOCP key and one retirement race boundary.
+class IDashboardAuxiliaryDeadlineTarget {
+public:
+    virtual ~IDashboardAuxiliaryDeadlineTarget() noexcept = default;
+
+    [[nodiscard]] virtual std::uint64_t registrationId() const noexcept = 0;
+    virtual void dispatchDeadline(
+        WindowsDashboardDeadline deadline) noexcept = 0;
+    virtual void beginShutdown() noexcept = 0;
+};
+
+// Process boundary for a fatal IOCP dequeue failure. Once the shared worker
+// kernel cannot deliver completions, native OVERLAPPED and deadline watchdog
+// ownership cannot be proved drainable. Production terminates; focused tests
+// inject a recorder that returns so retained diagnostics can be asserted.
+class IDashboardConnectionRegistryFailFast {
+public:
+    virtual ~IDashboardConnectionRegistryFailFast() noexcept = default;
+    virtual void failFast() noexcept = 0;
+};
+
+// Process-wide nonblocking edge emitted only when exact connection removal
+// changes one listener generation to zero registered connections. A retiring
+// generation uses it to collect its accept/deadline/router ownership without
+// polling. Implementations must not retain callback arguments.
+class IDashboardConnectionGenerationDrainObserver {
+public:
+    virtual ~IDashboardConnectionGenerationDrainObserver() noexcept = default;
+
+    virtual void generationConnectionsMayHaveDrained(
+        std::uint64_t generationId) noexcept = 0;
+};
+
 enum class DashboardConnectionRegistryFailureKind : std::uint8_t {
     InvalidRequest,
     Conflict,
@@ -47,6 +83,12 @@ public:
     [[nodiscard]] std::size_t maximumConnectionCount() const noexcept
     {
         return maximumConnectionCount_;
+    }
+
+    [[nodiscard]] std::size_t registeredAuxiliaryDeadlineTargetCount()
+        const noexcept
+    {
+        return registeredAuxiliaryDeadlineTargetCount_;
     }
 
     [[nodiscard]] DashboardIoCompletionKey deadlineCompletionKey()
@@ -105,6 +147,7 @@ private:
     DashboardConnectionRegistrySnapshot(
         std::size_t registeredConnectionCount,
         std::size_t maximumConnectionCount,
+        std::size_t registeredAuxiliaryDeadlineTargetCount,
         DashboardIoCompletionKey deadlineCompletionKey,
         bool deadlineBridgeBound,
         std::uint64_t connectionDispatchCount,
@@ -119,6 +162,7 @@ private:
 
     std::size_t registeredConnectionCount_{};
     std::size_t maximumConnectionCount_{};
+    std::size_t registeredAuxiliaryDeadlineTargetCount_{};
     DashboardIoCompletionKey deadlineCompletionKey_{0U};
     bool deadlineBridgeBound_{};
     std::uint64_t connectionDispatchCount_{};
@@ -138,13 +182,23 @@ private:
 // shared owner destruction occurs while the registry mutex is held.
 class DashboardConnectionRegistry final
     : public IDashboardIocpCompletionSink,
-      public IDashboardConnectionEventFatalSink {
+      public IDashboardConnectionEventFatalSink,
+      public IDashboardConnectionDrainObserver,
+      public std::enable_shared_from_this<DashboardConnectionRegistry> {
 public:
     static constexpr std::size_t MaximumConnectionCount = 40U;
+    static constexpr std::size_t MaximumAuxiliaryDeadlineTargetCount = 4U;
 
     [[nodiscard]] static Domain::Result<
         std::shared_ptr<DashboardConnectionRegistry>>
     create(DashboardIoCompletionKey deadlineCompletionKey) noexcept;
+
+    [[nodiscard]] static Domain::Result<
+        std::shared_ptr<DashboardConnectionRegistry>>
+    create(
+        DashboardIoCompletionKey deadlineCompletionKey,
+        std::shared_ptr<IDashboardConnectionRegistryFailFast> failFast)
+        noexcept;
 
     DashboardConnectionRegistry(const DashboardConnectionRegistry&) = delete;
     DashboardConnectionRegistry& operator=(
@@ -160,6 +214,10 @@ public:
     [[nodiscard]] Domain::Result<void> bindDeadlineBridge(
         std::shared_ptr<DashboardDeadlineIocpBridge> bridge) noexcept;
 
+    [[nodiscard]] Domain::Result<void> bindGenerationDrainObserver(
+        std::weak_ptr<IDashboardConnectionGenerationDrainObserver> observer)
+        noexcept;
+
     // Captures immutable identity, registers and stores the exact fixed bridge
     // handle, inserts, then starts outside the lock so immediate native and
     // deadline completions can route safely. Production identities come from
@@ -169,11 +227,34 @@ public:
     [[nodiscard]] Domain::Result<void> registerConnection(
         std::shared_ptr<IDashboardConnectionDispatchTarget> target) noexcept;
 
+    // Registers one of two listener generations, the fixed overload-response
+    // pool, or the process shutdown-drain owner with the same exact bridge used
+    // by connections. The target may arm its scheduler entry only after
+    // registration succeeds.
+    [[nodiscard]] Domain::Result<void> registerAuxiliaryDeadlineTarget(
+        std::shared_ptr<IDashboardAuxiliaryDeadlineTarget> target) noexcept;
+
+    // Retires the exact mailbox generation before erasing its target. The
+    // caller first cancels any live scheduler arm and drains the owner.
+    [[nodiscard]] bool unregisterAuxiliaryDeadlineTarget(
+        const std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>& target)
+        noexcept;
+
     // Removes only an exact key/registration/generation/target identity whose
     // terminal state was observed outside the registry lock.
     [[nodiscard]] bool removeIfDrained(
         const std::shared_ptr<IDashboardConnectionDispatchTarget>& target)
         noexcept;
+
+    [[nodiscard]] std::size_t connectionCountForGeneration(
+        std::uint64_t generationId) const noexcept;
+
+    // Force-closes only the exact listener generation at its retirement
+    // deadline. The generation owner serializes accepted handoffs against the
+    // transition that invokes this method, so no later owner can escape the
+    // fixed snapshot. Returns the number of owners notified.
+    [[nodiscard]] std::size_t beginShutdownGeneration(
+        std::uint64_t generationId) noexcept;
 
     void consume(
         DashboardIoCompletionPacket packet,
@@ -183,15 +264,26 @@ public:
     void fatal(
         DashboardConnectionEventFatalNotification notification)
         noexcept override;
+    void connectionMayHaveDrained(
+        DashboardIoCompletionKey completionKey,
+        std::uint64_t registrationId,
+        std::uint64_t generationId) noexcept override;
 
     [[nodiscard]] DashboardConnectionRegistrySnapshot snapshot()
         const noexcept;
 
     [[nodiscard]] std::optional<Domain::Error> fullFailure() const;
 
-    // Idempotently snapshots at most forty shared targets and the deadline
-    // bridge, then requests shutdown only after releasing the registry lock.
+    // Idempotently snapshots at most forty connection targets and four
+    // auxiliary targets, then requests shutdown only after releasing the
+    // registry lock. Auxiliary owners retain exact deadline routing until
+    // their owning coordinator drains and unregisters them.
     void beginShutdown() noexcept;
+
+    // May be called only after all connection and auxiliary owners have been
+    // exactly removed and every posted deadline tombstone has reaped. Returns
+    // false without mutation while any routing ownership remains.
+    [[nodiscard]] bool finalizeDeadlineRouting() noexcept;
 
 private:
     struct Entry final {
@@ -210,14 +302,29 @@ private:
         std::shared_ptr<IDashboardConnectionDispatchTarget> target;
     };
 
+    struct AuxiliaryDeadlineEntry final {
+        std::uint64_t registrationId{};
+        DashboardDeadlineNotificationHandle deadlineHandle{};
+        Entry::DeadlineOwnerLifecycle deadlineOwnerLifecycle{
+            Entry::DeadlineOwnerLifecycle::Retired};
+        std::shared_ptr<IDashboardAuxiliaryDeadlineTarget> target;
+    };
+
     explicit DashboardConnectionRegistry(
-        DashboardIoCompletionKey deadlineCompletionKey) noexcept;
+        DashboardIoCompletionKey deadlineCompletionKey,
+        std::shared_ptr<IDashboardConnectionRegistryFailFast> failFast)
+        noexcept;
 
     [[nodiscard]] Entry* findByKeyLocked(
         DashboardIoCompletionKey key) noexcept;
     [[nodiscard]] Entry* findByRegistrationIdLocked(
         std::uint64_t registrationId) noexcept;
     [[nodiscard]] Entry* findVacantLocked() noexcept;
+    [[nodiscard]] AuxiliaryDeadlineEntry*
+    findAuxiliaryByRegistrationIdLocked(
+        std::uint64_t registrationId) noexcept;
+    [[nodiscard]] AuxiliaryDeadlineEntry* findVacantAuxiliaryLocked()
+        noexcept;
     [[nodiscard]] bool hasDuplicateLocked(
         DashboardIoCompletionKey key,
         std::uint64_t registrationId,
@@ -235,6 +342,10 @@ private:
         std::uint64_t generationId,
         const std::shared_ptr<IDashboardConnectionDispatchTarget>& target)
         noexcept;
+    [[nodiscard]] bool retireAuxiliaryDeadlineOwnerIdentity(
+        std::uint64_t registrationId,
+        const std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>& target)
+        noexcept;
 
     void retainFatalFailureLocked(
         Domain::Error error,
@@ -246,17 +357,25 @@ private:
         const noexcept;
 
     const DashboardIoCompletionKey deadlineCompletionKey_{0U};
+    const std::shared_ptr<IDashboardConnectionRegistryFailFast> failFast_;
     std::array<Entry, MaximumConnectionCount> entries_{};
+    std::array<
+        AuxiliaryDeadlineEntry,
+        MaximumAuxiliaryDeadlineTargetCount> auxiliaryDeadlineEntries_{};
     std::shared_ptr<DashboardDeadlineIocpBridge> deadlineBridge_;
+    std::weak_ptr<IDashboardConnectionGenerationDrainObserver>
+        generationDrainObserver_;
     std::optional<Domain::Error> firstFailure_;
     std::optional<DashboardConnectionRegistryFailure> firstFailureSnapshot_;
     std::size_t registeredConnectionCount_{};
+    std::size_t registeredAuxiliaryDeadlineTargetCount_{};
     std::uint64_t connectionDispatchCount_{};
     std::uint64_t deadlineDispatchCount_{};
     std::uint64_t retiredDeadlineDrainCount_{};
     std::uint64_t removedConnectionCount_{};
     std::uint64_t fatalNotificationCount_{};
     bool deadlineBridgeEverBound_{};
+    bool generationDrainObserverEverBound_{};
     bool shutdownCallbacksStarted_{};
     bool shutdown_{};
     bool fatal_{};
@@ -269,5 +388,7 @@ private:
 };
 
 static_assert(DashboardConnectionRegistry::MaximumConnectionCount == 40U);
+static_assert(
+    DashboardConnectionRegistry::MaximumAuxiliaryDeadlineTargetCount == 4U);
 
 } // namespace ForgeConductor::Infrastructure::Windows::Detail

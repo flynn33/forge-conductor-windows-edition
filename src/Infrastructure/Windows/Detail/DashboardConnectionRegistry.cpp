@@ -102,11 +102,18 @@ private:
     std::atomic_bool& inProgress_;
 };
 
+class DashboardConnectionRegistryProcessFailFast final
+    : public IDashboardConnectionRegistryFailFast {
+public:
+    void failFast() noexcept override { std::terminate(); }
+};
+
 } // namespace
 
 DashboardConnectionRegistrySnapshot::DashboardConnectionRegistrySnapshot(
     const std::size_t registeredConnectionCount,
     const std::size_t maximumConnectionCount,
+    const std::size_t registeredAuxiliaryDeadlineTargetCount,
     const DashboardIoCompletionKey deadlineCompletionKey,
     const bool deadlineBridgeBound,
     const std::uint64_t connectionDispatchCount,
@@ -120,6 +127,8 @@ DashboardConnectionRegistrySnapshot::DashboardConnectionRegistrySnapshot(
     std::optional<DashboardConnectionRegistryFailure> failure) noexcept
     : registeredConnectionCount_{registeredConnectionCount},
       maximumConnectionCount_{maximumConnectionCount},
+      registeredAuxiliaryDeadlineTargetCount_{
+          registeredAuxiliaryDeadlineTargetCount},
       deadlineCompletionKey_{deadlineCompletionKey},
       deadlineBridgeBound_{deadlineBridgeBound},
       connectionDispatchCount_{connectionDispatchCount},
@@ -135,14 +144,34 @@ DashboardConnectionRegistrySnapshot::DashboardConnectionRegistrySnapshot(
 }
 
 DashboardConnectionRegistry::DashboardConnectionRegistry(
-    const DashboardIoCompletionKey deadlineCompletionKey) noexcept
-    : deadlineCompletionKey_{deadlineCompletionKey}
+    const DashboardIoCompletionKey deadlineCompletionKey,
+    std::shared_ptr<IDashboardConnectionRegistryFailFast> failFast) noexcept
+    : deadlineCompletionKey_{deadlineCompletionKey},
+      failFast_{std::move(failFast)}
 {
 }
 
 Domain::Result<std::shared_ptr<DashboardConnectionRegistry>>
 DashboardConnectionRegistry::create(
     const DashboardIoCompletionKey deadlineCompletionKey) noexcept
+{
+    try {
+        return create(
+            deadlineCompletionKey,
+            std::make_shared<DashboardConnectionRegistryProcessFailFast>());
+    } catch (...) {
+        return Domain::Result<
+            std::shared_ptr<DashboardConnectionRegistry>>::failure(
+            registryError(
+                Domain::ErrorCodes::InternalFailure,
+                "The fixed dashboard connection registry could not allocate its fail-fast owner."));
+    }
+}
+
+Domain::Result<std::shared_ptr<DashboardConnectionRegistry>>
+DashboardConnectionRegistry::create(
+    const DashboardIoCompletionKey deadlineCompletionKey,
+    std::shared_ptr<IDashboardConnectionRegistryFailFast> failFast) noexcept
 {
     using RegistryResult =
         Domain::Result<std::shared_ptr<DashboardConnectionRegistry>>;
@@ -152,11 +181,17 @@ DashboardConnectionRegistry::create(
             Domain::ErrorCodes::InvalidRequest,
             "The dashboard connection registry cannot use the reserved IOCP shutdown key for deadlines."));
     }
+    if (failFast == nullptr) {
+        return RegistryResult::failure(registryError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The dashboard connection registry requires a live fail-fast boundary."));
+    }
 
     try {
         return RegistryResult::success(
             std::shared_ptr<DashboardConnectionRegistry>{
-                new DashboardConnectionRegistry{deadlineCompletionKey}});
+                new DashboardConnectionRegistry{
+                    deadlineCompletionKey, std::move(failFast)}});
     } catch (...) {
         return RegistryResult::failure(registryError(
             Domain::ErrorCodes::InternalFailure,
@@ -172,6 +207,10 @@ DashboardConnectionRegistry::~DashboardConnectionRegistry() noexcept
         std::shared_ptr<IDashboardConnectionDispatchTarget>,
         MaximumConnectionCount>
         targets;
+    std::array<
+        std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>,
+        MaximumAuxiliaryDeadlineTargetCount>
+        auxiliaryTargets;
     std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
     try {
         {
@@ -186,6 +225,17 @@ DashboardConnectionRegistry::~DashboardConnectionRegistry() noexcept
                     Entry::DeadlineOwnerLifecycle::Retired;
             }
             registeredConnectionCount_ = 0U;
+            for (std::size_t index{};
+                 index < auxiliaryDeadlineEntries_.size();
+                 ++index) {
+                auxiliaryTargets[index] = std::move(
+                    auxiliaryDeadlineEntries_[index].target);
+                auxiliaryDeadlineEntries_[index].registrationId = 0U;
+                auxiliaryDeadlineEntries_[index].deadlineHandle = {};
+                auxiliaryDeadlineEntries_[index].deadlineOwnerLifecycle =
+                    Entry::DeadlineOwnerLifecycle::Retired;
+            }
+            registeredAuxiliaryDeadlineTargetCount_ = 0U;
             bridge = std::move(deadlineBridge_);
         }
 
@@ -201,6 +251,9 @@ DashboardConnectionRegistry::~DashboardConnectionRegistry() noexcept
 
         bridge.reset();
         for (auto& target : targets) {
+            target.reset();
+        }
+        for (auto& target : auxiliaryTargets) {
             target.reset();
         }
     } catch (...) {
@@ -245,12 +298,42 @@ DashboardConnectionRegistry::findVacantLocked() noexcept
     return found == entries_.end() ? nullptr : std::addressof(*found);
 }
 
+DashboardConnectionRegistry::AuxiliaryDeadlineEntry*
+DashboardConnectionRegistry::findAuxiliaryByRegistrationIdLocked(
+    const std::uint64_t registrationId) noexcept
+{
+    const auto found = std::find_if(
+        auxiliaryDeadlineEntries_.begin(),
+        auxiliaryDeadlineEntries_.end(),
+        [registrationId](const AuxiliaryDeadlineEntry& entry) noexcept {
+            return entry.target != nullptr &&
+                entry.registrationId == registrationId;
+        });
+    return found == auxiliaryDeadlineEntries_.end()
+        ? nullptr
+        : std::addressof(*found);
+}
+
+DashboardConnectionRegistry::AuxiliaryDeadlineEntry*
+DashboardConnectionRegistry::findVacantAuxiliaryLocked() noexcept
+{
+    const auto found = std::find_if(
+        auxiliaryDeadlineEntries_.begin(),
+        auxiliaryDeadlineEntries_.end(),
+        [](const AuxiliaryDeadlineEntry& entry) noexcept {
+            return entry.target == nullptr;
+        });
+    return found == auxiliaryDeadlineEntries_.end()
+        ? nullptr
+        : std::addressof(*found);
+}
+
 bool DashboardConnectionRegistry::hasDuplicateLocked(
     const DashboardIoCompletionKey key,
     const std::uint64_t registrationId,
     const IDashboardConnectionDispatchTarget* const target) const noexcept
 {
-    return std::any_of(
+    const bool connectionDuplicate = std::any_of(
         entries_.begin(),
         entries_.end(),
         [key, registrationId, target](const Entry& entry) noexcept {
@@ -258,6 +341,13 @@ bool DashboardConnectionRegistry::hasDuplicateLocked(
                 (entry.key == key ||
                  entry.registrationId == registrationId ||
                  entry.target.get() == target);
+        });
+    return connectionDuplicate || std::any_of(
+        auxiliaryDeadlineEntries_.begin(),
+        auxiliaryDeadlineEntries_.end(),
+        [registrationId](const AuxiliaryDeadlineEntry& entry) noexcept {
+            return entry.target != nullptr &&
+                entry.registrationId == registrationId;
         });
 }
 
@@ -310,6 +400,57 @@ Domain::Result<void> DashboardConnectionRegistry::bindDeadlineBridge(
         auto error = registryError(
             Domain::ErrorCodes::InternalFailure,
             "The dashboard connection registry could not bind its deadline bridge safely.");
+        failRouting(Domain::Error{error});
+        return Domain::Result<void>::failure(std::move(error));
+    }
+}
+
+Domain::Result<void>
+DashboardConnectionRegistry::bindGenerationDrainObserver(
+    std::weak_ptr<IDashboardConnectionGenerationDrainObserver> observer)
+    noexcept
+{
+    auto pinned = observer.lock();
+    if (pinned == nullptr) {
+        auto error = registryError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The dashboard connection registry requires a live generation-drain observer.");
+        failRouting(Domain::Error{error});
+        return Domain::Result<void>::failure(std::move(error));
+    }
+
+    std::optional<Domain::Error> failure;
+    bool structuralFailure{};
+    try {
+        {
+            const std::scoped_lock lock{mutex_};
+            if (shutdown_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The dashboard connection registry is closed to generation-drain observer binding."));
+            } else if (generationDrainObserverEverBound_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::Conflict,
+                    "The dashboard generation-drain observer is already bound."));
+                retainFatalFailureLocked(Domain::Error{*failure});
+                structuralFailure = true;
+            } else {
+                generationDrainObserver_ = std::move(observer);
+                generationDrainObserverEverBound_ = true;
+            }
+        }
+        pinned.reset();
+        if (structuralFailure) {
+            beginShutdown();
+        }
+        if (failure.has_value()) {
+            return Domain::Result<void>::failure(std::move(*failure));
+        }
+        return Domain::Result<void>::success();
+    } catch (...) {
+        auto error = registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard generation-drain observer could not be bound safely.");
         failRouting(Domain::Error{error});
         return Domain::Result<void>::failure(std::move(error));
     }
@@ -397,6 +538,22 @@ Domain::Result<void> DashboardConnectionRegistry::registerConnection(
         }
         const auto deadlineHandle = std::move(deadlineOwner).value();
 
+        std::weak_ptr<IDashboardConnectionDrainObserver> drainObserver{
+            shared_from_this()};
+        auto drainBound = target->bindDrainObserver(
+            std::move(drainObserver));
+        if (!drainBound) {
+            auto error = std::move(drainBound).error();
+            const auto retired = bridge->retireOwner(deadlineHandle);
+            if (!retired && !bridge->snapshot().isShutdown()) {
+                failRouting(registryError(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The dashboard connection registry could not retire a deadline owner after drain-observer binding failed."));
+            }
+            target->beginShutdown();
+            return Domain::Result<void>::failure(std::move(error));
+        }
+
         failure.reset();
         structuralFailure = false;
         {
@@ -476,6 +633,185 @@ Domain::Result<void> DashboardConnectionRegistry::registerConnection(
     }
 }
 
+Domain::Result<void>
+DashboardConnectionRegistry::registerAuxiliaryDeadlineTarget(
+    std::shared_ptr<IDashboardAuxiliaryDeadlineTarget> target) noexcept
+{
+    if (target == nullptr || target->registrationId() == 0U) {
+        auto error = registryError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The dashboard auxiliary deadline registry requires a nonzero owner identity.");
+        failRouting(Domain::Error{error});
+        if (target != nullptr) {
+            target->beginShutdown();
+        }
+        return Domain::Result<void>::failure(std::move(error));
+    }
+
+    const auto registrationId = target->registrationId();
+    std::optional<Domain::Error> failure;
+    std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
+    bool structuralFailure{};
+    try {
+        {
+            const std::scoped_lock lock{mutex_};
+            if (shutdown_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The dashboard deadline registry is closed to auxiliary owners."));
+            } else if (
+                findByRegistrationIdLocked(registrationId) != nullptr ||
+                findAuxiliaryByRegistrationIdLocked(registrationId) !=
+                    nullptr) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::Conflict,
+                    "The dashboard auxiliary deadline identity is already registered."));
+                retainFatalFailureLocked(Domain::Error{*failure});
+                structuralFailure = true;
+            } else if (registeredAuxiliaryDeadlineTargetCount_ >=
+                       MaximumAuxiliaryDeadlineTargetCount) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The two listener generations, overload responder, and shutdown drain already occupy the auxiliary deadline table.",
+                    true));
+            } else {
+                bridge = deadlineBridge_;
+                if (bridge == nullptr) {
+                    failure.emplace(registryError(
+                        Domain::ErrorCodes::Conflict,
+                        "An auxiliary dashboard deadline owner cannot register before the bridge is bound."));
+                    retainFatalFailureLocked(Domain::Error{*failure});
+                    structuralFailure = true;
+                }
+            }
+        }
+
+        if (failure.has_value()) {
+            if (structuralFailure) {
+                beginShutdown();
+            }
+            target->beginShutdown();
+            return Domain::Result<void>::failure(std::move(*failure));
+        }
+
+        auto deadlineOwner = bridge->registerOwner(registrationId);
+        if (!deadlineOwner) {
+            auto error = std::move(deadlineOwner).error();
+            if (error.code == Domain::ErrorCodes::Conflict ||
+                error.code == Domain::ErrorCodes::IntegrityFailure ||
+                error.code == Domain::ErrorCodes::InternalFailure) {
+                failRouting(Domain::Error{error});
+            }
+            target->beginShutdown();
+            return Domain::Result<void>::failure(std::move(error));
+        }
+        const auto deadlineHandle = std::move(deadlineOwner).value();
+
+        failure.reset();
+        structuralFailure = false;
+        {
+            const std::scoped_lock lock{mutex_};
+            if (shutdown_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The dashboard deadline registry closed during auxiliary owner registration."));
+            } else if (
+                findByRegistrationIdLocked(registrationId) != nullptr ||
+                findAuxiliaryByRegistrationIdLocked(registrationId) !=
+                    nullptr) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::Conflict,
+                    "The dashboard auxiliary deadline identity became registered concurrently."));
+                retainFatalFailureLocked(Domain::Error{*failure});
+                structuralFailure = true;
+            } else if (registeredAuxiliaryDeadlineTargetCount_ >=
+                       MaximumAuxiliaryDeadlineTargetCount) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The dashboard auxiliary deadline table reached its fixed capacity.",
+                    true));
+            } else {
+                auto* const vacant = findVacantAuxiliaryLocked();
+                if (vacant == nullptr) {
+                    failure.emplace(registryError(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The dashboard auxiliary deadline count did not match its fixed entry array."));
+                    retainFatalFailureLocked(Domain::Error{*failure});
+                    structuralFailure = true;
+                } else {
+                    vacant->registrationId = registrationId;
+                    vacant->deadlineHandle = deadlineHandle;
+                    vacant->deadlineOwnerLifecycle =
+                        Entry::DeadlineOwnerLifecycle::Registered;
+                    vacant->target = target;
+                    ++registeredAuxiliaryDeadlineTargetCount_;
+                }
+            }
+        }
+
+        if (failure.has_value()) {
+            const auto retired = bridge->retireOwner(deadlineHandle);
+            if (!retired && !bridge->snapshot().isShutdown()) {
+                failRouting(registryError(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The dashboard registry could not retire an uncommitted auxiliary deadline owner."));
+            }
+            if (structuralFailure) {
+                beginShutdown();
+            }
+            target->beginShutdown();
+            return Domain::Result<void>::failure(std::move(*failure));
+        }
+        return Domain::Result<void>::success();
+    } catch (...) {
+        auto error = registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard auxiliary deadline owner could not be registered safely.");
+        failRouting(Domain::Error{error});
+        target->beginShutdown();
+        return Domain::Result<void>::failure(std::move(error));
+    }
+}
+
+bool DashboardConnectionRegistry::unregisterAuxiliaryDeadlineTarget(
+    const std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>& target)
+    noexcept
+{
+    if (target == nullptr) {
+        return false;
+    }
+    const auto registrationId = target->registrationId();
+    if (!retireAuxiliaryDeadlineOwnerIdentity(
+            registrationId, target)) {
+        return false;
+    }
+
+    std::shared_ptr<IDashboardAuxiliaryDeadlineTarget> removed;
+    try {
+        {
+            const std::scoped_lock lock{mutex_};
+            auto* const entry = findAuxiliaryByRegistrationIdLocked(
+                registrationId);
+            if (entry == nullptr ||
+                entry->target.get() != target.get() ||
+                entry->deadlineOwnerLifecycle !=
+                    Entry::DeadlineOwnerLifecycle::Retired) {
+                return false;
+            }
+            removed = std::move(entry->target);
+            entry->registrationId = 0U;
+            entry->deadlineHandle = {};
+            entry->deadlineOwnerLifecycle =
+                Entry::DeadlineOwnerLifecycle::Retired;
+            --registeredAuxiliaryDeadlineTargetCount_;
+        }
+        removed.reset();
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 bool DashboardConnectionRegistry::removeIfDrained(
     const std::shared_ptr<IDashboardConnectionDispatchTarget>& target)
     noexcept
@@ -488,6 +824,63 @@ bool DashboardConnectionRegistry::removeIfDrained(
     const auto generationId = target->generationId();
     return removeIfDrainedIdentity(
         key, registrationId, generationId, target);
+}
+
+std::size_t DashboardConnectionRegistry::connectionCountForGeneration(
+    const std::uint64_t generationId) const noexcept
+{
+    if (generationId == 0U) {
+        return 0U;
+    }
+    try {
+        const std::scoped_lock lock{mutex_};
+        return static_cast<std::size_t>(std::count_if(
+            entries_.begin(),
+            entries_.end(),
+            [generationId](const Entry& entry) noexcept {
+                return entry.target != nullptr &&
+                    entry.generationId == generationId;
+            }));
+    } catch (...) {
+        return MaximumConnectionCount;
+    }
+}
+
+std::size_t DashboardConnectionRegistry::beginShutdownGeneration(
+    const std::uint64_t generationId) noexcept
+{
+    if (generationId == 0U) {
+        return 0U;
+    }
+    std::array<
+        std::shared_ptr<IDashboardConnectionDispatchTarget>,
+        MaximumConnectionCount>
+        targets;
+    std::size_t targetCount{};
+    try {
+        {
+            const std::scoped_lock lock{mutex_};
+            for (const auto& entry : entries_) {
+                if (entry.target != nullptr &&
+                    entry.generationId == generationId) {
+                    targets[targetCount] = entry.target;
+                    ++targetCount;
+                }
+            }
+        }
+        for (std::size_t index{}; index < targetCount; ++index) {
+            targets[index]->beginShutdown();
+        }
+        for (std::size_t index{}; index < targetCount; ++index) {
+            static_cast<void>(removeIfDrained(targets[index]));
+        }
+        return targetCount;
+    } catch (...) {
+        failRouting(registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard registry could not close a listener generation safely."));
+        return targetCount;
+    }
 }
 
 bool DashboardConnectionRegistry::removeIfDrainedIdentity(
@@ -507,6 +900,8 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
     }
 
     std::shared_ptr<IDashboardConnectionDispatchTarget> removed;
+    std::shared_ptr<IDashboardConnectionGenerationDrainObserver>
+        drainObserver;
     try {
         {
             const std::scoped_lock lock{mutex_};
@@ -529,8 +924,22 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
                 Entry::DeadlineOwnerLifecycle::Retired;
             --registeredConnectionCount_;
             incrementSaturating(removedConnectionCount_);
+            const bool generationStillRegistered = std::any_of(
+                entries_.begin(),
+                entries_.end(),
+                [generationId](const Entry& candidate) noexcept {
+                    return candidate.target != nullptr &&
+                        candidate.generationId == generationId;
+                });
+            if (!generationStillRegistered) {
+                drainObserver = generationDrainObserver_.lock();
+            }
         }
         removed.reset();
+        if (drainObserver != nullptr) {
+            drainObserver->generationConnectionsMayHaveDrained(
+                generationId);
+        }
         return true;
     } catch (...) {
         return false;
@@ -622,6 +1031,85 @@ bool DashboardConnectionRegistry::retireDeadlineOwnerIdentity(
     }
 }
 
+bool DashboardConnectionRegistry::retireAuxiliaryDeadlineOwnerIdentity(
+    const std::uint64_t registrationId,
+    const std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>& target)
+    noexcept
+{
+    if (target == nullptr) {
+        return false;
+    }
+
+    std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
+    DashboardDeadlineNotificationHandle handle;
+    try {
+        std::unique_lock routingLock{deadlineRoutingMutex_};
+        {
+            const std::scoped_lock lock{mutex_};
+            auto* const entry = findAuxiliaryByRegistrationIdLocked(
+                registrationId);
+            if (entry == nullptr ||
+                entry->target.get() != target.get()) {
+                return false;
+            }
+            if (entry->deadlineOwnerLifecycle ==
+                Entry::DeadlineOwnerLifecycle::Retired) {
+                return true;
+            }
+            if (entry->deadlineOwnerLifecycle ==
+                Entry::DeadlineOwnerLifecycle::Retiring) {
+                return false;
+            }
+            entry->deadlineOwnerLifecycle =
+                Entry::DeadlineOwnerLifecycle::Retiring;
+            bridge = deadlineBridge_;
+            handle = entry->deadlineHandle;
+        }
+
+        bool retirementSucceeded{};
+        if (bridge != nullptr) {
+            auto retired = bridge->retireOwner(handle);
+            retirementSucceeded = static_cast<bool>(retired);
+        }
+
+        {
+            const std::scoped_lock lock{mutex_};
+            auto* const entry = findAuxiliaryByRegistrationIdLocked(
+                registrationId);
+            if (entry == nullptr ||
+                entry->target.get() != target.get() ||
+                entry->deadlineOwnerLifecycle !=
+                    Entry::DeadlineOwnerLifecycle::Retiring) {
+                return false;
+            }
+            entry->deadlineOwnerLifecycle = retirementSucceeded
+                ? Entry::DeadlineOwnerLifecycle::Retired
+                : Entry::DeadlineOwnerLifecycle::Registered;
+        }
+        routingLock.unlock();
+
+        if (!retirementSucceeded) {
+            bool startShutdown{};
+            {
+                const std::scoped_lock lock{mutex_};
+                retainFatalFailureLocked(registryError(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The dashboard registry could not retire its exact auxiliary deadline owner."));
+                startShutdown = !shutdownCallbacksStarted_;
+            }
+            if (startShutdown) {
+                beginShutdown();
+            }
+        }
+        return retirementSucceeded;
+    } catch (...) {
+        failRouting(registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard registry could not retire its auxiliary deadline owner safely."));
+        return false;
+    }
+}
+
 void DashboardConnectionRegistry::consume(
     const DashboardIoCompletionPacket packet,
     const DWORD nativeError) noexcept
@@ -642,7 +1130,10 @@ void DashboardConnectionRegistry::consume(
 
             std::optional<Domain::Error> routingFailure;
             std::optional<WindowsDashboardDeadline> deadline;
-            std::shared_ptr<IDashboardConnectionDispatchTarget> target;
+            std::shared_ptr<IDashboardConnectionDispatchTarget>
+                connectionTarget;
+            std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>
+                auxiliaryTarget;
             bool retiredNotification{};
             {
                 const std::scoped_lock routingLock{deadlineRoutingMutex_};
@@ -677,7 +1168,17 @@ void DashboardConnectionRegistry::consume(
                                 findByRegistrationIdLocked(
                                     deadline->registrationId);
                             if (entry != nullptr) {
-                                target = entry->target;
+                                connectionTarget = entry->target;
+                            } else {
+                                const auto* const auxiliary =
+                                    findAuxiliaryByRegistrationIdLocked(
+                                        deadline->registrationId);
+                                if (auxiliary != nullptr) {
+                                    auxiliaryTarget = auxiliary->target;
+                                }
+                            }
+                            if (connectionTarget != nullptr ||
+                                auxiliaryTarget != nullptr) {
                                 incrementSaturating(
                                     deadlineDispatchCount_);
                             }
@@ -695,15 +1196,20 @@ void DashboardConnectionRegistry::consume(
                 incrementSaturating(retiredDeadlineDrainCount_);
                 return;
             }
-            if (target == nullptr) {
+            if (connectionTarget == nullptr &&
+                auxiliaryTarget == nullptr) {
                 failRouting(registryError(
                     Domain::ErrorCodes::IntegrityFailure,
-                    "A dashboard deadline completion targeted an unknown connection registration."));
+                    "A dashboard deadline completion targeted an unknown owner registration."));
                 return;
             }
 
-            target->dispatchDeadline(*deadline);
-            static_cast<void>(removeIfDrained(target));
+            if (connectionTarget != nullptr) {
+                connectionTarget->dispatchDeadline(*deadline);
+                static_cast<void>(removeIfDrained(connectionTarget));
+            } else {
+                auxiliaryTarget->dispatchDeadline(*deadline);
+            }
             return;
         }
 
@@ -747,6 +1253,7 @@ void DashboardConnectionRegistry::fatal(const DWORD nativeError) noexcept
             Domain::ErrorCodes::InternalFailure,
             "The dashboard IOCP worker reported a fatal native dequeue failure."),
         nativeError);
+    failFast_->failFast();
 }
 
 void DashboardConnectionRegistry::fatal(
@@ -773,6 +1280,36 @@ void DashboardConnectionRegistry::fatal(
         failRouting(registryError(
             Domain::ErrorCodes::InternalFailure,
             "The dashboard connection registry could not retain an event bridge fatal notification."));
+    }
+}
+
+void DashboardConnectionRegistry::connectionMayHaveDrained(
+    const DashboardIoCompletionKey completionKey,
+    const std::uint64_t registrationId,
+    const std::uint64_t generationId) noexcept
+{
+    std::shared_ptr<IDashboardConnectionDispatchTarget> target;
+    try {
+        {
+            const std::scoped_lock lock{mutex_};
+            const auto* const entry = findByKeyLocked(completionKey);
+            if (entry != nullptr &&
+                entry->registrationId == registrationId &&
+                entry->generationId == generationId) {
+                target = entry->target;
+            }
+        }
+        if (target != nullptr) {
+            static_cast<void>(removeIfDrainedIdentity(
+                completionKey,
+                registrationId,
+                generationId,
+                target));
+        }
+    } catch (...) {
+        failRouting(registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard registry could not consume a connection drain edge safely."));
     }
 }
 
@@ -813,6 +1350,7 @@ DashboardConnectionRegistry::snapshotLocked() const noexcept
     return DashboardConnectionRegistrySnapshot{
         registeredConnectionCount_,
         MaximumConnectionCount,
+        registeredAuxiliaryDeadlineTargetCount_,
         deadlineCompletionKey_,
         deadlineBridge_ != nullptr,
         connectionDispatchCount_,
@@ -836,6 +1374,7 @@ DashboardConnectionRegistrySnapshot DashboardConnectionRegistry::snapshot()
         return DashboardConnectionRegistrySnapshot{
             0U,
             MaximumConnectionCount,
+            0U,
             deadlineCompletionKey_,
             false,
             0U,
@@ -866,7 +1405,10 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
         std::shared_ptr<IDashboardConnectionDispatchTarget>,
         MaximumConnectionCount>
         targets;
-    std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
+    std::array<
+        std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>,
+        MaximumAuxiliaryDeadlineTargetCount>
+        auxiliaryTargets;
     try {
         {
             const std::scoped_lock lock{mutex_};
@@ -878,10 +1420,20 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
             for (std::size_t index{}; index < entries_.size(); ++index) {
                 targets[index] = entries_[index].target;
             }
-            bridge = deadlineBridge_;
+            for (std::size_t index{};
+                 index < auxiliaryDeadlineEntries_.size();
+                 ++index) {
+                auxiliaryTargets[index] =
+                    auxiliaryDeadlineEntries_[index].target;
+            }
         }
 
         for (const auto& target : targets) {
+            if (target != nullptr) {
+                target->beginShutdown();
+            }
+        }
+        for (const auto& target : auxiliaryTargets) {
             if (target != nullptr) {
                 target->beginShutdown();
             }
@@ -896,11 +1448,37 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
                 static_cast<void>(removeIfDrained(target));
             }
         }
-        if (bridge != nullptr) {
-            bridge->shutdown();
-        }
     } catch (...) {
         std::terminate();
+    }
+}
+
+bool DashboardConnectionRegistry::finalizeDeadlineRouting() noexcept
+{
+    try {
+        const std::scoped_lock routingLock{deadlineRoutingMutex_};
+        std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
+        {
+            const std::scoped_lock lock{mutex_};
+            if (!shutdown_ || registeredConnectionCount_ != 0U ||
+                registeredAuxiliaryDeadlineTargetCount_ != 0U) {
+                return false;
+            }
+            bridge = deadlineBridge_;
+        }
+        if (bridge == nullptr) {
+            return true;
+        }
+        const auto snapshot = bridge->snapshot();
+        if (snapshot.registeredOwnerCount() != 0U ||
+            snapshot.postedOperationCount() != 0U ||
+            snapshot.retiredAwaitingReapCount() != 0U) {
+            return false;
+        }
+        bridge->shutdown();
+        return true;
+    } catch (...) {
+        return false;
     }
 }
 

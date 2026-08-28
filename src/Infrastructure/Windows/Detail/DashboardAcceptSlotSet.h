@@ -134,6 +134,14 @@ public:
             : nullptr;
     }
 
+    // True only when this exact slot had a successful CancelIoEx request,
+    // ERROR_NOT_FOUND completion-race acknowledgement, or was explicitly
+    // covered by the listener-handle close before its completion was reaped.
+    [[nodiscard]] bool cancellationRequestedForSlot() const noexcept
+    {
+        return cancellationRequestedForSlot_;
+    }
+
 private:
     friend class DashboardAcceptSlotSet;
 
@@ -144,7 +152,8 @@ private:
         std::optional<Domain::Error> acceptFailure,
         std::optional<Domain::Error> reissueFailure,
         std::optional<DashboardAcceptLifecycleFailure>
-            cancellationFailure) noexcept;
+            cancellationFailure,
+        bool cancellationRequestedForSlot) noexcept;
 
     DashboardAcceptReapDisposition disposition_{
         DashboardAcceptReapDisposition::FailureDrained};
@@ -153,6 +162,7 @@ private:
     std::optional<Domain::Error> acceptFailure_;
     std::optional<Domain::Error> reissueFailure_;
     std::optional<DashboardAcceptLifecycleFailure> cancellationFailure_;
+    bool cancellationRequestedForSlot_{};
 };
 
 class DashboardAcceptSlotSetSnapshot final {
@@ -208,6 +218,11 @@ public:
         return listenerAssociated_;
     }
 
+    [[nodiscard]] bool listenerForceClosed() const noexcept
+    {
+        return listenerForceClosed_;
+    }
+
     [[nodiscard]] bool admissionOpen() const noexcept
     {
         return admissionOpen_;
@@ -235,6 +250,7 @@ private:
         std::size_t drainedCount,
         bool startAttempted,
         bool listenerAssociated,
+        bool listenerForceClosed,
         bool admissionOpen,
         std::optional<DashboardAcceptLifecycleFailure>
             lifecycleFailure) noexcept;
@@ -247,6 +263,7 @@ private:
     std::size_t drainedCount_{};
     bool startAttempted_{};
     bool listenerAssociated_{};
+    bool listenerForceClosed_{};
     bool admissionOpen_{};
     std::optional<DashboardAcceptLifecycleFailure> lifecycleFailure_;
 };
@@ -284,6 +301,11 @@ public:
     DashboardAcceptSlotSet& operator=(DashboardAcceptSlotSet&&) = delete;
     ~DashboardAcceptSlotSet() noexcept;
 
+    [[nodiscard]] DashboardIoCompletionKey completionKey() const noexcept
+    {
+        return completionKey_;
+    }
+
     // Associates the listener before issuing any AcceptEx. A failure after one
     // or more issues closes admission and requests cancellation for every
     // issued slot. The caller must retain this owner and reap those packets.
@@ -295,6 +317,12 @@ public:
     // until their one-shot tokens return without issuing new native work.
     [[nodiscard]] std::optional<DashboardAcceptLifecycleFailure>
     closeAdmissionAndRequestCancellation() noexcept;
+
+    // Performs one final bounded cancellation pass, invalidates the owned
+    // listener handle, and records exact per-slot listener-close provenance.
+    // Slot and OVERLAPPED storage remains owned until matching IOCP reaps.
+    [[nodiscard]] std::optional<DashboardAcceptLifecycleFailure>
+    forceCloseListenerAndRequestCancellation() noexcept;
 
     // Returns the one exact paused slot to native acceptance. When admission
     // closed first, returning the token drains the slot without issuing or
@@ -341,14 +369,16 @@ private:
     [[nodiscard]] Domain::Result<DashboardAcceptIssueDisposition> issueLocked(
         std::size_t index) noexcept;
     [[nodiscard]] std::optional<DashboardAcceptLifecycleFailure>
-    closeAdmissionAndRequestCancellationLocked() noexcept;
+    closeAdmissionAndRequestCancellationLocked(
+        bool retryFailedCancellation = false) noexcept;
     [[nodiscard]] DashboardAcceptLifecycleFailure
     retainLifecycleFailureLocked(Domain::Error error) noexcept;
     [[nodiscard]] Domain::Result<std::size_t> findIssuedSlotLocked(
         OVERLAPPED* operation) const noexcept;
     [[nodiscard]] DashboardAcceptReapResult finishFailureLocked(
         std::size_t index,
-        Domain::Error acceptFailure) noexcept;
+        Domain::Error acceptFailure,
+        bool cancellationRequestedForSlot) noexcept;
     [[nodiscard]] DashboardAcceptSlotSetSnapshot snapshotLocked()
         const noexcept;
 
@@ -358,10 +388,12 @@ private:
     SlotOwners slots_;
     std::shared_ptr<const DashboardAcceptSlotSetIdentity> identity_;
     std::array<SlotLifecycle, SlotCount> lifecycles_{};
+    std::array<std::uint8_t, SlotCount> cancellationAttemptCounts_{};
     std::array<std::uint64_t, SlotCount> resumeSequences_{};
     DashboardIoCompletionKey completionKey_{0U};
     bool startAttempted_{};
     bool listenerAssociated_{};
+    bool listenerForceClosed_{};
     bool admissionOpen_{};
     bool terminalClosed_{};
     std::optional<Domain::Error> firstLifecycleFailure_;

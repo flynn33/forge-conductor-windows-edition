@@ -85,6 +85,8 @@ public:
     Impl(
         const std::uint64_t generationId,
         const DashboardConnectionRuntimeIdentity identity,
+        const Domain::MonotonicTimePoint admittedAt,
+        DashboardAdmissionController::Lease admissionLease,
         std::unique_ptr<IDashboardConnectionIo> socket,
         WindowsDashboardDeadlineScheduler& deadlineScheduler,
         WindowsDashboardHandlerExecutor& handlerExecutor,
@@ -94,6 +96,8 @@ public:
         DashboardConnectionResponseCatalog& responseCatalog) noexcept
         : generationId_{generationId},
           identity_{identity},
+          admittedAt_{admittedAt},
+          admissionLease_{std::move(admissionLease)},
           socket_{std::move(socket)},
           deadlineScheduler_{std::addressof(deadlineScheduler)},
           handlerExecutor_{std::addressof(handlerExecutor)},
@@ -118,6 +122,9 @@ public:
         eventBridge_ = std::move(bridge);
     }
 
+    [[nodiscard]] Domain::Result<void> bindDrainObserver(
+        std::weak_ptr<IDashboardConnectionDrainObserver> observer)
+        noexcept;
     [[nodiscard]] Domain::Result<void> start() noexcept;
     void dispatchIocp(
         DWORD transferredBytes,
@@ -150,17 +157,23 @@ public:
     }
 
 private:
-    class FatalLatchDrain final {
+    class ExternalNotificationDrain final {
     public:
         // DashboardConnectionEventBridge::retainFatalFailureLocked emits at
         // most its first retained fatal notification. This guard converts
-        // that one edge into closure even when the callback races a public
-        // state observation. Composition invokes the inherited sink only
-        // through that bridge-owned first-fatal edge.
-        explicit FatalLatchDrain(Impl& owner) noexcept : owner_{&owner} {}
-        FatalLatchDrain(const FatalLatchDrain&) = delete;
-        FatalLatchDrain& operator=(const FatalLatchDrain&) = delete;
-        ~FatalLatchDrain() noexcept { owner_->drainFatalLatch(); }
+        // that edge into closure and publishes the one-shot registry drain
+        // edge only after the public state lock has been released.
+        explicit ExternalNotificationDrain(Impl& owner) noexcept
+            : owner_{&owner}
+        {
+        }
+        ExternalNotificationDrain(const ExternalNotificationDrain&) = delete;
+        ExternalNotificationDrain& operator=(
+            const ExternalNotificationDrain&) = delete;
+        ~ExternalNotificationDrain() noexcept
+        {
+            owner_->drainExternalNotifications();
+        }
 
     private:
         Impl* owner_{};
@@ -198,10 +211,12 @@ private:
     void maybeDrainLocked() noexcept;
     void retainFailureLocked(Domain::Error error) noexcept;
     void consumePendingFatalLocked() noexcept;
-    void drainFatalLatch() noexcept;
+    void drainExternalNotifications() noexcept;
 
     const std::uint64_t generationId_{};
     const DashboardConnectionRuntimeIdentity identity_{};
+    const Domain::MonotonicTimePoint admittedAt_{};
+    DashboardAdmissionController::Lease admissionLease_;
     std::unique_ptr<IDashboardConnectionIo> socket_;
     WindowsDashboardDeadlineScheduler* deadlineScheduler_{};
     WindowsDashboardHandlerExecutor* handlerExecutor_{};
@@ -210,6 +225,7 @@ private:
         application_;
     DashboardConnectionResponseCatalog* responseCatalog_{};
     std::shared_ptr<DashboardConnectionEventBridge> eventBridge_;
+    std::weak_ptr<IDashboardConnectionDrainObserver> drainObserver_;
 
     Dashboard::DashboardHttpParserSession parser_;
     std::optional<Dashboard::DashboardPreparedExchange> preparedExchange_;
@@ -231,15 +247,53 @@ private:
     std::uint8_t sseBootstrapSegment_{};
     bool sseReadyPending_{};
     bool shutdownRequested_{};
+    bool drainObserverBound_{};
+    bool drainNotificationSent_{};
     std::atomic_bool eventFatalPending_{};
+    std::atomic_bool drainNotificationPending_{};
     std::atomic<DashboardConnectionLifecycleState> state_{
         DashboardConnectionLifecycleState::Created};
     mutable std::mutex mutex_;
 };
 
+Domain::Result<void> DashboardConnectionState::Impl::bindDrainObserver(
+    std::weak_ptr<IDashboardConnectionDrainObserver> observer) noexcept
+{
+    try {
+        if (observer.expired()) {
+            return Domain::Result<void>::failure(
+                invalidConnectionStateError(
+                    "A dashboard connection requires a live registry drain observer."));
+        }
+        {
+            const std::scoped_lock lock{mutex_};
+            if (drainObserverBound_) {
+                return Domain::Result<void>::failure(
+                    invalidConnectionStateError(
+                        "A dashboard connection registry drain observer is one-shot."));
+            }
+            drainObserver_ = std::move(observer);
+            drainObserverBound_ = true;
+            if (state_.load(std::memory_order_relaxed) ==
+                    DashboardConnectionLifecycleState::Drained &&
+                !drainNotificationSent_) {
+                drainNotificationSent_ = true;
+                drainNotificationPending_.store(
+                    true, std::memory_order_release);
+            }
+        }
+        drainExternalNotifications();
+        return Domain::Result<void>::success();
+    } catch (...) {
+        return Domain::Result<void>::failure(connectionStateError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard connection could not bind its registry drain observer."));
+    }
+}
+
 Domain::Result<void> DashboardConnectionState::Impl::start() noexcept
 {
-    FatalLatchDrain drain{*this};
+    ExternalNotificationDrain drain{*this};
     const std::scoped_lock lock{mutex_};
     if (state_.load(std::memory_order_relaxed) !=
             DashboardConnectionLifecycleState::Created ||
@@ -248,17 +302,31 @@ Domain::Result<void> DashboardConnectionState::Impl::start() noexcept
             "A dashboard connection can be started exactly once after its event bridge is installed."));
     }
 
-    socketLifetimeDeadline_ = runtimeServices_->monotonicNow() +
+    const auto now = runtimeServices_->monotonicNow();
+    const auto headerIngressDeadline = admittedAt_ +
+        DashboardConnectionState::HeaderIngressLifetime;
+    socketLifetimeDeadline_ = admittedAt_ +
         DashboardConnectionState::SocketLifetime;
+    if (admittedAt_ > now) {
+        closeLocked(integrityConnectionStateError(
+            "The dashboard connection admission timestamp was ahead of its monotonic start observation."));
+        return Domain::Result<void>::failure(
+            integrityConnectionStateError(
+                "The dashboard connection admission timestamp was ahead of its monotonic start observation."));
+    }
+    if (now >= headerIngressDeadline || now >= socketLifetimeDeadline_) {
+        closeLocked(deadlineConnectionStateError(
+            "The dashboard connection header-ingress lifetime expired before transport start."));
+        return Domain::Result<void>::failure(
+            deadlineConnectionStateError(
+                "The dashboard connection header-ingress lifetime expired before transport start."));
+    }
     state_.store(
         DashboardConnectionLifecycleState::Receiving,
         std::memory_order_release);
     if (!armDeadlineLocked(
             WindowsDashboardDeadlineKind::HeaderIngress,
-            std::min(
-                runtimeServices_->monotonicNow() +
-                    DashboardConnectionState::HeaderIngressLifetime,
-                socketLifetimeDeadline_)) ||
+            (std::min)(headerIngressDeadline, socketLifetimeDeadline_)) ||
         !issueReceiveLocked()) {
         closeLocked(std::nullopt);
         return Domain::Result<void>::failure(connectionStateError(
@@ -309,7 +377,7 @@ void DashboardConnectionState::Impl::dispatchIocp(
     OVERLAPPED* const operation,
     const DWORD nativeError) noexcept
 {
-    FatalLatchDrain drain{*this};
+    ExternalNotificationDrain drain{*this};
     if (operation == socket_->borrowedOperation()) {
         auto reaped = socket_->reap(
             identity_.completionKey,
@@ -346,7 +414,8 @@ void DashboardConnectionState::Impl::handleSocketCompletionLocked(
     DashboardConnectionSocketReapResult completion) noexcept
 {
     const auto current = state_.load(std::memory_order_relaxed);
-    if (current == DashboardConnectionLifecycleState::Closing) {
+    if (current == DashboardConnectionLifecycleState::Closing ||
+        current == DashboardConnectionLifecycleState::Drained) {
         maybeDrainLocked();
         return;
     }
@@ -611,6 +680,14 @@ void DashboardConnectionState::Impl::handlePreparedExchangeLocked(
                 responseCatalog_->streamUnavailable(),
                 integrityConnectionStateError(
                     "An SSE dashboard exchange did not expose its subscription."));
+            return;
+        }
+
+        auto convertedAdmission = admissionLease_.convertToSse();
+        if (!convertedAdmission) {
+            startFallbackLocked(
+                responseCatalog_->streamUnavailable(),
+                std::move(convertedAdmission).error());
             return;
         }
 
@@ -964,7 +1041,7 @@ void DashboardConnectionState::Impl::armSseWaitLocked() noexcept
 void DashboardConnectionState::Impl::dispatchDeadline(
     const WindowsDashboardDeadline deadline) noexcept
 {
-    FatalLatchDrain drain{*this};
+    ExternalNotificationDrain drain{*this};
     const std::scoped_lock lock{mutex_};
     consumePendingFatalLocked();
     if (state_.load(std::memory_order_relaxed) ==
@@ -1016,7 +1093,7 @@ void DashboardConnectionState::Impl::dispatchDeadline(
 
 void DashboardConnectionState::Impl::beginShutdown() noexcept
 {
-    FatalLatchDrain drain{*this};
+    ExternalNotificationDrain drain{*this};
     const std::scoped_lock lock{mutex_};
     closeLocked(std::nullopt);
 }
@@ -1076,9 +1153,14 @@ void DashboardConnectionState::Impl::maybeDrainLocked() noexcept
     preparedExchange_.reset();
     fallbackBytes_.reset();
     sseFrameBytes_.reset();
+    admissionLease_.release();
     state_.store(
         DashboardConnectionLifecycleState::Drained,
         std::memory_order_release);
+    if (drainObserverBound_ && !drainNotificationSent_) {
+        drainNotificationSent_ = true;
+        drainNotificationPending_.store(true, std::memory_order_release);
+    }
 }
 
 void DashboardConnectionState::Impl::retainFailureLocked(
@@ -1103,7 +1185,7 @@ void DashboardConnectionState::Impl::eventFatal(
     const DashboardConnectionEventFatalNotification) noexcept
 {
     eventFatalPending_.store(true, std::memory_order_release);
-    drainFatalLatch();
+    drainExternalNotifications();
 }
 
 void DashboardConnectionState::Impl::consumePendingFatalLocked() noexcept
@@ -1115,14 +1197,16 @@ void DashboardConnectionState::Impl::consumePendingFatalLocked() noexcept
         "The bounded dashboard connection event bridge failed fatally."));
 }
 
-void DashboardConnectionState::Impl::drainFatalLatch() noexcept
+void DashboardConnectionState::Impl::drainExternalNotifications() noexcept
 {
-    if (!eventFatalPending_.load(std::memory_order_acquire)) {
+    if (!eventFatalPending_.load(std::memory_order_acquire) &&
+        !drainNotificationPending_.load(std::memory_order_acquire)) {
         return;
     }
     std::unique_lock lock{mutex_, std::try_to_lock};
     if (!lock.owns_lock()) {
-        // Every public mutex owner installs FatalLatchDrain before acquiring
+        // Every public mutex owner installs ExternalNotificationDrain before
+        // acquiring
         // the mutex. Its destructor runs after unlock and performs another
         // nonblocking attempt, so contention cannot strand this latch. The
         // production bridge emits at most one notification from
@@ -1132,12 +1216,25 @@ void DashboardConnectionState::Impl::drainFatalLatch() noexcept
         return;
     }
     consumePendingFatalLocked();
+
+    std::shared_ptr<IDashboardConnectionDrainObserver> observer;
+    if (drainNotificationPending_.exchange(
+            false, std::memory_order_acq_rel)) {
+        observer = drainObserver_.lock();
+    }
+    lock.unlock();
+    if (observer != nullptr) {
+        observer->connectionMayHaveDrained(
+            identity_.completionKey,
+            identity_.registrationId,
+            generationId_);
+    }
 }
 
 DashboardConnectionStateSnapshot DashboardConnectionState::Impl::snapshot()
     const noexcept
 {
-    FatalLatchDrain drain{*const_cast<Impl*>(this)};
+    ExternalNotificationDrain drain{*const_cast<Impl*>(this)};
     try {
         const std::scoped_lock lock{mutex_};
         const auto event = eventBridge_ == nullptr
@@ -1171,7 +1268,7 @@ DashboardConnectionStateSnapshot DashboardConnectionState::Impl::snapshot()
 std::optional<Domain::Error> DashboardConnectionState::Impl::fullFailure()
     const
 {
-    FatalLatchDrain drain{*const_cast<Impl*>(this)};
+    ExternalNotificationDrain drain{*const_cast<Impl*>(this)};
     const std::scoped_lock lock{mutex_};
     return firstFailure_;
 }
@@ -1180,6 +1277,8 @@ Domain::Result<std::shared_ptr<DashboardConnectionState>>
 DashboardConnectionState::create(
     const std::uint64_t generationId,
     const DashboardConnectionRuntimeIdentity identity,
+    const Domain::MonotonicTimePoint admittedAt,
+    DashboardAdmissionController::Lease admissionLease,
     std::unique_ptr<IDashboardConnectionIo> socket,
     DashboardIocpWorkerKernel& kernel,
     WindowsDashboardDeadlineScheduler& deadlineScheduler,
@@ -1193,6 +1292,8 @@ DashboardConnectionState::create(
     if (generationId == 0U || identity.registrationId == 0U ||
         identity.completionKey.value() ==
             DashboardIocpWorkerKernel::ShutdownKeyValue ||
+        !admissionLease.ownsAdmission() ||
+        admissionLease.kind() != DashboardAdmissionKind::Short ||
         socket == nullptr ||
         !(socket->completionKey() == identity.completionKey) ||
         application == nullptr) {
@@ -1206,6 +1307,8 @@ DashboardConnectionState::create(
         owner->implementation_ = std::make_unique<Impl>(
             generationId,
             identity,
+            admittedAt,
+            std::move(admissionLease),
             std::move(socket),
             deadlineScheduler,
             handlerExecutor,
@@ -1247,6 +1350,12 @@ std::uint64_t DashboardConnectionState::registrationId() const noexcept
 std::uint64_t DashboardConnectionState::generationId() const noexcept
 {
     return implementation_->generationId();
+}
+
+Domain::Result<void> DashboardConnectionState::bindDrainObserver(
+    std::weak_ptr<IDashboardConnectionDrainObserver> observer) noexcept
+{
+    return implementation_->bindDrainObserver(std::move(observer));
 }
 
 Domain::Result<void> DashboardConnectionState::start() noexcept

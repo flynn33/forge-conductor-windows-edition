@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T094650402Z-ae81b22a",
+  "phase": "P16",
+  "role": "builder",
+  "command": "cmake --build out/build/windows-msvc-x64 --config Debug --target ForgeConductor.Dashboard.AcceptSlotTests ForgeConductor.Dashboard.AcceptSlotSetTests ForgeConductor.Dashboard.AcceptedConnectionHandoffTests ForgeConductor.Dashboard.IocpCompletionRouterTests ForgeConductor.Dashboard.OverloadResponderSetTests ForgeConductor.Dashboard.ListenerGenerationTests ForgeConductor.Dashboard.DeadlineNotificationMailboxTests ForgeConductor.Dashboard.DeadlineIocpBridgeTests ForgeConductor.Dashboard.ConnectionStateTests ForgeConductor.Dashboard.ConnectionRegistryTests ForgeConductor.Dashboard.DeadlineSchedulerTests -- /m:2",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T09:46:50.4109526+00:00",
+  "end_utc": "2026-08-28T09:47:16.9940149+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T094650402Z-ae81b22a.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T094650402Z-ae81b22a.stderr.txt",
+  "stdout_sha256": "876e3d8f9dd4089283522e72a535d4bfddb89afd9d55a96ced9e185cef3904f6",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

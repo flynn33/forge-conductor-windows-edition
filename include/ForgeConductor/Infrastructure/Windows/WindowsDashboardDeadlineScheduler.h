@@ -16,6 +16,7 @@ enum class WindowsDashboardDeadlineKind : std::uint8_t {
     SocketLifetime,
     ServerSentEventsLifetime,
     ServerSentEventsDelivery,
+    OverloadResponse,
     ListenerRetirement,
     ShutdownDrain,
 };
@@ -86,10 +87,11 @@ private:
 // place, so superseded deadlines never accumulate. A completion consumer
 // accepts an event only when both identifier and sequence still match its
 // current arm. The hard ceiling covers 40 connections, two listener
-// generations, and one process-shutdown drain deadline.
+// generations, one fixed overload-response pool, and one process-shutdown
+// drain deadline.
 class WindowsDashboardDeadlineScheduler final {
 public:
-    static constexpr std::size_t HardMaximumScheduledCount = 43U;
+    static constexpr std::size_t HardMaximumScheduledCount = 44U;
 
     [[nodiscard]] static Domain::Result<
         std::unique_ptr<WindowsDashboardDeadlineScheduler>>

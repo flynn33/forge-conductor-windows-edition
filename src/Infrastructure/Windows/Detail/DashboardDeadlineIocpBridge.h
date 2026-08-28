@@ -149,7 +149,7 @@ private:
     std::optional<DashboardDeadlineIocpFailure> failure_;
 };
 
-// Process-owned synthetic-completion bridge for all 43 bounded dashboard
+// Process-owned synthetic-completion bridge for all 44 bounded dashboard
 // deadline owners. Every mailbox index has one independently heap-allocated,
 // permanently addressed OVERLAPPED slot. A slot retains the exact mailbox
 // generation handle from publication until its sole IOCP packet is consumed.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DashboardAdmissionController.h"
 #include "DashboardConnectionEventBridge.h"
 #include "DashboardConnectionResponseCatalog.h"
 #include "DashboardConnectionRuntimeServices.h"
@@ -100,6 +101,19 @@ private:
     bool hasFailure_{};
 };
 
+// Exact one-shot edge emitted after a connection releases every socket,
+// synthetic-event, deadline, and admission obligation. The callback carries
+// immutable identity only and must not retain the connection owner.
+class IDashboardConnectionDrainObserver {
+public:
+    virtual ~IDashboardConnectionDrainObserver() noexcept = default;
+
+    virtual void connectionMayHaveDrained(
+        DashboardIoCompletionKey completionKey,
+        std::uint64_t registrationId,
+        std::uint64_t generationId) noexcept = 0;
+};
+
 // Stable, registry-facing dispatch boundary. The registry selects an owner by
 // completion key and never holds its own lock while invoking these methods.
 // Implementations consume completions synchronously and retain every native,
@@ -112,6 +126,10 @@ public:
         const noexcept = 0;
     [[nodiscard]] virtual std::uint64_t registrationId() const noexcept = 0;
     [[nodiscard]] virtual std::uint64_t generationId() const noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<void> bindDrainObserver(
+        std::weak_ptr<IDashboardConnectionDrainObserver> observer)
+        noexcept = 0;
 
     [[nodiscard]] virtual Domain::Result<void> start() noexcept = 0;
 
@@ -147,6 +165,8 @@ public:
     create(
         std::uint64_t generationId,
         DashboardConnectionRuntimeIdentity identity,
+        Domain::MonotonicTimePoint admittedAt,
+        DashboardAdmissionController::Lease admissionLease,
         std::unique_ptr<IDashboardConnectionIo> socket,
         DashboardIocpWorkerKernel& kernel,
         WindowsDashboardDeadlineScheduler& deadlineScheduler,
@@ -168,6 +188,10 @@ public:
         const noexcept override;
     [[nodiscard]] std::uint64_t registrationId() const noexcept override;
     [[nodiscard]] std::uint64_t generationId() const noexcept override;
+
+    [[nodiscard]] Domain::Result<void> bindDrainObserver(
+        std::weak_ptr<IDashboardConnectionDrainObserver> observer)
+        noexcept override;
 
     [[nodiscard]] Domain::Result<void> start() noexcept override;
 

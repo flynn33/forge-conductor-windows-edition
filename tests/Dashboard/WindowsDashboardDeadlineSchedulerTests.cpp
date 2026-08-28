@@ -40,7 +40,7 @@ static_assert(std::is_abstract_v<Windows::IWindowsDashboardDeadlineSink>);
 static_assert(std::is_aggregate_v<DeadlineRequest>);
 static_assert(!std::is_copy_constructible_v<Scheduler>);
 static_assert(!std::is_move_constructible_v<Scheduler>);
-static_assert(Scheduler::HardMaximumScheduledCount == 43U);
+static_assert(Scheduler::HardMaximumScheduledCount == 44U);
 static_assert(noexcept(Scheduler::create({}, {})));
 static_assert(noexcept(std::declval<Scheduler&>().schedule({})));
 static_assert(noexcept(std::declval<Scheduler&>().cancel(1U, 1U)));

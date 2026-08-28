@@ -105,13 +105,15 @@ DashboardAcceptReapResult::DashboardAcceptReapResult(
     std::optional<Domain::Error> acceptFailure,
     std::optional<Domain::Error> reissueFailure,
     std::optional<DashboardAcceptLifecycleFailure>
-        cancellationFailure) noexcept
+        cancellationFailure,
+    const bool cancellationRequestedForSlot) noexcept
     : disposition_{disposition},
       acceptedConnection_{std::move(acceptedConnection)},
       resumeToken_{std::move(resumeToken)},
       acceptFailure_{std::move(acceptFailure)},
       reissueFailure_{std::move(reissueFailure)},
-      cancellationFailure_{std::move(cancellationFailure)}
+      cancellationFailure_{std::move(cancellationFailure)},
+      cancellationRequestedForSlot_{cancellationRequestedForSlot}
 {
 }
 
@@ -140,6 +142,7 @@ DashboardAcceptSlotSetSnapshot::DashboardAcceptSlotSetSnapshot(
     const std::size_t drainedCount,
     const bool startAttempted,
     const bool listenerAssociated,
+    const bool listenerForceClosed,
     const bool admissionOpen,
     std::optional<DashboardAcceptLifecycleFailure>
         lifecycleFailure) noexcept
@@ -151,6 +154,7 @@ DashboardAcceptSlotSetSnapshot::DashboardAcceptSlotSetSnapshot(
       drainedCount_{drainedCount},
       startAttempted_{startAttempted},
       listenerAssociated_{listenerAssociated},
+      listenerForceClosed_{listenerForceClosed},
       admissionOpen_{admissionOpen},
       lifecycleFailure_{std::move(lifecycleFailure)}
 {
@@ -287,6 +291,7 @@ DashboardAcceptSlotSet::issueLocked(const std::size_t index) noexcept
     auto issued = slots_[index]->issue(*runtime_, *extensions_, listener_);
     if (issued) {
         lifecycles_[index] = SlotLifecycle::Issued;
+        cancellationAttemptCounts_[index] = 0U;
     }
     return issued;
 }
@@ -324,7 +329,8 @@ Domain::Result<void> DashboardAcceptSlotSet::start(
 }
 
 std::optional<DashboardAcceptLifecycleFailure>
-DashboardAcceptSlotSet::closeAdmissionAndRequestCancellationLocked() noexcept
+DashboardAcceptSlotSet::closeAdmissionAndRequestCancellationLocked(
+    const bool retryFailedCancellation) noexcept
 {
     admissionOpen_ = false;
     terminalClosed_ = true;
@@ -341,6 +347,12 @@ DashboardAcceptSlotSet::closeAdmissionAndRequestCancellationLocked() noexcept
         case SlotLifecycle::AwaitingReturnClosed:
             break;
         case SlotLifecycle::Issued: {
+            if (cancellationAttemptCounts_[index] != 0U &&
+                (!retryFailedCancellation ||
+                 cancellationAttemptCounts_[index] >= 2U)) {
+                break;
+            }
+            ++cancellationAttemptCounts_[index];
             auto cancellation = slots_[index]->requestCancellation();
             if (cancellation) {
                 lifecycles_[index] = SlotLifecycle::CancellationRequested;
@@ -381,6 +393,33 @@ DashboardAcceptSlotSet::closeAdmissionAndRequestCancellation() noexcept
 {
     const std::scoped_lock lock{mutex_};
     return closeAdmissionAndRequestCancellationLocked();
+}
+
+std::optional<DashboardAcceptLifecycleFailure>
+DashboardAcceptSlotSet::forceCloseListenerAndRequestCancellation() noexcept
+{
+    const std::scoped_lock lock{mutex_};
+    auto firstFailure =
+        closeAdmissionAndRequestCancellationLocked(true);
+    if (listenerForceClosed_) {
+        return firstFailure;
+    }
+
+    listener_.closeNativeSocket();
+    listenerForceClosed_ = true;
+    for (std::size_t index{}; index < SlotCount; ++index) {
+        if (lifecycles_[index] == SlotLifecycle::Issued) {
+            // The exact owned listener close now supplies cancellation
+            // provenance for this specific still-issued operation. Storage
+            // remains live and must still receive its matching IOCP reap.
+            slots_[index]->recordListenerCloseCancellation();
+            lifecycles_[index] = SlotLifecycle::CancellationRequested;
+        } else if (lifecycles_[index] ==
+                   SlotLifecycle::CancellationRequested) {
+            slots_[index]->recordListenerCloseCancellation();
+        }
+    }
+    return firstFailure;
 }
 
 Domain::Result<DashboardAcceptResumeDisposition>
@@ -473,7 +512,8 @@ Domain::Result<std::size_t> DashboardAcceptSlotSet::findIssuedSlotLocked(
 
 DashboardAcceptReapResult DashboardAcceptSlotSet::finishFailureLocked(
     const std::size_t index,
-    Domain::Error acceptFailure) noexcept
+    Domain::Error acceptFailure,
+    const bool cancellationRequestedForSlot) noexcept
 {
     lifecycles_[index] = SlotLifecycle::Drained;
 
@@ -490,7 +530,8 @@ DashboardAcceptReapResult DashboardAcceptSlotSet::finishFailureLocked(
                 std::nullopt,
                 std::optional<Domain::Error>{std::move(acceptFailure)},
                 std::nullopt,
-                std::nullopt};
+                std::nullopt,
+                cancellationRequestedForSlot};
         }
 
         auto reissueFailure = std::move(reissued).error();
@@ -503,7 +544,8 @@ DashboardAcceptReapResult DashboardAcceptSlotSet::finishFailureLocked(
             std::nullopt,
             std::optional<Domain::Error>{std::move(acceptFailure)},
             std::optional<Domain::Error>{std::move(reissueFailure)},
-            std::move(cancellationFailure)};
+            std::move(cancellationFailure),
+            cancellationRequestedForSlot};
     }
 
     auto cancellationFailure = admissionOpen_
@@ -515,7 +557,8 @@ DashboardAcceptReapResult DashboardAcceptSlotSet::finishFailureLocked(
         std::nullopt,
         std::optional<Domain::Error>{std::move(acceptFailure)},
         std::nullopt,
-        std::move(cancellationFailure)};
+        std::move(cancellationFailure),
+        cancellationRequestedForSlot};
 }
 
 Domain::Result<DashboardAcceptReapResult> DashboardAcceptSlotSet::reap(
@@ -536,6 +579,8 @@ Domain::Result<DashboardAcceptReapResult> DashboardAcceptSlotSet::reap(
             std::move(found).error());
     }
     const std::size_t index = std::move(found).value();
+    const bool cancellationRequestedForSlot =
+        lifecycles_[index] == SlotLifecycle::CancellationRequested;
 
     if (transferredBytes != 0U) {
         // The packet has already been removed from the kernel queue. Consume
@@ -561,7 +606,9 @@ Domain::Result<DashboardAcceptReapResult> DashboardAcceptSlotSet::reap(
         }
 
         auto result = finishFailureLocked(
-            index, std::move(failed).error());
+            index,
+            std::move(failed).error(),
+            cancellationRequestedForSlot);
         return Domain::Result<DashboardAcceptReapResult>::success(
             std::move(result));
     }
@@ -569,7 +616,9 @@ Domain::Result<DashboardAcceptReapResult> DashboardAcceptSlotSet::reap(
     auto accepted = slots_[index]->reapSuccessful(*extensions_, operation);
     if (!accepted) {
         auto result = finishFailureLocked(
-            index, std::move(accepted).error());
+            index,
+            std::move(accepted).error(),
+            cancellationRequestedForSlot);
         return Domain::Result<DashboardAcceptReapResult>::success(
             std::move(result));
     }
@@ -585,7 +634,8 @@ Domain::Result<DashboardAcceptReapResult> DashboardAcceptSlotSet::reap(
                 std::nullopt,
                 std::nullopt,
                 std::nullopt,
-                std::nullopt});
+                std::nullopt,
+                cancellationRequestedForSlot});
     }
 
     if (resumeSequences_[index] ==
@@ -602,7 +652,8 @@ Domain::Result<DashboardAcceptReapResult> DashboardAcceptSlotSet::reap(
                 std::nullopt,
                 std::nullopt,
                 std::optional<Domain::Error>{std::move(sequenceFailure)},
-                std::move(cancellationFailure)});
+                std::move(cancellationFailure),
+                cancellationRequestedForSlot});
     }
 
     ++resumeSequences_[index];
@@ -617,7 +668,8 @@ Domain::Result<DashboardAcceptReapResult> DashboardAcceptSlotSet::reap(
             std::move(token),
             std::nullopt,
             std::nullopt,
-            std::nullopt});
+            std::nullopt,
+            cancellationRequestedForSlot});
 }
 
 DashboardAcceptSlotSetSnapshot DashboardAcceptSlotSet::snapshotLocked()
@@ -662,6 +714,7 @@ DashboardAcceptSlotSetSnapshot DashboardAcceptSlotSet::snapshotLocked()
         drained,
         startAttempted_,
         listenerAssociated_,
+        listenerForceClosed_,
         admissionOpen_,
         firstLifecycleFailureSnapshot_};
 }

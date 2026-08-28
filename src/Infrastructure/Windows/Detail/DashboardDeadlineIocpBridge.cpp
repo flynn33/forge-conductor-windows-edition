@@ -147,7 +147,7 @@ DashboardDeadlineIocpBridge::create(
     } catch (...) {
         return BridgeResult::failure(bridgeError(
             Domain::ErrorCodes::InternalFailure,
-            "The dashboard deadline IOCP bridge could not allocate its 43 stable notification slots."));
+            "The dashboard deadline IOCP bridge could not allocate its 44 stable notification slots."));
     }
 }
 
@@ -324,7 +324,7 @@ DashboardDeadlineIocpBridge::findOperationLocked(
         }
     }
     return Domain::Result<std::size_t>::failure(integrityError(
-        "A dashboard deadline IOCP completion did not match any of the 43 owned OVERLAPPED slots."));
+        "A dashboard deadline IOCP completion did not match any of the 44 owned OVERLAPPED slots."));
 }
 
 bool DashboardDeadlineIocpBridge::validatePostedHandleLocked(
