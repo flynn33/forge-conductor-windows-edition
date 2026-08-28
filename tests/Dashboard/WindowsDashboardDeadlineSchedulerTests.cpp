@@ -3,6 +3,7 @@
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -81,7 +82,7 @@ public:
             }
             changed_.notify_all();
         } catch (...) {
-            failed_ = true;
+            failed_.store(true, std::memory_order_release);
             changed_.notify_all();
         }
     }
@@ -92,8 +93,9 @@ public:
     {
         std::unique_lock lock{mutex_};
         return changed_.wait_for(lock, timeout, [this, count] {
-            return failed_ || deadlines_.size() >= count;
-        }) && !failed_;
+            return failed_.load(std::memory_order_acquire) ||
+                deadlines_.size() >= count;
+        }) && !failed_.load(std::memory_order_acquire);
     }
 
     [[nodiscard]] std::vector<Deadline> deadlines() const
@@ -106,7 +108,45 @@ private:
     mutable std::mutex mutex_;
     std::condition_variable changed_;
     std::vector<Deadline> deadlines_;
-    bool failed_{};
+    std::atomic_bool failed_{};
+};
+
+class OffsetFrozenClock final : public Contracts::IClock {
+public:
+    explicit OffsetFrozenClock(
+        const Domain::MonotonicTimePoint initial) noexcept
+        : ticks_{initial.time_since_epoch().count()}
+    {
+    }
+
+    [[nodiscard]] Domain::UtcTimePoint utcNow() const noexcept override
+    {
+        return {};
+    }
+
+    [[nodiscard]] Domain::MonotonicTimePoint monotonicNow()
+        const noexcept override
+    {
+        calls_.fetch_add(1U, std::memory_order_relaxed);
+        return Domain::MonotonicTimePoint{
+            Domain::MonotonicTimePoint::duration{
+                ticks_.load(std::memory_order_acquire)}};
+    }
+
+    void set(const Domain::MonotonicTimePoint value) noexcept
+    {
+        ticks_.store(
+            value.time_since_epoch().count(), std::memory_order_release);
+    }
+
+    [[nodiscard]] std::size_t calls() const noexcept
+    {
+        return calls_.load(std::memory_order_relaxed);
+    }
+
+private:
+    std::atomic<Domain::MonotonicTimePoint::duration::rep> ticks_{};
+    mutable std::atomic_size_t calls_{};
 };
 
 class ReleasingSink final : public Windows::IWindowsDashboardDeadlineSink {
@@ -349,6 +389,112 @@ void expiredDeadlinesAreDeliveredOnceInStableOrder()
             "an expired deadline was delivered more than once");
 }
 
+void undefinedKindsAndCapacityRejectionsDoNotConsumeSequences()
+{
+    const auto sink = std::make_shared<RecordingSink>();
+    auto owner = scheduler(sink, 1U);
+    const auto future = std::chrono::steady_clock::now() + 1h;
+    constexpr auto UndefinedKind =
+        static_cast<DeadlineKind>(0xffU);
+
+    const auto invalidEmpty = owner->schedule(
+        {1U, UndefinedKind, future});
+    require(!invalidEmpty, "an undefined deadline kind was accepted");
+    require(invalidEmpty.error().code == Domain::ErrorCodes::InvalidRequest,
+            "an undefined deadline kind used the wrong error code");
+    require(owner->snapshot().scheduledCount() == 0U,
+            "an undefined deadline kind consumed capacity");
+
+    const auto first = take(owner->schedule(
+        {1U, DeadlineKind::HandlerExecution, future}));
+    require(first.armSequence == 1U,
+            "an undefined deadline kind consumed an arm sequence");
+
+    const auto invalidReplacement = owner->schedule(
+        {1U, UndefinedKind, future + 1s});
+    require(!invalidReplacement,
+            "an undefined replacement deadline kind was accepted");
+    require(owner->snapshot().scheduledCount() == 1U,
+            "an undefined replacement changed live capacity");
+
+    const auto capacityRejected = owner->schedule(
+        {2U, DeadlineKind::ServerSentEventsDelivery, future});
+    require(!capacityRejected,
+            "a capacity-exhausted deadline was accepted");
+    require(capacityRejected.error().code == Domain::ErrorCodes::LimitExceeded,
+            "capacity rejection used the wrong error code");
+    require(owner->cancel(first.registrationId, first.armSequence),
+            "the original deadline changed after rejected work");
+
+    const auto second = take(owner->schedule(
+        {2U, DeadlineKind::ServerSentEventsDelivery, future}));
+    require(second.armSequence == 2U,
+            "a rejected deadline consumed an arm sequence");
+    require(owner->cancel(second.registrationId, second.armSequence),
+            "the successor deadline could not be cancelled");
+}
+
+void injectedOffsetFrozenClockUsesBoundedRelativeWaits()
+{
+    const auto injectedNow = std::chrono::steady_clock::now() + 24h;
+    const auto due = injectedNow + 100ms;
+    const auto clock = std::make_shared<OffsetFrozenClock>(injectedNow);
+    const auto sink = std::make_shared<RecordingSink>();
+    auto owner = take(Scheduler::create(clock, sink, 1U));
+    const auto scheduled = take(owner->schedule(
+        {41U, DeadlineKind::HandlerExecution, due}));
+    const auto callsBeforeWait = clock->calls();
+
+    require(!sink->waitForCount(1U, 350ms),
+            "a frozen injected clock delivered from wall-clock passage");
+    const auto callsDuringWait = clock->calls() - callsBeforeWait;
+    require(callsDuringWait <= 12U,
+            "a frozen injected clock caused a hot reevaluation loop");
+    require(owner->snapshot().scheduledCount() == 1U,
+            "a frozen injected clock discarded its future deadline");
+
+    clock->set(due);
+    require(sink->waitForCount(1U, 2s),
+            "an advanced injected clock did not release its deadline");
+    const auto delivered = sink->deadlines();
+    require(delivered.size() == 1U && delivered.front() == scheduled,
+            "offset-clock delivery changed the exact deadline token");
+    require(owner->snapshot().scheduledCount() == 0U,
+            "offset-clock delivery retained its deadline");
+}
+
+void everyDefinedDeadlineKindRoundTrips()
+{
+    constexpr std::array Kinds{
+        DeadlineKind::HeaderIngress,
+        DeadlineKind::HandlerExecution,
+        DeadlineKind::SocketLifetime,
+        DeadlineKind::ServerSentEventsLifetime,
+        DeadlineKind::ServerSentEventsDelivery,
+        DeadlineKind::ListenerRetirement,
+        DeadlineKind::ShutdownDrain};
+    const auto sink = std::make_shared<RecordingSink>();
+    auto owner = scheduler(sink, Kinds.size());
+    const auto due = std::chrono::steady_clock::now() - 1s;
+
+    for (std::size_t index{}; index < Kinds.size(); ++index) {
+        const auto scheduled = take(owner->schedule(
+            {index + 1U, Kinds[index], due}));
+        require(scheduled.kind == Kinds[index],
+                "a defined deadline kind changed during scheduling");
+    }
+    require(sink->waitForCount(Kinds.size()),
+            "not every defined deadline kind was delivered");
+
+    const auto delivered = sink->deadlines();
+    require(delivered.size() == Kinds.size(),
+            "defined deadline delivery count changed");
+    for (std::size_t index{}; index < Kinds.size(); ++index) {
+        require(delivered[index].kind == Kinds[index],
+                "a defined deadline kind changed during delivery");
+    }
+}
+
 void replacementControlsTheDeliveredValue()
 {
     const auto sink = std::make_shared<RecordingSink>();
@@ -546,7 +692,10 @@ int main()
     try {
         constructionRejectsInvalidDependenciesAndLimits();
         registrationIsBoundedAndReplacementDoesNotAccumulate();
+        undefinedKindsAndCapacityRejectionsDoNotConsumeSequences();
+        injectedOffsetFrozenClockUsesBoundedRelativeWaits();
         expiredDeadlinesAreDeliveredOnceInStableOrder();
+        everyDefinedDeadlineKindRoundTrips();
         replacementControlsTheDeliveredValue();
         rearmAfterDequeueReceivesAnUnambiguousNewToken();
         shutdownIsIdempotentAndClosesRegistration();

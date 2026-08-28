@@ -67,10 +67,10 @@ public:
                     Domain::ErrorCodes::IntegrityFailure,
                     "The dashboard deadline mailbox generation is exhausted."));
             }
-            if (registrationId <= highestRegistrationId_) {
+            if (findByRegistrationId(registrationId) != slotsEnd()) {
                 return RegisterResult::failure(mailboxError(
                     Domain::ErrorCodes::Conflict,
-                    "Dashboard deadline mailbox owner identifiers must increase and may never be reused."));
+                    "The dashboard deadline mailbox owner identifier is already active."));
             }
 
             const auto available = std::find_if(
@@ -87,7 +87,6 @@ public:
             available->occupied = true;
             available->registrationId = registrationId;
             available->generation = nextGeneration_;
-            highestRegistrationId_ = registrationId;
             if (nextGeneration_ ==
                 (std::numeric_limits<std::uint64_t>::max)()) {
                 generationExhausted_ = true;
@@ -323,7 +322,6 @@ private:
     const std::size_t maximumOwnerCount_{};
     mutable std::mutex mutex_;
     std::array<Slot, HardMaximumOwnerCount> slots_{};
-    std::uint64_t highestRegistrationId_{};
     std::uint64_t nextGeneration_{1U};
     bool generationExhausted_{};
     bool shutdown_{};

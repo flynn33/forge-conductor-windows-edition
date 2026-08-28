@@ -201,6 +201,30 @@ void publicationCoalescesToOneLatestValue()
     require(!afterRetire, "retired owner accepted publication");
 }
 
+void uniqueOwnerIdsMayArriveOutOfNumericOrder()
+{
+    auto owner = mailbox(3U);
+    const auto higher = take(owner->registerOwner(502U));
+    const auto lower = take(owner->registerOwner(501U));
+    const auto highest = take(owner->registerOwner(503U));
+
+    require(higher.registrationId == 502U &&
+                lower.registrationId == 501U &&
+                highest.registrationId == 503U,
+            "out-of-order registration changed an owner identifier");
+    require(higher.slotIndex != lower.slotIndex &&
+                higher.slotIndex != highest.slotIndex &&
+                lower.slotIndex != highest.slotIndex,
+            "out-of-order unique owners shared a fixed slot");
+    require(owner->snapshot().registeredCount() == 3U,
+            "out-of-order registration changed bounded accounting");
+    require(owner->retire(higher) && owner->retire(lower) &&
+                owner->retire(highest),
+            "out-of-order owners did not retire exactly");
+    require(owner->snapshot().registeredCount() == 0U,
+            "out-of-order retirement leaked a fixed slot");
+}
+
 void shutdownRetainsOnlyNotificationsThatNeedReaping()
 {
     auto owner = mailbox(2U);
@@ -308,6 +332,7 @@ int main()
 {
     try {
         constructionAndRegistrationAreBounded();
+        uniqueOwnerIdsMayArriveOutOfNumericOrder();
         publicationCoalescesToOneLatestValue();
         shutdownRetainsOnlyNotificationsThatNeedReaping();
         concurrentPublicationNeverCreatesASecondPendingNotification();

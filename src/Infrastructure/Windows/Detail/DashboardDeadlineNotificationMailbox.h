@@ -74,8 +74,9 @@ private:
 
 // Fixed-capacity bridge between the deadline worker and the shared IOCP. One
 // stable slot belongs to each live connection or listener owner. Registration
-// identifiers are process-lifetime monotonic values and are never reused;
-// slot generations independently reject stale IOCP completions after reuse.
+// identifiers come from a process-lifetime nonreusing allocator, but concurrent
+// owners may arrive out of numeric order. Slot generations independently reject
+// stale IOCP completions after fixed-slot reuse.
 // Publishing to
 // an empty slot requests one synthetic IOCP notification; publishing again
 // before that notification is reaped replaces the slot's immutable deadline

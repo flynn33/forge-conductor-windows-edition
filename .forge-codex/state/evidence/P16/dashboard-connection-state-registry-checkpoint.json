@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-connection-state-registry",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator with v143 and Windows SDK 10.0.26100.0; compiler C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe (MSVC 19.51.36256); CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260828T055903742Z-6327edf7.json",
+    "command_record_sha256": "8f1d3e79dc514c03f7519de291a016a8d83540fc112fe939ff73ed0c89b0d664",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 9,
+    "configuration": "Debug",
+    "stdout_sha256": "c8e7360a28a197ef1d9097a8aadccb7e9401901bbe83b0ba1a69694f79f29c25",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T060008302Z-3a7d846c.json",
+    "command_record_sha256": "e1ac41d683a75f38b58f9595a7407489ada9235716c698a3812e6938de33de63",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 9,
+    "tests_failed": 0,
+    "assertions_passed": 19167,
+    "real_seconds": 6.98,
+    "tests": [
+      "ForgeConductor.Dashboard.DeadlineNotificationMailboxTests",
+      "ForgeConductor.Dashboard.DeadlineIocpBridgeTests",
+      "ForgeConductor.Dashboard.ConnectionSocketTests",
+      "ForgeConductor.Dashboard.ConnectionRuntimeServicesTests",
+      "ForgeConductor.Dashboard.HandlerOperationsTests",
+      "ForgeConductor.Dashboard.ConnectionResponseCatalogTests",
+      "ForgeConductor.Dashboard.ConnectionStateTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests",
+      "ForgeConductor.Dashboard.DeadlineSchedulerTests"
+    ],
+    "stdout_sha256": "ad9fc10ab187cd921a752b974a549529f06179db923b0e33660f8f9af2ee4f42",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "audits": [
+    {
+      "scope": "repository no-attribution policy",
+      "command_record": ".forge-codex/state/commands/20260828T060043241Z-07e65ef2.json",
+      "command_record_sha256": "26f8f971335b43fc510ab6b77d1dd7cbf5f8ff89ff54d1963b6598a3f071a1bb",
+      "exit_code": 0,
+      "result": "No-attribution gate passed."
+    },
+    {
+      "scope": "repository no-Python policy",
+      "command_record": ".forge-codex/state/commands/20260828T060052800Z-bc72150f.json",
+      "command_record_sha256": "9ab0913ee25e8134cc955ca4b3f293608da5e23bf1244603dcc37f693ad9c9c6",
+      "exit_code": 0,
+      "result": "No-Python gate passed."
+    },
+    {
+      "scope": "CRLF, strict UTF-8, no BOM, and final CRLF for the 26 implementation, test, build, and decision text files in this slice",
+      "command_record": ".forge-codex/state/commands/20260828T060125348Z-2c4d8d2a.json",
+      "command_record_sha256": "5d7bc615d0fa12217530f882ea1dc221f95ceab73fb6b1666368e33b52d19b05",
+      "exit_code": 0,
+      "files_passed": 26
+    },
+    {
+      "scope": "tamper-evident event ledger through the checkpoint event",
+      "command_record": ".forge-codex/state/commands/20260828T060456633Z-051b34c2.json",
+      "command_record_sha256": "4ea2fc114fa6418138ffff8be950f654c77d262890f0ad7af93782d06b74517f",
+      "exit_code": 0,
+      "events_verified": 370
+    },
+    {
+      "scope": "staged Git whitespace validation",
+      "command_record": ".forge-codex/state/commands/20260828T060628414Z-1576923c.json",
+      "command_record_sha256": "1713957153c85a22b9e1910c4f01bf097090207c9f475b871a571bc957474b0d",
+      "exit_code": 0
+    }
+  ],
+  "invariant_audit": {
+    "corrections": [
+      "Operation-context creation no longer holds a shared mutex across injected UUID generation and now rechecks cancellation and deadline expiry between the first and second UUID calls.",
+      "A blocked first UUID call is proved not to serialize an unrelated context request, while first-call cancellation and deadline expiry consume no second UUID.",
+      "Every registered connection owns its exact deadline notification handle before start and transitions Registered to Retiring to Retired before registry removal.",
+      "Failed exact deadline retirement restores Registered state, retains the entry, target, and handle, and records fatal shutdown instead of erasing ownership.",
+      "Deadline reap plus target pin and deadline retirement plus lifecycle finalization share one ordered routing mutex, closing the live-reap-to-lookup removal window.",
+      "A deterministic two-owner barrier proves retirement cannot pass a live deadline routing critical section and that callback ownership remains pinned after registry erase.",
+      "Injected offset or frozen monotonic clocks use bounded relative scheduler waits and cannot create a deadline hot loop.",
+      "The first connection-event fatal is latched and drained after the state mutex is released without recursive retry or scheduler-based wakeup."
+    ],
+    "independent_review_status": "Independent read-only foundation, connection-state, and deadline-retirement reviews found and closed shared UUID-call serialization, mixed CMake line endings, exact deadline-handle ownership, and the live deadline reap-to-target-pin removal race. The final lock-order and cleanup audit reported no remaining actionable finding. External CodeRabbit review was not used."
+  },
+  "behavior_proved": [
+    "connection identities and dynamic completion keys are strictly increasing, nonzero, nonreused, and skip every fixed or reserved key through terminal sequence exhaustion",
+    "operation contexts enforce cancellation and absolute deadline ceilings before, between, and after UUID generation without serializing unrelated request admission",
+    "closed handler operations and their recording sink preserve move-only ownership, typed completion identity, bounded error propagation, and failure atomicity",
+    "the immutable response catalog supplies pre-encoded fixed transport failures including reservation-saturation 503",
+    "the connection lifecycle covers receive, parse, prepare, partial short response, SSE bootstrap and frames, post-delivery, closing, cancellation, and exact drain",
+    "post-delivery capacity is reserved before response byte one, committed exactly once only after full send success, and released without action after send failure",
+    "SSE retains one replaceable latest frame, paces at one or two hertz, chooses every tenth delivered frame as full, and expires at one hour",
+    "the fixed forty-entry registry inserts exact identities and deadline handles before start, routes socket and synthetic completions outside its state lock, and destroys owners only after unlock",
+    "signal-first deadline retirement retains one posted tombstone through exact reap, while retire-first suppresses a late extracted scheduler publication without a fatal or new packet",
+    "live deadline reap through shared target pin is serialized against exact retirement and removal, with an allocation-free in-flight diagnostic and deterministic contention proof",
+    "scheduler waits remain bounded under injected clock offset or freeze and undefined deadline kinds cannot mutate scheduler state"
+  ],
+  "source_sha256": {
+    "CMakeLists.txt": "2b3295274b64c066dc92302ab0fab7122ca23991324eecd3773ed751ee4b0a6f",
+    ".forge-codex/state/decisions/P16-013-bounded-dashboard-connection-state-and-registry.md": "34a7246e322c0e9b64f1dbea5c9650d9feef25c932cd81274f5ebff48c660382",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.h": "822778b21cbbc7b2b88888273753fe53ee4994cd5c9b9cbc49e372b38810d1c4",
+    "src/Infrastructure/Windows/Detail/DashboardBoundedMonotonicSequence.h": "7379306eadac3d4ee703afaa71721433afdff9fc4a45f2329008c5158d258398",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp": "5957c3ed839ef6405c64223d76874484a2b2c82eaa46ee71c384dfcdcf1a1aa1",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.h": "d32beb805e5e78d7a6182e4e60d3610c40280f051f14c5209db9c8a6323576a5",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionResponseCatalog.cpp": "5e1490520aa654ca6f9a5658258ff6e46d9a042499e30d7816bdadcc6ef6df2d",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionResponseCatalog.h": "bf72e4046392c7995d7d001078984390908a172c132f0d631f89ba6db9a918e4",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.cpp": "4682d80c726e2f50ad386844964ce63ac39354601598ce2b49b244ecc2b74947",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.h": "fb4b88a498345666e05c1dcac4abcd52e8fac97eac363c236f069503c33fcf51",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionSocket.h": "cdc01c91add90fe72b6a5c0942290315f7961ad0be0494d5b5f83e5786aaaaff",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionState.cpp": "f3ef0554d4a9d55fcf4040ca79828b08a3dc79c2579310d07ecae380a9d7a2ec",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionState.h": "8cc8416d0294d017575a5912eba0ce39ee3f1925bfe3ca6af90bdd135378aebd",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.h": "dc1aad55edfa0f666403a3b5aca4e51c43e8d8b97e8312cb7c9749a6cce17a7d",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.cpp": "4582be099fd427254da136dbc0461da6ca8981310da8344267b8afdf41265078",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.h": "52e2f6d13fd44831123c1a473f7eee75255da1d756ecc55e2c3cbbc81f8de177",
+    "src/Infrastructure/Windows/Detail/DashboardHandlerOperations.cpp": "db1116a1febfdc08aa3e721af30d481d7b5c953b0dd345cd63c7f975ec8e2dc0",
+    "src/Infrastructure/Windows/Detail/DashboardHandlerOperations.h": "88c75d2eb6868e6e991baa71ab53c4e9624f396cc617397ca1ba8b15c61836dc",
+    "src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp": "a79b42eab4d734d1cc9bece68ff224ccc330ffe571478bcdf7a94dcd87cd8e75",
+    "tests/Dashboard/DashboardConnectionRegistryTests.cpp": "b2b143a62c36514b086c2b2908275c9968e3e1f4ffb099609229b0d656054950",
+    "tests/Dashboard/DashboardConnectionResponseCatalogTests.cpp": "40951f47cada3868d11c3162a1bbf407aae646ca1ef6dd1f37cfb58a22d94fd4",
+    "tests/Dashboard/DashboardConnectionRuntimeServicesTests.cpp": "5f1c0cf7bbb861991461dd2630a88f18f290f73e9141aff07ddad2c0d21e3207",
+    "tests/Dashboard/DashboardConnectionStateTests.cpp": "49cbe106c09ac9c439aaa333cc4d81d19f82670c6fa8df1cc51850ab1e9f8906",
+    "tests/Dashboard/DashboardDeadlineNotificationMailboxTests.cpp": "7455e836ddc839f903ca9f1a32fce9b2e9af89774448d20c9fe3a8f4c5400862",
+    "tests/Dashboard/DashboardHandlerOperationsTests.cpp": "0d2e6aede24986dd376c15ed702e91d0bdced2ef0282e6d3428aa335960a6173",
+    "tests/Dashboard/WindowsDashboardDeadlineSchedulerTests.cpp": "4afdefa4b51d797b1550f0a1f6e07b783e56481d490d1a8429aa0f3a3f5f798b"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.ConnectionRuntimeServicesTests.exe": "7c5978efa28e33edbdb1abdee082c8af6fb4bde46aab52fbf59df504fc5bdf4d",
+    "ForgeConductor.Dashboard.HandlerOperationsTests.exe": "5af9a3b6bed07acaead43718dd6cb90e24fd112a70a0c50e19103985749111ba",
+    "ForgeConductor.Dashboard.ConnectionResponseCatalogTests.exe": "d11412bea0722557aa56e23da19fa04d307d947ac81f880c589de0ef5d2c8d1b",
+    "ForgeConductor.Dashboard.ConnectionStateTests.exe": "d02839ab8853c99eedc9df227c0b8c0e64ec3779572fdf69247887f3329ccba0",
+    "ForgeConductor.Dashboard.ConnectionRegistryTests.exe": "7758c107500b5df583ef1af3e8819ccd4f2fc312e95d9a63b540c20cf158f490",
+    "ForgeConductor.Dashboard.DeadlineSchedulerTests.exe": "248705853f7c82cd49eaa5cf2ca309126135f6105a0a2ecf1861f0f6cacb8b4d",
+    "ForgeConductor.Dashboard.DeadlineNotificationMailboxTests.exe": "598e92d6f9b430c8402cf324918b803902d8255c84cbdfc95487dfc0b7c65f19",
+    "ForgeConductor.Dashboard.DeadlineIocpBridgeTests.exe": "014b56ba203573f0c64013e675621b4b43cb321fcdcf28a0b2e4a263139e78f4",
+    "ForgeConductor.Dashboard.ConnectionSocketTests.exe": "8908f0fbccbc5c8b8ee5ca69a229b1257249499055fece89c6d90a52fec1e33a"
+  },
+  "remaining_limitations": [
+    "The bounded connection state and registry are not yet composed with accept-slot dispatch, fixed overload responders, or the production dashboard server.",
+    "Two-generation listener rebind, generation retirement, graceful connection drain, and the five-second production shutdown boundary remain pending integration.",
+    "The production manager composition has not yet wired the operational data source or sole-consumer telemetry fan-out.",
+    "The store contains no functional alpha frontend shell yet; retained UI automation remains pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint; runtime, UI, UI-automation, packaging, process, telemetry, and manager rows remain open until their required evidence exists.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

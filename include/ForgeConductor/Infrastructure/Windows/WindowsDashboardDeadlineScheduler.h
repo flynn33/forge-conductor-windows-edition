@@ -12,8 +12,10 @@ namespace ForgeConductor::Infrastructure::Windows {
 
 enum class WindowsDashboardDeadlineKind : std::uint8_t {
     HeaderIngress,
+    HandlerExecution,
     SocketLifetime,
     ServerSentEventsLifetime,
+    ServerSentEventsDelivery,
     ListenerRetirement,
     ShutdownDrain,
 };

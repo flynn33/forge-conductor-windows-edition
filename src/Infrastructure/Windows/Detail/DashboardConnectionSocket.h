@@ -124,6 +124,10 @@ enum class DashboardConnectionSocketShutdownDisposition : std::uint8_t {
 
 class DashboardConnectionSocketReapResult final {
 public:
+    DashboardConnectionSocketReapResult(
+        DashboardConnectionSocketOperationKind operationKind,
+        DWORD transferredBytes) noexcept;
+
     [[nodiscard]] DashboardConnectionSocketOperationKind operationKind()
         const noexcept
     {
@@ -136,18 +140,18 @@ public:
     }
 
 private:
-    friend class DashboardConnectionSocket;
-
-    DashboardConnectionSocketReapResult(
-        DashboardConnectionSocketOperationKind operationKind,
-        DWORD transferredBytes) noexcept;
-
     DashboardConnectionSocketOperationKind operationKind_{};
     DWORD transferredBytes_{};
 };
 
 class DashboardConnectionSocketSnapshot final {
 public:
+    DashboardConnectionSocketSnapshot(
+        DashboardConnectionSocketState state,
+        bool shutdownRequested,
+        std::size_t receivedByteCount,
+        std::size_t activeBufferLength) noexcept;
+
     [[nodiscard]] DashboardConnectionSocketState state() const noexcept
     {
         return state_;
@@ -169,18 +173,52 @@ public:
     }
 
 private:
-    friend class DashboardConnectionSocket;
-
-    DashboardConnectionSocketSnapshot(
-        DashboardConnectionSocketState state,
-        bool shutdownRequested,
-        std::size_t receivedByteCount,
-        std::size_t activeBufferLength) noexcept;
-
     DashboardConnectionSocketState state_{};
     bool shutdownRequested_{};
     std::size_t receivedByteCount_{};
     std::size_t activeBufferLength_{};
+};
+
+// Interface-first per-connection transport boundary. The lifecycle owner can
+// be tested without a native socket while the production implementation keeps
+// the accepted socket and its one stable OVERLAPPED under RAII ownership.
+class IDashboardConnectionIo {
+public:
+    virtual ~IDashboardConnectionIo() noexcept = default;
+
+    [[nodiscard]] virtual DashboardIoCompletionKey completionKey()
+        const noexcept = 0;
+    [[nodiscard]] virtual OVERLAPPED* borrowedOperation() noexcept = 0;
+    [[nodiscard]] virtual DashboardConnectionSocketState state()
+        const noexcept = 0;
+    [[nodiscard]] virtual DashboardConnectionSocketSnapshot snapshot()
+        const noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<
+        DashboardConnectionSocketIssueDisposition>
+    issueReceive() noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<
+        DashboardConnectionSocketIssueDisposition>
+    issueSend(std::span<const std::byte> bytes) noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<
+        DashboardConnectionSocketCancellationDisposition>
+    requestCancellation() noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<
+        DashboardConnectionSocketShutdownDisposition>
+    shutdownBoth() noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<DashboardConnectionSocketReapResult>
+    reap(
+        DashboardIoCompletionKey completionKey,
+        DWORD transferredBytes,
+        OVERLAPPED* completedOperation,
+        DWORD nativeError) noexcept = 0;
+
+    [[nodiscard]] virtual std::span<const std::byte> receivedBytes()
+        const noexcept = 0;
 };
 
 // Heap-stable owner for exactly one accepted socket and one native OVERLAPPED
@@ -188,7 +226,7 @@ private:
 // pointer/length must remain valid until the matching completion is reaped.
 // At most one receive or send can be outstanding. The IOCP kernel and routing
 // registry identified by completionKey must outlive every issued operation.
-class DashboardConnectionSocket final {
+class DashboardConnectionSocket final : public IDashboardConnectionIo {
 public:
     static constexpr std::size_t ReceiveBufferLength = 16U * 1024U;
 
@@ -216,7 +254,7 @@ public:
 
     // Destroying kernel-referenced OVERLAPPED or borrowed send metadata would
     // be a use-after-free. Every issue must be cancelled if needed and reaped.
-    ~DashboardConnectionSocket() noexcept;
+    ~DashboardConnectionSocket() noexcept override;
 
     [[nodiscard]] SOCKET borrowedNativeSocket() const noexcept
     {
@@ -228,35 +266,38 @@ public:
         return acceptedConnection_.addresses();
     }
 
-    [[nodiscard]] DashboardIoCompletionKey completionKey() const noexcept
+    [[nodiscard]] DashboardIoCompletionKey completionKey()
+        const noexcept override
     {
         return completionKey_;
     }
 
     // Stable for this owner's entire heap lifetime.
-    [[nodiscard]] OVERLAPPED* borrowedOperation() noexcept
+    [[nodiscard]] OVERLAPPED* borrowedOperation() noexcept override
     {
         return &operation_;
     }
 
-    [[nodiscard]] DashboardConnectionSocketState state() const noexcept;
-    [[nodiscard]] DashboardConnectionSocketSnapshot snapshot() const noexcept;
+    [[nodiscard]] DashboardConnectionSocketState state()
+        const noexcept override;
+    [[nodiscard]] DashboardConnectionSocketSnapshot snapshot()
+        const noexcept override;
 
     [[nodiscard]] Domain::Result<DashboardConnectionSocketIssueDisposition>
-    issueReceive() noexcept;
+    issueReceive() noexcept override;
 
     // bytes must be nonempty and remain stable through exact completion reap.
     // A partial successful send returns its transferred count; the caller owns
     // issuing the remaining suffix as a later operation.
     [[nodiscard]] Domain::Result<DashboardConnectionSocketIssueDisposition>
-    issueSend(std::span<const std::byte> bytes) noexcept;
+    issueSend(std::span<const std::byte> bytes) noexcept override;
 
     [[nodiscard]] Domain::Result<
         DashboardConnectionSocketCancellationDisposition>
-    requestCancellation() noexcept;
+    requestCancellation() noexcept override;
 
     [[nodiscard]] Domain::Result<DashboardConnectionSocketShutdownDisposition>
-    shutdownBoth() noexcept;
+    shutdownBoth() noexcept override;
 
     // A foreign operation is rejected without mutation. Once the exact
     // operation pointer has been dequeued, every key/error/byte shape consumes
@@ -265,11 +306,12 @@ public:
         DashboardIoCompletionKey completionKey,
         DWORD transferredBytes,
         OVERLAPPED* completedOperation,
-        DWORD nativeError) noexcept;
+        DWORD nativeError) noexcept override;
 
     // Available only after a successful nonempty receive reap and only until
     // the next receive/send issue. The returned view borrows this owner.
-    [[nodiscard]] std::span<const std::byte> receivedBytes() const noexcept;
+    [[nodiscard]] std::span<const std::byte> receivedBytes()
+        const noexcept override;
 
 private:
     DashboardConnectionSocket(

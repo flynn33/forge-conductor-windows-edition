@@ -1,13 +1,15 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.h"
 
+#include "Detail/DashboardBoundedMonotonicSequence.h"
+
 #include "ForgeConductor/Domain/Error.h"
 
 #include <algorithm>
+#include <chrono>
 #include <condition_variable>
 #include <exception>
 #include <mutex>
 #include <optional>
-#include <limits>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -16,6 +18,9 @@
 
 namespace ForgeConductor::Infrastructure::Windows {
 namespace {
+
+constexpr auto MinimumClockRecheckInterval = std::chrono::milliseconds{50};
+constexpr auto MaximumClockRecheckInterval = std::chrono::milliseconds{250};
 
 [[nodiscard]] Domain::Error schedulerError(
     const std::string_view code,
@@ -33,6 +38,23 @@ namespace {
         return left.deadline < right.deadline;
     }
     return left.registrationId < right.registrationId;
+}
+
+[[nodiscard]] constexpr bool isDefinedDeadlineKind(
+    const WindowsDashboardDeadlineKind kind) noexcept
+{
+    switch (kind) {
+    case WindowsDashboardDeadlineKind::HeaderIngress:
+    case WindowsDashboardDeadlineKind::HandlerExecution:
+    case WindowsDashboardDeadlineKind::SocketLifetime:
+    case WindowsDashboardDeadlineKind::ServerSentEventsLifetime:
+    case WindowsDashboardDeadlineKind::ServerSentEventsDelivery:
+    case WindowsDashboardDeadlineKind::ListenerRetirement:
+    case WindowsDashboardDeadlineKind::ShutdownDrain:
+        return true;
+    default:
+        return false;
+    }
 }
 
 } // namespace
@@ -78,6 +100,13 @@ public:
                     Domain::ErrorCodes::InvalidRequest,
                     "A dashboard deadline requires a nonzero owner identifier."));
             }
+            if (!isDefinedDeadlineKind(request.kind)) {
+                return Domain::Result<WindowsDashboardDeadline>::failure(
+                    schedulerError(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "A dashboard deadline requires a defined deadline "
+                        "kind."));
+            }
 
             WindowsDashboardDeadline scheduled;
             {
@@ -88,13 +117,6 @@ public:
                             Domain::ErrorCodes::TransportClosed,
                             "The dashboard deadline scheduler is shut down."));
                 }
-                if (armSequenceExhausted_) {
-                    return Domain::Result<WindowsDashboardDeadline>::failure(
-                        schedulerError(
-                            Domain::ErrorCodes::IntegrityFailure,
-                            "The dashboard deadline arm sequence is exhausted."));
-                }
-
                 const auto existing = findByRegistrationId(
                     request.registrationId);
                 if (existing == entries_.end() &&
@@ -105,23 +127,28 @@ public:
                             "Dashboard deadline capacity is exhausted.",
                             true));
                 }
+                auto stagedArmSequences = armSequences_;
+                const auto armSequence = stagedArmSequences.tryTake(
+                    [](const std::uint64_t) noexcept { return false; });
+                if (!armSequence.has_value()) {
+                    return Domain::Result<WindowsDashboardDeadline>::failure(
+                        schedulerError(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The dashboard deadline arm sequence is "
+                            "exhausted."));
+                }
                 if (existing != entries_.end()) {
                     entries_.erase(existing);
                 }
                 scheduled = WindowsDashboardDeadline{
                     request.registrationId,
-                    nextArmSequence_,
+                    *armSequence,
                     request.kind,
                     request.deadline};
                 const auto insertion = std::lower_bound(
                     entries_.begin(), entries_.end(), scheduled, entryLess);
                 entries_.insert(insertion, scheduled);
-                if (nextArmSequence_ ==
-                    (std::numeric_limits<std::uint64_t>::max)()) {
-                    armSequenceExhausted_ = true;
-                } else {
-                    ++nextArmSequence_;
-                }
+                armSequences_ = stagedArmSequences;
                 ++revision_;
             }
             stateChanged_.notify_one();
@@ -292,11 +319,20 @@ private:
                             break;
                         }
 
-                        const auto nextDeadline = entries_.front().deadline;
+                        const auto remaining =
+                            entries_.front().deadline - now;
+                        const auto relativeWait = std::clamp(
+                            remaining,
+                            std::chrono::duration_cast<
+                                Domain::MonotonicTimePoint::duration>(
+                                MinimumClockRecheckInterval),
+                            std::chrono::duration_cast<
+                                Domain::MonotonicTimePoint::duration>(
+                                MaximumClockRecheckInterval));
                         const auto revision = revision_;
-                        static_cast<void>(stateChanged_.wait_until(
+                        static_cast<void>(stateChanged_.wait_for(
                             lock,
-                            nextDeadline,
+                            relativeWait,
                             [this, revision] {
                                 return shutdown_ || revision_ != revision;
                             }));
@@ -338,8 +374,8 @@ private:
     std::jthread worker_;
     std::thread::id workerThreadId_{};
     std::uint64_t revision_{};
-    std::uint64_t nextArmSequence_{1U};
-    bool armSequenceExhausted_{};
+    Detail::DashboardBoundedMonotonicSequence<std::uint64_t>
+        armSequences_{1U};
     bool workerExited_{true};
     bool shutdown_{};
 };

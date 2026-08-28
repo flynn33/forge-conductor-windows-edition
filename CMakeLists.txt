@@ -198,9 +198,14 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardAcceptSlot.cpp
     src/Infrastructure/Windows/Detail/DashboardAcceptSlotSet.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionEventBridge.cpp
+    src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp
+    src/Infrastructure/Windows/Detail/DashboardConnectionResponseCatalog.cpp
+    src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionSocket.cpp
+    src/Infrastructure/Windows/Detail/DashboardConnectionState.cpp
     src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.cpp
     src/Infrastructure/Windows/Detail/DashboardDeadlineNotificationMailbox.cpp
+    src/Infrastructure/Windows/Detail/DashboardHandlerOperations.cpp
     src/Infrastructure/Windows/Detail/DashboardIoCompletionPort.cpp
     src/Infrastructure/Windows/Detail/DashboardIocpWorkerKernel.cpp
     src/Infrastructure/Windows/Detail/DashboardListeningSocket.cpp
@@ -976,6 +981,99 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Dashboard.ConnectionEventBridgeTests PROPERTIES
         LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionRuntimeServicesTests
+        tests/Dashboard/DashboardConnectionRuntimeServicesTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ConnectionRuntimeServicesTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ConnectionRuntimeServicesTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionRuntimeServicesTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionRuntimeServicesTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionRuntimeServicesTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionRuntimeServicesTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.HandlerOperationsTests
+        tests/Dashboard/DashboardHandlerOperationsTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.HandlerOperationsTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.HandlerOperationsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.HandlerOperationsTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.HandlerOperationsTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.HandlerOperationsTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.HandlerOperationsTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionResponseCatalogTests
+        tests/Dashboard/DashboardConnectionResponseCatalogTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ConnectionResponseCatalogTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ConnectionResponseCatalogTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionResponseCatalogTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionResponseCatalogTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionResponseCatalogTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionResponseCatalogTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionStateTests
+        tests/Dashboard/DashboardConnectionStateTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ConnectionStateTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ConnectionStateTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionStateTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionStateTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionStateTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionStateTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionRegistryTests
+        tests/Dashboard/DashboardConnectionRegistryTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ConnectionRegistryTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ConnectionRegistryTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionRegistryTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionRegistryTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionRegistryTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionRegistryTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.DeadlineSchedulerTests

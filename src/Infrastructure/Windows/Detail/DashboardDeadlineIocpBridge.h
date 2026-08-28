@@ -175,6 +175,11 @@ public:
         DashboardDeadlineIocpBridge&&) = delete;
     ~DashboardDeadlineIocpBridge() noexcept override;
 
+    [[nodiscard]] DashboardIoCompletionKey completionKey() const noexcept
+    {
+        return completionKey_;
+    }
+
     [[nodiscard]] Domain::Result<DashboardDeadlineNotificationHandle>
     registerOwner(std::uint64_t registrationId) noexcept;
 

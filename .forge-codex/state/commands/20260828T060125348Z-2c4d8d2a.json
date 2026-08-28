@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T060125348Z-2c4d8d2a",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$files = @(\n  'CMakeLists.txt',\n  'include\\ForgeConductor\\Infrastructure\\Windows\\WindowsDashboardDeadlineScheduler.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionSocket.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardDeadlineIocpBridge.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardDeadlineNotificationMailbox.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardDeadlineNotificationMailbox.h',\n  'src\\Infrastructure\\Windows\\WindowsDashboardDeadlineScheduler.cpp',\n  'tests\\Dashboard\\DashboardDeadlineNotificationMailboxTests.cpp',\n  'tests\\Dashboard\\WindowsDashboardDeadlineSchedulerTests.cpp',\n  '.forge-codex\\state\\decisions\\P16-013-bounded-dashboard-connection-state-and-registry.md',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardBoundedMonotonicSequence.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionRegistry.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionRegistry.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionResponseCatalog.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionResponseCatalog.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionRuntimeServices.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionRuntimeServices.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionState.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardConnectionState.h',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardHandlerOperations.cpp',\n  'src\\Infrastructure\\Windows\\Detail\\DashboardHandlerOperations.h',\n  'tests\\Dashboard\\DashboardConnectionRegistryTests.cpp',\n  'tests\\Dashboard\\DashboardConnectionResponseCatalogTests.cpp',\n  'tests\\Dashboard\\DashboardConnectionRuntimeServicesTests.cpp',\n  'tests\\Dashboard\\DashboardConnectionStateTests.cpp',\n  'tests\\Dashboard\\DashboardHandlerOperationsTests.cpp'\n)\n$utf8 = [System.Text.UTF8Encoding]::new($false, $true)\nforeach ($file in $files) {\n  $bytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) $file))\n  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { throw \"UTF-8 BOM: $file\" }\n  $text = $utf8.GetString($bytes)\n  if ($text -match '(?<!\\r)\\n' -or $text -match '\\r(?!\\n)') { throw \"Non-CRLF line ending: $file\" }\n  if (-not $text.EndsWith(\"`r`n\", [System.StringComparison]::Ordinal)) { throw \"Missing final CRLF: $file\" }\n}\n\"Text policy passed for $($files.Count) files.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T06:01:25.3550584+00:00",
+  "end_utc": "2026-08-28T06:01:26.3926191+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T060125348Z-2c4d8d2a.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T060125348Z-2c4d8d2a.stderr.txt",
+  "stdout_sha256": "66daffd026f644672518be2f6d15b2dade9f49cfbcc6e1f2be26d606a8210928",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}
