@@ -124,6 +124,7 @@ void requireError(
     settings.priority = Manager::ManagerStartupTaskPolicy::RequiredPriority;
     settings.compatibility =
         Manager::ManagerStartupTaskCompatibility::Windows10OrLater;
+    settings.useUnifiedSchedulingEngine = true;
     return definition;
 }
 
@@ -418,7 +419,7 @@ void testOwnedDriftClassification()
              value.settings.disallowStartOnRemoteAppSession = true;
          }},
         {"unified scheduling engine", [](Definition& value) {
-             value.settings.useUnifiedSchedulingEngine = true;
+             value.settings.useUnifiedSchedulingEngine = false;
          }},
         {"maintenance settings", [](Definition& value) {
              value.settings.maintenanceSettingsPresent = true;
@@ -451,7 +452,7 @@ void testForeignConflictClassification()
         if (changeSource) {
             foreign.ownership.source = "Foreign.Product";
         } else {
-            foreign.ownership.uri = "urn:foreign:manager";
+            foreign.ownership.uri += ".other-purpose";
         }
         const auto classified = take(
             Manager::ManagerStartupTaskPolicy::classify(
@@ -478,6 +479,38 @@ void testForeignConflictClassification()
 
 void testInvalidAndBoundedInputs()
 {
+    auto suffixedOwnership = expectedDefinition();
+    suffixedOwnership.ownership.uri += ".alpha_1";
+    require(
+        Manager::ManagerStartupTaskPolicy::validateExpectedDefinition(
+            suffixedOwnership).hasValue(),
+        "safe purpose suffix in the canonical task-path ownership URI");
+
+    for (const std::string_view invalidSuffix : {
+             std::string_view{"."},
+             std::string_view{".has.dot"},
+             std::string_view{".has space"},
+             std::string_view{".has/slash"},
+             std::string_view{".caf\xc3\xa9"}}) {
+        auto invalidOwnership = expectedDefinition();
+        invalidOwnership.ownership.uri.append(invalidSuffix);
+        requireError(
+            Manager::ManagerStartupTaskPolicy::validateExpectedDefinition(
+                invalidOwnership),
+            Domain::ErrorCodes::InvalidRequest,
+            "unsafe canonical task-path ownership URI suffix");
+    }
+
+    auto uppercaseStableKey = expectedDefinition();
+    uppercaseStableKey.ownership.uri[
+        Manager::ManagerStartupTaskPolicy::RequiredOwnershipUriPrefix.size()] =
+        'A';
+    requireError(
+        Manager::ManagerStartupTaskPolicy::validateExpectedDefinition(
+            uppercaseStableKey),
+        Domain::ErrorCodes::InvalidRequest,
+        "uppercase task-path ownership stable key");
+
     auto invalidExpected = expectedDefinition();
     invalidExpected.triggers.push_back(invalidExpected.triggers.front());
     requireError(

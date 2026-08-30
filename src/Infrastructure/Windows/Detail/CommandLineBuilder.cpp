@@ -121,7 +121,8 @@ constexpr std::array<std::wstring_view, 9U> CredentialEnvironmentMarkers{
     if (value.empty()) {
         return Domain::Result<std::wstring>::success({});
     }
-    if (value.size() > static_cast<std::size_t>(INT_MAX)) {
+    if (value.find('\0') != std::string_view::npos ||
+        value.size() > static_cast<std::size_t>(INT_MAX)) {
         return Domain::Result<std::wstring>::failure(invalidUtf8());
     }
 
@@ -198,30 +199,59 @@ Domain::Result<std::wstring> CommandLineBuilder::utf8ToUtf16(const std::string_v
     return convertUtf8(value);
 }
 
+Domain::Result<std::wstring>
+CommandLineBuilder::buildArgumentString(const std::vector<std::string>& arguments)
+{
+    constexpr auto maximumIncludingTerminator =
+        Domain::MaximumProcessCommandLineUtf16CodeUnitsIncludingTerminator;
+    constexpr auto maximumContent = maximumIncludingTerminator - 1U;
+
+    std::wstring argumentString;
+    bool first = true;
+    for (const auto& argument : arguments) {
+        auto converted = convertUtf8(argument);
+        if (!converted) {
+            return Domain::Result<std::wstring>::failure(std::move(converted).error());
+        }
+
+        auto quoted = quoteArgument(converted.value());
+        const std::size_t separatorUnits = first ? 0U : 1U;
+        if (argumentString.size() > maximumContent - separatorUnits ||
+            quoted.size() > maximumContent - separatorUnits - argumentString.size()) {
+            return Domain::Result<std::wstring>::failure(Domain::makeError(
+                Domain::ErrorCodes::PayloadTooLarge,
+                "The final quoted process argument string exceeds 32767 UTF-16 code units."));
+        }
+        if (!first) {
+            argumentString.push_back(L' ');
+        }
+        argumentString.append(quoted);
+        first = false;
+    }
+    return Domain::Result<std::wstring>::success(std::move(argumentString));
+}
+
 Domain::Result<std::vector<wchar_t>>
 CommandLineBuilder::buildCommandLine(const std::wstring_view absoluteApplicationName,
                                      const std::vector<std::string>& arguments)
 {
-    if (absoluteApplicationName.empty()) {
+    if (absoluteApplicationName.empty() ||
+        absoluteApplicationName.find(L'\0') != std::wstring_view::npos) {
         return Domain::Result<std::vector<wchar_t>>::failure(Domain::makeError(
-            Domain::ErrorCodes::InvalidRequest, "The process application name must not be empty."));
+            Domain::ErrorCodes::InvalidRequest,
+            "The process application name must be nonempty native text without embedded NULs."));
+    }
+
+    auto argumentString = buildArgumentString(arguments);
+    if (!argumentString) {
+        return Domain::Result<std::vector<wchar_t>>::failure(std::move(argumentString).error());
     }
 
     std::wstring commandLine = quoteArgument(absoluteApplicationName);
-    for (const auto& argument : arguments) {
-        auto converted = convertUtf8(argument);
-        if (!converted) {
-            return Domain::Result<std::vector<wchar_t>>::failure(std::move(converted).error());
-        }
+    const auto& quotedArguments = argumentString.value();
+    if (!quotedArguments.empty()) {
         commandLine.push_back(L' ');
-        commandLine.append(quoteArgument(converted.value()));
-        if (commandLine.size() + 1U >
-            Domain::MaximumProcessCommandLineUtf16CodeUnitsIncludingTerminator) {
-            return Domain::Result<std::vector<wchar_t>>::failure(
-                Domain::makeError(Domain::ErrorCodes::PayloadTooLarge,
-                                  "The final quoted process command line exceeds "
-                                  "32767 UTF-16 code units."));
-        }
+        commandLine.append(quotedArguments);
     }
 
     if (commandLine.size() + 1U >

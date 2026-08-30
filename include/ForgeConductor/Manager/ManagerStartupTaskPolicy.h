@@ -224,7 +224,7 @@ public:
     static constexpr std::string_view RequiredOwnershipSource =
         "ForgeConductor.Windows.ManagerStartup.v1";
     static constexpr std::string_view RequiredOwnershipUriPrefix =
-        "urn:forge-conductor:windows:manager:";
+        "\\ForgeConductor.Manager.v1.";
     static constexpr std::string_view RequiredPrincipalId =
         "ForgeConductor.Manager.Principal";
     static constexpr std::string_view RequiredTriggerId =

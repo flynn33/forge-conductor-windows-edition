@@ -21,4 +21,10 @@ namespace ForgeConductor::Infrastructure::Windows::Detail {
     std::string_view stableCode = Domain::ErrorCodes::InternalFailure,
     bool retryable = false) noexcept;
 
+[[nodiscard]] Domain::Error makeHResultError(
+    std::string_view action,
+    HRESULT nativeCode,
+    std::string_view stableCode = Domain::ErrorCodes::InternalFailure,
+    bool retryable = false) noexcept;
+
 } // namespace ForgeConductor::Infrastructure::Windows::Detail

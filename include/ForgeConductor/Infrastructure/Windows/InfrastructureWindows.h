@@ -22,6 +22,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeServer.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerStartupService.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsNativeSessionLedger.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h"

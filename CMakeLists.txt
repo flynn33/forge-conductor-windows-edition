@@ -298,6 +298,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsManagerInstanceLease.cpp
     src/Infrastructure/Windows/WindowsManagerNamedPipeClient.cpp
     src/Infrastructure/Windows/WindowsManagerNamedPipeServer.cpp
+    src/Infrastructure/Windows/WindowsManagerStartupService.cpp
     src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
     src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp
@@ -313,13 +314,19 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/Detail/EtwProvider.cpp
     src/Infrastructure/Windows/Detail/JobObject.cpp
     src/Infrastructure/Windows/Detail/ManagerPipeIo.cpp
+    src/Infrastructure/Windows/Detail/ManagerStartupComWorker.cpp
+    src/Infrastructure/Windows/Detail/ManagerStartupDefinitionBuilder.cpp
+    src/Infrastructure/Windows/Detail/ManagerStartupOwnershipProjector.cpp
     src/Infrastructure/Windows/Detail/OperationContextGuard.cpp
     src/Infrastructure/Windows/Detail/OperationGuard.cpp
     src/Infrastructure/Windows/Detail/OverlappedPipeReader.cpp
     src/Infrastructure/Windows/Detail/RelativeFileOperations.cpp
+    src/Infrastructure/Windows/Detail/TaskSchedulerDurationCodec.cpp
     src/Infrastructure/Windows/Detail/UniqueRegistryKey.cpp
     src/Infrastructure/Windows/Detail/UtfConversion.cpp
     src/Infrastructure/Windows/Detail/Win32Error.cpp
+    src/Infrastructure/Windows/Detail/WindowsManagerStartupComHandler.cpp
+    src/Infrastructure/Windows/Detail/WindowsTaskSchedulerStartupPlatform.cpp
     src/Infrastructure/Windows/Detail/WindowsPathResolver.cpp
 )
 add_library(ForgeConductor.Infrastructure.Windows STATIC
@@ -332,6 +339,7 @@ target_include_directories(ForgeConductor.Infrastructure.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(ForgeConductor.Infrastructure.Windows PRIVATE
+    ForgeConductor::Manager.Startup
     nlohmann_json::nlohmann_json
     advapi32
     bcrypt
@@ -339,7 +347,9 @@ target_link_libraries(ForgeConductor.Infrastructure.Windows PRIVATE
     normaliz
     ntdll
     ole32
+    oleaut32
     shell32
+    taskschd
     version
     winhttp)
 
@@ -602,9 +612,16 @@ if(BUILD_TESTING)
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Manager.WindowsInfrastructureTests
+        tests/Manager/ManagerStartupComWorkerTests.cpp
+        tests/Manager/ManagerStartupDefinitionBuilderTests.cpp
+        tests/Manager/ManagerStartupOwnershipProjectorTests.cpp
         tests/Manager/ManagerPipeInfrastructureTests.cpp
+        tests/Manager/TaskSchedulerDurationCodecTests.cpp
         tests/Manager/WindowsManagerAuthenticationTests.cpp
         tests/Manager/WindowsManagerInfrastructureTestMain.cpp
+        tests/Manager/WindowsManagerStartupComRaiiTests.cpp
+        tests/Manager/WindowsManagerStartupComHandlerTests.cpp
+        tests/Manager/WindowsManagerStartupServiceTests.cpp
         tests/Manager/WindowsManagerOwnershipTests.cpp)
     forge_configure_native_target(
         ForgeConductor.Manager.WindowsInfrastructureTests)
@@ -622,6 +639,35 @@ if(BUILD_TESTING)
         ForgeConductor.Manager.WindowsInfrastructureTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-UNIT;T-STRESS"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.StartupLifecycleFixture
+        tests/Manager/ManagerStartupLifecycleFixture.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.StartupLifecycleFixture)
+
+    add_executable(ForgeConductor.Manager.StartupLifecycleIntegrationTests
+        tests/Manager/WindowsManagerStartupLifecycleTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.StartupLifecycleIntegrationTests)
+    target_include_directories(
+        ForgeConductor.Manager.StartupLifecycleIntegrationTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Manager.StartupLifecycleIntegrationTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+    add_dependencies(
+        ForgeConductor.Manager.StartupLifecycleIntegrationTests
+        ForgeConductor.Manager.StartupLifecycleFixture)
+    add_test(
+        NAME ForgeConductor.Manager.StartupLifecycleIntegrationTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Manager.StartupLifecycleIntegrationTests>
+            "$<TARGET_FILE:ForgeConductor.Manager.StartupLifecycleFixture>")
+    set_tests_properties(
+        ForgeConductor.Manager.StartupLifecycleIntegrationTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-INTEGRATION"
+        RUN_SERIAL TRUE
+        TIMEOUT 90)
 
     add_executable(ForgeConductor.Manager.NamedPipeRoundTripTests
         tests/Manager/WindowsManagerNamedPipeRoundTripTests.cpp)

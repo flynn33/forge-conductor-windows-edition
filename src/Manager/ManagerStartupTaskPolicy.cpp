@@ -85,15 +85,39 @@ namespace {
         (value >= 'a' && value <= 'f');
 }
 
+[[nodiscard]] bool isSafePurposeSuffixCharacter(const char value) noexcept
+{
+    return (value >= 'a' && value <= 'z') ||
+        (value >= 'A' && value <= 'Z') ||
+        (value >= '0' && value <= '9') || value == '-' || value == '_';
+}
+
 [[nodiscard]] bool hasCanonicalOwnershipUri(
     const std::string_view value) noexcept
 {
     const auto prefix = ManagerStartupTaskPolicy::RequiredOwnershipUriPrefix;
-    if (!value.starts_with(prefix) || value.size() != prefix.size() + 64U) {
+    constexpr std::size_t stableKeyCharacters = 64U;
+    if (!value.starts_with(prefix) ||
+        value.size() < prefix.size() + stableKeyCharacters ||
+        value.size() >
+            ManagerStartupTaskPolicy::MaximumTaskPathUtf16Units) {
         return false;
     }
-    for (const char digit : value.substr(prefix.size())) {
+    for (const char digit : value.substr(prefix.size(), stableKeyCharacters)) {
         if (!isLowerHex(digit)) {
+            return false;
+        }
+    }
+
+    const auto suffix = value.substr(prefix.size() + stableKeyCharacters);
+    if (suffix.empty()) {
+        return true;
+    }
+    if (suffix.size() == 1U || suffix.front() != '.') {
+        return false;
+    }
+    for (const char character : suffix.substr(1U)) {
+        if (!isSafePurposeSuffixCharacter(character)) {
             return false;
         }
     }
@@ -595,7 +619,7 @@ Domain::Result<void> ManagerStartupTaskPolicy::validateExpectedDefinition(
         settings.compatibility !=
             ManagerStartupTaskCompatibility::Windows10OrLater ||
         settings.disallowStartOnRemoteAppSession ||
-        settings.useUnifiedSchedulingEngine ||
+        !settings.useUnifiedSchedulingEngine ||
         settings.maintenanceSettingsPresent || settings.volatileTask) {
         return policyError(
             Domain::ErrorCodes::InvalidRequest,

@@ -2,6 +2,7 @@
 
 #include "UniqueLocalAllocation.h"
 
+#include <cstdio>
 #include <limits>
 #include <string>
 
@@ -109,6 +110,55 @@ Domain::Error makeNtStatusError(
         return Domain::makeError(
             Domain::ErrorCodes::InternalFailure,
             "A Windows cryptographic operation failed and its diagnostic could not be formatted.",
+            retryable);
+    }
+}
+
+Domain::Error makeHResultError(
+    const std::string_view action,
+    const HRESULT nativeCode,
+    const std::string_view stableCode,
+    const bool retryable) noexcept
+{
+    try {
+        wchar_t* rawMessage = nullptr;
+        const DWORD messageLength = ::FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+            nullptr,
+            static_cast<DWORD>(nativeCode),
+            0,
+            reinterpret_cast<wchar_t*>(&rawMessage),
+            0,
+            nullptr);
+        UniqueLocalAllocation<wchar_t> messageOwner{rawMessage};
+
+        char hexadecimal[11]{};
+        static_cast<void>(::sprintf_s(
+            hexadecimal,
+            sizeof(hexadecimal),
+            "0x%08X",
+            static_cast<unsigned int>(nativeCode)));
+
+        std::string message{action};
+        message += " failed with HRESULT ";
+        message += hexadecimal;
+        if (messageLength != 0U && rawMessage != nullptr) {
+            const std::string detail = trimSystemMessage(systemMessageToUtf8(
+                std::wstring_view{
+                    rawMessage, static_cast<std::size_t>(messageLength)}));
+            if (!detail.empty()) {
+                message += " (";
+                message += detail;
+                message += ')';
+            }
+        }
+        message += '.';
+        return Domain::makeError(stableCode, std::move(message), retryable);
+    } catch (...) {
+        return Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "A COM operation failed and its diagnostic could not be formatted.",
             retryable);
     }
 }

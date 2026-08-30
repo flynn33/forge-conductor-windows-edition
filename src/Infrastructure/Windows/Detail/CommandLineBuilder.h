@@ -20,6 +20,9 @@ public:
     [[nodiscard]] static Domain::Result<std::wstring> utf8ToUtf16(
         std::string_view value);
 
+    [[nodiscard]] static Domain::Result<std::wstring> buildArgumentString(
+        const std::vector<std::string>& arguments);
+
     [[nodiscard]] static Domain::Result<std::vector<wchar_t>> buildCommandLine(
         std::wstring_view absoluteApplicationName,
         const std::vector<std::string>& arguments);

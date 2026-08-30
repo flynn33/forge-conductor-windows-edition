@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "20260830T094110840Z-1503a0c6",
+  "phase": "P16",
+  "role": "Builder",
+  "command": "$ErrorActionPreference = 'Stop'\n$buildDirectory = 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\out\\build\\windows-msvc-x64'\n& cmake --build $buildDirectory --config Debug --target ForgeConductor.Manager.StartupTests ForgeConductor.Manager.WindowsInfrastructureTests ForgeConductor.Manager.StartupLifecycleFixture ForgeConductor.Manager.StartupLifecycleIntegrationTests ForgeConductor.Infrastructure.ProcessTests ForgeConductor.Infrastructure.HeaderSelfContainment --parallel 1\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\nexit 0",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T09:41:10.8505662+00:00",
+  "end_utc": "2026-08-30T09:41:52.6754198+00:00",
+  "exit_code": 0,
+  "exit_code_source": "process",
+  "timed_out": false,
+  "maximum_output_bytes_per_stream": 67108864,
+  "output_limit_exceeded": false,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T094110840Z-1503a0c6.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T094110840Z-1503a0c6.stderr.txt",
+  "stdout_sha256": "89b6b59e0e66c709a4d61dce4a3b4fe8ca9bc9f17569c6791c89adb73a4f5adc",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

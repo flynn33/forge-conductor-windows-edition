@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "20260830T094217180Z-1a0b6cdb",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$ErrorActionPreference = 'Stop'\n$buildDirectory = 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\out\\build\\windows-msvc-x64'\n$testPattern = '^(ForgeConductor\\.Manager\\.StartupTests|ForgeConductor\\.Manager\\.WindowsInfrastructureTests|ForgeConductor\\.Manager\\.StartupLifecycleIntegrationTests|ForgeConductor\\.Infrastructure\\.ProcessTests|ForgeConductor\\.Infrastructure\\.HeaderSelfContainment)$'\n& ctest --test-dir $buildDirectory -C Debug --output-on-failure -R $testPattern\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n$tasks = @(Get-ScheduledTask -ErrorAction Stop | Where-Object {\n    $_.TaskPath -eq '\\' -and\n    $_.TaskName -like 'ForgeConductor.Manager.v1.*.p16-lifecycle-integration'\n})\nif ($tasks.Count -ne 0) {\n    throw \"Lifecycle test left $($tasks.Count) scheduled task(s).\"\n}\n$tempRoot = [IO.Path]::GetTempPath()\n$homes = @(Get-ChildItem -LiteralPath $tempRoot -Directory -Force -Filter 'ForgeConductor.Manager.StartupLifecycle.*' -ErrorAction Stop)\nif ($homes.Count -ne 0) {\n    throw \"Lifecycle test left $($homes.Count) temporary home(s).\"\n}\nWrite-Output \"LIFECYCLE_TASK_COUNT=$($tasks.Count)\"\nWrite-Output \"LIFECYCLE_HOME_COUNT=$($homes.Count)\"\nexit 0",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T09:42:17.1908789+00:00",
+  "end_utc": "2026-08-30T09:42:24.0586379+00:00",
+  "exit_code": 0,
+  "exit_code_source": "process",
+  "timed_out": false,
+  "maximum_output_bytes_per_stream": 67108864,
+  "output_limit_exceeded": false,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T094217180Z-1a0b6cdb.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T094217180Z-1a0b6cdb.stderr.txt",
+  "stdout_sha256": "6b5f7fc10a69d758795b53ed3cc7b59ac6de75505fa056771070be9575e70ec8",
+  "stderr_sha256": "d820b734bf428a3a8664cee6309f51358f49374046ca205b10070f6c4f887bea"
+}

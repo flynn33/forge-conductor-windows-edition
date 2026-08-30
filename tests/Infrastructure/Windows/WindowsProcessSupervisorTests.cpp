@@ -555,6 +555,88 @@ void testCommandLineQuoting(const FixtureContext& fixture)
             "CreateProcessW command-line quoting did not preserve argv");
 }
 
+void testArgumentStringQuoting()
+{
+    const auto empty = take(CommandLineBuilder::buildArgumentString({}));
+    require(empty.empty(), "an empty argument list produced command-line text");
+
+    const auto spaced =
+        take(CommandLineBuilder::buildArgumentString({"plain", "with space"}));
+    require(spaced == L"plain \"with space\"",
+            "argument-only quoting did not preserve spaces or separators");
+    require(spaced.front() != L' ' && spaced.back() != L' ',
+            "argument-only quoting introduced leading or trailing whitespace");
+
+    const auto embeddedQuote =
+        take(CommandLineBuilder::buildArgumentString({R"(prefix\"suffix)"}));
+    std::wstring expectedEmbeddedQuote{L"\"prefix"};
+    expectedEmbeddedQuote.append(3U, L'\\');
+    expectedEmbeddedQuote.append(L"\"suffix\"");
+    require(embeddedQuote == expectedEmbeddedQuote,
+            "argument-only quoting did not escape backslashes before a quote");
+
+    const auto emptyArgument = take(CommandLineBuilder::buildArgumentString({""}));
+    require(emptyArgument == L"\"\"", "an empty argument was not represented explicitly");
+
+    std::string invalidUtf8{"invalid"};
+    invalidUtf8.push_back(static_cast<char>(0xff));
+    requireError(CommandLineBuilder::buildArgumentString({invalidUtf8}),
+                 Domain::ErrorCodes::InvalidRequest,
+                 "invalid UTF-8 reached argument-only quoting");
+
+    std::string embeddedNull{"prefix\0suffix", 13U};
+    requireError(CommandLineBuilder::buildArgumentString({embeddedNull}),
+                 Domain::ErrorCodes::InvalidRequest,
+                 "an embedded NUL reached argument-only quoting");
+
+    std::wstring applicationWithNull{L"C:\\Forge\\Manager.exe"};
+    applicationWithNull.insert(3U, 1U, L'\0');
+    requireError(
+        CommandLineBuilder::buildCommandLine(applicationWithNull, {}),
+        Domain::ErrorCodes::InvalidRequest,
+        "an embedded NUL reached the native application name");
+
+    const std::size_t maximumContent =
+        Domain::MaximumProcessCommandLineUtf16CodeUnitsIncludingTerminator - 1U;
+    const std::string exactMaximum(maximumContent, 'x');
+    require(
+        take(CommandLineBuilder::buildArgumentString({exactMaximum})).size() ==
+            maximumContent,
+        "the exact argument-only command-line boundary was rejected");
+    requireError(
+        CommandLineBuilder::buildArgumentString(
+            {std::string(maximumContent + 1U, 'x')}),
+        Domain::ErrorCodes::PayloadTooLarge,
+        "the over-limit argument-only command line was accepted");
+
+    require(
+        take(CommandLineBuilder::buildArgumentString(
+                 {std::string(maximumContent - 2U, 'x'), "y"}))
+                .size() == maximumContent,
+        "the exact multi-argument separator boundary was rejected");
+    requireError(
+        CommandLineBuilder::buildArgumentString(
+            {std::string(maximumContent - 1U, 'x'), "y"}),
+        Domain::ErrorCodes::PayloadTooLarge,
+        "a separator pushed the argument string beyond its limit");
+
+    require(
+        take(CommandLineBuilder::buildArgumentString({"folder path\\"})) ==
+            L"\"folder path\\\\\"",
+        "a quoted argument did not double trailing backslashes");
+    require(
+        take(CommandLineBuilder::buildArgumentString({"caf\xc3\xa9"})) ==
+            L"caf\u00e9",
+        "valid non-ASCII UTF-8 was not preserved in an argument string");
+
+    std::string oversized(
+        Domain::MaximumProcessCommandLineUtf16CodeUnitsIncludingTerminator / 2U, '\\');
+    oversized.push_back('"');
+    requireError(CommandLineBuilder::buildArgumentString({oversized}),
+                 Domain::ErrorCodes::PayloadTooLarge,
+                 "an oversized quoted argument string was accepted");
+}
+
 void testEnvironmentAndWorkingDirectory(const FixtureContext& fixture)
 {
     ProcessSupervisorHarness harness;
@@ -1171,6 +1253,7 @@ void testConcurrentAdmissionIsExactly64(const FixtureContext& fixture)
 void registerProcessWindowsTests(TestRegistry& tests, const std::wstring& fixturePath)
 {
     const FixtureContext fixture{fixturePath};
+    addTest(tests, "process.argument_string_quoting", [] { testArgumentStringQuoting(); });
     addTest(tests, "process.command_line_quoting", [fixture] { testCommandLineQuoting(fixture); });
     addTest(tests, "process.environment_and_working_directory",
             [fixture] { testEnvironmentAndWorkingDirectory(fixture); });

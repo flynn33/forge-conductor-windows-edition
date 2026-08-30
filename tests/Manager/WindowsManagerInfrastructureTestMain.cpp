@@ -8,6 +8,13 @@ namespace ForgeConductor::Tests {
 void registerWindowsManagerAuthenticationTests(TestRegistry& tests);
 void registerWindowsManagerOwnershipTests(TestRegistry& tests);
 void registerManagerPipeInfrastructureTests(TestRegistry& tests);
+void registerManagerStartupComWorkerTests(TestRegistry& tests);
+void registerManagerStartupDefinitionBuilderTests(TestRegistry& tests);
+void registerManagerStartupOwnershipProjectorTests(TestRegistry& tests);
+void registerTaskSchedulerDurationCodecTests(TestRegistry& tests);
+void registerWindowsManagerStartupComHandlerTests(TestRegistry& tests);
+void registerWindowsManagerStartupComRaiiTests(TestRegistry& tests);
+void registerWindowsManagerStartupServiceTests(TestRegistry& tests);
 
 } // namespace ForgeConductor::Tests
 
@@ -17,6 +24,13 @@ int main()
     ForgeConductor::Tests::registerWindowsManagerAuthenticationTests(tests);
     ForgeConductor::Tests::registerWindowsManagerOwnershipTests(tests);
     ForgeConductor::Tests::registerManagerPipeInfrastructureTests(tests);
+    ForgeConductor::Tests::registerManagerStartupComWorkerTests(tests);
+    ForgeConductor::Tests::registerManagerStartupDefinitionBuilderTests(tests);
+    ForgeConductor::Tests::registerManagerStartupOwnershipProjectorTests(tests);
+    ForgeConductor::Tests::registerTaskSchedulerDurationCodecTests(tests);
+    ForgeConductor::Tests::registerWindowsManagerStartupComHandlerTests(tests);
+    ForgeConductor::Tests::registerWindowsManagerStartupComRaiiTests(tests);
+    ForgeConductor::Tests::registerWindowsManagerStartupServiceTests(tests);
 
     std::size_t passed = 0U;
     for (const auto& [name, run] : tests) {
