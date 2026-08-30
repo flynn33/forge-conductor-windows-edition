@@ -37,12 +37,15 @@ using Scheduler = Windows::WindowsDashboardDeadlineScheduler;
 
 static_assert(std::is_final_v<Scheduler>);
 static_assert(std::is_abstract_v<Windows::IWindowsDashboardDeadlineSink>);
+static_assert(std::is_abstract_v<
+              Windows::IWindowsDashboardDeadlineSchedulerFailureObserver>);
 static_assert(std::is_aggregate_v<DeadlineRequest>);
 static_assert(!std::is_copy_constructible_v<Scheduler>);
 static_assert(!std::is_move_constructible_v<Scheduler>);
 static_assert(Scheduler::HardMaximumScheduledCount == 44U);
 static_assert(noexcept(Scheduler::create({}, {})));
 static_assert(noexcept(std::declval<Scheduler&>().schedule({})));
+static_assert(noexcept(std::declval<Scheduler&>().bindFailureObserver({})));
 static_assert(noexcept(std::declval<Scheduler&>().cancel(1U, 1U)));
 static_assert(noexcept(std::declval<const Scheduler&>().snapshot()));
 static_assert(noexcept(std::declval<Scheduler&>().shutdown()));
@@ -109,6 +112,49 @@ private:
     std::condition_variable changed_;
     std::vector<Deadline> deadlines_;
     std::atomic_bool failed_{};
+};
+
+class FailureRecorder final
+    : public Windows::IWindowsDashboardDeadlineSchedulerFailureObserver {
+public:
+    void dashboardDeadlineSchedulerFailed(
+        const Windows::WindowsDashboardDeadlineSchedulerFailure failure)
+        noexcept override
+    {
+        const std::scoped_lock lock{mutex_};
+        ++count_;
+        failure_ = failure;
+        changed_.notify_all();
+    }
+
+    [[nodiscard]] bool waitForFailure()
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(lock, 2s, [this] {
+            return failure_.has_value();
+        });
+    }
+
+    [[nodiscard]] std::size_t count() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return count_;
+    }
+
+    [[nodiscard]] std::optional<
+        Windows::WindowsDashboardDeadlineSchedulerFailure> failure()
+        const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return failure_;
+    }
+
+private:
+    mutable std::mutex mutex_;
+    std::condition_variable changed_;
+    std::size_t count_{};
+    std::optional<Windows::WindowsDashboardDeadlineSchedulerFailure>
+        failure_;
 };
 
 class OffsetFrozenClock final : public Contracts::IClock {
@@ -586,6 +632,26 @@ void shutdownIsIdempotentAndClosesRegistration()
         "shutdown registration used the wrong error code");
 }
 
+void intentionalShutdownDoesNotPublishSchedulerFailure()
+{
+    const auto sink = std::make_shared<RecordingSink>();
+    auto owner = scheduler(sink, 1U);
+    const auto observer = std::make_shared<FailureRecorder>();
+    take(owner->bindFailureObserver(observer));
+
+    const auto duplicate = owner->bindFailureObserver(observer);
+    require(!duplicate &&
+                duplicate.error().code == Domain::ErrorCodes::Conflict,
+            "scheduler accepted a second managed failure observer");
+    owner->shutdown();
+
+    const auto snapshot = owner->snapshot();
+    require(snapshot.isShutdown(),
+            "intentional scheduler shutdown was not published");
+    require(snapshot.failure() == nullptr && observer->count() == 0U,
+            "intentional scheduler shutdown reported a worker failure");
+}
+
 void concurrentShutdownClaimsTheWorkerExactlyOnce()
 {
     const auto sink = std::make_shared<BlockingSink>();
@@ -648,10 +714,12 @@ void concurrentShutdownClaimsTheWorkerExactlyOnce()
             "concurrent shutdown used the wrong rejection code");
 }
 
-void expiredSinkIsSafeAndStillReleasesEntries()
+void expiredSinkPublishesAnExactUnexpectedFailure()
 {
     auto sink = std::make_shared<RecordingSink>();
     auto owner = scheduler(sink, 1U);
+    const auto observer = std::make_shared<FailureRecorder>();
+    take(owner->bindFailureObserver(observer));
     sink.reset();
     const auto scheduled = owner->schedule(
         {1U,
@@ -660,13 +728,21 @@ void expiredSinkIsSafeAndStillReleasesEntries()
     require(static_cast<bool>(scheduled),
             "deadline with expired observer was rejected");
 
-    const auto end = std::chrono::steady_clock::now() + 2s;
-    while (owner->snapshot().scheduledCount() != 0U &&
-           std::chrono::steady_clock::now() < end) {
-        std::this_thread::yield();
-    }
-    require(owner->snapshot().scheduledCount() == 0U,
-            "expired observer retained a due entry");
+    require(observer->waitForFailure(),
+            "expired deadline sink did not publish scheduler failure");
+    const auto recorded = observer->failure();
+    require(recorded.has_value() && recorded->kind ==
+                Windows::WindowsDashboardDeadlineSchedulerFailureKind::
+                    DeadlineSinkUnavailable,
+            "expired deadline sink used the wrong failure kind");
+    const auto snapshot = owner->snapshot();
+    require(snapshot.isShutdown() && snapshot.scheduledCount() == 0U,
+            "failed scheduler retained registrations or stayed open");
+    require(snapshot.failure() != nullptr &&
+                snapshot.failure()->kind == recorded->kind,
+            "failed scheduler snapshot lost exact failure evidence");
+    require(observer->count() == 1U,
+            "failed scheduler published its terminal edge more than once");
 }
 
 void sinkMayReleaseTheOuterOwnerWithoutSelfJoin()
@@ -699,8 +775,9 @@ int main()
         replacementControlsTheDeliveredValue();
         rearmAfterDequeueReceivesAnUnambiguousNewToken();
         shutdownIsIdempotentAndClosesRegistration();
+        intentionalShutdownDoesNotPublishSchedulerFailure();
         concurrentShutdownClaimsTheWorkerExactlyOnce();
-        expiredSinkIsSafeAndStillReleasesEntries();
+        expiredSinkPublishesAnExactUnexpectedFailure();
         sinkMayReleaseTheOuterOwnerWithoutSelfJoin();
         std::cout << "Windows dashboard deadline scheduler tests passed ("
                   << assertionCount << " assertions).\n";

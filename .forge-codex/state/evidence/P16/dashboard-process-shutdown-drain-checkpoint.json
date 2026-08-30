@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-process-shutdown-drain",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with the Visual Studio 17 2022 generator and Visual Studio 2022 Build Tools instance, MSBuild 17.14.40, v143 MSVC 19.44.35223 from VC Tools 14.44.35207, Windows SDK 10.0.26100.0, C++20 Debug with /W4 /WX /permissive-, and CTest 4.4.2.",
+  "recorded_configuration": {
+    "command_record": ".forge-codex/state/commands/20260830T041319757Z-d69164bb.json",
+    "command_record_sha256": "fa25ce0f141339d9f069b07092f5e8c15b68c05bc2a54d39ae5a62d03e2b86ee",
+    "exit_code": 0,
+    "timed_out": false,
+    "result": "Configuring done in 3.2 seconds; generating done in 2.2 seconds; build files written to out/build/windows-msvc-x64.",
+    "stdout": ".forge-codex/state/commands/20260830T041319757Z-d69164bb.stdout.txt",
+    "stdout_sha256": "2a2d6a0dbbae18082707a914079e8bd98f845c366286ad8ce8e84a81df634352",
+    "stderr": ".forge-codex/state/commands/20260830T041319757Z-d69164bb.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T041335723Z-f6077969.json",
+    "command_record_sha256": "bfce390fd58302b14e75921adfaca23afdac3e3c0c242d87a2704b8a0443211a",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Debug",
+    "targets": [
+      "ForgeConductor.Dashboard.DeadlineIocpBridgeTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests",
+      "ForgeConductor.Dashboard.DeadlineSchedulerTests",
+      "ForgeConductor.Dashboard.ShutdownDrainTests",
+      "ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests",
+      "ForgeConductor.Dashboard.WindowsStaticAssetBundleTests",
+      "ForgeConductor.Dashboard.StaticShellContractTests",
+      "ForgeConductor.Dashboard.StaticAssetStoreTests",
+      "ForgeConductor.Dashboard.ConnectionApplicationTests",
+      "ForgeConductor.Dashboard.RouteCatalogTests",
+      "ForgeConductor.Dashboard.ManagerJsonCodecTests",
+      "ForgeConductor.Dashboard.TelemetryJsonCodecTests",
+      "ForgeConductor.Dashboard.StreamQueryDecoderTests"
+    ],
+    "scope_note": "The shared recorded build also compiled the static-dashboard checkpoint. This evidence claims only the shutdown targets and their dependencies.",
+    "stdout": ".forge-codex/state/commands/20260830T041335723Z-f6077969.stdout.txt",
+    "stdout_sha256": "427b56c2add106289a52de2d197bb26acf481726021885e4d31b98d1b7d63d6c",
+    "stderr": ".forge-codex/state/commands/20260830T041335723Z-f6077969.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T041500293Z-f634f5ed.json",
+    "command_record_sha256": "4791fdd490e5892bda844e4ba09022861c13096c10937b4eec63674d4ed6285f",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 13,
+    "tests_failed": 0,
+    "real_seconds": 2.37,
+    "shutdown_tests": [
+      "ForgeConductor.Dashboard.DeadlineIocpBridgeTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests",
+      "ForgeConductor.Dashboard.DeadlineSchedulerTests",
+      "ForgeConductor.Dashboard.ShutdownDrainTests",
+      "ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests"
+    ],
+    "stdout": ".forge-codex/state/commands/20260830T041500293Z-f634f5ed.stdout.txt",
+    "stdout_sha256": "adcfe5cec877e04357ee4e21baa07ac04ab636bac2848d6741a999a7fbc7eceb",
+    "stderr": ".forge-codex/state/commands/20260830T041500293Z-f634f5ed.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_repeat_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T041520752Z-a302f0ee.json",
+    "command_record_sha256": "c5a8387c15426399ed573fdea4e99002509631366fb7dd989c0cf0ae13ffe0e6",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests": [
+      "ForgeConductor.Dashboard.DeadlineIocpBridgeTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests",
+      "ForgeConductor.Dashboard.ShutdownDrainTests",
+      "ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests"
+    ],
+    "repetitions_per_test": 20,
+    "total_successful_executions": 80,
+    "failed_executions": 0,
+    "real_seconds": 12.65,
+    "stdout": ".forge-codex/state/commands/20260830T041520752Z-a302f0ee.stdout.txt",
+    "stdout_sha256": "a68aa482e2c76bc465360716b95f321374cc34d2da63070476d84aef3ef5db01",
+    "stderr": ".forge-codex/state/commands/20260830T041520752Z-a302f0ee.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorder_diagnostic": {
+    "classification": "recorder-status defects, not configure, build, or test failures",
+    "affected_records": [
+      {
+        "record": "20260830T040759060Z-e2defd98",
+        "recorded_exit_code": null,
+        "captured_outcome": "Configure and generate completed successfully; the recorder failed to retrieve a process exit code."
+      },
+      {
+        "record": "20260830T040918725Z-3ed374fc",
+        "recorded_exit_code": 125,
+        "captured_outcome": "Configure and generate completed successfully; the recorder substituted its own status failure."
+      },
+      {
+        "record": "20260830T041014222Z-457a2ec6",
+        "recorded_exit_code": 125,
+        "captured_outcome": "The raw exit-0 probe exposed the same recorder status defect."
+      }
+    ],
+    "repair": "The final recorder keeps stdout and stderr spooled to same-directory temporary files, receives an explicit child exit-code sidecar with a waited Process.ExitCode fallback for direct exit statements, captures command status in a try/finally inside the user command scope, maps terminating PowerShell errors to exit 1, atomically publishes transcripts after exit, limits each stream to 64 MiB by default, and terminates plus verifies the captured descendant lineage through bounded CIM, taskkill, and per-process fallback operations. The shared atomic writer also accepts an empty stream.",
+    "intermediate_repair_records": [
+      {
+        "record": "20260830T042614386Z-2c85c296",
+        "recorded_exit_code": 0,
+        "captured_outcome": "A mixed native-success then PowerShell-error probe exposed that nonterminating PowerShell errors needed terminating wrapper policy."
+      },
+      {
+        "record": "20260830T042634300Z-baab37fc",
+        "recorded_exit_code": 0,
+        "captured_outcome": "A pure native exit-7 probe exposed that command status had to be captured inside, rather than after, the invoked script block."
+      }
+    ],
+    "proof_records": [
+      {
+        "record": "20260830T043317845Z-56a34de7",
+        "exit_code": 0,
+        "exit_code_source": "sidecar",
+        "meaning": "A successful return still executes final status capture and publishes exit 0."
+      },
+      {
+        "record": "20260830T043319295Z-3e39339c",
+        "exit_code": 7,
+        "exit_code_source": "sidecar",
+        "meaning": "A pure native failure propagates exit 7."
+      },
+      {
+        "record": "20260830T043337467Z-9d893ec6",
+        "exit_code": 1,
+        "exit_code_source": "sidecar",
+        "meaning": "A PowerShell error with no native failure maps to exit 1."
+      },
+      {
+        "record": "20260830T043706266Z-109e5814",
+        "exit_code": 7,
+        "exit_code_source": "process",
+        "meaning": "A direct exit statement that bypasses the sidecar is retained from the waited process exit code."
+      },
+      {
+        "record": "20260830T043744295Z-8baa9738",
+        "exit_code": 0,
+        "exit_code_source": "sidecar",
+        "meaning": "A final successful PowerShell command overrides an earlier stale native exit 7."
+      },
+      {
+        "record": "20260830T044050240Z-c0cce36e",
+        "exit_code": 124,
+        "exit_code_source": "timeout",
+        "timed_out": true,
+        "meaning": "A one-second timeout stopped the wrapper and its spawned 30-second descendant; PID 16968 was absent when the recorder returned."
+      },
+      {
+        "record": "20260830T043728485Z-6d5692e0",
+        "exit_code": 125,
+        "exit_code_source": "output-limit",
+        "maximum_output_bytes_per_stream": 1024,
+        "stdout_bytes": 1024,
+        "stdout_truncated": true,
+        "meaning": "A live over-limit command was stopped and its stdout transcript was truncated at the configured 1024-byte proof cap."
+      }
+    ],
+    "authoritative_focused_configure": "20260830T041319757Z-d69164bb",
+    "ledger_policy": "All earlier diagnostic records remain preserved; none is classified as a product configure, build, or test failure."
+  },
+  "invariant_audit": {
+    "corrections": [
+      "The persistent process driver remains responsive to the exact five-second deadline while a transient finalizer blocks in executor join.",
+      "Natural completion atomically claims the deadline before cancellation; a late completion is stale, while an early completion wins hard escalation.",
+      "Partial installation, bridge failure, and scheduler failure retain one driver-owned fail-closed teardown path.",
+      "Bridge failure delivery is deferred until every registry deadline-routing transaction releases its routing and state locks.",
+      "Finalization keeps IOCP alive for exact posted-retired tombstones and shuts the bridge only after all routes and tombstones reach zero."
+    ],
+    "independent_review_status": "Successive read-only reviews identified registration-versus-finalization, callback-under-routing-lock, natural-versus-hard winner, partial-install ownership, fatal-snapshot, and missing tombstone-chain coverage gaps. Each was corrected with deterministic regression coverage; the recorded focused and repeat validations passed."
+  },
+  "behavior_proved": [
+    "observer installation precedes shutdown-target registration and callbacks remain latch-only",
+    "graceful cutoff arms an independent exact five-second monotonic deadline before closing admission",
+    "hard escalation proceeds while executor join is blocked and runs once on the persistent driver",
+    "natural, hard, early-delivery, partial-install, bridge-fatal, scheduler-fatal, and routing lost-wake paths terminate deterministically",
+    "cancel(false) retires the drain route into one PostedRetired tombstone that the real four-worker IOCP kernel routes through the real router and registry before finalization retries",
+    "terminal teardown orders executor join, route removal, router shutdown, scheduler join, bridge finalization, IOCP join, and post-kernel health verification"
+  ],
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-018-process-owned-dashboard-shutdown-drain.md": "514d092c66ae906283f4583d52594077fa8a92f90bf64ce01d4c5db4e487f16f",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.h": "5a6aefb674abf3be81169c21a0652ca3302b65f66eee109c8ea7353098aa5b74",
+    "src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp": "ba963bcfa7a690ade618331833670aa224de0179c39064bc947973277133685d",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.h": "c7519e8f09abbe647c88364b17f2c144df1f14f7da7ac85f07ab489930000114",
+    "src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.cpp": "716d1211ae55c1865fe5c25fbe2d8a2b607d9bcdd0e8d109e1cfe06975208ffe",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.h": "2112c76417a8a9ed3bc683d0dd7a5f7a15c3b7fbd26f3a891c66d74906dacc03",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp": "e1d6cd1d26dd5f23b2936b047f16f84a99ace6a2c97b89dbc2b8ccc0d0738f03",
+    "src/Infrastructure/Windows/Detail/DashboardShutdownDrain.h": "8f35f6679dcb5878d915ce978fade67aa5805e06f63edcf02c489293f921847e",
+    "src/Infrastructure/Windows/Detail/DashboardShutdownDrain.cpp": "3b731bb4bfede5344fc673eeece167e467cbba982f5123f0cea5b32d0235f2ed",
+    "tests/Dashboard/WindowsDashboardDeadlineSchedulerTests.cpp": "52b06e7d98db4268fed5377fa8947fe6e3d5cd8c875a536ab19c61708caed92f",
+    "tests/Dashboard/DashboardDeadlineIocpBridgeTests.cpp": "0ba0fc3c602422bc5802b75fc0ad60cd563dc9194eb081ed4b349fc814fa4e78",
+    "tests/Dashboard/DashboardConnectionRegistryTests.cpp": "fd881979536de870831fc474cf473c1de012c9268579f989a0d6836cee478d37",
+    "tests/Dashboard/DashboardShutdownDrainTests.cpp": "6a5ea1d1fef556d0ac21c8e5c70aae7bf4e20708d5324cf8c6c07c0a2c684299",
+    "tests/Dashboard/DashboardShutdownDrainTombstoneIntegrationTests.cpp": "07d2a605708c12455febb723d8b347255c0b58a82261dc92fa2b27861a6c67a2"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.Windows.lib": "02cc9d73ac52796eb74dd6149a0a8e33060f79f91c7c285a36cab822e4311376",
+    "ForgeConductor.Dashboard.DeadlineIocpBridgeTests.exe": "413f1e3a8311863061deae2e1621f1c9c3014c3748cef1ec50483c245086cd82",
+    "ForgeConductor.Dashboard.ConnectionRegistryTests.exe": "6e7ec641b3facde994de24904edbd56120e4ce35de76d6d2915424e9ae70b6b3",
+    "ForgeConductor.Dashboard.DeadlineSchedulerTests.exe": "11c84fb4c607743084b90f83326eb7b7a1abb0bbb9a8331ffbb90ab8d7f72a3d",
+    "ForgeConductor.Dashboard.ShutdownDrainTests.exe": "bfe6d4630d36b18d7dd95a855bf2b5d4069260e565384ebf649b32a1ea303c2c",
+    "ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests.exe": "5e14f93e9e9e3407668b669008e919a70edef881fad92c206a750aa6bbc33f0b"
+  },
+  "remaining_limitations": [
+    "The production Manager composition root does not yet construct and retain the DashboardShutdownDrain graph; installed-process shutdown is not proved.",
+    "P16-C watchdog, recovery, and startup registration remain pending.",
+    "Live loopback/browser validation and retained native UI automation remain pending.",
+    "No feature-parity row is passed by this focused checkpoint.",
+    "P16 remains in progress and G16 is not complete; the one authoritative G16 invocation has not been run."
+  ]
+}

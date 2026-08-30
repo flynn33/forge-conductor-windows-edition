@@ -1,0 +1,16 @@
+{
+    "schema_version":  1,
+    "id":  "20260830T040759060Z-e2defd98",
+    "phase":  "P16",
+    "role":  "Builder",
+    "command":  "cmake --preset windows-msvc-x64",
+    "working_directory":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "start_utc":  "2026-08-30T04:07:59.0851212+00:00",
+    "end_utc":  "2026-08-30T04:08:05.4971377+00:00",
+    "exit_code":  null,
+    "timed_out":  false,
+    "stdout":  ".forge-codex\\state\\commands\\20260830T040759060Z-e2defd98.stdout.txt",
+    "stderr":  ".forge-codex\\state\\commands\\20260830T040759060Z-e2defd98.stderr.txt",
+    "stdout_sha256":  "d5dceced1a1e23375bccb92b0dedfde6067bd40ea72e07297ae96940d93fc49d",
+    "stderr_sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

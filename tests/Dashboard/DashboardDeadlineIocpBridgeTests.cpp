@@ -30,7 +30,10 @@ using Api = Detail::IDashboardIoCompletionPortApi;
 using Bridge = Detail::DashboardDeadlineIocpBridge;
 using Deadline = Windows::WindowsDashboardDeadline;
 using DeadlineKind = Windows::WindowsDashboardDeadlineKind;
+using Failure = Detail::DashboardDeadlineIocpFailure;
 using FailureKind = Detail::DashboardDeadlineIocpFailureKind;
+using FailureObserver =
+    Detail::IDashboardDeadlineIocpBridgeFailureObserver;
 using Handle = Detail::DashboardDeadlineNotificationHandle;
 using Key = Detail::DashboardIoCompletionKey;
 using Kernel = Detail::DashboardIocpWorkerKernel;
@@ -51,6 +54,15 @@ static_assert(
     Windows::WindowsDashboardDeadlineScheduler::HardMaximumScheduledCount);
 static_assert(noexcept(Bridge::create(
     std::declval<Kernel&>(), Key{1U})));
+static_assert(std::is_abstract_v<FailureObserver>);
+static_assert(noexcept(
+    std::declval<Bridge&>().bindFailureObserver({})));
+static_assert(noexcept(
+    std::declval<Bridge&>().deferFailureNotificationDispatch()));
+static_assert(std::is_move_constructible_v<
+              Bridge::FailureNotificationDeferral>);
+static_assert(!std::is_copy_constructible_v<
+              Bridge::FailureNotificationDeferral>);
 static_assert(noexcept(std::declval<Bridge&>().registerOwner(1U)));
 static_assert(noexcept(std::declval<Bridge&>().retireOwner({})));
 static_assert(noexcept(std::declval<Bridge&>().signal({})));
@@ -497,6 +509,60 @@ private:
     std::size_t fatalCount_{};
 };
 
+class RecordingFailureObserver final : public FailureObserver {
+public:
+    void attach(Bridge& bridge) noexcept
+    {
+        bridge_ = std::addressof(bridge);
+    }
+
+    void dashboardDeadlineIocpBridgeFailed(
+        const Failure failure) noexcept override
+    {
+        const bool observedFatal = bridge_ != nullptr &&
+            bridge_->snapshot().isFatal();
+        const std::lock_guard lock{mutex_};
+        ++callbackCount_;
+        if (!firstFailure_.has_value()) {
+            firstFailure_ = failure;
+        }
+        reenteredBridge_ = bridge_ != nullptr;
+        observedFatal_ = observedFatal;
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return callbackCount_;
+    }
+
+    [[nodiscard]] std::optional<Failure> firstFailure() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return firstFailure_;
+    }
+
+    [[nodiscard]] bool reenteredBridge() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return reenteredBridge_;
+    }
+
+    [[nodiscard]] bool observedFatal() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return observedFatal_;
+    }
+
+private:
+    Bridge* bridge_{};
+    mutable std::mutex mutex_;
+    std::optional<Failure> firstFailure_;
+    std::size_t callbackCount_{};
+    bool reenteredBridge_{};
+    bool observedFatal_{};
+};
+
 class Harness final {
 public:
     Harness()
@@ -809,6 +875,62 @@ void failedPostRemovesItsExactTombstoneBeforeFatalStatus()
     require(!owner.bridge().retireOwner(failedHandle) &&
                 !owner.bridge().retireOwner(idleHandle),
             "fatal shutdown retained a mutable owner handle");
+}
+
+void managedFailureObserverPublishesFirstFatalOutsideBridgeMutex()
+{
+    Harness owner;
+    std::weak_ptr<FailureObserver> missingObserver;
+    const auto missing =
+        owner.bridge().bindFailureObserver(missingObserver);
+    require(!missing &&
+                missing.error().code ==
+                    Domain::ErrorCodes::InvalidRequest &&
+                !owner.bridge().snapshot().isFatal(),
+            "an absent bridge failure observer was not rejected nonfatally");
+
+    auto observer = std::make_shared<RecordingFailureObserver>();
+    observer->attach(owner.bridge());
+    take(owner.bridge().bindFailureObserver(observer));
+    const auto duplicate =
+        owner.bridge().bindFailureObserver(observer);
+    require(!duplicate &&
+                duplicate.error().code ==
+                    Domain::ErrorCodes::Conflict &&
+                !owner.bridge().snapshot().isFatal(),
+            "duplicate bridge failure-observer binding was not rejected nonfatally");
+
+    auto dispatchDeferral =
+        owner.bridge().deferFailureNotificationDispatch();
+    owner.api().setFailDataPosts(true, ERROR_NOT_ENOUGH_MEMORY);
+    static_cast<void>(take(owner.bridge().registerOwner(450U)));
+    owner.bridge().signal(deadline(450U, 1U));
+    require(observer->callbackCount() == 0U &&
+                owner.bridge().snapshot().isFatal(),
+            "a deferred managed bridge failure escaped before its external routing transaction completed");
+    dispatchDeferral.release();
+
+    const auto failure = observer->firstFailure();
+    require(observer->callbackCount() == 1U &&
+                failure.has_value() &&
+                failure->kind == FailureKind::LimitExceeded &&
+                failure->retryable &&
+                observer->reenteredBridge() &&
+                observer->observedFatal(),
+            "first fatal bridge transition was not published once outside the bridge mutex");
+
+    OVERLAPPED alien{};
+    const auto repeated = owner.bridge().reap(
+        DeadlineKey, 0U, std::addressof(alien), ERROR_SUCCESS);
+    require(!repeated && observer->callbackCount() == 1U,
+            "a later fatal bridge observation republished the one-shot failure edge");
+    auto lateObserver = std::make_shared<RecordingFailureObserver>();
+    const auto late =
+        owner.bridge().bindFailureObserver(lateObserver);
+    require(!late &&
+                late.error().code ==
+                    Domain::ErrorCodes::TransportClosed,
+            "fatal bridge accepted a late failure observer");
 }
 
 enum class MalformedPacketKind : std::uint8_t {
@@ -1132,6 +1254,7 @@ int main()
         retirementAndReuseValidateTheExactMailboxGeneration();
         allFortyThreePendingOwnersRemainFixedAndCoalesced();
         failedPostRemovesItsExactTombstoneBeforeFatalStatus();
+        managedFailureObserverPublishesFirstFatalOutsideBridgeMutex();
         malformedExactPacketDrainsBeforeIntegrityFailure(
             MalformedPacketKind::WrongKey);
         malformedExactPacketDrainsBeforeIntegrityFailure(

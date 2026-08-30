@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 function Write-AtomicUtf8 {
     param(
         [Parameter(Mandatory)][string]$Path,
-        [Parameter(Mandatory)][string]$Content
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Content
     )
     $directory = Split-Path -Parent $Path
     if ($directory -and -not (Test-Path -LiteralPath $directory)) {

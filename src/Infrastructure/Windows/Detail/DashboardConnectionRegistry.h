@@ -93,6 +93,11 @@ enum class DashboardConnectionRegistryFailureKind : std::uint8_t {
     Other,
 };
 
+enum class DashboardDeadlineRoutingFinalizeDisposition : std::uint8_t {
+    Pending,
+    Finalized,
+};
+
 // Fixed-size failure retained by the noexcept registry snapshot. The optional
 // string-owning diagnostic is available only through fullFailure().
 struct DashboardConnectionRegistryFailure final {
@@ -249,6 +254,8 @@ public:
     // Binding is one-shot for the registry lifetime. The concrete bridge is
     // process-owned here. Bridge calls occur outside the registry-state mutex;
     // exact reap and retirement intentionally retain deadlineRoutingMutex_.
+    // A bridge failure edge is deferred across each such transaction and is
+    // dispatched only after its routing and nested state locks are released.
     [[nodiscard]] Domain::Result<void> bindDeadlineBridge(
         std::shared_ptr<DashboardDeadlineIocpBridge> bridge) noexcept;
 
@@ -265,12 +272,14 @@ public:
             IDashboardConnectionRegistryRoutingProgressObserver> observer)
         noexcept;
 
-    // Captures immutable identity, registers and stores the exact fixed bridge
-    // handle, inserts, then starts outside the lock so immediate native and
-    // deadline completions can route safely. Production identities come from
-    // the process-wide nonreusing allocator; concurrently created owners may
-    // arrive here out of numeric order. A start failure retires its deadline
-    // handle immediately, requests owner shutdown, and retains it until drained.
+    // Captures immutable identity and binds the external drain observer before
+    // the routing transaction. Exact bridge-owner acquisition and registry
+    // insertion then commit atomically against finalization; start remains
+    // outside all locks so immediate native and deadline completions can route
+    // safely. Production identities come from the process-wide nonreusing
+    // allocator; concurrently created owners may arrive here out of numeric
+    // order. A start failure retires its deadline handle immediately, requests
+    // owner shutdown, and retains it until drained.
     [[nodiscard]] Domain::Result<void> registerConnection(
         std::shared_ptr<IDashboardConnectionDispatchTarget> target) noexcept;
 
@@ -333,10 +342,18 @@ public:
     // their owning coordinator drains and unregisters them.
     void beginShutdown() noexcept;
 
-    // May be called only after all connection and auxiliary owners have been
-    // exactly removed and every posted deadline tombstone has reaped. Returns
-    // false without mutation while any routing ownership remains.
-    [[nodiscard]] bool finalizeDeadlineRouting() noexcept;
+    // Valid only after registry shutdown begins. Returns Pending while
+    // registered application routes remain or while exact posted-retired
+    // tombstones still need the live IOCP kernel. Once application routes are
+    // zero, any live bridge owner, malformed pending shape, or fatal
+    // registry/bridge state is an integrity failure rather than a waitable
+    // condition. A never-bound partial composition with no routes is already
+    // Finalized; a previously bound bridge may never disappear. Otherwise,
+    // Finalized closes bridge publication only after all exact routing
+    // ownership is gone.
+    [[nodiscard]] Domain::Result<
+        DashboardDeadlineRoutingFinalizeDisposition>
+    finalizeDeadlineRouting() noexcept;
 
 private:
     struct Entry final {
@@ -451,9 +468,10 @@ private:
     bool shutdown_{};
     bool fatal_{};
     std::atomic_bool deadlineRoutingInProgress_{};
-    // Serializes one exact deadline reap plus target pin against exact owner
-    // retirement. Acquire this before mutex_; callbacks and shared-owner
-    // destruction must occur only after both locks are released.
+    // Serializes bridge-owner acquisition plus authoritative registry commit
+    // or rollback, exact reap plus target pin, retirement, and finalization.
+    // Acquire this before mutex_; callbacks and shared-owner destruction must
+    // occur only after both locks are released.
     mutable std::mutex deadlineRoutingMutex_;
     // Serializes graceful and hard callback fan-outs without holding the
     // registry data mutex. Recursive acquisition permits a callback to request

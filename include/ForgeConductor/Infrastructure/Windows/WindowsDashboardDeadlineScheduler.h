@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <utility>
 
 namespace ForgeConductor::Infrastructure::Windows {
 
@@ -48,6 +50,31 @@ public:
     virtual void signal(WindowsDashboardDeadline deadline) noexcept = 0;
 };
 
+enum class WindowsDashboardDeadlineSchedulerFailureKind : std::uint8_t {
+    DeadlineSinkUnavailable,
+    WorkerFailure,
+};
+
+struct WindowsDashboardDeadlineSchedulerFailure final {
+    WindowsDashboardDeadlineSchedulerFailureKind kind{
+        WindowsDashboardDeadlineSchedulerFailureKind::WorkerFailure};
+
+    bool operator==(
+        const WindowsDashboardDeadlineSchedulerFailure&) const = default;
+};
+
+// Optional for standalone schedulers and one-shot once managed. A managed
+// observer is notified outside scheduler locks when its owner thread can no
+// longer deliver exact deadlines. Losing a previously bound observer at that
+// boundary is process-fatal rather than silently discarding the health edge.
+class IWindowsDashboardDeadlineSchedulerFailureObserver {
+public:
+    virtual ~IWindowsDashboardDeadlineSchedulerFailureObserver() noexcept =
+        default;
+    virtual void dashboardDeadlineSchedulerFailed(
+        WindowsDashboardDeadlineSchedulerFailure failure) noexcept = 0;
+};
+
 class WindowsDashboardDeadlineSnapshot final {
 public:
     [[nodiscard]] std::size_t scheduledCount() const noexcept
@@ -62,22 +89,32 @@ public:
 
     [[nodiscard]] bool isShutdown() const noexcept { return shutdown_; }
 
+    [[nodiscard]] const WindowsDashboardDeadlineSchedulerFailure* failure()
+        const noexcept
+    {
+        return failure_.has_value() ? std::addressof(*failure_) : nullptr;
+    }
+
 private:
     friend class WindowsDashboardDeadlineScheduler;
 
     WindowsDashboardDeadlineSnapshot(
         const std::size_t scheduledCount,
         const std::size_t maximumScheduledCount,
-        const bool shutdown) noexcept
+        const bool shutdown,
+        std::optional<WindowsDashboardDeadlineSchedulerFailure> failure)
+        noexcept
         : scheduledCount_{scheduledCount},
           maximumScheduledCount_{maximumScheduledCount},
-          shutdown_{shutdown}
+          shutdown_{shutdown},
+          failure_{std::move(failure)}
     {
     }
 
     std::size_t scheduledCount_{};
     std::size_t maximumScheduledCount_{};
     bool shutdown_{};
+    std::optional<WindowsDashboardDeadlineSchedulerFailure> failure_;
 };
 
 // Process-owned deadline owner for dashboard connections and listener
@@ -114,6 +151,11 @@ public:
 
     [[nodiscard]] Domain::Result<WindowsDashboardDeadline> schedule(
         WindowsDashboardDeadlineRequest request) noexcept;
+
+    [[nodiscard]] Domain::Result<void> bindFailureObserver(
+        std::weak_ptr<
+            IWindowsDashboardDeadlineSchedulerFailureObserver> observer)
+        noexcept;
 
     // Returns true only when the exact live arm was removed. Token-aware
     // cancellation prevents a delayed cancel from removing a successor arm.

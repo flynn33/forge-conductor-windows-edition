@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge Conductor Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <script type="module" src="/static/telemetry.js"></script>
+</head>
+<body data-dashboard-page="telemetry">
+  <a class="skip-link" href="#main-content">Skip to dashboard content</a>
+  <header class="site-header">
+    <div>
+      <h1>Forge Conductor Dashboard</h1>
+      <p id="dashboard-version" class="secondary-text">Runtime status and telemetry</p>
+    </div>
+    <nav aria-label="Dashboard navigation">
+      <a href="/" aria-current="page">Telemetry</a>
+      <a href="/control">Manager and operations</a>
+    </nav>
+  </header>
+
+  <section class="toolbar" aria-label="Dashboard status and actions">
+    <p id="dashboard-connection-status" role="status" aria-live="polite">Connecting</p>
+    <p>Updated: <time id="dashboard-updated">Not yet</time></p>
+    <button id="dashboard-refresh" type="button">Refresh now</button>
+  </section>
+
+  <p id="dashboard-loading" class="notice" role="status" aria-live="polite">Loading telemetry.</p>
+  <p id="dashboard-auth-error" class="notice error" role="alert" hidden></p>
+  <p id="dashboard-error" class="notice error" role="alert" hidden></p>
+
+  <main id="main-content" tabindex="-1">
+    <section id="panel-sys-strip" aria-labelledby="heading-sys-strip">
+      <h2 id="heading-sys-strip">System summary</h2>
+      <dl class="summary-grid">
+        <div><dt>CPU</dt><dd id="system-cpu">Unavailable</dd></div>
+        <div><dt>CPU frequency</dt><dd id="system-frequency">Unavailable</dd></div>
+        <div><dt>Memory</dt><dd id="system-memory">Unavailable</dd></div>
+        <div><dt>GPU</dt><dd id="system-gpu">Unavailable</dd></div>
+        <div><dt>Disk throughput</dt><dd id="system-disk-io">Unavailable</dd></div>
+        <div><dt>Host</dt><dd id="system-host">Unavailable</dd></div>
+      </dl>
+    </section>
+
+    <section id="panel-load-trace" aria-labelledby="heading-load-trace">
+      <h2 id="heading-load-trace">Load trace</h2>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Recent load history">
+        <table>
+          <caption>Newest telemetry samples</caption>
+          <thead>
+            <tr><th scope="col">Time</th><th scope="col">CPU</th><th scope="col">Memory</th><th scope="col">GPU</th><th scope="col">Disk</th><th scope="col">MCP</th></tr>
+          </thead>
+          <tbody id="load-trace-rows"><tr><td colspan="6">No samples available.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="panel-cpu-cores" aria-labelledby="heading-cpu-cores">
+      <h2 id="heading-cpu-cores">CPU cores</h2>
+      <p id="cpu-cores-summary" class="secondary-text">Unavailable</p>
+      <ul id="cpu-core-list" class="metric-list"><li>Unavailable</li></ul>
+    </section>
+
+    <section id="panel-gpu-cores" aria-labelledby="heading-gpu-cores">
+      <h2 id="heading-gpu-cores">GPU adapters and engines</h2>
+      <ul id="gpu-core-list" class="metric-list"><li>Unavailable</li></ul>
+    </section>
+
+    <section id="panel-storage" aria-labelledby="heading-storage">
+      <h2 id="heading-storage">Storage</h2>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Storage volumes">
+        <table>
+          <caption>Available storage volumes</caption>
+          <thead><tr><th scope="col">Volume</th><th scope="col">Used</th><th scope="col">Free</th><th scope="col">Total</th></tr></thead>
+          <tbody id="storage-rows"><tr><td colspan="4">Unavailable</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="panel-orchestration" aria-labelledby="heading-orchestration">
+      <h2 id="heading-orchestration">Orchestration</h2>
+      <dl id="orchestration-values" class="definition-list"><div><dt>Health</dt><dd>Unavailable</dd></div></dl>
+    </section>
+
+    <section id="panel-mcp-servers" aria-labelledby="heading-mcp-servers">
+      <h2 id="heading-mcp-servers">MCP servers</h2>
+      <div id="mcp-server-list" class="record-list"><p>Unavailable</p></div>
+    </section>
+
+    <section id="panel-mcp-tools" aria-labelledby="heading-mcp-tools">
+      <h2 id="heading-mcp-tools">MCP tools</h2>
+      <p id="mcp-tools-summary" class="secondary-text">Unavailable</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="MCP tools">
+        <table>
+          <caption>Configured tool catalog</caption>
+          <thead><tr><th scope="col">Tool</th><th scope="col">Pack</th><th scope="col">Status</th><th scope="col">Effect</th></tr></thead>
+          <tbody id="mcp-tool-rows"><tr><td colspan="4">Unavailable</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="panel-sub-agents" aria-labelledby="heading-sub-agents">
+      <h2 id="heading-sub-agents">Sub-agents</h2>
+      <p id="agent-summary" class="secondary-text">Unavailable</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Sub-agent sessions">
+        <table>
+          <caption>Recent agent sessions</caption>
+          <thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Summary</th><th scope="col">Updated</th></tr></thead>
+          <tbody id="agent-session-rows"><tr><td colspan="4">Unavailable</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="panel-hot-processes" aria-labelledby="heading-hot-processes">
+      <h2 id="heading-hot-processes">Hot processes</h2>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Processes using the most resources">
+        <table>
+          <caption>Bounded process telemetry</caption>
+          <thead><tr><th scope="col">Process</th><th scope="col">PID</th><th scope="col">CPU</th><th scope="col">Memory</th><th scope="col">Role</th></tr></thead>
+          <tbody id="process-rows"><tr><td colspan="5">Unavailable</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="panel-live-stream" aria-labelledby="heading-live-stream">
+      <h2 id="heading-live-stream">Live stream</h2>
+      <dl class="definition-list">
+        <div><dt>Transport</dt><dd id="stream-transport">Connecting</dd></div>
+        <div><dt>Sample rate</dt><dd id="stream-sample-rate">Unavailable</dd></div>
+        <div><dt>Runtime</dt><dd id="stream-runtime">Unavailable</dd></div>
+      </dl>
+      <div id="live-feed-list" class="record-list"><p>Feed unavailable</p></div>
+    </section>
+  </main>
+
+  <noscript><p class="notice error">JavaScript is required to authenticate and render dashboard data.</p></noscript>
+</body>
+</html>

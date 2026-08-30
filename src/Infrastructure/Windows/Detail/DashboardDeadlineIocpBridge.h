@@ -8,6 +8,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -33,6 +34,20 @@ struct DashboardDeadlineIocpFailure final {
     bool retryable{};
 
     bool operator==(const DashboardDeadlineIocpFailure&) const = default;
+};
+
+// Optional one-shot process edge for the first fatal bridge transition.
+// Standalone bridge users may omit it. Managed composition binds before any
+// deadline can be published and retains the observer strongly through either
+// this edge or final routing shutdown. The callback runs after the bridge
+// mutex is released and must only latch failure and wake its external driver.
+class IDashboardDeadlineIocpBridgeFailureObserver {
+public:
+    virtual ~IDashboardDeadlineIocpBridgeFailureObserver() noexcept =
+        default;
+
+    virtual void dashboardDeadlineIocpBridgeFailed(
+        DashboardDeadlineIocpFailure failure) noexcept = 0;
 };
 
 enum class DashboardDeadlineIocpReapDisposition : std::uint8_t {
@@ -158,6 +173,32 @@ private:
 class DashboardDeadlineIocpBridge final
     : public IWindowsDashboardDeadlineSink {
 public:
+    class FailureNotificationDeferral final {
+    public:
+        FailureNotificationDeferral() noexcept = default;
+        FailureNotificationDeferral(
+            FailureNotificationDeferral&& other) noexcept;
+        FailureNotificationDeferral& operator=(
+            FailureNotificationDeferral&& other) noexcept;
+        FailureNotificationDeferral(
+            const FailureNotificationDeferral&) = delete;
+        FailureNotificationDeferral& operator=(
+            const FailureNotificationDeferral&) = delete;
+        ~FailureNotificationDeferral() noexcept;
+
+        // Releases the exact dispatch deferral. The final release publishes
+        // a pending first-fatal edge synchronously on this thread.
+        void release() noexcept;
+
+    private:
+        friend class DashboardDeadlineIocpBridge;
+
+        explicit FailureNotificationDeferral(
+            DashboardDeadlineIocpBridge& owner) noexcept;
+
+        DashboardDeadlineIocpBridge* owner_{};
+    };
+
     static constexpr std::size_t SlotCount =
         DashboardDeadlineNotificationMailbox::HardMaximumOwnerCount;
 
@@ -179,6 +220,19 @@ public:
     {
         return completionKey_;
     }
+
+    [[nodiscard]] Domain::Result<void> bindFailureObserver(
+        std::weak_ptr<IDashboardDeadlineIocpBridgeFailureObserver> observer)
+        noexcept;
+
+    // Prevents the managed observer callback from overlapping an external
+    // routing transaction. Acquisition waits for any callback already in
+    // progress; bridge mutations continue to latch fatal state while held.
+    // Destroy or release the token only after every external routing/state
+    // lock owned by that transaction has been released. The token borrows the
+    // bridge and must not outlive it.
+    [[nodiscard]] FailureNotificationDeferral
+    deferFailureNotificationDispatch() noexcept;
 
     [[nodiscard]] Domain::Result<DashboardDeadlineNotificationHandle>
     registerOwner(std::uint64_t registrationId) noexcept;
@@ -212,6 +266,8 @@ public:
     void shutdown() noexcept;
 
 private:
+    class FailureDispatchGuard;
+
     enum class SlotLifecycle : std::uint8_t {
         Vacant,
         Registered,
@@ -241,6 +297,8 @@ private:
     void drainExactPostedHandleLocked(std::size_t index) noexcept;
     void transitionToShutdownLocked() noexcept;
     void retainFatalFailureLocked(Domain::Error error) noexcept;
+    void dispatchFatalFailureIfRequired() noexcept;
+    void releaseFailureNotificationDeferral() noexcept;
     [[nodiscard]] DashboardDeadlineIocpSnapshot snapshotLocked()
         const noexcept;
 
@@ -250,13 +308,21 @@ private:
     SlotOwners slots_;
     std::optional<Domain::Error> firstFailure_;
     std::optional<DashboardDeadlineIocpFailure> firstFailureSnapshot_;
+    std::weak_ptr<IDashboardDeadlineIocpBridgeFailureObserver>
+        failureObserver_;
     std::uint64_t successfulPostCount_{};
     std::uint64_t coalescedSignalCount_{};
     std::uint64_t deliveredDeadlineCount_{};
     std::uint64_t drainedRetiredCount_{};
     bool shutdown_{};
     bool fatal_{};
+    bool failureObserverEverBound_{};
+    bool failureNotificationSent_{};
     mutable std::mutex mutex_;
+    std::size_t failureNotificationDeferralCount_{};
+    bool failureNotificationDispatchInProgress_{};
+    std::condition_variable failureNotificationDispatchChanged_;
+    mutable std::mutex failureNotificationDispatchMutex_;
 };
 
 static_assert(

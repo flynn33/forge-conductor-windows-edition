@@ -1,0 +1,40 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+      Start 12: ForgeConductor.Dashboard.ConnectionApplicationTests
+ 1/13 Test #12: ForgeConductor.Dashboard.ConnectionApplicationTests ...............   Passed    0.06 sec
+      Start 17: ForgeConductor.Dashboard.StaticAssetStoreTests
+ 2/13 Test #17: ForgeConductor.Dashboard.StaticAssetStoreTests ....................   Passed    0.31 sec
+      Start 18: ForgeConductor.Dashboard.WindowsStaticAssetBundleTests
+ 3/13 Test #18: ForgeConductor.Dashboard.WindowsStaticAssetBundleTests ............   Passed    0.03 sec
+      Start 19: ForgeConductor.Dashboard.StaticShellContractTests
+ 4/13 Test #19: ForgeConductor.Dashboard.StaticShellContractTests .................   Passed    0.04 sec
+      Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+ 5/13 Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.21 sec
+      Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+ 6/13 Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.19 sec
+      Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+ 7/13 Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.04 sec
+      Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+ 8/13 Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.30 sec
+      Start 46: ForgeConductor.Dashboard.DeadlineSchedulerTests
+ 9/13 Test #46: ForgeConductor.Dashboard.DeadlineSchedulerTests ...................   Passed    1.00 sec
+      Start 52: ForgeConductor.Dashboard.RouteCatalogTests
+10/13 Test #52: ForgeConductor.Dashboard.RouteCatalogTests ........................   Passed    0.01 sec
+      Start 53: ForgeConductor.Dashboard.ManagerJsonCodecTests
+11/13 Test #53: ForgeConductor.Dashboard.ManagerJsonCodecTests ....................   Passed    0.06 sec
+      Start 54: ForgeConductor.Dashboard.TelemetryJsonCodecTests
+12/13 Test #54: ForgeConductor.Dashboard.TelemetryJsonCodecTests ..................   Passed    0.09 sec
+      Start 57: ForgeConductor.Dashboard.StreamQueryDecoderTests
+13/13 Test #57: ForgeConductor.Dashboard.StreamQueryDecoderTests ..................   Passed    0.01 sec
+
+100% tests passed out of 13
+
+Label Time Summary:
+G16         =   2.35 sec*proc (13 tests)
+T-MGR       =   2.35 sec*proc (13 tests)
+T-PARITY    =   0.62 sec*proc (8 tests)
+T-SEC       =   0.42 sec*proc (6 tests)
+T-STRESS    =   2.10 sec*proc (7 tests)
+T-TEL       =   0.16 sec*proc (3 tests)
+T-UNIT      =   2.35 sec*proc (13 tests)
+
+Total Test time (real) =   2.37 sec

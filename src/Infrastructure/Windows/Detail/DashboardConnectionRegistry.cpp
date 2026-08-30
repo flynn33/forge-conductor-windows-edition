@@ -632,84 +632,159 @@ Domain::Result<void> DashboardConnectionRegistry::registerConnection(
             return Domain::Result<void>::failure(std::move(*failure));
         }
 
-        auto deadlineOwner = bridge->registerOwner(registrationId);
-        if (!deadlineOwner) {
-            auto error = std::move(deadlineOwner).error();
-            if (error.code == Domain::ErrorCodes::Conflict ||
-                error.code == Domain::ErrorCodes::IntegrityFailure ||
-                error.code == Domain::ErrorCodes::InternalFailure) {
-                failRouting(Domain::Error{error});
-            }
-            target->beginShutdown();
-            return Domain::Result<void>::failure(std::move(error));
-        }
-        const auto deadlineHandle = std::move(deadlineOwner).value();
-
         std::weak_ptr<IDashboardConnectionDrainObserver> drainObserver{
             shared_from_this()};
         auto drainBound = target->bindDrainObserver(
             std::move(drainObserver));
         if (!drainBound) {
             auto error = std::move(drainBound).error();
-            const auto retired = bridge->retireOwner(deadlineHandle);
-            if (!retired && !bridge->snapshot().isShutdown()) {
-                failRouting(registryError(
-                    Domain::ErrorCodes::IntegrityFailure,
-                    "The dashboard connection registry could not retire a deadline owner after drain-observer binding failed."));
-            }
             target->beginShutdown();
             return Domain::Result<void>::failure(std::move(error));
         }
 
         failure.reset();
         structuralFailure = false;
+        DashboardDeadlineNotificationHandle deadlineHandle;
+        auto failureNotificationDeferral =
+            bridge->deferFailureNotificationDispatch();
         {
-            const std::scoped_lock lock{mutex_};
-            if (shutdown_) {
-                failure.emplace(registryError(
-                    Domain::ErrorCodes::TransportClosed,
-                    "The dashboard connection registry closed during deadline owner registration."));
-            } else if (hasDuplicateLocked(
-                           key, registrationId, target.get())) {
-                failure.emplace(registryError(
-                    Domain::ErrorCodes::Conflict,
-                    "A dashboard connection registry identity became registered concurrently."));
-                retainFatalFailureLocked(Domain::Error{*failure});
-                structuralFailure = true;
-            } else if (registeredConnectionCount_ >=
-                       MaximumConnectionCount) {
-                failure.emplace(registryError(
-                    Domain::ErrorCodes::LimitExceeded,
-                    "The dashboard connection registry reached its fixed forty-connection capacity.",
-                    true));
-            } else {
-                auto* const vacant = findVacantLocked();
-                if (vacant == nullptr) {
-                    failure.emplace(registryError(
-                        Domain::ErrorCodes::IntegrityFailure,
-                        "The dashboard connection registry count did not match its fixed entry array."));
-                    retainFatalFailureLocked(Domain::Error{*failure});
-                    structuralFailure = true;
-                } else {
-                    vacant->key = key;
-                    vacant->registrationId = registrationId;
-                    vacant->generationId = generationId;
-                    vacant->deadlineHandle = deadlineHandle;
-                    vacant->deadlineOwnerLifecycle =
-                        Entry::DeadlineOwnerLifecycle::Registered;
-                    vacant->target = target;
-                    ++registeredConnectionCount_;
+            std::unique_lock routingLock{deadlineRoutingMutex_};
+            const DeadlineRoutingProgressGuard routingProgress{
+                deadlineRoutingInProgress_};
+            bool deadlineOwnerAcquired{};
+            try {
+                {
+                    const std::scoped_lock lock{mutex_};
+                    if (shutdown_) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::TransportClosed,
+                            "The dashboard connection registry closed before deadline owner registration."));
+                    } else if (hasDuplicateLocked(
+                                   key, registrationId, target.get())) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::Conflict,
+                            "A dashboard connection registry identity became registered concurrently."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else if (registeredConnectionCount_ >=
+                               MaximumConnectionCount) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "The dashboard connection registry reached its fixed forty-connection capacity.",
+                            true));
+                    } else {
+                        bridge = deadlineBridge_;
+                        if (bridge == nullptr) {
+                            failure.emplace(registryError(
+                                Domain::ErrorCodes::IntegrityFailure,
+                                "The dashboard connection registry lost its deadline bridge before owner registration."));
+                            retainFatalFailureLocked(
+                                Domain::Error{*failure});
+                            structuralFailure = true;
+                        }
+                    }
                 }
+
+                if (!failure.has_value()) {
+                    auto deadlineOwner =
+                        bridge->registerOwner(registrationId);
+                    if (!deadlineOwner) {
+                        failure.emplace(
+                            std::move(deadlineOwner).error());
+                        const bool structuralBridgeFailure =
+                            failure->code ==
+                                Domain::ErrorCodes::Conflict ||
+                            failure->code ==
+                                Domain::ErrorCodes::IntegrityFailure ||
+                            failure->code ==
+                                Domain::ErrorCodes::InternalFailure;
+                        if (structuralBridgeFailure) {
+                            const std::scoped_lock lock{mutex_};
+                            retainFatalFailureLocked(
+                                Domain::Error{*failure});
+                            structuralFailure = true;
+                        }
+                    } else {
+                        deadlineHandle =
+                            std::move(deadlineOwner).value();
+                        deadlineOwnerAcquired = true;
+                    }
+                }
+
+                if (deadlineOwnerAcquired) {
+                    const std::scoped_lock lock{mutex_};
+                    if (shutdown_) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::TransportClosed,
+                            "The dashboard connection registry closed during deadline owner registration."));
+                    } else if (deadlineBridge_.get() != bridge.get()) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The dashboard connection registry changed its deadline bridge during owner registration."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else if (hasDuplicateLocked(
+                                   key, registrationId,
+                                   target.get())) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::Conflict,
+                            "A dashboard connection registry identity became registered concurrently."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else if (registeredConnectionCount_ >=
+                               MaximumConnectionCount) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "The dashboard connection registry reached its fixed forty-connection capacity.",
+                            true));
+                    } else if (auto* const vacant =
+                                   findVacantLocked();
+                               vacant == nullptr) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The dashboard connection registry count did not match its fixed entry array."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else {
+                        vacant->key = key;
+                        vacant->registrationId = registrationId;
+                        vacant->generationId = generationId;
+                        vacant->deadlineHandle = deadlineHandle;
+                        vacant->deadlineOwnerLifecycle =
+                            Entry::DeadlineOwnerLifecycle::Registered;
+                        vacant->target = target;
+                        ++registeredConnectionCount_;
+                        deadlineOwnerAcquired = false;
+                    }
+                }
+
+                if (deadlineOwnerAcquired) {
+                    const auto retired =
+                        bridge->retireOwner(deadlineHandle);
+                    if (!retired &&
+                        !bridge->snapshot().isShutdown()) {
+                        const std::scoped_lock lock{mutex_};
+                        retainFatalFailureLocked(registryError(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The dashboard connection registry could not retire an uncommitted deadline owner."));
+                        structuralFailure = true;
+                    }
+                }
+            } catch (...) {
+                if (deadlineOwnerAcquired && bridge != nullptr) {
+                    static_cast<void>(
+                        bridge->retireOwner(deadlineHandle));
+                }
+                throw;
             }
         }
+        failureNotificationDeferral.release();
 
         if (failure.has_value()) {
-            const auto retired = bridge->retireOwner(deadlineHandle);
-            if (!retired && !bridge->snapshot().isShutdown()) {
-                failRouting(registryError(
-                    Domain::ErrorCodes::IntegrityFailure,
-                    "The dashboard connection registry could not retire an uncommitted deadline owner."));
-            }
             if (structuralFailure) {
                 beginShutdown();
             }
@@ -801,68 +876,154 @@ DashboardConnectionRegistry::registerAuxiliaryDeadlineTarget(
             return Domain::Result<void>::failure(std::move(*failure));
         }
 
-        auto deadlineOwner = bridge->registerOwner(registrationId);
-        if (!deadlineOwner) {
-            auto error = std::move(deadlineOwner).error();
-            if (error.code == Domain::ErrorCodes::Conflict ||
-                error.code == Domain::ErrorCodes::IntegrityFailure ||
-                error.code == Domain::ErrorCodes::InternalFailure) {
-                failRouting(Domain::Error{error});
-            }
-            target->beginShutdown();
-            return Domain::Result<void>::failure(std::move(error));
-        }
-        const auto deadlineHandle = std::move(deadlineOwner).value();
-
         failure.reset();
         structuralFailure = false;
+        DashboardDeadlineNotificationHandle deadlineHandle;
+        auto failureNotificationDeferral =
+            bridge->deferFailureNotificationDispatch();
         {
-            const std::scoped_lock lock{mutex_};
-            if (shutdown_) {
-                failure.emplace(registryError(
-                    Domain::ErrorCodes::TransportClosed,
-                    "The dashboard deadline registry closed during auxiliary owner registration."));
-            } else if (
-                findByRegistrationIdLocked(registrationId) != nullptr ||
-                findAuxiliaryByRegistrationIdLocked(registrationId) !=
-                    nullptr) {
-                failure.emplace(registryError(
-                    Domain::ErrorCodes::Conflict,
-                    "The dashboard auxiliary deadline identity became registered concurrently."));
-                retainFatalFailureLocked(Domain::Error{*failure});
-                structuralFailure = true;
-            } else if (registeredAuxiliaryDeadlineTargetCount_ >=
-                       MaximumAuxiliaryDeadlineTargetCount) {
-                failure.emplace(registryError(
-                    Domain::ErrorCodes::LimitExceeded,
-                    "The dashboard auxiliary deadline table reached its fixed capacity.",
-                    true));
-            } else {
-                auto* const vacant = findVacantAuxiliaryLocked();
-                if (vacant == nullptr) {
-                    failure.emplace(registryError(
-                        Domain::ErrorCodes::IntegrityFailure,
-                        "The dashboard auxiliary deadline count did not match its fixed entry array."));
-                    retainFatalFailureLocked(Domain::Error{*failure});
-                    structuralFailure = true;
-                } else {
-                    vacant->registrationId = registrationId;
-                    vacant->deadlineHandle = deadlineHandle;
-                    vacant->deadlineOwnerLifecycle =
-                        Entry::DeadlineOwnerLifecycle::Registered;
-                    vacant->target = target;
-                    ++registeredAuxiliaryDeadlineTargetCount_;
+            std::unique_lock routingLock{deadlineRoutingMutex_};
+            const DeadlineRoutingProgressGuard routingProgress{
+                deadlineRoutingInProgress_};
+            bool deadlineOwnerAcquired{};
+            try {
+                {
+                    const std::scoped_lock lock{mutex_};
+                    if (shutdown_) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::TransportClosed,
+                            "The dashboard deadline registry closed before auxiliary owner registration."));
+                    } else if (
+                        findByRegistrationIdLocked(registrationId) !=
+                            nullptr ||
+                        findAuxiliaryByRegistrationIdLocked(
+                            registrationId) != nullptr) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::Conflict,
+                            "The dashboard auxiliary deadline identity became registered concurrently."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else if (
+                        registeredAuxiliaryDeadlineTargetCount_ >=
+                            MaximumAuxiliaryDeadlineTargetCount) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "The dashboard auxiliary deadline table reached its fixed capacity.",
+                            true));
+                    } else {
+                        bridge = deadlineBridge_;
+                        if (bridge == nullptr) {
+                            failure.emplace(registryError(
+                                Domain::ErrorCodes::IntegrityFailure,
+                                "The dashboard auxiliary deadline registry lost its bridge before owner registration."));
+                            retainFatalFailureLocked(
+                                Domain::Error{*failure});
+                            structuralFailure = true;
+                        }
+                    }
                 }
+
+                if (!failure.has_value()) {
+                    auto deadlineOwner =
+                        bridge->registerOwner(registrationId);
+                    if (!deadlineOwner) {
+                        failure.emplace(
+                            std::move(deadlineOwner).error());
+                        const bool structuralBridgeFailure =
+                            failure->code ==
+                                Domain::ErrorCodes::Conflict ||
+                            failure->code ==
+                                Domain::ErrorCodes::IntegrityFailure ||
+                            failure->code ==
+                                Domain::ErrorCodes::InternalFailure;
+                        if (structuralBridgeFailure) {
+                            const std::scoped_lock lock{mutex_};
+                            retainFatalFailureLocked(
+                                Domain::Error{*failure});
+                            structuralFailure = true;
+                        }
+                    } else {
+                        deadlineHandle =
+                            std::move(deadlineOwner).value();
+                        deadlineOwnerAcquired = true;
+                    }
+                }
+
+                if (deadlineOwnerAcquired) {
+                    const std::scoped_lock lock{mutex_};
+                    if (shutdown_) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::TransportClosed,
+                            "The dashboard deadline registry closed during auxiliary owner registration."));
+                    } else if (deadlineBridge_.get() != bridge.get()) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The dashboard auxiliary deadline registry changed its bridge during owner registration."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else if (
+                        findByRegistrationIdLocked(registrationId) !=
+                            nullptr ||
+                        findAuxiliaryByRegistrationIdLocked(
+                            registrationId) != nullptr) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::Conflict,
+                            "The dashboard auxiliary deadline identity became registered concurrently."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else if (
+                        registeredAuxiliaryDeadlineTargetCount_ >=
+                            MaximumAuxiliaryDeadlineTargetCount) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "The dashboard auxiliary deadline table reached its fixed capacity.",
+                            true));
+                    } else if (auto* const vacant =
+                                   findVacantAuxiliaryLocked();
+                               vacant == nullptr) {
+                        failure.emplace(registryError(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The dashboard auxiliary deadline count did not match its fixed entry array."));
+                        retainFatalFailureLocked(
+                            Domain::Error{*failure});
+                        structuralFailure = true;
+                    } else {
+                        vacant->registrationId = registrationId;
+                        vacant->deadlineHandle = deadlineHandle;
+                        vacant->deadlineOwnerLifecycle =
+                            Entry::DeadlineOwnerLifecycle::Registered;
+                        vacant->target = target;
+                        ++registeredAuxiliaryDeadlineTargetCount_;
+                        deadlineOwnerAcquired = false;
+                    }
+                }
+
+                if (deadlineOwnerAcquired) {
+                    const auto retired =
+                        bridge->retireOwner(deadlineHandle);
+                    if (!retired &&
+                        !bridge->snapshot().isShutdown()) {
+                        const std::scoped_lock lock{mutex_};
+                        retainFatalFailureLocked(registryError(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The dashboard registry could not retire an uncommitted auxiliary deadline owner."));
+                        structuralFailure = true;
+                    }
+                }
+            } catch (...) {
+                if (deadlineOwnerAcquired && bridge != nullptr) {
+                    static_cast<void>(
+                        bridge->retireOwner(deadlineHandle));
+                }
+                throw;
             }
         }
+        failureNotificationDeferral.release();
 
         if (failure.has_value()) {
-            const auto retired = bridge->retireOwner(deadlineHandle);
-            if (!retired && !bridge->snapshot().isShutdown()) {
-                failRouting(registryError(
-                    Domain::ErrorCodes::IntegrityFailure,
-                    "The dashboard registry could not retire an uncommitted auxiliary deadline owner."));
-            }
             if (structuralFailure) {
                 beginShutdown();
             }
@@ -1097,6 +1258,16 @@ bool DashboardConnectionRegistry::retireDeadlineOwnerIdentity(
     std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
     DashboardDeadlineNotificationHandle handle;
     try {
+        {
+            const std::scoped_lock lock{mutex_};
+            bridge = deadlineBridge_;
+        }
+        DashboardDeadlineIocpBridge::FailureNotificationDeferral
+            failureNotificationDeferral;
+        if (bridge != nullptr) {
+            failureNotificationDeferral =
+                bridge->deferFailureNotificationDispatch();
+        }
         std::unique_lock routingLock{deadlineRoutingMutex_};
         {
             const std::scoped_lock lock{mutex_};
@@ -1180,6 +1351,16 @@ bool DashboardConnectionRegistry::retireAuxiliaryDeadlineOwnerIdentity(
     std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
     DashboardDeadlineNotificationHandle handle;
     try {
+        {
+            const std::scoped_lock lock{mutex_};
+            bridge = deadlineBridge_;
+        }
+        DashboardDeadlineIocpBridge::FailureNotificationDeferral
+            failureNotificationDeferral;
+        if (bridge != nullptr) {
+            failureNotificationDeferral =
+                bridge->deferFailureNotificationDispatch();
+        }
         std::unique_lock routingLock{deadlineRoutingMutex_};
         {
             const std::scoped_lock lock{mutex_};
@@ -1273,6 +1454,10 @@ void DashboardConnectionRegistry::consume(
                 auxiliaryTarget;
             bool retiredNotification{};
             bool retiredRoutingOwnershipReduced{};
+            bool routingFailed{};
+            bool dispatchRoutingProgress{};
+            auto failureNotificationDeferral =
+                bridge->deferFailureNotificationDispatch();
             {
                 const std::scoped_lock routingLock{deadlineRoutingMutex_};
                 const DeadlineRoutingProgressGuard routingProgress{
@@ -1333,22 +1518,26 @@ void DashboardConnectionRegistry::consume(
                         }
                     }
                 }
-            }
 
-            const bool routingFailed = routingFailure.has_value();
-            bool dispatchRoutingProgress{};
-            if (routingFailed || retiredRoutingOwnershipReduced) {
-                const std::scoped_lock lock{mutex_};
-                if (routingFailed) {
-                    retainFatalFailureLocked(
-                        std::move(*routingFailure));
-                }
-                if (retiredRoutingOwnershipReduced) {
-                    incrementSaturating(retiredDeadlineDrainCount_);
-                    dispatchRoutingProgress =
-                        advanceRoutingProgressLocked();
+                // Fatal state and the exact routing reduction become visible
+                // before the routing lock is released. A concurrent finalizer
+                // therefore cannot observe the drained bridge slot without
+                // also observing the malformed-reap failure.
+                routingFailed = routingFailure.has_value();
+                if (routingFailed || retiredRoutingOwnershipReduced) {
+                    const std::scoped_lock lock{mutex_};
+                    if (routingFailed) {
+                        retainFatalFailureLocked(
+                            std::move(*routingFailure));
+                    }
+                    if (retiredRoutingOwnershipReduced) {
+                        incrementSaturating(retiredDeadlineDrainCount_);
+                        dispatchRoutingProgress =
+                            advanceRoutingProgressLocked();
+                    }
                 }
             }
+            failureNotificationDeferral.release();
             if (dispatchRoutingProgress) {
                 this->dispatchRoutingProgress();
             }
@@ -1771,32 +1960,99 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
     }
 }
 
-bool DashboardConnectionRegistry::finalizeDeadlineRouting() noexcept
+Domain::Result<DashboardDeadlineRoutingFinalizeDisposition>
+DashboardConnectionRegistry::finalizeDeadlineRouting() noexcept
 {
+    using FinalizeResult = Domain::Result<
+        DashboardDeadlineRoutingFinalizeDisposition>;
     try {
-        const std::scoped_lock routingLock{deadlineRoutingMutex_};
         std::shared_ptr<DashboardDeadlineIocpBridge> bridge;
         {
             const std::scoped_lock lock{mutex_};
-            if (!shutdown_ || registeredConnectionCount_ != 0U ||
-                registeredAuxiliaryDeadlineTargetCount_ != 0U) {
-                return false;
-            }
             bridge = deadlineBridge_;
         }
-        if (bridge == nullptr) {
-            return true;
+        DashboardDeadlineIocpBridge::FailureNotificationDeferral
+            failureNotificationDeferral;
+        if (bridge != nullptr) {
+            failureNotificationDeferral =
+                bridge->deferFailureNotificationDispatch();
         }
-        const auto snapshot = bridge->snapshot();
-        if (snapshot.registeredOwnerCount() != 0U ||
-            snapshot.postedOperationCount() != 0U ||
-            snapshot.retiredAwaitingReapCount() != 0U) {
-            return false;
+        const std::scoped_lock routingLock{deadlineRoutingMutex_};
+        std::size_t registeredConnectionCount{};
+        std::size_t registeredAuxiliaryCount{};
+        bool bridgeEverBound{};
+        bool shutdown{};
+        bool fatal{};
+        {
+            const std::scoped_lock lock{mutex_};
+            bridge = deadlineBridge_;
+            registeredConnectionCount = registeredConnectionCount_;
+            registeredAuxiliaryCount =
+                registeredAuxiliaryDeadlineTargetCount_;
+            bridgeEverBound = deadlineBridgeEverBound_;
+            shutdown = shutdown_;
+            fatal = fatal_;
+        }
+
+        if (fatal) {
+            return FinalizeResult::failure(registryError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "Fatal dashboard connection routing cannot be finalized as a successful drain."));
+        }
+        if (!shutdown) {
+            return FinalizeResult::failure(registryError(
+                Domain::ErrorCodes::InvalidRequest,
+                "Dashboard deadline routing cannot be finalized before registry shutdown begins."));
+        }
+        if (bridge == nullptr) {
+            if (!bridgeEverBound && registeredConnectionCount == 0U &&
+                registeredAuxiliaryCount == 0U) {
+                return FinalizeResult::success(
+                    DashboardDeadlineRoutingFinalizeDisposition::
+                        Finalized);
+            }
+            return FinalizeResult::failure(registryError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "Dashboard deadline routing lost its bound bridge before finalization."));
+        }
+        const auto bridgeSnapshot = bridge->snapshot();
+        if (bridgeSnapshot.isFatal()) {
+            return FinalizeResult::failure(registryError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "Fatal dashboard deadline bridge routing cannot be finalized as a successful drain."));
+        }
+        if (registeredConnectionCount != 0U ||
+            registeredAuxiliaryCount != 0U) {
+            return FinalizeResult::success(
+                DashboardDeadlineRoutingFinalizeDisposition::Pending);
+        }
+
+        const auto bridgeRegistered =
+            bridgeSnapshot.registeredOwnerCount();
+        const auto bridgePosted = bridgeSnapshot.postedOperationCount();
+        const auto bridgeRetired =
+            bridgeSnapshot.retiredAwaitingReapCount();
+        if (bridgeRegistered != 0U) {
+            return FinalizeResult::failure(registryError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "Dashboard deadline routing retained a live bridge owner after every registry route was removed."));
+        }
+        if (bridgePosted != bridgeRetired) {
+            return FinalizeResult::failure(registryError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "Dashboard deadline routing retained a posted operation that was not an exact retired tombstone."));
+        }
+        if (bridgeRetired != 0U) {
+            return FinalizeResult::success(
+                DashboardDeadlineRoutingFinalizeDisposition::Pending);
         }
         bridge->shutdown();
-        return true;
+        return FinalizeResult::success(
+            DashboardDeadlineRoutingFinalizeDisposition::Finalized);
     } catch (...) {
-        return false;
+        return FinalizeResult::failure(registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "Dashboard deadline routing could not be finalized safely."));
     }
 }
 

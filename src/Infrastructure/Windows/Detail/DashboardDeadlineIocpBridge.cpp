@@ -99,6 +99,66 @@ DashboardDeadlineIocpBridge::DashboardDeadlineIocpBridge(
 {
 }
 
+DashboardDeadlineIocpBridge::FailureNotificationDeferral::
+    FailureNotificationDeferral(
+        DashboardDeadlineIocpBridge& owner) noexcept
+    : owner_{std::addressof(owner)}
+{
+}
+
+DashboardDeadlineIocpBridge::FailureNotificationDeferral::
+    FailureNotificationDeferral(
+        FailureNotificationDeferral&& other) noexcept
+    : owner_{std::exchange(other.owner_, nullptr)}
+{
+}
+
+DashboardDeadlineIocpBridge::FailureNotificationDeferral&
+DashboardDeadlineIocpBridge::FailureNotificationDeferral::operator=(
+    FailureNotificationDeferral&& other) noexcept
+{
+    if (this != std::addressof(other)) {
+        release();
+        owner_ = std::exchange(other.owner_, nullptr);
+    }
+    return *this;
+}
+
+DashboardDeadlineIocpBridge::FailureNotificationDeferral::
+    ~FailureNotificationDeferral() noexcept
+{
+    release();
+}
+
+void DashboardDeadlineIocpBridge::FailureNotificationDeferral::release()
+    noexcept
+{
+    auto* const owner = std::exchange(owner_, nullptr);
+    if (owner != nullptr) {
+        owner->releaseFailureNotificationDeferral();
+    }
+}
+
+class DashboardDeadlineIocpBridge::FailureDispatchGuard final {
+public:
+    explicit FailureDispatchGuard(
+        DashboardDeadlineIocpBridge& owner) noexcept
+        : owner_{owner}
+    {
+    }
+
+    ~FailureDispatchGuard() noexcept
+    {
+        owner_.dispatchFatalFailureIfRequired();
+    }
+
+    FailureDispatchGuard(const FailureDispatchGuard&) = delete;
+    FailureDispatchGuard& operator=(const FailureDispatchGuard&) = delete;
+
+private:
+    DashboardDeadlineIocpBridge& owner_;
+};
+
 DashboardDeadlineIocpBridge::~DashboardDeadlineIocpBridge() noexcept
 {
     shutdown();
@@ -110,6 +170,55 @@ DashboardDeadlineIocpBridge::~DashboardDeadlineIocpBridge() noexcept
             // it would convert a bounded drain obligation into use-after-free.
             std::terminate();
         }
+    }
+}
+
+Domain::Result<void>
+DashboardDeadlineIocpBridge::bindFailureObserver(
+    std::weak_ptr<IDashboardDeadlineIocpBridgeFailureObserver> observer)
+    noexcept
+{
+    try {
+        auto pinned = observer.lock();
+        if (pinned == nullptr) {
+            return Domain::Result<void>::failure(bridgeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The dashboard deadline IOCP bridge requires a live failure observer."));
+        }
+
+        const std::scoped_lock lock{mutex_};
+        if (shutdown_ || fatal_) {
+            return Domain::Result<void>::failure(bridgeError(
+                Domain::ErrorCodes::TransportClosed,
+                "The dashboard deadline IOCP bridge is closed to failure-observer binding."));
+        }
+        if (failureObserverEverBound_) {
+            return Domain::Result<void>::failure(bridgeError(
+                Domain::ErrorCodes::Conflict,
+                "The dashboard deadline IOCP bridge failure observer is already bound."));
+        }
+        failureObserver_ = std::move(observer);
+        failureObserverEverBound_ = true;
+        return Domain::Result<void>::success();
+    } catch (...) {
+        return Domain::Result<void>::failure(bridgeError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard deadline IOCP bridge failure observer could not be bound safely."));
+    }
+}
+
+DashboardDeadlineIocpBridge::FailureNotificationDeferral
+DashboardDeadlineIocpBridge::deferFailureNotificationDispatch() noexcept
+{
+    try {
+        std::unique_lock lock{failureNotificationDispatchMutex_};
+        failureNotificationDispatchChanged_.wait(
+            lock,
+            [this] { return !failureNotificationDispatchInProgress_; });
+        ++failureNotificationDeferralCount_;
+        return FailureNotificationDeferral{*this};
+    } catch (...) {
+        std::terminate();
     }
 }
 
@@ -157,6 +266,7 @@ DashboardDeadlineIocpBridge::registerOwner(
 {
     using RegisterResult =
         Domain::Result<DashboardDeadlineNotificationHandle>;
+    FailureDispatchGuard failureDispatch{*this};
     try {
         const std::scoped_lock lock{mutex_};
         auto registered = mailbox_->registerOwner(registrationId);
@@ -235,6 +345,7 @@ Domain::Result<void> DashboardDeadlineIocpBridge::retireOwner(
 void DashboardDeadlineIocpBridge::signal(
     WindowsDashboardDeadline deadline) noexcept
 {
+    FailureDispatchGuard failureDispatch{*this};
     try {
         const std::scoped_lock lock{mutex_};
         if (shutdown_) {
@@ -374,6 +485,7 @@ DashboardDeadlineIocpBridge::reap(
 {
     using ReapResult =
         Domain::Result<DashboardDeadlineIocpReapResult>;
+    FailureDispatchGuard failureDispatch{*this};
     try {
         const std::scoped_lock lock{mutex_};
         auto found = findOperationLocked(operation);
@@ -480,6 +592,80 @@ void DashboardDeadlineIocpBridge::retainFatalFailureLocked(
     }
     if (!firstFailure_.has_value()) {
         firstFailure_.emplace(std::move(error));
+    }
+}
+
+void DashboardDeadlineIocpBridge::dispatchFatalFailureIfRequired()
+    noexcept
+{
+    try {
+        std::shared_ptr<IDashboardDeadlineIocpBridgeFailureObserver>
+            observer;
+        DashboardDeadlineIocpFailure failure;
+        bool missingBoundObserver{};
+        {
+            const std::scoped_lock dispatchLock{
+                failureNotificationDispatchMutex_};
+            if (failureNotificationDeferralCount_ != 0U ||
+                failureNotificationDispatchInProgress_) {
+                return;
+            }
+            {
+                const std::scoped_lock lock{mutex_};
+                if (!fatal_ || !failureObserverEverBound_ ||
+                    failureNotificationSent_) {
+                    return;
+                }
+                failureNotificationSent_ = true;
+                observer = failureObserver_.lock();
+                missingBoundObserver = observer == nullptr;
+                failure = firstFailureSnapshot_.value_or(
+                    DashboardDeadlineIocpFailure{
+                        DashboardDeadlineIocpFailureKind::InternalFailure,
+                        false});
+            }
+            failureNotificationDispatchInProgress_ = true;
+        }
+
+        if (observer != nullptr) {
+            observer->dashboardDeadlineIocpBridgeFailed(failure);
+        } else if (missingBoundObserver) {
+            // A successfully bound managed observer is a mandatory lifetime
+            // owner. Losing it would turn a fatal deadline route into an
+            // unbounded silent shutdown wait.
+            std::terminate();
+        }
+
+        {
+            const std::scoped_lock lock{
+                failureNotificationDispatchMutex_};
+            failureNotificationDispatchInProgress_ = false;
+        }
+        failureNotificationDispatchChanged_.notify_all();
+    } catch (...) {
+        std::terminate();
+    }
+}
+
+void DashboardDeadlineIocpBridge::releaseFailureNotificationDeferral()
+    noexcept
+{
+    try {
+        bool finalRelease{};
+        {
+            const std::scoped_lock lock{
+                failureNotificationDispatchMutex_};
+            if (failureNotificationDeferralCount_ == 0U) {
+                std::terminate();
+            }
+            --failureNotificationDeferralCount_;
+            finalRelease = failureNotificationDeferralCount_ == 0U;
+        }
+        if (finalRelease) {
+            dispatchFatalFailureIfRequired();
+        }
+    } catch (...) {
+        std::terminate();
     }
 }
 

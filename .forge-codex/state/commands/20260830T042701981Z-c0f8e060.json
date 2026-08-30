@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260830T042701981Z-c0f8e060",
+  "phase": "P16",
+  "role": "Tester",
+  "command": "cmd.exe /d /c exit 7",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T04:27:01.9900896+00:00",
+  "end_utc": "2026-08-30T04:27:03.1241128+00:00",
+  "exit_code": 7,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T042701981Z-c0f8e060.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T042701981Z-c0f8e060.stderr.txt",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}

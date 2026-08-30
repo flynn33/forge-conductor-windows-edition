@@ -4,7 +4,7 @@ cmake_policy(SET CMP0091 NEW)
 project(
     ForgeConductorWindows
     VERSION 0.9.0
-    LANGUAGES CXX
+    LANGUAGES CXX RC
 )
 
 if(NOT WIN32 OR NOT MSVC)
@@ -219,8 +219,10 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardListeningSocket.cpp
     src/Infrastructure/Windows/Detail/DashboardLoopbackEndpoint.cpp
     src/Infrastructure/Windows/Detail/DashboardOverloadResponderSet.cpp
+    src/Infrastructure/Windows/Detail/DashboardShutdownDrain.cpp
     src/Infrastructure/Windows/Detail/DashboardWinsockExtensions.cpp
     src/Infrastructure/Windows/Detail/DashboardWinsockRuntime.cpp
+    src/Infrastructure/Windows/WindowsDashboardStaticAssetBundle.cpp
     src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp
     src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp)
 forge_add_layer(
@@ -755,6 +757,39 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-PARITY;T-UNIT;T-STRESS"
         TIMEOUT 120)
 
+    add_executable(ForgeConductor.Dashboard.WindowsStaticAssetBundleTests
+        tests/Dashboard/WindowsDashboardStaticAssetBundleTests.cpp
+        src/Hosts/Manager/Resources/Dashboard/DashboardAssets.rc)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.WindowsStaticAssetBundleTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.WindowsStaticAssetBundleTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.WindowsStaticAssetBundleTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.WindowsStaticAssetBundleTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.WindowsStaticAssetBundleTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.StaticShellContractTests
+        tests/Dashboard/DashboardStaticShellContractTests.cpp
+        src/Hosts/Manager/Resources/Dashboard/DashboardAssets.rc)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.StaticShellContractTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.StaticShellContractTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.StaticShellContractTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.StaticShellContractTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.StaticShellContractTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-UNIT"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Dashboard.AdmissionControllerTests
         tests/Dashboard/DashboardAdmissionControllerTests.cpp)
     forge_configure_native_target(
@@ -1194,6 +1229,46 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Dashboard.ConnectionRegistryTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ShutdownDrainTests
+        tests/Dashboard/DashboardShutdownDrainTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ShutdownDrainTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ShutdownDrainTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ShutdownDrainTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ShutdownDrainTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ShutdownDrainTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ShutdownDrainTests PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(
+        ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+        tests/Dashboard/DashboardShutdownDrainTombstoneIntegrationTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME
+            ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+        PROPERTIES
+        LABELS "G16;T-MGR;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.DeadlineSchedulerTests

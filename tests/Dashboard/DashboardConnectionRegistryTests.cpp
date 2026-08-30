@@ -36,6 +36,8 @@ using Kernel = Detail::DashboardIocpWorkerKernel;
 using Packet = Detail::DashboardIoCompletionPacket;
 using Port = Detail::DashboardIoCompletionPort;
 using Registry = Detail::DashboardConnectionRegistry;
+using RoutingFinalizeDisposition =
+    Detail::DashboardDeadlineRoutingFinalizeDisposition;
 using RegistryFailureKind =
     Detail::DashboardConnectionRegistryFailureKind;
 using Target = Detail::IDashboardConnectionDispatchTarget;
@@ -106,6 +108,9 @@ static_assert(noexcept(std::declval<Registry&>().beginGracefulShutdown()));
 static_assert(noexcept(std::declval<Registry&>().beginShutdown()));
 static_assert(noexcept(
     std::declval<Registry&>().finalizeDeadlineRouting()));
+static_assert(std::is_same_v<
+              decltype(std::declval<Registry&>().finalizeDeadlineRouting()),
+              Domain::Result<RoutingFinalizeDisposition>>);
 static_assert(noexcept(std::declval<const Bridge&>().completionKey()));
 
 constexpr Key DeadlineKey{0x444541444C494E45U};
@@ -201,7 +206,15 @@ public:
         std::weak_ptr<Detail::IDashboardConnectionDrainObserver> observer)
         noexcept override
     {
-        const std::lock_guard lock{mutex_};
+        std::unique_lock lock{mutex_};
+        drainObserverBindEntered_ = true;
+        changed_.notify_all();
+        if (blockDrainObserverBind_) {
+            static_cast<void>(changed_.wait_for(
+                lock,
+                TestTimeout,
+                [this] { return releaseDrainObserverBind_; }));
+        }
         if (drainObserverBound_ || observer.expired()) {
             return Domain::Result<void>::failure(Domain::makeError(
                 Domain::ErrorCodes::Conflict,
@@ -442,6 +455,28 @@ public:
         blockStart_ = true;
     }
 
+    void blockDrainObserverBind() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        blockDrainObserverBind_ = true;
+    }
+
+    [[nodiscard]] bool waitForDrainObserverBindEntry() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(
+            lock,
+            TestTimeout,
+            [this] { return drainObserverBindEntered_; });
+    }
+
+    void releaseDrainObserverBind() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        releaseDrainObserverBind_ = true;
+        changed_.notify_all();
+    }
+
     [[nodiscard]] bool waitForStartEntry() noexcept
     {
         std::unique_lock lock{mutex_};
@@ -637,6 +672,9 @@ private:
     bool blockStart_{};
     bool startEntered_{};
     bool releaseStart_{};
+    bool blockDrainObserverBind_{};
+    bool drainObserverBindEntered_{};
+    bool releaseDrainObserverBind_{};
     bool blockIocp_{};
     bool dispatchEntered_{};
     bool releaseIocp_{};
@@ -916,8 +954,11 @@ public:
                 snapshot.routingProgressRevision() >= revision;
             if (!fatal) {
                 finalizeAttempted = true;
-                finalizeSucceeded =
+                const auto finalized =
                     registry->finalizeDeadlineRouting();
+                finalizeSucceeded = finalized &&
+                    finalized.value() ==
+                        RoutingFinalizeDisposition::Finalized;
             }
         }
 
@@ -1007,6 +1048,67 @@ private:
     std::array<bool, 4U> finalizeAttemptedAtCallback_{};
     std::array<bool, 4U> finalizeSucceededAtCallback_{};
     std::size_t callbackCount_{};
+};
+
+class RecordingDeadlineBridgeFailureObserver final
+    : public Detail::IDashboardDeadlineIocpBridgeFailureObserver {
+public:
+    void attachRegistry(const std::shared_ptr<Registry>& registry) noexcept
+    {
+        registry_ = registry;
+    }
+
+    void dashboardDeadlineIocpBridgeFailed(
+        const Detail::DashboardDeadlineIocpFailure failure)
+        noexcept override
+    {
+        bool registryFatal{};
+        bool outsideRoutingSection{};
+        if (auto registry = registry_.lock(); registry != nullptr) {
+            const auto snapshot = registry->snapshot();
+            registryFatal = snapshot.isFatal();
+            outsideRoutingSection =
+                !snapshot.deadlineRoutingInProgress();
+        }
+        const std::scoped_lock lock{mutex_};
+        ++callbackCount_;
+        firstFailure_.emplace(failure);
+        registryFatalAtCallback_ = registryFatal;
+        outsideRoutingSectionAtCallback_ = outsideRoutingSection;
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return callbackCount_;
+    }
+
+    [[nodiscard]] bool registryFatalAtCallback() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return registryFatalAtCallback_;
+    }
+
+    [[nodiscard]] bool outsideRoutingSectionAtCallback() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return outsideRoutingSectionAtCallback_;
+    }
+
+    [[nodiscard]] std::optional<
+        Detail::DashboardDeadlineIocpFailure> firstFailure() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return firstFailure_;
+    }
+
+private:
+    std::weak_ptr<Registry> registry_;
+    mutable std::mutex mutex_;
+    std::optional<Detail::DashboardDeadlineIocpFailure> firstFailure_;
+    std::size_t callbackCount_{};
+    bool registryFatalAtCallback_{};
+    bool outsideRoutingSectionAtCallback_{};
 };
 
 class BlockingRegistryRoutingProgressObserver final
@@ -1160,6 +1262,12 @@ public:
                 TestTimeout,
                 [this] { return releaseBlockedDataPost_; }));
         }
+        if (completionKey != Kernel::ShutdownKeyValue &&
+            failNextDataPost_) {
+            failNextDataPost_ = false;
+            setThreadError(nextDataPostError_);
+            return FALSE;
+        }
         if (completionKey == Kernel::ShutdownKeyValue) {
             controls_.push_back(
                 QueuedPacket{transferredBytes, completionKey, operation});
@@ -1243,6 +1351,13 @@ public:
         releaseBlockedDataPost_ = false;
     }
 
+    void failNextDataPost(const DWORD error) noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        failNextDataPost_ = true;
+        nextDataPostError_ = error;
+    }
+
     [[nodiscard]] bool waitForBlockedDataPost() noexcept
     {
         std::unique_lock lock{mutex_};
@@ -1273,6 +1388,8 @@ private:
     bool blockNextDataPost_{};
     bool blockedDataPostEntered_{};
     bool releaseBlockedDataPost_{};
+    bool failNextDataPost_{};
+    DWORD nextDataPostError_{ERROR_NOT_ENOUGH_MEMORY};
     bool closed_{};
 };
 
@@ -2553,6 +2670,13 @@ void malformedRetiredTombstoneStillPublishesRoutingProgress()
     require(static_cast<bool>(
                 fixture.registry->bindRoutingProgressObserver(observer)),
             "malformed-tombstone routing-progress observer was rejected");
+    auto bridgeFailureObserver =
+        std::make_shared<RecordingDeadlineBridgeFailureObserver>();
+    bridgeFailureObserver->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.bridge->bindFailureObserver(
+                    bridgeFailureObserver)),
+            "malformed-tombstone bridge failure observer was rejected");
     auto owner =
         std::make_shared<FakeAuxiliaryDeadlineTarget>(90'251U);
     require(static_cast<bool>(
@@ -2599,6 +2723,348 @@ void malformedRetiredTombstoneStillPublishesRoutingProgress()
                     RegistryFailureKind::IntegrityFailure &&
                 owner->deadlineCount() == 0U,
             "malformed retired tombstone did not drain storage before failing fatally");
+    const auto bridgeFailure = bridgeFailureObserver->firstFailure();
+    require(bridgeFailureObserver->callbackCount() == 1U &&
+                bridgeFailure.has_value() &&
+                bridgeFailure->kind ==
+                    Detail::DashboardDeadlineIocpFailureKind::
+                        IntegrityFailure &&
+                bridgeFailureObserver->registryFatalAtCallback() &&
+                bridgeFailureObserver->
+                    outsideRoutingSectionAtCallback(),
+            "malformed reap published the bridge failure callback before registry fatal state escaped its routing transaction");
+    const auto finalized =
+        fixture.registry->finalizeDeadlineRouting();
+    require(!finalized &&
+                finalized.error().code ==
+                    Domain::ErrorCodes::IntegrityFailure,
+            "fatal malformed retired tombstone remained a waitable finalization state");
+}
+
+void connectionRegistrationBindRaceCannotOrphanBridgeOwner()
+{
+    DeadlineFixture fixture;
+    auto owner = target(902U, 90'261U, 90U);
+    owner->attachRegistry(fixture.registry);
+    owner->blockDrainObserverBind();
+    std::optional<Domain::Result<void>> registered;
+    std::thread registrationThread{[&] {
+        registered.emplace(
+            fixture.registry->registerConnection(owner));
+    }};
+    require(owner->waitForDrainObserverBindEntry(),
+            "connection registration did not enter its external drain-observer binding barrier");
+    require(fixture.bridge->snapshot().registeredOwnerCount() == 0U &&
+                !fixture.registry->snapshot().
+                    deadlineRoutingInProgress(),
+            "connection registration acquired bridge ownership before its external observer callback completed");
+
+    fixture.registry->beginShutdown();
+    const auto finalized =
+        fixture.registry->finalizeDeadlineRouting();
+    require(finalized &&
+                finalized.value() ==
+                    RoutingFinalizeDisposition::Finalized &&
+                fixture.bridge->snapshot().isShutdown(),
+            "finalization treated a blocked pre-owner connection registration as orphan bridge ownership");
+
+    owner->releaseDrainObserverBind();
+    registrationThread.join();
+    require(registered.has_value() && !*registered &&
+                registered->error().code ==
+                    Domain::ErrorCodes::TransportClosed &&
+                owner->startCount() == 0U &&
+                owner->shutdownCount() == 1U &&
+                fixture.registry->snapshot().
+                    registeredConnectionCount() == 0U &&
+                fixture.bridge->snapshot().registeredOwnerCount() == 0U &&
+                !fixture.registry->snapshot().isFatal(),
+            "blocked connection registration did not roll back cleanly after finalization won");
+}
+
+void bridgeFailureWaitsForConnectionOwnerAcquisitionToExitRouting()
+{
+    DeadlineFixture fixture;
+    auto failureObserver =
+        std::make_shared<RecordingDeadlineBridgeFailureObserver>();
+    failureObserver->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.bridge->bindFailureObserver(failureObserver)),
+            "connection-acquisition bridge failure observer was rejected");
+    auto blocker =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'266U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(
+                    blocker)),
+            "connection-acquisition blocker was rejected");
+
+    fixture.api->blockNextDataPost();
+    fixture.api->failNextDataPost(ERROR_NOT_ENOUGH_MEMORY);
+    std::thread failingSignal{[&] {
+        fixture.bridge->signal(
+            listenerDeadline(blocker->registrationId(), 1U));
+    }};
+    require(fixture.api->waitForBlockedDataPost(),
+            "connection-acquisition setup did not retain the bridge mutex");
+
+    auto owner = target(906U, 90'267U, 90U);
+    std::optional<Domain::Result<void>> registered;
+    std::thread registrationThread{[&] {
+        registered.emplace(
+            fixture.registry->registerConnection(owner));
+    }};
+    require(waitUntil([&] {
+                return fixture.registry->snapshot().
+                    deadlineRoutingInProgress();
+            }),
+            "connection owner acquisition did not enter its routing transaction");
+
+    fixture.api->releaseBlockedDataPost();
+    failingSignal.join();
+    registrationThread.join();
+    require(registered.has_value() && !*registered &&
+                registered->error().code ==
+                    Domain::ErrorCodes::TransportClosed &&
+                owner->startCount() == 0U &&
+                owner->shutdownCount() == 1U &&
+                failureObserver->callbackCount() == 1U &&
+                failureObserver->outsideRoutingSectionAtCallback() &&
+                !fixture.registry->snapshot().
+                    deadlineRoutingInProgress(),
+            "bridge failure escaped a connection owner-acquisition routing transaction");
+}
+
+void bridgeFailureWaitsForAuxiliaryOwnerAcquisitionToExitRouting()
+{
+    DeadlineFixture fixture;
+    auto failureObserver =
+        std::make_shared<RecordingDeadlineBridgeFailureObserver>();
+    failureObserver->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.bridge->bindFailureObserver(failureObserver)),
+            "auxiliary-acquisition bridge failure observer was rejected");
+    auto blocker =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'268U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(
+                    blocker)),
+            "auxiliary-acquisition blocker was rejected");
+
+    fixture.api->blockNextDataPost();
+    fixture.api->failNextDataPost(ERROR_NOT_ENOUGH_MEMORY);
+    std::thread failingSignal{[&] {
+        fixture.bridge->signal(
+            listenerDeadline(blocker->registrationId(), 1U));
+    }};
+    require(fixture.api->waitForBlockedDataPost(),
+            "auxiliary-acquisition setup did not retain the bridge mutex");
+
+    auto owner =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'269U);
+    std::optional<Domain::Result<void>> registered;
+    std::thread registrationThread{[&] {
+        registered.emplace(
+            fixture.registry->registerAuxiliaryDeadlineTarget(owner));
+    }};
+    require(waitUntil([&] {
+                return fixture.registry->snapshot().
+                    deadlineRoutingInProgress();
+            }),
+            "auxiliary owner acquisition did not enter its routing transaction");
+
+    fixture.api->releaseBlockedDataPost();
+    failingSignal.join();
+    registrationThread.join();
+    require(registered.has_value() && !*registered &&
+                registered->error().code ==
+                    Domain::ErrorCodes::TransportClosed &&
+                owner->shutdownCount() == 1U &&
+                failureObserver->callbackCount() == 1U &&
+                failureObserver->outsideRoutingSectionAtCallback() &&
+                !fixture.registry->snapshot().
+                    deadlineRoutingInProgress(),
+            "bridge failure escaped an auxiliary owner-acquisition routing transaction");
+}
+
+void auxiliaryRegistrationTransactionSerializesWithFinalization()
+{
+    DeadlineFixture fixture;
+    auto blocker =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'271U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(
+                    blocker)),
+            "auxiliary registration race blocker was rejected");
+    fixture.api->blockNextDataPost();
+    std::thread blockerThread{[&] {
+        fixture.bridge->signal(
+            listenerDeadline(blocker->registrationId(), 1U));
+    }};
+    require(fixture.api->waitForBlockedDataPost(),
+            "auxiliary registration race did not retain the bridge mutex");
+
+    auto owner =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'272U);
+    std::optional<Domain::Result<void>> registered;
+    std::thread registrationThread{[&] {
+        registered.emplace(
+            fixture.registry->registerAuxiliaryDeadlineTarget(owner));
+    }};
+    require(waitUntil([&] {
+                return fixture.registry->snapshot().
+                    deadlineRoutingInProgress();
+            }),
+            "auxiliary bridge-owner acquisition did not own the routing transaction lock");
+
+    fixture.registry->beginShutdown();
+    std::atomic_bool finalizationEntered{};
+    std::atomic_bool finalizationReturned{};
+    std::optional<Domain::Result<RoutingFinalizeDisposition>>
+        finalization;
+    std::thread finalizationThread{[&] {
+        finalizationEntered.store(true, std::memory_order_release);
+        finalization.emplace(
+            fixture.registry->finalizeDeadlineRouting());
+        finalizationReturned.store(true, std::memory_order_release);
+    }};
+    require(waitUntil([&] {
+                return finalizationEntered.load(
+                    std::memory_order_acquire);
+            }) &&
+                !finalizationReturned.load(
+                    std::memory_order_acquire),
+            "finalization passed an in-flight auxiliary ownership transaction");
+
+    fixture.api->releaseBlockedDataPost();
+    blockerThread.join();
+    registrationThread.join();
+    finalizationThread.join();
+    require(registered.has_value() && !*registered &&
+                registered->error().code ==
+                    Domain::ErrorCodes::TransportClosed &&
+                finalization.has_value() && *finalization &&
+                finalization->value() ==
+                    RoutingFinalizeDisposition::Pending &&
+                fixture.registry->snapshot().
+                    registeredAuxiliaryDeadlineTargetCount() == 1U &&
+                fixture.bridge->snapshot().registeredOwnerCount() == 1U &&
+                !fixture.registry->snapshot().isFatal() &&
+                !fixture.registry->snapshot().
+                    deadlineRoutingInProgress(),
+            "auxiliary registration rollback and committed-route finalization were not atomic");
+
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(
+                blocker),
+            "auxiliary registration race blocker did not unregister");
+    const auto packet = fixture.takePacket();
+    fixture.registry->consume(
+        Packet{
+            packet.transferredBytes,
+            Key{static_cast<std::uintptr_t>(packet.completionKey)},
+            packet.operation},
+        ERROR_SUCCESS);
+    const auto finalized =
+        fixture.registry->finalizeDeadlineRouting();
+    require(finalized &&
+                finalized.value() ==
+                    RoutingFinalizeDisposition::Finalized,
+            "auxiliary registration race did not finalize after its committed route drained");
+}
+
+void neverBoundPartialCompositionFinalizesWithoutBridge()
+{
+    auto registry = take(Registry::create(DeadlineKey));
+    registry->beginShutdown();
+    const auto finalized = registry->finalizeDeadlineRouting();
+    require(finalized &&
+                finalized.value() ==
+                    RoutingFinalizeDisposition::Finalized &&
+                !registry->snapshot().deadlineBridgeBound() &&
+                !registry->snapshot().isFatal(),
+            "never-bound partial registry composition failed deadline routing finalization");
+}
+
+void deadlineRoutingFinalizationWaitsOnlyForExactRetiredTombstones()
+{
+    DeadlineFixture fixture;
+    auto owner =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'276U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
+            "finalization-tombstone auxiliary owner was rejected");
+    const auto premature =
+        fixture.registry->finalizeDeadlineRouting();
+    require(!premature &&
+                premature.error().code ==
+                    Domain::ErrorCodes::InvalidRequest,
+            "deadline routing finalized before registry shutdown began");
+    fixture.bridge->signal(
+        listenerDeadline(owner->registrationId(), 12U));
+    const auto packet = fixture.takePacket();
+    fixture.registry->beginShutdown();
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
+            "finalization-tombstone auxiliary owner did not retire");
+
+    const auto pending =
+        fixture.registry->finalizeDeadlineRouting();
+    require(pending &&
+                pending.value() == RoutingFinalizeDisposition::Pending &&
+                fixture.bridge->snapshot().postedOperationCount() == 1U &&
+                fixture.bridge->snapshot().
+                    retiredAwaitingReapCount() == 1U &&
+                !fixture.bridge->snapshot().isShutdown(),
+            "an exact posted-retired tombstone was not the sole waitable finalization state");
+
+    fixture.registry->consume(
+        Packet{
+            packet.transferredBytes,
+            Key{static_cast<std::uintptr_t>(packet.completionKey)},
+            packet.operation},
+        ERROR_SUCCESS);
+    const auto finalized =
+        fixture.registry->finalizeDeadlineRouting();
+    require(finalized &&
+                finalized.value() ==
+                    RoutingFinalizeDisposition::Finalized &&
+                fixture.bridge->snapshot().isShutdown(),
+            "drained exact retired tombstone did not finalize deadline routing");
+}
+
+void deadlineRoutingFinalizationRejectsImpossibleLiveBridgeOwner()
+{
+    DeadlineFixture fixture;
+    auto foreignOwner =
+        take(fixture.bridge->registerOwner(90'277U));
+    fixture.registry->beginShutdown();
+
+    const auto rejected =
+        fixture.registry->finalizeDeadlineRouting();
+    require(!rejected &&
+                rejected.error().code ==
+                    Domain::ErrorCodes::IntegrityFailure &&
+                !fixture.bridge->snapshot().isShutdown(),
+            "a live bridge owner without a registry route remained waitable");
+
+    require(static_cast<bool>(
+                fixture.bridge->retireOwner(foreignOwner)),
+            "impossible-live-owner test could not retire its foreign bridge owner");
+}
+
+void deadlineRoutingFinalizationRejectsFatalBridge()
+{
+    DeadlineFixture fixture;
+    const auto reaped = fixture.bridge->reap(
+        DeadlineKey, 0U, nullptr, ERROR_SUCCESS);
+    require(!reaped && fixture.bridge->snapshot().isFatal(),
+            "fatal-finalization setup did not fail the deadline bridge");
+    fixture.registry->beginShutdown();
+
+    const auto rejected =
+        fixture.registry->finalizeDeadlineRouting();
+    require(!rejected &&
+                rejected.error().code ==
+                    Domain::ErrorCodes::IntegrityFailure,
+            "fatal bridge remained a waitable deadline-routing finalization state");
 }
 
 void auxiliaryRoutingPinsTheOwnerAcrossConcurrentUnregistration()
@@ -2668,6 +3134,8 @@ void auxiliaryCapacityAndShutdownStayFixedAndNonfatal()
         require(owner->shutdownCount() == 1U,
                 "registered auxiliary owner did not receive shutdown once");
     }
+    const auto pendingFinalization =
+        fixture.registry->finalizeDeadlineRouting();
     require(
         fixture.registry->snapshot().
                 registeredAuxiliaryDeadlineTargetCount() ==
@@ -2675,7 +3143,9 @@ void auxiliaryCapacityAndShutdownStayFixedAndNonfatal()
             fixture.bridge->snapshot().registeredOwnerCount() ==
                 Registry::MaximumAuxiliaryDeadlineTargetCount &&
             !fixture.bridge->snapshot().isShutdown() &&
-            !fixture.registry->finalizeDeadlineRouting(),
+            pendingFinalization &&
+            pendingFinalization.value() ==
+                RoutingFinalizeDisposition::Pending,
         "registry shutdown retired live auxiliary watchdog routing");
 
     fixture.bridge->signal(
@@ -2705,7 +3175,11 @@ void auxiliaryCapacityAndShutdownStayFixedAndNonfatal()
             fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
             "drained auxiliary owner could not unregister after shutdown");
     }
-    require(fixture.registry->finalizeDeadlineRouting() &&
+    const auto finalized =
+        fixture.registry->finalizeDeadlineRouting();
+    require(finalized &&
+                finalized.value() ==
+                    RoutingFinalizeDisposition::Finalized &&
                 fixture.bridge->snapshot().isShutdown(),
             "drained auxiliary routing did not finalize exactly once");
 }
@@ -2937,6 +3411,14 @@ constexpr std::array TestCases{
     TestCase{"routing progress observer lifetime", routingProgressObserverExpiryFailsClosedOnce},
     TestCase{"auxiliary deadline tombstone", auxiliarySignalFirstRetirementDrainsATombstone},
     TestCase{"malformed auxiliary tombstone", malformedRetiredTombstoneStillPublishesRoutingProgress},
+    TestCase{"connection registration finalize race", connectionRegistrationBindRaceCannotOrphanBridgeOwner},
+    TestCase{"connection acquisition failure deferral", bridgeFailureWaitsForConnectionOwnerAcquisitionToExitRouting},
+    TestCase{"auxiliary acquisition failure deferral", bridgeFailureWaitsForAuxiliaryOwnerAcquisitionToExitRouting},
+    TestCase{"auxiliary registration finalize race", auxiliaryRegistrationTransactionSerializesWithFinalization},
+    TestCase{"never-bound deadline finalization", neverBoundPartialCompositionFinalizesWithoutBridge},
+    TestCase{"deadline finalization tombstone", deadlineRoutingFinalizationWaitsOnlyForExactRetiredTombstones},
+    TestCase{"deadline finalization live owner", deadlineRoutingFinalizationRejectsImpossibleLiveBridgeOwner},
+    TestCase{"deadline finalization fatal bridge", deadlineRoutingFinalizationRejectsFatalBridge},
     TestCase{"auxiliary deadline callback pin", auxiliaryRoutingPinsTheOwnerAcrossConcurrentUnregistration},
     TestCase{"auxiliary deadline capacity", auxiliaryCapacityAndShutdownStayFixedAndNonfatal},
     TestCase{"deadline routing lock order", deadlineRoutingSerializesLiveReapAndConcurrentRetirement},

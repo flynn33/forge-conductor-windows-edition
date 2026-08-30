@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "20260830T043348511Z-a6bbaa15",
+  "phase": "P16",
+  "role": "Tester",
+  "command": "1..500 | ForEach-Object { Write-Output ('x' * 80) }; Start-Sleep -Seconds 30",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T04:33:48.5200985+00:00",
+  "end_utc": "2026-08-30T04:33:50.0633429+00:00",
+  "exit_code": 125,
+  "timed_out": false,
+  "maximum_output_bytes_per_stream": 1024,
+  "output_limit_exceeded": true,
+  "stdout_truncated": true,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T043348511Z-a6bbaa15.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T043348511Z-a6bbaa15.stderr.txt",
+  "stdout_sha256": "1bb3bd4c9806e013d1a7c699dd470d83486d5ea2dfc27a39d1fabf1b0b883763",
+  "stderr_sha256": "3e2f777239e8875796a6a61feebd144090ede865f96db1df16a9bbcefd597d90"
+}

@@ -1,0 +1,172 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.19 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+    Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+1/4 Test #22: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ..................   Passed    0.18 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.18 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.18 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.16 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.18 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.16 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.16 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.16 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.16 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.16 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.15 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.16 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+    Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 43: ForgeConductor.Dashboard.ConnectionRegistryTests
+2/4 Test #43: ForgeConductor.Dashboard.ConnectionRegistryTests ..................   Passed    0.17 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.02 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+    Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 44: ForgeConductor.Dashboard.ShutdownDrainTests
+3/4 Test #44: ForgeConductor.Dashboard.ShutdownDrainTests .......................   Passed    0.01 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.26 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.26 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.26 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.26 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.26 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.27 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+    Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.26 sec
+    Start 45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+4/4 Test #45: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests ...   Passed    0.26 sec
+
+100% tests passed out of 4
+
+Label Time Summary:
+G16         =   0.63 sec*proc (4 tests)
+T-MGR       =   0.63 sec*proc (4 tests)
+T-SEC       =   0.17 sec*proc (1 test)
+T-STRESS    =   0.63 sec*proc (4 tests)
+T-UNIT      =   0.63 sec*proc (4 tests)
+
+Total Test time (real) =  12.65 sec

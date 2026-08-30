@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260830T042921082Z-d5ea547d",
+  "phase": "P16",
+  "role": "Tester",
+  "command": "Write-Error 'final-powershell-failure'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T04:29:21.0950640+00:00",
+  "end_utc": "2026-08-30T04:29:22.4147662+00:00",
+  "exit_code": 1,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T042921082Z-d5ea547d.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T042921082Z-d5ea547d.stderr.txt",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "f2e3b79546c308edd15f000fd1e92dcbbd8fe7ce3e9dea8100f380024cd2dfe7"
+}

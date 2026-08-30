@@ -2,9 +2,9 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-30T01:32:14.2164773+00:00",
+  "updated_at": "2026-08-30T04:41:46.3138121+00:00",
   "status": "in_progress",
-  "active_role": "builder",
+  "active_role": "Builder",
   "active_phase": "P16",
   "session_number": 0,
   "phases": [
@@ -616,7 +616,16 @@
         ".forge-codex/state/commands/20260830T023730098Z-0debfb0a.json",
         "include/ForgeConductor/Contracts/IManagerServices.h",
         "include/ForgeConductor/Domain/ManagerModels.h",
-        "src/Domain/ManagerModels.cpp"
+        "src/Domain/ManagerModels.cpp",
+        ".forge-codex/state/decisions/P16-018-process-owned-dashboard-shutdown-drain.md",
+        ".forge-codex/state/evidence/P16/dashboard-process-shutdown-drain-checkpoint.json",
+        ".forge-codex/state/commands/20260830T041319757Z-d69164bb.json",
+        ".forge-codex/state/commands/20260830T041335723Z-f6077969.json",
+        ".forge-codex/state/commands/20260830T041500293Z-f634f5ed.json",
+        ".forge-codex/state/commands/20260830T041520752Z-a302f0ee.json",
+        ".forge-codex/state/decisions/P16-019-embedded-bounded-dashboard-shell.md",
+        ".forge-codex/state/evidence/P16/dashboard-static-shell-checkpoint.json",
+        ".forge-codex/state/commands/20260830T041546945Z-2634999f.json"
       ]
     },
     {

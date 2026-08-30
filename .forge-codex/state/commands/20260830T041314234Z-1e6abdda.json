@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260830T041314234Z-1e6abdda",
+  "phase": "P16",
+  "role": "Implementer",
+  "command": "[Console]::Out.Write('empty-stderr-probe')",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T04:13:14.2424521+00:00",
+  "end_utc": "2026-08-30T04:13:15.0516258+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T041314234Z-1e6abdda.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T041314234Z-1e6abdda.stderr.txt",
+  "stdout_sha256": "8ad2637bf8d6d33650a664e893638308c6810f3aed2af1551556c3d6a700f8fc",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260830T042611845Z-17ab2b12",
+  "phase": "P16",
+  "role": "Tester",
+  "command": "Write-Output 'spooled-success'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T04:26:11.8547206+00:00",
+  "end_utc": "2026-08-30T04:26:13.0304774+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T042611845Z-17ab2b12.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T042611845Z-17ab2b12.stderr.txt",
+  "stdout_sha256": "4f38a505355363e88b8afa83ae748977681914b3dd181eaab5e0e5d6b0599b55",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}

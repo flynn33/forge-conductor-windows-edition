@@ -163,6 +163,38 @@ public:
         }
     }
 
+    [[nodiscard]] Domain::Result<void> bindFailureObserver(
+        std::weak_ptr<
+            IWindowsDashboardDeadlineSchedulerFailureObserver> observer)
+        noexcept
+    {
+        try {
+            if (observer.expired()) {
+                return Domain::Result<void>::failure(schedulerError(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The dashboard deadline scheduler failure observer must be live."));
+            }
+            const std::lock_guard lock{mutex_};
+            if (failureObserverBound_) {
+                return Domain::Result<void>::failure(schedulerError(
+                    Domain::ErrorCodes::Conflict,
+                    "The dashboard deadline scheduler failure observer is one-shot."));
+            }
+            if (failure_.has_value() || shutdown_) {
+                return Domain::Result<void>::failure(schedulerError(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The dashboard deadline scheduler is closed to failure observation."));
+            }
+            failureObserverBound_ = true;
+            failureObserver_ = std::move(observer);
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return Domain::Result<void>::failure(schedulerError(
+                Domain::ErrorCodes::InternalFailure,
+                "The dashboard deadline scheduler failure observer could not be bound."));
+        }
+    }
+
     [[nodiscard]] bool cancel(
         const std::uint64_t registrationId,
         const std::uint64_t armSequence) noexcept
@@ -195,10 +227,15 @@ public:
         try {
             const std::lock_guard lock{mutex_};
             return WindowsDashboardDeadlineSnapshot{
-                entries_.size(), maximumScheduledCount_, shutdown_};
+                entries_.size(), maximumScheduledCount_, shutdown_, failure_};
         } catch (...) {
             return WindowsDashboardDeadlineSnapshot{
-                0U, maximumScheduledCount_, true};
+                0U,
+                maximumScheduledCount_,
+                true,
+                WindowsDashboardDeadlineSchedulerFailure{
+                    WindowsDashboardDeadlineSchedulerFailureKind::
+                        WorkerFailure}};
         }
     }
 
@@ -207,6 +244,7 @@ public:
         try {
             {
                 const std::lock_guard lock{mutex_};
+                intentionalShutdownRequested_ = true;
                 if (!shutdown_) {
                     shutdown_ = true;
                     entries_.clear();
@@ -269,6 +307,17 @@ private:
     void markWorkerExited() noexcept
     {
         try {
+            bool unexpected{};
+            {
+                const std::lock_guard lock{mutex_};
+                unexpected = !shutdown_;
+            }
+            if (unexpected) {
+                publishUnexpectedFailure(
+                    WindowsDashboardDeadlineSchedulerFailure{
+                        WindowsDashboardDeadlineSchedulerFailureKind::
+                            WorkerFailure});
+            }
             {
                 const std::lock_guard lifecycleLock{lifecycleMutex_};
                 workerExited_ = true;
@@ -290,6 +339,43 @@ private:
             [registrationId](const WindowsDashboardDeadline& entry) noexcept {
                 return entry.registrationId == registrationId;
             });
+    }
+
+    void publishUnexpectedFailure(
+        const WindowsDashboardDeadlineSchedulerFailure failure) noexcept
+    {
+        try {
+            std::weak_ptr<
+                IWindowsDashboardDeadlineSchedulerFailureObserver> observer;
+            bool observerBound{};
+            bool publish{};
+            {
+                const std::lock_guard lock{mutex_};
+                if (!failure_.has_value() &&
+                    !intentionalShutdownRequested_) {
+                    failure_.emplace(failure);
+                    shutdown_ = true;
+                    entries_.clear();
+                    ++revision_;
+                    observer = failureObserver_;
+                    observerBound = failureObserverBound_;
+                    publish = true;
+                }
+            }
+            if (!publish) {
+                return;
+            }
+            stateChanged_.notify_all();
+            if (observerBound) {
+                const auto owner = observer.lock();
+                if (owner == nullptr) {
+                    std::terminate();
+                }
+                owner->dashboardDeadlineSchedulerFailed(failure);
+            }
+        } catch (...) {
+            std::terminate();
+        }
     }
 
     void workerMain() noexcept
@@ -341,25 +427,25 @@ private:
                 }
 
                 if (due) {
-                    if (const auto sink = sink_.lock()) {
-                        sink->signal(std::move(*due));
+                    const auto sink = sink_.lock();
+                    if (sink == nullptr) {
+                        publishUnexpectedFailure(
+                            WindowsDashboardDeadlineSchedulerFailure{
+                                WindowsDashboardDeadlineSchedulerFailureKind::
+                                    DeadlineSinkUnavailable});
+                        return;
                     }
+                    sink->signal(std::move(*due));
                 }
             }
         } catch (...) {
             // No exception may cross the native worker boundary. A failure in
             // this fixed owner closes registration and wakes future callers as
             // TransportClosed rather than leaving an apparently live timer.
-            try {
-                {
-                    const std::lock_guard lock{mutex_};
-                    shutdown_ = true;
-                    entries_.clear();
-                    ++revision_;
-                }
-                stateChanged_.notify_all();
-            } catch (...) {
-            }
+            publishUnexpectedFailure(
+                WindowsDashboardDeadlineSchedulerFailure{
+                    WindowsDashboardDeadlineSchedulerFailureKind::
+                        WorkerFailure});
         }
     }
 
@@ -377,8 +463,13 @@ private:
     std::uint64_t revision_{};
     Detail::DashboardBoundedMonotonicSequence<std::uint64_t>
         armSequences_{1U};
+    std::weak_ptr<IWindowsDashboardDeadlineSchedulerFailureObserver>
+        failureObserver_;
+    std::optional<WindowsDashboardDeadlineSchedulerFailure> failure_;
     bool workerExited_{true};
     bool shutdown_{};
+    bool failureObserverBound_{};
+    bool intentionalShutdownRequested_{};
 };
 
 Domain::Result<std::unique_ptr<WindowsDashboardDeadlineScheduler>>
@@ -427,6 +518,14 @@ WindowsDashboardDeadlineScheduler::schedule(
     WindowsDashboardDeadlineRequest request) noexcept
 {
     return implementation_->schedule(std::move(request));
+}
+
+Domain::Result<void>
+WindowsDashboardDeadlineScheduler::bindFailureObserver(
+    std::weak_ptr<IWindowsDashboardDeadlineSchedulerFailureObserver>
+        observer) noexcept
+{
+    return implementation_->bindFailureObserver(std::move(observer));
 }
 
 bool WindowsDashboardDeadlineScheduler::cancel(

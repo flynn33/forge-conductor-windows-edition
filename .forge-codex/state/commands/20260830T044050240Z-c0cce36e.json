@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "20260830T044050240Z-c0cce36e",
+  "phase": "P16",
+  "role": "Tester",
+  "command": "$child = Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile -NonInteractive -Command \"Start-Sleep -Seconds 30\"' -PassThru\nWrite-Output \"child=$($child.Id)\"\nStart-Sleep -Seconds 30",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T04:40:50.2486770+00:00",
+  "end_utc": "2026-08-30T04:40:51.9985249+00:00",
+  "exit_code": 124,
+  "exit_code_source": "timeout",
+  "timed_out": true,
+  "maximum_output_bytes_per_stream": 67108864,
+  "output_limit_exceeded": false,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T044050240Z-c0cce36e.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T044050240Z-c0cce36e.stderr.txt",
+  "stdout_sha256": "077eb1ea412b5029b706a45f88f1a9824fd01c8770730bd1f5f449f61f0564d9",
+  "stderr_sha256": "3e2f777239e8875796a6a61feebd144090ede865f96db1df16a9bbcefd597d90"
+}

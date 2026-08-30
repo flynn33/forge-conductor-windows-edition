@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge Conductor Manager and Operations</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <script type="module" src="/static/control.js"></script>
+</head>
+<body data-dashboard-page="control">
+  <a class="skip-link" href="#main-content">Skip to manager content</a>
+  <header class="site-header">
+    <div>
+      <h1>Forge Conductor Manager and Operations</h1>
+      <p id="manager-header-status" class="secondary-text">Loading manager status</p>
+    </div>
+    <nav aria-label="Dashboard navigation">
+      <a href="/">Telemetry</a>
+      <a href="/control" aria-current="page">Manager and operations</a>
+    </nav>
+  </header>
+
+  <section class="toolbar" aria-label="Manager actions">
+    <button id="manager-start" type="button">Start service</button>
+    <button id="manager-stop" type="button">Stop service</button>
+    <button id="manager-restart" type="button">Restart service</button>
+    <button id="manager-refresh" type="button">Refresh</button>
+    <button id="sessions-prune" type="button">Prune stale sessions</button>
+    <button id="manager-shutdown" class="danger" type="button">Shutdown manager</button>
+  </section>
+
+  <p id="control-loading" class="notice" role="status" aria-live="polite">Loading manager and operational state.</p>
+  <p id="control-auth-error" class="notice error" role="alert" hidden></p>
+  <p id="control-error" class="notice error" role="alert" hidden></p>
+  <p id="control-status-message" class="notice" role="status" aria-live="polite" hidden></p>
+
+  <main id="main-content" tabindex="-1">
+    <section id="manager-status-panel" aria-labelledby="heading-manager-status">
+      <h2 id="heading-manager-status">Manager status</h2>
+      <dl id="manager-status-values" class="summary-grid">
+        <div><dt>State</dt><dd id="manager-state">Unavailable</dd></div>
+        <div><dt>Service</dt><dd id="manager-service-state">Unavailable</dd></div>
+        <div><dt>HTTP listener</dt><dd id="manager-http-state">Unavailable</dd></div>
+        <div><dt>PID</dt><dd id="manager-pid">Unavailable</dd></div>
+        <div><dt>Uptime</dt><dd id="manager-uptime">Unavailable</dd></div>
+        <div><dt>Restarts</dt><dd id="manager-restart-count">Unavailable</dd></div>
+        <div><dt>Version</dt><dd id="manager-version">Unavailable</dd></div>
+        <div><dt>Home</dt><dd id="manager-home">Unavailable</dd></div>
+        <div><dt>Dashboard</dt><dd id="manager-dashboard-url">Unavailable</dd></div>
+        <div><dt>Last error</dt><dd id="manager-last-error">None reported</dd></div>
+      </dl>
+    </section>
+
+    <section id="application-status-panel" aria-labelledby="heading-application-status">
+      <h2 id="heading-application-status">Application status</h2>
+      <dl id="application-status-values" class="summary-grid">
+        <div><dt>Service</dt><dd id="application-service-state">Unavailable</dd></div>
+        <div><dt>Open sessions</dt><dd id="application-open-sessions">Unavailable</dd></div>
+        <div><dt>Agents</dt><dd id="application-agent-count">Unavailable</dd></div>
+        <div><dt>Presence</dt><dd id="application-presence-count">Unavailable</dd></div>
+        <div><dt>Runtime</dt><dd id="application-runtime">Unavailable</dd></div>
+        <div><dt>Runtime pressure</dt><dd id="application-runtime-pressure">Unavailable</dd></div>
+      </dl>
+    </section>
+
+    <section id="manager-settings-panel" aria-labelledby="heading-manager-settings">
+      <h2 id="heading-manager-settings">Settings</h2>
+      <form id="manager-settings-form">
+        <div class="form-grid">
+          <label>Dashboard host<input id="settings-dashboard-host" name="dashboard-host" type="text" required autocomplete="off"></label>
+          <label>Dashboard port<input id="settings-dashboard-port" name="dashboard-port" type="number" min="1" max="65535" required></label>
+          <label>Refresh interval (seconds)<input id="settings-refresh-interval" name="refresh-interval" type="number" min="2" max="300" required></label>
+          <label>Watchdog interval (seconds)<input id="settings-watchdog-interval" name="watchdog-interval" type="number" min="1" max="60" required></label>
+          <label>Session idle TTL (seconds)<input id="settings-session-idle-ttl" name="session-idle-ttl" type="number" min="60" required></label>
+          <label>Shell timeout (seconds)<input id="settings-shell-timeout" name="shell-timeout" type="number" min="1" max="120" required></label>
+          <label>Log level<select id="settings-log-level" name="log-level"><option value="trace">Trace</option><option value="debug">Debug</option><option value="info">Info</option><option value="warn">Warn</option><option value="error">Error</option><option value="critical">Critical</option></select></label>
+        </div>
+        <div class="checkbox-list">
+          <label><input id="settings-auto-restart" name="auto-restart" type="checkbox"> Automatically restart HTTP service</label>
+          <label><input id="settings-open-browser" name="open-browser" type="checkbox"> Open browser when manager starts</label>
+        </div>
+        <button id="settings-save" type="submit">Save and apply settings</button>
+        <button id="settings-reload" type="button">Reload settings</button>
+      </form>
+    </section>
+
+    <section id="sessions-panel" aria-labelledby="heading-sessions">
+      <h2 id="heading-sessions">Sessions</h2>
+      <p id="sessions-summary" class="secondary-text">Unavailable</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Open sessions">
+        <table>
+          <caption>Open sessions</caption>
+          <thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col">Summary</th><th scope="col">Action</th></tr></thead>
+          <tbody id="open-session-rows"><tr><td colspan="5">Unavailable</td></tr></tbody>
+        </table>
+      </div>
+      <details>
+        <summary>Recent sessions</summary>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Recent sessions">
+          <table>
+            <caption>Recent sessions</caption>
+            <thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col">Summary</th></tr></thead>
+            <tbody id="recent-session-rows"><tr><td colspan="4">Unavailable</td></tr></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section id="agents-panel" aria-labelledby="heading-agents">
+      <h2 id="heading-agents">Agents</h2>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Agent catalog">
+        <table>
+          <caption>Configured agents</caption>
+          <thead><tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Description</th><th scope="col">Source</th></tr></thead>
+          <tbody id="agent-rows"><tr><td colspan="4">Unavailable</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="audit-panel" aria-labelledby="heading-audit">
+      <h2 id="heading-audit">Recent audit</h2>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Recent audit events">
+        <table>
+          <caption>Recent bounded audit events</caption>
+          <thead><tr><th scope="col">Time</th><th scope="col">Tool</th><th scope="col">Status</th><th scope="col">Duration</th><th scope="col">Detail</th></tr></thead>
+          <tbody id="audit-rows"><tr><td colspan="5">Unavailable</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="diagnostics-panel" aria-labelledby="heading-diagnostics">
+      <h2 id="heading-diagnostics">Diagnostics</h2>
+      <pre id="diagnostic-lines" tabindex="0">Unavailable</pre>
+    </section>
+
+    <section id="doctor-panel" aria-labelledby="heading-doctor">
+      <h2 id="heading-doctor">Doctor</h2>
+      <button id="doctor-run" type="button">Run doctor</button>
+      <p id="doctor-summary" class="secondary-text">Doctor has not run.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Doctor checks">
+        <table>
+          <caption>Installation and runtime checks</caption>
+          <thead><tr><th scope="col">Check</th><th scope="col">Result</th><th scope="col">Detail</th></tr></thead>
+          <tbody id="doctor-rows"><tr><td colspan="3">No results.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="manager-shutdown-dialog" aria-labelledby="shutdown-dialog-title">
+    <h2 id="shutdown-dialog-title">Shutdown manager?</h2>
+    <p>The dashboard will be unavailable until the manager is started again.</p>
+    <form method="dialog">
+      <button id="shutdown-cancel" value="cancel">Cancel</button>
+      <button id="shutdown-confirm" class="danger" value="confirm">Shutdown manager</button>
+    </form>
+  </dialog>
+
+  <noscript><p class="notice error">JavaScript is required to authenticate and operate the dashboard.</p></noscript>
+</body>
+</html>
