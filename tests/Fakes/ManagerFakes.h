@@ -21,6 +21,7 @@ public:
     DeterministicResult<Domain::ManagerStatus> controlResult;
     DeterministicResult<Domain::ManagerSettingsUpdateOutcome>
         updateSettingsResult;
+    DeterministicResult<void> requestRestartResult;
     DeterministicResult<void> requestShutdownResult;
 
     [[nodiscard]] Domain::Result<Domain::ManagerStatus> status(
@@ -71,6 +72,20 @@ public:
         }
         try {
             return requestShutdownResult.get();
+        } catch (...) {
+            return fakeInternalFailure<void>();
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> requestRestart(
+        const Domain::OperationContext& context) noexcept override
+    {
+        auto accepted = gate_.enter(context);
+        if (!accepted) {
+            return accepted;
+        }
+        try {
+            return requestRestartResult.get();
         } catch (...) {
             return fakeInternalFailure<void>();
         }

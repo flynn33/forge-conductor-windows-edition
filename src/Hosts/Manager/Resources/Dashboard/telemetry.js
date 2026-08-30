@@ -343,16 +343,19 @@ function renderFeed(value) {
 
 function renderFrame(frame) {
   const system = object(frame.system);
+  const hasForge = Object.prototype.hasOwnProperty.call(frame, "forge");
   const forge = object(frame.forge);
   if (system !== null) {
     renderSystem(system);
   }
   renderHistory(array(frame.history));
-  renderOrchestration(forge?.orchestration);
-  renderMcpServers(forge?.mcp_servers);
-  renderTools(forge?.mcp_tools);
-  renderAgents(forge);
-  renderFeed(forge?.live_feed);
+  if (hasForge) {
+    renderOrchestration(forge?.orchestration);
+    renderMcpServers(forge?.mcp_servers);
+    renderTools(forge?.mcp_tools);
+    renderAgents(forge);
+    renderFeed(forge?.live_feed);
+  }
 
   const updated = timestamp(frame.updated);
   setText("dashboard-updated", updated);
@@ -470,6 +473,8 @@ function startSilenceWatchdog(controller) {
     const silenceMs = now - lastFrame;
     if (silenceMs > SILENCE_RECONNECT_AFTER_MS) {
       clearSilenceWatchdog();
+      setText("dashboard-connection-status", "Reconnecting");
+      refreshController?.abort();
       controller.abort();
       return;
     }
@@ -520,8 +525,13 @@ function scheduleReconnect() {
   }
   reconnectTimer = window.setTimeout(() => {
     reconnectTimer = null;
-    if (refreshInFlight !== null) {
-      void refreshInFlight.finally(() => scheduleReconnect());
+    const pendingRefresh = refreshInFlight;
+    if (pendingRefresh !== null) {
+      void pendingRefresh.finally(() => {
+        if (active && !document.hidden) {
+          void connectStream();
+        }
+      });
       return;
     }
     void connectStream();
@@ -588,7 +598,17 @@ window.addEventListener("pagehide", () => {
   clearSilenceWatchdog();
   if (reconnectTimer !== null) {
     window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
   }
+});
+
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted || client === null) {
+    return;
+  }
+  active = true;
+  setText("dashboard-connection-status", "Restoring");
+  void refreshOnce().finally(() => connectStream());
 });
 
 if (client !== null) {

@@ -268,6 +268,17 @@ void authenticationAndStreamingRemainClosedAndBounded()
         "destination.hash = `token=${encodeURIComponent(this.token)}`",
     }};
     requireAll(auth, AuthContract, "authentication module");
+    const auto post = section(
+        auth,
+        "async post(path, body, signal)",
+        "async stream(");
+    requireOrdered(
+        post,
+        std::array<std::string_view, 2U>{
+            "body: JSON.stringify(body)",
+            "signal,",
+        },
+        "authenticated mutation cancellation");
 
     constexpr std::array<std::string_view, 13U> StreamingContract{{
         "/api/live",
@@ -317,7 +328,10 @@ void requestOwnershipAndWatchdogAreExplicitStaticContracts()
         },
         "packaged request ownership");
 
-    const auto json = section(auth, "async json(path, init = {})", "async post(path, body)");
+    const auto json = section(
+        auth,
+        "async json(path, init = {}, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS)",
+        "async post(path, body, signal)");
     requireOrdered(
         json,
         std::array<std::string_view, 3U>{
@@ -358,17 +372,20 @@ void requestOwnershipAndWatchdogAreExplicitStaticContracts()
 
     requireAll(
         telemetry,
-        std::array<std::string_view, 10U>{
+        std::array<std::string_view, 13U>{
             "SILENCE_REFRESH_AFTER_MS = 2_500",
             "SILENCE_RECONNECT_AFTER_MS = 5_000",
             "SILENCE_WATCHDOG_INTERVAL_MS = 500",
             "lastStreamFrameAtMs = window.performance.now()",
             "void refreshOnce()",
             "controller.abort()",
-            "void refreshInFlight.finally(() => scheduleReconnect())",
+            "const pendingRefresh = refreshInFlight",
+            "pendingRefresh.finally(() =>",
             "refreshController?.abort()",
             "visibilitychange",
             "pagehide",
+            "pageshow",
+            "event.persisted",
         },
         "packaged silence watchdog");
 
@@ -378,13 +395,40 @@ void requestOwnershipAndWatchdogAreExplicitStaticContracts()
         "async function consumeStream");
     requireOrdered(
         watchdog,
-        std::array<std::string_view, 4U>{
+        std::array<std::string_view, 6U>{
             "silenceMs > SILENCE_RECONNECT_AFTER_MS",
+            "setText(\"dashboard-connection-status\", \"Reconnecting\")",
+            "refreshController?.abort()",
             "controller.abort()",
             "silenceMs >= SILENCE_REFRESH_AFTER_MS",
             "void refreshOnce()",
         },
         "packaged silence thresholds");
+
+    const auto pageLifecycle = section(
+        telemetry,
+        "window.addEventListener(\"pagehide\"",
+        "if (client !== null)");
+    requireOrdered(
+        pageLifecycle,
+        std::array<std::string_view, 6U>{
+            "window.clearTimeout(reconnectTimer)",
+            "reconnectTimer = null",
+            "window.addEventListener(\"pageshow\"",
+            "if (!event.persisted || client === null)",
+            "active = true",
+            "void refreshOnce().finally(() => connectStream())",
+        },
+        "packaged BFCache reconnect ownership");
+
+    requireOrdered(
+        connect,
+        std::array<std::string_view, 3U>{
+            "streamConnecting = true",
+            "streamConnecting = false",
+            "scheduleReconnect()",
+        },
+        "restored stream failure retry path");
 }
 
 void controlAndCollectionSemanticsAreExplicitStaticContracts()
@@ -398,7 +442,7 @@ void controlAndCollectionSemanticsAreExplicitStaticContracts()
         occurrences(control, "let settingsInFlight = null") == 1U,
         "packaged control source did not declare exactly one settings owner");
     require(
-        occurrences(control, "client.json(\"/api/manager/settings\")") == 1U,
+        occurrences(control, "const settings = await client.json(") == 1U,
         "packaged control source did not own exactly one settings GET site");
     const auto settings = section(
         control,
@@ -421,8 +465,8 @@ void controlAndCollectionSemanticsAreExplicitStaticContracts()
         "packaged mutations did not all cross-guard refresh and settings owners");
     requireAll(
         control,
-        std::array<std::string_view, 8U>{
-            "client.json(\"/api/status\")",
+        std::array<std::string_view, 29U>{
+            "request(\"/api/status\")",
             "renderApplicationStatus(applicationStatus)",
             "application-service-state",
             "application-open-sessions",
@@ -430,8 +474,110 @@ void controlAndCollectionSemanticsAreExplicitStaticContracts()
             "application-presence-count",
             "application-runtime",
             "application-runtime-pressure",
+            "pagehide",
+            "pageshow",
+            "event.persisted",
+            "RESTART_RECONNECT_ATTEMPTS = 12",
+            "RESTART_PROBE_TIMEOUT_MS = 1_000",
+            "PAGE_RESTORE_ATTEMPTS = 20",
+            "PAGE_RESTORE_PROBE_TIMEOUT_MS = 1_000",
+            "expectedRestartCount = latestRestartCount + 1",
+            "result.state !== \"restarting\"",
+            "restartCount >= requiredRestartCount",
+            "client.navigateToReboundDashboard(window.location.origin)",
+            "Manager restart accepted. Waiting for the listener to return.",
+            "restartProbeController?.abort()",
+            "generation !== restartReconnectGeneration",
+            "requiredRestartCount !== expectedRestartCount",
+            "mutationController?.abort()",
+            "pageRequestController.abort()",
+            "suspendRestartReconnect()",
+            "scheduleRestartReconnect(0)",
+            "startPageRestore()",
+            "generation !== pageRestoreGeneration",
         },
         "packaged composite application status");
+    const auto restartProbe = section(
+        control,
+        "async function probeRestartCompletion()",
+        "function renderApplicationStatus");
+    requireOrdered(
+        restartProbe,
+        std::array<std::string_view, 9U>{
+            "const generation = restartReconnectGeneration",
+            "const requiredRestartCount = expectedRestartCount",
+            "const controller = new AbortController()",
+            "restartReconnectAttempt += 1",
+            "await client.json",
+            "generation !== restartReconnectGeneration",
+            "restartCount >= requiredRestartCount",
+            "stopRestartReconnect()",
+            "client.navigateToReboundDashboard(window.location.origin)",
+        },
+        "packaged bounded restart reconnect");
+    require(
+        occurrences(control, "let restartReconnectTimer = null") == 1U,
+        "packaged restart reconnect did not declare one timer owner");
+    require(
+        occurrences(control, "let mutationController = null") == 1U,
+        "packaged mutations did not declare one abort owner");
+    require(
+        occurrences(control, "owner.controller.signal") == 7U,
+        "packaged mutations did not check and use their abort owner");
+    const auto mutationOwner = section(
+        control,
+        "function beginMutation()",
+        "function stopPageRestore()");
+    requireOrdered(
+        mutationOwner,
+        std::array<std::string_view, 4U>{
+            "controller: new AbortController()",
+            "generation: pageLifecycleGeneration",
+            "mutationController = owner.controller",
+            "mutationInFlight = true",
+        },
+        "packaged mutation page-epoch owner");
+
+    const auto pageRestore = section(
+        control,
+        "async function restorePersistedPage()",
+        "function startPageRestore()");
+    requireOrdered(
+        pageRestore,
+        std::array<std::string_view, 9U>{
+            "const generation = pageRestoreGeneration",
+            "pageRestoreAttempt += 1",
+            "refreshInFlight !== null || settingsInFlight !== null || mutationInFlight",
+            "await client.json",
+            "generation !== pageRestoreGeneration",
+            "await loadSettings()",
+            "await refreshAll()",
+            "autoRefreshTimer !== null",
+            "stopPageRestore()",
+        },
+        "packaged bounded BFCache restore");
+
+    const auto controlPageLifecycle = section(
+        control,
+        "window.addEventListener(\"pagehide\"",
+        "if (client !== null)");
+    requireOrdered(
+        controlPageLifecycle,
+        std::array<std::string_view, 12U>{
+            "pageLifecycleActive = false",
+            "pageLifecycleGeneration += 1",
+            "pageRequestController.abort()",
+            "mutationController?.abort()",
+            "suspendRestartReconnect()",
+            "stopPageRestore()",
+            "window.clearInterval(autoRefreshTimer)",
+            "window.addEventListener(\"pageshow\"",
+            "pageLifecycleActive = true",
+            "pageRequestController = new AbortController()",
+            "scheduleRestartReconnect(0)",
+            "startPageRestore()",
+        },
+        "packaged control BFCache lifecycle");
     requireAll(
         controlHtml,
         std::array<std::string_view, 6U>{
@@ -457,6 +603,19 @@ void controlAndCollectionSemanticsAreExplicitStaticContracts()
     require(
         occurrences(telemetry, "raw === null || raw.length !== 0") == 4U,
         "packaged collection renderers did not each retain a null-versus-empty branch");
+
+    const auto frameRenderer = section(
+        telemetry,
+        "function renderFrame(frame)",
+        "const authError = element");
+    requireOrdered(
+        frameRenderer,
+        std::array<std::string_view, 3U>{
+            "Object.prototype.hasOwnProperty.call(frame, \"forge\")",
+            "if (hasForge)",
+            "renderFeed(forge?.live_feed)",
+        },
+        "packaged compact-frame Forge preservation");
 }
 
 void sourcePairsCarryMatchingExplicitContractMarkers()

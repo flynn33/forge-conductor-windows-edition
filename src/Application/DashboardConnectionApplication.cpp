@@ -537,15 +537,11 @@ DashboardConnectionApplication::prepare(
                 head);
         }
         case Dashboard::DashboardRouteId::ManagerStart:
-        case Dashboard::DashboardRouteId::ManagerStop:
-        case Dashboard::DashboardRouteId::ManagerRestart: {
+        case Dashboard::DashboardRouteId::ManagerStop: {
             Domain::ManagerControlAction action{
                 Domain::ManagerControlAction::Start};
             if (route->id() == Dashboard::DashboardRouteId::ManagerStop) {
                 action = Domain::ManagerControlAction::Stop;
-            } else if (
-                route->id() == Dashboard::DashboardRouteId::ManagerRestart) {
-                action = Domain::ManagerControlAction::Restart;
             }
             auto result = managerClient_.control(
                 Domain::ManagerControlRequest{action}, context);
@@ -557,6 +553,15 @@ DashboardConnectionApplication::prepare(
                         MaximumResponseBodyBytes),
                 head);
         }
+        case Dashboard::DashboardRouteId::ManagerRestart:
+            return jsonResponse(
+                Dashboard::DashboardApplicationJsonCodec::
+                    encodeRestartAcknowledgement(
+                        Dashboard::DashboardResponseComposer::
+                            MaximumResponseBodyBytes),
+                head,
+                Dashboard::DashboardPostDeliveryAction::
+                    RequestManagerRestart);
         case Dashboard::DashboardRouteId::ManagerShutdown:
             return jsonResponse(
                 Dashboard::DashboardApplicationJsonCodec::
@@ -591,6 +596,8 @@ Domain::Result<void> DashboardConnectionApplication::executePostDelivery(
         switch (action) {
         case Dashboard::DashboardPostDeliveryAction::None:
             return Domain::Result<void>::success();
+        case Dashboard::DashboardPostDeliveryAction::RequestManagerRestart:
+            return managerClient_.requestRestart(context);
         case Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown:
             return managerClient_.requestShutdown(context);
         }

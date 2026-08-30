@@ -16,6 +16,7 @@ namespace ForgeConductor::Dashboard {
 
 enum class DashboardPostDeliveryAction : std::uint8_t {
     None,
+    RequestManagerRestart,
     RequestManagerShutdown,
 };
 
@@ -169,6 +170,8 @@ public:
                 kind == DashboardHttpEncodingResult::Kind::HeadResponseHead;
             const bool definedAction =
                 postDeliveryAction == DashboardPostDeliveryAction::None ||
+                postDeliveryAction ==
+                    DashboardPostDeliveryAction::RequestManagerRestart ||
                 postDeliveryAction ==
                     DashboardPostDeliveryAction::RequestManagerShutdown;
             if (!encodedResponse.hasValue() || !validKind ||

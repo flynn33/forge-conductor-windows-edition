@@ -1748,7 +1748,7 @@ void hardEscalationRacingPostNativeFullSendDrainsLateDispatch()
 void reservesBeforeByteOneAndRunsPostDeliveryAfterSuccess()
 {
     RealStateFixture fixture{
-        Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown};
+        Dashboard::DashboardPostDeliveryAction::RequestManagerRestart};
     fixture.start();
     fixture.receive(CompleteRequest);
     waitUntil(

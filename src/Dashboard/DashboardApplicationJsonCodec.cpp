@@ -1234,6 +1234,19 @@ Domain::Result<std::string> DashboardApplicationJsonCodec::encodeClosedSession(
 }
 
 Domain::Result<std::string>
+DashboardApplicationJsonCodec::encodeRestartAcknowledgement(
+    const std::size_t maximumBytes) noexcept
+{
+    return encode(
+        maximumBytes,
+        [] {},
+        [](BoundedJsonWriter& writer) {
+            writer.raw(
+                "{\"ok\":true,\"message\":\"Manager restart accepted\",\"state\":\"restarting\"}");
+        });
+}
+
+Domain::Result<std::string>
 DashboardApplicationJsonCodec::encodeShutdownAcknowledgement(
     const std::size_t maximumBytes) noexcept
 {

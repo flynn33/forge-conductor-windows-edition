@@ -246,6 +246,20 @@ public:
         return Domain::Result<void>::success();
     }
 
+    [[nodiscard]] Domain::Result<void> requestRestart(
+        const Domain::OperationContext& context) noexcept
+    {
+        auto restarted = control(
+            Domain::ManagerControlRequest{
+                Domain::ManagerControlAction::Restart},
+            context);
+        if (!restarted) {
+            return Domain::Result<void>::failure(
+                std::move(restarted).error());
+        }
+        return Domain::Result<void>::success();
+    }
+
     void shutdown() noexcept
     {
         try {
@@ -791,6 +805,24 @@ Domain::Result<void> WindowsManagerNamedPipeClient::requestShutdown(
         return Domain::Result<void>::failure(clientError(
             Domain::ErrorCodes::InternalFailure,
             "The remote manager shutdown request failed unexpectedly."));
+    }
+}
+
+Domain::Result<void> WindowsManagerNamedPipeClient::requestRestart(
+    const Domain::OperationContext& context) noexcept
+{
+    try {
+        const auto implementation = implementation_;
+        if (!implementation) {
+            return Domain::Result<void>::failure(clientError(
+                Domain::ErrorCodes::TransportClosed,
+                "The manager client transport is unavailable."));
+        }
+        return implementation->requestRestart(context);
+    } catch (...) {
+        return Domain::Result<void>::failure(clientError(
+            Domain::ErrorCodes::InternalFailure,
+            "The remote manager restart request failed unexpectedly."));
     }
 }
 

@@ -2,9 +2,9 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-30T04:41:46.3138121+00:00",
+  "updated_at": "2026-08-30T06:31:48.3500718+00:00",
   "status": "in_progress",
-  "active_role": "Builder",
+  "active_role": "Implementer",
   "active_phase": "P16",
   "session_number": 0,
   "phases": [
@@ -625,7 +625,15 @@
         ".forge-codex/state/commands/20260830T041520752Z-a302f0ee.json",
         ".forge-codex/state/decisions/P16-019-embedded-bounded-dashboard-shell.md",
         ".forge-codex/state/evidence/P16/dashboard-static-shell-checkpoint.json",
-        ".forge-codex/state/commands/20260830T041546945Z-2634999f.json"
+        ".forge-codex/state/commands/20260830T041546945Z-2634999f.json",
+        ".forge-codex/state/decisions/P16-020-process-owned-dashboard-runtime-and-deferred-restart-edge.md",
+        ".forge-codex/state/evidence/P16/dashboard-process-runtime-deferred-restart-checkpoint.json",
+        ".forge-codex/state/commands/20260830T054515161Z-846af754.json",
+        ".forge-codex/state/commands/20260830T060207512Z-107c2c89.json",
+        ".forge-codex/state/commands/20260830T060459728Z-6385c9ac.json",
+        ".forge-codex/state/commands/20260830T062705657Z-48c3d881.json",
+        ".forge-codex/state/commands/20260830T062756363Z-eef5b842.json",
+        ".forge-codex/state/commands/20260830T063052752Z-a43cf61b.json"
       ]
     },
     {

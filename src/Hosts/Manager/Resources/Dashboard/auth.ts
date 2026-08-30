@@ -107,8 +107,12 @@ export class DashboardClient {
       : null;
   }
 
-  async json(path: string, init: RequestInit = {}): Promise<JsonObject> {
-    return this.withResponse(path, init, DEFAULT_REQUEST_TIMEOUT_MS, async (response) => {
+  async json(
+    path: string,
+    init: RequestInit = {},
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+  ): Promise<JsonObject> {
+    return this.withResponse(path, init, timeoutMs, async (response) => {
       const payload = await readBoundedJson(response);
       if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
         throw new DashboardHttpError(response.status, "invalid_response", "The dashboard returned an invalid JSON document.");
@@ -117,11 +121,16 @@ export class DashboardClient {
     });
   }
 
-  async post(path: string, body: JsonObject): Promise<JsonObject> {
+  async post(
+    path: string,
+    body: JsonObject,
+    signal?: AbortSignal,
+  ): Promise<JsonObject> {
     return this.json(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal,
     });
   }
 

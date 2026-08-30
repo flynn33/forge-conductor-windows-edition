@@ -53,6 +53,10 @@ public:
         std::size_t maximumBytes = MaximumResponseBytes) noexcept;
 
     [[nodiscard]] static Domain::Result<std::string>
+    encodeRestartAcknowledgement(
+        std::size_t maximumBytes = MaximumResponseBytes) noexcept;
+
+    [[nodiscard]] static Domain::Result<std::string>
     encodeShutdownAcknowledgement(
         std::size_t maximumBytes = MaximumResponseBytes) noexcept;
 };

@@ -147,13 +147,16 @@ DashboardPostDeliveryHandlerOperation::create(
     using CreationResult = Domain::Result<
         std::unique_ptr<DashboardPostDeliveryHandlerOperation>>;
     try {
-        if (application == nullptr ||
-            action !=
-                Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown) {
+        const bool definedAction =
+            action ==
+                Dashboard::DashboardPostDeliveryAction::RequestManagerRestart ||
+            action ==
+                Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown;
+        if (application == nullptr || !definedAction) {
             return CreationResult::failure(handlerOperationError(
                 Domain::ErrorCodes::InvalidRequest,
                 "A dashboard post-delivery operation requires an application "
-                "and the sole defined nonempty action."));
+                "and a defined nonempty action."));
         }
         return CreationResult::success(
             std::unique_ptr<DashboardPostDeliveryHandlerOperation>{
@@ -192,9 +195,12 @@ DashboardHandlerCompletion DashboardPostDeliveryHandlerOperation::execute(
     }
     executed_ = true;
 
-    if (application_ == nullptr ||
-        action_ !=
-            Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown) {
+    const bool definedAction =
+        action_ ==
+            Dashboard::DashboardPostDeliveryAction::RequestManagerRestart ||
+        action_ ==
+            Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown;
+    if (application_ == nullptr || !definedAction) {
         application_.reset();
         action_ = Dashboard::DashboardPostDeliveryAction::None;
         return postDeliveryFailure(

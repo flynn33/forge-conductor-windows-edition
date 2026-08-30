@@ -770,6 +770,7 @@ public:
         Settings,
         Control,
         UpdateSettings,
+        Restart,
         Shutdown,
         Count,
     };
@@ -851,6 +852,23 @@ public:
             if (failures[index(Operation::Shutdown)]) {
                 return Domain::Result<void>::failure(
                     *failures[index(Operation::Shutdown)]);
+            }
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return Domain::Result<void>::failure(
+                dependencyError(Domain::ErrorCodes::InternalFailure));
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> requestRestart(
+        const Domain::OperationContext& operation) noexcept override
+    {
+        try {
+            ++calls[index(Operation::Restart)];
+            contexts[index(Operation::Restart)] = operation;
+            if (failures[index(Operation::Restart)]) {
+                return Domain::Result<void>::failure(
+                    *failures[index(Operation::Restart)]);
             }
             return Domain::Result<void>::success();
         } catch (...) {
@@ -1023,7 +1041,7 @@ enum class ExpectedDependency {
     ManagerUpdate,
     ManagerStart,
     ManagerStop,
-    ManagerRestart,
+    RestartAction,
     ShutdownAction,
 };
 
@@ -1081,7 +1099,7 @@ struct RouteCase final {
         {"POST", "/api/manager/stop", true, true, "{}",
          ExpectedDependency::ManagerStop},
         {"POST", "/api/manager/restart", true, true, "{}",
-         ExpectedDependency::ManagerRestart},
+         ExpectedDependency::RestartAction},
         {"POST", "/api/manager/shutdown", true, true, "{}",
          ExpectedDependency::ShutdownAction},
     };
@@ -1213,7 +1231,6 @@ void requireRouteDependency(
         break;
     case ExpectedDependency::ManagerStart:
     case ExpectedDependency::ManagerStop:
-    case ExpectedDependency::ManagerRestart:
         REQUIRE(fixture.manager.callCount(ManagerOperation::Control) == 1U);
         requireContext(
             fixture.manager.lastContext(ManagerOperation::Control), operation);
@@ -1221,11 +1238,13 @@ void requireRouteDependency(
         REQUIRE(fixture.dependencyCalls() == 1U);
         if (expected == ExpectedDependency::ManagerStart) {
             REQUIRE(*fixture.manager.lastControl == Domain::ManagerControlAction::Start);
-        } else if (expected == ExpectedDependency::ManagerStop) {
-            REQUIRE(*fixture.manager.lastControl == Domain::ManagerControlAction::Stop);
         } else {
-            REQUIRE(*fixture.manager.lastControl == Domain::ManagerControlAction::Restart);
+            REQUIRE(*fixture.manager.lastControl == Domain::ManagerControlAction::Stop);
         }
+        break;
+    case ExpectedDependency::RestartAction:
+        REQUIRE(fixture.manager.callCount(ManagerOperation::Restart) == 0U);
+        REQUIRE(fixture.dependencyCalls() == 0U);
         break;
     case ExpectedDependency::ShutdownAction:
         REQUIRE(fixture.manager.callCount(ManagerOperation::Shutdown) == 0U);
@@ -1262,7 +1281,15 @@ void dispatchesEveryReleasedNonStreamingRoute()
         auto* complete = exchange.completeExchange();
         REQUIRE(complete != nullptr);
         const auto action = complete->takePostDeliveryAction();
-        if (route.dependency == ExpectedDependency::ShutdownAction) {
+        if (route.dependency == ExpectedDependency::RestartAction) {
+            REQUIRE(action ==
+                    Dashboard::DashboardPostDeliveryAction::RequestManagerRestart);
+            const auto acknowledgement = wireJson(exchange);
+            REQUIRE(acknowledgement.at("ok") == true);
+            REQUIRE(acknowledgement.at("message") ==
+                    "Manager restart accepted");
+            REQUIRE(acknowledgement.at("state") == "restarting");
+        } else if (route.dependency == ExpectedDependency::ShutdownAction) {
             REQUIRE(action ==
                     Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown);
             const auto acknowledgement = wireJson(exchange);
@@ -1736,9 +1763,32 @@ void statusUsesOneContextAndShortCircuitsInDependencyOrder()
     }
 }
 
-void executesManagerShutdownOnlyAfterDelivery()
+void executesManagerLifecycleRequestsOnlyAfterDelivery()
 {
     Fixture fixture;
+    auto restartResponse = fixture.prepare(request(
+        "POST", "/api/manager/restart", true, true, "{}"));
+    REQUIRE(wireStatus(restartResponse) == 200U);
+    REQUIRE(fixture.manager.callCount(
+                ManagerClientFake::Operation::Restart) == 0U);
+    auto* restartComplete = restartResponse.completeExchange();
+    REQUIRE(restartComplete != nullptr);
+    const auto restartAction = restartComplete->takePostDeliveryAction();
+    REQUIRE(restartAction ==
+            Dashboard::DashboardPostDeliveryAction::RequestManagerRestart);
+
+    const auto restartContext = context(
+        "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "restart-post-delivery");
+    const auto restartExecuted = fixture.application.executePostDelivery(
+        restartAction, restartContext);
+    REQUIRE(restartExecuted);
+    REQUIRE(fixture.manager.callCount(
+                ManagerClientFake::Operation::Restart) == 1U);
+    requireContext(
+        fixture.manager.lastContext(ManagerClientFake::Operation::Restart),
+        restartContext);
+
     auto response = fixture.prepare(request(
         "POST", "/api/manager/shutdown", true, true, "{}"));
     REQUIRE(wireStatus(response) == 200U);
@@ -1795,6 +1845,19 @@ void executesManagerShutdownOnlyAfterDelivery()
     REQUIRE(failed.error().code == Domain::ErrorCodes::TransportClosed);
     REQUIRE(fixture.manager.callCount(
                 ManagerClientFake::Operation::Shutdown) == 2U);
+
+    fixture.manager.setFailure(
+        ManagerClientFake::Operation::Restart,
+        dependencyError(Domain::ErrorCodes::TransportClosed));
+    const auto failedRestart = fixture.application.executePostDelivery(
+        Dashboard::DashboardPostDeliveryAction::RequestManagerRestart,
+        context(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "failed-restart"));
+    REQUIRE(!failedRestart);
+    REQUIRE(failedRestart.error().code == Domain::ErrorCodes::TransportClosed);
+    REQUIRE(fixture.manager.callCount(
+                ManagerClientFake::Operation::Restart) == 2U);
 }
 
 } // namespace
@@ -1813,7 +1876,7 @@ int main()
         ownsSseSubscriptionAndMapsCapacityFailures();
         rejectsNullTelemetryObservationsWithoutDereferencingThem();
         statusUsesOneContextAndShortCircuitsInDependencyOrder();
-        executesManagerShutdownOnlyAfterDelivery();
+        executesManagerLifecycleRequestsOnlyAfterDelivery();
         std::cout << "Dashboard connection application tests passed ("
                   << assertions << " assertions).\n";
         return 0;

@@ -184,6 +184,14 @@ void factoriesRejectInvalidDependenciesAndActions()
     const auto emptyAction = PostOperation::create(
         app, Dashboard::DashboardPostDeliveryAction::None);
     require(!emptyAction, "post-delivery operation accepted None");
+    const auto restartAction = PostOperation::create(
+        app, Dashboard::DashboardPostDeliveryAction::RequestManagerRestart);
+    require(restartAction.hasValue(),
+            "post-delivery operation rejected manager restart");
+    const auto shutdownAction = PostOperation::create(
+        app, Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown);
+    require(shutdownAction.hasValue(),
+            "post-delivery operation rejected manager shutdown");
     const auto undefinedAction = PostOperation::create(
         app, static_cast<Dashboard::DashboardPostDeliveryAction>(0xffU));
     require(!undefinedAction,
@@ -320,7 +328,7 @@ void postDeliveryOperationOwnsActionAndForwardsFailureExactlyOnce()
     std::weak_ptr<RecordingApplication> weak = app;
     auto operation = take(PostOperation::create(
         app,
-        Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown));
+        Dashboard::DashboardPostDeliveryAction::RequestManagerRestart));
     app.reset();
     require(!weak.expired(),
             "post-delivery operation did not retain the application");
@@ -341,7 +349,7 @@ void postDeliveryOperationOwnsActionAndForwardsFailureExactlyOnce()
     require(retained != nullptr && retained->postDeliveryCalls == 1U,
             "post-delivery action did not execute exactly once");
     require(retained->postDeliveryAction ==
-                Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown,
+                Dashboard::DashboardPostDeliveryAction::RequestManagerRestart,
             "post-delivery action changed");
     require(retained->postDeliveryContext.has_value() &&
                 retained->postDeliveryContext->operationId ==

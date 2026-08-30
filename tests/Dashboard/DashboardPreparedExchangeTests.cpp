@@ -312,6 +312,18 @@ void rejectsInvalidCompleteExchangeInputs()
 
 void transfersDirectCompleteExchangeActionsExactlyOnce()
 {
+    auto restartResult = Dashboard::DashboardCompleteExchange::create(
+        completeEncoding(),
+        Dashboard::DashboardPostDeliveryAction::RequestManagerRestart);
+    REQUIRE(restartResult.hasValue());
+    auto restartOwner = std::move(restartResult).value();
+    REQUIRE(
+        restartOwner.takePostDeliveryAction() ==
+        Dashboard::DashboardPostDeliveryAction::RequestManagerRestart);
+    REQUIRE(
+        restartOwner.takePostDeliveryAction() ==
+        Dashboard::DashboardPostDeliveryAction::None);
+
     auto constructorResult = Dashboard::DashboardCompleteExchange::create(
         completeEncoding(),
         Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown);

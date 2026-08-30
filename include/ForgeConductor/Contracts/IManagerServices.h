@@ -25,6 +25,12 @@ public:
         bool applyImmediately,
         const Domain::OperationContext& context) noexcept = 0;
 
+    // Requests an orderly asynchronous restart. Acceptance means the bounded
+    // Manager-owned transition edge was published or coalesced; it does not
+    // mean the restart has completed.
+    [[nodiscard]] virtual Domain::Result<void> requestRestart(
+        const Domain::OperationContext& context) noexcept = 0;
+
     // Requests an orderly shutdown of the remote manager. This is distinct
     // from shutdown(), which only closes this client transport instance.
     [[nodiscard]] virtual Domain::Result<void> requestShutdown(

@@ -6,12 +6,32 @@ const MAXIMUM_SESSION_ROWS = 128;
 const MAXIMUM_AGENT_ROWS = 64;
 const MAXIMUM_AUDIT_ROWS = 128;
 const MAXIMUM_DIAGNOSTIC_LINES = 256;
+const RESTART_RECONNECT_ATTEMPTS = 12;
+const RESTART_RECONNECT_DELAY_MS = 500;
+const RESTART_PROBE_TIMEOUT_MS = 1_000;
+const PAGE_RESTORE_ATTEMPTS = 20;
+const PAGE_RESTORE_DELAY_MS = 1_000;
+const PAGE_RESTORE_PROBE_TIMEOUT_MS = 1_000;
 const MANAGER_ACTION_PATHS = {
   start: "/api/manager/start",
   stop: "/api/manager/stop",
   restart: "/api/manager/restart",
 } as const;
 let latestServiceActive: boolean | null = null;
+let latestRestartCount: number | null = null;
+let expectedRestartCount: number | null = null;
+let restartReconnectAttempt = 0;
+let restartReconnectGeneration = 0;
+let restartReconnectTimer: number | null = null;
+let restartReconnectActive = false;
+let restartProbeController: AbortController | null = null;
+let pageLifecycleGeneration = 0;
+let pageLifecycleActive = true;
+let pageRequestController = new AbortController();
+let pageRestoreAttempt = 0;
+let pageRestoreGeneration = 0;
+let pageRestoreTimer: number | null = null;
+let pageRestoreController: AbortController | null = null;
 
 function element<T extends HTMLElement>(id: string): T {
   const value = document.getElementById(id);
@@ -132,6 +152,86 @@ function renderManagerStatus(status: JsonObject): void {
   setText("manager-last-error", text(status.last_error) ?? "None reported");
 
   latestServiceActive = boolean(status.service_active);
+  latestRestartCount = number(status.restart_count);
+}
+
+function suspendRestartReconnect(): void {
+  restartReconnectGeneration += 1;
+  if (restartProbeController !== null && restartReconnectAttempt > 0) {
+    restartReconnectAttempt -= 1;
+  }
+  restartProbeController?.abort();
+  restartProbeController = null;
+  if (restartReconnectTimer !== null) {
+    window.clearTimeout(restartReconnectTimer);
+    restartReconnectTimer = null;
+  }
+}
+
+function stopRestartReconnect(): void {
+  suspendRestartReconnect();
+  restartReconnectActive = false;
+  restartReconnectAttempt = 0;
+  expectedRestartCount = null;
+}
+
+function scheduleRestartReconnect(delayMs = RESTART_RECONNECT_DELAY_MS): void {
+  if (client === null || !pageLifecycleActive || !restartReconnectActive ||
+      restartReconnectTimer !== null) {
+    return;
+  }
+  restartReconnectTimer = window.setTimeout(() => {
+    restartReconnectTimer = null;
+    void probeRestartCompletion();
+  }, delayMs);
+}
+
+async function probeRestartCompletion(): Promise<void> {
+  if (client === null || !pageLifecycleActive || !restartReconnectActive ||
+      expectedRestartCount === null) {
+    return;
+  }
+  const generation = restartReconnectGeneration;
+  const requiredRestartCount = expectedRestartCount;
+  const controller = new AbortController();
+  restartProbeController = controller;
+  restartReconnectAttempt += 1;
+  let status: JsonObject | null = null;
+  try {
+    status = await client.json(
+      "/api/manager/status",
+      { signal: controller.signal },
+      RESTART_PROBE_TIMEOUT_MS,
+    );
+  } catch {
+    // The listener is expected to be unavailable during the bounded cutover.
+  } finally {
+    if (restartProbeController === controller) {
+      restartProbeController = null;
+    }
+  }
+
+  if (!pageLifecycleActive || !restartReconnectActive ||
+      generation !== restartReconnectGeneration ||
+      requiredRestartCount !== expectedRestartCount) {
+    return;
+  }
+  const state = status === null ? null : text(status.state);
+  const restartCount = status === null ? null : number(status.restart_count);
+  if (state === "running" && restartCount !== null && restartCount >= requiredRestartCount) {
+    stopRestartReconnect();
+    client.navigateToReboundDashboard(window.location.origin);
+    return;
+  }
+
+  if (restartReconnectAttempt < RESTART_RECONNECT_ATTEMPTS) {
+    scheduleRestartReconnect();
+    return;
+  }
+  stopRestartReconnect();
+  mutationInFlight = false;
+  setBusy(false);
+  setNotice("Manager restart is taking longer than expected. Refresh to reconnect.", true);
 }
 
 function renderApplicationStatus(status: JsonObject): void {
@@ -291,14 +391,148 @@ function renderServiceStopped(): void {
 
 const authError = element("control-auth-error");
 const client: DashboardClient | null = requireDashboardClient(authError);
+
+interface MutationOwner {
+  readonly controller: AbortController;
+  readonly generation: number;
+}
+
 let refreshInFlight: Promise<void> | null = null;
 let settingsInFlight: Promise<void> | null = null;
 let mutationInFlight = false;
+let mutationController: AbortController | null = null;
 let autoRefreshTimer: number | null = null;
+
+function pageRequestIsCurrent(
+  generation: number,
+  controller: AbortController,
+): boolean {
+  return pageLifecycleActive && generation === pageLifecycleGeneration &&
+    controller === pageRequestController && !controller.signal.aborted;
+}
+
+function beginMutation(): MutationOwner {
+  const owner = {
+    controller: new AbortController(),
+    generation: pageLifecycleGeneration,
+  };
+  mutationController = owner.controller;
+  mutationInFlight = true;
+  setBusy(true);
+  return owner;
+}
+
+function mutationIsCurrent(owner: MutationOwner): boolean {
+  return pageLifecycleActive && owner.generation === pageLifecycleGeneration &&
+    mutationController === owner.controller && !owner.controller.signal.aborted;
+}
+
+function finishMutation(owner: MutationOwner, retainForRestart = false): void {
+  if (mutationController !== owner.controller) {
+    return;
+  }
+  mutationController = null;
+  mutationInFlight = retainForRestart;
+  if (!retainForRestart && pageLifecycleActive) {
+    setBusy(false);
+  }
+}
+
+function stopPageRestore(): void {
+  pageRestoreGeneration += 1;
+  pageRestoreAttempt = 0;
+  pageRestoreController?.abort();
+  pageRestoreController = null;
+  if (pageRestoreTimer !== null) {
+    window.clearTimeout(pageRestoreTimer);
+    pageRestoreTimer = null;
+  }
+}
+
+function schedulePageRestore(delayMs = PAGE_RESTORE_DELAY_MS): void {
+  if (client === null || !pageLifecycleActive || restartReconnectActive ||
+      pageRestoreTimer !== null || pageRestoreController !== null) {
+    return;
+  }
+  pageRestoreTimer = window.setTimeout(() => {
+    pageRestoreTimer = null;
+    void restorePersistedPage();
+  }, delayMs);
+}
+
+async function restorePersistedPage(): Promise<void> {
+  if (client === null || !pageLifecycleActive || restartReconnectActive) {
+    return;
+  }
+  const generation = pageRestoreGeneration;
+  pageRestoreAttempt += 1;
+  if (refreshInFlight !== null || settingsInFlight !== null || mutationInFlight) {
+    if (pageRestoreAttempt < PAGE_RESTORE_ATTEMPTS) {
+      schedulePageRestore();
+    } else {
+      stopPageRestore();
+      setNotice("Dashboard restoration is taking longer than expected. Refresh to reconnect.", true);
+    }
+    return;
+  }
+
+  const controller = new AbortController();
+  pageRestoreController = controller;
+  let restored = false;
+  try {
+    await client.json(
+      "/api/manager/status",
+      { signal: controller.signal },
+      PAGE_RESTORE_PROBE_TIMEOUT_MS,
+    );
+    if (!pageLifecycleActive || generation !== pageRestoreGeneration ||
+        controller.signal.aborted) {
+      return;
+    }
+    await loadSettings();
+    if (!pageLifecycleActive || generation !== pageRestoreGeneration ||
+        controller.signal.aborted || mutationInFlight) {
+      return;
+    }
+    await refreshAll();
+    restored = pageLifecycleActive && generation === pageRestoreGeneration &&
+      !controller.signal.aborted && autoRefreshTimer !== null;
+  } catch {
+    // A BFCache restore can race the listener cutover; retry within the bound.
+  } finally {
+    if (pageRestoreController === controller) {
+      pageRestoreController = null;
+    }
+  }
+
+  if (!pageLifecycleActive || generation !== pageRestoreGeneration) {
+    return;
+  }
+  if (restored) {
+    stopPageRestore();
+    return;
+  }
+  if (pageRestoreAttempt < PAGE_RESTORE_ATTEMPTS) {
+    schedulePageRestore();
+    return;
+  }
+  stopPageRestore();
+  setBusy(false);
+  setNotice("Dashboard restoration is taking longer than expected. Refresh to reconnect.", true);
+}
+
+function startPageRestore(): void {
+  stopPageRestore();
+  schedulePageRestore(0);
+}
 
 function configureAutoRefresh(seconds: number): void {
   if (autoRefreshTimer !== null) {
     window.clearInterval(autoRefreshTimer);
+  }
+  if (!pageLifecycleActive) {
+    autoRefreshTimer = null;
+    return;
   }
   const boundedSeconds = Math.min(300, Math.max(2, seconds));
   autoRefreshTimer = window.setInterval(() => {
@@ -309,19 +543,29 @@ function configureAutoRefresh(seconds: number): void {
 }
 
 async function loadSettings(): Promise<void> {
-  if (client === null || refreshInFlight !== null || mutationInFlight) {
+  if (client === null || !pageLifecycleActive || refreshInFlight !== null || mutationInFlight) {
     return settingsInFlight ?? Promise.resolve();
   }
   if (settingsInFlight !== null) {
     return settingsInFlight;
   }
+  const generation = pageLifecycleGeneration;
+  const controller = pageRequestController;
   setBusy(true);
   const operation = (async () => {
     try {
-      renderSettings(await client.json("/api/manager/settings"));
+      const settings = await client.json(
+        "/api/manager/settings",
+        { signal: controller.signal },
+      );
+      if (pageRequestIsCurrent(generation, controller)) {
+        renderSettings(settings);
+      }
     } finally {
       settingsInFlight = null;
-      setBusy(false);
+      if (pageRequestIsCurrent(generation, controller)) {
+        setBusy(false);
+      }
     }
   })();
   settingsInFlight = operation;
@@ -329,27 +573,39 @@ async function loadSettings(): Promise<void> {
 }
 
 async function refreshAll(): Promise<void> {
-  if (client === null || refreshInFlight !== null || settingsInFlight !== null || mutationInFlight) {
+  if (client === null || !pageLifecycleActive || refreshInFlight !== null || settingsInFlight !== null || mutationInFlight) {
     return refreshInFlight ?? Promise.resolve();
   }
+  const generation = pageLifecycleGeneration;
+  const controller = pageRequestController;
+  const request = (path: string): Promise<JsonObject> => client.json(
+    path,
+    { signal: controller.signal },
+  );
   setBusy(true);
   const operation = (async () => {
     try {
       const [managerStatus, applicationStatus] = await Promise.all([
-        client.json("/api/manager/status"),
-        client.json("/api/status"),
+        request("/api/manager/status"),
+        request("/api/status"),
       ]);
+      if (!pageRequestIsCurrent(generation, controller)) {
+        return;
+      }
       renderManagerStatus(managerStatus);
       renderApplicationStatus(applicationStatus);
       if (managerStatus.service_active !== true) {
         renderServiceStopped();
       } else {
         const [sessions, agents, audit, diagnostics] = await Promise.all([
-          client.json("/api/sessions"),
-          client.json("/api/agents"),
-          client.json("/api/audit"),
-          client.json("/api/diagnostics"),
+          request("/api/sessions"),
+          request("/api/agents"),
+          request("/api/audit"),
+          request("/api/diagnostics"),
         ]);
+        if (!pageRequestIsCurrent(generation, controller)) {
+          return;
+        }
         renderSessions(sessions);
         renderAgents(agents);
         renderAudit(audit);
@@ -358,10 +614,14 @@ async function refreshAll(): Promise<void> {
       element("control-loading").hidden = true;
       element("control-error").hidden = true;
     } catch (reason: unknown) {
-      setNotice(reason instanceof Error ? reason.message : "Manager refresh failed.", true);
+      if (pageRequestIsCurrent(generation, controller)) {
+        setNotice(reason instanceof Error ? reason.message : "Manager refresh failed.", true);
+      }
     } finally {
-      setBusy(false);
       refreshInFlight = null;
+      if (pageRequestIsCurrent(generation, controller)) {
+        setBusy(false);
+      }
     }
   })();
   refreshInFlight = operation;
@@ -369,74 +629,115 @@ async function refreshAll(): Promise<void> {
 }
 
 async function managerAction(action: "start" | "stop" | "restart"): Promise<void> {
-  if (client === null || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
+  if (client === null || !pageLifecycleActive || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
     return;
   }
-  mutationInFlight = true;
-  setBusy(true);
+  const owner = beginMutation();
+  let refreshAfter = false;
   try {
-    const status = await client.post(MANAGER_ACTION_PATHS[action], {});
-    renderManagerStatus(status);
+    if (action === "restart" && latestRestartCount === null) {
+      throw new Error("The current manager restart generation is unavailable.");
+    }
+    const result = await client.post(
+      MANAGER_ACTION_PATHS[action],
+      {},
+      owner.controller.signal,
+    );
+    if (!mutationIsCurrent(owner)) {
+      return;
+    }
+    if (action === "restart") {
+      if (result.state !== "restarting" || result.ok !== true) {
+        throw new Error("The manager returned an invalid restart acknowledgement.");
+      }
+      stopRestartReconnect();
+      expectedRestartCount = (latestRestartCount as number) + 1;
+      restartReconnectAttempt = 0;
+      restartReconnectActive = true;
+      setText("manager-header-status", "Manager restarting");
+      setNotice("Manager restart accepted. Waiting for the listener to return.");
+      scheduleRestartReconnect();
+      return;
+    }
+    renderManagerStatus(result);
     setNotice(`Manager ${action} request completed.`);
   } catch (reason: unknown) {
-    setNotice(reason instanceof Error ? reason.message : `Manager ${action} failed.`, true);
+    if (mutationIsCurrent(owner)) {
+      setNotice(reason instanceof Error ? reason.message : `Manager ${action} failed.`, true);
+    }
   } finally {
-    mutationInFlight = false;
-    setBusy(false);
+    const current = mutationIsCurrent(owner);
+    const retainForRestart = current && action === "restart" && restartReconnectActive;
+    refreshAfter = current && action !== "restart";
+    finishMutation(owner, retainForRestart);
   }
-  await refreshAll();
+  if (refreshAfter) {
+    await refreshAll();
+  }
 }
 
 async function closeSession(sessionId: string): Promise<void> {
-  if (client === null || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
+  if (client === null || !pageLifecycleActive || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
     return;
   }
-  mutationInFlight = true;
-  setBusy(true);
+  const owner = beginMutation();
+  let refreshAfter = false;
   try {
     await client.post("/api/sessions/close", {
       session_id: sessionId,
       summary: "Closed from dashboard",
-    });
-    setNotice("Session closed.");
+    }, owner.controller.signal);
+    if (mutationIsCurrent(owner)) {
+      setNotice("Session closed.");
+    }
   } catch (reason: unknown) {
-    setNotice(reason instanceof Error ? reason.message : "Session close failed.", true);
+    if (mutationIsCurrent(owner)) {
+      setNotice(reason instanceof Error ? reason.message : "Session close failed.", true);
+    }
   } finally {
-    mutationInFlight = false;
-    setBusy(false);
+    refreshAfter = mutationIsCurrent(owner);
+    finishMutation(owner);
   }
-  await refreshAll();
+  if (refreshAfter) {
+    await refreshAll();
+  }
 }
 
 async function pruneSessions(): Promise<void> {
-  if (client === null || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
+  if (client === null || !pageLifecycleActive || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
     return;
   }
-  mutationInFlight = true;
-  setBusy(true);
+  const owner = beginMutation();
+  let refreshAfter = false;
   try {
-    await client.post("/api/sessions/prune", {});
-    setNotice("Stale sessions pruned.");
+    await client.post("/api/sessions/prune", {}, owner.controller.signal);
+    if (mutationIsCurrent(owner)) {
+      setNotice("Stale sessions pruned.");
+    }
   } catch (reason: unknown) {
-    setNotice(reason instanceof Error ? reason.message : "Session pruning failed.", true);
+    if (mutationIsCurrent(owner)) {
+      setNotice(reason instanceof Error ? reason.message : "Session pruning failed.", true);
+    }
   } finally {
-    mutationInFlight = false;
-    setBusy(false);
+    refreshAfter = mutationIsCurrent(owner);
+    finishMutation(owner);
   }
-  await refreshAll();
+  if (refreshAfter) {
+    await refreshAll();
+  }
 }
 
 async function saveSettings(event: SubmitEvent): Promise<void> {
   event.preventDefault();
-  if (client === null || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
+  if (client === null || !pageLifecycleActive || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
     return;
   }
   const form = element<HTMLFormElement>("manager-settings-form");
   if (!form.reportValidity()) {
     return;
   }
-  mutationInFlight = true;
-  setBusy(true);
+  const owner = beginMutation();
+  let refreshAfter = false;
   try {
     const result = await client.post("/api/manager/settings", {
       apply: true,
@@ -455,7 +756,10 @@ async function saveSettings(event: SubmitEvent): Promise<void> {
         shell: { default_timeout_sec: inputNumber("settings-shell-timeout") },
         log_level: element<HTMLSelectElement>("settings-log-level").value,
       },
-    });
+    }, owner.controller.signal);
+    if (!mutationIsCurrent(owner)) {
+      return;
+    }
     renderSettings(result);
     const reboundStatus = object(result.status);
     if (result.applied === true && result.bind_changed === true && reboundStatus !== null) {
@@ -470,46 +774,58 @@ async function saveSettings(event: SubmitEvent): Promise<void> {
     }
     setNotice(result.applied === true ? "Settings saved and applied." : "Settings validated without applying changes.");
   } catch (reason: unknown) {
-    setNotice(reason instanceof Error ? reason.message : "Settings update failed.", true);
+    if (mutationIsCurrent(owner)) {
+      setNotice(reason instanceof Error ? reason.message : "Settings update failed.", true);
+    }
   } finally {
-    mutationInFlight = false;
-    setBusy(false);
+    refreshAfter = mutationIsCurrent(owner);
+    finishMutation(owner);
   }
-  await refreshAll();
+  if (refreshAfter) {
+    await refreshAll();
+  }
 }
 
 async function runDoctor(): Promise<void> {
-  if (client === null || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
+  if (client === null || !pageLifecycleActive || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
     return;
   }
-  mutationInFlight = true;
-  setBusy(true);
+  const owner = beginMutation();
   try {
-    renderDoctor(await client.json("/api/doctor"));
-    setNotice("Doctor completed.");
+    const report = await client.json(
+      "/api/doctor",
+      { signal: owner.controller.signal },
+    );
+    if (mutationIsCurrent(owner)) {
+      renderDoctor(report);
+      setNotice("Doctor completed.");
+    }
   } catch (reason: unknown) {
-    setNotice(reason instanceof Error ? reason.message : "Doctor failed.", true);
+    if (mutationIsCurrent(owner)) {
+      setNotice(reason instanceof Error ? reason.message : "Doctor failed.", true);
+    }
   } finally {
-    mutationInFlight = false;
-    setBusy(false);
+    finishMutation(owner);
   }
 }
 
 async function shutdownManager(): Promise<void> {
-  if (client === null || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
+  if (client === null || !pageLifecycleActive || mutationInFlight || refreshInFlight !== null || settingsInFlight !== null) {
     return;
   }
-  mutationInFlight = true;
-  setBusy(true);
+  const owner = beginMutation();
   try {
-    await client.post("/api/manager/shutdown", {});
-    setNotice("Manager is shutting down.");
-    setText("manager-header-status", "Manager stopping");
+    await client.post("/api/manager/shutdown", {}, owner.controller.signal);
+    if (mutationIsCurrent(owner)) {
+      setNotice("Manager is shutting down.");
+      setText("manager-header-status", "Manager stopping");
+    }
   } catch (reason: unknown) {
-    setNotice(reason instanceof Error ? reason.message : "Manager shutdown failed.", true);
+    if (mutationIsCurrent(owner)) {
+      setNotice(reason instanceof Error ? reason.message : "Manager shutdown failed.", true);
+    }
   } finally {
-    mutationInFlight = false;
-    setBusy(false);
+    finishMutation(owner);
   }
 }
 
@@ -518,7 +834,15 @@ element("manager-stop").addEventListener("click", () => void managerAction("stop
 element("manager-restart").addEventListener("click", () => void managerAction("restart"));
 element("manager-refresh").addEventListener("click", () => void refreshAll());
 element("sessions-prune").addEventListener("click", () => void pruneSessions());
-element("settings-reload").addEventListener("click", () => void loadSettings().catch((reason: unknown) => setNotice(reason instanceof Error ? reason.message : "Settings reload failed.", true)));
+element("settings-reload").addEventListener("click", () => {
+  const generation = pageLifecycleGeneration;
+  const controller = pageRequestController;
+  void loadSettings().catch((reason: unknown) => {
+    if (pageRequestIsCurrent(generation, controller)) {
+      setNotice(reason instanceof Error ? reason.message : "Settings reload failed.", true);
+    }
+  });
+});
 element("doctor-run").addEventListener("click", () => void runDoctor());
 element<HTMLFormElement>("manager-settings-form").addEventListener("submit", (event) => void saveSettings(event));
 
@@ -532,23 +856,53 @@ shutdownDialog.addEventListener("close", () => {
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) {
+  if (pageLifecycleActive && !document.hidden) {
     void refreshAll();
   }
 });
 
 window.addEventListener("pagehide", () => {
+  pageLifecycleActive = false;
+  pageLifecycleGeneration += 1;
+  pageRequestController.abort();
+  mutationController?.abort();
+  suspendRestartReconnect();
+  stopPageRestore();
   if (autoRefreshTimer !== null) {
     window.clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
   }
 });
 
+window.addEventListener("pageshow", (event: PageTransitionEvent) => {
+  if (!event.persisted || client === null) {
+    return;
+  }
+  pageLifecycleActive = true;
+  pageRequestController = new AbortController();
+  setBusy(mutationInFlight || restartReconnectActive);
+  if (restartReconnectActive && expectedRestartCount !== null) {
+    scheduleRestartReconnect(0);
+    return;
+  }
+  startPageRestore();
+});
+
 if (client !== null) {
+  const generation = pageLifecycleGeneration;
+  const controller = pageRequestController;
   void loadSettings()
-    .then(() => refreshAll())
+    .then(() => {
+      if (pageRequestIsCurrent(generation, controller)) {
+        return refreshAll();
+      }
+      return undefined;
+    })
     .catch((reason: unknown) => {
-      setNotice(reason instanceof Error ? reason.message : "Dashboard initialization failed.", true);
-      void refreshAll();
+      if (pageRequestIsCurrent(generation, controller)) {
+        setNotice(reason instanceof Error ? reason.message : "Dashboard initialization failed.", true);
+        void refreshAll();
+      }
     });
 } else {
   element("control-loading").hidden = true;

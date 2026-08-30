@@ -154,8 +154,14 @@ target_link_libraries(ForgeConductor.Manager.Protocol PRIVATE
     nlohmann_json::nlohmann_json)
 
 add_library(ForgeConductor.Manager.Host STATIC
+    src/Hosts/Manager/ManagerControllerClient.cpp
+    src/Hosts/Manager/ManagerControllerClient.h
     src/Hosts/Manager/ManagerProcessHost.cpp
-    src/Hosts/Manager/ManagerProcessHost.h)
+    src/Hosts/Manager/ManagerProcessHost.h
+    src/Hosts/Manager/ManagerProcessRestartSignal.cpp
+    src/Hosts/Manager/ManagerProcessRestartSignal.h
+    src/Hosts/Manager/ManagerProcessStopSignal.cpp
+    src/Hosts/Manager/ManagerProcessStopSignal.h)
 add_library(ForgeConductor::Manager.Host ALIAS ForgeConductor.Manager.Host)
 forge_configure_standard_target(ForgeConductor.Manager.Host)
 target_include_directories(ForgeConductor.Manager.Host PUBLIC
@@ -218,10 +224,16 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardListenerGenerationCoordinator.cpp
     src/Infrastructure/Windows/Detail/DashboardListeningSocket.cpp
     src/Infrastructure/Windows/Detail/DashboardLoopbackEndpoint.cpp
+    src/Infrastructure/Windows/Detail/ManagerDashboardOperationalState.cpp
+    src/Infrastructure/Windows/Detail/ManagerDashboardOperationalState.h
     src/Infrastructure/Windows/Detail/DashboardOverloadResponderSet.cpp
     src/Infrastructure/Windows/Detail/DashboardShutdownDrain.cpp
     src/Infrastructure/Windows/Detail/DashboardWinsockExtensions.cpp
     src/Infrastructure/Windows/Detail/DashboardWinsockRuntime.cpp
+    src/Infrastructure/Windows/Detail/WindowsDashboardListenerGenerationFactory.cpp
+    src/Infrastructure/Windows/Detail/WindowsDashboardListenerGenerationFactory.h
+    src/Infrastructure/Windows/Detail/WindowsDashboardRuntime.cpp
+    src/Infrastructure/Windows/Detail/WindowsDashboardRuntime.h
     src/Infrastructure/Windows/WindowsDashboardStaticAssetBundle.cpp
     src/Infrastructure/Windows/WindowsDashboardDeadlineScheduler.cpp
     src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp)
@@ -602,6 +614,78 @@ if(BUILD_TESTING)
     set_tests_properties(ForgeConductor.Manager.ProcessHostTests PROPERTIES
         LABELS "G16;T-MGR;T-UNIT;T-STRESS"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.CompositionSupportTests
+        tests/Manager/ManagerCompositionSupportTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.CompositionSupportTests)
+    target_include_directories(
+        ForgeConductor.Manager.CompositionSupportTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Manager.CompositionSupportTests PRIVATE
+        ForgeConductor::Manager.Host
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.CompositionSupportTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.CompositionSupportTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.CompositionSupportTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.ProcessRestartSignalTests
+        tests/Manager/ManagerProcessRestartSignalTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Manager.ProcessRestartSignalTests)
+    target_link_libraries(
+        ForgeConductor.Manager.ProcessRestartSignalTests PRIVATE
+        ForgeConductor::Manager.Host)
+    add_test(
+        NAME ForgeConductor.Manager.ProcessRestartSignalTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProcessRestartSignalTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.ProcessRestartSignalTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(
+        ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests
+        tests/Dashboard/WindowsDashboardListenerGenerationFactoryTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests
+        PROPERTIES
+        LABELS "G16;T-MGR;T-INTEGRATION;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Dashboard.WindowsRuntimeTests
+        tests/Dashboard/WindowsDashboardRuntimeTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.WindowsRuntimeTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.WindowsRuntimeTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.WindowsRuntimeTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.WindowsRuntimeTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.WindowsRuntimeTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.WindowsRuntimeTests PROPERTIES
+        LABELS "G16;T-MGR;T-INTEGRATION;T-STRESS"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Dashboard.PreparedExchangeTests
         tests/Dashboard/DashboardPreparedExchangeTests.cpp)

@@ -45,6 +45,9 @@ public:
         bool applyImmediately,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<void> requestRestart(
+        const Domain::OperationContext& context) noexcept override;
+
     [[nodiscard]] Domain::Result<void> requestShutdown(
         const Domain::OperationContext& context) noexcept override;
 

@@ -389,6 +389,9 @@ void encodesDiagnosticsAndAcknowledgementsExactly()
                      encodePruneAcknowledgement()) ==
             "{\"ok\":true,\"message\":\"Pruned stale sessions\"}");
     REQUIRE(take(Dashboard::DashboardApplicationJsonCodec::
+                     encodeRestartAcknowledgement()) ==
+            "{\"ok\":true,\"message\":\"Manager restart accepted\",\"state\":\"restarting\"}");
+    REQUIRE(take(Dashboard::DashboardApplicationJsonCodec::
                      encodeShutdownAcknowledgement()) ==
             "{\"ok\":true,\"message\":\"Manager shutting down\",\"state\":\"stopping\"}");
     const auto closed = Json::parse(take(

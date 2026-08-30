@@ -48,6 +48,10 @@ complete native C++ UI Automation coverage required for alpha.
 - One response owner keeps the request timeout and caller abort signal active
   through successful or error JSON body consumption. JSON reads use a fixed
   2,080,768-byte buffer and reject overflow or malformed UTF-8 before parsing.
+- Every control mutation has one page-epoch owner and abort controller. Page
+  hide invalidates the epoch and aborts the request without releasing the
+  single-flight flag early; every continuation rechecks the epoch before it
+  can update state, render, navigate, or start another request.
 - Streaming fetch transfers the same response ownership through the complete
   reader callback. Visibility and page-hide cancellation therefore abort the
   actual body read rather than only the header fetch.
@@ -55,8 +59,13 @@ complete native C++ UI Automation coverage required for alpha.
   limits, bounded reconnect backoff, one abortable fallback refresh, and one
   visibility-aware silence watchdog. A stream without telemetry frames
   requests the existing single-flight `/api/live` fallback at 2.5 seconds and
-  aborts for reconnect after more than 5 seconds. The 500-millisecond watchdog
-  is cleared whenever the page hides, unloads, or the stream owner exits.
+  aborts both that fallback and the stream for reconnect after more than 5
+  seconds. The visible state changes to `Reconnecting` before cancellation,
+  and reconnect waits for any cancelled fallback to settle without applying a
+  second backoff interval. The 500-millisecond watchdog is cleared whenever
+  the page hides, unloads, or the stream owner exits. A persisted-page restore
+  explicitly reopens the telemetry owner and reloads the control settings so
+  back/forward-cache restoration cannot leave either shell permanently idle.
 
 ### Functional parity and presentation
 
@@ -68,12 +77,23 @@ complete native C++ UI Automation coverage required for alpha.
   collection renders an explicit no-items message. MCP servers, tools, agent
   sessions, and live-feed entries therefore no longer conflate unknown state
   with a known zero result.
+- Compact SSE frames intentionally omit the heavier `forge` projection.
+  Omission preserves the last full-frame Forge DOM; an explicitly present
+  null or malformed projection still renders unavailable. Compact delivery
+  therefore cannot erase valid orchestration, MCP, agent, or feed data between
+  full frames.
 - The control shell retains manager status for lifecycle command enablement
   and also reads the bounded composite `/api/status` surface for service,
   open-session, agent, presence, runtime, and runtime-pressure KPIs.
 - Settings reload has one promise owner and one GET site. Settings, operational
   refresh, and mutation paths cross-guard one another, so repeated clicks
   cannot create concurrent settings reads or overlap a read with a mutation.
+- Back/forward-cache page hide suspends an acknowledged restart without
+  erasing its expected generation and cancels stale read and mutation owners.
+  Persisted page show resumes that bounded restart probe or starts a separate
+  capacity-one, twenty-attempt restoration probe. Old-epoch rejection handlers
+  are generation-guarded and cannot publish stale errors into the restored
+  page.
 - Conventional responsive Windows-oriented styling, keyboard focus,
   forced-color behavior, reduced-motion behavior, semantic tables, and live
   status regions satisfy the owner-approved alpha presentation scope. Bespoke
@@ -110,6 +130,10 @@ alpha work. This checkpoint does not satisfy P16 or G16.
   concurrent GETs and stale form replacement.
 - Treating every empty-looking collection as unavailable destroys the
   observable distinction between missing telemetry and a valid zero result.
+- Treating an omitted compact-frame `forge` member as explicit null causes the
+  Forge panels to flash unavailable between full frames.
+- Letting a silence-triggered fallback run to its independent request timeout
+  makes the five-second reconnect watchdog advisory rather than authoritative.
 - Inventing absent telemetry values as zeros would misrepresent the current
   native codec rather than preserve honest parity.
 - Adding bespoke visual treatments before functional production composition

@@ -169,12 +169,12 @@ void composesTextHeadAndOneShotPostDeliveryActions()
         "application/json; charset=utf-8",
         "{\"ok\":true}",
         {},
-        Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown));
+        Dashboard::DashboardPostDeliveryAction::RequestManagerRestart));
     const auto wire = wireText(response);
     REQUIRE(wire.ends_with("{\"ok\":true}"));
     REQUIRE(
         response.completeExchange()->takePostDeliveryAction() ==
-        Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown);
+        Dashboard::DashboardPostDeliveryAction::RequestManagerRestart);
     REQUIRE(
         response.completeExchange()->takePostDeliveryAction() ==
         Dashboard::DashboardPostDeliveryAction::None);
