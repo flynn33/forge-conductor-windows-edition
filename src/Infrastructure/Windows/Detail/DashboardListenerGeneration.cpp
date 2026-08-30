@@ -659,6 +659,47 @@ Domain::Result<void> DashboardListenerGeneration::beginRetirement(
     return Domain::Result<void>::success();
 }
 
+Domain::Result<void>
+DashboardListenerGeneration::beginGracefulShutdown(
+    DashboardListenerGenerationTransitionGate::Guard& transition) noexcept
+{
+    if (!transition.belongsTo(*transitionGate_)) {
+        return Domain::Result<void>::failure(transitionGateError());
+    }
+
+    std::optional<WindowsDashboardDeadline> cancelledRetirement;
+    {
+        const std::scoped_lock lock{mutex_};
+        if (gracefulShutdownRequested_ || listenerForceCloseRequested_ ||
+            lifecycle_ == DashboardListenerGenerationLifecycle::Fatal ||
+            lifecycle_ == DashboardListenerGenerationLifecycle::Drained) {
+            return Domain::Result<void>::success();
+        }
+        gracefulShutdownRequested_ = true;
+        lifecycle_ = DashboardListenerGenerationLifecycle::ShuttingDown;
+        static_cast<void>(retirementCancellation_.request_stop());
+        if (retirementDeadline_.has_value()) {
+            cancelledRetirement.emplace(*retirementDeadline_);
+            retirementDeadline_.reset();
+        }
+    }
+
+    if (cancelledRetirement.has_value()) {
+        static_cast<void>(deadlineScheduler_->cancel(
+            cancelledRetirement->registrationId,
+            cancelledRetirement->armSequence));
+    }
+
+    // Graceful process shutdown closes only new admission. Existing
+    // connections keep their independent response lifecycle until the
+    // process drain owner either observes zero or requests hard escalation.
+    closeAcceptAdmission();
+    static_cast<void>(overloadResponder_->cancelGeneration(
+        identity_.registrationId));
+    deferTransitionWork(transition);
+    return Domain::Result<void>::success();
+}
+
 void DashboardListenerGeneration::consume(
     const DashboardIoCompletionPacket packet,
     const DWORD nativeError) noexcept

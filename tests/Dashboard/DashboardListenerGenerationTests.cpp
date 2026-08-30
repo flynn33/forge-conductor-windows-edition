@@ -77,6 +77,9 @@ static_assert(!std::is_move_constructible_v<Generation>);
 static_assert(noexcept(std::declval<Generation&>().consume({}, 0U)));
 static_assert(noexcept(std::declval<Generation&>().dispatchDeadline({})));
 static_assert(noexcept(std::declval<Generation&>().beginShutdown()));
+static_assert(noexcept(std::declval<Generation&>().beginGracefulShutdown(
+    std::declval<TransitionGate::Guard&>())));
+static_assert(noexcept(std::declval<Coordinator&>().beginGracefulShutdown()));
 static_assert(noexcept(std::declval<const Generation&>().snapshot()));
 
 std::size_t assertionCount{};
@@ -640,6 +643,77 @@ void testModeledSharedCallbackPinRetainsListenerKeyLease()
             "the final generation pin did not return listener slot A");
 }
 
+void testConcreteGracefulShutdownPreservesConnectionsUntilHardEscalation()
+{
+    RuntimeFixture fixture;
+    constexpr std::uint64_t generationId{51U};
+    const auto completionKey = CompletionKey{0x5100U};
+    auto accept = std::make_unique<FakeAcceptOwner>(
+        RuntimeIdentity{generationId, completionKey});
+    auto* const acceptView = accept.get();
+    acceptView->drainOnClose = false;
+    acceptView->drainOnForceClose = true;
+    auto connections = std::make_shared<FakeConnectionControl>();
+    connections->set(generationId, 2U);
+    auto overload = std::make_shared<FakeOverloadResponder>();
+    auto gate = std::make_shared<TransitionGate>();
+    auto generation = take(Generation::create(
+        RuntimeIdentity{generationId, completionKey},
+        std::move(accept),
+        *fixture.scheduler,
+        *fixture.runtime,
+        connections,
+        overload,
+        gate));
+
+    {
+        auto transition = gate->enter();
+        takeVoid(generation->startAdmission(transition));
+    }
+    {
+        auto transition = gate->enter();
+        takeVoid(generation->beginRetirement(transition));
+    }
+    require(generation->snapshot().retirementDeadline() != nullptr,
+            "concrete graceful test did not begin with a live retirement arm");
+    {
+        auto transition = gate->enter();
+        takeVoid(generation->beginGracefulShutdown(transition));
+    }
+    {
+        auto transition = gate->enter();
+        takeVoid(generation->beginGracefulShutdown(transition));
+    }
+
+    const auto graceful = generation->snapshot();
+    require(graceful.lifecycle() == Lifecycle::ShuttingDown &&
+                acceptView->closeCalls == 2U &&
+                acceptView->forceCloseCalls == 0U,
+            "graceful listener shutdown repeated its close or entered force-close policy");
+    require(connections->shutdownCalls() == 0U &&
+                connections->connectionCountForGeneration(generationId) ==
+                    2U,
+            "graceful listener shutdown shortened existing connections");
+    require(overload->cancelledIds() ==
+                std::vector<std::uint64_t>{generationId},
+            "graceful listener shutdown did not cancel exact overload work once");
+    require(graceful.retirementDeadline() == nullptr &&
+                graceful.retirementCancellationRequested() &&
+                !graceful.listenerForceCloseRequested() &&
+                graceful.cancellationReapDeadline() == nullptr,
+            "graceful listener shutdown retained retirement or entered hard watchdog policy");
+
+    generation->beginShutdown();
+    require(acceptView->forceCloseCalls == 1U &&
+                connections->shutdownCalls() == 1U,
+            "hard escalation did not force-close graceful generation ownership");
+    require(overload->cancelledIds() ==
+                std::vector<std::uint64_t>{generationId, generationId},
+            "hard escalation skipped exact overload cancellation");
+    require(generation->fullyDrained(),
+            "hard escalation did not drain the graceful generation seam");
+}
+
 void testExactRetirementDeadlineAndPartialAcceptDrain()
 {
     RuntimeFixture fixture;
@@ -1090,6 +1164,7 @@ enum class EventKind : std::uint8_t {
     RegisterDeadline,
     Start,
     Retire,
+    GracefulShutdown,
     Shutdown,
     Fatal,
     UnregisterDeadline,
@@ -1181,6 +1256,9 @@ public:
         }
         trace_->record(EventKind::Start, id_);
         started = true;
+        if (startEdge) {
+            startEdge();
+        }
         if (failStart) {
             return Domain::Result<void>::failure(Domain::makeError(
                 Domain::ErrorCodes::TransportClosed,
@@ -1188,6 +1266,26 @@ public:
         }
         if (drainDuringStart) {
             drained.store(true, std::memory_order_release);
+        }
+        return Domain::Result<void>::success();
+    }
+
+    [[nodiscard]] Domain::Result<void> beginGracefulShutdown(
+        TransitionGate::Guard& transition) noexcept override
+    {
+        if (!transition.belongsTo(*gate_)) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "wrong transition gate"));
+        }
+        trace_->record(EventKind::GracefulShutdown, id_);
+        gracefulShutdownCalls.fetch_add(1U, std::memory_order_relaxed);
+        gracefulShutdownCalled = true;
+        if (gracefulShutdownEdge) {
+            gracefulShutdownEdge(id_);
+        }
+        if (drainOnGracefulShutdown) {
+            setDrained();
         }
         return Domain::Result<void>::success();
     }
@@ -1264,15 +1362,20 @@ public:
     bool failRetire{};
     bool drainDuringStart{};
     bool drainOnShutdown{true};
+    bool drainOnGracefulShutdown{true};
     bool started{};
     bool retired{};
+    bool gracefulShutdownCalled{};
     bool shutdownCalled{};
     bool fatalCalled{};
     bool drainWhenOwnershipRechecked{};
     std::function<void(std::uint64_t)> shutdownEdge;
+    std::function<void(std::uint64_t)> gracefulShutdownEdge;
+    std::function<void()> startEdge;
     std::atomic_bool drained{};
     std::atomic_size_t ownershipRechecks{};
     std::atomic_size_t shutdownCalls{};
+    std::atomic_size_t gracefulShutdownCalls{};
     std::atomic_size_t fatalCalls{};
 
 private:
@@ -1308,6 +1411,9 @@ public:
             nextId++, std::move(gate), trace_);
         generation->drainOnShutdown = drainOnShutdownForNext;
         drainOnShutdownForNext = true;
+        generation->drainOnGracefulShutdown =
+            drainOnGracefulShutdownForNext;
+        drainOnGracefulShutdownForNext = true;
         generation->drainDuringStart = drainDuringStartForNext;
         drainDuringStartForNext = false;
         generation->drainWhenOwnershipRechecked =
@@ -1315,6 +1421,11 @@ public:
         drainWhenOwnershipRecheckedForNext = false;
         generation->shutdownEdge = std::move(shutdownEdgeForNext);
         shutdownEdgeForNext = {};
+        generation->gracefulShutdownEdge =
+            std::move(gracefulShutdownEdgeForNext);
+        gracefulShutdownEdgeForNext = {};
+        generation->startEdge = std::move(startEdgeForNext);
+        startEdgeForNext = {};
         generations.push_back(generation);
         return Domain::Result<std::shared_ptr<
             GenerationInterface>>::success(generation);
@@ -1343,9 +1454,12 @@ public:
     std::size_t prepareCalls{};
     bool failNext{};
     bool drainOnShutdownForNext{true};
+    bool drainOnGracefulShutdownForNext{true};
     bool drainDuringStartForNext{};
     bool drainWhenOwnershipRecheckedForNext{};
     std::function<void(std::uint64_t)> shutdownEdgeForNext;
+    std::function<void(std::uint64_t)> gracefulShutdownEdgeForNext;
+    std::function<void()> startEdgeForNext;
 };
 
 class FakeRegistrationHost final : public RegistrationHost {
@@ -1434,6 +1548,15 @@ public:
         deadlineUnregisterEntered_ = false;
         releaseDeadlineUnregister_ = false;
         failDeadlineUnregister = true;
+    }
+
+    void blockNextDeadlineUnregister() noexcept
+    {
+        const std::scoped_lock lock{unregisterMutex_};
+        blockDeadlineUnregister_ = true;
+        deadlineUnregisterEntered_ = false;
+        releaseDeadlineUnregister_ = false;
+        failDeadlineUnregister = false;
     }
 
     [[nodiscard]] bool waitForDeadlineUnregister() noexcept
@@ -1631,6 +1754,30 @@ private:
     std::optional<std::uint64_t> stagedTerminalId_;
     bool completionPendingDelivered_{};
     bool releaseCompletionResult_{};
+};
+
+class CoordinatorDrainObserver final
+    : public Detail::
+          IDashboardListenerGenerationCoordinatorDrainObserver {
+public:
+    explicit CoordinatorDrainObserver(
+        std::function<void()> callback = {})
+        : callback_{std::move(callback)}
+    {
+    }
+
+    void listenerGenerationsMayHaveDrained() noexcept override
+    {
+        calls.fetch_add(1U, std::memory_order_relaxed);
+        if (callback_) {
+            callback_();
+        }
+    }
+
+    std::atomic_size_t calls{};
+
+private:
+    std::function<void()> callback_;
 };
 
 struct CoordinatorFixture final {
@@ -2034,10 +2181,12 @@ void testGracefulAndFatalShutdown()
         CoordinatorFixture fixture;
         takeVoid(fixture.coordinator->startInitial());
         auto active = fixture.factory->latest();
-        fixture.coordinator->beginShutdown();
-        require(active->shutdownCalled,
+        fixture.coordinator->beginGracefulShutdown();
+        require(active->gracefulShutdownCalled &&
+                    !active->shutdownCalled,
                 "graceful shutdown did not notify active generation");
-        require(fixture.coordinator->snapshot().shutdownRequested(),
+        require(
+            fixture.coordinator->snapshot().gracefulShutdownRequested(),
                 "graceful shutdown was not latched");
         require(fixture.host->completionTargets.empty(),
                 "graceful drain did not unregister completion ownership");
@@ -2054,6 +2203,424 @@ void testGracefulAndFatalShutdown()
         require(fixture.host->deadlineTargets.empty(),
                 "fatal drain did not unregister deadline ownership");
     }
+}
+
+void testCoordinatorGracefulShutdownIsIdempotentAndHardEscalates()
+{
+    CoordinatorFixture fixture;
+    fixture.factory->drainOnGracefulShutdownForNext = false;
+    fixture.factory->drainOnShutdownForNext = false;
+    takeVoid(fixture.coordinator->startInitial());
+    auto generation = fixture.factory->latest();
+
+    fixture.coordinator->beginGracefulShutdown();
+    fixture.coordinator->beginGracefulShutdown();
+    auto graceful = fixture.coordinator->snapshot();
+    require(graceful.gracefulShutdownRequested() &&
+                !graceful.hardShutdownRequested() &&
+                generation->gracefulShutdownCalls.load(
+                    std::memory_order_relaxed) == 1U &&
+                generation->shutdownCalls.load(
+                    std::memory_order_relaxed) == 0U,
+            "coordinator graceful shutdown did not use one independent fanout latch");
+
+    fixture.coordinator->beginShutdown();
+    fixture.coordinator->beginShutdown();
+    const auto escalated = fixture.coordinator->snapshot();
+    require(escalated.gracefulShutdownRequested() &&
+                escalated.hardShutdownRequested() &&
+                generation->gracefulShutdownCalls.load(
+                    std::memory_order_relaxed) == 1U &&
+                generation->shutdownCalls.load(
+                    std::memory_order_relaxed) == 1U,
+            "coordinator hard escalation was merged with or repeated graceful fanout");
+
+    generation->setDrained();
+}
+
+void testCoordinatorHardShutdownSuppressesAndSerializesGracefulFanout()
+{
+    {
+        CoordinatorFixture fixture;
+        fixture.factory->drainOnShutdownForNext = false;
+        fixture.factory->drainOnGracefulShutdownForNext = false;
+        takeVoid(fixture.coordinator->startInitial());
+        auto generation = fixture.factory->latest();
+
+        fixture.coordinator->beginShutdown();
+        fixture.coordinator->beginGracefulShutdown();
+        const auto snapshot = fixture.coordinator->snapshot();
+        require(snapshot.hardShutdownRequested() &&
+                    !snapshot.gracefulShutdownRequested() &&
+                    generation->shutdownCalls.load(
+                        std::memory_order_relaxed) == 1U &&
+                    generation->gracefulShutdownCalls.load(
+                        std::memory_order_relaxed) == 0U,
+                "hard-first coordinator shutdown allowed a late graceful fanout");
+        generation->setDrained();
+    }
+
+    CoordinatorFixture fixture;
+    struct Barrier final {
+        std::mutex mutex;
+        std::condition_variable changed;
+        bool gracefulEntered{};
+        bool releaseGraceful{};
+        bool hardStarted{};
+    };
+    auto barrier = std::make_shared<Barrier>();
+    fixture.factory->drainOnGracefulShutdownForNext = false;
+    fixture.factory->drainOnShutdownForNext = false;
+    takeVoid(fixture.coordinator->startInitial());
+    auto initial = fixture.factory->latest();
+
+    fixture.factory->drainOnGracefulShutdownForNext = false;
+    fixture.factory->drainOnShutdownForNext = false;
+    fixture.factory->gracefulShutdownEdgeForNext = [barrier](std::uint64_t) {
+        std::unique_lock lock{barrier->mutex};
+        barrier->gracefulEntered = true;
+        barrier->changed.notify_all();
+        barrier->changed.wait(lock, [barrier] {
+            return barrier->releaseGraceful;
+        });
+    };
+    takeVoid(fixture.coordinator->rebind());
+    auto replacement = fixture.factory->latest();
+
+    std::thread graceful{[coordinator = fixture.coordinator] {
+        coordinator->beginGracefulShutdown();
+    }};
+    bool gracefulEntered{};
+    {
+        std::unique_lock lock{barrier->mutex};
+        gracefulEntered = barrier->changed.wait_for(
+            lock, 5s, [barrier] { return barrier->gracefulEntered; });
+        if (!gracefulEntered) {
+            barrier->releaseGraceful = true;
+        }
+    }
+    if (!gracefulEntered) {
+        barrier->changed.notify_all();
+        graceful.join();
+        fail("concurrent graceful coordinator fanout did not enter");
+    }
+
+    std::thread hard{[coordinator = fixture.coordinator, barrier] {
+        {
+            const std::scoped_lock lock{barrier->mutex};
+            barrier->hardStarted = true;
+        }
+        barrier->changed.notify_all();
+        coordinator->beginShutdown();
+    }};
+    bool hardStarted{};
+    bool hardCallbackBeforeGracefulRelease{};
+    {
+        std::unique_lock lock{barrier->mutex};
+        hardStarted = barrier->changed.wait_for(
+            lock, 5s, [barrier] { return barrier->hardStarted; });
+        static_cast<void>(barrier->changed.wait_for(lock, 100ms));
+        hardCallbackBeforeGracefulRelease =
+            initial->shutdownCalls.load(std::memory_order_relaxed) != 0U ||
+            replacement->shutdownCalls.load(
+                std::memory_order_relaxed) != 0U;
+        barrier->releaseGraceful = true;
+    }
+    barrier->changed.notify_all();
+    graceful.join();
+    hard.join();
+
+    const auto snapshot = fixture.coordinator->snapshot();
+    require(hardStarted && !hardCallbackBeforeGracefulRelease,
+            "hard coordinator shutdown overtook active graceful fanout");
+    require(snapshot.gracefulShutdownRequested() &&
+                snapshot.hardShutdownRequested() &&
+                initial->gracefulShutdownCalls.load(
+                    std::memory_order_relaxed) == 1U &&
+                replacement->gracefulShutdownCalls.load(
+                    std::memory_order_relaxed) == 1U &&
+                initial->shutdownCalls.load(
+                    std::memory_order_relaxed) == 1U &&
+                replacement->shutdownCalls.load(
+                    std::memory_order_relaxed) == 1U,
+            "concurrent coordinator shutdown violated graceful-to-hard ordering");
+    require(fixture.trace->indexOf(
+                EventKind::GracefulShutdown,
+                initial->registrationId()) <
+                fixture.trace->indexOf(
+                    EventKind::Shutdown,
+                    replacement->registrationId()) &&
+                fixture.trace->indexOf(
+                    EventKind::GracefulShutdown,
+                    replacement->registrationId()) <
+                fixture.trace->indexOf(
+                    EventKind::Shutdown,
+                    replacement->registrationId()),
+            "hard fanout began before the complete graceful generation snapshot");
+    fixture.coordinator->beginGracefulShutdown();
+    require(initial->gracefulShutdownCalls.load(
+                std::memory_order_relaxed) == 1U &&
+                replacement->gracefulShutdownCalls.load(
+                    std::memory_order_relaxed) == 1U,
+            "hard coordinator shutdown permitted a later graceful callback");
+    initial->setDrained();
+    replacement->setDrained();
+}
+
+void testGracefulCutoffSerializesAgainstRebindPublication()
+{
+    CoordinatorFixture fixture;
+    fixture.factory->drainOnGracefulShutdownForNext = false;
+    takeVoid(fixture.coordinator->startInitial());
+    auto initial = fixture.factory->latest();
+
+    struct Barrier final {
+        std::mutex mutex;
+        std::condition_variable changed;
+        bool replacementStarted{};
+        bool releaseReplacement{};
+        bool gracefulStarted{};
+        bool gracefulCompleted{};
+    };
+    auto barrier = std::make_shared<Barrier>();
+    fixture.factory->drainOnGracefulShutdownForNext = false;
+    fixture.factory->startEdgeForNext = [barrier] {
+        std::unique_lock lock{barrier->mutex};
+        barrier->replacementStarted = true;
+        barrier->changed.notify_all();
+        barrier->changed.wait(lock, [barrier] {
+            return barrier->releaseReplacement;
+        });
+    };
+
+    std::atomic_bool rebindSucceeded{};
+    std::thread rebind{[&fixture, &rebindSucceeded] {
+        rebindSucceeded.store(
+            static_cast<bool>(fixture.coordinator->rebind()),
+            std::memory_order_release);
+    }};
+    bool replacementStarted{};
+    {
+        std::unique_lock lock{barrier->mutex};
+        replacementStarted = barrier->changed.wait_for(
+            lock, 5s, [barrier] { return barrier->replacementStarted; });
+        if (!replacementStarted) {
+            barrier->releaseReplacement = true;
+        }
+    }
+    if (!replacementStarted) {
+        barrier->changed.notify_all();
+        rebind.join();
+        fail("replacement did not enter transition-gated start");
+    }
+
+    std::thread graceful{[&fixture, barrier] {
+        {
+            const std::scoped_lock lock{barrier->mutex};
+            barrier->gracefulStarted = true;
+        }
+        barrier->changed.notify_all();
+        fixture.coordinator->beginGracefulShutdown();
+        {
+            const std::scoped_lock lock{barrier->mutex};
+            barrier->gracefulCompleted = true;
+        }
+        barrier->changed.notify_all();
+    }};
+    bool gracefulStarted{};
+    bool gracefulCompletedBeforePublication{};
+    {
+        std::unique_lock lock{barrier->mutex};
+        gracefulStarted = barrier->changed.wait_for(
+            lock, 5s, [barrier] { return barrier->gracefulStarted; });
+        if (gracefulStarted) {
+            gracefulCompletedBeforePublication =
+                barrier->changed.wait_for(lock, 100ms, [barrier] {
+                    return barrier->gracefulCompleted;
+                });
+        }
+        barrier->releaseReplacement = true;
+    }
+    barrier->changed.notify_all();
+    rebind.join();
+    graceful.join();
+
+    require(gracefulStarted,
+            "graceful shutdown race did not start");
+    require(!gracefulCompletedBeforePublication,
+            "graceful cutoff crossed a live rebind transition");
+    auto replacement = fixture.factory->latest();
+    const auto snapshot = fixture.coordinator->snapshot();
+    require(rebindSucceeded.load(std::memory_order_acquire) &&
+                snapshot.activeRegistrationId() == 2U &&
+                snapshot.retiringRegistrationId() == 1U,
+            "transition-gated graceful cutoff split rebind publication");
+    require(initial->gracefulShutdownCalls.load(
+                std::memory_order_relaxed) == 1U &&
+                replacement->gracefulShutdownCalls.load(
+                    std::memory_order_relaxed) == 1U,
+            "graceful cutoff did not fan out with a fresh guard per published generation");
+
+    initial->setDrained();
+    replacement->setDrained();
+}
+
+void testCoordinatorDrainObserverInitialZeroAndOneShotBinding()
+{
+    CoordinatorFixture fixture;
+    std::weak_ptr<CoordinatorDrainObserver> expired;
+    requireError(
+        fixture.coordinator->bindShutdownDrainObserver(expired),
+        Domain::ErrorCodes::InvalidRequest,
+        false,
+        "coordinator accepted an expired process drain observer");
+
+    auto reentered = std::make_shared<std::atomic_bool>(false);
+    auto observer = std::make_shared<CoordinatorDrainObserver>(
+        [coordinator = std::weak_ptr<Coordinator>{fixture.coordinator},
+         reentered] {
+            if (const auto pinned = coordinator.lock(); pinned != nullptr) {
+                const auto snapshot = pinned->snapshot();
+                reentered->store(
+                    snapshot.shutdownRequested(),
+                    std::memory_order_release);
+                pinned->beginShutdown();
+            }
+        });
+    takeVoid(fixture.coordinator->bindShutdownDrainObserver(observer));
+    requireError(
+        fixture.coordinator->bindShutdownDrainObserver(observer),
+        Domain::ErrorCodes::Conflict,
+        false,
+        "coordinator accepted a second process drain observer");
+
+    fixture.coordinator->beginGracefulShutdown();
+    fixture.coordinator->beginGracefulShutdown();
+    require(observer->calls.load(std::memory_order_relaxed) == 1U &&
+                reentered->load(std::memory_order_acquire),
+            "initial-zero coordinator drain did not notify once outside its mutex");
+    require(fixture.coordinator->snapshot().hardShutdownRequested(),
+            "reentrant drain observer could not request hard shutdown");
+
+    auto lateObserver = std::make_shared<CoordinatorDrainObserver>();
+    requireError(
+        fixture.coordinator->bindShutdownDrainObserver(lateObserver),
+        Domain::ErrorCodes::TransportClosed,
+        false,
+        "coordinator accepted process drain binding after shutdown cutoff");
+}
+
+void testCoordinatorDrainObserverWaitsForPendingGracefulFanout()
+{
+    CoordinatorFixture fixture;
+    fixture.factory->drainOnGracefulShutdownForNext = false;
+    takeVoid(fixture.coordinator->startInitial());
+    auto initial = fixture.factory->latest();
+
+    struct Barrier final {
+        std::mutex mutex;
+        std::condition_variable changed;
+        bool gracefulEntered{};
+        bool releaseGraceful{};
+    };
+    auto barrier = std::make_shared<Barrier>();
+    fixture.factory->drainOnGracefulShutdownForNext = false;
+    fixture.factory->gracefulShutdownEdgeForNext = [barrier](std::uint64_t) {
+        std::unique_lock lock{barrier->mutex};
+        barrier->gracefulEntered = true;
+        barrier->changed.notify_all();
+        barrier->changed.wait(lock, [barrier] {
+            return barrier->releaseGraceful;
+        });
+    };
+    takeVoid(fixture.coordinator->rebind());
+    auto replacement = fixture.factory->latest();
+
+    auto observer = std::make_shared<CoordinatorDrainObserver>();
+    takeVoid(fixture.coordinator->bindShutdownDrainObserver(observer));
+    std::thread graceful{[coordinator = fixture.coordinator] {
+        coordinator->beginGracefulShutdown();
+    }};
+
+    bool gracefulEntered{};
+    {
+        std::unique_lock lock{barrier->mutex};
+        gracefulEntered = barrier->changed.wait_for(
+            lock, 5s, [barrier] { return barrier->gracefulEntered; });
+        if (!gracefulEntered) {
+            barrier->releaseGraceful = true;
+        }
+    }
+    if (!gracefulEntered) {
+        barrier->changed.notify_all();
+        graceful.join();
+        fail("graceful observer barrier did not enter");
+    }
+
+    replacement->setDrained();
+    initial->setDrained();
+    const auto callsBeforeFanoutCompleted =
+        observer->calls.load(std::memory_order_relaxed);
+    {
+        const std::scoped_lock lock{barrier->mutex};
+        barrier->releaseGraceful = true;
+    }
+    barrier->changed.notify_all();
+    graceful.join();
+
+    require(callsBeforeFanoutCompleted == 0U &&
+                observer->calls.load(std::memory_order_relaxed) == 1U,
+            "coordinator drain edge crossed a pending graceful callback snapshot");
+    require(initial->gracefulShutdownCalls.load(
+                std::memory_order_relaxed) == 1U &&
+                replacement->gracefulShutdownCalls.load(
+                    std::memory_order_relaxed) == 1U,
+            "drained listener snapshot did not complete graceful fanout");
+    fixture.coordinator->beginShutdown();
+    require(observer->calls.load(std::memory_order_relaxed) == 1U,
+            "late hard shutdown repeated the coordinator drain edge");
+}
+
+void testCoordinatorDrainObserverWaitsForCollectionAndFiresOnce()
+{
+    CoordinatorFixture fixture;
+    takeVoid(fixture.coordinator->startInitial());
+    fixture.host->blockNextDeadlineUnregister();
+
+    auto callbackReentered = std::make_shared<std::atomic_bool>(false);
+    auto observer = std::make_shared<CoordinatorDrainObserver>(
+        [coordinator = std::weak_ptr<Coordinator>{fixture.coordinator},
+         callbackReentered] {
+            if (const auto pinned = coordinator.lock(); pinned != nullptr) {
+                const auto snapshot = pinned->snapshot();
+                callbackReentered->store(
+                    !snapshot.collectionInProgress() &&
+                        !snapshot.activeRegistrationId().has_value() &&
+                        !snapshot.retiringRegistrationId().has_value(),
+                    std::memory_order_release);
+            }
+        });
+    takeVoid(fixture.coordinator->bindShutdownDrainObserver(observer));
+
+    std::thread shutdown{[coordinator = fixture.coordinator] {
+        coordinator->beginGracefulShutdown();
+    }};
+    const auto unregisterEntered =
+        fixture.host->waitForDeadlineUnregister();
+    const auto callsDuringCollection =
+        observer->calls.load(std::memory_order_relaxed);
+    fixture.host->releaseDeadlineUnregister();
+    shutdown.join();
+
+    require(unregisterEntered,
+            "graceful generation drain did not enter unregister collection");
+    require(callsDuringCollection == 0U,
+            "coordinator process drain observer fired during collection");
+    fixture.coordinator->beginGracefulShutdown();
+    fixture.coordinator->beginShutdown();
+    require(observer->calls.load(std::memory_order_relaxed) == 1U &&
+                callbackReentered->load(std::memory_order_acquire),
+            "coordinator process drain observer was early, repeated, or invoked under its mutex");
 }
 
 void testConnectionZeroObserverCompletesCollection()
@@ -2198,16 +2765,19 @@ void testOverloadOwnerShutdownCoordinatesNormalOnce()
         auto generation = fixture.factory->latest();
 
         if (coordinatorFirst) {
-            fixture.coordinator->beginShutdown();
+            fixture.coordinator->beginGracefulShutdown();
             fixture.overloadDrain->signalOwnerShutdown();
         } else {
             fixture.overloadDrain->signalOwnerShutdown();
-            fixture.coordinator->beginShutdown();
+            fixture.coordinator->beginGracefulShutdown();
         }
 
         const auto snapshot = fixture.coordinator->snapshot();
-        require(snapshot.shutdownRequested() && !snapshot.fatal() &&
-                    generation->shutdownCalls.load(
+        require(snapshot.shutdownRequested() &&
+                    snapshot.gracefulShutdownRequested() &&
+                    !snapshot.hardShutdownRequested() &&
+                    !snapshot.fatal() &&
+                    generation->gracefulShutdownCalls.load(
                         std::memory_order_relaxed) == 1U,
                 "normal overload/coordinator shutdown ordering duplicated fanout or became fatal");
         const auto prepareCalls = fixture.factory->prepareCalls;
@@ -3421,6 +3991,7 @@ int main()
 {
     try {
         testModeledSharedCallbackPinRetainsListenerKeyLease();
+        testConcreteGracefulShutdownPreservesConnectionsUntilHardEscalation();
         testExactRetirementDeadlineAndPartialAcceptDrain();
         testPostRegistrationResumeFailureForceClosesGeneration();
         testCancellationFailureForceCloseAndBoundedReapWatchdog();
@@ -3438,6 +4009,12 @@ int main()
         testUnregisterFailureBecomesRetainedFatal();
         testCollectionBarrierFailureIsFatalWithoutOwnerLoss();
         testGracefulAndFatalShutdown();
+        testCoordinatorGracefulShutdownIsIdempotentAndHardEscalates();
+        testCoordinatorHardShutdownSuppressesAndSerializesGracefulFanout();
+        testGracefulCutoffSerializesAgainstRebindPublication();
+        testCoordinatorDrainObserverInitialZeroAndOneShotBinding();
+        testCoordinatorDrainObserverWaitsForPendingGracefulFanout();
+        testCoordinatorDrainObserverWaitsForCollectionAndFiresOnce();
         testConnectionZeroObserverCompletesCollection();
         testOverloadDrainEdgeCompletesCollectionWithoutPolling();
         testOverloadTerminalEdgeFailsClosedExactlyOnce();

@@ -126,6 +126,8 @@ DashboardListenerGenerationCoordinatorSnapshot(
     const bool preparationInProgress,
     const bool collectionInProgress,
     const bool shutdownRequested,
+    const bool gracefulShutdownRequested,
+    const bool hardShutdownRequested,
     const bool fatal,
     const bool hasFailure,
     const std::uint64_t publicationCount,
@@ -135,6 +137,8 @@ DashboardListenerGenerationCoordinatorSnapshot(
       preparationInProgress_{preparationInProgress},
       collectionInProgress_{collectionInProgress},
       shutdownRequested_{shutdownRequested},
+      gracefulShutdownRequested_{gracefulShutdownRequested},
+      hardShutdownRequested_{hardShutdownRequested},
       fatal_{fatal},
       hasFailure_{hasFailure},
       publicationCount_{publicationCount},
@@ -209,6 +213,37 @@ DashboardListenerGenerationCoordinator() noexcept
 {
     beginShutdown();
     collectDrained();
+}
+
+Domain::Result<void>
+DashboardListenerGenerationCoordinator::bindShutdownDrainObserver(
+    std::weak_ptr<IDashboardListenerGenerationCoordinatorDrainObserver>
+        observer) noexcept
+{
+    try {
+        const auto pinned = observer.lock();
+        if (pinned == nullptr) {
+            return Domain::Result<void>::failure(coordinatorError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The dashboard listener coordinator requires a live process drain observer."));
+        }
+        const std::scoped_lock lock{mutex_};
+        if (shutdownRequested_) {
+            return Domain::Result<void>::failure(coordinatorError(
+                Domain::ErrorCodes::TransportClosed,
+                "The dashboard listener coordinator is closed to process drain observer binding."));
+        }
+        if (shutdownDrainObserverEverBound_) {
+            return Domain::Result<void>::failure(coordinatorError(
+                Domain::ErrorCodes::Conflict,
+                "The dashboard listener coordinator process drain observer is one-shot."));
+        }
+        shutdownDrainObserver_ = std::move(observer);
+        shutdownDrainObserverEverBound_ = true;
+        return Domain::Result<void>::success();
+    } catch (...) {
+        return Domain::Result<void>::failure(internalCoordinatorError());
+    }
 }
 
 Domain::Result<void>
@@ -314,6 +349,8 @@ void DashboardListenerGenerationCoordinator::finishPreparation() noexcept
     }
     if (collect) {
         collectDrained();
+    } else {
+        notifyShutdownDrainObserverIfReady();
     }
 }
 
@@ -563,8 +600,6 @@ void DashboardListenerGenerationCoordinator::retainUnregisterFailure(
     const bool fromRetiring,
     Domain::Error error) noexcept
 {
-    std::shared_ptr<IDashboardListenerGeneration> active;
-    std::shared_ptr<IDashboardListenerGeneration> retiring;
     {
         const std::scoped_lock lock{mutex_};
         if (fromRetiring) {
@@ -583,39 +618,33 @@ void DashboardListenerGenerationCoordinator::retainUnregisterFailure(
         unregisterFailed_ = true;
         collectionInProgress_ = false;
         drainCheckPending_ = false;
-        if (active_.has_value()) {
-            active = active_->generation;
-        }
-        if (retiring_.has_value()) {
-            retiring = retiring_->generation;
-        }
     }
 
     // A routing owner that refuses exact unregister is a structural process
     // failure. Keep every entry pinned in its original slot and fail closed;
     // callbacks after this point observe unregisterFailed_ and cannot spin a
     // permanently pending collection loop.
-    if (active != nullptr) {
-        active->fatal(ERROR_GEN_FAILURE);
-    }
-    if (retiring != nullptr && retiring.get() != active.get()) {
-        retiring->fatal(ERROR_GEN_FAILURE);
-    }
+    fatal(ERROR_GEN_FAILURE);
 }
 
 void DashboardListenerGenerationCoordinator::collectDrained() noexcept
 {
+    bool collectionStarted{};
     {
         const std::scoped_lock lock{mutex_};
         if (unregisterFailed_) {
             drainCheckPending_ = false;
-            return;
-        }
-        if (preparationInProgress_ || collectionInProgress_) {
+        } else if (preparationInProgress_ || collectionInProgress_ ||
+                   shutdownFanoutDispatchInProgress_) {
             drainCheckPending_ = true;
-            return;
+        } else {
+            collectionInProgress_ = true;
+            collectionStarted = true;
         }
-        collectionInProgress_ = true;
+    }
+    if (!collectionStarted) {
+        notifyShutdownDrainObserverIfReady();
+        return;
     }
 
     for (;;) {
@@ -643,8 +672,12 @@ void DashboardListenerGenerationCoordinator::collectDrained() noexcept
             } else {
                 collectionInProgress_ = false;
                 drainCheckPending_ = false;
-                return;
             }
+        }
+
+        if (!candidate.has_value()) {
+            notifyShutdownDrainObserverIfReady();
+            return;
         }
 
         auto unregistered = unregisterEntry(*candidate);
@@ -657,65 +690,229 @@ void DashboardListenerGenerationCoordinator::collectDrained() noexcept
                 : std::move(unregistered).error();
             retainUnregisterFailure(
                 std::move(*candidate), fromRetiring, std::move(error));
+            notifyShutdownDrainObserverIfReady();
             return;
         }
     }
 }
 
+std::shared_ptr<IDashboardListenerGenerationCoordinatorDrainObserver>
+DashboardListenerGenerationCoordinator::takeShutdownDrainObserverLocked()
+    noexcept
+{
+    if (shutdownDrainNotificationSent_ || !shutdownRequested_ ||
+        preparationInProgress_ || collectionInProgress_ ||
+        shutdownFanoutDispatchInProgress_ ||
+        active_.has_value() || retiring_.has_value()) {
+        return nullptr;
+    }
+    shutdownDrainNotificationSent_ = true;
+    return shutdownDrainObserver_.lock();
+}
+
+void DashboardListenerGenerationCoordinator::
+notifyShutdownDrainObserverIfReady() noexcept
+{
+    std::shared_ptr<IDashboardListenerGenerationCoordinatorDrainObserver>
+        observer;
+    bool missingBoundObserver{};
+    {
+        const std::scoped_lock lock{mutex_};
+        const bool notificationWasSent =
+            shutdownDrainNotificationSent_;
+        observer = takeShutdownDrainObserverLocked();
+        missingBoundObserver = !notificationWasSent &&
+            shutdownDrainNotificationSent_ &&
+            shutdownDrainObserverEverBound_ && observer == nullptr;
+    }
+    if (observer != nullptr) {
+        observer->listenerGenerationsMayHaveDrained();
+    } else if (missingBoundObserver) {
+        // A bound process observer is a mandatory strong composition owner
+        // until this edge. Losing it would otherwise turn exact shutdown into
+        // an unbounded silent wait.
+        std::terminate();
+    }
+}
+
+bool DashboardListenerGenerationCoordinator::
+claimShutdownFanoutDispatcherLocked() noexcept
+{
+    const bool pendingGraceful =
+        gracefulShutdownFanoutStarted_ &&
+        !gracefulShutdownFanoutCompleted_;
+    const bool pendingFatal =
+        fatalShutdownFanoutRequested_ &&
+        !fatalShutdownFanoutCompleted_;
+    const bool pendingHard =
+        shutdownFanoutStarted_ && !hardShutdownFanoutCompleted_;
+    if (shutdownFanoutDispatchInProgress_ ||
+        (!pendingGraceful && !pendingFatal && !pendingHard)) {
+        return false;
+    }
+    shutdownFanoutDispatchInProgress_ = true;
+    return true;
+}
+
+void DashboardListenerGenerationCoordinator::dispatchShutdownFanouts()
+    noexcept
+{
+    for (;;) {
+        ShutdownFanoutAction action{ShutdownFanoutAction::None};
+        std::shared_ptr<IDashboardListenerGeneration> active;
+        std::shared_ptr<IDashboardListenerGeneration> retiring;
+        DWORD fatalNativeError{};
+        {
+            const std::scoped_lock lock{mutex_};
+            if (gracefulShutdownFanoutStarted_ &&
+                !gracefulShutdownFanoutCompleted_) {
+                action = ShutdownFanoutAction::Graceful;
+            } else if (fatalShutdownFanoutRequested_ &&
+                       !fatalShutdownFanoutCompleted_) {
+                action = ShutdownFanoutAction::Fatal;
+                fatalNativeError = fatalShutdownNativeError_;
+            } else if (shutdownFanoutStarted_ &&
+                       !hardShutdownFanoutCompleted_) {
+                action = ShutdownFanoutAction::Hard;
+            } else {
+                shutdownFanoutDispatchInProgress_ = false;
+            }
+            if (action != ShutdownFanoutAction::None) {
+                if (active_.has_value()) {
+                    active = active_->generation;
+                }
+                if (retiring_.has_value()) {
+                    retiring = retiring_->generation;
+                }
+            }
+        }
+
+        if (action == ShutdownFanoutAction::None) {
+            break;
+        }
+
+        if (action == ShutdownFanoutAction::Graceful) {
+            // Each generation needs a fresh transition guard because each
+            // may schedule one distinct after-release drain pump. The
+            // coordinator dispatcher nevertheless owns the complete fanout,
+            // so a queued hard request cannot overtake the second callback.
+            if (active != nullptr) {
+                auto transition = transitionGate_->enter();
+                static_cast<void>(
+                    active->beginGracefulShutdown(transition));
+            }
+            if (retiring != nullptr &&
+                retiring.get() != active.get()) {
+                auto transition = transitionGate_->enter();
+                static_cast<void>(
+                    retiring->beginGracefulShutdown(transition));
+            }
+        } else if (action == ShutdownFanoutAction::Fatal) {
+            if (active != nullptr) {
+                active->fatal(fatalNativeError);
+            }
+            if (retiring != nullptr &&
+                retiring.get() != active.get()) {
+                retiring->fatal(fatalNativeError);
+            }
+        } else {
+            if (active != nullptr) {
+                active->beginShutdown();
+            }
+            if (retiring != nullptr &&
+                retiring.get() != active.get()) {
+                retiring->beginShutdown();
+            }
+        }
+
+        {
+            const std::scoped_lock lock{mutex_};
+            if (action == ShutdownFanoutAction::Graceful) {
+                gracefulShutdownFanoutCompleted_ = true;
+            } else if (action == ShutdownFanoutAction::Fatal) {
+                fatalShutdownFanoutCompleted_ = true;
+                hardShutdownFanoutCompleted_ = true;
+            } else {
+                hardShutdownFanoutCompleted_ = true;
+            }
+        }
+    }
+
+    // Generation callbacks may have synchronously published exact zero while
+    // the dispatcher was active. Re-drive collection only after every queued
+    // callback has completed, then expose the process-drained edge.
+    collectDrained();
+}
+
+void DashboardListenerGenerationCoordinator::beginGracefulShutdown()
+    noexcept
+{
+    bool dispatch{};
+
+    // Rebind holds this same gate from replacement start through old-owner
+    // publication. Taking it before the shutdown snapshot gives graceful
+    // cutoff one exact side of that transition.
+    {
+        auto cutoff = transitionGate_->enter();
+        const std::scoped_lock lock{mutex_};
+        shutdownRequested_ = true;
+        if (!shutdownFanoutStarted_ &&
+            !gracefulShutdownFanoutStarted_) {
+            gracefulShutdownFanoutStarted_ = true;
+        }
+        dispatch = claimShutdownFanoutDispatcherLocked();
+    }
+
+    if (dispatch) {
+        dispatchShutdownFanouts();
+    } else {
+        collectDrained();
+    }
+}
+
 void DashboardListenerGenerationCoordinator::beginShutdown() noexcept
 {
-    std::shared_ptr<IDashboardListenerGeneration> active;
-    std::shared_ptr<IDashboardListenerGeneration> retiring;
-    bool beginFanout{};
+    bool dispatch{};
     {
+        // Serialize the hard latch after any in-flight generation transition.
+        // A live graceful dispatcher queues this request until its complete
+        // active-and-retiring snapshot has received graceful cutoff.
+        auto cutoff = transitionGate_->enter();
         const std::scoped_lock lock{mutex_};
         shutdownRequested_ = true;
         if (!shutdownFanoutStarted_) {
             shutdownFanoutStarted_ = true;
-            beginFanout = true;
-            if (active_.has_value()) {
-                active = active_->generation;
-            }
-            if (retiring_.has_value()) {
-                retiring = retiring_->generation;
-            }
         }
+        dispatch = claimShutdownFanoutDispatcherLocked();
     }
-    if (beginFanout) {
-        if (active != nullptr) {
-            active->beginShutdown();
-        }
-        if (retiring != nullptr && retiring.get() != active.get()) {
-            retiring->beginShutdown();
-        }
+    if (dispatch) {
+        dispatchShutdownFanouts();
+    } else {
+        collectDrained();
     }
-    collectDrained();
 }
 
 void DashboardListenerGenerationCoordinator::fatal(
     const DWORD nativeError) noexcept
 {
-    std::shared_ptr<IDashboardListenerGeneration> active;
-    std::shared_ptr<IDashboardListenerGeneration> retiring;
+    bool dispatch{};
     {
+        auto cutoff = transitionGate_->enter();
         const std::scoped_lock lock{mutex_};
         fatal_ = true;
         shutdownRequested_ = true;
         shutdownFanoutStarted_ = true;
-        if (active_.has_value()) {
-            active = active_->generation;
+        if (!fatalShutdownFanoutRequested_) {
+            fatalShutdownFanoutRequested_ = true;
+            fatalShutdownNativeError_ = nativeError;
         }
-        if (retiring_.has_value()) {
-            retiring = retiring_->generation;
-        }
+        dispatch = claimShutdownFanoutDispatcherLocked();
     }
-    if (active != nullptr) {
-        active->fatal(nativeError);
+    if (dispatch) {
+        dispatchShutdownFanouts();
+    } else {
+        collectDrained();
     }
-    if (retiring != nullptr && retiring.get() != active.get()) {
-        retiring->fatal(nativeError);
-    }
-    collectDrained();
 }
 
 void DashboardListenerGenerationCoordinator::generationMayHaveDrained(
@@ -734,16 +931,15 @@ generationConnectionsMayHaveDrained(
 void DashboardListenerGenerationCoordinator::
 overloadOwnerBeganShutdown() noexcept
 {
-    beginShutdown();
+    beginGracefulShutdown();
 }
 
 void DashboardListenerGenerationCoordinator::
 overloadOwnerBecameTerminal() noexcept
 {
-    std::shared_ptr<IDashboardListenerGeneration> active;
-    std::shared_ptr<IDashboardListenerGeneration> retiring;
-    bool beginFanout{};
+    bool dispatch{};
     {
+        auto cutoff = transitionGate_->enter();
         const std::scoped_lock lock{mutex_};
         if (!firstFailure_.has_value()) {
             try {
@@ -757,26 +953,14 @@ overloadOwnerBecameTerminal() noexcept
         }
         fatal_ = true;
         shutdownRequested_ = true;
-        if (!shutdownFanoutStarted_) {
-            shutdownFanoutStarted_ = true;
-            beginFanout = true;
-            if (active_.has_value()) {
-                active = active_->generation;
-            }
-            if (retiring_.has_value()) {
-                retiring = retiring_->generation;
-            }
-        }
+        shutdownFanoutStarted_ = true;
+        dispatch = claimShutdownFanoutDispatcherLocked();
     }
-    if (beginFanout) {
-        if (active != nullptr) {
-            active->beginShutdown();
-        }
-        if (retiring != nullptr && retiring.get() != active.get()) {
-            retiring->beginShutdown();
-        }
+    if (dispatch) {
+        dispatchShutdownFanouts();
+    } else {
+        collectDrained();
     }
-    collectDrained();
 }
 
 void DashboardListenerGenerationCoordinator::
@@ -893,10 +1077,9 @@ void DashboardListenerGenerationCoordinator::
 overloadGenerationBecameTerminal(
     const std::uint64_t generationId) noexcept
 {
-    std::shared_ptr<IDashboardListenerGeneration> active;
-    std::shared_ptr<IDashboardListenerGeneration> retiring;
-    bool beginFanout{};
+    bool dispatch{};
     {
+        auto cutoff = transitionGate_->enter();
         const std::scoped_lock lock{mutex_};
         const bool knownGeneration =
             (active_.has_value() &&
@@ -918,32 +1101,17 @@ overloadGenerationBecameTerminal(
         }
         fatal_ = true;
         shutdownRequested_ = true;
+        shutdownFanoutStarted_ = true;
         terminalPendingGenerationIds_.fill(0U);
         terminalPendingGenerationCount_ = 0U;
-        if (!shutdownFanoutStarted_) {
-            shutdownFanoutStarted_ = true;
-            beginFanout = true;
-            if (active_.has_value()) {
-                active = active_->generation;
-            }
-            if (retiring_.has_value()) {
-                retiring = retiring_->generation;
-            }
-        }
+        dispatch = claimShutdownFanoutDispatcherLocked();
     }
 
-    if (beginFanout) {
-        // Terminal notifications are pumped only after the shared listener
-        // transition guard has been released. Re-entering generation shutdown
-        // here is therefore bounded and cannot self-deadlock on that gate.
-        if (active != nullptr) {
-            active->beginShutdown();
-        }
-        if (retiring != nullptr && retiring.get() != active.get()) {
-            retiring->beginShutdown();
-        }
+    if (dispatch) {
+        dispatchShutdownFanouts();
+    } else {
+        collectDrained();
     }
-    collectDrained();
 }
 
 void DashboardListenerGenerationCoordinator::ownershipMayHaveDrained(
@@ -987,6 +1155,8 @@ DashboardListenerGenerationCoordinator::snapshotLocked() const noexcept
         preparationInProgress_,
         collectionInProgress_,
         shutdownRequested_,
+        gracefulShutdownFanoutStarted_,
+        shutdownFanoutStarted_,
         fatal_,
         firstFailure_.has_value(),
         publicationCount_,

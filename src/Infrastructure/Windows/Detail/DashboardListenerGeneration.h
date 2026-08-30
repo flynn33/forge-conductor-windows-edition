@@ -352,6 +352,9 @@ public:
     [[nodiscard]] virtual Domain::Result<void> beginRetirement(
         DashboardListenerGenerationTransitionGate::Guard& transition)
         noexcept = 0;
+    [[nodiscard]] virtual Domain::Result<void> beginGracefulShutdown(
+        DashboardListenerGenerationTransitionGate::Guard& transition)
+        noexcept = 0;
     [[nodiscard]] virtual bool fullyDrained() const noexcept = 0;
     virtual void ownershipMayHaveDrained() noexcept = 0;
     virtual void beginShutdown() noexcept override = 0;
@@ -456,6 +459,9 @@ public:
     [[nodiscard]] Domain::Result<void> beginRetirement(
         DashboardListenerGenerationTransitionGate::Guard& transition)
         noexcept override;
+    [[nodiscard]] Domain::Result<void> beginGracefulShutdown(
+        DashboardListenerGenerationTransitionGate::Guard& transition)
+        noexcept override;
 
     void consume(
         DashboardIoCompletionPacket packet,
@@ -558,6 +564,7 @@ private:
     bool failFastPending_{};
     bool observerBound_{};
     bool drainNotificationSent_{};
+    bool gracefulShutdownRequested_{};
     mutable std::mutex mutex_;
 };
 

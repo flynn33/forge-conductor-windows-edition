@@ -104,6 +104,19 @@ public:
             transitionGate) noexcept = 0;
 };
 
+// Process-wide one-shot edge emitted after graceful or hard shutdown has
+// closed coordinator admission and every listener generation has relinquished
+// both routing registrations. Composition retains the observer strongly until
+// the edge; the coordinator keeps only a weak reference to avoid a cycle. The
+// callback is a latch only and must not destroy coordinator dependencies.
+class IDashboardListenerGenerationCoordinatorDrainObserver {
+public:
+    virtual ~IDashboardListenerGenerationCoordinatorDrainObserver()
+        noexcept = default;
+
+    virtual void listenerGenerationsMayHaveDrained() noexcept = 0;
+};
+
 class DashboardListenerGenerationCoordinatorSnapshot final {
 public:
     [[nodiscard]] std::optional<std::uint64_t> activeRegistrationId()
@@ -133,6 +146,16 @@ public:
         return shutdownRequested_;
     }
 
+    [[nodiscard]] bool gracefulShutdownRequested() const noexcept
+    {
+        return gracefulShutdownRequested_;
+    }
+
+    [[nodiscard]] bool hardShutdownRequested() const noexcept
+    {
+        return hardShutdownRequested_;
+    }
+
     [[nodiscard]] bool fatal() const noexcept { return fatal_; }
 
     [[nodiscard]] bool hasFailure() const noexcept { return hasFailure_; }
@@ -156,6 +179,8 @@ private:
         bool preparationInProgress,
         bool collectionInProgress,
         bool shutdownRequested,
+        bool gracefulShutdownRequested,
+        bool hardShutdownRequested,
         bool fatal,
         bool hasFailure,
         std::uint64_t publicationCount,
@@ -166,6 +191,8 @@ private:
     bool preparationInProgress_{};
     bool collectionInProgress_{};
     bool shutdownRequested_{};
+    bool gracefulShutdownRequested_{};
+    bool hardShutdownRequested_{};
     bool fatal_{};
     bool hasFailure_{};
     std::uint64_t publicationCount_{};
@@ -206,6 +233,12 @@ public:
     [[nodiscard]] Domain::Result<void> startInitial() noexcept;
     [[nodiscard]] Domain::Result<void> rebind() noexcept;
 
+    [[nodiscard]] Domain::Result<void> bindShutdownDrainObserver(
+        std::weak_ptr<
+            IDashboardListenerGenerationCoordinatorDrainObserver> observer)
+        noexcept;
+
+    void beginGracefulShutdown() noexcept;
     void beginShutdown() noexcept;
     void fatal(DWORD nativeError) noexcept;
 
@@ -231,6 +264,13 @@ public:
     [[nodiscard]] std::optional<Domain::Error> fullFailure() const;
 
 private:
+    enum class ShutdownFanoutAction : std::uint8_t {
+        None,
+        Graceful,
+        Hard,
+        Fatal,
+    };
+
     struct GenerationEntry final {
         std::shared_ptr<IDashboardListenerGeneration> generation;
         bool completionRegistered{};
@@ -268,6 +308,12 @@ private:
         bool requireActive) noexcept;
     [[nodiscard]] DashboardListenerGenerationCoordinatorSnapshot
     snapshotLocked() const noexcept;
+    [[nodiscard]] std::shared_ptr<
+        IDashboardListenerGenerationCoordinatorDrainObserver>
+    takeShutdownDrainObserverLocked() noexcept;
+    void notifyShutdownDrainObserverIfReady() noexcept;
+    [[nodiscard]] bool claimShutdownFanoutDispatcherLocked() noexcept;
+    void dispatchShutdownFanouts() noexcept;
 
     const std::shared_ptr<IDashboardListenerGenerationRegistrationHost>
         registrationHost_;
@@ -279,6 +325,8 @@ private:
 
     std::optional<GenerationEntry> active_;
     std::optional<GenerationEntry> retiring_;
+    std::weak_ptr<IDashboardListenerGenerationCoordinatorDrainObserver>
+        shutdownDrainObserver_;
     std::uint64_t publicationCount_{};
     std::uint64_t retirementCount_{};
     bool preparationInProgress_{};
@@ -286,7 +334,16 @@ private:
     bool collectionInProgress_{};
     bool unregisterFailed_{};
     bool shutdownRequested_{};
+    bool gracefulShutdownFanoutStarted_{};
     bool shutdownFanoutStarted_{};
+    bool shutdownFanoutDispatchInProgress_{};
+    bool gracefulShutdownFanoutCompleted_{};
+    bool hardShutdownFanoutCompleted_{};
+    bool fatalShutdownFanoutRequested_{};
+    bool fatalShutdownFanoutCompleted_{};
+    DWORD fatalShutdownNativeError_{};
+    bool shutdownDrainObserverEverBound_{};
+    bool shutdownDrainNotificationSent_{};
     bool fatal_{};
     std::array<std::uint64_t, 2U> terminalPendingGenerationIds_{};
     std::size_t terminalPendingGenerationCount_{};

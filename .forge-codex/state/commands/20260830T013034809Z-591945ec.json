@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260830T013034809Z-591945ec",
+  "phase": "P16",
+  "role": "builder",
+  "command": "ctest --test-dir out/build/windows-msvc-x64 -C Debug --output-on-failure -R \"^ForgeConductor\\.Dashboard\\.ListenerGenerationTests$\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T01:30:34.8159840+00:00",
+  "end_utc": "2026-08-30T01:30:35.9721969+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T013034809Z-591945ec.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T013034809Z-591945ec.stderr.txt",
+  "stdout_sha256": "2120375b8542433ef116493079885871abef888b8aa5d93ee4a5c72e20a77a4f",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-graceful-listener-coordinator-drain",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator using Visual Studio 2022 Build Tools 17 with MSVC 19.44.35223 from VC Tools 14.44.35207 and Windows SDK 10.0.26100.0; CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T013011683Z-f051e30c.json",
+    "command_record_sha256": "3ce64676288560f0f800bcb79cd1b71b7c5d3c11c468dde6d6ed582328d5f659",
+    "exit_code": 0,
+    "timed_out": false,
+    "target": "ForgeConductor.Dashboard.ListenerGenerationTests",
+    "configuration": "Debug",
+    "stdout": ".forge-codex/state/commands/20260830T013011683Z-f051e30c.stdout.txt",
+    "stdout_sha256": "07d7fd36572902ab1f1a29259d812e25d44e3e3d53a6b630251507818365e9f6",
+    "stderr": ".forge-codex/state/commands/20260830T013011683Z-f051e30c.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T013034809Z-591945ec.json",
+    "command_record_sha256": "f3f28febeed0404d08fb41aee82d293995614bc01bd8ae00c1455429cbd1882e",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 1,
+    "tests_failed": 0,
+    "real_seconds": 0.27,
+    "test": "ForgeConductor.Dashboard.ListenerGenerationTests",
+    "stdout": ".forge-codex/state/commands/20260830T013034809Z-591945ec.stdout.txt",
+    "stdout_sha256": "2120375b8542433ef116493079885871abef888b8aa5d93ee4a5c72e20a77a4f",
+    "stderr": ".forge-codex/state/commands/20260830T013034809Z-591945ec.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "invariant_audit": {
+    "corrections": [
+      "Concrete graceful listener shutdown closes new accept admission and exact overload work while preserving existing connection ownership and avoiding force-close watchdog policy.",
+      "Graceful cutoff and listener rebind publication serialize through one shared transition gate.",
+      "A coordinator-owned queued dispatcher completes the full active-and-retiring graceful snapshot before hard or fatal fanout and invokes no external callback under the coordinator mutex.",
+      "Generation collection and the process drain edge remain blocked while any shutdown fanout callback is pending.",
+      "A one-shot weak process observer is invoked outside the coordinator mutex only after both generation routes are gone; a previously bound observer must remain strongly retained."
+    ],
+    "independent_review_status": "A read-only concurrency proof found a per-callback hard-latch time-of-check/time-of-use gap in the initial implementation. The implementation was replaced with the queued dispatcher and pending-fanout drain barrier, deterministic interleaving tests were added, and final read-only review reported no concrete issue."
+  },
+  "behavior_proved": [
+    "concrete graceful listener shutdown is idempotent, cancels an exact retirement arm, preserves existing connections, and escalates through the existing hard path",
+    "ordinary overload-owner shutdown maps to graceful coordinator cutoff while terminal overload edges remain hard",
+    "hard-first coordinator shutdown suppresses later graceful callbacks",
+    "concurrent hard escalation cannot overtake either generation in a captured graceful fanout",
+    "graceful cutoff cannot split rebind start and publication",
+    "the coordinator drain observer binds once, supports initial zero, re-enters safely, waits for unregister collection, and fires exactly once",
+    "the coordinator drain observer cannot fire while a strong graceful generation snapshot still has a pending callback"
+  ],
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-016-graceful-listener-coordinator-drain.md": "ac2f17c0554daf54c3d39731eff9c130909110ab1491556eb52c92fd97ea186a",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGeneration.h": "2ee9b1aaeeeb4e69b1c04f79555eeeaf29517e3c01b34d11d0d87e088560c80d",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGeneration.cpp": "485e44d93baf8ebc75ce9d67c20606dcc3ee49325ee7a433e49cf3bc55508cad",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGenerationCoordinator.h": "6e230216fd3eafea6f1c657690c9d42ee6a60a41d7d824ed49e0af061dc255c3",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGenerationCoordinator.cpp": "2f3dd341d2e357713d9d66744ba83787052febb6de4c4c4968ec2f1a31e0b6d0",
+    "tests/Dashboard/DashboardListenerGenerationTests.cpp": "1937c1acff3ada29b4992bfaaea47406dd7b595bae73c8ff56838ffaa33d2ce6"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.ListenerGenerationTests.exe": "f6a53bd2e23d32ff9c0a78535dea9dcac3a561ee940e580d5d9020d4a24cc3ca"
+  },
+  "remaining_limitations": [
+    "The handler-executor exact drain observer, overload settling edge, registry routing-progress edge, and concrete process DashboardShutdownDrain owner remain unimplemented.",
+    "The independent five-second process deadline and final router, scheduler, IOCP, and worker teardown order remain unimplemented.",
+    "The static frontend shell and retained UI automation remain pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}
