@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-unavailable-telemetry",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with Visual Studio 17 2022, MSBuild 17.14.40, MSVC 14.51.36231, Windows SDK 10.0.26100.0, C++20 Release x64, and CTest 4.4.2.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T132722732Z-804fd72a.json",
+    "command_record_sha256": "88f058576a3fe1047cea42f1f4014ac4ad9183b2e0d115ffbf802b279ac0a317",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Release",
+    "targets": [
+      "ForgeConductor.Manager.UnavailableTelemetryServiceTests",
+      "ForgeConductor.Dashboard.ConnectionApplicationTests",
+      "ForgeConductor.Dashboard.TelemetrySourceTests"
+    ],
+    "elapsed_seconds": 9.0,
+    "stdout": ".forge-codex/state/commands/20260830T132722732Z-804fd72a.stdout.txt",
+    "stdout_sha256": "b536b9b412490d2606ea7c2170007c75c6e111b329fe509282b6f5953eaf46d5",
+    "stderr": ".forge-codex/state/commands/20260830T132722732Z-804fd72a.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T132739991Z-483abbd8.json",
+    "command_record_sha256": "c1e7cfc97b1855615fb9589aab76891cd825ed9cc18764c19914ccee59ec72cc",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 3,
+    "tests_failed": 0,
+    "real_seconds": 0.06,
+    "stdout": ".forge-codex/state/commands/20260830T132739991Z-483abbd8.stdout.txt",
+    "stdout_sha256": "77b49e5f453bd52ad6558cccc400ce69cd10bbb363ba1da76dc28b1eae3f8d0d",
+    "stderr": ".forge-codex/state/commands/20260830T132739991Z-483abbd8.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_policy_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T133333079Z-c923bfe6.json",
+    "command_record_sha256": "b27a72442875cca064061d188525529067b07a061f6be45907f6df9fa06cd71e",
+    "exit_code": 0,
+    "timed_out": false,
+    "source_hashes_matched": 8,
+    "binary_hashes_matched": 5,
+    "command_records_matched": 2,
+    "changed_text_files_validated": 9,
+    "focused_selection_did_not_invoke_g16": true,
+    "durable_p16_g16_state_verified": true,
+    "no_python_passed": true,
+    "no_attribution_passed": true,
+    "ledger_passed": true,
+    "git_diff_check_passed": true,
+    "line_endings_passed": true,
+    "stdout": ".forge-codex/state/commands/20260830T133333079Z-c923bfe6.stdout.txt",
+    "stdout_sha256": "b7dea10212f496c654db6fe479edee65d8a7cd380e779b0218235ef85dd619a7",
+    "stderr": ".forge-codex/state/commands/20260830T133333079Z-c923bfe6.stderr.txt",
+    "stderr_sha256": "fd75d91b030fb3b81635875c0f901a31a6fb060643987ea92300db8386895420"
+  },
+  "independent_review": {
+    "status": "passed",
+    "mode": "read-only",
+    "blocking_findings": 0,
+    "edits": 0,
+    "builds_invoked": 0,
+    "gates_invoked": 0
+  },
+  "measured_results": {
+    "focused_native_test_executables_passed": 3,
+    "focused_native_test_executables_failed": 0,
+    "unavailable_service_test_cases": 4,
+    "latest_snapshot_count": 0,
+    "pending_work_count": 0,
+    "retained_consumer_count": 0,
+    "dashboard_target_hz": 2.0,
+    "dashboard_measured_hz": 0.0,
+    "dashboard_stream_running": false,
+    "ping_dependency_calls": 0
+  },
+  "behavior_proved": [
+    "the production pre-P17 telemetry adapter lives in the outer Windows composition target and borrows only the injected clock",
+    "a context-valid lifecycle start admits degraded Manager operation without creating a worker, callback, queue, stream, or snapshot",
+    "health remains diagnostically queryable while reporting ok false, runtime windows-native, and mode unavailable",
+    "ordinary and forced samples fail with retryable HostCapabilityUnavailable after cancellation and deadline precedence",
+    "the adapter retains no latest snapshot or pending work and immediately releases every supplied consumer capture without invocation",
+    "the real DashboardTelemetrySource projects the unavailable state with zero measured frequency, no running stream, and typed latest and subscription failures without owning the dependency lifecycle",
+    "the compact status response remains successful with nested telemetry ok false and retains its established report-only telemetry schema",
+    "the public ping response proves only dependency-free Manager dashboard reachability and no longer claims active telemetry collectors or realtime SSE"
+  ],
+  "evidence_scope": {
+    "proved": "Source structure, independent review, and focused native Release behavior for truthful pre-P17 telemetry degradation and Manager reachability wording on this Windows 11 alpha machine.",
+    "not_proved": "The doctor service, production Manager composition root or executable, native P17 collectors, real-process lifecycle, live Edge behavior, retained native UI automation, installer lifecycle, or the authoritative G16 gate."
+  },
+  "source_sha256": {
+    "CMakeLists.txt": "83fdf18a5e5d1f03f9b813b1242ef79ebde68e151c505e3d5e9d35a79ad37222",
+    ".forge-codex/state/decisions/P16-030-truthful-unavailable-telemetry-and-manager-reachability.md": "572523379cc40deb28932fce31e55f09303a8a2c60038abfe1c09b10c0aaa780",
+    ".forge-codex/state/run-state.json": "d7ab15bff8d3d1cdce58790f1a5913277b5a7ade250aa87d6d2da8dbe2d3b449",
+    "src/Application/DashboardConnectionApplication.cpp": "2a4e647e57e70c4e39a39eee5e39c5c16c7ecbefcbc47535c1c08be0bc3056a1",
+    "src/Composition/Windows/UnavailableTelemetryService.h": "ee9807b83ab0cdec39c40a07496fc3b99dcfb8ccf4e6cc9938422cbc944f609a",
+    "src/Composition/Windows/UnavailableTelemetryService.cpp": "356b0da80dca95dcb6c6c9b0949917c8560dfd58856027d7de9c3b0bdf331241",
+    "tests/Application/DashboardConnectionApplicationTests.cpp": "a49fbb1494a83e986a58471dccfe89e8f8f4fdd807e969d72012b90122cde40a",
+    "tests/Composition/Windows/UnavailableTelemetryServiceTests.cpp": "dddb8c230dd19bffdec63f50aa2309337d0b181a4c8255fac4046ecde7d9272c"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Manager.UnavailableTelemetryServiceTests.exe": "1ddbc61e667603068b0e2e7f71d0e07d80e14211949201e714ae171ae884a592",
+    "ForgeConductor.Dashboard.ConnectionApplicationTests.exe": "d40d89239a9ee70018ccd193592602d1307697e87f2965571abba8d03e8e0476",
+    "ForgeConductor.Dashboard.TelemetrySourceTests.exe": "f6331badea228678cd9e38c667c82dea92593671ded270ed72c0fd3dd18570d2",
+    "ForgeConductor.Manager.Composition.Windows.lib": "650823d52c9ee3c0fd91dab2517f67d56e87f743b0e745f3d580ef49ed7eb083",
+    "ForgeConductor.Application.lib": "16f60149d09ebf15b4a8d906814e21952e78bafc5af939ada6a40b3813f363c0"
+  },
+  "remaining_limitations": [
+    "P16 remains in progress and G16 remains not started.",
+    "Doctor, the production Manager composition root and executable, real-process evidence, live Edge behavior, and retained native UI automation remain pending.",
+    "P17 must replace the unavailable adapter with bounded native telemetry collectors.",
+    "Installer qualification is limited to this Windows 11 alpha machine; clean-environment qualification, security-only hardening, and bespoke UI polish remain owner-deferred until after alpha."
+  ]
+}

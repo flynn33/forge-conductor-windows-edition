@@ -27,15 +27,15 @@ constexpr std::string_view MissingSessionIdBody =
     R"({"ok":false,"message":"session_id required"})";
 constexpr std::string_view PingBody =
     "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
-    "<title>Forge Telemetry OK</title></head>"
+    "<title>Forge Conductor Manager OK</title></head>"
     "<body style=\"background:#02040a;color:#e8fbff;"
     "font-family:system-ui;padding:2rem\">"
-    "<h1 style=\"color:#18f0ff\">Forge Telemetry is reachable</h1>"
-    "<p>Integrated Windows host &middot; continuous native collectors</p>"
+    "<h1 style=\"color:#18f0ff\">Forge Conductor Manager is reachable</h1>"
+    "<p>Integrated Windows manager &middot; dashboard endpoint ready</p>"
     "<p><a style=\"color:#18f0ff\" href=\"/\">Open dashboard</a> "
     "&middot; <a style=\"color:#18f0ff\" href=\"/api/health\">"
     "/api/health</a> &middot; <a style=\"color:#18f0ff\" "
-    "href=\"/api/stream\">/api/stream (SSE realtime)</a> &middot; "
+    "href=\"/api/stream\">/api/stream</a> &middot; "
     "<a style=\"color:#18f0ff\" href=\"/api/live\">/api/live</a> "
     "&middot; <a style=\"color:#18f0ff\" href=\"/control\">"
     "Manager controls</a></p></body></html>";

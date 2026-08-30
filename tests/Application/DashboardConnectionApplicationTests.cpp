@@ -535,6 +535,7 @@ private:
 
 class TelemetrySourceFake final : public Dashboard::IDashboardTelemetrySource {
 public:
+    Dashboard::DashboardTelemetryHealth healthValue{telemetryHealth()};
     std::optional<Domain::Error> healthFailure;
     std::optional<Domain::Error> latestFailure;
     std::optional<Domain::Error> subscribeFailure;
@@ -561,7 +562,7 @@ public:
                     *healthFailure);
             }
             return Domain::Result<Dashboard::DashboardTelemetryHealth>::success(
-                telemetryHealth());
+                healthValue);
         } catch (...) {
             return Domain::Result<Dashboard::DashboardTelemetryHealth>::failure(
                 dependencyError(Domain::ErrorCodes::InternalFailure));
@@ -1305,6 +1306,22 @@ void dispatchesEveryReleasedNonStreamingRoute()
     }
 }
 
+void pingReportsOnlyManagerDashboardReachability()
+{
+    Fixture fixture;
+    const auto response = fixture.prepare(request("GET", "/ping"));
+    REQUIRE(wireStatus(response) == 200U);
+    const auto body = wireBody(response);
+    REQUIRE(body.find("Forge Conductor Manager is reachable") !=
+            std::string::npos);
+    REQUIRE(body.find("dashboard endpoint ready") != std::string::npos);
+    REQUIRE(body.find("Forge Telemetry OK") == std::string::npos);
+    REQUIRE(body.find("Telemetry is reachable") == std::string::npos);
+    REQUIRE(body.find("continuous native collectors") == std::string::npos);
+    REQUIRE(body.find("SSE realtime") == std::string::npos);
+    REQUIRE(fixture.dependencyCalls() == 0U);
+}
+
 void emitsHeadOnlyRejectionsForEveryRoute()
 {
     auto routes = releasedRoutes();
@@ -1716,12 +1733,22 @@ void statusUsesOneContextAndShortCircuitsInDependencyOrder()
 
     {
         Fixture fixture;
+        fixture.telemetry.healthValue.report.ok = false;
+        fixture.telemetry.healthValue.report.mode = "unavailable";
+        fixture.telemetry.healthValue.measuredSampleHz = 0.0;
+        fixture.telemetry.healthValue.streamRunning = false;
         const auto operation = context(
             "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
             "status-success");
         auto response = fixture.prepare(
             request("GET", "/api/status"), true, operation);
         REQUIRE(wireStatus(response) == 200U);
+        const auto document = wireJson(response);
+        REQUIRE(document.at("ok") == true);
+        REQUIRE(document.at("telemetry").at("ok") == false);
+        REQUIRE(document.at("telemetry").at("mode") == "unavailable");
+        REQUIRE(!document.at("telemetry").contains("sample_hz_measured"));
+        REQUIRE(!document.at("telemetry").contains("stream_running"));
         requireContext(
             fixture.operational.lastContext(OperationalOperation::Status),
             operation);
@@ -1867,6 +1894,7 @@ int main()
     try {
         exposesClosedApplicationBoundary();
         dispatchesEveryReleasedNonStreamingRoute();
+        pingReportsOnlyManagerDashboardReachability();
         emitsHeadOnlyRejectionsForEveryRoute();
         rejectsBeforeDispatchWithoutTouchingDependencies();
         mapsTypedDependencyFailuresToStablePublicErrors();
