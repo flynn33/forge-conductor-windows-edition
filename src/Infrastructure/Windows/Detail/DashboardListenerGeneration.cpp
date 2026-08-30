@@ -336,6 +336,42 @@ DashboardListenerGenerationSnapshot::DashboardListenerGenerationSnapshot(
 Domain::Result<std::shared_ptr<DashboardListenerGeneration>>
 DashboardListenerGeneration::create(
     const DashboardConnectionRuntimeIdentity identity,
+    DashboardListenerCompletionKeyLease completionKeyLease,
+    std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
+    WindowsDashboardDeadlineScheduler& deadlineScheduler,
+    DashboardConnectionRuntimeServices& runtimeServices,
+    std::shared_ptr<IDashboardListenerGenerationConnectionControl>
+        connectionControl,
+    std::shared_ptr<IDashboardAdmissionOverloadResponder>
+        overloadResponder,
+    std::shared_ptr<DashboardListenerGenerationTransitionGate>
+        transitionGate) noexcept
+{
+    try {
+        return createInternal(
+            std::optional<DashboardListenerCompletionKeyLease>{
+                std::move(completionKeyLease)},
+            identity,
+            std::move(acceptOwner),
+            std::make_shared<
+                DashboardListenerGenerationDeadlineScheduler>(
+                    deadlineScheduler),
+            runtimeServices,
+            std::move(connectionControl),
+            std::move(overloadResponder),
+            std::move(transitionGate),
+            std::make_shared<
+                DashboardListenerGenerationProcessFailFast>());
+    } catch (...) {
+        return Domain::Result<std::shared_ptr<
+            DashboardListenerGeneration>>::failure(
+            internalGenerationError());
+    }
+}
+
+Domain::Result<std::shared_ptr<DashboardListenerGeneration>>
+DashboardListenerGeneration::create(
+    const DashboardConnectionRuntimeIdentity identity,
     std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
     WindowsDashboardDeadlineScheduler& deadlineScheduler,
     DashboardConnectionRuntimeServices& runtimeServices,
@@ -412,9 +448,40 @@ DashboardListenerGeneration::create(
         transitionGate,
     std::shared_ptr<IDashboardListenerGenerationFailFast> failFast) noexcept
 {
+    return createInternal(
+        std::nullopt,
+        identity,
+        std::move(acceptOwner),
+        std::move(deadlineScheduler),
+        runtimeServices,
+        std::move(connectionControl),
+        std::move(overloadResponder),
+        std::move(transitionGate),
+        std::move(failFast));
+}
+
+Domain::Result<std::shared_ptr<DashboardListenerGeneration>>
+DashboardListenerGeneration::createInternal(
+    std::optional<DashboardListenerCompletionKeyLease> completionKeyLease,
+    const DashboardConnectionRuntimeIdentity identity,
+    std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
+    std::shared_ptr<IDashboardListenerGenerationDeadlineScheduler>
+        deadlineScheduler,
+    DashboardConnectionRuntimeServices& runtimeServices,
+    std::shared_ptr<IDashboardListenerGenerationConnectionControl>
+        connectionControl,
+    std::shared_ptr<IDashboardAdmissionOverloadResponder>
+        overloadResponder,
+    std::shared_ptr<DashboardListenerGenerationTransitionGate>
+        transitionGate,
+    std::shared_ptr<IDashboardListenerGenerationFailFast> failFast) noexcept
+{
     using CreateResult = Domain::Result<std::shared_ptr<
         DashboardListenerGeneration>>;
-    if (identity.registrationId == 0U ||
+    const bool leaseInvalid = completionKeyLease.has_value() &&
+        (!completionKeyLease->ownsSlot() ||
+         completionKeyLease->completionKey() != identity.completionKey);
+    if (leaseInvalid || identity.registrationId == 0U ||
         identity.completionKey.value() == 0U ||
         identity.completionKey.value() ==
             DashboardIocpWorkerKernel::ShutdownKeyValue ||
@@ -429,6 +496,7 @@ DashboardListenerGeneration::create(
         return CreateResult::success(
             std::shared_ptr<DashboardListenerGeneration>{
                 new DashboardListenerGeneration{
+                    std::move(completionKeyLease),
                     identity,
                     std::move(acceptOwner),
                     deadlineScheduler,
@@ -443,6 +511,7 @@ DashboardListenerGeneration::create(
 }
 
 DashboardListenerGeneration::DashboardListenerGeneration(
+    std::optional<DashboardListenerCompletionKeyLease> completionKeyLease,
     const DashboardConnectionRuntimeIdentity identity,
     std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
     std::shared_ptr<IDashboardListenerGenerationDeadlineScheduler>
@@ -455,7 +524,8 @@ DashboardListenerGeneration::DashboardListenerGeneration(
     std::shared_ptr<DashboardListenerGenerationTransitionGate>
         transitionGate,
     std::shared_ptr<IDashboardListenerGenerationFailFast> failFast) noexcept
-    : identity_{identity},
+    : completionKeyLease_{std::move(completionKeyLease)},
+      identity_{identity},
       acceptOwner_{std::move(acceptOwner)},
       deadlineScheduler_{std::move(deadlineScheduler)},
       runtimeServices_{std::addressof(runtimeServices)},

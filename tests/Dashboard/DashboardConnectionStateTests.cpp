@@ -833,7 +833,15 @@ public:
     {
         std::shared_ptr<Detail::IDashboardConnectionDispatchTarget> target;
         {
-            const std::scoped_lock lock{mutex_};
+            std::unique_lock lock{mutex_};
+            if (blockNextConsume_) {
+                consumeBlocked_ = true;
+                changed_.notify_all();
+                changed_.wait(lock, [this] { return releaseConsume_; });
+                blockNextConsume_ = false;
+                consumeBlocked_ = false;
+                releaseConsume_ = false;
+            }
             target = target_.lock();
         }
         if (target != nullptr) {
@@ -854,10 +862,38 @@ public:
         return fatalError_.load(std::memory_order_acquire);
     }
 
+    void blockNextConsume() noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        blockNextConsume_ = true;
+        consumeBlocked_ = false;
+        releaseConsume_ = false;
+    }
+
+    void waitUntilConsumeBlocked()
+    {
+        std::unique_lock lock{mutex_};
+        if (!changed_.wait_for(lock, 5s, [this] { return consumeBlocked_; })) {
+            throw std::runtime_error{
+                "kernel sink did not retain the prepared completion"};
+        }
+    }
+
+    void releaseConsume() noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        releaseConsume_ = true;
+        changed_.notify_all();
+    }
+
 private:
     mutable std::mutex mutex_;
+    std::condition_variable changed_;
     std::weak_ptr<Detail::IDashboardConnectionDispatchTarget> target_;
     std::atomic<DWORD> fatalError_{};
+    bool blockNextConsume_{};
+    bool consumeBlocked_{};
+    bool releaseConsume_{};
 };
 
 class ForwardingDeadlineSink final
@@ -1205,6 +1241,9 @@ static_assert(noexcept(std::declval<
                            .dispatchIocp(0U, nullptr, ERROR_SUCCESS)));
 static_assert(noexcept(std::declval<
                        Detail::IDashboardConnectionDispatchTarget&>()
+                           .beginGracefulShutdown()));
+static_assert(noexcept(std::declval<
+                       Detail::IDashboardConnectionDispatchTarget&>()
                            .beginShutdown()));
 
 void exposesEveryExactLifecycleState()
@@ -1340,6 +1379,370 @@ void runsRealIngressPreparePartialSendAndDrain()
             "complete response lost its body");
     require(fixture.completeApplication->postCalls() == 0U,
             "ordinary response invented a post-delivery action");
+}
+
+void gracefulShutdownKeepsOnlyPreparedPartialFinalSend()
+{
+    RealStateFixture fixture{
+        Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown};
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    waitUntil(
+        [&fixture] {
+            return fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::SendingComplete;
+        },
+        "graceful test response was not prepared");
+    const auto initial = fixture.socket->sendIssue(0U);
+    require(initial.size() > 7U,
+            "graceful final response was unexpectedly short");
+    require(fixture.handlerExecutor->reservationCount() == 1U,
+            "graceful action response did not reserve post-delivery work");
+
+    fixture.state->beginGracefulShutdown();
+    const auto graceful = fixture.state->snapshot();
+    require(
+        graceful.state() ==
+                Detail::DashboardConnectionLifecycleState::SendingComplete &&
+            graceful.shutdownRequested(),
+        "graceful shutdown did not retain only the prepared send");
+    require(fixture.handlerExecutor->reservationCount() == 0U,
+            "graceful shutdown retained post-delivery capacity");
+    require(!fixture.socket->snapshot().shutdownRequested(),
+            "graceful shutdown half-closed the retained final send");
+
+    fixture.completeSend(7U);
+    require(fixture.socket->sendIssueCount() == 2U,
+            "graceful partial completion did not reissue its suffix");
+    const auto suffix = fixture.socket->sendIssue(1U);
+    require(suffix.size() == initial.size() - 7U &&
+                std::equal(
+                    suffix.begin(), suffix.end(), initial.begin() + 7),
+            "graceful partial send changed its immutable suffix");
+    fixture.completeSend(static_cast<DWORD>(suffix.size()));
+    waitUntil(
+        [&fixture] { return fixture.state->isDrained(); },
+        "graceful final send did not drain exactly");
+    require(fixture.completeApplication->postCalls() == 0U,
+            "graceful final send admitted post-delivery work");
+}
+
+void gracefulShutdownRacingPostNativePartialSendReissuesExactSuffix()
+{
+    RealStateFixture fixture{
+        Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown};
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    waitUntil(
+        [&fixture] {
+            return fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::SendingComplete;
+        },
+        "racing graceful response was not prepared");
+
+    constexpr DWORD PartialDelivery = 7U;
+    const auto initial = fixture.socket->sendIssue(0U);
+    require(initial.size() > PartialDelivery,
+            "racing graceful response was unexpectedly short");
+    require(fixture.handlerExecutor->reservationCount() == 1U,
+            "racing graceful response did not reserve its action");
+
+    fixture.socket->blockNextReapAfterIdle();
+    std::jthread completion{[&fixture] {
+        fixture.completeSend(PartialDelivery);
+    }};
+    try {
+        fixture.socket->waitUntilReapAfterIdleBlocked();
+        require(
+            fixture.socket->state() ==
+                Detail::DashboardConnectionSocketState::Idle,
+            "partial native reap did not expose the idle cutover");
+
+        fixture.state->beginGracefulShutdown();
+        const auto graceful = fixture.state->snapshot();
+        require(
+            graceful.state() ==
+                    Detail::DashboardConnectionLifecycleState::
+                        SendingComplete &&
+                graceful.shutdownRequested() &&
+                fixture.socket->sendIssueCount() == 1U,
+            "graceful cutoff did not retain only the reaped final send");
+        require(fixture.handlerExecutor->reservationCount() == 0U &&
+                    fixture.completeApplication->postCalls() == 0U,
+                "graceful cutoff retained post-delivery work");
+        require(!fixture.socket->snapshot().shutdownRequested(),
+                "graceful cutoff closed the socket before suffix reissue");
+    } catch (...) {
+        fixture.socket->releaseReapAfterIdle();
+        completion.join();
+        throw;
+    }
+
+    fixture.socket->releaseReapAfterIdle();
+    completion.join();
+    require(fixture.socket->sendIssueCount() == 2U,
+            "late partial dispatch did not reissue one exact suffix");
+    const auto suffix = fixture.socket->sendIssue(1U);
+    require(
+        suffix.size() == initial.size() - PartialDelivery &&
+            std::equal(
+                suffix.begin(),
+                suffix.end(),
+                initial.begin() + PartialDelivery),
+        "late partial dispatch changed its immutable suffix");
+    require(fixture.completeApplication->postCalls() == 0U,
+            "late partial dispatch admitted post-delivery work");
+
+    fixture.completeSend(static_cast<DWORD>(suffix.size()));
+    waitUntil(
+        [&fixture] { return fixture.state->isDrained(); },
+        "late partial suffix did not drain");
+    require(fixture.drainObserver->callbackCount() == 1U &&
+                fixture.completeApplication->postCalls() == 0U,
+            "late partial suffix did not publish one action-free drain");
+}
+
+void gracefulShutdownRejectsEveryNonFinalSendCutoff()
+{
+    {
+        RealStateFixture fixture;
+        fixture.state->beginGracefulShutdown();
+        require(fixture.state->isDrained() &&
+                    fixture.state->snapshot().shutdownRequested(),
+                "Created survived graceful shutdown");
+    }
+    {
+        RealStateFixture fixture;
+        fixture.start();
+        fixture.state->beginGracefulShutdown();
+        require(
+            fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::Closing,
+            "Receiving survived graceful shutdown");
+        fixture.state->dispatchIocp(
+            0U,
+            fixture.socket->borrowedOperation(),
+            ERROR_OPERATION_ABORTED);
+        require(fixture.state->isDrained(),
+                "graceful receive cancellation did not drain");
+    }
+    {
+        auto application = std::make_shared<BlockingApplication>();
+        RealStateFixture fixture{application};
+        fixture.start();
+        fixture.receive(CompleteRequest);
+        waitUntil(
+            [&fixture, &application] {
+                return application->entered() &&
+                    fixture.state->snapshot().state() ==
+                        Detail::DashboardConnectionLifecycleState::Preparing;
+            },
+            "graceful cutoff did not enter Preparing");
+        fixture.state->beginGracefulShutdown();
+        waitUntil(
+            [&application] { return application->cancelled(); },
+            "graceful cutoff did not cancel preparation");
+        require(fixture.state->isDrained() &&
+                    fixture.socket->sendIssueCount() == 0U,
+                "Preparing produced a response after graceful cutoff");
+    }
+    {
+        auto control = std::make_shared<SseSubscriptionControl>(2.0);
+        auto application = std::make_shared<SseApplication>(control);
+        RealStateFixture fixture{application};
+        fixture.start();
+        fixture.receive(CompleteRequest);
+        waitUntil(
+            [&fixture] {
+                return fixture.state->snapshot().state() ==
+                    Detail::DashboardConnectionLifecycleState::
+                        SendingSseBootstrap;
+            },
+            "graceful cutoff did not enter SSE bootstrap");
+        fixture.state->beginGracefulShutdown();
+        require(control->isClosed(),
+                "graceful cutoff retained its SSE subscription");
+        require(
+            fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::Closing,
+            "SSE bootstrap survived graceful shutdown");
+        fixture.state->dispatchIocp(
+            0U,
+            fixture.socket->borrowedOperation(),
+            ERROR_OPERATION_ABORTED);
+        require(fixture.state->isDrained(),
+                "graceful SSE cancellation did not drain");
+    }
+}
+
+void queuedPreparedCompletionCannotCrossGracefulCutoff()
+{
+    RealStateFixture fixture;
+    fixture.kernelSink->blockNextConsume();
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    fixture.kernelSink->waitUntilConsumeBlocked();
+    require(fixture.completeApplication->prepareCalls() == 1U &&
+                fixture.state->snapshot().state() ==
+                    Detail::DashboardConnectionLifecycleState::Preparing,
+            "prepared completion did not remain queued at the cutoff");
+
+    fixture.state->beginGracefulShutdown();
+    const auto closing = fixture.state->snapshot();
+    require(
+        closing.state() ==
+                Detail::DashboardConnectionLifecycleState::Closing &&
+            closing.eventOperationOutstanding() &&
+            fixture.socket->sendIssueCount() == 0U,
+        "queued prepared completion crossed graceful cutoff");
+    fixture.kernelSink->releaseConsume();
+    waitUntil(
+        [&fixture] { return fixture.state->isDrained(); },
+        "queued prepared tombstone did not drain");
+    require(fixture.socket->sendIssueCount() == 0U,
+            "retired prepared completion issued a late response");
+}
+
+void runtimeShutdownRejectsReleasedPrepareResultBeforeDelivery()
+{
+    auto application = std::make_shared<GatedActionApplication>();
+    RealStateFixture fixture{application};
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    application->waitUntilEntered();
+    require(
+        fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::Preparing &&
+            fixture.socket->sendIssueCount() == 0U,
+        "runtime cutoff test did not retain a blocked prepare");
+
+    fixture.runtimeServices->beginShutdown();
+    require(fixture.runtimeServices->isShuttingDown(),
+            "runtime admission did not close at shutdown");
+    application->release();
+    waitUntil(
+        [&fixture] {
+            return fixture.state->isDrained() &&
+                fixture.drainObserver->callbackCount() == 1U;
+        },
+        "released prepare result did not drain after runtime cutoff");
+    require(fixture.socket->sendIssueCount() == 0U,
+            "released prepare result sent complete or fallback bytes");
+    require(fixture.handlerExecutor->reservationCount() == 0U &&
+                application->postCalls() == 0U &&
+                fixture.drainObserver->callbackCount() == 1U,
+            "released prepare result retained work past its exact drain");
+}
+
+void runtimeShutdownRejectsFallbackFromNewlyParsedRequest()
+{
+    RealStateFixture fixture;
+    fixture.start();
+    fixture.runtimeServices->beginShutdown();
+    fixture.receive(CompleteRequest);
+
+    waitUntil(
+        [&fixture] {
+            return fixture.state->isDrained() &&
+                fixture.drainObserver->callbackCount() == 1U;
+        },
+        "post-cutoff request did not drain after context rejection");
+    require(fixture.socket->sendIssueCount() == 0U &&
+                fixture.completeApplication->prepareCalls() == 0U,
+            "post-cutoff context rejection started fallback or handler work");
+}
+
+void hardShutdownEscalatesAGracefulFinalSend()
+{
+    RealStateFixture fixture;
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    waitUntil(
+        [&fixture] {
+            return fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::SendingComplete;
+        },
+        "hard-escalation response was not prepared");
+    fixture.state->beginGracefulShutdown();
+    require(
+        fixture.state->snapshot().state() ==
+            Detail::DashboardConnectionLifecycleState::SendingComplete,
+        "graceful phase did not retain the final send");
+
+    fixture.state->beginShutdown();
+    require(
+        fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::Closing &&
+            fixture.socket->state() ==
+                Detail::DashboardConnectionSocketState::
+                    SendCancellationRequested,
+        "hard escalation did not cancel the retained send");
+    fixture.state->dispatchIocp(
+        0U,
+        fixture.socket->borrowedOperation(),
+        ERROR_OPERATION_ABORTED);
+    require(fixture.state->isDrained(),
+            "hard-escalated final send did not drain exact storage");
+}
+
+void hardEscalationRacingPostNativeFullSendDrainsLateDispatch()
+{
+    RealStateFixture fixture{
+        Dashboard::DashboardPostDeliveryAction::RequestManagerShutdown};
+    fixture.start();
+    fixture.receive(CompleteRequest);
+    waitUntil(
+        [&fixture] {
+            return fixture.state->snapshot().state() ==
+                Detail::DashboardConnectionLifecycleState::SendingComplete;
+        },
+        "racing hard-escalation response was not prepared");
+
+    const auto initial = fixture.socket->sendIssue(0U);
+    require(!initial.empty() &&
+                fixture.handlerExecutor->reservationCount() == 1U,
+            "racing hard-escalation response was not fully owned");
+    fixture.socket->blockNextReapAfterIdle();
+    std::jthread completion{[&fixture, size = initial.size()] {
+        fixture.completeSend(static_cast<DWORD>(size));
+    }};
+    try {
+        fixture.socket->waitUntilReapAfterIdleBlocked();
+        require(
+            fixture.socket->state() ==
+                Detail::DashboardConnectionSocketState::Idle,
+            "full native reap did not expose the idle cutover");
+
+        fixture.state->beginGracefulShutdown();
+        require(
+            fixture.state->snapshot().state() ==
+                    Detail::DashboardConnectionLifecycleState::
+                        SendingComplete &&
+                fixture.handlerExecutor->reservationCount() == 0U &&
+                fixture.completeApplication->postCalls() == 0U,
+            "graceful phase retained action work during full reap");
+
+        fixture.state->beginShutdown();
+        require(fixture.state->isDrained() &&
+                    fixture.socket->snapshot().shutdownRequested() &&
+                    fixture.socket->sendIssueCount() == 1U &&
+                    fixture.drainObserver->callbackCount() == 1U,
+                "hard escalation did not publish the exact idle drain");
+    } catch (...) {
+        fixture.socket->releaseReapAfterIdle();
+        completion.join();
+        throw;
+    }
+
+    fixture.socket->releaseReapAfterIdle();
+    completion.join();
+    require(fixture.state->isDrained() &&
+                fixture.socket->sendIssueCount() == 1U &&
+                fixture.drainObserver->callbackCount() == 1U &&
+                fixture.completeApplication->postCalls() == 0U,
+            "late full-send dispatch changed the drained state");
+    require(!fixture.state->fullFailure().has_value(),
+            "late full-send dispatch retained a false failure");
 }
 
 void reservesBeforeByteOneAndRunsPostDeliveryAfterSuccess()
@@ -1928,6 +2331,14 @@ int main()
         publishesBoundedTimingContracts();
         admissionDelayCannotRestartTheHeaderIngressCeiling();
         runsRealIngressPreparePartialSendAndDrain();
+        gracefulShutdownKeepsOnlyPreparedPartialFinalSend();
+        gracefulShutdownRacingPostNativePartialSendReissuesExactSuffix();
+        gracefulShutdownRejectsEveryNonFinalSendCutoff();
+        queuedPreparedCompletionCannotCrossGracefulCutoff();
+        runtimeShutdownRejectsReleasedPrepareResultBeforeDelivery();
+        runtimeShutdownRejectsFallbackFromNewlyParsedRequest();
+        hardShutdownEscalatesAGracefulFinalSend();
+        hardEscalationRacingPostNativeFullSendDrainsLateDispatch();
         reservesBeforeByteOneAndRunsPostDeliveryAfterSuccess();
         suppressesReservedActionWhenSendFails();
         sendsFixed503WithoutActionWhenReservationCapacityIsExhausted();

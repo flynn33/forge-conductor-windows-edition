@@ -600,6 +600,12 @@
         ".forge-codex/state/evidence/P16/dashboard-listener-generations-overload-routing-checkpoint.json",
         ".forge-codex/state/commands/20260828T094650402Z-ae81b22a.json",
         ".forge-codex/state/commands/20260828T094724947Z-a91ca2f8.json",
+        ".forge-codex/state/decisions/P16-015-fixed-iocp-authority-and-graceful-shutdown-cutover.md",
+        ".forge-codex/state/evidence/P16/dashboard-fixed-key-graceful-cutover-checkpoint.json",
+        ".forge-codex/state/commands/20260828T104834158Z-e036f7e7.json",
+        ".forge-codex/state/commands/20260828T104918840Z-df63148b.json",
+        ".forge-codex/state/commands/20260830T005141649Z-0fd19a96.json",
+        ".forge-codex/state/commands/20260830T005149747Z-d29b8c40.json",
         "include/ForgeConductor/Contracts/IManagerServices.h",
         "include/ForgeConductor/Domain/ManagerModels.h",
         "src/Domain/ManagerModels.cpp"

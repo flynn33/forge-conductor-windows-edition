@@ -5,6 +5,7 @@
 #include "DashboardConnectionRegistry.h"
 #include "DashboardConnectionRuntimeServices.h"
 #include "DashboardIocpCompletionRouter.h"
+#include "DashboardListenerCompletionKeyLease.h"
 
 #include "ForgeConductor/Dashboard/IDashboardConnectionApplication.h"
 #include "ForgeConductor/Domain/Result.h"
@@ -371,6 +372,23 @@ public:
         DashboardListenerGeneration>>
     create(
         DashboardConnectionRuntimeIdentity identity,
+        DashboardListenerCompletionKeyLease completionKeyLease,
+        std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
+        WindowsDashboardDeadlineScheduler& deadlineScheduler,
+        DashboardConnectionRuntimeServices& runtimeServices,
+        std::shared_ptr<IDashboardListenerGenerationConnectionControl>
+            connectionControl,
+        std::shared_ptr<IDashboardAdmissionOverloadResponder>
+            overloadResponder,
+        std::shared_ptr<DashboardListenerGenerationTransitionGate>
+            transitionGate) noexcept;
+
+    // Focused test seam for generations that do not exercise fixed-key lease
+    // ownership.
+    [[nodiscard]] static Domain::Result<std::shared_ptr<
+        DashboardListenerGeneration>>
+    create(
+        DashboardConnectionRuntimeIdentity identity,
         std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
         WindowsDashboardDeadlineScheduler& deadlineScheduler,
         DashboardConnectionRuntimeServices& runtimeServices,
@@ -454,7 +472,28 @@ public:
     [[nodiscard]] std::optional<Domain::Error> fullFailure() const;
 
 private:
+    [[nodiscard]] static Domain::Result<std::shared_ptr<
+        DashboardListenerGeneration>>
+    createInternal(
+        std::optional<DashboardListenerCompletionKeyLease>
+            completionKeyLease,
+        DashboardConnectionRuntimeIdentity identity,
+        std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
+        std::shared_ptr<IDashboardListenerGenerationDeadlineScheduler>
+            deadlineScheduler,
+        DashboardConnectionRuntimeServices& runtimeServices,
+        std::shared_ptr<IDashboardListenerGenerationConnectionControl>
+            connectionControl,
+        std::shared_ptr<IDashboardAdmissionOverloadResponder>
+            overloadResponder,
+        std::shared_ptr<DashboardListenerGenerationTransitionGate>
+            transitionGate,
+        std::shared_ptr<IDashboardListenerGenerationFailFast>
+            failFast) noexcept;
+
     DashboardListenerGeneration(
+        std::optional<DashboardListenerCompletionKeyLease>
+            completionKeyLease,
         DashboardConnectionRuntimeIdentity identity,
         std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner,
         std::shared_ptr<IDashboardListenerGenerationDeadlineScheduler>
@@ -486,6 +525,10 @@ private:
         std::shared_ptr<IDashboardListenerGenerationDrainObserver> observer)
         noexcept;
 
+    // Members are destroyed in reverse declaration order. Keep the lease
+    // first so every other generation-owned callback dependency is gone
+    // before its fixed listener key can return to the pool.
+    std::optional<DashboardListenerCompletionKeyLease> completionKeyLease_;
     const DashboardConnectionRuntimeIdentity identity_;
     std::unique_ptr<IDashboardListenerGenerationAcceptOwner> acceptOwner_;
     const std::shared_ptr<IDashboardListenerGenerationDeadlineScheduler>

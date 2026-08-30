@@ -34,7 +34,9 @@ namespace Detail = ForgeConductor::Infrastructure::Windows::Detail;
 namespace Domain = ForgeConductor::Domain;
 
 using Key = Detail::DashboardIoCompletionKey;
+using FixedKeyAuthority = Detail::DashboardFixedIocpKeyAuthority;
 using RuntimeIdentity = Detail::DashboardConnectionRuntimeIdentity;
+using ResponseAdmission = Detail::DashboardRuntimeResponseAdmission;
 using RuntimeServices = Detail::DashboardConnectionRuntimeServices;
 
 using namespace std::chrono_literals;
@@ -64,13 +66,31 @@ static_assert(std::is_abstract_v<Detail::IDashboardOperationalStateSource>);
 static_assert(std::has_virtual_destructor_v<
               Detail::IDashboardOperationalStateSource>);
 static_assert(std::is_aggregate_v<RuntimeIdentity>);
+static_assert(std::is_final_v<ResponseAdmission>);
+static_assert(!std::is_copy_constructible_v<ResponseAdmission>);
+static_assert(std::is_nothrow_move_constructible_v<ResponseAdmission>);
 static_assert(!std::is_copy_constructible_v<RuntimeServices>);
 static_assert(!std::is_move_constructible_v<RuntimeServices>);
 static_assert(RuntimeServices::MaximumFixedCompletionKeyCount == 32U);
 static_assert(RuntimeServices::MaximumOperationLifetime == 5s);
 static_assert(noexcept(RuntimeServices::create({}, {}, {}, {})));
+static_assert(noexcept(RuntimeServices::create(
+    {},
+    {},
+    {},
+    std::declval<const FixedKeyAuthority&>())));
 static_assert(noexcept(
     std::declval<RuntimeServices&>().allocateConnectionIdentity()));
+static_assert(noexcept(
+    std::declval<RuntimeServices&>().allocateFixedIdentity(Key{1U})));
+static_assert(noexcept(
+    std::declval<RuntimeServices&>().allocateAuxiliaryRegistrationId()));
+static_assert(noexcept(
+    std::declval<RuntimeServices&>().acquireResponseAdmission()));
+static_assert(noexcept(
+    std::declval<RuntimeServices&>().beginShutdown()));
+static_assert(noexcept(
+    std::declval<const RuntimeServices&>().isShuttingDown()));
 static_assert(noexcept(
     std::declval<const RuntimeServices&>().monotonicNow()));
 static_assert(noexcept(
@@ -309,6 +329,157 @@ void identityAllocationIsMonotonicAndSkipsReservedKeys()
                 first.completionKey.value() !=
                     Detail::DashboardIocpWorkerKernel::ShutdownKeyValue,
             "a dynamic completion key used a reserved value");
+}
+
+void productionAuthorityReservesEveryRoleKey()
+{
+    const auto authority = take(FixedKeyAuthority::create());
+    const auto clock = std::make_shared<MutableClock>(
+        Domain::MonotonicTimePoint{100s});
+    const auto uuids = std::make_shared<SequenceUuidGenerator>();
+    const auto operational =
+        std::make_shared<MutableOperationalState>(true);
+    auto services = take(RuntimeServices::create(
+        clock, uuids, operational, authority));
+
+    const auto first = take(services->allocateConnectionIdentity());
+    const auto second = take(services->allocateConnectionIdentity());
+    require(first.registrationId == 1U && second.registrationId == 2U,
+            "production authority changed registration sequencing");
+    require(first.completionKey == Key{5U} &&
+                second.completionKey == Key{6U},
+            "a dynamic connection key did not skip all four role keys");
+    for (const auto fixedKey : authority.completionKeys()) {
+        require(first.completionKey != fixedKey &&
+                    second.completionKey != fixedKey,
+                "a dynamic connection key collided with a fixed role key");
+    }
+}
+
+void fixedAndAuxiliaryAllocationsShareRegistrationSequence()
+{
+    const auto authority = take(FixedKeyAuthority::create());
+    const auto clock = std::make_shared<MutableClock>(
+        Domain::MonotonicTimePoint{100s});
+    const auto uuids = std::make_shared<SequenceUuidGenerator>();
+    const auto operational =
+        std::make_shared<MutableOperationalState>(true);
+    auto services = take(RuntimeServices::create(
+        clock, uuids, operational, authority));
+
+    const auto auxiliary = take(
+        services->allocateAuxiliaryRegistrationId());
+    const auto listener = take(
+        services->allocateFixedIdentity(authority.listenerSlotA()));
+    const auto connection = take(
+        services->allocateConnectionIdentity());
+    const auto overload = take(
+        services->allocateFixedIdentity(authority.overload()));
+
+    require(auxiliary == 1U && listener.registrationId == 2U &&
+                connection.registrationId == 3U &&
+                overload.registrationId == 4U,
+            "mixed identity kinds did not share one registration sequence");
+    require(listener.completionKey == authority.listenerSlotA() &&
+                overload.completionKey == authority.overload(),
+            "a fixed identity changed its authority-owned key");
+    require(connection.completionKey == Key{5U},
+            "mixed allocation consumed or exposed a fixed completion key");
+
+    const auto invalid = services->allocateFixedIdentity(Key{5U});
+    require(!invalid, "an unowned fixed identity key was accepted");
+    require(invalid.error().code == Domain::ErrorCodes::InvalidRequest,
+            "an unowned fixed identity used the wrong error code");
+
+    const auto afterInvalid = take(
+        services->allocateAuxiliaryRegistrationId());
+    const auto repeatedListener = take(
+        services->allocateFixedIdentity(authority.listenerSlotA()));
+    require(afterInvalid == 5U && repeatedListener.registrationId == 6U,
+            "a rejected or repeated fixed allocation reused a registration ID");
+    require(repeatedListener.completionKey == authority.listenerSlotA(),
+            "a fully drained fixed role could not retain its process key");
+}
+
+void concurrentMixedAllocationNeverReusesRegistrationIds()
+{
+    constexpr std::size_t ThreadCount = 12U;
+    constexpr std::size_t AllocationsPerThread = 128U;
+    constexpr std::size_t Total = ThreadCount * AllocationsPerThread;
+    const auto authority = take(FixedKeyAuthority::create());
+    const auto clock = std::make_shared<MutableClock>(
+        Domain::MonotonicTimePoint{100s});
+    const auto uuids = std::make_shared<SequenceUuidGenerator>();
+    const auto operational =
+        std::make_shared<MutableOperationalState>(true);
+    auto services = take(RuntimeServices::create(
+        clock, uuids, operational, authority));
+    std::mutex outputMutex;
+    std::vector<std::uint64_t> registrationIds;
+    registrationIds.reserve(Total);
+    std::vector<std::uintptr_t> dynamicKeys;
+    dynamicKeys.reserve(Total / 3U);
+    std::vector<std::jthread> workers;
+    workers.reserve(ThreadCount);
+
+    for (std::size_t thread{}; thread < ThreadCount; ++thread) {
+        workers.emplace_back([&, thread](std::stop_token) {
+            std::vector<std::uint64_t> localRegistrations;
+            localRegistrations.reserve(AllocationsPerThread);
+            std::vector<std::uintptr_t> localDynamicKeys;
+            localDynamicKeys.reserve(AllocationsPerThread);
+            for (std::size_t index{}; index < AllocationsPerThread; ++index) {
+                switch (thread % 3U) {
+                case 0U: {
+                    const auto identity = take(
+                        services->allocateConnectionIdentity());
+                    localRegistrations.push_back(identity.registrationId);
+                    localDynamicKeys.push_back(identity.completionKey.value());
+                    break;
+                }
+                case 1U: {
+                    const auto identity = take(services->allocateFixedIdentity(
+                        index % 2U == 0U
+                            ? authority.listenerSlotA()
+                            : authority.listenerSlotB()));
+                    localRegistrations.push_back(identity.registrationId);
+                    break;
+                }
+                default:
+                    localRegistrations.push_back(take(
+                        services->allocateAuxiliaryRegistrationId()));
+                    break;
+                }
+            }
+            const std::lock_guard lock{outputMutex};
+            registrationIds.insert(
+                registrationIds.end(),
+                localRegistrations.begin(),
+                localRegistrations.end());
+            dynamicKeys.insert(
+                dynamicKeys.end(),
+                localDynamicKeys.begin(),
+                localDynamicKeys.end());
+        });
+    }
+    workers.clear();
+
+    require(registrationIds.size() == Total,
+            "concurrent mixed allocation lost a registration ID");
+    std::sort(registrationIds.begin(), registrationIds.end());
+    for (std::size_t index{}; index < registrationIds.size(); ++index) {
+        require(registrationIds[index] == index + 1U,
+                "concurrent mixed allocation reused a registration ID");
+    }
+
+    std::sort(dynamicKeys.begin(), dynamicKeys.end());
+    require(std::adjacent_find(dynamicKeys.begin(), dynamicKeys.end()) ==
+                dynamicKeys.end(),
+            "concurrent dynamic allocation reused a completion key");
+    for (const auto dynamicKey : dynamicKeys) {
+        require(dynamicKey > FixedKeyAuthority::FixedKeyCount,
+                "concurrent dynamic allocation issued a fixed role key");
+    }
 }
 
 void concurrentIdentityAllocationNeverReusesEitherSequence()
@@ -657,6 +828,133 @@ void blockedUuidWorkDoesNotSerializeUnrelatedContextAdmission()
             "the unrelated context request did not complete successfully");
 }
 
+void shutdownClosesEveryNewRuntimeAdmission()
+{
+    const auto authority = take(FixedKeyAuthority::create());
+    const auto clock = std::make_shared<MutableClock>(
+        Domain::MonotonicTimePoint{100s});
+    const auto uuids = std::make_shared<SequenceUuidGenerator>();
+    const auto operational =
+        std::make_shared<MutableOperationalState>(true);
+    auto services = take(RuntimeServices::create(
+        clock, uuids, operational, authority));
+
+    const auto beforeShutdown = take(
+        services->allocateConnectionIdentity());
+    require(beforeShutdown.registrationId == 1U,
+            "pre-shutdown runtime admission did not remain available");
+    services->beginShutdown();
+    services->beginShutdown();
+    require(services->isShuttingDown(),
+            "runtime shutdown was not idempotently observable");
+
+    const auto connection = services->allocateConnectionIdentity();
+    const auto fixed = services->allocateFixedIdentity(
+        authority.listenerSlotA());
+    const auto auxiliary = services->allocateAuxiliaryRegistrationId();
+    const auto context = services->createOperationContext(
+        Domain::MonotonicTimePoint{110s});
+    require(!connection && !fixed && !auxiliary && !context,
+            "runtime shutdown admitted a new owned work item");
+    require(connection.error().code == Domain::ErrorCodes::TransportClosed &&
+                fixed.error().code == Domain::ErrorCodes::TransportClosed &&
+                auxiliary.error().code ==
+                    Domain::ErrorCodes::TransportClosed &&
+                context.error().code == Domain::ErrorCodes::TransportClosed,
+            "closed runtime admission used an inconsistent error code");
+    require(uuids->calls() == 0U,
+            "a closed runtime consumed UUID capacity");
+    require(services->monotonicNow() == Domain::MonotonicTimePoint{100s} &&
+                services->operationalServiceActive(),
+            "shutdown disabled observations required by draining owners");
+}
+
+void shutdownWinsAgainstInFlightContextCreation()
+{
+    const auto initial = Domain::MonotonicTimePoint{100s};
+    const auto clock = std::make_shared<MutableClock>(initial);
+    const auto generator = std::make_shared<BlockingFirstUuidGenerator>();
+    const auto operational =
+        std::make_shared<MutableOperationalState>(true);
+    auto services = take(RuntimeServices::create(
+        clock, generator, operational));
+    std::optional<Domain::Result<Domain::OperationContext>> result;
+    std::jthread worker{[&]() {
+        result.emplace(
+            services->createOperationContext(initial + 10s));
+    }};
+
+    const auto entered = generator->waitForFirstCall(5s);
+    if (!entered) {
+        generator->releaseFirstCall();
+        worker.join();
+    }
+    require(entered,
+            "the in-flight shutdown context did not enter UUID work");
+
+    services->beginShutdown();
+    require(services->isShuttingDown(),
+            "shutdown blocked behind external UUID generation");
+    generator->releaseFirstCall();
+    worker.join();
+
+    require(result.has_value() && !result->hasValue(),
+            "an in-flight context crossed the shutdown admission edge");
+    require(result->error().code == Domain::ErrorCodes::TransportClosed,
+            "in-flight shutdown rejection used the wrong error code");
+}
+
+void responseAdmissionGuardLinearizesShutdown()
+{
+    Fixture fixture;
+    std::mutex completionMutex;
+    std::condition_variable completionCondition;
+    bool shutdownEntered{};
+    bool shutdownCompleted{};
+    std::jthread shutdownWorker;
+
+    {
+        auto admission = take(
+            fixture.services->acquireResponseAdmission());
+        require(admission.ownsAdmission(),
+                "response guard did not own the admission edge");
+        shutdownWorker = std::jthread{[&]() {
+            {
+                const std::lock_guard lock{completionMutex};
+                shutdownEntered = true;
+            }
+            completionCondition.notify_all();
+            fixture.services->beginShutdown();
+            {
+                const std::lock_guard lock{completionMutex};
+                shutdownCompleted = true;
+            }
+            completionCondition.notify_all();
+        }};
+
+        std::unique_lock lock{completionMutex};
+        require(completionCondition.wait_for(
+                    lock, 5s, [&shutdownEntered]() noexcept {
+                        return shutdownEntered;
+                    }),
+                "shutdown worker did not reach the guarded edge");
+        require(!completionCondition.wait_for(
+                    lock, 100ms, [&shutdownCompleted]() noexcept {
+                        return shutdownCompleted;
+                    }),
+                "shutdown crossed a live response transition guard");
+    }
+
+    shutdownWorker.join();
+    require(shutdownCompleted && fixture.services->isShuttingDown(),
+            "guard release did not let shutdown complete");
+    const auto rejected = fixture.services->acquireResponseAdmission();
+    require(!rejected &&
+                rejected.error().code ==
+                    Domain::ErrorCodes::TransportClosed,
+            "a response transition began after shutdown linearized");
+}
+
 } // namespace
 
 int main()
@@ -664,12 +962,18 @@ int main()
     try {
         constructionRejectsMissingOrUnboundedInputs();
         identityAllocationIsMonotonicAndSkipsReservedKeys();
+        productionAuthorityReservesEveryRoleKey();
+        fixedAndAuxiliaryAllocationsShareRegistrationSequence();
+        concurrentMixedAllocationNeverReusesRegistrationIds();
         concurrentIdentityAllocationNeverReusesEitherSequence();
         boundedSequenceProvesTerminalAndReservedTransitions();
         timeOperationalStateAndContextsAreBoundedSnapshots();
         cancelledExpiredAndGeneratorFailuresAreTyped();
         contextCreationRechecksClockAndCancellationAfterUuidWork();
         blockedUuidWorkDoesNotSerializeUnrelatedContextAdmission();
+        shutdownClosesEveryNewRuntimeAdmission();
+        shutdownWinsAgainstInFlightContextCreation();
+        responseAdmissionGuardLinearizesShutdown();
         std::cout << "Dashboard connection runtime services tests passed ("
                   << assertionCount.load(std::memory_order_relaxed)
                   << " assertions).\n";

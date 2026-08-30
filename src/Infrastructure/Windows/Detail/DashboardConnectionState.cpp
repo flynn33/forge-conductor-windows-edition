@@ -131,6 +131,7 @@ public:
         OVERLAPPED* operation,
         DWORD nativeError) noexcept;
     void dispatchDeadline(WindowsDashboardDeadline deadline) noexcept;
+    void beginGracefulShutdown() noexcept;
     void beginShutdown() noexcept;
     void eventFatal(
         DashboardConnectionEventFatalNotification notification) noexcept;
@@ -582,6 +583,16 @@ void DashboardConnectionState::Impl::handleHandlerCompletionLocked(
         return;
     }
 
+    // Process shutdown closes runtime admission before it waits for the
+    // listener transition gate. A handler result that was not incorporated
+    // into this state before that edge is not an already-prepared response and
+    // may not cross the graceful cutoff, even if its executor completion was
+    // already queued.
+    if (runtimeServices_->isShuttingDown()) {
+        closeLocked(std::nullopt);
+        return;
+    }
+
     if (current == DashboardConnectionLifecycleState::Preparing) {
         if (completion.kind() !=
                 DashboardHandlerCompletionKind::PreparedExchange ||
@@ -659,10 +670,17 @@ void DashboardConnectionState::Impl::handlePreparedExchangeLocked(
                 std::move(reserved).value());
         }
 
-        preparedExchange_.emplace(std::move(exchange));
-        state_.store(
-            DashboardConnectionLifecycleState::SendingComplete,
-            std::memory_order_release);
+        {
+            auto admission = runtimeServices_->acquireResponseAdmission();
+            if (!admission) {
+                closeLocked(std::nullopt);
+                return;
+            }
+            preparedExchange_.emplace(std::move(exchange));
+            state_.store(
+                DashboardConnectionLifecycleState::SendingComplete,
+                std::memory_order_release);
+        }
         if (!armDeadlineLocked(
                 WindowsDashboardDeadlineKind::SocketLifetime,
                 socketLifetimeDeadline_) ||
@@ -691,14 +709,23 @@ void DashboardConnectionState::Impl::handlePreparedExchangeLocked(
             return;
         }
 
-        preparedExchange_.emplace(std::move(exchange));
-        sseBootstrapSegment_ = 0U;
-        sseLifetimeDeadline_ = runtimeServices_->monotonicNow() +
+        const auto sseNow = runtimeServices_->monotonicNow();
+        const auto sseLifetimeDeadline = sseNow +
             DashboardConnectionState::ServerSentEventsLifetime;
-        nextSseDelivery_ = runtimeServices_->monotonicNow();
-        state_.store(
-            DashboardConnectionLifecycleState::SendingSseBootstrap,
-            std::memory_order_release);
+        {
+            auto admission = runtimeServices_->acquireResponseAdmission();
+            if (!admission) {
+                closeLocked(std::nullopt);
+                return;
+            }
+            preparedExchange_.emplace(std::move(exchange));
+            sseBootstrapSegment_ = 0U;
+            sseLifetimeDeadline_ = sseLifetimeDeadline;
+            nextSseDelivery_ = sseNow;
+            state_.store(
+                DashboardConnectionLifecycleState::SendingSseBootstrap,
+                std::memory_order_release);
+        }
         if (!armDeadlineLocked(
                 WindowsDashboardDeadlineKind::ServerSentEventsLifetime,
                 sseLifetimeDeadline_)) {
@@ -745,9 +772,16 @@ void DashboardConnectionState::Impl::startFallbackLocked(
         closeLocked(std::nullopt);
         return;
     }
-    state_.store(
-        DashboardConnectionLifecycleState::SendingComplete,
-        std::memory_order_release);
+    {
+        auto admission = runtimeServices_->acquireResponseAdmission();
+        if (!admission) {
+            closeLocked(std::nullopt);
+            return;
+        }
+        state_.store(
+            DashboardConnectionLifecycleState::SendingComplete,
+            std::memory_order_release);
+    }
     if (!armDeadlineLocked(
             WindowsDashboardDeadlineKind::SocketLifetime,
             socketLifetimeDeadline_) ||
@@ -1098,6 +1132,39 @@ void DashboardConnectionState::Impl::beginShutdown() noexcept
     closeLocked(std::nullopt);
 }
 
+void DashboardConnectionState::Impl::beginGracefulShutdown() noexcept
+{
+    ExternalNotificationDrain drain{*this};
+    const std::scoped_lock lock{mutex_};
+    if (state_.load(std::memory_order_relaxed) !=
+        DashboardConnectionLifecycleState::SendingComplete) {
+        closeLocked(std::nullopt);
+        return;
+    }
+
+    // The response bytes and the currently issued send are already owned by
+    // this state. Keep only that immutable short final send alive. No handler,
+    // SSE, post-delivery, or new transport work may cross the graceful-shutdown
+    // cutover. The existing socket-lifetime arm remains a stricter local bound;
+    // the process shutdown owner supplies the independent five-second ceiling.
+    shutdownRequested_ = true;
+    prepareStop_.request_stop();
+    postDeliveryStop_.request_stop();
+    postDeliveryAction_ = Dashboard::DashboardPostDeliveryAction::None;
+    if (postDeliveryReservation_.has_value()) {
+        postDeliveryReservation_->release();
+        postDeliveryReservation_.reset();
+    }
+    if (eventBridge_ != nullptr) {
+        eventBridge_->shutdown();
+    }
+    consumePendingFatalLocked();
+    if (state_.load(std::memory_order_relaxed) !=
+        DashboardConnectionLifecycleState::SendingComplete) {
+        maybeDrainLocked();
+    }
+}
+
 void DashboardConnectionState::Impl::closeLocked(
     std::optional<Domain::Error> failure) noexcept
 {
@@ -1381,6 +1448,11 @@ void DashboardConnectionState::dispatchDeadline(
 void DashboardConnectionState::beginShutdown() noexcept
 {
     implementation_->beginShutdown();
+}
+
+void DashboardConnectionState::beginGracefulShutdown() noexcept
+{
+    implementation_->beginGracefulShutdown();
 }
 
 bool DashboardConnectionState::isDrained() const noexcept

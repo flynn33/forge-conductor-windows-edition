@@ -52,6 +52,18 @@ public:
         std::uint64_t generationId) noexcept = 0;
 };
 
+// Process-wide one-shot edge emitted when graceful shutdown observes or
+// reaches zero registered connections. It must be bound before shutdown, and
+// composition must retain the observer strongly through final routing drain.
+// Implementations must remain nonblocking and must not retain callback
+// arguments.
+class IDashboardConnectionRegistryDrainObserver {
+public:
+    virtual ~IDashboardConnectionRegistryDrainObserver() noexcept = default;
+
+    virtual void registryConnectionsMayHaveDrained() noexcept = 0;
+};
+
 enum class DashboardConnectionRegistryFailureKind : std::uint8_t {
     InvalidRequest,
     Conflict,
@@ -218,6 +230,10 @@ public:
         std::weak_ptr<IDashboardConnectionGenerationDrainObserver> observer)
         noexcept;
 
+    [[nodiscard]] Domain::Result<void> bindShutdownDrainObserver(
+        std::weak_ptr<IDashboardConnectionRegistryDrainObserver> observer)
+        noexcept;
+
     // Captures immutable identity, registers and stores the exact fixed bridge
     // handle, inserts, then starts outside the lock so immediate native and
     // deadline completions can route safely. Production identities come from
@@ -273,6 +289,12 @@ public:
         const noexcept;
 
     [[nodiscard]] std::optional<Domain::Error> fullFailure() const;
+
+    // Closes connection registration and asks every current target to retain
+    // only an already-started immutable complete-response send. Targets are
+    // invoked after releasing the registry mutex. Existing exact deadline
+    // retirement and drain-edge removal remain active.
+    void beginGracefulShutdown() noexcept;
 
     // Idempotently snapshots at most forty connection targets and four
     // auxiliary targets, then requests shutdown only after releasing the
@@ -353,6 +375,7 @@ private:
     void failRouting(
         Domain::Error error,
         std::optional<DWORD> nativeError = std::nullopt) noexcept;
+    void failMissingShutdownDrainObserver() noexcept;
     [[nodiscard]] DashboardConnectionRegistrySnapshot snapshotLocked()
         const noexcept;
 
@@ -365,6 +388,8 @@ private:
     std::shared_ptr<DashboardDeadlineIocpBridge> deadlineBridge_;
     std::weak_ptr<IDashboardConnectionGenerationDrainObserver>
         generationDrainObserver_;
+    std::weak_ptr<IDashboardConnectionRegistryDrainObserver>
+        shutdownDrainObserver_;
     std::optional<Domain::Error> firstFailure_;
     std::optional<DashboardConnectionRegistryFailure> firstFailureSnapshot_;
     std::size_t registeredConnectionCount_{};
@@ -376,6 +401,9 @@ private:
     std::uint64_t fatalNotificationCount_{};
     bool deadlineBridgeEverBound_{};
     bool generationDrainObserverEverBound_{};
+    bool shutdownDrainObserverEverBound_{};
+    bool shutdownDrainNotificationSent_{};
+    bool gracefulShutdownCallbacksStarted_{};
     bool shutdownCallbacksStarted_{};
     bool shutdown_{};
     bool fatal_{};
@@ -384,6 +412,11 @@ private:
     // retirement. Acquire this before mutex_; callbacks and shared-owner
     // destruction must occur only after both locks are released.
     mutable std::mutex deadlineRoutingMutex_;
+    // Serializes graceful and hard callback fan-outs without holding the
+    // registry data mutex. Recursive acquisition permits a callback to request
+    // hard escalation on the same thread; the hard latch then stops the
+    // remaining graceful fan-out before another target can observe it late.
+    mutable std::recursive_mutex shutdownFanoutMutex_;
     mutable std::mutex mutex_;
 };
 

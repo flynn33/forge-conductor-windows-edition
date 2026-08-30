@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260830T005557552Z-89e84a26",
+  "phase": "P16",
+  "role": "validator",
+  "command": "$ErrorActionPreference = 'Stop'\n$taskFiles = @(\n  'CMakeLists.txt',\n  'src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp',\n  'src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.h',\n  'src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.cpp',\n  'src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.h',\n  'src/Infrastructure/Windows/Detail/DashboardConnectionState.cpp',\n  'src/Infrastructure/Windows/Detail/DashboardConnectionState.h',\n  'src/Infrastructure/Windows/Detail/DashboardListenerGeneration.cpp',\n  'src/Infrastructure/Windows/Detail/DashboardListenerGeneration.h',\n  'src/Infrastructure/Windows/Detail/DashboardFixedIocpKeyAuthority.cpp',\n  'src/Infrastructure/Windows/Detail/DashboardFixedIocpKeyAuthority.h',\n  'src/Infrastructure/Windows/Detail/DashboardListenerCompletionKeyLease.cpp',\n  'src/Infrastructure/Windows/Detail/DashboardListenerCompletionKeyLease.h',\n  'tests/Dashboard/DashboardConnectionRegistryTests.cpp',\n  'tests/Dashboard/DashboardConnectionRuntimeServicesTests.cpp',\n  'tests/Dashboard/DashboardConnectionStateTests.cpp',\n  'tests/Dashboard/DashboardListenerGenerationTests.cpp',\n  'tests/Dashboard/DashboardFixedIocpKeyAuthorityTests.cpp',\n  'tests/Dashboard/DashboardListenerCompletionKeyLeaseTests.cpp',\n  '.forge-codex/state/decisions/P16-015-fixed-iocp-authority-and-graceful-shutdown-cutover.md',\n  '.forge-codex/state/evidence/P16/dashboard-fixed-key-graceful-cutover-checkpoint.json',\n  '.forge-codex/state/run-state.json'\n)\n$taskStrictUtf8 = [Text.UTF8Encoding]::new($false, $true)\nforeach ($taskFile in $taskFiles) {\n  $taskBytes = [IO.File]::ReadAllBytes((Join-Path (Get-Location).Path $taskFile))\n  if ($taskBytes.Length -ge 3 -and $taskBytes[0] -eq 0xEF -and $taskBytes[1] -eq 0xBB -and $taskBytes[2] -eq 0xBF) { throw \"UTF-8 BOM: $taskFile\" }\n  $taskText = $taskStrictUtf8.GetString($taskBytes)\n  if ($taskText -match '(?<!\\r)\\n|\\r(?!\\n)') { throw \"Non-CRLF newline: $taskFile\" }\n  if ($taskBytes.Length -gt 0 -and -not $taskText.EndsWith(\"`r`n\", [StringComparison]::Ordinal)) { throw \"Missing final CRLF: $taskFile\" }\n}\nWrite-Output \"Text policy passed: $($taskFiles.Count) files.\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T00:55:57.5586981+00:00",
+  "end_utc": "2026-08-30T00:55:58.7993697+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T005557552Z-89e84a26.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T005557552Z-89e84a26.stderr.txt",
+  "stdout_sha256": "f75775f0c064204eff00e50ddce448a077f2fd90b59f1de53d9863bab4e28687",
+  "stderr_sha256": "2ce70d6c8c9ad6726c794690c8b14a2b83673648cac88edf4ff1acc50ec46348"
+}

@@ -141,6 +141,11 @@ public:
     virtual void dispatchDeadline(
         WindowsDashboardDeadline deadline) noexcept = 0;
 
+    // Process-wide graceful shutdown rejects every lifecycle except an
+    // already-started immutable complete-response send. The default preserves
+    // safe hard-close behavior for non-production test targets.
+    virtual void beginGracefulShutdown() noexcept { beginShutdown(); }
+
     virtual void beginShutdown() noexcept = 0;
 
     [[nodiscard]] virtual bool isDrained() const noexcept = 0;
@@ -203,6 +208,7 @@ public:
     void dispatchDeadline(
         WindowsDashboardDeadline deadline) noexcept override;
 
+    void beginGracefulShutdown() noexcept override;
     void beginShutdown() noexcept override;
 
     [[nodiscard]] bool isDrained() const noexcept override;

@@ -1,0 +1,24 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 32: ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests
+1/6 Test #32: ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests ...   Passed    0.05 sec
+    Start 33: ForgeConductor.Dashboard.ListenerGenerationTests
+2/6 Test #33: ForgeConductor.Dashboard.ListenerGenerationTests ...........   Passed    0.04 sec
+    Start 36: ForgeConductor.Dashboard.ConnectionRuntimeServicesTests
+3/6 Test #36: ForgeConductor.Dashboard.ConnectionRuntimeServicesTests ....   Passed    0.17 sec
+    Start 37: ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests
+4/6 Test #37: ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests ........   Passed    0.03 sec
+    Start 40: ForgeConductor.Dashboard.ConnectionStateTests
+5/6 Test #40: ForgeConductor.Dashboard.ConnectionStateTests ..............   Passed    5.47 sec
+    Start 41: ForgeConductor.Dashboard.ConnectionRegistryTests
+6/6 Test #41: ForgeConductor.Dashboard.ConnectionRegistryTests ...........   Passed    0.08 sec
+
+100% tests passed out of 6
+
+Label Time Summary:
+G16         =   5.84 sec*proc (6 tests)
+T-MGR       =   5.84 sec*proc (6 tests)
+T-SEC       =   5.84 sec*proc (6 tests)
+T-STRESS    =   5.84 sec*proc (6 tests)
+T-UNIT      =   5.84 sec*proc (6 tests)
+
+Total Test time (real) =   5.86 sec

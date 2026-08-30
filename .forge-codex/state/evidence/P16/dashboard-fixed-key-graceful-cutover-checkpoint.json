@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-fixed-key-graceful-cutover",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator using Visual Studio 2022 Build Tools 17 with MSVC 19.44.35223 from VC Tools 14.44.35207 and Windows SDK 10.0.26100.0; CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260828T104834158Z-e036f7e7.json",
+    "command_record_sha256": "41c19f8ef8f8bc09e9b81c700c7786027085763a918789a3bbbadf609706b933",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets_built": 6,
+    "configuration": "Debug",
+    "stdout_sha256": "2da470150e9f3f926796b220c8c28fa50eb92d8714721d27c20b21bbcdcf6607",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260828T104918840Z-df63148b.json",
+    "command_record_sha256": "6aa8bce9c3e48d10fc8d4b4449e0be6af0388f51104a3b3f8e1bebe27a75354e",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "real_seconds": 5.86,
+    "tests": [
+      "ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests",
+      "ForgeConductor.Dashboard.ConnectionRuntimeServicesTests",
+      "ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests",
+      "ForgeConductor.Dashboard.ListenerGenerationTests",
+      "ForgeConductor.Dashboard.ConnectionStateTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests"
+    ],
+    "stdout_sha256": "475ebfa934ed26bfe2a332e33b1ecd05d8bd11fd60062c98a05affdaf52b429e",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "corrective_validation": {
+    "reason": "Independent concurrency review found that hard registry shutdown could race ahead of, or precede, a late graceful fan-out. The registry now serializes fan-outs and suppresses graceful callbacks after the hard latch.",
+    "build_command_record": ".forge-codex/state/commands/20260830T005141649Z-0fd19a96.json",
+    "build_command_record_sha256": "c9bcb91db57863be8c9e9865981e5f92ad0ac92bcba5a4c2151cd096c5be9634",
+    "build_exit_code": 0,
+    "build_stdout_sha256": "3483e4b981c549ad2b0d4416b7da122bc2b47f29d2aa77e0f558f42729819803",
+    "test_command_record": ".forge-codex/state/commands/20260830T005149747Z-d29b8c40.json",
+    "test_command_record_sha256": "1262cfe1ce7fcca74802bb4212cd6dcf14ca53e31af860ab223e3193171e0d55",
+    "test_exit_code": 0,
+    "tests_passed": 1,
+    "tests_failed": 0,
+    "real_seconds": 0.13,
+    "stdout_sha256": "b11f79c80ee6f1e2acb269dd8e8b388fe04dd417f3797600f5823d0d1cb41936",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "diagnostic_history": [
+    {
+      "build_command_record": ".forge-codex/state/commands/20260830T004741755Z-e7532c5e.json",
+      "build_command_record_sha256": "368a32087e0a522014d066c653cd4fb7a36ee2685063299efbcc41d6b579b499",
+      "build_exit_code": 0,
+      "test_command_record": ".forge-codex/state/commands/20260830T004757934Z-ee0b6e3d.json",
+      "test_command_record_sha256": "aa597ee4c0a05d8920310b909d30f4f64f2f82f58bb73ee6c71b1847ace15d38",
+      "test_exit_code": 1,
+      "diagnosis": "The new concurrency test reached final graceful zero without retaining the mandatory process shutdown-drain observer, correctly invoking the registry fail-closed boundary.",
+      "resolution": "The test now binds and strongly retains its observer through exact drain. The same one-test CTest registration then passed in the corrective command."
+    }
+  ],
+  "invariant_audit": {
+    "corrections": [
+      "One immutable authority owns exactly four fixed IOCP roles and dynamic connection allocation permanently skips every fixed value.",
+      "Fixed identities, auxiliary registrations, and connection identities share one never-reused registration sequence.",
+      "Two move-only listener completion-key leases bound simultaneous generation ownership; slot release occurs only at final generation destruction.",
+      "Runtime shutdown linearizes new identity, operation-context, and prepared-response eligibility cutoffs without holding admission during injected UUID work.",
+      "Connection graceful shutdown preserves only an already-started immutable complete-response send and retains exact partial-suffix native completion ownership.",
+      "Registry graceful shutdown closes admission, publishes one exact zero edge, and fails closed when composition breaks the observer lifetime contract.",
+      "Registry graceful and hard callback fan-outs are monotonic: hard suppresses later graceful callbacks and concurrent escalation cannot overtake an active graceful fan-out."
+    ],
+    "independent_review_status": "A read-only concurrency review found one hard-before-graceful fan-out race. The defect was corrected and covered by hard-first plus blocked concurrent graceful-to-hard tests. No other merge-blocking finding was reported before that correction."
+  },
+  "behavior_proved": [
+    "fixed completion keys are nonzero, distinct, role-complete, and excluded from dynamic allocation",
+    "a third simultaneous listener-key lease is rejected as a retryable conflict",
+    "listener-key lease lifetime survives pool-owner destruction and retained generation callback pins",
+    "runtime shutdown rejects every new identity and operation context and blocks a response-state transition racing the cutoff",
+    "graceful connections retain only valid complete-response suffix sends while hard shutdown remains an exact escalation",
+    "native partial and full send completions remain safe when graceful and hard shutdown race socket completion dispatch",
+    "registry graceful shutdown emits one exact zero edge outside its mutex and preserves generation drain observation",
+    "hard-first and concurrent graceful-to-hard registry fan-outs preserve one-way lifecycle ordering"
+  ],
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-015-fixed-iocp-authority-and-graceful-shutdown-cutover.md": "a5c00ff39157102ae39e09ba95276a86d0f92cb0862d24c2829d93c1ee2db72e",
+    "CMakeLists.txt": "8ea7837feaf3986c022b042684f42e4644f18a411f865b273b741c90ee8d1338",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp": "f0207dadfeb83385069fc0fb1c6d6b38aeeca232d7f5b76ef5a1a85a7ab889b5",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.h": "50822260380142246222e54fc949099347041d95c93274639a9316051719d74b",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.cpp": "15c5957af8e7a19b6421db1c73bcf81cae31593754e4c3faa4a04177028186fe",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.h": "45e47e35bbf56fbe6e88ba738d4cd7bc890b26682f8a372912d509dc9f8036a6",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionState.cpp": "89f10760f81cb628c20161957b3c869537ccc1ab4016cac26ed804fb34872da3",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionState.h": "f49d9e2d99346ff33a0c4e816e0392613e261449e02b4777ac36e54e5064dd73",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGeneration.cpp": "b6964d8d7128ca46c6bc72d84f7dad6725c34d5f52dc4d03fd44be0c1b456f49",
+    "src/Infrastructure/Windows/Detail/DashboardListenerGeneration.h": "352b530d5ca5f201395572b568ab97834e20d44bce642f7aaf9e2c94e72c0139",
+    "src/Infrastructure/Windows/Detail/DashboardFixedIocpKeyAuthority.cpp": "1f48a34f5cbe0b01d0871bf776413f219e375f4387b9005bed53f866f6e1b7df",
+    "src/Infrastructure/Windows/Detail/DashboardFixedIocpKeyAuthority.h": "c3178c9273fe23f73b45dc9537a9a6b9aae54b43fc747ca8f15678279aa1661c",
+    "src/Infrastructure/Windows/Detail/DashboardListenerCompletionKeyLease.cpp": "4ec6bbfe8c20badb4f00fb0b41008eff1f986fadfe03435f03a1f71650bb88d9",
+    "src/Infrastructure/Windows/Detail/DashboardListenerCompletionKeyLease.h": "a8bfaed99979292661b329db6eab52efa0baa832ee19e797b70102c1185ad284",
+    "tests/Dashboard/DashboardConnectionRegistryTests.cpp": "cdc46cfbd10fd9bbad235f6d5b95d5dc48b2e965f61c05812f0fbe58e066f303",
+    "tests/Dashboard/DashboardConnectionRuntimeServicesTests.cpp": "92ef02fcf31ec3b70519eda2530f9be35273e1a59f836cbe599cd00f5514b472",
+    "tests/Dashboard/DashboardConnectionStateTests.cpp": "a4df0f3b73cf3f3d5ae4253bc53aebf8c66691980734c3603c1c602c810f73a7",
+    "tests/Dashboard/DashboardListenerGenerationTests.cpp": "7a3af8c0b13ac356cc3d1309f167bcd267ed850cc4cc5861af02c119dc3bc4a9",
+    "tests/Dashboard/DashboardFixedIocpKeyAuthorityTests.cpp": "65e7da10752a8b6b5ae0190e7dcd54ddd1699eebd6354d0059ca3db9abf533bc",
+    "tests/Dashboard/DashboardListenerCompletionKeyLeaseTests.cpp": "54d4c653acc7c8c2af7ee2a26665ed0c1bccc79cf478c4936045f16b9fa5c662"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.ConnectionRegistryTests.exe": "10c267faa615e704a95a87c342f7e2271cf64e17bdba899c72913ec44feed1f6",
+    "ForgeConductor.Dashboard.ConnectionRuntimeServicesTests.exe": "759dbcd157127bb9309032c3a8a2db13228cc07b04982ec8a41df644cc33273e",
+    "ForgeConductor.Dashboard.ConnectionStateTests.exe": "1194e88b6860979d2923b6f699899506721ed597b3a6c38671e614627b6e0f15",
+    "ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests.exe": "66f39afccf49c9a34f305f32fa60169b3c47dbc9ceb39c51e25c0123c9afde1c",
+    "ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests.exe": "e31aa2733678667eda518277e667683d7b428b39a33229f6dcff53520632a626",
+    "ForgeConductor.Dashboard.ListenerGenerationTests.exe": "7feb1429b068db1938513c4db5b14a19ba093b9d6090c0842fcad134d6c89264"
+  },
+  "remaining_limitations": [
+    "The concrete process ShutdownDrain owner and its independent five-second deadline are not yet implemented.",
+    "Listener-generation and coordinator graceful fan-out, executor drain observation, overload integration, and final IOCP teardown ordering remain pending.",
+    "The static frontend shell and retained UI automation remain pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

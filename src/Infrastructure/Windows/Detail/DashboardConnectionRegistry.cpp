@@ -456,6 +456,56 @@ DashboardConnectionRegistry::bindGenerationDrainObserver(
     }
 }
 
+Domain::Result<void>
+DashboardConnectionRegistry::bindShutdownDrainObserver(
+    std::weak_ptr<IDashboardConnectionRegistryDrainObserver> observer)
+    noexcept
+{
+    auto pinned = observer.lock();
+    if (pinned == nullptr) {
+        auto error = registryError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The dashboard connection registry requires a live process shutdown-drain observer.");
+        failRouting(Domain::Error{error});
+        return Domain::Result<void>::failure(std::move(error));
+    }
+
+    std::optional<Domain::Error> failure;
+    bool structuralFailure{};
+    try {
+        {
+            const std::scoped_lock lock{mutex_};
+            if (shutdown_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The dashboard connection registry is closed to process shutdown-drain observer binding."));
+            } else if (shutdownDrainObserverEverBound_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::Conflict,
+                    "The dashboard process shutdown-drain observer is already bound."));
+                retainFatalFailureLocked(Domain::Error{*failure});
+                structuralFailure = true;
+            } else {
+                shutdownDrainObserver_ = std::move(observer);
+                shutdownDrainObserverEverBound_ = true;
+            }
+        }
+        if (structuralFailure) {
+            beginShutdown();
+        }
+        if (failure.has_value()) {
+            return Domain::Result<void>::failure(std::move(*failure));
+        }
+        return Domain::Result<void>::success();
+    } catch (...) {
+        auto error = registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard process shutdown-drain observer could not be bound safely.");
+        failRouting(Domain::Error{error});
+        return Domain::Result<void>::failure(std::move(error));
+    }
+}
+
 Domain::Result<void> DashboardConnectionRegistry::registerConnection(
     std::shared_ptr<IDashboardConnectionDispatchTarget> target) noexcept
 {
@@ -902,6 +952,9 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
     std::shared_ptr<IDashboardConnectionDispatchTarget> removed;
     std::shared_ptr<IDashboardConnectionGenerationDrainObserver>
         drainObserver;
+    std::shared_ptr<IDashboardConnectionRegistryDrainObserver>
+        shutdownDrainObserver;
+    bool missingShutdownDrainObserver{};
     try {
         {
             const std::scoped_lock lock{mutex_};
@@ -934,11 +987,24 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
             if (!generationStillRegistered) {
                 drainObserver = generationDrainObserver_.lock();
             }
+            if (gracefulShutdownCallbacksStarted_ &&
+                registeredConnectionCount_ == 0U &&
+                !shutdownDrainNotificationSent_) {
+                shutdownDrainObserver = shutdownDrainObserver_.lock();
+                shutdownDrainNotificationSent_ = true;
+                missingShutdownDrainObserver =
+                    shutdownDrainObserver == nullptr;
+            }
         }
         removed.reset();
         if (drainObserver != nullptr) {
             drainObserver->generationConnectionsMayHaveDrained(
                 generationId);
+        }
+        if (shutdownDrainObserver != nullptr) {
+            shutdownDrainObserver->registryConnectionsMayHaveDrained();
+        } else if (missingShutdownDrainObserver) {
+            failMissingShutdownDrainObserver();
         }
         return true;
     } catch (...) {
@@ -1344,6 +1410,15 @@ void DashboardConnectionRegistry::failRouting(
     }
 }
 
+void DashboardConnectionRegistry::failMissingShutdownDrainObserver()
+    noexcept
+{
+    failRouting(registryError(
+        Domain::ErrorCodes::IntegrityFailure,
+        "The dashboard process shutdown-drain observer was not retained through the exact zero-connection edge."));
+    failFast_->failFast();
+}
+
 DashboardConnectionRegistrySnapshot
 DashboardConnectionRegistry::snapshotLocked() const noexcept
 {
@@ -1399,6 +1474,63 @@ DashboardConnectionRegistry::fullFailure() const
     return firstFailure_;
 }
 
+void DashboardConnectionRegistry::beginGracefulShutdown() noexcept
+{
+    std::array<
+        std::shared_ptr<IDashboardConnectionDispatchTarget>,
+        MaximumConnectionCount>
+        targets;
+    std::shared_ptr<IDashboardConnectionRegistryDrainObserver>
+        shutdownDrainObserver;
+    bool missingShutdownDrainObserver{};
+    try {
+        const std::lock_guard fanoutLock{shutdownFanoutMutex_};
+        {
+            const std::scoped_lock lock{mutex_};
+            shutdown_ = true;
+            if (gracefulShutdownCallbacksStarted_ ||
+                shutdownCallbacksStarted_) {
+                return;
+            }
+            gracefulShutdownCallbacksStarted_ = true;
+            for (std::size_t index{}; index < entries_.size(); ++index) {
+                targets[index] = entries_[index].target;
+            }
+            if (registeredConnectionCount_ == 0U &&
+                !shutdownDrainNotificationSent_) {
+                shutdownDrainObserver = shutdownDrainObserver_.lock();
+                shutdownDrainNotificationSent_ = true;
+                missingShutdownDrainObserver =
+                    shutdownDrainObserver == nullptr;
+            }
+        }
+
+        for (const auto& target : targets) {
+            {
+                const std::scoped_lock lock{mutex_};
+                if (shutdownCallbacksStarted_) {
+                    break;
+                }
+            }
+            if (target != nullptr) {
+                target->beginGracefulShutdown();
+            }
+        }
+        for (const auto& target : targets) {
+            if (target != nullptr) {
+                static_cast<void>(removeIfDrained(target));
+            }
+        }
+        if (shutdownDrainObserver != nullptr) {
+            shutdownDrainObserver->registryConnectionsMayHaveDrained();
+        } else if (missingShutdownDrainObserver) {
+            failMissingShutdownDrainObserver();
+        }
+    } catch (...) {
+        std::terminate();
+    }
+}
+
 void DashboardConnectionRegistry::beginShutdown() noexcept
 {
     std::array<
@@ -1410,6 +1542,7 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
         MaximumAuxiliaryDeadlineTargetCount>
         auxiliaryTargets;
     try {
+        const std::lock_guard fanoutLock{shutdownFanoutMutex_};
         {
             const std::scoped_lock lock{mutex_};
             shutdown_ = true;

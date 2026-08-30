@@ -202,6 +202,8 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionResponseCatalog.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionRuntimeServices.cpp
+    src/Infrastructure/Windows/Detail/DashboardFixedIocpKeyAuthority.cpp
+    src/Infrastructure/Windows/Detail/DashboardFixedIocpKeyAuthority.h
     src/Infrastructure/Windows/Detail/DashboardConnectionSocket.cpp
     src/Infrastructure/Windows/Detail/DashboardConnectionState.cpp
     src/Infrastructure/Windows/Detail/DashboardDeadlineIocpBridge.cpp
@@ -210,6 +212,8 @@ add_library(ForgeConductor.Dashboard.Windows STATIC
     src/Infrastructure/Windows/Detail/DashboardIoCompletionPort.cpp
     src/Infrastructure/Windows/Detail/DashboardIocpCompletionRouter.cpp
     src/Infrastructure/Windows/Detail/DashboardIocpWorkerKernel.cpp
+    src/Infrastructure/Windows/Detail/DashboardListenerCompletionKeyLease.cpp
+    src/Infrastructure/Windows/Detail/DashboardListenerCompletionKeyLease.h
     src/Infrastructure/Windows/Detail/DashboardListenerGeneration.cpp
     src/Infrastructure/Windows/Detail/DashboardListenerGenerationCoordinator.cpp
     src/Infrastructure/Windows/Detail/DashboardListeningSocket.cpp
@@ -1005,6 +1009,26 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
         TIMEOUT 120)
 
+    add_executable(
+        ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests
+        tests/Dashboard/DashboardListenerCompletionKeyLeaseTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
     add_executable(ForgeConductor.Dashboard.ListenerGenerationTests
         tests/Dashboard/DashboardListenerGenerationTests.cpp)
     forge_configure_native_target(
@@ -1076,6 +1100,25 @@ if(BUILD_TESTING)
             $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionRuntimeServicesTests>)
     set_tests_properties(
         ForgeConductor.Dashboard.ConnectionRuntimeServicesTests PROPERTIES
+        LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests
+        tests/Dashboard/DashboardFixedIocpKeyAuthorityTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests)
+    target_include_directories(
+        ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests PRIVATE
+        ForgeConductor::Dashboard.Windows)
+    add_test(
+        NAME ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-STRESS;T-UNIT"
         TIMEOUT 120)
 

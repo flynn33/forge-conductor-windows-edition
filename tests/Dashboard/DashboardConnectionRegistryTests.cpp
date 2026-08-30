@@ -64,6 +64,8 @@ static_assert(std::is_base_of_v<
 static_assert(std::is_base_of_v<
               Detail::IDashboardConnectionDrainObserver,
               Registry>);
+static_assert(std::is_abstract_v<
+              Detail::IDashboardConnectionRegistryDrainObserver>);
 static_assert(!std::is_copy_constructible_v<Registry>);
 static_assert(!std::is_move_constructible_v<Registry>);
 static_assert(Registry::MaximumConnectionCount == 40U);
@@ -72,6 +74,8 @@ static_assert(noexcept(Registry::create(Key{1U})));
 static_assert(noexcept(std::declval<Registry&>().bindDeadlineBridge(nullptr)));
 static_assert(noexcept(
     std::declval<Registry&>().bindGenerationDrainObserver({})));
+static_assert(noexcept(
+    std::declval<Registry&>().bindShutdownDrainObserver({})));
 static_assert(noexcept(std::declval<Registry&>().registerConnection(nullptr)));
 static_assert(noexcept(
     std::declval<Registry&>().registerAuxiliaryDeadlineTarget(nullptr)));
@@ -94,6 +98,7 @@ static_assert(noexcept(std::declval<Registry&>().fatal(
     EventNotification{})));
 static_assert(noexcept(std::declval<const Registry&>().snapshot()));
 static_assert(!noexcept(std::declval<const Registry&>().fullFailure()));
+static_assert(noexcept(std::declval<Registry&>().beginGracefulShutdown()));
 static_assert(noexcept(std::declval<Registry&>().beginShutdown()));
 static_assert(noexcept(
     std::declval<Registry&>().finalizeDeadlineRouting()));
@@ -295,6 +300,34 @@ public:
         }
     }
 
+    void beginGracefulShutdown() noexcept override
+    {
+        std::shared_ptr<Registry> registry;
+        {
+            std::unique_lock lock{mutex_};
+            ++gracefulShutdownCount_;
+            gracefulShutdownEntered_ = true;
+            shutdownRequested_ = true;
+            if (drainOnGracefulShutdown_) {
+                drained_ = true;
+            }
+            changed_.notify_all();
+            if (blockGracefulShutdown_) {
+                static_cast<void>(changed_.wait_for(
+                    lock,
+                    TestTimeout,
+                    [this] { return releaseGracefulShutdown_; }));
+            }
+            registry = reenterOnGracefulShutdown_
+                ? registry_.lock()
+                : nullptr;
+        }
+        if (registry != nullptr) {
+            static_cast<void>(registry->snapshot());
+            reenteredGracefulShutdown_.store(true);
+        }
+    }
+
     [[nodiscard]] bool isDrained() const noexcept override
     {
         if (observeNextDrain_.exchange(false, std::memory_order_acq_rel)) {
@@ -347,10 +380,44 @@ public:
         drainOnShutdown_ = false;
     }
 
+    void retainDuringGracefulShutdown() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        drainOnGracefulShutdown_ = false;
+    }
+
     void reenterRegistryDuringShutdown() noexcept
     {
         const std::lock_guard lock{mutex_};
         reenterOnShutdown_ = true;
+    }
+
+    void reenterRegistryDuringGracefulShutdown() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        reenterOnGracefulShutdown_ = true;
+    }
+
+    void blockGracefulShutdown() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        blockGracefulShutdown_ = true;
+    }
+
+    [[nodiscard]] bool waitForGracefulShutdownEntry() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(
+            lock,
+            TestTimeout,
+            [this] { return gracefulShutdownEntered_; });
+    }
+
+    void releaseGracefulShutdown() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        releaseGracefulShutdown_ = true;
+        changed_.notify_all();
     }
 
     void blockIocp() noexcept
@@ -485,6 +552,12 @@ public:
         return shutdownCount_;
     }
 
+    [[nodiscard]] std::size_t gracefulShutdownCount() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return gracefulShutdownCount_;
+    }
+
     [[nodiscard]] DWORD lastTransferredBytes() const noexcept
     {
         const std::lock_guard lock{mutex_};
@@ -515,6 +588,11 @@ public:
         return reenteredShutdown_.load();
     }
 
+    [[nodiscard]] bool reenteredGracefulShutdown() const noexcept
+    {
+        return reenteredGracefulShutdown_.load();
+    }
+
 private:
     const Key key_;
     const std::uint64_t registrationId_{};
@@ -531,6 +609,7 @@ private:
     std::atomic<std::size_t>* destructorCount_{};
     std::atomic<bool>* destructorReentered_{};
     std::atomic<bool> reenteredShutdown_{};
+    std::atomic<bool> reenteredGracefulShutdown_{};
     mutable std::atomic_bool observeNextDrain_{};
     mutable std::atomic_bool drainObserved_{};
     DWORD lastTransferredBytes_{};
@@ -539,12 +618,18 @@ private:
     std::size_t iocpCount_{};
     std::size_t deadlineCount_{};
     std::size_t shutdownCount_{};
+    std::size_t gracefulShutdownCount_{};
     bool startFails_{};
     bool routeDuringStart_{};
     bool drainOnIocp_{};
     bool drainOnDeadline_{};
     bool drainOnShutdown_{true};
+    bool drainOnGracefulShutdown_{true};
     bool reenterOnShutdown_{};
+    bool reenterOnGracefulShutdown_{};
+    bool blockGracefulShutdown_{};
+    bool gracefulShutdownEntered_{};
+    bool releaseGracefulShutdown_{};
     bool blockStart_{};
     bool startEntered_{};
     bool releaseStart_{};
@@ -685,6 +770,48 @@ private:
     std::atomic_size_t callbackCount_{};
     std::atomic_uint64_t lastGeneration_{};
     std::atomic_bool reentered_{};
+};
+
+class RecordingRegistryDrainObserver final
+    : public Detail::IDashboardConnectionRegistryDrainObserver {
+public:
+    void attachRegistry(const std::shared_ptr<Registry>& registry) noexcept
+    {
+        registry_ = registry;
+    }
+
+    void registryConnectionsMayHaveDrained() noexcept override
+    {
+        callbackCount_.fetch_add(1U, std::memory_order_acq_rel);
+        if (auto registry = registry_.lock(); registry != nullptr) {
+            const auto snapshot = registry->snapshot();
+            observedZero_.store(
+                snapshot.registeredConnectionCount() == 0U,
+                std::memory_order_release);
+            reentered_.store(true, std::memory_order_release);
+        }
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        return callbackCount_.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] bool reentered() const noexcept
+    {
+        return reentered_.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] bool observedZero() const noexcept
+    {
+        return observedZero_.load(std::memory_order_acquire);
+    }
+
+private:
+    std::weak_ptr<Registry> registry_;
+    std::atomic_size_t callbackCount_{};
+    std::atomic_bool reentered_{};
+    std::atomic_bool observedZero_{};
 };
 
 class FakeCompletionPortApi final : public Api {
@@ -1144,6 +1271,242 @@ void enforcesExactlyFortyWithoutFatalOverload()
                 drained.postedOperationCount() == 0U &&
                 drained.retiredAwaitingReapCount() == 0U,
             "shutdown did not release all forty deadline owners");
+}
+
+void gracefulShutdownClosesAdmissionAndNotifiesExactZero()
+{
+    DeadlineFixture fixture;
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindShutdownDrainObserver(observer)),
+            "process shutdown-drain observer was rejected");
+    auto generationObserver =
+        std::make_shared<RecordingGenerationDrainObserver>();
+    generationObserver->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindGenerationDrainObserver(
+                    generationObserver)),
+            "generation observer was rejected for graceful shutdown");
+
+    auto owner = target(251U, 2'501U, 25U);
+    owner->attachRegistry(fixture.registry);
+    owner->retainDuringGracefulShutdown();
+    owner->reenterRegistryDuringGracefulShutdown();
+    require(static_cast<bool>(
+                fixture.registry->registerConnection(owner)),
+            "graceful retained owner was rejected");
+
+    fixture.registry->beginGracefulShutdown();
+    fixture.registry->beginGracefulShutdown();
+    require(owner->gracefulShutdownCount() == 1U &&
+                owner->shutdownCount() == 0U &&
+                owner->reenteredGracefulShutdown(),
+            "graceful fanout was repeated, hard, or invoked under lock");
+    require(fixture.registry->snapshot().isShuttingDown() &&
+                fixture.registry->snapshot().registeredConnectionCount() ==
+                    1U &&
+                observer->callbackCount() == 0U,
+            "graceful shutdown reported zero before exact drain");
+
+    auto rejected = target(252U, 2'502U, 25U);
+    const auto admission =
+        fixture.registry->registerConnection(rejected);
+    require(!admission &&
+                admission.error().code ==
+                    Domain::ErrorCodes::TransportClosed &&
+                rejected->startCount() == 0U &&
+                rejected->shutdownCount() == 1U,
+            "graceful shutdown admitted or failed to hard-close new work");
+
+    owner->markDrainedAndNotify();
+    require(fixture.registry->snapshot().registeredConnectionCount() == 0U &&
+                observer->callbackCount() == 1U &&
+                observer->reentered() && observer->observedZero(),
+            "exact zero edge was lost, duplicated, or invoked under lock");
+    require(generationObserver->callbackCount() == 1U &&
+                generationObserver->lastGeneration() == 25U &&
+                generationObserver->reentered(),
+            "process zero observation weakened the generation edge");
+    owner->markDrainedAndNotify();
+    fixture.registry->beginShutdown();
+    require(observer->callbackCount() == 1U,
+            "terminal owner redelivered the process zero edge");
+}
+
+void gracefulShutdownObservesAnInitiallyEmptyRegistryOnce()
+{
+    DeadlineFixture fixture;
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindShutdownDrainObserver(observer)),
+            "empty-registry observer was rejected");
+    fixture.registry->beginGracefulShutdown();
+    fixture.registry->beginGracefulShutdown();
+    require(observer->callbackCount() == 1U &&
+                observer->reentered() && observer->observedZero(),
+            "initial zero was not published exactly once outside lock");
+    const auto lateObserver =
+        std::make_shared<RecordingRegistryDrainObserver>();
+    const auto lateBind =
+        fixture.registry->bindShutdownDrainObserver(lateObserver);
+    require(!lateBind &&
+                lateBind.error().code ==
+                    Domain::ErrorCodes::TransportClosed,
+            "shutdown accepted a late process drain observer");
+}
+
+void gracefulShutdownFailsFastWhenObserverLifetimeIsBroken()
+{
+    auto failFast = std::make_shared<RecordingRegistryFailFast>();
+    auto registry = take(Registry::create(DeadlineKey, failFast));
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    require(static_cast<bool>(
+                registry->bindShutdownDrainObserver(observer)),
+            "short-lived shutdown observer was rejected");
+    observer.reset();
+
+    registry->beginGracefulShutdown();
+    const auto snapshot = registry->snapshot();
+    require(failFast->calls() == 1U && snapshot.isFatal() &&
+                snapshot.failure() != nullptr &&
+                snapshot.failure()->kind ==
+                    RegistryFailureKind::IntegrityFailure,
+            "an expired shutdown observer did not fail closed once");
+}
+
+void hardShutdownEscalatesRetainedGracefulOwners()
+{
+    DeadlineFixture fixture;
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindShutdownDrainObserver(observer)),
+            "hard-escalation observer was rejected");
+    auto owner = target(261U, 2'601U, 26U);
+    owner->retainDuringGracefulShutdown();
+    require(static_cast<bool>(
+                fixture.registry->registerConnection(owner)),
+            "hard-escalation owner was rejected");
+
+    fixture.registry->beginGracefulShutdown();
+    require(owner->gracefulShutdownCount() == 1U &&
+                owner->shutdownCount() == 0U &&
+                fixture.registry->snapshot().registeredConnectionCount() ==
+                    1U,
+            "graceful phase hard-closed its retained owner");
+    fixture.registry->beginShutdown();
+    require(owner->shutdownCount() == 1U &&
+                fixture.registry->snapshot().registeredConnectionCount() ==
+                    0U &&
+                observer->callbackCount() == 1U,
+            "hard escalation did not close, remove, and report exact zero");
+}
+
+void hardShutdownSuppressesLateGracefulFanout()
+{
+    DeadlineFixture fixture;
+    auto owner = target(266U, 2'661U, 26U);
+    owner->retainDuringShutdown();
+    owner->retainDuringGracefulShutdown();
+    require(static_cast<bool>(
+                fixture.registry->registerConnection(owner)),
+            "hard-first owner was rejected");
+
+    fixture.registry->beginShutdown();
+    fixture.registry->beginGracefulShutdown();
+    fixture.registry->beginGracefulShutdown();
+    require(owner->shutdownCount() == 1U &&
+                owner->gracefulShutdownCount() == 0U &&
+                fixture.registry->snapshot().registeredConnectionCount() ==
+                    1U,
+            "hard shutdown allowed a late graceful callback fan-out");
+
+    owner->markDrainedAndNotify();
+    require(fixture.registry->snapshot().registeredConnectionCount() == 0U,
+            "hard-first owner did not drain after the ordering check");
+}
+
+void concurrentGracefulAndHardFanoutsAreMonotonic()
+{
+    DeadlineFixture fixture;
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    require(static_cast<bool>(
+                fixture.registry->bindShutdownDrainObserver(observer)),
+            "concurrent shutdown observer was rejected");
+    auto owner = target(267U, 2'671U, 26U);
+    owner->retainDuringShutdown();
+    owner->retainDuringGracefulShutdown();
+    owner->blockGracefulShutdown();
+    require(static_cast<bool>(
+                fixture.registry->registerConnection(owner)),
+            "concurrent shutdown owner was rejected");
+
+    std::thread graceful{[&] {
+        fixture.registry->beginGracefulShutdown();
+    }};
+    const bool gracefulEntered = owner->waitForGracefulShutdownEntry();
+    if (!gracefulEntered) {
+        owner->releaseGracefulShutdown();
+        graceful.join();
+        require(false, "concurrent graceful callback did not enter");
+    }
+
+    std::atomic_bool releaseOccurred{};
+    std::thread release{[&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+        releaseOccurred.store(true, std::memory_order_release);
+        owner->releaseGracefulShutdown();
+    }};
+
+    fixture.registry->beginShutdown();
+    const bool hardWaitedForGracefulFanout =
+        releaseOccurred.load(std::memory_order_acquire);
+    release.join();
+    graceful.join();
+
+    require(hardWaitedForGracefulFanout &&
+                owner->gracefulShutdownCount() == 1U &&
+                owner->shutdownCount() == 1U,
+            "concurrent hard shutdown overlapped or preceded graceful fan-out");
+    fixture.registry->beginGracefulShutdown();
+    require(owner->gracefulShutdownCount() == 1U,
+            "hard shutdown permitted a later graceful callback");
+
+    owner->markDrainedAndNotify();
+    require(fixture.registry->snapshot().registeredConnectionCount() == 0U &&
+                observer->callbackCount() == 1U,
+            "concurrent shutdown owner did not drain after the ordering check");
+}
+
+void concurrentLastRemovalPublishesOneProcessZeroEdge()
+{
+    DeadlineFixture fixture;
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindShutdownDrainObserver(observer)),
+            "concurrent-removal observer was rejected");
+    auto first = target(271U, 2'701U, 27U);
+    auto second = target(272U, 2'702U, 27U);
+    first->retainDuringGracefulShutdown();
+    second->retainDuringGracefulShutdown();
+    require(static_cast<bool>(
+                fixture.registry->registerConnection(first)) &&
+                static_cast<bool>(
+                    fixture.registry->registerConnection(second)),
+            "concurrent-removal owners were rejected");
+    fixture.registry->beginGracefulShutdown();
+
+    std::thread firstDrain{[&] { first->markDrainedAndNotify(); }};
+    std::thread secondDrain{[&] { second->markDrainedAndNotify(); }};
+    firstDrain.join();
+    secondDrain.join();
+    require(fixture.registry->snapshot().registeredConnectionCount() == 0U &&
+                observer->callbackCount() == 1U &&
+                observer->observedZero() && observer->reentered(),
+            "concurrent last removal lost or duplicated process zero");
 }
 
 void duplicateIdentityIsFatalAndClosesOutsideLock()
@@ -1894,6 +2257,13 @@ constexpr std::array TestCases{
     TestCase{"start failure drain", retainsStartFailureUntilExactDrain},
     TestCase{"out of order registration", acceptsOutOfOrderUniqueRegistrationsConcurrently},
     TestCase{"forty capacity", enforcesExactlyFortyWithoutFatalOverload},
+    TestCase{"graceful exact zero", gracefulShutdownClosesAdmissionAndNotifiesExactZero},
+    TestCase{"graceful initial zero", gracefulShutdownObservesAnInitiallyEmptyRegistryOnce},
+    TestCase{"graceful observer lifetime", gracefulShutdownFailsFastWhenObserverLifetimeIsBroken},
+    TestCase{"graceful hard escalation", hardShutdownEscalatesRetainedGracefulOwners},
+    TestCase{"hard suppresses graceful", hardShutdownSuppressesLateGracefulFanout},
+    TestCase{"concurrent graceful hard order", concurrentGracefulAndHardFanoutsAreMonotonic},
+    TestCase{"graceful concurrent removal", concurrentLastRemovalPublishesOneProcessZeroEdge},
     TestCase{"duplicate fatal", duplicateIdentityIsFatalAndClosesOutsideLock},
     TestCase{"connection route identity", routesConnectionAndRejectsStaleRemovalIdentity},
     TestCase{"generation force close", forceClosesOnlyTheExactListenerGeneration},

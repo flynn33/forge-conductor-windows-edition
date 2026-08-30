@@ -1,0 +1,14 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 41: ForgeConductor.Dashboard.ConnectionRegistryTests
+1/1 Test #41: ForgeConductor.Dashboard.ConnectionRegistryTests ...   Passed    0.12 sec
+
+100% tests passed out of 1
+
+Label Time Summary:
+G16         =   0.12 sec*proc (1 test)
+T-MGR       =   0.12 sec*proc (1 test)
+T-SEC       =   0.12 sec*proc (1 test)
+T-STRESS    =   0.12 sec*proc (1 test)
+T-UNIT      =   0.12 sec*proc (1 test)
+
+Total Test time (real) =   0.13 sec

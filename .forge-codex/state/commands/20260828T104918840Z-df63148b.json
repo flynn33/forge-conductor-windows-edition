@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "20260828T104918840Z-df63148b",
+  "phase": "P16",
+  "role": "builder",
+  "command": "ctest --test-dir out/build/windows-msvc-x64 -C Debug --output-on-failure -R \"^ForgeConductor\\.Dashboard\\.(FixedIocpKeyAuthority|ConnectionRuntimeServices|ListenerCompletionKeyLease|ListenerGeneration|ConnectionState|ConnectionRegistry)Tests$\"",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-28T10:49:18.8486414+00:00",
+  "end_utc": "2026-08-28T10:49:25.4708421+00:00",
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout": ".forge-codex\\state\\commands\\20260828T104918840Z-df63148b.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260828T104918840Z-df63148b.stderr.txt",
+  "stdout_sha256": "475ebfa934ed26bfe2a332e33b1ecd05d8bd11fd60062c98a05affdaf52b429e",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

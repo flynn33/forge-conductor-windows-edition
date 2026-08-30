@@ -40,6 +40,7 @@ namespace Windows = ForgeConductor::Infrastructure::Windows;
 using namespace std::chrono_literals;
 
 using AcceptOwner = Detail::IDashboardListenerGenerationAcceptOwner;
+using Authority = Detail::DashboardFixedIocpKeyAuthority;
 using CompletionKey = Detail::DashboardIoCompletionKey;
 using ConnectionControl =
     Detail::IDashboardListenerGenerationConnectionControl;
@@ -52,6 +53,8 @@ using GenerationInterface = Detail::IDashboardListenerGeneration;
 using GenerationDeadlineScheduler =
     Detail::IDashboardListenerGenerationDeadlineScheduler;
 using Lifecycle = Detail::DashboardListenerGenerationLifecycle;
+using ListenerLeasePool =
+    Detail::DashboardListenerCompletionKeyLeasePool;
 using RegistrationHost =
     Detail::IDashboardListenerGenerationRegistrationHost;
 using RuntimeIdentity = Detail::DashboardConnectionRuntimeIdentity;
@@ -582,6 +585,60 @@ struct RuntimeFixture final {
     std::unique_ptr<Scheduler> scheduler;
     std::unique_ptr<RuntimeServices> runtime;
 };
+
+void testModeledSharedCallbackPinRetainsListenerKeyLease()
+{
+    RuntimeFixture fixture;
+    const auto authority = take(Authority::create());
+    auto leasePool = take(ListenerLeasePool::create(authority));
+    auto listenerLease = take(leasePool->tryAcquire());
+    const RuntimeIdentity identity{
+        40U, listenerLease.completionKey()};
+    auto accept = std::make_unique<FakeAcceptOwner>(identity);
+    accept->drainOnForceClose = true;
+    auto connections = std::make_shared<FakeConnectionControl>();
+    auto overload = std::make_shared<FakeOverloadResponder>();
+    auto gate = std::make_shared<TransitionGate>();
+    auto ordinaryOwner = take(Generation::create(
+        identity,
+        std::move(listenerLease),
+        std::move(accept),
+        *fixture.scheduler,
+        *fixture.runtime,
+        connections,
+        overload,
+        gate));
+
+    // Model the shared generation pin that completion-router and deadline
+    // callbacks take before dispatching outside their registration locks.
+    auto modeledCallbackPin = ordinaryOwner;
+    ordinaryOwner->beginShutdown();
+    require(ordinaryOwner->fullyDrained(),
+            "the leased generation did not drain before owner release");
+    ordinaryOwner.reset();
+
+    {
+        auto slotB = take(leasePool->tryAcquire());
+        require(slotB.completionKey() == authority.listenerSlotB(),
+                "an outstanding generation pin released listener slot A");
+        const auto exhausted = leasePool->tryAcquire();
+        require(!exhausted &&
+                    exhausted.error().code == Domain::ErrorCodes::Conflict &&
+                    exhausted.error().retryable,
+                "a modeled callback pin allowed a third listener lease");
+    }
+
+    {
+        auto slotBAgain = take(leasePool->tryAcquire());
+        require(slotBAgain.completionKey() == authority.listenerSlotB(),
+                "listener slot A became reusable before the final pin left");
+    }
+
+    modeledCallbackPin.reset();
+    auto reusedA = take(leasePool->tryAcquire());
+    require(reusedA.completionKey() == authority.listenerSlotA(),
+            "the final generation pin did not return listener slot A");
+}
 
 void testExactRetirementDeadlineAndPartialAcceptDrain()
 {
@@ -3363,6 +3420,7 @@ void testRealHandoffResumeFailureDrainsExactRegistryGeneration()
 int main()
 {
     try {
+        testModeledSharedCallbackPinRetainsListenerKeyLease();
         testExactRetirementDeadlineAndPartialAcceptDrain();
         testPostRegistrationResumeFailureForceClosesGeneration();
         testCancellationFailureForceCloseAndBoundedReapWatchdog();
