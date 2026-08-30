@@ -1101,19 +1101,29 @@ function Assert-NoUntrackedBuildInputs {
 function Get-TrackedSourceFingerprint {
     $tracked = @(& $script:GitTool -C $WorkspaceRoot ls-files --)
     Assert-Exact $LASTEXITCODE 0 'tracked source inventory exit code'
-    $excludedLedgers = @($tracked | Where-Object {
-            $_.Replace('\', '/') -cmatch $script:MutableParityLedgerPattern
-        } | Sort-Object -CaseSensitive)
+    $excludedLedgerList = [Collections.Generic.List[string]]::new()
+    foreach ($path in @($tracked | Where-Object {
+                $_.Replace('\', '/') -cmatch
+                    $script:MutableParityLedgerPattern
+            })) {
+        $excludedLedgerList.Add([string]$path)
+    }
+    $excludedLedgerList.Sort([StringComparer]::Ordinal)
+    $excludedLedgers = @($excludedLedgerList)
     Assert-Set $excludedLedgers @(
         '.forge-codex/instructions/plans/feature-parity-matrix.json',
         '.forge-codex/instructions/plans/feature-parity-matrix.tsv'
     ) 'exact mutable parity-ledger fingerprint exclusions'
-    $paths = @($tracked | Where-Object {
-            (Test-BuildInputPath $_) -and
-            $_.Replace('\', '/') -cnotmatch
-                $script:MutableParityLedgerPattern
-        } |
-        Sort-Object -CaseSensitive)
+    $pathList = [Collections.Generic.List[string]]::new()
+    foreach ($path in @($tracked | Where-Object {
+                (Test-BuildInputPath $_) -and
+                $_.Replace('\', '/') -cnotmatch
+                    $script:MutableParityLedgerPattern
+            })) {
+        $pathList.Add([string]$path)
+    }
+    $pathList.Sort([StringComparer]::Ordinal)
+    $paths = @($pathList)
     Assert-True ($paths.Count -gt 0) 'tracked source fingerprint is nonempty'
     $rows = [Collections.Generic.List[string]]::new()
     $bytes = 0L
@@ -1785,8 +1795,10 @@ function Get-CtestArtifactEvidence {
             labels = @($labels | Sort-Object -CaseSensitive)
         })
     }
-    $lifecycle = @($Inventory.tests | Where-Object name -CEQ
-        'ForgeConductor.Manager.CompositionLifecycleTests')
+    $lifecycle = @($Inventory.tests | Where-Object {
+            [string]$_.name -ceq
+                'ForgeConductor.Manager.CompositionLifecycleTests'
+        })
     Assert-Exact $lifecycle.Count 1 'controlled composition lifecycle CTest exists'
     $runSerial = Get-CtestPropertyValues $lifecycle[0] 'RUN_SERIAL'
     Assert-Set $runSerial @('True') `
