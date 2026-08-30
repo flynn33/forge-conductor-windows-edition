@@ -416,12 +416,16 @@ add_library(ForgeConductor.Manager.Composition.Windows STATIC
     src/Composition/Windows/ManagerDashboardOperationalDataSource.h
     src/Composition/Windows/ManagerDoctorService.cpp
     src/Composition/Windows/ManagerDoctorService.h
+    src/Composition/Windows/ManagerLmStudioAuthorityRouter.cpp
+    src/Composition/Windows/ManagerLmStudioAuthorityRouter.h
     src/Composition/Windows/ManagerLmStudioReadScopeResolver.cpp
     src/Composition/Windows/ManagerLmStudioReadScopeResolver.h
     src/Composition/Windows/ManagerMaintenanceService.cpp
     src/Composition/Windows/ManagerMaintenanceService.h
     src/Composition/Windows/ManagerProcessEnvironment.cpp
     src/Composition/Windows/ManagerProcessEnvironment.h
+    src/Composition/Windows/UnavailableLmStudioDeploymentService.cpp
+    src/Composition/Windows/UnavailableLmStudioDeploymentService.h
     src/Composition/Windows/UnavailableTelemetryService.cpp
     src/Composition/Windows/UnavailableTelemetryService.h)
 add_library(ForgeConductor::Manager.Composition.Windows ALIAS
@@ -528,6 +532,44 @@ forge_configure_native_target(ForgeConductor.Cli)
 target_link_libraries(ForgeConductor.Cli PRIVATE
     ForgeConductor::Composition.Windows)
 
+add_library(ForgeConductor.Manager.CompositionRoot.Windows STATIC
+    src/Hosts/Manager/ManagerCompositionRoot.cpp
+    src/Hosts/Manager/ManagerCompositionRoot.h)
+add_library(ForgeConductor::Manager.CompositionRoot.Windows ALIAS
+    ForgeConductor.Manager.CompositionRoot.Windows)
+forge_configure_native_target(
+    ForgeConductor.Manager.CompositionRoot.Windows)
+target_include_directories(
+    ForgeConductor.Manager.CompositionRoot.Windows
+    PUBLIC "${PROJECT_SOURCE_DIR}/src/Hosts/Manager"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(
+    ForgeConductor.Manager.CompositionRoot.Windows PUBLIC
+    ForgeConductor::Composition.Windows
+    ForgeConductor::Manager.Composition.Windows
+    ForgeConductor::Manager.Windows)
+
+add_executable(ForgeConductor.Manager
+    src/Hosts/Manager/ManagerProcessArguments.cpp
+    src/Hosts/Manager/ManagerProcessArguments.h
+    src/Hosts/Manager/Resources/Dashboard/DashboardAssets.rc
+    src/Hosts/Manager/main.cpp)
+add_executable(ForgeConductor::Manager ALIAS ForgeConductor.Manager)
+set_target_properties(ForgeConductor.Manager PROPERTIES
+    OUTPUT_NAME "ForgeConductor.Manager")
+forge_configure_native_target(ForgeConductor.Manager)
+target_include_directories(ForgeConductor.Manager PRIVATE
+    "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(ForgeConductor.Manager PRIVATE
+    ForgeConductor::Manager.CompositionRoot.Windows)
+add_dependencies(ForgeConductor.Manager ForgeConductor.Cli)
+add_custom_command(TARGET ForgeConductor.Manager POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "$<TARGET_FILE:ForgeConductor.Cli>"
+        "$<TARGET_FILE_DIR:ForgeConductor.Manager>/$<TARGET_FILE_NAME:ForgeConductor.Cli>"
+    COMMENT "Staging the exact sibling CLI beside the production Manager"
+    VERBATIM)
+
 add_executable(ForgeConductor.SessionHost
     src/Hosts/SessionHost/SessionHostCompositionRoot.cpp
     src/Hosts/SessionHost/SessionHostCompositionRoot.h
@@ -590,6 +632,51 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 )
 
 if(BUILD_TESTING)
+    add_executable(ForgeConductor.Manager.CompositionFixture
+        tests/Manager/ManagerCompositionFixture.cpp
+        src/Hosts/Manager/Resources/Dashboard/DashboardAssets.rc)
+    forge_configure_native_target(
+        ForgeConductor.Manager.CompositionFixture)
+    target_link_libraries(
+        ForgeConductor.Manager.CompositionFixture PRIVATE
+        ForgeConductor::Manager.CompositionRoot.Windows)
+    set_target_properties(
+        ForgeConductor.Manager.CompositionFixture PROPERTIES
+        OUTPUT_NAME "ForgeConductor.Manager"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG
+            "${CMAKE_BINARY_DIR}/tests/manager-composition-fixture/Debug"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE
+            "${CMAKE_BINARY_DIR}/tests/manager-composition-fixture/Release")
+    add_dependencies(
+        ForgeConductor.Manager.CompositionFixture ForgeConductor.Cli)
+    add_custom_command(
+        TARGET ForgeConductor.Manager.CompositionFixture POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "$<TARGET_FILE:ForgeConductor.Cli>"
+            "$<TARGET_FILE_DIR:ForgeConductor.Manager.CompositionFixture>/$<TARGET_FILE_NAME:ForgeConductor.Cli>"
+        COMMENT "Staging the exact sibling CLI beside the controlled Manager composition fixture"
+        VERBATIM)
+
+    add_executable(ForgeConductor.Manager.ProcessArgumentsTests
+        tests/Manager/ManagerProcessArgumentsTests.cpp
+        src/Hosts/Manager/ManagerProcessArguments.cpp
+        src/Hosts/Manager/ManagerProcessArguments.h)
+    forge_configure_native_target(
+        ForgeConductor.Manager.ProcessArgumentsTests)
+    target_include_directories(
+        ForgeConductor.Manager.ProcessArgumentsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src/Hosts/Manager")
+    target_link_libraries(
+        ForgeConductor.Manager.ProcessArgumentsTests PRIVATE
+        ForgeConductor::Domain)
+    add_test(
+        NAME ForgeConductor.Manager.ProcessArgumentsTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProcessArgumentsTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.ProcessArgumentsTests PROPERTIES
+        LABELS "G16;T-MGR;T-PROC;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Manager.StartupTests
         tests/Manager/ManagerStartupTaskPolicyTests.cpp)
     forge_configure_standard_target(ForgeConductor.Manager.StartupTests)
@@ -955,6 +1042,27 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Manager.LmStudioReadScopeResolverTests PROPERTIES
         LABELS "G16;T-MGR;T-LMS;T-INTEGRATION;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(
+        ForgeConductor.Manager.LmStudioCompositionSupportTests
+        tests/Composition/Windows/ManagerLmStudioCompositionSupportTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.LmStudioCompositionSupportTests)
+    target_include_directories(
+        ForgeConductor.Manager.LmStudioCompositionSupportTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.LmStudioCompositionSupportTests PRIVATE
+        ForgeConductor::Manager.Composition.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.LmStudioCompositionSupportTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Manager.LmStudioCompositionSupportTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.LmStudioCompositionSupportTests PROPERTIES
+        LABELS "G16;T-MGR;T-LMS;T-INTEGRATION;T-SEC;T-UNIT"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Manager.ProcessRestartSignalTests
