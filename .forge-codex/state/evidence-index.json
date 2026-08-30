@@ -181,6 +181,56 @@
       "path": ".forge-codex/state/validator-reports/P15-G15.json",
       "sha256": "8a825f46e5171ccb6da12fb5ce0467d1e145f984fb6101475b4e542e2b3206bb",
       "summary": "Independent Validator passed G15 after verifying the authoritative build-and-test evidence, all corrective records and hashes, the successful real-host result, and current host residue without performing another build or test."
+    },
+    {
+      "id": "P16-G16-authoritative-command",
+      "type": "command",
+      "phase": "P16",
+      "gate": "G16",
+      "created_at": "2026-08-30T20:40:31.8118221+00:00",
+      "path": ".forge-codex/state/commands/20260830T203522380Z-255a4469.json",
+      "sha256": "271184b5d2980f00200137e166931ef56e4940efad02af78faca9873d7ea0d46",
+      "summary": "The single authoritative Release x64 G16 invocation built 85 affected targets and passed all 83 selected Manager, IPC, dashboard, startup, restart, and shutdown tests."
+    },
+    {
+      "id": "P16-G16-validation-summary",
+      "type": "report",
+      "phase": "P16",
+      "gate": "G16",
+      "created_at": "2026-08-30T20:40:13.9814382+00:00",
+      "path": ".forge-codex/state/evidence/P16/g16-validation-summary.json",
+      "sha256": "93d129f6c89ab6c3b5d2c830ba5ddbfafb36403666323fda9ba72e139a59d4bc",
+      "summary": "Hash-bound G16 summary records the one-build, one-test qualification, exact toolchain and source identity, 83 passing test artifacts, production binary hashes, and six embedded dashboard resources."
+    },
+    {
+      "id": "P16-G16-ctest-log",
+      "type": "test",
+      "phase": "P16",
+      "gate": "G16",
+      "created_at": "2026-08-30T20:40:13.9814382+00:00",
+      "path": ".forge-codex/state/evidence/P16/g16-LastTest.log",
+      "sha256": "1c3694379f870f886abb35e63d45632bc38595f46e38e9dbe58236576e636572",
+      "summary": "Durable CTest log contains the exact 83-test G16 inventory with 83 passes and 13.99 seconds real test time."
+    },
+    {
+      "id": "P16-G16-static-validator-command",
+      "type": "command",
+      "phase": "P16",
+      "gate": "G16",
+      "created_at": "2026-08-30T20:57:04.9817327+00:00",
+      "path": ".forge-codex/state/commands/20260830T205625942Z-6c5ee702.json",
+      "sha256": "bd471e0e7461f7327e9d4ac8d93c46ac9d2fafe8f5904630353e19ea53b23e7e",
+      "summary": "Independent hash-bound -Resume -StaticOnly review passed 11,780 assertions without invoking a build, test, or state update."
+    },
+    {
+      "id": "P16-G16-validator-report",
+      "type": "report",
+      "phase": "P16",
+      "gate": "G16",
+      "created_at": "2026-08-30T20:58:43.0410239+00:00",
+      "path": ".forge-codex/state/validator-reports/P16-G16.json",
+      "sha256": "a5d370d9206a381dba77f4d0c254356d6ec504ea0230f2e7829326e08d893eb9",
+      "summary": "Independent Validator passed G16 after verifying the single authoritative 83/83 run and all hash-bound artifacts without rebuilding or rerunning tests."
     }
   ]
 }
