@@ -610,6 +610,10 @@
         ".forge-codex/state/evidence/P16/dashboard-graceful-listener-coordinator-drain-checkpoint.json",
         ".forge-codex/state/commands/20260830T013011683Z-f051e30c.json",
         ".forge-codex/state/commands/20260830T013034809Z-591945ec.json",
+        ".forge-codex/state/decisions/P16-017-exact-dashboard-shutdown-owner-edges.md",
+        ".forge-codex/state/evidence/P16/dashboard-exact-shutdown-owner-edges-checkpoint.json",
+        ".forge-codex/state/commands/20260830T023709223Z-22f71e19.json",
+        ".forge-codex/state/commands/20260830T023730098Z-0debfb0a.json",
         "include/ForgeConductor/Contracts/IManagerServices.h",
         "include/ForgeConductor/Domain/ManagerModels.h",
         "src/Domain/ManagerModels.cpp"

@@ -85,6 +85,20 @@ public:
         DashboardHandlerCompletion completion) noexcept = 0;
 };
 
+// Optional process-owned one-shot edge emitted only when shutdown has stopped
+// admission, every accepted task has settled, every worker thread handle has
+// been joined, and every reservation has returned its capacity. Standalone
+// executors need not bind it. Process composition must bind before shutdown
+// and retain the observer through the exact drain edge. The executor retains
+// it weakly to keep process ownership acyclic. Implementations must remain
+// nonblocking and only latch the edge.
+class IDashboardHandlerExecutorDrainObserver {
+public:
+    virtual ~IDashboardHandlerExecutorDrainObserver() noexcept = default;
+
+    virtual void handlerExecutorMayHaveDrained() noexcept = 0;
+};
+
 // Fixed blocking-work boundary for the loopback dashboard. The executor owns
 // exactly four persistent workers. Pending move-only tasks and live
 // post-delivery reservations share one capacity of eight. It never creates a
@@ -160,6 +174,16 @@ public:
     [[nodiscard]] std::size_t reservationCount() const noexcept;
     [[nodiscard]] std::size_t activeCount() const noexcept;
     [[nodiscard]] bool isShuttingDown() const noexcept;
+    [[nodiscard]] bool fullyDrained() const noexcept;
+
+    // Binding is one-shot for the executor lifetime and must complete before
+    // shutdown begins. Process composition must bind; standalone use may omit
+    // observation. Process composition must retain a successfully bound
+    // observer strongly through its exact notification; losing it is a
+    // structural lifetime violation and fails closed at the ready edge.
+    [[nodiscard]] Domain::Result<void> bindShutdownDrainObserver(
+        std::weak_ptr<IDashboardHandlerExecutorDrainObserver> observer)
+        noexcept;
 
     // beginShutdown is nonblocking and safe from a worker completion sink. It
     // rejects new tasks and reservations, invalidates live reservations for
@@ -168,12 +192,14 @@ public:
     void beginShutdown() noexcept;
 
     // shutdown cancellation-drains accepted tasks and joins every worker when
-    // called externally. A sink may synchronously release the outer executor;
-    // in that reentrant case shutdown joins the other workers and detaches only
+    // called externally. With process observation bound, a worker-context call
+    // only begins shutdown and returns; the external process finalizer retains
+    // exact authority to join all four handles and emit the drain edge. In
+    // standalone use, a sink may synchronously release the outer executor; in
+    // that reentrant case shutdown joins the other workers and detaches only
     // the current thread handle to avoid self-join. That worker retains shared
-    // implementation ownership until it exits, so no callback or task is
-    // detached from its state. A non-cooperative operation that outlives the
-    // five-second hard contract fails fast.
+    // implementation ownership until it exits. A non-cooperative operation
+    // that outlives the five-second hard contract fails fast.
     void shutdown() noexcept;
 
 private:

@@ -237,7 +237,7 @@ class WindowsDashboardHandlerExecutor::Impl final
 public:
     Impl() = default;
 
-    ~Impl() noexcept { shutdown(); }
+    ~Impl() noexcept { shutdownForDestruction(); }
 
     Impl(const Impl&) = delete;
     Impl& operator=(const Impl&) = delete;
@@ -260,8 +260,7 @@ public:
             }
             return Domain::Result<void>::success();
         } catch (...) {
-            beginShutdown();
-            joinStartedWorkers(std::nullopt);
+            shutdown();
             return Domain::Result<void>::failure(executorError(
                 Domain::ErrorCodes::InternalFailure,
                 "The dashboard handler workers could not be started."));
@@ -452,12 +451,17 @@ public:
 
     void releaseReservation() noexcept
     {
+        DrainNotification notification;
         try {
-            const std::lock_guard lock{stateMutex_};
-            if (reservationCount_ == 0U) {
-                std::terminate();
+            {
+                const std::lock_guard lock{stateMutex_};
+                if (reservationCount_ == 0U) {
+                    std::terminate();
+                }
+                --reservationCount_;
+                notification = takeShutdownDrainNotificationLocked();
             }
-            --reservationCount_;
+            notifyShutdownDrainObserver(std::move(notification));
         } catch (...) {
             std::terminate();
         }
@@ -513,9 +517,171 @@ public:
         }
     }
 
-    void beginShutdown() noexcept
+    [[nodiscard]] bool fullyDrained() const noexcept
     {
         try {
+            const std::lock_guard lock{stateMutex_};
+            return fullyDrainedLocked();
+        } catch (...) {
+            return false;
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> bindShutdownDrainObserver(
+        std::weak_ptr<IDashboardHandlerExecutorDrainObserver> observer)
+        noexcept
+    {
+        try {
+            auto pinned = observer.lock();
+            if (pinned == nullptr) {
+                return Domain::Result<void>::failure(executorError(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The dashboard handler executor requires a live process "
+                    "shutdown-drain observer."));
+            }
+
+            const std::lock_guard lock{stateMutex_};
+            if (stopping_) {
+                return Domain::Result<void>::failure(executorError(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The dashboard handler executor is closed to process "
+                    "shutdown-drain observer binding."));
+            }
+            if (shutdownDrainObserverEverBound_) {
+                return Domain::Result<void>::failure(executorError(
+                    Domain::ErrorCodes::Conflict,
+                    "The dashboard handler executor process shutdown-drain "
+                    "observer is already bound."));
+            }
+            shutdownDrainObserver_ = std::move(pinned);
+            shutdownDrainObserverEverBound_ = true;
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return Domain::Result<void>::failure(executorError(
+                Domain::ErrorCodes::InternalFailure,
+                "The dashboard handler executor process shutdown-drain "
+                "observer could not be bound safely."));
+        }
+    }
+
+    void beginShutdown() noexcept
+    {
+        static_cast<void>(beginShutdownAndDetectProcessObservation());
+    }
+
+    void shutdown() noexcept
+    {
+        try {
+            const auto currentWorker = currentWorkerIndex();
+            if (currentWorker.has_value()) {
+                const bool processObserved =
+                    beginShutdownAndDetectProcessObservation();
+                if (processObserved) {
+                    // Process-observed shutdown has one external lifecycle
+                    // owner. Never detach a handler-worker thread handle or
+                    // publish its drain edge from this context.
+                    return;
+                }
+
+                std::unique_lock shutdownLock{
+                    shutdownMutex_, std::try_to_lock};
+                if (!shutdownLock.owns_lock()) {
+                    // An external owner is already joining this worker. Let
+                    // the callback return so that join can complete.
+                    beginShutdown();
+                    return;
+                }
+                joinStartedWorkers(currentWorker);
+                return;
+            }
+
+            DrainNotification notification;
+            {
+                const std::lock_guard shutdownLock{shutdownMutex_};
+                beginShutdown();
+                joinStartedWorkers(std::nullopt);
+                {
+                    const std::lock_guard stateLock{stateMutex_};
+                    workersJoined_ = true;
+                    notification = takeShutdownDrainNotificationLocked();
+                }
+            }
+            notifyShutdownDrainObserver(std::move(notification));
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+private:
+    struct DrainNotification final {
+        std::shared_ptr<IDashboardHandlerExecutorDrainObserver> observer;
+        bool missingObserver{};
+    };
+
+    struct WorkerThreadIdentity final {
+        const Impl* owner{};
+        std::size_t index{};
+    };
+
+    [[nodiscard]] bool fullyDrainedLocked() const noexcept
+    {
+        return stopping_ && pending_.empty() && activeTaskCount_ == 0U &&
+               reservationCount_ == 0U && workersJoined_;
+    }
+
+    [[nodiscard]] DrainNotification takeShutdownDrainNotificationLocked()
+        noexcept
+    {
+        DrainNotification notification;
+        if (shutdownDrainNotificationSent_ ||
+            !shutdownDrainObserverEverBound_ || !fullyDrainedLocked()) {
+            return notification;
+        }
+
+        shutdownDrainNotificationSent_ = true;
+        notification.observer = shutdownDrainObserver_.lock();
+        notification.missingObserver = notification.observer == nullptr;
+        return notification;
+    }
+
+    static void notifyShutdownDrainObserver(
+        DrainNotification notification) noexcept
+    {
+        if (notification.observer != nullptr) {
+            notification.observer->handlerExecutorMayHaveDrained();
+        } else if (notification.missingObserver) {
+            // Process composition is the strong lifetime owner. Losing that
+            // owner before the exact edge is a structural violation.
+            std::terminate();
+        }
+    }
+
+    void shutdownForDestruction() noexcept
+    {
+        try {
+            const auto currentWorker = currentWorkerIndex();
+            if (!currentWorker.has_value()) {
+                shutdown();
+                return;
+            }
+
+            // Reaching implementation destruction on one of its own workers
+            // proves that no external finalizer retained shutdown authority.
+            // The current handle cannot be joined from this thread, so settle
+            // every other literal handle and detach only this already-quiesced
+            // one. Never claim or publish exact joined drainage here.
+            static_cast<void>(beginShutdownAndDetectProcessObservation());
+            const std::lock_guard shutdownLock{shutdownMutex_};
+            joinStartedWorkers(currentWorker, true);
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+    [[nodiscard]] bool beginShutdownAndDetectProcessObservation() noexcept
+    {
+        try {
+            bool processObserved{};
             {
                 const std::lock_guard lock{stateMutex_};
                 stopping_ = true;
@@ -527,42 +693,18 @@ public:
                         task->requestCancellation();
                     }
                 }
+                processObserved = shutdownDrainObserverEverBound_;
             }
             workAvailable_.notify_all();
+            return processObserved;
         } catch (...) {
             std::terminate();
         }
     }
 
-    void shutdown() noexcept
-    {
-        try {
-            const auto currentWorker = currentWorkerIndex();
-            if (currentWorker.has_value()) {
-                std::unique_lock shutdownLock{
-                    shutdownMutex_, std::try_to_lock};
-                if (!shutdownLock.owns_lock()) {
-                    // An external owner is already joining this worker. Let
-                    // the callback return so that join can complete.
-                    beginShutdown();
-                    return;
-                }
-                beginShutdown();
-                joinStartedWorkers(currentWorker);
-                return;
-            }
-
-            const std::lock_guard shutdownLock{shutdownMutex_};
-            beginShutdown();
-            joinStartedWorkers(std::nullopt);
-        } catch (...) {
-            std::terminate();
-        }
-    }
-
-private:
     void joinStartedWorkers(
-        const std::optional<std::size_t> currentWorker) noexcept
+        const std::optional<std::size_t> currentWorker,
+        const bool currentWorkerAlreadyQuiesced = false) noexcept
     {
         try {
             {
@@ -570,10 +712,15 @@ private:
                 const bool exited = workerStateChanged_.wait_for(
                     lock,
                     WindowsDashboardHandlerExecutor::ShutdownDrainTimeout,
-                    [this, currentWorker] {
+                    [this,
+                     currentWorker,
+                     currentWorkerAlreadyQuiesced] {
                         const auto currentAllowance =
-                            currentWorker.has_value() ? 1U : 0U;
-                        return exitedWorkerCount_ + currentAllowance ==
+                            currentWorker.has_value() &&
+                                !currentWorkerAlreadyQuiesced
+                            ? 1U
+                            : 0U;
+                        return quiescedWorkerCount_ + currentAllowance ==
                                startedWorkerCount_;
                     });
                 if (!exited) {
@@ -600,6 +747,10 @@ private:
     [[nodiscard]] std::optional<std::size_t> currentWorkerIndex()
         const noexcept
     {
+        if (workerThreadIdentity_.owner == this &&
+            workerThreadIdentity_.index < workers_.size()) {
+            return workerThreadIdentity_.index;
+        }
         try {
             const auto current = std::this_thread::get_id();
             const std::lock_guard lock{stateMutex_};
@@ -617,6 +768,7 @@ private:
 
     void workerMain(const std::size_t workerIndex) noexcept
     {
+        workerThreadIdentity_ = WorkerThreadIdentity{this, workerIndex};
         try {
             {
                 const std::lock_guard lock{stateMutex_};
@@ -658,7 +810,7 @@ private:
             {
                 const std::lock_guard lock{stateMutex_};
                 workerThreadIds_[workerIndex] = std::thread::id{};
-                ++exitedWorkerCount_;
+                ++quiescedWorkerCount_;
             }
             workerStateChanged_.notify_all();
         } catch (...) {
@@ -684,10 +836,16 @@ private:
         WindowsDashboardHandlerExecutor::WorkerCount>
         workerThreadIds_{};
     std::size_t startedWorkerCount_{};
-    std::size_t exitedWorkerCount_{};
+    std::size_t quiescedWorkerCount_{};
     std::size_t activeTaskCount_{};
     std::size_t reservationCount_{};
+    std::weak_ptr<IDashboardHandlerExecutorDrainObserver>
+        shutdownDrainObserver_;
     bool stopping_{};
+    bool workersJoined_{};
+    bool shutdownDrainObserverEverBound_{};
+    bool shutdownDrainNotificationSent_{};
+    inline static thread_local WorkerThreadIdentity workerThreadIdentity_{};
 };
 
 WindowsDashboardHandlerExecutor::Reservation::~Reservation() noexcept
@@ -825,6 +983,18 @@ bool WindowsDashboardHandlerExecutor::isShuttingDown() const noexcept
     return implementation_->isShuttingDown();
 }
 
+bool WindowsDashboardHandlerExecutor::fullyDrained() const noexcept
+{
+    return implementation_->fullyDrained();
+}
+
+Domain::Result<void>
+WindowsDashboardHandlerExecutor::bindShutdownDrainObserver(
+    std::weak_ptr<IDashboardHandlerExecutorDrainObserver> observer) noexcept
+{
+    return implementation_->bindShutdownDrainObserver(std::move(observer));
+}
+
 void WindowsDashboardHandlerExecutor::beginShutdown() noexcept
 {
     implementation_->beginShutdown();
@@ -832,8 +1002,9 @@ void WindowsDashboardHandlerExecutor::beginShutdown() noexcept
 
 void WindowsDashboardHandlerExecutor::shutdown() noexcept
 {
-    if (implementation_ != nullptr) {
-        implementation_->shutdown();
+    const auto implementation = implementation_;
+    if (implementation != nullptr) {
+        implementation->shutdown();
     }
 }
 

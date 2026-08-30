@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -56,6 +57,21 @@ public:
     virtual void failFast() noexcept = 0;
 };
 
+// Optional process-wide one-shot edge emitted only after overload shutdown has
+// been published, every exact native obligation has reaped, every detached
+// handoff has returned its paused accept token, and the shared deadline is
+// gone. Standalone responders need not bind this observer. Managed process
+// composition must first bind the source admission-overload drain observer,
+// then bind this observer before shutdown, and strongly retain both through
+// their exact publication edges.
+class IDashboardOverloadResponderSetDrainObserver {
+public:
+    virtual ~IDashboardOverloadResponderSetDrainObserver() noexcept =
+        default;
+
+    virtual void overloadRespondersMayHaveDrained() noexcept = 0;
+};
+
 // Synchronous borrowed-socket association boundary. The responder pins its
 // exact work item while this call is in progress so cancellation cannot close
 // and release the numeric SOCKET value before IOCP association returns.
@@ -89,6 +105,11 @@ public:
     {
         return associatingCount_ + sendingCount_ +
             cancellationRequestedCount_;
+    }
+
+    [[nodiscard]] std::size_t settlingCount() const noexcept
+    {
+        return settlingCount_;
     }
 
     [[nodiscard]] std::size_t availableCount() const noexcept
@@ -136,9 +157,55 @@ public:
         return shutdownRequested_;
     }
 
+    [[nodiscard]] bool ordinaryShutdownSequenceCompleted() const noexcept
+    {
+        return ordinaryShutdownSequenceCompleted_;
+    }
+
+    [[nodiscard]] bool terminalOwnerNotificationDelivered() const noexcept
+    {
+        return terminalOwnerNotificationDelivered_;
+    }
+
+    [[nodiscard]] bool terminalOwnerNotificationRequired() const noexcept
+    {
+        return terminalOwnerNotificationRequired_;
+    }
+
+    [[nodiscard]] bool managedSourcePublicationFailed() const noexcept
+    {
+        return managedSourcePublicationFailed_;
+    }
+
+    [[nodiscard]] bool processDrainPublicationFailed() const noexcept
+    {
+        return processDrainPublicationFailed_;
+    }
+
+    [[nodiscard]] bool shutdownTransitionInProgress() const noexcept
+    {
+        return shutdownTransitionInProgress_;
+    }
+
+    [[nodiscard]] bool terminalGenerationPublicationsCompleted()
+        const noexcept
+    {
+        return terminalGenerationPublicationsCompleted_;
+    }
+
     [[nodiscard]] bool fullyDrained() const noexcept
     {
-        return shutdownRequested_ && activeCount() == 0U;
+        const bool ownerPublicationCompleted =
+            terminalOwnerNotificationRequired_
+            ? terminalOwnerNotificationDelivered_
+            : ordinaryShutdownSequenceCompleted_;
+        return ownerPublicationCompleted &&
+            !managedSourcePublicationFailed_ &&
+            !processDrainPublicationFailed_ &&
+            !shutdownTransitionInProgress_ &&
+            terminalGenerationPublicationsCompleted_ &&
+            activeCount() == 0U && settlingCount_ == 0U &&
+            !deadlineArmed_;
     }
 
     [[nodiscard]] const DashboardOverloadResponderFailure*
@@ -156,6 +223,7 @@ private:
         std::size_t associatingCount,
         std::size_t sendingCount,
         std::size_t cancellationRequestedCount,
+        std::size_t settlingCount,
         std::size_t maximumCount,
         std::uint64_t deliveredCount,
         std::uint64_t abandonedCount,
@@ -164,12 +232,20 @@ private:
         std::uint64_t staleDeadlineCount,
         std::uint64_t failFastCount,
         bool shutdownRequested,
+        bool ordinaryShutdownSequenceCompleted,
+        bool terminalOwnerNotificationRequired,
+        bool terminalOwnerNotificationDelivered,
+        bool managedSourcePublicationFailed,
+        bool processDrainPublicationFailed,
+        bool shutdownTransitionInProgress,
+        bool terminalGenerationPublicationsCompleted,
         std::optional<DashboardOverloadResponderFailure>
             lifecycleFailure) noexcept;
 
     std::size_t associatingCount_{};
     std::size_t sendingCount_{};
     std::size_t cancellationRequestedCount_{};
+    std::size_t settlingCount_{};
     std::size_t maximumCount_{};
     std::uint64_t deliveredCount_{};
     std::uint64_t abandonedCount_{};
@@ -178,6 +254,13 @@ private:
     std::uint64_t staleDeadlineCount_{};
     std::uint64_t failFastCount_{};
     bool shutdownRequested_{};
+    bool ordinaryShutdownSequenceCompleted_{};
+    bool terminalOwnerNotificationRequired_{};
+    bool terminalOwnerNotificationDelivered_{};
+    bool managedSourcePublicationFailed_{};
+    bool processDrainPublicationFailed_{};
+    bool shutdownTransitionInProgress_{};
+    bool terminalGenerationPublicationsCompleted_{true};
     std::optional<DashboardOverloadResponderFailure> lifecycleFailure_;
 };
 
@@ -239,6 +322,13 @@ public:
 
     [[nodiscard]] Domain::Result<void> bindDrainObserver(
         std::weak_ptr<IDashboardAdmissionOverloadDrainObserver> observer)
+        noexcept;
+
+    // Optional for standalone ownership. Managed composition must bind and
+    // strongly retain the source drain observer first, then bind and strongly
+    // retain this observer before invoking shutdown.
+    [[nodiscard]] Domain::Result<void> bindProcessDrainObserver(
+        std::weak_ptr<IDashboardOverloadResponderSetDrainObserver> observer)
         noexcept;
 
     DashboardOverloadResponderSet(
@@ -329,31 +419,52 @@ private:
         DetachedWork() noexcept = default;
 
         explicit DetachedWork(
-            std::optional<DashboardAdmissionOverloadWork> value) noexcept
-            : work{std::move(value)}
+            std::optional<DashboardAdmissionOverloadWork> value,
+            const bool tracksSettlement = false) noexcept
+            : work{std::move(value)},
+              tracksSettlement{tracksSettlement}
         {
         }
 
         DetachedWork(const DetachedWork&) = delete;
         DetachedWork& operator=(const DetachedWork&) = delete;
-        DetachedWork(DetachedWork&&) noexcept = default;
+        DetachedWork(DetachedWork&& other) noexcept
+            : work{std::move(other.work)},
+              tracksSettlement{other.tracksSettlement}
+        {
+            other.work.reset();
+            other.tracksSettlement = false;
+        }
 
         DetachedWork& operator=(DetachedWork&& other) noexcept
         {
             if (this != &other) {
+                if (tracksSettlement) {
+                    std::terminate();
+                }
                 work.reset();
                 if (other.work.has_value()) {
                     work.emplace(std::move(*other.work));
                     other.work.reset();
                 }
+                tracksSettlement = other.tracksSettlement;
+                other.tracksSettlement = false;
             }
             return *this;
         }
 
         std::optional<DashboardAdmissionOverloadWork> work;
+        bool tracksSettlement{};
     };
 
     enum class TerminalGenerationNotificationLifecycle : std::uint8_t {
+        Pending,
+        Delivering,
+        Delivered,
+    };
+
+    enum class TerminalGenerationPendingNotificationLifecycle :
+        std::uint8_t {
         Pending,
         Delivering,
         Delivered,
@@ -393,6 +504,14 @@ private:
     [[nodiscard]] std::optional<Domain::Error> finishDetached(
         DetachedWork&& detached,
         bool closeOriginAdmission) noexcept;
+    void settleDetachedWork(DetachedWork& detached) noexcept;
+    [[nodiscard]] bool terminalGenerationPublicationsCompletedLocked()
+        const noexcept;
+    [[nodiscard]] bool processDrainReadyLocked(
+        bool deadlineArmed) const noexcept;
+    void notifyProcessDrainObserverIfReady() noexcept;
+    [[nodiscard]] bool
+    recordMissingManagedSourceDrainObserverLocked() noexcept;
     void notifyGenerationMayHaveDrained(
         std::uint64_t generationId) noexcept;
     void notifyGenerationCompletionPending(
@@ -409,7 +528,8 @@ private:
     void notifyPendingTerminalOwner() noexcept;
     void notifyPendingTerminalGenerations() noexcept;
     void beginTerminalShutdown(
-        std::optional<std::uint64_t> generationId) noexcept;
+        std::optional<std::uint64_t> generationId,
+        std::optional<Domain::Error> failure = std::nullopt) noexcept;
     void retainFailure(Domain::Error error) noexcept;
     void retainFailureLocked(Domain::Error error) noexcept;
     void refreshDeadline() noexcept;
@@ -441,11 +561,22 @@ private:
     std::optional<DashboardOverloadResponderFailure>
         firstLifecycleFailureSnapshot_;
     std::weak_ptr<IDashboardAdmissionOverloadDrainObserver> drainObserver_;
+    std::weak_ptr<IDashboardOverloadResponderSetDrainObserver>
+        processDrainObserver_;
     bool drainObserverEverBound_{};
+    bool processDrainObserverEverBound_{};
+    bool processDrainNotificationSent_{};
+    bool processDrainObserverPublicationFailed_{};
+    bool managedSourceDrainObserverFailureReported_{};
+    bool ordinaryShutdownSequenceCompleted_{};
+    bool shutdownTransitionInProgress_{};
+    std::size_t settlingWorkCount_{};
     std::array<std::uint64_t, Capacity> terminalGenerationIds_{};
     std::array<TerminalGenerationNotificationLifecycle, Capacity>
         terminalGenerationNotificationLifecycles_{};
-    std::array<bool, Capacity> terminalGenerationPendingLatchDelivered_{};
+    std::array<
+        TerminalGenerationPendingNotificationLifecycle,
+        Capacity> terminalGenerationPendingNotificationLifecycles_{};
     std::size_t terminalGenerationCount_{};
     std::optional<WindowsDashboardDeadline> currentDeadline_;
     // Serializes the public normal-shutdown publication and cancellation

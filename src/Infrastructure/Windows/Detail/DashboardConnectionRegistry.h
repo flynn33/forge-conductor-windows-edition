@@ -52,16 +52,35 @@ public:
         std::uint64_t generationId) noexcept = 0;
 };
 
-// Process-wide one-shot edge emitted when graceful shutdown observes or
-// reaches zero registered connections. It must be bound before shutdown, and
-// composition must retain the observer strongly through final routing drain.
-// Implementations must remain nonblocking and must not retain callback
-// arguments.
+// Optional process-wide one-shot edge emitted when graceful or hard shutdown
+// observes or reaches zero registered connections. Standalone registry users
+// may omit this observer. Managed composition must bind it before shutdown and
+// retain it strongly through final routing drain; after a successful bind,
+// expiry fails closed. Implementations must remain nonblocking and must not
+// retain callback arguments.
 class IDashboardConnectionRegistryDrainObserver {
 public:
     virtual ~IDashboardConnectionRegistryDrainObserver() noexcept = default;
 
     virtual void registryConnectionsMayHaveDrained() noexcept = 0;
+};
+
+// Repeatable process-shutdown routing edge. Each exact routing-ownership
+// reduction advances the canonical monotonic snapshot revision. A bounded
+// capacity-one dispatcher publishes the greatest pending revision after
+// releasing registry and deadline-routing locks, so intermediate revisions may
+// coalesce but delivered revisions never regress. A shutdown driver compares
+// callback revisions with snapshot().routingProgressRevision() before sleeping,
+// so progress racing its readiness check cannot be lost. Binding is one-shot;
+// managed composition binds before shutdown and retains the observer strongly
+// until deadline routing is finalized. Once bound, expiry fails closed once.
+class IDashboardConnectionRegistryRoutingProgressObserver {
+public:
+    virtual ~IDashboardConnectionRegistryRoutingProgressObserver() noexcept =
+        default;
+
+    virtual void registryRoutingMayHaveProgressed(
+        std::uint64_t revision) noexcept = 0;
 };
 
 enum class DashboardConnectionRegistryFailureKind : std::uint8_t {
@@ -139,6 +158,11 @@ public:
         return fatalNotificationCount_;
     }
 
+    [[nodiscard]] std::uint64_t routingProgressRevision() const noexcept
+    {
+        return routingProgressRevision_;
+    }
+
     [[nodiscard]] bool deadlineRoutingInProgress() const noexcept
     {
         return deadlineRoutingInProgress_;
@@ -167,6 +191,7 @@ private:
         std::uint64_t retiredDeadlineDrainCount,
         std::uint64_t removedConnectionCount,
         std::uint64_t fatalNotificationCount,
+        std::uint64_t routingProgressRevision,
         bool deadlineRoutingInProgress,
         bool shutdown,
         bool fatal,
@@ -182,6 +207,7 @@ private:
     std::uint64_t retiredDeadlineDrainCount_{};
     std::uint64_t removedConnectionCount_{};
     std::uint64_t fatalNotificationCount_{};
+    std::uint64_t routingProgressRevision_{};
     bool deadlineRoutingInProgress_{};
     bool shutdown_{};
     bool fatal_{};
@@ -232,6 +258,11 @@ public:
 
     [[nodiscard]] Domain::Result<void> bindShutdownDrainObserver(
         std::weak_ptr<IDashboardConnectionRegistryDrainObserver> observer)
+        noexcept;
+
+    [[nodiscard]] Domain::Result<void> bindRoutingProgressObserver(
+        std::weak_ptr<
+            IDashboardConnectionRegistryRoutingProgressObserver> observer)
         noexcept;
 
     // Captures immutable identity, registers and stores the exact fixed bridge
@@ -376,6 +407,10 @@ private:
         Domain::Error error,
         std::optional<DWORD> nativeError = std::nullopt) noexcept;
     void failMissingShutdownDrainObserver() noexcept;
+    void failMissingRoutingProgressObserver() noexcept;
+    [[nodiscard]] bool
+    advanceRoutingProgressLocked() noexcept;
+    void dispatchRoutingProgress() noexcept;
     [[nodiscard]] DashboardConnectionRegistrySnapshot snapshotLocked()
         const noexcept;
 
@@ -390,6 +425,8 @@ private:
         generationDrainObserver_;
     std::weak_ptr<IDashboardConnectionRegistryDrainObserver>
         shutdownDrainObserver_;
+    std::weak_ptr<IDashboardConnectionRegistryRoutingProgressObserver>
+        routingProgressObserver_;
     std::optional<Domain::Error> firstFailure_;
     std::optional<DashboardConnectionRegistryFailure> firstFailureSnapshot_;
     std::size_t registeredConnectionCount_{};
@@ -399,9 +436,15 @@ private:
     std::uint64_t retiredDeadlineDrainCount_{};
     std::uint64_t removedConnectionCount_{};
     std::uint64_t fatalNotificationCount_{};
+    std::uint64_t routingProgressRevision_{};
+    std::uint64_t routingProgressPendingRevision_{};
+    std::uint64_t routingProgressDeliveredRevision_{};
     bool deadlineBridgeEverBound_{};
     bool generationDrainObserverEverBound_{};
     bool shutdownDrainObserverEverBound_{};
+    bool routingProgressObserverEverBound_{};
+    bool routingProgressObserverFailureReported_{};
+    bool routingProgressDispatchInProgress_{};
     bool shutdownDrainNotificationSent_{};
     bool gracefulShutdownCallbacksStarted_{};
     bool shutdownCallbacksStarted_{};

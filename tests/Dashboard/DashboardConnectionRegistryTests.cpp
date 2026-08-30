@@ -66,6 +66,8 @@ static_assert(std::is_base_of_v<
               Registry>);
 static_assert(std::is_abstract_v<
               Detail::IDashboardConnectionRegistryDrainObserver>);
+static_assert(std::is_abstract_v<
+              Detail::IDashboardConnectionRegistryRoutingProgressObserver>);
 static_assert(!std::is_copy_constructible_v<Registry>);
 static_assert(!std::is_move_constructible_v<Registry>);
 static_assert(Registry::MaximumConnectionCount == 40U);
@@ -76,6 +78,8 @@ static_assert(noexcept(
     std::declval<Registry&>().bindGenerationDrainObserver({})));
 static_assert(noexcept(
     std::declval<Registry&>().bindShutdownDrainObserver({})));
+static_assert(noexcept(
+    std::declval<Registry&>().bindRoutingProgressObserver({})));
 static_assert(noexcept(std::declval<Registry&>().registerConnection(nullptr)));
 static_assert(noexcept(
     std::declval<Registry&>().registerAuxiliaryDeadlineTarget(nullptr)));
@@ -814,6 +818,302 @@ private:
     std::atomic_bool observedZero_{};
 };
 
+class RecordingRegistryRoutingProgressObserver final
+    : public Detail::IDashboardConnectionRegistryRoutingProgressObserver {
+public:
+    void attachRegistry(const std::shared_ptr<Registry>& registry) noexcept
+    {
+        registry_ = registry;
+    }
+
+    void registryRoutingMayHaveProgressed(
+        const std::uint64_t revision) noexcept override
+    {
+        bool snapshotNotBehind{};
+        bool outsideRoutingSection{};
+        if (auto registry = registry_.lock(); registry != nullptr) {
+            const auto snapshot = registry->snapshot();
+            snapshotNotBehind =
+                snapshot.routingProgressRevision() >= revision;
+            outsideRoutingSection = !snapshot.deadlineRoutingInProgress();
+            static_cast<void>(registry->finalizeDeadlineRouting());
+            reentered_.store(true, std::memory_order_release);
+        }
+        const std::lock_guard lock{mutex_};
+        if (callbackCount_ < revisions_.size()) {
+            revisions_[callbackCount_] = revision;
+        }
+        ++callbackCount_;
+        snapshotsNotBehind_ = snapshotsNotBehind_ && snapshotNotBehind;
+        callbacksOutsideRoutingSection_ =
+            callbacksOutsideRoutingSection_ && outsideRoutingSection;
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return callbackCount_;
+    }
+
+    [[nodiscard]] std::uint64_t revisionAt(
+        const std::size_t index) const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return index < callbackCount_ && index < revisions_.size()
+            ? revisions_[index]
+            : 0U;
+    }
+
+    [[nodiscard]] bool reentered() const noexcept
+    {
+        return reentered_.load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] bool snapshotsNotBehind() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return snapshotsNotBehind_;
+    }
+
+    [[nodiscard]] bool callbacksOutsideRoutingSection() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return callbacksOutsideRoutingSection_;
+    }
+
+private:
+    std::weak_ptr<Registry> registry_;
+    mutable std::mutex mutex_;
+    std::array<std::uint64_t, 8U> revisions_{};
+    std::size_t callbackCount_{};
+    std::atomic_bool reentered_{};
+    bool snapshotsNotBehind_{true};
+    bool callbacksOutsideRoutingSection_{true};
+};
+
+class FatalAwareRegistryRoutingProgressObserver final
+    : public Detail::IDashboardConnectionRegistryRoutingProgressObserver {
+public:
+    void attachRegistry(const std::shared_ptr<Registry>& registry) noexcept
+    {
+        registry_ = registry;
+    }
+
+    void registryRoutingMayHaveProgressed(
+        const std::uint64_t revision) noexcept override
+    {
+        bool fatal{};
+        bool outsideRoutingSection{};
+        bool finalizeAttempted{};
+        bool finalizeSucceeded{};
+        bool snapshotNotBehind{};
+        if (auto registry = registry_.lock(); registry != nullptr) {
+            const auto snapshot = registry->snapshot();
+            fatal = snapshot.isFatal();
+            outsideRoutingSection =
+                !snapshot.deadlineRoutingInProgress();
+            snapshotNotBehind =
+                snapshot.routingProgressRevision() >= revision;
+            if (!fatal) {
+                finalizeAttempted = true;
+                finalizeSucceeded =
+                    registry->finalizeDeadlineRouting();
+            }
+        }
+
+        const std::scoped_lock lock{mutex_};
+        if (callbackCount_ < revisions_.size()) {
+            revisions_[callbackCount_] = revision;
+            fatalAtCallback_[callbackCount_] = fatal;
+            outsideRoutingSectionAtCallback_[callbackCount_] =
+                outsideRoutingSection;
+            snapshotNotBehindAtCallback_[callbackCount_] =
+                snapshotNotBehind;
+            finalizeAttemptedAtCallback_[callbackCount_] =
+                finalizeAttempted;
+            finalizeSucceededAtCallback_[callbackCount_] =
+                finalizeSucceeded;
+        }
+        ++callbackCount_;
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return callbackCount_;
+    }
+
+    [[nodiscard]] std::uint64_t revisionAt(
+        const std::size_t index) const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return index < callbackCount_ && index < revisions_.size()
+            ? revisions_[index]
+            : 0U;
+    }
+
+    [[nodiscard]] bool fatalAt(
+        const std::size_t index) const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return index < callbackCount_ &&
+            index < fatalAtCallback_.size() &&
+            fatalAtCallback_[index];
+    }
+
+    [[nodiscard]] bool outsideRoutingSectionAt(
+        const std::size_t index) const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return index < callbackCount_ &&
+            index < outsideRoutingSectionAtCallback_.size() &&
+            outsideRoutingSectionAtCallback_[index];
+    }
+
+    [[nodiscard]] bool snapshotNotBehindAt(
+        const std::size_t index) const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return index < callbackCount_ &&
+            index < snapshotNotBehindAtCallback_.size() &&
+            snapshotNotBehindAtCallback_[index];
+    }
+
+    [[nodiscard]] bool finalizeAttemptedAt(
+        const std::size_t index) const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return index < callbackCount_ &&
+            index < finalizeAttemptedAtCallback_.size() &&
+            finalizeAttemptedAtCallback_[index];
+    }
+
+    [[nodiscard]] bool finalizeSucceededAt(
+        const std::size_t index) const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return index < callbackCount_ &&
+            index < finalizeSucceededAtCallback_.size() &&
+            finalizeSucceededAtCallback_[index];
+    }
+
+private:
+    std::weak_ptr<Registry> registry_;
+    mutable std::mutex mutex_;
+    std::array<std::uint64_t, 4U> revisions_{};
+    std::array<bool, 4U> fatalAtCallback_{};
+    std::array<bool, 4U> outsideRoutingSectionAtCallback_{};
+    std::array<bool, 4U> snapshotNotBehindAtCallback_{};
+    std::array<bool, 4U> finalizeAttemptedAtCallback_{};
+    std::array<bool, 4U> finalizeSucceededAtCallback_{};
+    std::size_t callbackCount_{};
+};
+
+class BlockingRegistryRoutingProgressObserver final
+    : public Detail::IDashboardConnectionRegistryRoutingProgressObserver {
+public:
+    void attachRegistry(
+        const std::shared_ptr<Registry>& registry,
+        std::shared_ptr<AuxiliaryTarget> reentrantTarget) noexcept
+    {
+        registry_ = registry;
+        reentrantTarget_ = std::move(reentrantTarget);
+    }
+
+    void registryRoutingMayHaveProgressed(
+        const std::uint64_t revision) noexcept override
+    {
+        bool reenter{};
+        {
+            std::unique_lock lock{mutex_};
+            if (callbackCount_ < revisions_.size()) {
+                revisions_[callbackCount_] = revision;
+            }
+            ++callbackCount_;
+            if (revision == 1U) {
+                firstCallbackEntered_ = true;
+                changed_.notify_all();
+                firstCallbackReleased_ = changed_.wait_for(
+                    lock,
+                    TestTimeout,
+                    [this] { return releaseFirstCallback_; });
+            }
+            if (revision == 1U && firstCallbackReleased_ &&
+                !reentrantAttempted_) {
+                reentrantAttempted_ = true;
+                reenter = true;
+            }
+        }
+
+        if (reenter) {
+            auto registry = registry_.lock();
+            auto target = reentrantTarget_;
+            const bool succeeded =
+                registry != nullptr && target != nullptr &&
+                registry->unregisterAuxiliaryDeadlineTarget(target);
+            const std::scoped_lock lock{mutex_};
+            reentrantSucceeded_ = succeeded;
+            changed_.notify_all();
+        }
+    }
+
+    [[nodiscard]] bool waitForFirstCallback() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(
+            lock,
+            TestTimeout,
+            [this] { return firstCallbackEntered_; });
+    }
+
+    void releaseFirstCallback() noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        releaseFirstCallback_ = true;
+        changed_.notify_all();
+    }
+
+    [[nodiscard]] std::size_t callbackCount() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return callbackCount_;
+    }
+
+    [[nodiscard]] std::uint64_t revisionAt(
+        const std::size_t index) const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return index < callbackCount_ && index < revisions_.size()
+            ? revisions_[index]
+            : 0U;
+    }
+
+    [[nodiscard]] bool firstCallbackReleased() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return firstCallbackReleased_;
+    }
+
+    [[nodiscard]] bool reentrantSucceeded() const noexcept
+    {
+        const std::scoped_lock lock{mutex_};
+        return reentrantSucceeded_;
+    }
+
+private:
+    std::weak_ptr<Registry> registry_;
+    std::shared_ptr<AuxiliaryTarget> reentrantTarget_;
+    mutable std::mutex mutex_;
+    std::condition_variable changed_;
+    std::array<std::uint64_t, 8U> revisions_{};
+    std::size_t callbackCount_{};
+    bool firstCallbackEntered_{};
+    bool releaseFirstCallback_{};
+    bool firstCallbackReleased_{};
+    bool reentrantAttempted_{};
+    bool reentrantSucceeded_{};
+};
+
 class FakeCompletionPortApi final : public Api {
 public:
     struct QueuedPacket final {
@@ -979,9 +1279,13 @@ private:
 struct DeadlineFixture final {
     explicit DeadlineFixture(
         const Key bridgeKey = DeadlineKey,
-        const bool bind = true)
+        const bool bind = true,
+        std::shared_ptr<RegistryFailFast> failFast = nullptr)
         : api{std::make_shared<FakeCompletionPortApi>()},
-          registry{take(Registry::create(DeadlineKey))}
+          registry{failFast == nullptr
+                  ? take(Registry::create(DeadlineKey))
+                  : take(Registry::create(
+                        DeadlineKey, std::move(failFast)))}
     {
         auto port = take(Port::create(api));
         kernel = take(Kernel::create(std::move(port), registry));
@@ -1121,6 +1425,8 @@ void validatesFixedContractsAndReservedKey()
     const auto initial = registry->snapshot();
     require(initial.registeredConnectionCount() == 0U,
             "new registry was not empty");
+    require(initial.routingProgressRevision() == 0U,
+            "new registry started with routing progress");
     require(initial.maximumConnectionCount() == 40U,
             "registry capacity changed");
     require(initial.deadlineCompletionKey() == DeadlineKey,
@@ -1374,6 +1680,91 @@ void gracefulShutdownFailsFastWhenObserverLifetimeIsBroken()
                 snapshot.failure()->kind ==
                     RegistryFailureKind::IntegrityFailure,
             "an expired shutdown observer did not fail closed once");
+}
+
+void standaloneGracefulShutdownMayOmitProcessObserver()
+{
+    auto failFast = std::make_shared<RecordingRegistryFailFast>();
+    DeadlineFixture fixture{DeadlineKey, true, failFast};
+    auto owner = target(257U, 2'571U, 25U);
+    owner->attachRegistry(fixture.registry);
+    owner->retainDuringGracefulShutdown();
+    require(static_cast<bool>(fixture.registry->registerConnection(owner)),
+            "standalone graceful owner was rejected");
+
+    fixture.registry->beginGracefulShutdown();
+    owner->markDrainedAndNotify();
+    const auto snapshot = fixture.registry->snapshot();
+    require(snapshot.registeredConnectionCount() == 0U &&
+                snapshot.isShuttingDown() && !snapshot.isFatal() &&
+                failFast->calls() == 0U,
+            "standalone graceful shutdown required an optional process observer");
+}
+
+void hardShutdownObservesAnInitiallyEmptyRegistryOnce()
+{
+    DeadlineFixture fixture;
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindShutdownDrainObserver(observer)),
+            "hard initial-zero observer was rejected");
+
+    fixture.registry->beginShutdown();
+    fixture.registry->beginShutdown();
+    fixture.registry->beginGracefulShutdown();
+    require(observer->callbackCount() == 1U &&
+                observer->reentered() && observer->observedZero(),
+            "hard-only initial zero was lost, repeated, or published under lock");
+}
+
+void hardShutdownFailsFastWhenObserverLifetimeIsBroken()
+{
+    auto failFast = std::make_shared<RecordingRegistryFailFast>();
+    auto registry = take(Registry::create(DeadlineKey, failFast));
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    require(static_cast<bool>(
+                registry->bindShutdownDrainObserver(observer)),
+            "short-lived hard shutdown observer was rejected");
+    observer.reset();
+
+    registry->beginShutdown();
+    registry->beginShutdown();
+    const auto snapshot = registry->snapshot();
+    require(failFast->calls() == 1U && snapshot.isFatal() &&
+                snapshot.failure() != nullptr &&
+                snapshot.failure()->kind ==
+                    RegistryFailureKind::IntegrityFailure,
+            "hard-only shutdown did not fail closed once for an expired zero observer");
+}
+
+void hardShutdownPublishesReachedZeroWithoutDuplicates()
+{
+    DeadlineFixture fixture;
+    auto observer = std::make_shared<RecordingRegistryDrainObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindShutdownDrainObserver(observer)),
+            "hard reached-zero observer was rejected");
+    auto owner = target(258U, 2'581U, 25U);
+    owner->retainDuringShutdown();
+    require(static_cast<bool>(fixture.registry->registerConnection(owner)),
+            "hard reached-zero owner was rejected");
+
+    fixture.registry->beginShutdown();
+    require(owner->shutdownCount() == 1U &&
+                fixture.registry->snapshot().registeredConnectionCount() ==
+                    1U &&
+                observer->callbackCount() == 0U,
+            "hard shutdown published zero before its retained owner drained");
+
+    owner->markDrainedAndNotify();
+    owner->markDrainedAndNotify();
+    fixture.registry->beginShutdown();
+    require(fixture.registry->snapshot().registeredConnectionCount() == 0U &&
+                observer->callbackCount() == 1U &&
+                observer->reentered() && observer->observedZero(),
+            "hard-only reached zero was lost or redelivered");
 }
 
 void hardShutdownEscalatesRetainedGracefulOwners()
@@ -1922,9 +2313,205 @@ void routesAndExactlyRetiresAuxiliaryDeadlineOwners()
         "auxiliary deadline retirement retained registry ownership");
 }
 
+void routingProgressObserverBindingIsOneShotAndPreShutdown()
+{
+    auto nullRegistry = take(Registry::create(DeadlineKey));
+    const auto nullBinding =
+        nullRegistry->bindRoutingProgressObserver({});
+    const auto nullSnapshot = nullRegistry->snapshot();
+    require(!nullBinding &&
+                nullBinding.error().code ==
+                    Domain::ErrorCodes::InvalidRequest &&
+                nullSnapshot.isFatal() &&
+                nullSnapshot.failure() != nullptr &&
+                nullSnapshot.failure()->kind ==
+                    RegistryFailureKind::InvalidRequest,
+            "routing progress accepted a null observer");
+
+    auto duplicateRegistry = take(Registry::create(DeadlineKey));
+    auto firstObserver =
+        std::make_shared<RecordingRegistryRoutingProgressObserver>();
+    auto duplicateObserver =
+        std::make_shared<RecordingRegistryRoutingProgressObserver>();
+    require(static_cast<bool>(
+                duplicateRegistry->bindRoutingProgressObserver(
+                    firstObserver)),
+            "initial routing-progress observer was rejected");
+    const auto duplicateBinding =
+        duplicateRegistry->bindRoutingProgressObserver(
+            duplicateObserver);
+    const auto duplicateSnapshot = duplicateRegistry->snapshot();
+    require(!duplicateBinding &&
+                duplicateBinding.error().code ==
+                    Domain::ErrorCodes::Conflict &&
+                duplicateSnapshot.isFatal() &&
+                duplicateSnapshot.failure() != nullptr &&
+                duplicateSnapshot.failure()->kind ==
+                    RegistryFailureKind::Conflict,
+            "routing progress accepted a duplicate observer");
+
+    auto lateRegistry = take(Registry::create(DeadlineKey));
+    auto lateObserver =
+        std::make_shared<RecordingRegistryRoutingProgressObserver>();
+    lateRegistry->beginShutdown();
+    const auto lateBinding =
+        lateRegistry->bindRoutingProgressObserver(lateObserver);
+    require(!lateBinding &&
+                lateBinding.error().code ==
+                    Domain::ErrorCodes::TransportClosed &&
+                !lateRegistry->snapshot().isFatal(),
+            "routing progress accepted or made fatal a late observer bind");
+}
+
+void routingProgressRevisionPreventsLostWakeupsAndAllowsReentry()
+{
+    DeadlineFixture fixture;
+    auto observer =
+        std::make_shared<RecordingRegistryRoutingProgressObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindRoutingProgressObserver(observer)),
+            "routing-progress observer was rejected");
+    auto first = std::make_shared<FakeAuxiliaryDeadlineTarget>(90'151U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(first)),
+            "first routing-progress owner was rejected");
+
+    const auto revisionBeforeReadinessCheck =
+        fixture.registry->snapshot().routingProgressRevision();
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(first),
+            "first routing-progress owner did not unregister");
+    const auto revisionBeforeHypotheticalWait =
+        fixture.registry->snapshot().routingProgressRevision();
+    require(revisionBeforeHypotheticalWait >
+                revisionBeforeReadinessCheck &&
+                observer->callbackCount() == 1U &&
+                observer->revisionAt(0U) ==
+                    revisionBeforeHypotheticalWait,
+            "a routing edge racing the readiness check was not visible by revision before waiting");
+
+    auto second = std::make_shared<FakeAuxiliaryDeadlineTarget>(90'152U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(second)),
+            "second routing-progress owner was rejected");
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(second),
+            "second routing-progress owner did not unregister");
+    auto connection = target(914U, 9'141U, 91U);
+    require(static_cast<bool>(
+                fixture.registry->registerConnection(connection)),
+            "routing-progress connection owner was rejected");
+    connection->markDrained();
+    require(fixture.registry->removeIfDrained(connection),
+            "routing-progress connection owner did not drain");
+    const auto afterThird = fixture.registry->snapshot();
+    require(observer->callbackCount() == 3U &&
+                observer->revisionAt(1U) > observer->revisionAt(0U) &&
+                observer->revisionAt(2U) > observer->revisionAt(1U) &&
+                observer->revisionAt(2U) ==
+                    afterThird.routingProgressRevision() &&
+                observer->reentered() && observer->snapshotsNotBehind() &&
+                observer->callbacksOutsideRoutingSection(),
+            "repeatable routing progress was not monotonic or invoked outside registry routing locks");
+}
+
+void routingProgressSerializesConcurrentAndReentrantReductions()
+{
+    DeadlineFixture fixture;
+    auto first =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'161U);
+    auto second =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'162U);
+    auto third =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'163U);
+    auto observer =
+        std::make_shared<BlockingRegistryRoutingProgressObserver>();
+    observer->attachRegistry(fixture.registry, third);
+    require(static_cast<bool>(
+                fixture.registry->bindRoutingProgressObserver(observer)),
+            "blocking routing-progress observer was rejected");
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(first)) &&
+                static_cast<bool>(
+                    fixture.registry->registerAuxiliaryDeadlineTarget(
+                        second)) &&
+                static_cast<bool>(
+                    fixture.registry->registerAuxiliaryDeadlineTarget(
+                        third)),
+            "routing-progress race owners were rejected");
+
+    std::atomic_bool firstRemoved{};
+    std::thread firstRemoval{[&] {
+        firstRemoved.store(
+            fixture.registry->unregisterAuxiliaryDeadlineTarget(first),
+            std::memory_order_release);
+    }};
+    const bool firstCallbackEntered =
+        observer->waitForFirstCallback();
+    bool secondRemoved{};
+    std::uint64_t revisionWhileFirstBlocked{};
+    if (firstCallbackEntered) {
+        secondRemoved =
+            fixture.registry->unregisterAuxiliaryDeadlineTarget(second);
+        revisionWhileFirstBlocked =
+            fixture.registry->snapshot().routingProgressRevision();
+    }
+    observer->releaseFirstCallback();
+    firstRemoval.join();
+
+    const auto finalSnapshot = fixture.registry->snapshot();
+    require(firstCallbackEntered && secondRemoved &&
+                firstRemoved.load(std::memory_order_acquire) &&
+                revisionWhileFirstBlocked == 2U &&
+                observer->firstCallbackReleased(),
+            "a blocked first routing callback held the registry lock or lost the concurrent revision");
+    require(observer->callbackCount() == 2U &&
+                observer->revisionAt(0U) == 1U &&
+                observer->revisionAt(1U) == 3U &&
+                observer->reentrantSucceeded() &&
+                finalSnapshot.routingProgressRevision() == 3U &&
+                finalSnapshot.registeredAuxiliaryDeadlineTargetCount() ==
+                    0U,
+            "single-owner routing dispatch regressed, failed to coalesce to the latest revision, deadlocked on reentry, or lost progress");
+}
+
+void routingProgressObserverExpiryFailsClosedOnce()
+{
+    auto failFast = std::make_shared<RecordingRegistryFailFast>();
+    DeadlineFixture fixture{DeadlineKey, true, failFast};
+    auto observer =
+        std::make_shared<RecordingRegistryRoutingProgressObserver>();
+    require(static_cast<bool>(
+                fixture.registry->bindRoutingProgressObserver(observer)),
+            "short-lived routing-progress observer was rejected");
+    auto owner =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'171U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
+            "routing observer-lifetime auxiliary owner was rejected");
+    observer.reset();
+
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
+            "observer-lifetime auxiliary owner did not retire");
+    fixture.registry->beginShutdown();
+    const auto snapshot = fixture.registry->snapshot();
+    require(failFast->calls() == 1U && snapshot.isFatal() &&
+                snapshot.failure() != nullptr &&
+                snapshot.failure()->kind ==
+                    RegistryFailureKind::IntegrityFailure &&
+                snapshot.registeredAuxiliaryDeadlineTargetCount() == 0U &&
+                snapshot.routingProgressRevision() == 1U,
+            "an expired routing-progress observer did not fail closed exactly once on auxiliary retirement");
+}
+
 void auxiliarySignalFirstRetirementDrainsATombstone()
 {
     DeadlineFixture fixture;
+    auto observer =
+        std::make_shared<RecordingRegistryRoutingProgressObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindRoutingProgressObserver(observer)),
+            "tombstone routing-progress observer was rejected");
     auto owner = std::make_shared<FakeAuxiliaryDeadlineTarget>(90'201U);
     require(static_cast<bool>(
                 fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
@@ -1935,6 +2522,9 @@ void auxiliarySignalFirstRetirementDrainsATombstone()
             "signal-first auxiliary owner did not retire");
     require(fixture.bridge->snapshot().retiredAwaitingReapCount() == 1U,
             "signal-first auxiliary retirement lost its posted tombstone");
+    require(observer->callbackCount() == 1U &&
+                observer->revisionAt(0U) == 1U,
+            "auxiliary removal did not publish its first routing revision");
 
     fixture.registry->consume(
         Packet{
@@ -1947,6 +2537,68 @@ void auxiliarySignalFirstRetirementDrainsATombstone()
     require(fixture.registry->snapshot().retiredDeadlineDrainCount() == 1U &&
                 fixture.bridge->snapshot().postedOperationCount() == 0U,
             "auxiliary deadline tombstone did not drain exactly once");
+    require(observer->callbackCount() == 2U &&
+                observer->revisionAt(1U) == 2U &&
+                observer->reentered() && observer->snapshotsNotBehind() &&
+                observer->callbacksOutsideRoutingSection(),
+            "delayed tombstone reap did not publish repeatable routing progress outside locks");
+}
+
+void malformedRetiredTombstoneStillPublishesRoutingProgress()
+{
+    DeadlineFixture fixture;
+    auto observer =
+        std::make_shared<FatalAwareRegistryRoutingProgressObserver>();
+    observer->attachRegistry(fixture.registry);
+    require(static_cast<bool>(
+                fixture.registry->bindRoutingProgressObserver(observer)),
+            "malformed-tombstone routing-progress observer was rejected");
+    auto owner =
+        std::make_shared<FakeAuxiliaryDeadlineTarget>(90'251U);
+    require(static_cast<bool>(
+                fixture.registry->registerAuxiliaryDeadlineTarget(owner)),
+            "malformed-tombstone auxiliary owner was rejected");
+    fixture.bridge->signal(listenerDeadline(owner->registrationId(), 10U));
+    const auto packet = fixture.takePacket();
+    fixture.registry->beginGracefulShutdown();
+    require(fixture.registry->unregisterAuxiliaryDeadlineTarget(owner),
+            "malformed-tombstone auxiliary owner did not retire");
+    require(fixture.bridge->snapshot().retiredAwaitingReapCount() == 1U &&
+                observer->callbackCount() == 1U &&
+                observer->revisionAt(0U) == 1U &&
+                !observer->fatalAt(0U) &&
+                observer->outsideRoutingSectionAt(0U) &&
+                observer->snapshotNotBehindAt(0U) &&
+                observer->finalizeAttemptedAt(0U) &&
+                !observer->finalizeSucceededAt(0U),
+            "malformed-tombstone setup lost its exact retired owner");
+
+    fixture.registry->consume(
+        Packet{
+            1U,
+            Key{static_cast<std::uintptr_t>(packet.completionKey)},
+            packet.operation},
+        ERROR_SUCCESS);
+    const auto registrySnapshot = fixture.registry->snapshot();
+    const auto bridgeSnapshot = fixture.bridge->snapshot();
+    require(observer->callbackCount() == 2U &&
+                observer->revisionAt(1U) == 2U &&
+                observer->fatalAt(1U) &&
+                observer->outsideRoutingSectionAt(1U) &&
+                observer->snapshotNotBehindAt(1U) &&
+                !observer->finalizeAttemptedAt(1U) &&
+                !observer->finalizeSucceededAt(1U) &&
+                registrySnapshot.routingProgressRevision() == 2U &&
+                registrySnapshot.retiredDeadlineDrainCount() == 1U,
+            "malformed retired tombstone published progress before fatal state or permitted nonfatal finalization");
+    require(bridgeSnapshot.postedOperationCount() == 0U &&
+                bridgeSnapshot.retiredAwaitingReapCount() == 0U &&
+                registrySnapshot.isFatal() &&
+                registrySnapshot.failure() != nullptr &&
+                registrySnapshot.failure()->kind ==
+                    RegistryFailureKind::IntegrityFailure &&
+                owner->deadlineCount() == 0U,
+            "malformed retired tombstone did not drain storage before failing fatally");
 }
 
 void auxiliaryRoutingPinsTheOwnerAcrossConcurrentUnregistration()
@@ -2260,6 +2912,10 @@ constexpr std::array TestCases{
     TestCase{"graceful exact zero", gracefulShutdownClosesAdmissionAndNotifiesExactZero},
     TestCase{"graceful initial zero", gracefulShutdownObservesAnInitiallyEmptyRegistryOnce},
     TestCase{"graceful observer lifetime", gracefulShutdownFailsFastWhenObserverLifetimeIsBroken},
+    TestCase{"graceful optional observer", standaloneGracefulShutdownMayOmitProcessObserver},
+    TestCase{"hard initial zero", hardShutdownObservesAnInitiallyEmptyRegistryOnce},
+    TestCase{"hard observer lifetime", hardShutdownFailsFastWhenObserverLifetimeIsBroken},
+    TestCase{"hard reached zero", hardShutdownPublishesReachedZeroWithoutDuplicates},
     TestCase{"graceful hard escalation", hardShutdownEscalatesRetainedGracefulOwners},
     TestCase{"hard suppresses graceful", hardShutdownSuppressesLateGracefulFanout},
     TestCase{"concurrent graceful hard order", concurrentGracefulAndHardFanoutsAreMonotonic},
@@ -2275,7 +2931,12 @@ constexpr std::array TestCases{
     TestCase{"deadline binding", validatesOneShotAndExactDeadlineBridgeBinding},
     TestCase{"deadline routing", routesLiveAndRetiredDeadlinePackets},
     TestCase{"auxiliary deadline routing", routesAndExactlyRetiresAuxiliaryDeadlineOwners},
+    TestCase{"routing progress binding", routingProgressObserverBindingIsOneShotAndPreShutdown},
+    TestCase{"routing progress revision", routingProgressRevisionPreventsLostWakeupsAndAllowsReentry},
+    TestCase{"routing progress serialization", routingProgressSerializesConcurrentAndReentrantReductions},
+    TestCase{"routing progress observer lifetime", routingProgressObserverExpiryFailsClosedOnce},
     TestCase{"auxiliary deadline tombstone", auxiliarySignalFirstRetirementDrainsATombstone},
+    TestCase{"malformed auxiliary tombstone", malformedRetiredTombstoneStillPublishesRoutingProgress},
     TestCase{"auxiliary deadline callback pin", auxiliaryRoutingPinsTheOwnerAcrossConcurrentUnregistration},
     TestCase{"auxiliary deadline capacity", auxiliaryCapacityAndShutdownStayFixedAndNonfatal},
     TestCase{"deadline routing lock order", deadlineRoutingSerializesLiveReapAndConcurrentRetirement},

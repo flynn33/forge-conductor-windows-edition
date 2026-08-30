@@ -121,6 +121,7 @@ DashboardConnectionRegistrySnapshot::DashboardConnectionRegistrySnapshot(
     const std::uint64_t retiredDeadlineDrainCount,
     const std::uint64_t removedConnectionCount,
     const std::uint64_t fatalNotificationCount,
+    const std::uint64_t routingProgressRevision,
     const bool deadlineRoutingInProgress,
     const bool shutdown,
     const bool fatal,
@@ -136,6 +137,7 @@ DashboardConnectionRegistrySnapshot::DashboardConnectionRegistrySnapshot(
       retiredDeadlineDrainCount_{retiredDeadlineDrainCount},
       removedConnectionCount_{removedConnectionCount},
       fatalNotificationCount_{fatalNotificationCount},
+      routingProgressRevision_{routingProgressRevision},
       deadlineRoutingInProgress_{deadlineRoutingInProgress},
       shutdown_{shutdown},
       fatal_{fatal},
@@ -506,6 +508,61 @@ DashboardConnectionRegistry::bindShutdownDrainObserver(
     }
 }
 
+Domain::Result<void>
+DashboardConnectionRegistry::bindRoutingProgressObserver(
+    std::weak_ptr<IDashboardConnectionRegistryRoutingProgressObserver>
+        observer) noexcept
+{
+    try {
+        auto pinned = observer.lock();
+        if (pinned == nullptr) {
+            auto error = registryError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The dashboard connection registry requires a live routing-progress observer.");
+            failRouting(Domain::Error{error});
+            return Domain::Result<void>::failure(std::move(error));
+        }
+
+        std::optional<Domain::Error> failure;
+        bool structuralFailure{};
+        {
+            const std::scoped_lock lock{mutex_};
+            if (shutdown_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The dashboard connection registry is closed to routing-progress observer binding."));
+            } else if (routingProgressObserverEverBound_) {
+                failure.emplace(registryError(
+                    Domain::ErrorCodes::Conflict,
+                    "The dashboard routing-progress observer is already bound."));
+                retainFatalFailureLocked(Domain::Error{*failure});
+                structuralFailure = true;
+            } else {
+                routingProgressObserver_ = std::move(observer);
+                routingProgressObserverEverBound_ = true;
+                routingProgressPendingRevision_ =
+                    routingProgressRevision_;
+                routingProgressDeliveredRevision_ =
+                    routingProgressRevision_;
+            }
+        }
+        pinned.reset();
+        if (structuralFailure) {
+            beginShutdown();
+        }
+        if (failure.has_value()) {
+            return Domain::Result<void>::failure(std::move(*failure));
+        }
+        return Domain::Result<void>::success();
+    } catch (...) {
+        auto error = registryError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard routing-progress observer could not be bound safely.");
+        failRouting(Domain::Error{error});
+        return Domain::Result<void>::failure(std::move(error));
+    }
+}
+
 Domain::Result<void> DashboardConnectionRegistry::registerConnection(
     std::shared_ptr<IDashboardConnectionDispatchTarget> target) noexcept
 {
@@ -837,6 +894,7 @@ bool DashboardConnectionRegistry::unregisterAuxiliaryDeadlineTarget(
     }
 
     std::shared_ptr<IDashboardAuxiliaryDeadlineTarget> removed;
+    bool dispatchRoutingProgress{};
     try {
         {
             const std::scoped_lock lock{mutex_};
@@ -854,8 +912,12 @@ bool DashboardConnectionRegistry::unregisterAuxiliaryDeadlineTarget(
             entry->deadlineOwnerLifecycle =
                 Entry::DeadlineOwnerLifecycle::Retired;
             --registeredAuxiliaryDeadlineTargetCount_;
+            dispatchRoutingProgress = advanceRoutingProgressLocked();
         }
         removed.reset();
+        if (dispatchRoutingProgress) {
+            this->dispatchRoutingProgress();
+        }
         return true;
     } catch (...) {
         return false;
@@ -954,6 +1016,7 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
         drainObserver;
     std::shared_ptr<IDashboardConnectionRegistryDrainObserver>
         shutdownDrainObserver;
+    bool dispatchRoutingProgress{};
     bool missingShutdownDrainObserver{};
     try {
         {
@@ -977,6 +1040,7 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
                 Entry::DeadlineOwnerLifecycle::Retired;
             --registeredConnectionCount_;
             incrementSaturating(removedConnectionCount_);
+            dispatchRoutingProgress = advanceRoutingProgressLocked();
             const bool generationStillRegistered = std::any_of(
                 entries_.begin(),
                 entries_.end(),
@@ -987,7 +1051,11 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
             if (!generationStillRegistered) {
                 drainObserver = generationDrainObserver_.lock();
             }
-            if (gracefulShutdownCallbacksStarted_ &&
+            const bool shutdownDrainRequired =
+                shutdownDrainObserverEverBound_ &&
+                (gracefulShutdownCallbacksStarted_ ||
+                 shutdownCallbacksStarted_);
+            if (shutdownDrainRequired &&
                 registeredConnectionCount_ == 0U &&
                 !shutdownDrainNotificationSent_) {
                 shutdownDrainObserver = shutdownDrainObserver_.lock();
@@ -1005,6 +1073,9 @@ bool DashboardConnectionRegistry::removeIfDrainedIdentity(
             shutdownDrainObserver->registryConnectionsMayHaveDrained();
         } else if (missingShutdownDrainObserver) {
             failMissingShutdownDrainObserver();
+        }
+        if (dispatchRoutingProgress) {
+            this->dispatchRoutingProgress();
         }
         return true;
     } catch (...) {
@@ -1201,15 +1272,23 @@ void DashboardConnectionRegistry::consume(
             std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>
                 auxiliaryTarget;
             bool retiredNotification{};
+            bool retiredRoutingOwnershipReduced{};
             {
                 const std::scoped_lock routingLock{deadlineRoutingMutex_};
                 const DeadlineRoutingProgressGuard routingProgress{
                     deadlineRoutingInProgress_};
+                const auto bridgeBeforeReap = bridge->snapshot();
                 auto reaped = bridge->reap(
                     packet.completionKey,
                     packet.transferredBytes,
                     packet.operation,
                     nativeError);
+                const auto bridgeAfterReap = bridge->snapshot();
+                retiredRoutingOwnershipReduced =
+                    bridgeAfterReap.retiredAwaitingReapCount() <
+                        bridgeBeforeReap.retiredAwaitingReapCount() ||
+                    bridgeAfterReap.drainedRetiredCount() >
+                        bridgeBeforeReap.drainedRetiredCount();
                 if (!reaped) {
                     routingFailure.emplace(std::move(reaped).error());
                 } else {
@@ -1218,6 +1297,9 @@ void DashboardConnectionRegistry::consume(
                         deadlineResult.disposition() ==
                         DashboardDeadlineIocpReapDisposition::
                             RetiredNotificationDrained;
+                    retiredRoutingOwnershipReduced =
+                        retiredRoutingOwnershipReduced ||
+                        retiredNotification;
                     if (!retiredNotification) {
                         const auto* const delivered =
                             deadlineResult.deadline();
@@ -1253,13 +1335,28 @@ void DashboardConnectionRegistry::consume(
                 }
             }
 
-            if (routingFailure.has_value()) {
-                failRouting(std::move(*routingFailure));
+            const bool routingFailed = routingFailure.has_value();
+            bool dispatchRoutingProgress{};
+            if (routingFailed || retiredRoutingOwnershipReduced) {
+                const std::scoped_lock lock{mutex_};
+                if (routingFailed) {
+                    retainFatalFailureLocked(
+                        std::move(*routingFailure));
+                }
+                if (retiredRoutingOwnershipReduced) {
+                    incrementSaturating(retiredDeadlineDrainCount_);
+                    dispatchRoutingProgress =
+                        advanceRoutingProgressLocked();
+                }
+            }
+            if (dispatchRoutingProgress) {
+                this->dispatchRoutingProgress();
+            }
+            if (routingFailed) {
+                beginShutdown();
                 return;
             }
             if (retiredNotification) {
-                const std::scoped_lock lock{mutex_};
-                incrementSaturating(retiredDeadlineDrainCount_);
                 return;
             }
             if (connectionTarget == nullptr &&
@@ -1419,6 +1516,75 @@ void DashboardConnectionRegistry::failMissingShutdownDrainObserver()
     failFast_->failFast();
 }
 
+void DashboardConnectionRegistry::failMissingRoutingProgressObserver()
+    noexcept
+{
+    failRouting(registryError(
+        Domain::ErrorCodes::IntegrityFailure,
+        "The dashboard routing-progress observer was not retained through an exact routing-ownership reduction."));
+    failFast_->failFast();
+}
+
+bool
+DashboardConnectionRegistry::advanceRoutingProgressLocked() noexcept
+{
+    incrementSaturating(routingProgressRevision_);
+    routingProgressPendingRevision_ = routingProgressRevision_;
+    if (routingProgressObserverEverBound_ &&
+        !routingProgressObserverFailureReported_ &&
+        !routingProgressDispatchInProgress_ &&
+        routingProgressPendingRevision_ >
+            routingProgressDeliveredRevision_) {
+        routingProgressDispatchInProgress_ = true;
+        return true;
+    }
+    return false;
+}
+
+void DashboardConnectionRegistry::dispatchRoutingProgress() noexcept
+{
+    try {
+        for (;;) {
+            std::shared_ptr<
+                IDashboardConnectionRegistryRoutingProgressObserver>
+                observer;
+            std::uint64_t revision{};
+            bool missingRequiredObserver{};
+            {
+                const std::scoped_lock lock{mutex_};
+                if (!routingProgressDispatchInProgress_) {
+                    return;
+                }
+                if (routingProgressObserverFailureReported_ ||
+                    routingProgressDeliveredRevision_ >=
+                        routingProgressPendingRevision_) {
+                    routingProgressDispatchInProgress_ = false;
+                    return;
+                }
+
+                observer = routingProgressObserver_.lock();
+                if (observer == nullptr) {
+                    routingProgressObserverFailureReported_ = true;
+                    routingProgressDispatchInProgress_ = false;
+                    missingRequiredObserver = true;
+                } else {
+                    revision = routingProgressPendingRevision_;
+                    routingProgressDeliveredRevision_ = revision;
+                }
+            }
+
+            if (missingRequiredObserver) {
+                failMissingRoutingProgressObserver();
+                return;
+            }
+            observer->registryRoutingMayHaveProgressed(revision);
+            observer.reset();
+        }
+    } catch (...) {
+        std::terminate();
+    }
+}
+
 DashboardConnectionRegistrySnapshot
 DashboardConnectionRegistry::snapshotLocked() const noexcept
 {
@@ -1433,6 +1599,7 @@ DashboardConnectionRegistry::snapshotLocked() const noexcept
         retiredDeadlineDrainCount_,
         removedConnectionCount_,
         fatalNotificationCount_,
+        routingProgressRevision_,
         deadlineRoutingInProgress_.load(std::memory_order_acquire),
         shutdown_,
         fatal_,
@@ -1452,6 +1619,7 @@ DashboardConnectionRegistrySnapshot DashboardConnectionRegistry::snapshot()
             0U,
             deadlineCompletionKey_,
             false,
+            0U,
             0U,
             0U,
             0U,
@@ -1497,6 +1665,7 @@ void DashboardConnectionRegistry::beginGracefulShutdown() noexcept
                 targets[index] = entries_[index].target;
             }
             if (registeredConnectionCount_ == 0U &&
+                shutdownDrainObserverEverBound_ &&
                 !shutdownDrainNotificationSent_) {
                 shutdownDrainObserver = shutdownDrainObserver_.lock();
                 shutdownDrainNotificationSent_ = true;
@@ -1541,6 +1710,9 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
         std::shared_ptr<IDashboardAuxiliaryDeadlineTarget>,
         MaximumAuxiliaryDeadlineTargetCount>
         auxiliaryTargets;
+    std::shared_ptr<IDashboardConnectionRegistryDrainObserver>
+        shutdownDrainObserver;
+    bool missingShutdownDrainObserver{};
     try {
         const std::lock_guard fanoutLock{shutdownFanoutMutex_};
         {
@@ -1558,6 +1730,14 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
                  ++index) {
                 auxiliaryTargets[index] =
                     auxiliaryDeadlineEntries_[index].target;
+            }
+            if (registeredConnectionCount_ == 0U &&
+                shutdownDrainObserverEverBound_ &&
+                !shutdownDrainNotificationSent_) {
+                shutdownDrainObserver = shutdownDrainObserver_.lock();
+                shutdownDrainNotificationSent_ = true;
+                missingShutdownDrainObserver =
+                    shutdownDrainObserver == nullptr;
             }
         }
 
@@ -1580,6 +1760,11 @@ void DashboardConnectionRegistry::beginShutdown() noexcept
                     target));
                 static_cast<void>(removeIfDrained(target));
             }
+        }
+        if (shutdownDrainObserver != nullptr) {
+            shutdownDrainObserver->registryConnectionsMayHaveDrained();
+        } else if (missingShutdownDrainObserver) {
+            failMissingShutdownDrainObserver();
         }
     } catch (...) {
         std::terminate();

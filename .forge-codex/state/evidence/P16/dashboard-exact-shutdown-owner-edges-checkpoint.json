@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "dashboard-exact-shutdown-owner-edges",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake Visual Studio 17 2022 generator using Visual Studio 2022 Build Tools 17 with MSVC 19.44.35223 from VC Tools 14.44.35207 and Windows SDK 10.0.26100.0; CMake 4.4.2; C++20 Debug with /W4 /WX /permissive-; CTest Debug.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T023709223Z-22f71e19.json",
+    "command_record_sha256": "71d808706beb90f00109826048a8d040f5a08e859501f911fdc0448a0dc24676",
+    "exit_code": 0,
+    "timed_out": false,
+    "targets": [
+      "ForgeConductor.Dashboard.HandlerExecutorTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests",
+      "ForgeConductor.Dashboard.OverloadResponderSetTests"
+    ],
+    "configuration": "Debug",
+    "stdout": ".forge-codex/state/commands/20260830T023709223Z-22f71e19.stdout.txt",
+    "stdout_sha256": "0f8629748f8cd72a79f5a67e74e041e0ded75e660c567ec93962c77a6d2376ac",
+    "stderr": ".forge-codex/state/commands/20260830T023709223Z-22f71e19.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T023730098Z-0debfb0a.json",
+    "command_record_sha256": "54dbecf277fbcfe8902ad405f556b87aad070e61e2f7ac7df39c105ced9af009",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 3,
+    "tests_failed": 0,
+    "real_seconds": 2.50,
+    "tests": [
+      "ForgeConductor.Dashboard.OverloadResponderSetTests",
+      "ForgeConductor.Dashboard.ConnectionRegistryTests",
+      "ForgeConductor.Dashboard.HandlerExecutorTests"
+    ],
+    "stdout": ".forge-codex/state/commands/20260830T023730098Z-0debfb0a.stdout.txt",
+    "stdout_sha256": "4b3ede19a68b4740fc4a82ad96455f207f02fe0687e4c72831dacfedb8d16f82",
+    "stderr": ".forge-codex/state/commands/20260830T023730098Z-0debfb0a.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "invariant_audit": {
+    "corrections": [
+      "Executor drainage is externally published only after all four literal worker handles are joined and every task and reservation settles; worker-context destruction has a safe no-edge fallback.",
+      "Registry routing ownership reductions publish monotonic, coalescing revisions outside registry and deadline-routing locks, including malformed retired-tombstone reductions after fatal state is visible.",
+      "Overload drainage waits for detached handoff settlement, source-owner publication, terminal pending and generation publication, no live native slot, and no shared deadline.",
+      "Managed source and process observer expiration records structural failure atomically before any readiness snapshot can become true."
+    ],
+    "independent_review_status": "Independent executor, registry, overload, and combined integration reviews found worker self-join, observer-cycle, callback-order, fatal-publication, tombstone-wake, and missing-observer readiness races in successive revisions. Each finding received deterministic regression coverage. The final combined rereview reported no remaining actionable integration issue in the scoped slice."
+  },
+  "behavior_proved": [
+    "external handler-executor shutdown joins every worker before its one reentrant-safe exact drain edge",
+    "worker-context process-observed shutdown defers join authority, while invalid bound self-release settles handles without falsely publishing exact drainage",
+    "queued, active, reservation-last, concurrent-last-owner, and outer-owner lifetime cases preserve exact executor accounting",
+    "registry connection, auxiliary, and retired-tombstone reductions advance one canonical routing revision without callback-under-lock or lost wake",
+    "concurrent and reentrant registry reductions serialize through a capacity-one latest-revision dispatcher",
+    "malformed retired tombstone reap exposes fatal state before its routing-progress callback can re-enter finalization",
+    "overload process drainage waits for ordinary or terminal source publication, terminal generation callbacks, detached settlement, native reap, and deadline removal",
+    "managed source expiry, process observer expiry, and fatal-vs-ordinary races fail closed before a snapshot can report drainage"
+  ],
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-017-exact-dashboard-shutdown-owner-edges.md": "ce84c470cbd2462af21302f15060c21e39a413ea702fb5f85cd077db90cd87fa",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsDashboardHandlerExecutor.h": "fa69925b894a9618ddad325213cae7520399749eae2dd42f6e9cb1d751826eb4",
+    "src/Infrastructure/Windows/WindowsDashboardHandlerExecutor.cpp": "82233de41df772ef98abf88c0c59bb4c984ab2c604495a662ab1241d0b8786ca",
+    "tests/Dashboard/WindowsDashboardHandlerExecutorTests.cpp": "3d5fc14609ddbc2946718bf8e13a995f0e04e197e599d575f697e9e648c69a7e",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.h": "0e1f5d3d7dfef0a0ca54309caf751c17c4364f11e886121e11b6f99e5de66121",
+    "src/Infrastructure/Windows/Detail/DashboardConnectionRegistry.cpp": "471bafeda30385222ea0a057d5e9c702f7655af8098b884668828c6635ae1e40",
+    "tests/Dashboard/DashboardConnectionRegistryTests.cpp": "eebc6ccf9b54403870e1c878d90493904335d070d9cbef616c634106bd081640",
+    "src/Infrastructure/Windows/Detail/DashboardOverloadResponderSet.h": "cbfa572292b5eec4f53bcc26e1d37b104d924ad72d13d6be01197c3820e7b72f",
+    "src/Infrastructure/Windows/Detail/DashboardOverloadResponderSet.cpp": "9d7a5416f921be67c4896edbf9558ba02377aa8949626387ae5cfc09fc43e0d5",
+    "tests/Dashboard/DashboardOverloadResponderSetTests.cpp": "22e88eee6531702ec85270737d2103673e02728bfe3b37f05d05d7f00ef188ce"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Dashboard.HandlerExecutorTests.exe": "31d3588122b407d2dc0005fd12422db891ab9765434eb3a10fde29aafaeaad80f",
+    "ForgeConductor.Dashboard.ConnectionRegistryTests.exe": "d600a07a29ad54311f2d11b866fc5af68682234217d05c6e1e8d882a6e0ea2e9",
+    "ForgeConductor.Dashboard.OverloadResponderSetTests.exe": "45f48404e291640f8cd93229c4439af0d0d23acef389117d995ac4748efd9357"
+  },
+  "remaining_limitations": [
+    "The concrete process-owned five-second DashboardShutdownDrain and its hard-escalation driver remain unimplemented.",
+    "Final shutdown-deadline retirement plus fixed router, deadline scheduler, deadline bridge, IOCP kernel, and worker teardown ordering remain unimplemented.",
+    "The static frontend shell and retained UI automation remain pending.",
+    "P16-C watchdog, recovery, and startup registration remain unimplemented.",
+    "No feature-parity row was passed by this focused checkpoint.",
+    "P16 remains in progress and the one authoritative G16 invocation has not been run."
+  ]
+}

@@ -334,6 +334,7 @@ DashboardOverloadResponderSnapshot::DashboardOverloadResponderSnapshot(
     const std::size_t associatingCount,
     const std::size_t sendingCount,
     const std::size_t cancellationRequestedCount,
+    const std::size_t settlingCount,
     const std::size_t maximumCount,
     const std::uint64_t deliveredCount,
     const std::uint64_t abandonedCount,
@@ -342,11 +343,19 @@ DashboardOverloadResponderSnapshot::DashboardOverloadResponderSnapshot(
     const std::uint64_t staleDeadlineCount,
     const std::uint64_t failFastCount,
     const bool shutdownRequested,
+    const bool ordinaryShutdownSequenceCompleted,
+    const bool terminalOwnerNotificationRequired,
+    const bool terminalOwnerNotificationDelivered,
+    const bool managedSourcePublicationFailed,
+    const bool processDrainPublicationFailed,
+    const bool shutdownTransitionInProgress,
+    const bool terminalGenerationPublicationsCompleted,
     std::optional<DashboardOverloadResponderFailure>
         lifecycleFailure) noexcept
     : associatingCount_{associatingCount},
       sendingCount_{sendingCount},
       cancellationRequestedCount_{cancellationRequestedCount},
+      settlingCount_{settlingCount},
       maximumCount_{maximumCount},
       deliveredCount_{deliveredCount},
       abandonedCount_{abandonedCount},
@@ -355,6 +364,17 @@ DashboardOverloadResponderSnapshot::DashboardOverloadResponderSnapshot(
       staleDeadlineCount_{staleDeadlineCount},
       failFastCount_{failFastCount},
       shutdownRequested_{shutdownRequested},
+      ordinaryShutdownSequenceCompleted_{
+          ordinaryShutdownSequenceCompleted},
+      terminalOwnerNotificationRequired_{
+          terminalOwnerNotificationRequired},
+      terminalOwnerNotificationDelivered_{
+          terminalOwnerNotificationDelivered},
+      managedSourcePublicationFailed_{managedSourcePublicationFailed},
+      processDrainPublicationFailed_{processDrainPublicationFailed},
+      shutdownTransitionInProgress_{shutdownTransitionInProgress},
+      terminalGenerationPublicationsCompleted_{
+          terminalGenerationPublicationsCompleted},
       lifecycleFailure_{std::move(lifecycleFailure)}
 {
 }
@@ -453,6 +473,45 @@ Domain::Result<void> DashboardOverloadResponderSet::bindDrainObserver(
         return Domain::Result<void>::failure(overloadError(
             Domain::ErrorCodes::InternalFailure,
             "The dashboard overload drain observer could not be bound safely."));
+    }
+}
+
+Domain::Result<void>
+DashboardOverloadResponderSet::bindProcessDrainObserver(
+    std::weak_ptr<IDashboardOverloadResponderSetDrainObserver> observer)
+    noexcept
+{
+    try {
+        auto pinned = observer.lock();
+        if (pinned == nullptr) {
+            return Domain::Result<void>::failure(overloadError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The dashboard overload responder requires a live process drain observer."));
+        }
+
+        const std::scoped_lock lock{mutex_};
+        if (shutdownRequested_) {
+            return Domain::Result<void>::failure(overloadError(
+                Domain::ErrorCodes::TransportClosed,
+                "The dashboard overload responder is closed to process drain observer binding."));
+        }
+        if (processDrainObserverEverBound_) {
+            return Domain::Result<void>::failure(overloadError(
+                Domain::ErrorCodes::Conflict,
+                "The dashboard overload process drain observer is already bound."));
+        }
+        if (!drainObserverEverBound_ || drainObserver_.expired()) {
+            return Domain::Result<void>::failure(overloadError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The dashboard overload process drain observer requires a live source drain observer to be bound first."));
+        }
+        processDrainObserver_ = std::move(observer);
+        processDrainObserverEverBound_ = true;
+        return Domain::Result<void>::success();
+    } catch (...) {
+        return Domain::Result<void>::failure(overloadError(
+            Domain::ErrorCodes::InternalFailure,
+            "The dashboard overload process drain observer could not be bound safely."));
     }
 }
 
@@ -645,7 +704,11 @@ DashboardOverloadResponderSet::detachLocked(
     const std::size_t index) noexcept
 {
     auto& slot = slots_[index];
-    DetachedWork detached{std::move(slot.work)};
+    const bool tracksSettlement = slot.work.has_value();
+    if (tracksSettlement) {
+        ++settlingWorkCount_;
+    }
+    DetachedWork detached{std::move(slot.work), tracksSettlement};
     slot.work.reset();
     resetOperationLocked(index);
     slot.sendOffset = 0U;
@@ -747,8 +810,10 @@ DashboardOverloadResponderSet::finishDetached(
     const bool closeOriginAdmission) noexcept
 {
     if (!detached.work.has_value()) {
-        return integrityError(
+        auto failure = integrityError(
             "A dashboard overload responder lost its owned handoff work.");
+        settleDetachedWork(detached);
+        return failure;
     }
 
     const auto generationId = detached.work->originGenerationId();
@@ -789,19 +854,134 @@ DashboardOverloadResponderSet::finishDetached(
     if (terminalNotificationDelivered) {
         notifyGenerationMayHaveDrained(generationId);
     }
+    settleDetachedWork(detached);
     return firstFailure;
+}
+
+void DashboardOverloadResponderSet::settleDetachedWork(
+    DetachedWork& detached) noexcept
+{
+    if (!detached.tracksSettlement) {
+        return;
+    }
+    {
+        const std::scoped_lock lock{mutex_};
+        if (settlingWorkCount_ == 0U) {
+            retainFailureLocked(integrityError(
+                "The dashboard overload responder observed an unbalanced detached-work settlement."));
+        } else {
+            --settlingWorkCount_;
+        }
+        detached.tracksSettlement = false;
+    }
+    notifyProcessDrainObserverIfReady();
+}
+
+bool DashboardOverloadResponderSet::
+terminalGenerationPublicationsCompletedLocked() const noexcept
+{
+    for (std::size_t index{}; index < terminalGenerationCount_; ++index) {
+        if (terminalGenerationPendingNotificationLifecycles_[index] !=
+                TerminalGenerationPendingNotificationLifecycle::Delivered ||
+            terminalGenerationNotificationLifecycles_[index] !=
+                TerminalGenerationNotificationLifecycle::Delivered) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool DashboardOverloadResponderSet::processDrainReadyLocked(
+    const bool deadlineArmed) const noexcept
+{
+    const bool terminalOwnerNotificationRequired =
+        terminalOwnerNotificationLifecycle_ !=
+        TerminalOwnerNotificationLifecycle::None;
+    const bool sourcePublicationCompleted =
+        terminalOwnerNotificationRequired
+        ? terminalOwnerNotificationLifecycle_ ==
+            TerminalOwnerNotificationLifecycle::Delivered
+        : ordinaryShutdownSequenceCompleted_;
+    if (!sourcePublicationCompleted ||
+        managedSourceDrainObserverFailureReported_ ||
+        processDrainObserverPublicationFailed_ ||
+        shutdownTransitionInProgress_ || settlingWorkCount_ != 0U ||
+        deadlineArmed) {
+        return false;
+    }
+    if (!terminalGenerationPublicationsCompletedLocked()) {
+        return false;
+    }
+    for (const auto& slot : slots_) {
+        if (slot.lifecycle != SlotLifecycle::Empty ||
+            slot.work.has_value()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void DashboardOverloadResponderSet::notifyProcessDrainObserverIfReady()
+    noexcept
+{
+    std::shared_ptr<IDashboardOverloadResponderSetDrainObserver> observer;
+    bool failFastRequired{};
+    {
+        const std::scoped_lock deadlineLock{deadlineMutex_};
+        const std::scoped_lock lock{mutex_};
+        if (processDrainNotificationSent_ ||
+            !processDrainObserverEverBound_ ||
+            !processDrainReadyLocked(currentDeadline_.has_value())) {
+            return;
+        }
+        observer = processDrainObserver_.lock();
+        processDrainNotificationSent_ = true;
+        if (observer == nullptr) {
+            processDrainObserverPublicationFailed_ = true;
+            retainFailureLocked(integrityError(
+                "The dashboard overload process drain observer was not retained through the exact drain edge."));
+            incrementSaturated(failFastCount_);
+            failFastRequired = true;
+        }
+    }
+    if (observer != nullptr) {
+        observer->overloadRespondersMayHaveDrained();
+    } else if (failFastRequired) {
+        failFast_->failFast();
+    }
+}
+
+bool DashboardOverloadResponderSet::
+recordMissingManagedSourceDrainObserverLocked() noexcept
+{
+    if (!processDrainObserverEverBound_ ||
+        managedSourceDrainObserverFailureReported_) {
+        return false;
+    }
+    managedSourceDrainObserverFailureReported_ = true;
+    retainFailureLocked(integrityError(
+        "The managed dashboard overload source drain observer was not retained through its shutdown publication edge."));
+    incrementSaturated(failFastCount_);
+    return true;
 }
 
 void DashboardOverloadResponderSet::notifyGenerationMayHaveDrained(
     const std::uint64_t generationId) noexcept
 {
     std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
+    bool failFastRequired{};
     {
         const std::scoped_lock lock{mutex_};
         observer = drainObserver_.lock();
+        if (observer == nullptr) {
+            failFastRequired =
+                recordMissingManagedSourceDrainObserverLocked();
+        }
     }
     if (observer != nullptr) {
         observer->overloadGenerationMayHaveDrained(generationId);
+    } else if (failFastRequired) {
+        failFast_->failFast();
     }
 }
 
@@ -809,12 +989,19 @@ void DashboardOverloadResponderSet::notifyGenerationCompletionPending(
     const std::uint64_t generationId) noexcept
 {
     std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
+    bool failFastRequired{};
     {
         const std::scoped_lock lock{mutex_};
         observer = drainObserver_.lock();
+        if (observer == nullptr) {
+            failFastRequired =
+                recordMissingManagedSourceDrainObserverLocked();
+        }
     }
     if (observer != nullptr) {
         observer->overloadGenerationCompletionPending(generationId);
+    } else if (failFastRequired) {
+        failFast_->failFast();
     }
 }
 
@@ -822,12 +1009,19 @@ void DashboardOverloadResponderSet::notifyGenerationCompletionSettled(
     const std::uint64_t generationId) noexcept
 {
     std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
+    bool failFastRequired{};
     {
         const std::scoped_lock lock{mutex_};
         observer = drainObserver_.lock();
+        if (observer == nullptr) {
+            failFastRequired =
+                recordMissingManagedSourceDrainObserverLocked();
+        }
     }
     if (observer != nullptr) {
         observer->overloadGenerationCompletionSettled(generationId);
+    } else if (failFastRequired) {
+        failFast_->failFast();
     }
 }
 
@@ -851,8 +1045,9 @@ void DashboardOverloadResponderSet::rememberTerminalGenerationLocked(
     terminalGenerationIds_[terminalGenerationCount_] = generationId;
     terminalGenerationNotificationLifecycles_[terminalGenerationCount_] =
         TerminalGenerationNotificationLifecycle::Pending;
-    terminalGenerationPendingLatchDelivered_[terminalGenerationCount_] =
-        false;
+    terminalGenerationPendingNotificationLifecycles_[
+        terminalGenerationCount_] =
+        TerminalGenerationPendingNotificationLifecycle::Pending;
     ++terminalGenerationCount_;
 }
 
@@ -896,32 +1091,54 @@ notifyPendingTerminalGenerationLatches() noexcept
         std::optional<std::size_t> pendingIndex;
         std::uint64_t generationId{};
         std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
+        bool failFastRequired{};
         {
             const std::scoped_lock lock{mutex_};
-            observer = drainObserver_.lock();
-            if (observer == nullptr) {
-                return;
-            }
             for (std::size_t index{}; index < terminalGenerationCount_;
                  ++index) {
-                if (!terminalGenerationPendingLatchDelivered_[index]) {
-                    terminalGenerationPendingLatchDelivered_[index] = true;
+                if (terminalGenerationPendingNotificationLifecycles_[index] ==
+                    TerminalGenerationPendingNotificationLifecycle::Pending) {
                     pendingIndex.emplace(index);
                     generationId = terminalGenerationIds_[index];
                     break;
+                }
+            }
+            if (pendingIndex.has_value()) {
+                observer = drainObserver_.lock();
+                if (observer == nullptr) {
+                    failFastRequired =
+                        recordMissingManagedSourceDrainObserverLocked();
+                } else {
+                    terminalGenerationPendingNotificationLifecycles_[
+                        *pendingIndex] =
+                        TerminalGenerationPendingNotificationLifecycle::
+                            Delivering;
                 }
             }
         }
         if (!pendingIndex.has_value()) {
             return;
         }
+        if (observer == nullptr) {
+            if (failFastRequired) {
+                failFast_->failFast();
+            }
+            return;
+        }
         observer->overloadGenerationTerminalPending(generationId);
+        {
+            const std::scoped_lock lock{mutex_};
+            terminalGenerationPendingNotificationLifecycles_[
+                *pendingIndex] =
+                TerminalGenerationPendingNotificationLifecycle::Delivered;
+        }
     }
 }
 
 void DashboardOverloadResponderSet::notifyPendingTerminalOwner() noexcept
 {
     std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
+    bool missingManagedSourceObserver{};
     {
         const std::scoped_lock lock{mutex_};
         if (terminalOwnerNotificationLifecycle_ !=
@@ -930,10 +1147,19 @@ void DashboardOverloadResponderSet::notifyPendingTerminalOwner() noexcept
         }
         observer = drainObserver_.lock();
         if (observer == nullptr) {
-            return;
+            missingManagedSourceObserver =
+                recordMissingManagedSourceDrainObserverLocked();
+        } else {
+            terminalOwnerNotificationLifecycle_ =
+                TerminalOwnerNotificationLifecycle::Delivering;
         }
-        terminalOwnerNotificationLifecycle_ =
-            TerminalOwnerNotificationLifecycle::Delivering;
+    }
+    if (missingManagedSourceObserver) {
+        failFast_->failFast();
+        return;
+    }
+    if (observer == nullptr) {
+        return;
     }
     observer->overloadOwnerBecameTerminal();
     {
@@ -952,46 +1178,66 @@ void DashboardOverloadResponderSet::notifyPendingTerminalGenerations()
         std::optional<std::size_t> pendingIndex;
         std::uint64_t generationId{};
         std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
+        bool failFastRequired{};
         {
             const std::scoped_lock lock{mutex_};
-            observer = drainObserver_.lock();
-            if (observer == nullptr) {
-                return;
-            }
             for (std::size_t index{}; index < terminalGenerationCount_;
                  ++index) {
                 if (terminalGenerationNotificationLifecycles_[index] ==
-                    TerminalGenerationNotificationLifecycle::Pending) {
-                    terminalGenerationNotificationLifecycles_[index] =
-                        TerminalGenerationNotificationLifecycle::Delivering;
+                        TerminalGenerationNotificationLifecycle::Pending &&
+                    terminalGenerationPendingNotificationLifecycles_[index] ==
+                        TerminalGenerationPendingNotificationLifecycle::
+                            Delivered) {
                     pendingIndex.emplace(index);
                     generationId = terminalGenerationIds_[index];
                     break;
                 }
             }
+            if (pendingIndex.has_value()) {
+                observer = drainObserver_.lock();
+                if (observer == nullptr) {
+                    failFastRequired =
+                        recordMissingManagedSourceDrainObserverLocked();
+                } else {
+                    terminalGenerationNotificationLifecycles_[
+                        *pendingIndex] =
+                        TerminalGenerationNotificationLifecycle::Delivering;
+                }
+            }
         }
 
         if (!pendingIndex.has_value()) {
+            notifyProcessDrainObserverIfReady();
+            return;
+        }
+        if (observer == nullptr) {
+            if (failFastRequired) {
+                failFast_->failFast();
+            }
             return;
         }
         observer->overloadGenerationBecameTerminal(generationId);
+        // The terminal observer has now pinned and failed closed the exact
+        // generation. Re-check ownership only after that causal edge; a
+        // concurrent token return suppressed its earlier ordinary drain edge.
+        notifyGenerationMayHaveDrained(generationId);
         {
             const std::scoped_lock lock{mutex_};
             terminalGenerationNotificationLifecycles_[*pendingIndex] =
                 TerminalGenerationNotificationLifecycle::Delivered;
         }
-        // The terminal observer has now pinned and failed closed the exact
-        // generation. Re-check ownership only after that causal edge; a
-        // concurrent token return suppressed its earlier ordinary drain edge.
-        notifyGenerationMayHaveDrained(generationId);
     }
 }
 
 void DashboardOverloadResponderSet::beginTerminalShutdown(
-    const std::optional<std::uint64_t> generationId) noexcept
+    const std::optional<std::uint64_t> generationId,
+    std::optional<Domain::Error> failure) noexcept
 {
     {
         const std::scoped_lock lock{mutex_};
+        if (failure.has_value()) {
+            retainFailureLocked(std::move(*failure));
+        }
         if (generationId.has_value()) {
             rememberTerminalGenerationLocked(*generationId);
         }
@@ -1221,6 +1467,8 @@ DashboardOverloadResponderSet::admit(
             slot.closeOriginAdmissionRequested = false;
             slot.nativeCancellationFailure = false;
             slot.lifecycle = SlotLifecycle::Associating;
+        } else {
+            ++settlingWorkCount_;
         }
     }
 
@@ -1230,7 +1478,8 @@ DashboardOverloadResponderSet::admit(
         }
         DetachedWork detached{
             std::optional<DashboardAdmissionOverloadWork>{
-                std::in_place, std::move(work)}};
+                std::in_place, std::move(work)},
+            true};
         auto finishFailure = finishDetached(
             std::move(detached), closedDuringShutdown);
         {
@@ -1239,8 +1488,8 @@ DashboardOverloadResponderSet::admit(
         }
         if (finishFailure.has_value()) {
             auto error = std::move(*finishFailure);
-            retainFailure(copyForRetention(error));
-            beginTerminalShutdown(originGenerationId);
+            beginTerminalShutdown(
+                originGenerationId, copyForRetention(error));
             return Domain::Result<
                 DashboardOverloadAdmissionDisposition>::failure(
                 std::move(error));
@@ -1286,14 +1535,15 @@ DashboardOverloadResponderSet::admit(
         notifyPendingTerminalGenerationLatches();
         refreshDeadline();
         if (!cancellationRequested) {
-            retainFailure(copyForRetention(error));
-            beginTerminalShutdown(originGenerationId);
+            beginTerminalShutdown(
+                originGenerationId, copyForRetention(error));
         }
         auto finishFailure = finishDetached(
             std::move(detached), closeOriginAdmission);
         if (finishFailure.has_value()) {
-            retainFailure(copyForRetention(*finishFailure));
-            beginTerminalShutdown(originGenerationId);
+            beginTerminalShutdown(
+                originGenerationId,
+                copyForRetention(*finishFailure));
         }
         if (cancellationRequested && !finishFailure.has_value()) {
             return Domain::Result<
@@ -1350,8 +1600,8 @@ DashboardOverloadResponderSet::admit(
     const bool terminalIssue = issueFailure.has_value() &&
         !isExpectedAbandonment(*issueFailure);
     if (terminalIssue) {
-        retainFailure(copyForRetention(*issueFailure));
-        beginTerminalShutdown(originGenerationId);
+        beginTerminalShutdown(
+            originGenerationId, copyForRetention(*issueFailure));
         finishForShutdown = true;
         closeOriginAdmission = true;
     }
@@ -1359,8 +1609,8 @@ DashboardOverloadResponderSet::admit(
         std::move(detached), closeOriginAdmission);
     if (finishFailure.has_value()) {
         auto error = std::move(*finishFailure);
-        retainFailure(copyForRetention(error));
-        beginTerminalShutdown(originGenerationId);
+        beginTerminalShutdown(
+            originGenerationId, copyForRetention(error));
         return Domain::Result<
             DashboardOverloadAdmissionDisposition>::failure(
             std::move(error));
@@ -1420,10 +1670,11 @@ std::size_t DashboardOverloadResponderSet::cancelGeneration(
         refreshDeadline();
         return cancelled;
     } catch (...) {
-        retainFailure(overloadError(
-            Domain::ErrorCodes::InternalFailure,
-            "The dashboard overload generation could not be cancelled safely."));
-        beginTerminalShutdown(generationId);
+        beginTerminalShutdown(
+            generationId,
+            overloadError(
+                Domain::ErrorCodes::InternalFailure,
+                "The dashboard overload generation could not be cancelled safely."));
         return 0U;
     }
 }
@@ -1545,8 +1796,9 @@ DashboardOverloadResponderSet::reap(
     }
 
     if (terminalFailure.has_value()) {
-        retainFailure(copyForRetention(*terminalFailure));
-        beginTerminalShutdown(detachedGenerationId);
+        beginTerminalShutdown(
+            detachedGenerationId,
+            copyForRetention(*terminalFailure));
         closeOriginAdmission = true;
     } else if (detached.has_value()) {
         refreshDeadline();
@@ -1556,8 +1808,8 @@ DashboardOverloadResponderSet::reap(
             std::move(*detached), closeOriginAdmission);
         if (finishFailure.has_value()) {
             auto error = std::move(*finishFailure);
-            retainFailure(copyForRetention(error));
-            beginTerminalShutdown(detachedGenerationId);
+            beginTerminalShutdown(
+                detachedGenerationId, copyForRetention(error));
             return Domain::Result<
                 DashboardOverloadReapDisposition>::failure(
                 std::move(error));
@@ -1590,34 +1842,63 @@ void DashboardOverloadResponderSet::consume(
 void DashboardOverloadResponderSet::fatal(
     const DWORD nativeError) noexcept
 {
-    retainFailure(fatalIocpError(nativeError));
-    beginTerminalShutdown(std::nullopt);
+    beginTerminalShutdown(
+        std::nullopt, fatalIocpError(nativeError));
     notifyPendingTerminalGenerations();
 }
 
 void DashboardOverloadResponderSet::beginShutdown() noexcept
 {
-    const std::scoped_lock shutdownTransitionLock{
-        shutdownTransitionMutex_};
-    std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
-    bool publishShutdown{};
+    bool missingManagedSourceObserver{};
     {
-        const std::scoped_lock lock{mutex_};
-        publishShutdown = !shutdownRequested_;
-        shutdownRequested_ = true;
-        if (publishShutdown) {
-            observer = drainObserver_.lock();
+        const std::scoped_lock shutdownTransitionLock{
+            shutdownTransitionMutex_};
+        std::shared_ptr<IDashboardAdmissionOverloadDrainObserver> observer;
+        bool publishShutdown{};
+        bool completeOrdinaryShutdownSequence{};
+        {
+            const std::scoped_lock lock{mutex_};
+            shutdownTransitionInProgress_ = true;
+            completeOrdinaryShutdownSequence =
+                ordinaryShutdownSequenceCompleted_;
+            publishShutdown = !shutdownRequested_;
+            shutdownRequested_ = true;
+            if (publishShutdown) {
+                observer = drainObserver_.lock();
+                if (observer == nullptr) {
+                    missingManagedSourceObserver =
+                        recordMissingManagedSourceDrainObserverLocked();
+                }
+                completeOrdinaryShutdownSequence =
+                    observer != nullptr ||
+                    !processDrainObserverEverBound_;
+            }
+        }
+        if (observer != nullptr) {
+            observer->overloadOwnerBeganShutdown();
+        }
+        {
+            const std::scoped_lock lock{mutex_};
+            requestAllCancellationsLocked();
+        }
+        notifyPendingTerminalGenerationLatches();
+        refreshDeadline();
+        {
+            const std::scoped_lock lock{mutex_};
+            if (completeOrdinaryShutdownSequence) {
+                ordinaryShutdownSequenceCompleted_ = true;
+            }
+            shutdownTransitionInProgress_ = false;
         }
     }
-    if (observer != nullptr) {
-        observer->overloadOwnerBeganShutdown();
+    // Native cancellation can escalate an ordinary shutdown while its source
+    // callback is in flight. Publish the process-owner terminal edge here;
+    // generation terminal delivery remains on its explicit bounded drain.
+    notifyPendingTerminalOwner();
+    if (missingManagedSourceObserver) {
+        failFast_->failFast();
     }
-    {
-        const std::scoped_lock lock{mutex_};
-        requestAllCancellationsLocked();
-    }
-    notifyPendingTerminalGenerationLatches();
-    refreshDeadline();
+    notifyProcessDrainObserverIfReady();
 }
 
 DashboardOverloadResponderSnapshot
@@ -1646,6 +1927,7 @@ DashboardOverloadResponderSet::snapshotLocked(
         associating,
         sending,
         cancellationRequested,
+        settlingWorkCount_,
         Capacity,
         deliveredCount_,
         abandonedCount_,
@@ -1654,6 +1936,15 @@ DashboardOverloadResponderSet::snapshotLocked(
         staleDeadlineCount_,
         failFastCount_,
         shutdownRequested_,
+        ordinaryShutdownSequenceCompleted_,
+        terminalOwnerNotificationLifecycle_ !=
+            TerminalOwnerNotificationLifecycle::None,
+        terminalOwnerNotificationLifecycle_ ==
+            TerminalOwnerNotificationLifecycle::Delivered,
+        managedSourceDrainObserverFailureReported_,
+        processDrainObserverPublicationFailed_,
+        shutdownTransitionInProgress_,
+        terminalGenerationPublicationsCompletedLocked(),
         firstLifecycleFailureSnapshot_};
 }
 
@@ -1669,6 +1960,7 @@ DashboardOverloadResponderSet::snapshot() const noexcept
             Capacity,
             0U,
             0U,
+            0U,
             Capacity,
             0U,
             0U,
@@ -1677,6 +1969,13 @@ DashboardOverloadResponderSet::snapshot() const noexcept
             0U,
             0U,
             true,
+            true,
+            false,
+            false,
+            true,
+            true,
+            true,
+            false,
             DashboardOverloadResponderFailure{
                 DashboardOverloadResponderFailureKind::InternalFailure,
                 false}};

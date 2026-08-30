@@ -31,6 +31,7 @@ namespace Windows = ForgeConductor::Infrastructure::Windows;
 
 using Completion = Windows::DashboardHandlerCompletion;
 using CompletionKind = Windows::DashboardHandlerCompletionKind;
+using DrainObserver = Windows::IDashboardHandlerExecutorDrainObserver;
 using Executor = Windows::WindowsDashboardHandlerExecutor;
 using Operation = Windows::IDashboardHandlerOperation;
 using Reservation = Windows::WindowsDashboardHandlerExecutor::Reservation;
@@ -52,6 +53,8 @@ static_assert(std::is_abstract_v<Operation>);
 static_assert(std::has_virtual_destructor_v<Operation>);
 static_assert(std::is_abstract_v<Sink>);
 static_assert(std::has_virtual_destructor_v<Sink>);
+static_assert(std::is_abstract_v<DrainObserver>);
+static_assert(std::has_virtual_destructor_v<DrainObserver>);
 static_assert(!std::is_copy_constructible_v<Completion>);
 static_assert(!std::is_copy_assignable_v<Completion>);
 static_assert(std::is_nothrow_move_constructible_v<Completion>);
@@ -69,6 +72,9 @@ static_assert(noexcept(std::declval<Executor&>().trySubmit(
     std::declval<Domain::OperationContext>(),
     std::declval<std::weak_ptr<Sink>>())));
 static_assert(noexcept(std::declval<Executor&>().tryReservePostDelivery()));
+static_assert(noexcept(std::declval<Executor&>().bindShutdownDrainObserver(
+    std::declval<std::weak_ptr<DrainObserver>>())));
+static_assert(noexcept(std::declval<const Executor&>().fullyDrained()));
 static_assert(noexcept(std::declval<Reservation&&>().trySubmit(
     std::declval<std::unique_ptr<Operation>>(),
     std::declval<Domain::OperationContext>(),
@@ -183,6 +189,203 @@ private:
     mutable std::condition_variable changed_;
     std::vector<CompletionRecord> records_;
     std::atomic_bool malformed_{};
+};
+
+class WorkerLifecycleProbe final {
+public:
+    void entered(const std::thread::id worker)
+    {
+        const std::lock_guard lock{mutex_};
+        if (std::find(workerThreads_.begin(), workerThreads_.end(), worker) !=
+            workerThreads_.end()) {
+            std::terminate();
+        }
+        workerThreads_.push_back(worker);
+        changed_.notify_all();
+    }
+
+    void exited(const std::thread::id worker) noexcept
+    {
+        try {
+            const std::lock_guard lock{mutex_};
+            if (std::find(
+                    workerThreads_.begin(), workerThreads_.end(), worker) ==
+                    workerThreads_.end() ||
+                std::find(exitedThreads_.begin(), exitedThreads_.end(), worker) !=
+                    exitedThreads_.end()) {
+                std::terminate();
+            }
+            exitedThreads_.push_back(worker);
+            changed_.notify_all();
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+    [[nodiscard]] bool waitUntilEntered(
+        const std::size_t count,
+        const std::chrono::milliseconds timeout = 5s) const
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(lock, timeout, [this, count] {
+            return workerThreads_.size() >= count;
+        });
+    }
+
+    [[nodiscard]] bool contains(const std::thread::id candidate) const
+    {
+        const std::lock_guard lock{mutex_};
+        return std::find(
+                   workerThreads_.begin(),
+                   workerThreads_.end(),
+                   candidate) != workerThreads_.end();
+    }
+
+    [[nodiscard]] std::size_t exitedCount() const
+    {
+        const std::lock_guard lock{mutex_};
+        return exitedThreads_.size();
+    }
+
+    [[nodiscard]] bool waitUntilExited(
+        const std::size_t count,
+        const std::chrono::milliseconds timeout = 5s) const
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(lock, timeout, [this, count] {
+            return exitedThreads_.size() >= count;
+        });
+    }
+
+private:
+    mutable std::mutex mutex_;
+    mutable std::condition_variable changed_;
+    std::vector<std::thread::id> workerThreads_;
+    std::vector<std::thread::id> exitedThreads_;
+};
+
+class RecordingExecutorDrainObserver final : public DrainObserver {
+public:
+    explicit RecordingExecutorDrainObserver(
+        Executor* executor = nullptr,
+        const bool reenterShutdown = false,
+        std::shared_ptr<WorkerLifecycleProbe> workerLifecycle = nullptr)
+        noexcept
+        : executor_{executor},
+          reenterShutdown_{reenterShutdown},
+          workerLifecycle_{std::move(workerLifecycle)}
+    {
+    }
+
+    void handlerExecutorMayHaveDrained() noexcept override
+    {
+        try {
+            const auto callbackThread = std::this_thread::get_id();
+            if (reenterShutdown_ && executor_ != nullptr) {
+                executor_->shutdown();
+            }
+            bool reentrantSnapshotWasDrained{true};
+            if (executor_ != nullptr) {
+                reentrantSnapshotWasDrained =
+                    executor_->isShuttingDown() &&
+                    executor_->pendingCount() == 0U &&
+                    executor_->activeCount() == 0U &&
+                    executor_->reservationCount() == 0U &&
+                    executor_->fullyDrained();
+            }
+            const bool callbackWasOffWorkers =
+                workerLifecycle_ == nullptr ||
+                !workerLifecycle_->contains(callbackThread);
+            const bool callbackFollowedWorkerExits =
+                workerLifecycle_ == nullptr ||
+                workerLifecycle_->exitedCount() == Executor::WorkerCount;
+            {
+                const std::lock_guard lock{mutex_};
+                ++notificationCount_;
+                callbackThread_ = callbackThread;
+                reentrantSnapshotWasDrained_ =
+                    reentrantSnapshotWasDrained_ &&
+                    reentrantSnapshotWasDrained;
+                callbackWasOffWorkers_ =
+                    callbackWasOffWorkers_ && callbackWasOffWorkers;
+                callbackFollowedWorkerExits_ =
+                    callbackFollowedWorkerExits_ &&
+                    callbackFollowedWorkerExits;
+            }
+            changed_.notify_all();
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+    [[nodiscard]] bool waitFor(
+        const std::size_t count,
+        const std::chrono::milliseconds timeout = 5s) const
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(lock, timeout, [this, count] {
+            return notificationCount_ >= count;
+        });
+    }
+
+    [[nodiscard]] std::size_t notificationCount() const
+    {
+        const std::lock_guard lock{mutex_};
+        return notificationCount_;
+    }
+
+    [[nodiscard]] bool reentrantSnapshotWasDrained() const
+    {
+        const std::lock_guard lock{mutex_};
+        return reentrantSnapshotWasDrained_;
+    }
+
+    [[nodiscard]] bool callbackWasOffWorkers() const
+    {
+        const std::lock_guard lock{mutex_};
+        return callbackWasOffWorkers_;
+    }
+
+    [[nodiscard]] bool callbackFollowedWorkerExits() const
+    {
+        const std::lock_guard lock{mutex_};
+        return callbackFollowedWorkerExits_;
+    }
+
+    [[nodiscard]] std::thread::id callbackThread() const
+    {
+        const std::lock_guard lock{mutex_};
+        return callbackThread_;
+    }
+
+private:
+    Executor* executor_{};
+    bool reenterShutdown_{};
+    std::shared_ptr<WorkerLifecycleProbe> workerLifecycle_;
+    mutable std::mutex mutex_;
+    mutable std::condition_variable changed_;
+    std::thread::id callbackThread_{};
+    std::size_t notificationCount_{};
+    bool reentrantSnapshotWasDrained_{true};
+    bool callbackWasOffWorkers_{true};
+    bool callbackFollowedWorkerExits_{true};
+};
+
+class ExternallyCountedDrainObserver final : public DrainObserver {
+public:
+    explicit ExternallyCountedDrainObserver(
+        std::shared_ptr<std::atomic_size_t> notifications) noexcept
+        : notifications_{std::move(notifications)}
+    {
+    }
+
+    void handlerExecutorMayHaveDrained() noexcept override
+    {
+        notifications_->fetch_add(1U, std::memory_order_release);
+    }
+
+private:
+    std::shared_ptr<std::atomic_size_t> notifications_;
 };
 
 [[nodiscard]] Completion postDeliverySuccess()
@@ -321,6 +524,120 @@ public:
 
 private:
     std::shared_ptr<WaitGate> gate_;
+};
+
+class ManualGate final {
+public:
+    void wait()
+    {
+        std::unique_lock lock{mutex_};
+        ++entered_;
+        changed_.notify_all();
+        changed_.wait(lock, [this] { return released_; });
+    }
+
+    [[nodiscard]] bool waitUntilEntered(
+        const std::size_t count = 1U,
+        const std::chrono::milliseconds timeout = 5s) const
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(
+            lock, timeout, [this, count] { return entered_ >= count; });
+    }
+
+    void release() noexcept
+    {
+        try {
+            {
+                const std::lock_guard lock{mutex_};
+                released_ = true;
+            }
+            changed_.notify_all();
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+private:
+    mutable std::mutex mutex_;
+    mutable std::condition_variable changed_;
+    std::size_t entered_{};
+    bool released_{};
+};
+
+class ManualGateOperation final : public Operation {
+public:
+    explicit ManualGateOperation(std::shared_ptr<ManualGate> gate) noexcept
+        : gate_{std::move(gate)}
+    {
+    }
+
+    [[nodiscard]] CompletionKind completionKind() const noexcept override
+    {
+        return CompletionKind::PostDelivery;
+    }
+
+    [[nodiscard]] Completion execute(
+        const Domain::OperationContext&) override
+    {
+        gate_->wait();
+        return postDeliverySuccess();
+    }
+
+private:
+    std::shared_ptr<ManualGate> gate_;
+};
+
+class WorkerLifecycleRegistration final {
+public:
+    ~WorkerLifecycleRegistration() noexcept
+    {
+        if (probe_ != nullptr) {
+            probe_->exited(worker_);
+        }
+    }
+
+    void bind(std::shared_ptr<WorkerLifecycleProbe> probe)
+    {
+        if (probe == nullptr || probe_ != nullptr) {
+            std::terminate();
+        }
+        worker_ = std::this_thread::get_id();
+        probe_ = std::move(probe);
+        probe_->entered(worker_);
+    }
+
+private:
+    std::shared_ptr<WorkerLifecycleProbe> probe_;
+    std::thread::id worker_{};
+};
+
+class WorkerLifecycleOperation final : public Operation {
+public:
+    WorkerLifecycleOperation(
+        std::shared_ptr<ManualGate> gate,
+        std::shared_ptr<WorkerLifecycleProbe> probe) noexcept
+        : gate_{std::move(gate)}, probe_{std::move(probe)}
+    {
+    }
+
+    [[nodiscard]] CompletionKind completionKind() const noexcept override
+    {
+        return CompletionKind::PostDelivery;
+    }
+
+    [[nodiscard]] Completion execute(
+        const Domain::OperationContext&) override
+    {
+        thread_local WorkerLifecycleRegistration registration;
+        registration.bind(probe_);
+        gate_->wait();
+        return postDeliverySuccess();
+    }
+
+private:
+    std::shared_ptr<ManualGate> gate_;
+    std::shared_ptr<WorkerLifecycleProbe> probe_;
 };
 
 class OrderRecorder final {
@@ -1295,6 +1612,494 @@ void reservationReleaseSubmitShutdownRaceStaysBounded()
     require(owner->activeCount() == 0U, "reservation race retained active work");
 }
 
+void externalShutdownJoinsEveryWorkerBeforeReentrantDrainEdge()
+{
+    auto owner = executor();
+    const auto sink = std::make_shared<RecordingSink>();
+    auto gate = std::make_shared<ManualGate>();
+    auto lifecycle = std::make_shared<WorkerLifecycleProbe>();
+    auto observer = std::make_shared<RecordingExecutorDrainObserver>(
+        owner.get(), true, lifecycle);
+    require(
+        owner->bindShutdownDrainObserver(observer).hasValue(),
+        "worker lifecycle drain observer binding failed");
+
+    for (std::size_t index{}; index < Executor::WorkerCount; ++index) {
+        require(
+            owner->trySubmit(
+                     std::make_unique<WorkerLifecycleOperation>(
+                         gate, lifecycle),
+                     context(3'900U + index),
+                     sink)
+                .hasValue(),
+            "worker lifecycle task was rejected");
+    }
+    const auto allEntered =
+        lifecycle->waitUntilEntered(Executor::WorkerCount);
+    if (!allEntered) {
+        gate->release();
+        owner->shutdown();
+    }
+    require(allEntered, "not every handler worker entered lifecycle work");
+
+    const auto shutdownCaller = std::this_thread::get_id();
+    gate->release();
+    owner->shutdown();
+
+    require(
+        observer->waitFor(1U),
+        "joined worker shutdown emitted no drain edge");
+    require(
+        lifecycle->exitedCount() == Executor::WorkerCount,
+        "drain edge preceded a handler worker thread exit");
+    require(
+        observer->callbackFollowedWorkerExits(),
+        "drain callback ran before all joined thread-local owners settled");
+    require(
+        observer->callbackWasOffWorkers(),
+        "drain callback ran on a handler worker");
+    require(
+        observer->callbackThread() == shutdownCaller,
+        "external shutdown did not retain drain callback authority");
+    require(
+        observer->reentrantSnapshotWasDrained(),
+        "drain callback could not reenter shutdown after exact joining");
+    require(
+        observer->notificationCount() == 1U,
+        "joined worker shutdown repeated its drain edge");
+}
+
+void idleShutdownEmitsOneExactReentrantDrainEdge()
+{
+    auto owner = executor();
+    auto invalidBinding = owner->bindShutdownDrainObserver(
+        std::weak_ptr<DrainObserver>{});
+    require(!invalidBinding, "expired drain observer was accepted");
+    require(
+        invalidBinding.error().code == Domain::ErrorCodes::InvalidRequest,
+        "expired drain observer returned wrong error");
+
+    auto observer =
+        std::make_shared<RecordingExecutorDrainObserver>(owner.get());
+    require(
+        owner->bindShutdownDrainObserver(observer).hasValue(),
+        "live drain observer binding failed");
+    auto duplicate = owner->bindShutdownDrainObserver(observer);
+    require(!duplicate, "duplicate drain observer binding was accepted");
+    require(
+        duplicate.error().code == Domain::ErrorCodes::Conflict,
+        "duplicate drain observer binding returned wrong error");
+    require(!owner->fullyDrained(), "running idle executor reported drained");
+    require(
+        observer->notificationCount() == 0U,
+        "drain observer fired before shutdown");
+
+    owner->beginShutdown();
+    require(
+        observer->notificationCount() == 0U,
+        "beginShutdown published before worker handles were joined");
+    require(
+        !owner->fullyDrained(),
+        "beginShutdown reported drainage before worker handles were joined");
+    owner->shutdown();
+    require(
+        observer->waitFor(1U),
+        "idle shutdown did not emit its drain edge");
+    require(owner->fullyDrained(), "idle shutdown did not become fully drained");
+    require(
+        observer->reentrantSnapshotWasDrained(),
+        "drain callback could not reenter the exact drained snapshot");
+    require(
+        observer->notificationCount() == 1U,
+        "idle shutdown emitted more than one drain edge");
+
+    owner->beginShutdown();
+    owner->shutdown();
+    require(
+        observer->notificationCount() == 1U,
+        "repeated shutdown repeated the drain edge");
+    auto lateBinding = owner->bindShutdownDrainObserver(observer);
+    require(!lateBinding, "shutdown accepted a late drain observer");
+    require(
+        lateBinding.error().code == Domain::ErrorCodes::TransportClosed,
+        "late drain observer returned wrong error");
+}
+
+void liveDrainObserverRemainsProcessOwnedThroughItsExactEdge()
+{
+    auto owner = executor();
+    auto notifications = std::make_shared<std::atomic_size_t>();
+    auto observer =
+        std::make_shared<ExternallyCountedDrainObserver>(notifications);
+    std::weak_ptr<DrainObserver> retained = observer;
+    require(
+        owner->bindShutdownDrainObserver(observer).hasValue(),
+        "process-owned drain observer binding failed");
+
+    require(
+        observer.use_count() == 1,
+        "executor formed a strong ownership cycle with its drain observer");
+
+    owner->shutdown();
+    require(
+        notifications->load(std::memory_order_acquire) == 1U,
+        "process-owned observer missed its exact drain edge");
+    observer.reset();
+    require(
+        retained.expired(),
+        "executor retained the process observer beyond external ownership");
+}
+
+void bindAndExternalShutdownRaceHasOneLinearizedOutcome()
+{
+    constexpr std::size_t Iterations = 16U;
+    for (std::size_t iteration{}; iteration < Iterations; ++iteration) {
+        auto owner = executor();
+        auto observer =
+            std::make_shared<RecordingExecutorDrainObserver>(owner.get());
+        std::latch ready{2};
+        std::latch start{1};
+        std::atomic_int bindOutcome{};
+
+        std::jthread binder{[&](std::stop_token) noexcept {
+            ready.count_down();
+            start.wait();
+            auto bound = owner->bindShutdownDrainObserver(observer);
+            if (bound) {
+                bindOutcome.store(1, std::memory_order_release);
+                return;
+            }
+            if (bound.error().code == Domain::ErrorCodes::TransportClosed) {
+                bindOutcome.store(2, std::memory_order_release);
+                return;
+            }
+            bindOutcome.store(3, std::memory_order_release);
+        }};
+        std::jthread shutdownCaller{[&](std::stop_token) noexcept {
+            ready.count_down();
+            start.wait();
+            owner->shutdown();
+        }};
+
+        ready.wait();
+        start.count_down();
+        binder.join();
+        shutdownCaller.join();
+
+        const auto outcome = bindOutcome.load(std::memory_order_acquire);
+        require(
+            outcome == 1 || outcome == 2,
+            "bind/shutdown race produced a non-linearized result");
+        require(owner->fullyDrained(), "bind/shutdown race did not join workers");
+        if (outcome == 1) {
+            require(
+                observer->waitFor(1U),
+                "winning concurrent binding missed its drain edge");
+            require(
+                observer->notificationCount() == 1U,
+                "winning concurrent binding repeated its drain edge");
+        } else {
+            require(
+                observer->notificationCount() == 0U,
+                "rejected concurrent binding received a drain edge");
+        }
+    }
+}
+
+void cancelledQueuedAndActiveWorkSettlesBeforeDrainEdge()
+{
+    auto owner = executor();
+    const auto sink = std::make_shared<RecordingSink>();
+    auto gate = std::make_shared<WaitGate>();
+    auto observer =
+        std::make_shared<RecordingExecutorDrainObserver>(owner.get());
+    require(
+        owner->bindShutdownDrainObserver(observer).hasValue(),
+        "cancellation drain observer binding failed");
+
+    for (std::size_t index{}; index < Executor::WorkerCount; ++index) {
+        require(
+            owner->trySubmit(
+                     std::make_unique<GateOperation>(gate),
+                     context(4'000U + index),
+                     sink)
+                .hasValue(),
+            "cancellation active task was rejected");
+    }
+    const auto allEntered = gate->waitUntilEntered(Executor::WorkerCount);
+    if (!allEntered) {
+        gate->release();
+        owner->shutdown();
+    }
+    require(allEntered, "cancellation active tasks did not all start");
+
+    constexpr std::size_t QueuedCount = 3U;
+    for (std::size_t index{}; index < QueuedCount; ++index) {
+        require(
+            owner->trySubmit(
+                     std::make_unique<ImmediateOperation>(),
+                     context(4'100U + index),
+                     sink)
+                .hasValue(),
+            "cancellation queued task was rejected");
+    }
+
+    owner->beginShutdown();
+    owner->shutdown();
+    require(
+        sink->waitFor(Executor::WorkerCount + QueuedCount),
+        "shutdown drain edge preceded accepted cancellation delivery");
+    require(
+        observer->waitFor(1U),
+        "cancelled accepted work did not emit a drain edge");
+    require(owner->fullyDrained(), "cancelled work retained executor ownership");
+    require(
+        observer->notificationCount() == 1U,
+        "cancelled work emitted more than one drain edge");
+    for (const auto& record : sink->records()) {
+        require(!record.success, "shutdown cancellation succeeded unexpectedly");
+        require(
+            record.errorCode == Domain::ErrorCodes::Cancelled,
+            "shutdown drain retained a non-cancellation completion");
+    }
+}
+
+void lastWorkerAndLastReservationBothOwnTheExactDrainEdge()
+{
+    {
+        auto owner = executor();
+        const auto sink = std::make_shared<RecordingSink>();
+        auto gate = std::make_shared<ManualGate>();
+        auto observer =
+            std::make_shared<RecordingExecutorDrainObserver>(owner.get());
+        require(
+            owner->bindShutdownDrainObserver(observer).hasValue(),
+            "worker-last drain observer binding failed");
+        auto reserved = owner->tryReservePostDelivery();
+        require(reserved.hasValue(), "worker-last reservation was rejected");
+        auto reservation = std::move(reserved).value();
+        require(
+            owner->trySubmit(
+                     std::make_unique<ManualGateOperation>(gate),
+                     context(4'200U),
+                     sink)
+                .hasValue(),
+            "worker-last task was rejected");
+        const auto entered = gate->waitUntilEntered();
+        if (!entered) {
+            gate->release();
+            reservation.release();
+            owner->shutdown();
+        }
+        require(entered, "worker-last task did not start");
+
+        owner->beginShutdown();
+        reservation.release();
+        const auto withheldForWorker =
+            observer->notificationCount() == 0U && !owner->fullyDrained();
+        gate->release();
+        owner->shutdown();
+        require(
+            withheldForWorker,
+            "reservation release emitted while an active worker remained");
+        require(
+            observer->waitFor(1U),
+            "joining the last worker did not emit the exact drain edge");
+        require(owner->fullyDrained(), "worker-last executor was not drained");
+        require(
+            observer->notificationCount() == 1U,
+            "worker-last shutdown repeated the drain edge");
+    }
+
+    {
+        auto owner = executor();
+        auto observer =
+            std::make_shared<RecordingExecutorDrainObserver>(owner.get());
+        require(
+            owner->bindShutdownDrainObserver(observer).hasValue(),
+            "reservation-last drain observer binding failed");
+        auto reserved = owner->tryReservePostDelivery();
+        require(
+            reserved.hasValue(),
+            "reservation-last capacity reservation was rejected");
+        auto reservation = std::move(reserved).value();
+
+        owner->beginShutdown();
+        owner->shutdown();
+        require(
+            !owner->fullyDrained(),
+            "live reservation was omitted from the drained predicate");
+        require(
+            observer->notificationCount() == 0U,
+            "joined workers emitted while a live reservation remained");
+
+        reservation.release();
+        require(
+            observer->waitFor(1U),
+            "last reservation did not emit the exact drain edge");
+        require(
+            owner->fullyDrained(),
+            "reservation-last executor was not fully drained");
+        reservation.release();
+        require(
+            observer->notificationCount() == 1U,
+            "repeated reservation release repeated the drain edge");
+    }
+}
+
+void concurrentLastWorkerAndReservationReleaseEmitOneDrainEdge()
+{
+    auto owner = executor();
+    const auto sink = std::make_shared<RecordingSink>();
+    auto gate = std::make_shared<ManualGate>();
+    auto observer =
+        std::make_shared<RecordingExecutorDrainObserver>(owner.get());
+    require(
+        owner->bindShutdownDrainObserver(observer).hasValue(),
+        "concurrent drain observer binding failed");
+    auto reserved = owner->tryReservePostDelivery();
+    require(
+        reserved.hasValue(),
+        "concurrent drain capacity reservation was rejected");
+    auto reservation = std::move(reserved).value();
+    bool allSubmitted{true};
+    for (std::size_t index{}; index < Executor::WorkerCount; ++index) {
+        auto submitted = owner->trySubmit(
+            std::make_unique<ManualGateOperation>(gate),
+            context(4'300U + index),
+            sink);
+        if (!submitted) {
+            allSubmitted = false;
+            break;
+        }
+    }
+    if (!allSubmitted) {
+        gate->release();
+        reservation.release();
+        owner->shutdown();
+    }
+    require(allSubmitted, "concurrent drain worker task was rejected");
+    const auto entered = gate->waitUntilEntered(Executor::WorkerCount);
+    if (!entered) {
+        gate->release();
+        reservation.release();
+        owner->shutdown();
+    }
+    require(entered, "concurrent drain worker task did not start");
+
+    owner->beginShutdown();
+    const auto withheldBeforeRace =
+        observer->notificationCount() == 0U && !owner->fullyDrained();
+    std::latch ready{3};
+    std::latch start{1};
+    std::atomic_bool workerReleaseReturned{};
+    std::atomic_bool reservationReleaseReturned{};
+    std::atomic_bool shutdownReturned{};
+    std::jthread workerRelease;
+    std::jthread reservationRelease;
+    std::jthread shutdownCaller;
+    try {
+        workerRelease = std::jthread{[&](std::stop_token) noexcept {
+            ready.count_down();
+            start.wait();
+            gate->release();
+            workerReleaseReturned.store(true, std::memory_order_release);
+        }};
+        reservationRelease = std::jthread{[&](std::stop_token) noexcept {
+            ready.count_down();
+            start.wait();
+            reservation.release();
+            reservationReleaseReturned.store(true, std::memory_order_release);
+        }};
+        shutdownCaller = std::jthread{[&](std::stop_token) noexcept {
+            ready.count_down();
+            start.wait();
+            owner->shutdown();
+            shutdownReturned.store(true, std::memory_order_release);
+        }};
+    } catch (...) {
+        start.count_down();
+        gate->release();
+        if (workerRelease.joinable()) {
+            workerRelease.join();
+        }
+        if (reservationRelease.joinable()) {
+            reservationRelease.join();
+        }
+        if (shutdownCaller.joinable()) {
+            shutdownCaller.join();
+        }
+        reservation.release();
+        owner->shutdown();
+        throw;
+    }
+
+    ready.wait();
+    start.count_down();
+    workerRelease.join();
+    reservationRelease.join();
+    shutdownCaller.join();
+
+    const auto notified = observer->waitFor(1U);
+    const auto workerReleaseCompleted =
+        workerReleaseReturned.load(std::memory_order_acquire);
+    const auto reservationReleaseCompleted =
+        reservationReleaseReturned.load(std::memory_order_acquire);
+    const auto shutdownCompleted =
+        shutdownReturned.load(std::memory_order_acquire);
+    const auto drainedAfterBoth = owner->fullyDrained();
+    const auto exactNotificationCount = observer->notificationCount();
+    const auto callbackObservedExactDrain =
+        observer->reentrantSnapshotWasDrained();
+
+    require(
+        withheldBeforeRace,
+        "concurrent drain edge fired before either final owner settled");
+    require(
+        workerReleaseCompleted && reservationReleaseCompleted &&
+            shutdownCompleted,
+        "concurrent drain release and join threads did not all complete");
+    require(notified, "concurrent final owners emitted no drain edge");
+    require(drainedAfterBoth, "concurrent final owners did not fully drain");
+    require(
+        callbackObservedExactDrain,
+        "concurrent drain callback fired before both owners settled");
+    require(
+        exactNotificationCount == 1U,
+        "concurrent final owners emitted more than one drain edge");
+}
+
+void reservationOutlivingOuterExecutorRetainsExactDrainOwnership()
+{
+    Reservation survivor;
+    auto observer = std::make_shared<RecordingExecutorDrainObserver>();
+    {
+        auto owner = executor();
+        require(
+            owner->bindShutdownDrainObserver(observer).hasValue(),
+            "outliving-reservation drain observer binding failed");
+        auto reserved = owner->tryReservePostDelivery();
+        require(
+            reserved.hasValue(),
+            "outliving-reservation capacity reservation was rejected");
+        survivor = std::move(reserved).value();
+
+        owner.reset();
+        require(
+            observer->notificationCount() == 0U,
+            "outer executor destruction ignored its live reservation");
+    }
+
+    survivor.release();
+    require(
+        observer->waitFor(1U),
+        "outliving reservation did not complete exact drainage");
+    survivor.release();
+    require(
+        observer->notificationCount() == 1U,
+        "outliving reservation repeated its drain edge");
+}
+
 class LifetimeSink final : public Sink {
 public:
     LifetimeSink(
@@ -1388,6 +2193,53 @@ private:
     bool released_{};
 };
 
+class OneShotReleasingExecutorSink final : public Sink {
+public:
+    explicit OneShotReleasingExecutorSink(
+        std::unique_ptr<Executor>& owner) noexcept
+        : owner_{owner}
+    {
+    }
+
+    [[nodiscard]] bool tryPost(Completion) noexcept override
+    {
+        try {
+            const bool ownsRelease =
+                !releaseClaimed_.exchange(true, std::memory_order_acq_rel);
+            if (ownsRelease) {
+                owner_.reset();
+            }
+            {
+                const std::lock_guard lock{mutex_};
+                ++postCount_;
+                releaseReturned_ = releaseReturned_ || ownsRelease;
+            }
+            changed_.notify_all();
+            return true;
+        } catch (...) {
+            std::terminate();
+        }
+    }
+
+    [[nodiscard]] bool waitFor(
+        const std::size_t count,
+        const std::chrono::milliseconds timeout = 7s) const
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(lock, timeout, [this, count] {
+            return releaseReturned_ && postCount_ >= count;
+        });
+    }
+
+private:
+    std::unique_ptr<Executor>& owner_;
+    std::atomic_bool releaseClaimed_{};
+    mutable std::mutex mutex_;
+    mutable std::condition_variable changed_;
+    std::size_t postCount_{};
+    bool releaseReturned_{};
+};
+
 class DestructionProbe final {
 public:
     void mark() noexcept
@@ -1465,6 +2317,13 @@ void sinksAreWeakAndWorkerShutdownIsReentrantSafe()
     require(posts.load() == 0U, "expired completion sink was invoked");
 
     auto reentrantOwner = executor();
+    auto reentrantObserver =
+        std::make_shared<RecordingExecutorDrainObserver>(
+            reentrantOwner.get());
+    require(
+        reentrantOwner->bindShutdownDrainObserver(reentrantObserver)
+            .hasValue(),
+        "worker-context process drain observer binding failed");
     const auto reentrant =
         std::make_shared<ReentrantShutdownSink>(*reentrantOwner);
     require(
@@ -1479,6 +2338,12 @@ void sinksAreWeakAndWorkerShutdownIsReentrantSafe()
     require(
         reentrantOwner->isShuttingDown(),
         "worker-context shutdown did not begin shutdown");
+    require(
+        !reentrantOwner->fullyDrained(),
+        "worker-context shutdown bypassed the external join owner");
+    require(
+        reentrantObserver->notificationCount() == 0U,
+        "worker-context shutdown published the process drain edge");
 
     auto rejected = reentrantOwner->trySubmit(
         std::make_unique<ImmediateOperation>(),
@@ -1492,6 +2357,15 @@ void sinksAreWeakAndWorkerShutdownIsReentrantSafe()
     require(
         reentrantOwner->activeCount() == 0U,
         "external shutdown did not join reentrant worker");
+    require(
+        reentrantObserver->waitFor(1U),
+        "external finalizer did not publish worker-context drainage");
+    require(
+        reentrantOwner->fullyDrained(),
+        "external finalizer did not establish exact joined drainage");
+    require(
+        reentrantObserver->notificationCount() == 1U,
+        "worker-context process shutdown repeated its drain edge");
 
     std::unique_ptr<Executor> releasingOwner = executor();
     const auto releasing =
@@ -1514,6 +2388,59 @@ void sinksAreWeakAndWorkerShutdownIsReentrantSafe()
         "owned task did not survive outer executor release safely");
 }
 
+void boundWorkerSelfReleaseSettlesHandlesWithoutFalseDrainEdge()
+{
+    std::unique_ptr<Executor> owner = executor();
+    auto observer = std::make_shared<RecordingExecutorDrainObserver>();
+    require(
+        owner->bindShutdownDrainObserver(observer).hasValue(),
+        "bound self-release drain observer binding failed");
+
+    auto lifecycle = std::make_shared<WorkerLifecycleProbe>();
+    auto gate = std::make_shared<ManualGate>();
+    const auto releasing =
+        std::make_shared<OneShotReleasingExecutorSink>(owner);
+    for (std::size_t index{}; index < Executor::WorkerCount; ++index) {
+        require(
+            owner->trySubmit(
+                     std::make_unique<WorkerLifecycleOperation>(
+                         gate, lifecycle),
+                     context(4'400U + index),
+                     releasing)
+                .hasValue(),
+            "bound self-release lifecycle task was rejected");
+    }
+
+    const auto allEntered =
+        lifecycle->waitUntilEntered(Executor::WorkerCount);
+    if (!allEntered) {
+        gate->release();
+        owner->shutdown();
+    }
+    require(
+        allEntered,
+        "bound self-release did not occupy every handler worker");
+
+    gate->release();
+    const auto allCallbacksReturned =
+        releasing->waitFor(Executor::WorkerCount);
+    if (!allCallbacksReturned && owner != nullptr) {
+        owner->shutdown();
+    }
+    require(
+        allCallbacksReturned,
+        "bound worker-context executor release did not return");
+    require(
+        owner == nullptr,
+        "bound completion sink retained the outer executor");
+    require(
+        lifecycle->waitUntilExited(Executor::WorkerCount, 7s),
+        "bound self-release did not settle every worker thread handle");
+    require(
+        observer->notificationCount() == 0U,
+        "bound self-release falsely published an exact joined drain edge");
+}
+
 } // namespace
 
 int main()
@@ -1530,7 +2457,16 @@ int main()
         shutdownCancelsQueuedAndActiveWorkThenJoins();
         enqueueShutdownRaceRetainsEveryAcceptedCompletion();
         reservationReleaseSubmitShutdownRaceStaysBounded();
+        externalShutdownJoinsEveryWorkerBeforeReentrantDrainEdge();
+        idleShutdownEmitsOneExactReentrantDrainEdge();
+        liveDrainObserverRemainsProcessOwnedThroughItsExactEdge();
+        bindAndExternalShutdownRaceHasOneLinearizedOutcome();
+        cancelledQueuedAndActiveWorkSettlesBeforeDrainEdge();
+        lastWorkerAndLastReservationBothOwnTheExactDrainEdge();
+        concurrentLastWorkerAndReservationReleaseEmitOneDrainEdge();
+        reservationOutlivingOuterExecutorRetainsExactDrainOwnership();
         sinksAreWeakAndWorkerShutdownIsReentrantSafe();
+        boundWorkerSelfReleaseSettlesHandlesWithoutFalseDrainEdge();
         std::cout << "Windows dashboard handler executor tests passed: "
                   << assertionCount.load() << " assertions\n";
         return 0;

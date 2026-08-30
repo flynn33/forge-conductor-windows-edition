@@ -610,8 +610,13 @@ public:
 
     void overloadOwnerBecameTerminal() noexcept override
     {
-        const std::lock_guard lock{mutex_};
+        std::unique_lock lock{mutex_};
         ++ownerTerminalCount_;
+        ownerTerminalEntered_ = true;
+        ownerTerminalChanged_.notify_all();
+        ownerTerminalChanged_.wait(lock, [this]() noexcept {
+            return !blockOwnerTerminal_ || releaseOwnerTerminal_;
+        });
     }
 
     void blockOwnerShutdown() noexcept
@@ -639,6 +644,31 @@ public:
         ownerShutdownChanged_.notify_all();
     }
 
+    void blockOwnerTerminal() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        blockOwnerTerminal_ = true;
+        releaseOwnerTerminal_ = false;
+        ownerTerminalEntered_ = false;
+    }
+
+    [[nodiscard]] bool waitForOwnerTerminalEntered() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return ownerTerminalChanged_.wait_for(
+            lock, OperationTimeout,
+            [this]() noexcept { return ownerTerminalEntered_; });
+    }
+
+    void releaseOwnerTerminal() noexcept
+    {
+        {
+            const std::lock_guard lock{mutex_};
+            releaseOwnerTerminal_ = true;
+        }
+        ownerTerminalChanged_.notify_all();
+    }
+
     void overloadGenerationMayHaveDrained(
         const std::uint64_t generationId) noexcept override
     {
@@ -663,12 +693,42 @@ public:
     void overloadGenerationTerminalPending(
         const std::uint64_t generationId) noexcept override
     {
-        const std::lock_guard lock{mutex_};
+        std::unique_lock lock{mutex_};
         if (terminalPendingCount_ < terminalPendingGenerationIds_.size()) {
             terminalPendingGenerationIds_[terminalPendingCount_] =
                 generationId;
         }
         ++terminalPendingCount_;
+        terminalPendingEntered_ = true;
+        terminalPendingChanged_.notify_all();
+        terminalPendingChanged_.wait(lock, [this]() noexcept {
+            return !blockTerminalPending_ || releaseTerminalPending_;
+        });
+    }
+
+    void blockTerminalPending() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        blockTerminalPending_ = true;
+        releaseTerminalPending_ = false;
+        terminalPendingEntered_ = false;
+    }
+
+    [[nodiscard]] bool waitForTerminalPendingEntered() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return terminalPendingChanged_.wait_for(
+            lock, OperationTimeout,
+            [this]() noexcept { return terminalPendingEntered_; });
+    }
+
+    void releaseTerminalPending() noexcept
+    {
+        {
+            const std::lock_guard lock{mutex_};
+            releaseTerminalPending_ = true;
+        }
+        terminalPendingChanged_.notify_all();
     }
 
     void overloadGenerationCompletionPending(
@@ -686,13 +746,43 @@ public:
     void overloadGenerationCompletionSettled(
         const std::uint64_t generationId) noexcept override
     {
-        const std::lock_guard lock{mutex_};
+        std::unique_lock lock{mutex_};
         if (completionSettledCount_ <
             completionSettledGenerationIds_.size()) {
             completionSettledGenerationIds_[completionSettledCount_] =
                 generationId;
         }
         ++completionSettledCount_;
+        completionSettledEntered_ = true;
+        completionSettledChanged_.notify_all();
+        completionSettledChanged_.wait(lock, [this]() noexcept {
+            return !blockCompletionSettled_ || releaseCompletionSettled_;
+        });
+    }
+
+    void blockCompletionSettled() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        blockCompletionSettled_ = true;
+        releaseCompletionSettled_ = false;
+        completionSettledEntered_ = false;
+    }
+
+    [[nodiscard]] bool waitForCompletionSettledEntered() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return completionSettledChanged_.wait_for(
+            lock, OperationTimeout,
+            [this]() noexcept { return completionSettledEntered_; });
+    }
+
+    void releaseCompletionSettled() noexcept
+    {
+        {
+            const std::lock_guard lock{mutex_};
+            releaseCompletionSettled_ = true;
+        }
+        completionSettledChanged_.notify_all();
     }
 
     [[nodiscard]] std::size_t notificationCount() const noexcept
@@ -767,6 +857,9 @@ public:
 private:
     mutable std::mutex mutex_;
     std::condition_variable ownerShutdownChanged_;
+    std::condition_variable ownerTerminalChanged_;
+    std::condition_variable terminalPendingChanged_;
+    std::condition_variable completionSettledChanged_;
     std::array<std::uint64_t, 32U> generationIds_{};
     std::array<std::uint64_t, 32U> terminalGenerationIds_{};
     std::array<std::uint64_t, 32U> terminalPendingGenerationIds_{};
@@ -782,6 +875,102 @@ private:
     bool blockOwnerShutdown_{};
     bool releaseOwnerShutdown_{};
     bool ownerShutdownEntered_{};
+    bool blockOwnerTerminal_{};
+    bool releaseOwnerTerminal_{};
+    bool ownerTerminalEntered_{};
+    bool blockTerminalPending_{};
+    bool releaseTerminalPending_{};
+    bool terminalPendingEntered_{};
+    bool blockCompletionSettled_{};
+    bool releaseCompletionSettled_{};
+    bool completionSettledEntered_{};
+};
+
+class RecordingProcessDrainObserver final
+    : public Detail::IDashboardOverloadResponderSetDrainObserver {
+public:
+    void overloadRespondersMayHaveDrained() noexcept override
+    {
+        std::shared_ptr<Pool> reentryPool;
+        std::shared_ptr<RecordingDrainObserver> terminalSource;
+        std::uint64_t terminalGenerationId{};
+        bool observeTerminalSource{};
+        {
+            const std::lock_guard lock{mutex_};
+            ++notificationCount_;
+            reentryPool = reentryPool_.lock();
+            terminalSource = terminalSource_.lock();
+            terminalGenerationId = terminalGenerationId_;
+            observeTerminalSource = observeTerminalSource_;
+        }
+        bool terminalSourceWasPublished{};
+        if (observeTerminalSource && terminalSource != nullptr) {
+            terminalSourceWasPublished =
+                terminalSource->terminalPendingCountFor(
+                    terminalGenerationId) == 1U &&
+                terminalSource->terminalNotificationCountFor(
+                    terminalGenerationId) == 1U &&
+                terminalSource->notificationCountFor(
+                    terminalGenerationId) >= 1U;
+        }
+        if (reentryPool != nullptr) {
+            const auto snapshot = reentryPool->snapshot();
+            reentryPool->beginShutdown();
+            const std::lock_guard lock{mutex_};
+            reentryObservedExactDrain_ = snapshot.fullyDrained();
+        }
+        if (observeTerminalSource) {
+            const std::lock_guard lock{mutex_};
+            terminalSourceWasPublishedBeforeDrain_ =
+                terminalSourceWasPublished;
+        }
+    }
+
+    void attachReentry(std::weak_ptr<Pool> pool) noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        reentryPool_ = std::move(pool);
+    }
+
+    void attachTerminalPublicationSource(
+        std::weak_ptr<RecordingDrainObserver> source,
+        const std::uint64_t generationId) noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        terminalSource_ = std::move(source);
+        terminalGenerationId_ = generationId;
+        observeTerminalSource_ = true;
+        terminalSourceWasPublishedBeforeDrain_ = false;
+    }
+
+    [[nodiscard]] std::size_t notificationCount() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return notificationCount_;
+    }
+
+    [[nodiscard]] bool reentryObservedExactDrain() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return reentryObservedExactDrain_;
+    }
+
+    [[nodiscard]] bool terminalSourceWasPublishedBeforeDrain()
+        const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return terminalSourceWasPublishedBeforeDrain_;
+    }
+
+private:
+    mutable std::mutex mutex_;
+    std::weak_ptr<Pool> reentryPool_;
+    std::weak_ptr<RecordingDrainObserver> terminalSource_;
+    std::uint64_t terminalGenerationId_{};
+    std::size_t notificationCount_{};
+    bool reentryObservedExactDrain_{};
+    bool observeTerminalSource_{};
+    bool terminalSourceWasPublishedBeforeDrain_{};
 };
 
 class RecordingFailFast final : public Detail::IDashboardOverloadFailFast {
@@ -789,6 +978,68 @@ public:
     void failFast() noexcept override
     {
         calls_.fetch_add(1U);
+        std::shared_ptr<Pool> reentryPool;
+        {
+            const std::lock_guard lock{mutex_};
+            reentryPool = reentryPool_.lock();
+        }
+        bool reentryObservedFailure{};
+        if (reentryPool != nullptr) {
+            const auto snapshot = reentryPool->snapshot();
+            reentryObservedFailure =
+                snapshot.processDrainPublicationFailed() &&
+                !snapshot.fullyDrained() &&
+                snapshot.failFastCount() == 1U &&
+                snapshot.lifecycleFailure() != nullptr &&
+                snapshot.lifecycleFailure()->kind ==
+                    Detail::DashboardOverloadResponderFailureKind::
+                        IntegrityFailure;
+        }
+        std::unique_lock lock{mutex_};
+        reentryObservedFailure_ = reentryObservedFailure;
+        entered_ = true;
+        changed_.notify_all();
+        changed_.wait(lock, [this]() noexcept {
+            return !block_ || released_;
+        });
+    }
+
+    void attachSnapshotReentry(std::weak_ptr<Pool> pool) noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        reentryPool_ = std::move(pool);
+    }
+
+    void block() noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        block_ = true;
+        released_ = false;
+        entered_ = false;
+        reentryObservedFailure_ = false;
+    }
+
+    [[nodiscard]] bool waitUntilEntered() noexcept
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(
+            lock, OperationTimeout,
+            [this]() noexcept { return entered_; });
+    }
+
+    void release() noexcept
+    {
+        {
+            const std::lock_guard lock{mutex_};
+            released_ = true;
+        }
+        changed_.notify_all();
+    }
+
+    [[nodiscard]] bool reentryObservedFailure() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return reentryObservedFailure_;
     }
 
     [[nodiscard]] std::size_t calls() const noexcept
@@ -798,6 +1049,13 @@ public:
 
 private:
     std::atomic_size_t calls_{};
+    mutable std::mutex mutex_;
+    std::condition_variable changed_;
+    std::weak_ptr<Pool> reentryPool_;
+    bool block_{};
+    bool released_{};
+    bool entered_{};
+    bool reentryObservedFailure_{};
 };
 
 class BlockingSocketAssociator final : public Associator {
@@ -986,6 +1244,11 @@ public:
         drainObserver = std::make_shared<RecordingDrainObserver>();
         require(static_cast<bool>(pool->bindDrainObserver(drainObserver)),
                 "overload drain observer was not bound");
+        processDrainObserver =
+            std::make_shared<RecordingProcessDrainObserver>();
+        require(static_cast<bool>(
+                    pool->bindProcessDrainObserver(processDrainObserver)),
+                "overload process drain observer was not bound");
         require(static_cast<bool>(router->registerFixedTarget(pool)),
                 "overload pool was not registered with the IOCP router");
         ownerFactory = std::make_shared<UnexpectedOwnerFactory>();
@@ -1152,6 +1415,7 @@ public:
         router.reset();
         fallback.reset();
         drainObserver.reset();
+        processDrainObserver.reset();
         admission.reset();
         runtime.reset();
     }
@@ -1181,6 +1445,7 @@ public:
     std::shared_ptr<RecordingFailFast> failFast;
     std::shared_ptr<Pool> pool;
     std::shared_ptr<RecordingDrainObserver> drainObserver;
+    std::shared_ptr<RecordingProcessDrainObserver> processDrainObserver;
     std::shared_ptr<UnexpectedOwnerFactory> ownerFactory;
     std::shared_ptr<UnexpectedRegistrar> registrar;
     std::unique_ptr<Handoff> handoff;
@@ -1464,6 +1729,580 @@ void shutdownCompletionDoesNotReissueAPartialResponse()
             "shutdown-winning partial completion stranded its token");
 }
 
+void processDrainBindingRequiresItsLiveSourceObserverFirst()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    const auto createUnregisteredPool =
+        [&](const CompletionKey completionKey) {
+            const auto registrationId = take(
+                harness.runtimeServices->allocateConnectionIdentity())
+                                            .registrationId;
+            return take(Pool::create(
+                *harness.kernel,
+                completionKey,
+                registrationId,
+                *harness.deadlineScheduler,
+                *harness.runtimeServices,
+                *harness.responseCatalog,
+                fake,
+                harness.failFast));
+        };
+
+    auto standalone = createUnregisteredPool(CompletionKey{0x5031U});
+    standalone->beginShutdown();
+    require(standalone->snapshot().fullyDrained() &&
+                harness.failFast->calls() == 0U,
+            "standalone overload ownership required managed drain observers");
+
+    auto managed = createUnregisteredPool(CompletionKey{0x5032U});
+    auto sourceObserver = std::make_shared<RecordingDrainObserver>();
+    auto processObserver =
+        std::make_shared<RecordingProcessDrainObserver>();
+    requireError(
+        managed->bindProcessDrainObserver(processObserver),
+        Domain::ErrorCodes::InvalidRequest,
+        "managed process drain binding did not require its source observer first");
+    require(static_cast<bool>(managed->bindDrainObserver(sourceObserver)) &&
+                static_cast<bool>(
+                    managed->bindProcessDrainObserver(processObserver)),
+            "ordered managed drain observer binding failed");
+    requireError(
+        managed->bindProcessDrainObserver(processObserver),
+        Domain::ErrorCodes::Conflict,
+        "duplicate managed process drain observer binding was accepted");
+    managed->beginShutdown();
+    require(sourceObserver->ownerShutdownCount() == 1U &&
+                processObserver->notificationCount() == 1U &&
+                managed->snapshot().fullyDrained(),
+            "ordered managed observer binding did not publish exact shutdown");
+
+    auto late = createUnregisteredPool(CompletionKey{0x5033U});
+    late->beginShutdown();
+    requireError(
+        late->bindProcessDrainObserver(processObserver),
+        Domain::ErrorCodes::TransportClosed,
+        "late managed process drain observer binding remained open");
+}
+
+void emptyOrdinaryShutdownPublishesExactProcessDrainOnce()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    require(harness.processDrainObserver->notificationCount() == 0U,
+            "the overload process drain edge fired before shutdown");
+
+    harness.pool->beginShutdown();
+    harness.pool->beginShutdown();
+
+    const auto snapshot = harness.pool->snapshot();
+    require(harness.processDrainObserver->notificationCount() == 1U &&
+                snapshot.ordinaryShutdownSequenceCompleted() &&
+                !snapshot.terminalOwnerNotificationDelivered() &&
+                snapshot.activeCount() == 0U &&
+                snapshot.settlingCount() == 0U &&
+                !snapshot.deadlineArmed() && snapshot.fullyDrained(),
+            "empty ordinary shutdown did not publish one exact process drain edge");
+    requireError(
+        harness.pool->bindProcessDrainObserver(
+            harness.processDrainObserver),
+        Domain::ErrorCodes::TransportClosed,
+        "process drain observer binding remained open after shutdown");
+}
+
+void activeCancellationPublishesOnlyAfterExactReapAndSettlement()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    auto client = harness.overloadOne();
+    const auto send = fake->sendCall(0U);
+
+    harness.pool->beginShutdown();
+    require(harness.processDrainObserver->notificationCount() == 0U &&
+                !harness.pool->snapshot().fullyDrained(),
+            "active overload cancellation published process drain before reap");
+
+    const auto reaped = harness.pool->reap(
+        ResponderKey,
+        0U,
+        send.operation,
+        ERROR_OPERATION_ABORTED);
+    const auto snapshot = harness.pool->snapshot();
+    require(static_cast<bool>(reaped) &&
+                reaped.value() == ReapDisposition::ResponseAbandoned &&
+                harness.processDrainObserver->notificationCount() == 1U &&
+                snapshot.activeCount() == 0U &&
+                snapshot.settlingCount() == 0U &&
+                !snapshot.deadlineArmed() && snapshot.fullyDrained(),
+            "exact cancellation reap did not settle one process drain edge");
+}
+
+void processDrainWaitsForOrdinaryShutdownPublicationCallback()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    harness.drainObserver->blockOwnerShutdown();
+
+    std::thread shutdown{[pool = harness.pool]() noexcept {
+        pool->beginShutdown();
+    }};
+    const bool entered =
+        harness.drainObserver->waitForOwnerShutdownEntered();
+    const auto blockedSnapshot = harness.pool->snapshot();
+    const bool earlyNotification =
+        harness.processDrainObserver->notificationCount() != 0U;
+    harness.drainObserver->releaseOwnerShutdown();
+    shutdown.join();
+
+    const auto settledSnapshot = harness.pool->snapshot();
+    require(entered && !earlyNotification &&
+                !blockedSnapshot.ordinaryShutdownSequenceCompleted() &&
+                !blockedSnapshot.fullyDrained(),
+            "process drain crossed an in-flight ordinary shutdown publication callback");
+    require(harness.processDrainObserver->notificationCount() == 1U &&
+                settledSnapshot.ordinaryShutdownSequenceCompleted() &&
+                settledSnapshot.fullyDrained(),
+            "process drain did not follow completed ordinary shutdown publication");
+}
+
+void expiredOrdinarySourceObserverFailsManagedDrainClosedOnce()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    std::weak_ptr<RecordingDrainObserver> expiredSource{
+        harness.drainObserver};
+    harness.drainObserver.reset();
+    require(expiredSource.expired(),
+            "ordinary source expiry test retained an unexpected strong owner");
+
+    harness.pool->beginShutdown();
+    harness.pool->beginShutdown();
+
+    const auto snapshot = harness.pool->snapshot();
+    require(harness.processDrainObserver->notificationCount() == 0U &&
+                harness.failFast->calls() == 1U &&
+                snapshot.failFastCount() == 1U &&
+                !snapshot.ordinaryShutdownSequenceCompleted() &&
+                !snapshot.fullyDrained() &&
+                snapshot.lifecycleFailure() != nullptr &&
+                snapshot.lifecycleFailure()->kind ==
+                    Detail::DashboardOverloadResponderFailureKind::
+                        IntegrityFailure,
+            "expired ordinary source observer did not fail managed drain closed exactly once");
+}
+
+void processDrainWaitsForDetachedCompletionSettlement()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    auto client = harness.overloadOne();
+    const auto send = fake->sendCall(0U);
+    harness.pool->beginShutdown();
+    harness.drainObserver->blockCompletionSettled();
+
+    std::atomic_bool reapSucceeded{};
+    std::thread reap{[&]() noexcept {
+        const auto result = harness.pool->reap(
+            ResponderKey,
+            0U,
+            send.operation,
+            ERROR_OPERATION_ABORTED);
+        reapSucceeded.store(static_cast<bool>(result));
+    }};
+    const bool entered =
+        harness.drainObserver->waitForCompletionSettledEntered();
+    const auto blockedSnapshot = harness.pool->snapshot();
+    const auto blockedNotificationCount =
+        harness.processDrainObserver->notificationCount();
+    harness.drainObserver->releaseCompletionSettled();
+    reap.join();
+
+    const auto settledSnapshot = harness.pool->snapshot();
+    require(entered && blockedSnapshot.activeCount() == 0U &&
+                blockedSnapshot.settlingCount() == 1U &&
+                !blockedSnapshot.deadlineArmed() &&
+                !blockedSnapshot.fullyDrained() &&
+                blockedNotificationCount == 0U,
+            "process drain crossed detached handoff completion settlement");
+    require(reapSucceeded.load() &&
+                settledSnapshot.settlingCount() == 0U &&
+                settledSnapshot.fullyDrained() &&
+                harness.processDrainObserver->notificationCount() == 1U,
+            "final detached handoff settlement did not publish exact process drain");
+}
+
+void concurrentFinalReapsPublishOneProcessDrainEdge()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    std::array<Detail::UniqueDashboardSocket, 2U> clients{
+        harness.overloadOne(),
+        harness.overloadOne()};
+    const std::array sends{fake->sendCall(0U), fake->sendCall(1U)};
+    harness.pool->beginShutdown();
+
+    std::mutex startMutex;
+    std::condition_variable startChanged;
+    bool start{};
+    std::array<std::atomic_bool, 2U> succeeded{};
+    std::array<std::thread, 2U> reapers;
+    for (std::size_t index{}; index < reapers.size(); ++index) {
+        reapers[index] = std::thread{[&, index]() noexcept {
+            {
+                std::unique_lock lock{startMutex};
+                startChanged.wait(lock, [&]() noexcept { return start; });
+            }
+            const auto result = harness.pool->reap(
+                ResponderKey,
+                0U,
+                sends[index].operation,
+                ERROR_OPERATION_ABORTED);
+            succeeded[index].store(static_cast<bool>(result));
+        }};
+    }
+    {
+        const std::lock_guard lock{startMutex};
+        start = true;
+    }
+    startChanged.notify_all();
+    for (auto& reaper : reapers) {
+        reaper.join();
+    }
+
+    require(succeeded[0U].load() && succeeded[1U].load() &&
+                harness.pool->snapshot().fullyDrained() &&
+                harness.processDrainObserver->notificationCount() == 1U,
+            "concurrent final reaps duplicated or omitted the exact process drain edge");
+}
+
+void terminalEscalationSupersedesOrdinaryDrainUntilOwnerDelivery()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    auto client = harness.overloadOne();
+    const auto send = fake->sendCall(0U);
+    harness.pool->beginShutdown();
+    harness.drainObserver->blockOwnerTerminal();
+
+    std::thread terminal{[pool = harness.pool]() noexcept {
+        pool->fatal(ERROR_GEN_FAILURE);
+    }};
+    const bool entered =
+        harness.drainObserver->waitForOwnerTerminalEntered();
+    const auto reaped = harness.pool->reap(
+        ResponderKey,
+        0U,
+        send.operation,
+        ERROR_OPERATION_ABORTED);
+    const auto blockedSnapshot = harness.pool->snapshot();
+    const auto blockedNotificationCount =
+        harness.processDrainObserver->notificationCount();
+    harness.drainObserver->releaseOwnerTerminal();
+    terminal.join();
+
+    const auto deliveredSnapshot = harness.pool->snapshot();
+    require(entered && static_cast<bool>(reaped) &&
+                blockedSnapshot.ordinaryShutdownSequenceCompleted() &&
+                blockedSnapshot.terminalOwnerNotificationRequired() &&
+                !blockedSnapshot.terminalOwnerNotificationDelivered() &&
+                blockedSnapshot.activeCount() == 0U &&
+                blockedSnapshot.settlingCount() == 0U &&
+                !blockedSnapshot.fullyDrained() &&
+                blockedNotificationCount == 0U,
+            "ordinary-to-terminal final reap crossed the terminal owner publication");
+    require(deliveredSnapshot.terminalOwnerNotificationDelivered() &&
+                deliveredSnapshot.fullyDrained() &&
+                harness.processDrainObserver->notificationCount() == 1U,
+            "terminal owner publication did not release the settled process drain edge");
+}
+
+void terminalProcessDrainFollowsOwnerNotificationDelivery()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    harness.drainObserver->blockOwnerTerminal();
+
+    std::thread fatal{[pool = harness.pool]() noexcept {
+        pool->fatal(ERROR_GEN_FAILURE);
+    }};
+    const bool entered =
+        harness.drainObserver->waitForOwnerTerminalEntered();
+    harness.pool->beginShutdown();
+    const auto blockedSnapshot = harness.pool->snapshot();
+    const auto blockedNotificationCount =
+        harness.processDrainObserver->notificationCount();
+    harness.drainObserver->releaseOwnerTerminal();
+    fatal.join();
+
+    const auto deliveredSnapshot = harness.pool->snapshot();
+    require(entered && blockedNotificationCount == 0U &&
+                !blockedSnapshot.ordinaryShutdownSequenceCompleted() &&
+                !blockedSnapshot.terminalOwnerNotificationDelivered() &&
+                !blockedSnapshot.fullyDrained(),
+            "terminal process drain crossed an in-flight owner terminal callback");
+    require(deliveredSnapshot.terminalOwnerNotificationDelivered() &&
+                deliveredSnapshot.fullyDrained() &&
+                harness.processDrainObserver->notificationCount() == 1U,
+            "terminal owner delivery did not publish exact process drain");
+}
+
+void expiredTerminalSourceObserverFailsManagedDrainClosedOnce()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    auto client = harness.overloadOne();
+    const auto send = fake->sendCall(0U);
+    harness.pool->beginShutdown();
+    require(harness.pool->snapshot().ordinaryShutdownSequenceCompleted() &&
+                harness.processDrainObserver->notificationCount() == 0U,
+            "terminal source expiry test did not establish ordinary shutdown");
+
+    std::weak_ptr<RecordingDrainObserver> expiredSource{
+        harness.drainObserver};
+    harness.drainObserver.reset();
+    OVERLAPPED foreign{};
+    harness.pool->consume(
+        Detail::DashboardIoCompletionPacket{
+            1U, ResponderKey, std::addressof(foreign)},
+        ERROR_SUCCESS);
+    harness.pool->drainTerminalGenerationNotifications();
+    const auto reaped = harness.pool->reap(
+        ResponderKey,
+        0U,
+        send.operation,
+        ERROR_OPERATION_ABORTED);
+    harness.pool->drainTerminalGenerationNotifications();
+
+    const auto snapshot = harness.pool->snapshot();
+    require(expiredSource.expired() && static_cast<bool>(reaped) &&
+                snapshot.ordinaryShutdownSequenceCompleted() &&
+                snapshot.terminalOwnerNotificationRequired() &&
+                !snapshot.terminalOwnerNotificationDelivered() &&
+                !snapshot.fullyDrained() &&
+                snapshot.failFastCount() == 1U &&
+                harness.failFast->calls() == 1U &&
+                harness.processDrainObserver->notificationCount() == 0U &&
+                snapshot.lifecycleFailure() != nullptr &&
+                snapshot.lifecycleFailure()->kind ==
+                    Detail::DashboardOverloadResponderFailureKind::
+                        IntegrityFailure,
+            "expired terminal source observer published or repeatedly failed managed drain");
+}
+
+void terminalGenerationPublicationsPrecedeProcessDrain()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    auto client = harness.overloadOne();
+    const auto send = fake->sendCall(0U);
+    harness.pool->beginShutdown();
+    harness.processDrainObserver->attachTerminalPublicationSource(
+        harness.drainObserver, GenerationId);
+
+    const auto reaped = harness.pool->reap(
+        ResponderKey,
+        0U,
+        send.operation,
+        ERROR_GEN_FAILURE);
+    const auto stagedSnapshot = harness.pool->snapshot();
+    require(!reaped &&
+                harness.processDrainObserver->notificationCount() == 0U &&
+                harness.drainObserver->terminalNotificationCountFor(
+                    GenerationId) == 0U &&
+                !stagedSnapshot.terminalGenerationPublicationsCompleted() &&
+                !stagedSnapshot.fullyDrained(),
+            "terminal work published process drain before its generation source edges");
+
+    harness.pool->drainTerminalGenerationNotifications();
+    const auto deliveredSnapshot = harness.pool->snapshot();
+    require(harness.drainObserver->terminalPendingCountFor(
+                    GenerationId) == 1U &&
+                harness.drainObserver->terminalNotificationCountFor(
+                    GenerationId) == 1U &&
+                harness.drainObserver->notificationCountFor(
+                    GenerationId) >= 1U &&
+                harness.processDrainObserver->
+                    terminalSourceWasPublishedBeforeDrain() &&
+                harness.processDrainObserver->notificationCount() == 1U &&
+                deliveredSnapshot.terminalGenerationPublicationsCompleted() &&
+                deliveredSnapshot.fullyDrained(),
+            "terminal generation source publication did not causally precede process drain");
+}
+
+void expiredSourceDuringFinalSettlementFailsManagedDrainClosedOnce()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    auto client = harness.overloadOne();
+    const auto send = fake->sendCall(0U);
+    harness.pool->beginShutdown();
+
+    std::weak_ptr<RecordingDrainObserver> expiredSource{
+        harness.drainObserver};
+    harness.drainObserver.reset();
+    require(expiredSource.expired(),
+            "final settlement source expiry retained an unexpected strong owner");
+
+    const auto reaped = harness.pool->reap(
+        ResponderKey,
+        0U,
+        send.operation,
+        ERROR_OPERATION_ABORTED);
+    harness.pool->beginShutdown();
+    harness.pool->drainTerminalGenerationNotifications();
+
+    const auto snapshot = harness.pool->snapshot();
+    require(static_cast<bool>(reaped) &&
+                snapshot.managedSourcePublicationFailed() &&
+                !snapshot.fullyDrained() &&
+                snapshot.failFastCount() == 1U &&
+                harness.failFast->calls() == 1U &&
+                harness.processDrainObserver->notificationCount() == 0U &&
+                snapshot.lifecycleFailure() != nullptr &&
+                snapshot.lifecycleFailure()->kind ==
+                    Detail::DashboardOverloadResponderFailureKind::
+                        IntegrityFailure,
+            "expired final-settlement source did not fail managed drain closed exactly once");
+}
+
+void terminalGenerationPendingLatchCompletesBeforeTerminalPublication()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    auto client = harness.overloadOne();
+    const auto send = fake->sendCall(0U);
+    harness.pool->beginShutdown();
+    harness.drainObserver->blockTerminalPending();
+
+    std::atomic_bool reapFailed{};
+    std::thread reap{[&]() noexcept {
+        const auto result = harness.pool->reap(
+            ResponderKey,
+            0U,
+            send.operation,
+            ERROR_GEN_FAILURE);
+        reapFailed.store(!result);
+    }};
+    const bool entered =
+        harness.drainObserver->waitForTerminalPendingEntered();
+
+    harness.pool->drainTerminalGenerationNotifications();
+    const auto blockedSnapshot = harness.pool->snapshot();
+    const auto blockedTerminalCount =
+        harness.drainObserver->terminalNotificationCountFor(GenerationId);
+    const auto blockedProcessCount =
+        harness.processDrainObserver->notificationCount();
+
+    harness.drainObserver->releaseTerminalPending();
+    reap.join();
+    harness.pool->drainTerminalGenerationNotifications();
+
+    const auto deliveredSnapshot = harness.pool->snapshot();
+    require(entered && blockedTerminalCount == 0U &&
+                blockedProcessCount == 0U &&
+                !blockedSnapshot.terminalGenerationPublicationsCompleted() &&
+                !blockedSnapshot.fullyDrained(),
+            "terminal publication crossed an in-flight terminal-pending latch");
+    require(reapFailed.load() &&
+                harness.drainObserver->terminalNotificationCountFor(
+                    GenerationId) == 1U &&
+                harness.processDrainObserver->notificationCount() == 1U &&
+                deliveredSnapshot.terminalGenerationPublicationsCompleted() &&
+                deliveredSnapshot.fullyDrained(),
+            "completed terminal-pending latch did not release exact terminal publication");
+}
+
+void concurrentTerminalCannotCrossOrdinarySourcePublication()
+{
+    auto fake = std::make_shared<FakeSocketApi>();
+    Harness harness{fake};
+    harness.drainObserver->blockOwnerShutdown();
+
+    std::thread ordinary{[pool = harness.pool]() noexcept {
+        pool->beginShutdown();
+    }};
+    const bool ordinaryEntered =
+        harness.drainObserver->waitForOwnerShutdownEntered();
+    harness.pool->fatal(ERROR_GEN_FAILURE);
+
+    const auto blockedSnapshot = harness.pool->snapshot();
+    const auto blockedProcessCount =
+        harness.processDrainObserver->notificationCount();
+    harness.drainObserver->releaseOwnerShutdown();
+    ordinary.join();
+
+    const auto deliveredSnapshot = harness.pool->snapshot();
+    require(ordinaryEntered &&
+                blockedSnapshot.shutdownTransitionInProgress() &&
+                blockedSnapshot.terminalOwnerNotificationRequired() &&
+                blockedSnapshot.terminalOwnerNotificationDelivered() &&
+                !blockedSnapshot.fullyDrained() &&
+                blockedProcessCount == 0U,
+            "terminal escalation crossed an in-flight ordinary source publication");
+    require(!deliveredSnapshot.shutdownTransitionInProgress() &&
+                deliveredSnapshot.ordinaryShutdownSequenceCompleted() &&
+                deliveredSnapshot.terminalOwnerNotificationDelivered() &&
+                deliveredSnapshot.fullyDrained() &&
+                harness.processDrainObserver->notificationCount() == 1U,
+            "completed ordinary publication did not release terminal process drain");
+}
+
+void processDrainObserverLifetimeAndReentryFailClosedSafely()
+{
+    {
+        auto fake = std::make_shared<FakeSocketApi>();
+        Harness harness{fake};
+        std::weak_ptr<RecordingProcessDrainObserver> expiredObserver{
+            harness.processDrainObserver};
+        harness.processDrainObserver.reset();
+        harness.failFast->attachSnapshotReentry(harness.pool);
+        harness.failFast->block();
+        require(expiredObserver.expired(),
+                "process drain observer test retained an unexpected strong owner");
+
+        std::thread shutdown{[pool = harness.pool]() noexcept {
+            pool->beginShutdown();
+        }};
+        const bool failFastEntered = harness.failFast->waitUntilEntered();
+        const auto blockedSnapshot = harness.pool->snapshot();
+        const bool reentryObservedFailure =
+            harness.failFast->reentryObservedFailure();
+        harness.failFast->release();
+        shutdown.join();
+
+        const auto snapshot = harness.pool->snapshot();
+        require(failFastEntered && reentryObservedFailure &&
+                    blockedSnapshot.processDrainPublicationFailed() &&
+                    !blockedSnapshot.fullyDrained() &&
+                    blockedSnapshot.failFastCount() == 1U &&
+                    blockedSnapshot.lifecycleFailure() != nullptr &&
+                    blockedSnapshot.lifecycleFailure()->kind ==
+                        Detail::DashboardOverloadResponderFailureKind::
+                            IntegrityFailure &&
+                    harness.failFast->calls() == 1U &&
+                    snapshot.processDrainPublicationFailed() &&
+                    !snapshot.fullyDrained() &&
+                    snapshot.failFastCount() == 1U &&
+                    snapshot.lifecycleFailure() != nullptr &&
+                    snapshot.lifecycleFailure()->kind ==
+                        Detail::DashboardOverloadResponderFailureKind::
+                            IntegrityFailure,
+                "expired process drain observer exposed a transient exact-drain state before fail-fast");
+    }
+
+    {
+        auto fake = std::make_shared<FakeSocketApi>();
+        Harness harness{fake};
+        harness.processDrainObserver->attachReentry(harness.pool);
+        harness.pool->beginShutdown();
+        require(harness.processDrainObserver->notificationCount() == 1U &&
+                    harness.processDrainObserver->
+                        reentryObservedExactDrain() &&
+                    harness.pool->snapshot().fullyDrained(),
+                "process drain observer could not re-enter shutdown and snapshot safely");
+    }
+}
+
 void concurrentShutdownWaitsForCoordinatorPublication()
 {
     auto fake = std::make_shared<FakeSocketApi>();
@@ -1667,10 +2506,26 @@ void associationPinsBorrowedSocketAgainstConcurrentCancellation()
         require(fake->sendCallCount() == 0U,
                 "association-time cancellation released an issued send early");
     }
-    require(harness.pool->snapshot().fullyDrained() &&
-                harness.acceptSet->snapshot().awaitingReturnCount() == 0U &&
-                harness.failFast->calls() == 0U,
-            "association-pinned cancellation did not drain without fail-fast");
+    harness.pool->drainTerminalGenerationNotifications();
+    const auto drainedSnapshot = harness.pool->snapshot();
+    require(drainedSnapshot.ordinaryShutdownSequenceCompleted(),
+            "association-pinned cancellation did not complete ordinary publication");
+    require(!drainedSnapshot.managedSourcePublicationFailed(),
+            "association-pinned cancellation lost its managed source observer");
+    require(!drainedSnapshot.shutdownTransitionInProgress(),
+            "association-pinned cancellation retained its shutdown transition");
+    require(drainedSnapshot.terminalGenerationPublicationsCompleted(),
+            "association-pinned cancellation retained terminal publications");
+    require(drainedSnapshot.activeCount() == 0U &&
+                drainedSnapshot.settlingCount() == 0U &&
+                !drainedSnapshot.deadlineArmed(),
+            "association-pinned cancellation retained native or settlement ownership");
+    require(drainedSnapshot.fullyDrained(),
+            "association-pinned cancellation did not reach exact overload drain");
+    require(harness.acceptSet->snapshot().awaitingReturnCount() == 0U,
+            "association-pinned cancellation stranded its accept token");
+    require(harness.failFast->calls() == 0U,
+            "association-pinned cancellation invoked fail-fast");
 }
 
 enum class NativeCancellationFailureMode : std::uint8_t {
@@ -1819,6 +2674,7 @@ void unsolicitedInitialIssueAbortIsTerminalIntegrityFailure()
     fake->failSend(WSA_OPERATION_ABORTED);
     Harness harness{fake};
     auto client = harness.overloadOne();
+    harness.pool->drainTerminalGenerationNotifications();
     const auto snapshot = harness.pool->snapshot();
     require(snapshot.shutdownRequested() && snapshot.fullyDrained() &&
                 snapshot.lifecycleFailure() != nullptr &&
@@ -1848,6 +2704,7 @@ void unsolicitedPartialReissueAbortIsTerminalIntegrityFailure()
         reaped,
         Domain::ErrorCodes::IntegrityFailure,
         "an unsolicited partial reissue abort was treated as client close");
+    harness.pool->drainTerminalGenerationNotifications();
     const auto snapshot = harness.pool->snapshot();
     require(fake->sendCallCount() == 2U &&
                 snapshot.shutdownRequested() && snapshot.fullyDrained() &&
@@ -1994,6 +2851,21 @@ int main()
         immediateSendFailureClosesAndReturnsWithoutNativeObligation();
         activeAndRetiringGenerationsFillEightBoundedResponders();
         shutdownCompletionDoesNotReissueAPartialResponse();
+        processDrainBindingRequiresItsLiveSourceObserverFirst();
+        emptyOrdinaryShutdownPublishesExactProcessDrainOnce();
+        activeCancellationPublishesOnlyAfterExactReapAndSettlement();
+        processDrainWaitsForOrdinaryShutdownPublicationCallback();
+        expiredOrdinarySourceObserverFailsManagedDrainClosedOnce();
+        processDrainWaitsForDetachedCompletionSettlement();
+        concurrentFinalReapsPublishOneProcessDrainEdge();
+        terminalEscalationSupersedesOrdinaryDrainUntilOwnerDelivery();
+        terminalProcessDrainFollowsOwnerNotificationDelivery();
+        expiredTerminalSourceObserverFailsManagedDrainClosedOnce();
+        terminalGenerationPublicationsPrecedeProcessDrain();
+        expiredSourceDuringFinalSettlementFailsManagedDrainClosedOnce();
+        terminalGenerationPendingLatchCompletesBeforeTerminalPublication();
+        concurrentTerminalCannotCrossOrdinarySourcePublication();
+        processDrainObserverLifetimeAndReentryFailClosedSafely();
         concurrentShutdownWaitsForCoordinatorPublication();
         sharedDeadlineExpiresFourStalledActiveResponses();
         associationPinsBorrowedSocketAgainstConcurrentCancellation();
