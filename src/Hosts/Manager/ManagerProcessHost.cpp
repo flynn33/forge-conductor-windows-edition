@@ -1,5 +1,7 @@
 #include "ManagerProcessHost.h"
 
+#include "ManagerTransitionWorker.h"
+
 #include "ForgeConductor/Domain/Error.h"
 
 #include <exception>
@@ -24,14 +26,16 @@ ManagerProcessHost::ManagerProcessHost(
     std::shared_ptr<Contracts::IManagerController> controller,
     std::shared_ptr<ForgeConductor::Manager::ManagerRequestDispatcher>
         dispatcher,
-    std::unique_ptr<Contracts::IManagerServer> server)
+    std::unique_ptr<Contracts::IManagerServer> server,
+    std::unique_ptr<IManagerTransitionWorker> transitionWorker)
     : controller_{std::move(controller)},
       dispatcher_{std::move(dispatcher)},
-      server_{std::move(server)}
+      server_{std::move(server)},
+      transitionWorker_{std::move(transitionWorker)}
 {
-    if (!controller_ || !dispatcher_ || !server_) {
+    if (!controller_ || !dispatcher_ || !server_ || !transitionWorker_) {
         throw std::invalid_argument{
-            "The manager process host requires a controller, dispatcher, and server."};
+            "The manager process host requires a controller, dispatcher, server, and transition worker."};
     }
 }
 
@@ -42,7 +46,8 @@ ManagerProcessHost::~ManagerProcessHost() noexcept
         const std::lock_guard lock{stateMutex_};
         if (runActive_) {
             // Destruction concurrent with the caller-owned blocking run would
-            // otherwise release the server and dispatcher underneath it.
+            // otherwise release ingress, worker, and controller ownership
+            // underneath that run frame.
             std::terminate();
         }
     } catch (...) {
@@ -102,6 +107,22 @@ Domain::Result<void> ManagerProcessHost::run(
             return Domain::Result<void>::failure(std::move(error));
         }
 
+        auto transitionStarted = transitionWorker_->start();
+        if (!transitionStarted) {
+            auto error = std::move(transitionStarted).error();
+            bool externalShutdownRequested = false;
+            {
+                const std::lock_guard lock{stateMutex_};
+                externalShutdownRequested = externalShutdownRequested_;
+            }
+            completeRun();
+            if (externalShutdownRequested &&
+                error.code == Domain::ErrorCodes::TransportClosed) {
+                return Domain::Result<void>::success();
+            }
+            return Domain::Result<void>::failure(std::move(error));
+        }
+
         bool stopBeforeIngress = false;
         {
             const std::lock_guard lock{stateMutex_};
@@ -152,6 +173,7 @@ void ManagerProcessHost::completeRun() noexcept
         }
         if (finalize) {
             server_->shutdown();
+            transitionWorker_->shutdown();
             dispatcher_->shutdown();
         }
     } catch (...) {
@@ -191,11 +213,16 @@ void ManagerProcessHost::shutdown() noexcept
             return;
         }
 
-        // Do not reset either owner here: run() may still be unwinding on a
-        // different thread. Active startup is cancelled and final controller
-        // closure is deferred to that run thread so shutdown itself stays
-        // bounded even if an injected startup callback is non-cooperative.
+        // Do not reset injected owners here: run() may still be unwinding on a
+        // different thread. Active startup and worker work receive nonblocking
+        // cancellation; the run thread retains the exact worker join and final
+        // dispatcher/controller closure.
         server_->shutdown();
+        if (finalize) {
+            transitionWorker_->shutdown();
+        } else {
+            transitionWorker_->beginShutdown();
+        }
         if (signal) {
             dispatcher_->beginShutdown();
         }

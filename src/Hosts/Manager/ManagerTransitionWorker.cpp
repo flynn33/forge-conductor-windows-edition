@@ -113,6 +113,22 @@ Domain::Result<void> ManagerTransitionWorker::start() noexcept
     }
 }
 
+void ManagerTransitionWorker::beginShutdown() noexcept
+{
+    try {
+        const std::lock_guard lock{lifecycleMutex_};
+        if (lifecycle_ == Lifecycle::Stopped) {
+            return;
+        }
+        lifecycle_ = Lifecycle::Stopping;
+        restartSignal_.close();
+        if (worker_.joinable()) {
+            worker_.request_stop();
+        }
+    } catch (...) {
+    }
+}
+
 void ManagerTransitionWorker::shutdown() noexcept
 {
     std::jthread claimedWorker;
@@ -208,7 +224,7 @@ void ManagerTransitionWorker::run(
     try {
         auto watchdogInterval = ManagerWatchdogPolicy::DefaultInterval;
 
-        // Initialization is owned by the composition root. This first bounded
+        // Initialization is owned by ManagerProcessHost. This first bounded
         // observation only seeds the configured cadence after initialization.
         if (auto context = makeContext(cancellation); context) {
             auto initial = controller_->snapshot(context.value());

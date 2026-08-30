@@ -20,6 +20,19 @@ namespace ForgeConductor::Hosts::Manager {
 
 class ManagerProcessRestartSignal;
 
+// Process-host lifecycle boundary for the sole serialized transition owner.
+// The host starts it only after controller initialization and closes it before
+// controller or runtime destruction. beginShutdown only closes successor
+// admission and requests cancellation; shutdown retains the exact worker join.
+class IManagerTransitionWorker {
+public:
+    virtual ~IManagerTransitionWorker() noexcept = default;
+
+    [[nodiscard]] virtual Domain::Result<void> start() noexcept = 0;
+    virtual void beginShutdown() noexcept = 0;
+    virtual void shutdown() noexcept = 0;
+};
+
 struct ManagerTransitionWorkerTiming final {
     // Test seam: production maps one configured watchdog second to one second.
     std::chrono::milliseconds watchdogSecond{std::chrono::seconds{1}};
@@ -33,8 +46,8 @@ struct ManagerTransitionWorkerTiming final {
 
 // Process-owned capacity-one executor for deferred operator restarts and
 // watchdog reconciliation. Construction does not start the worker; the
-// composition root must call start only after controller initialization.
-class ManagerTransitionWorker final {
+// process host calls start only after controller initialization.
+class ManagerTransitionWorker final : public IManagerTransitionWorker {
 public:
     ManagerTransitionWorker(
         std::shared_ptr<Contracts::IManagerController> controller,
@@ -42,15 +55,16 @@ public:
         std::shared_ptr<Contracts::IUuidGenerator> uuidGenerator,
         ManagerProcessRestartSignal& restartSignal,
         ManagerTransitionWorkerTiming timing = {});
-    ~ManagerTransitionWorker() noexcept;
+    ~ManagerTransitionWorker() noexcept override;
 
     ManagerTransitionWorker(const ManagerTransitionWorker&) = delete;
     ManagerTransitionWorker& operator=(const ManagerTransitionWorker&) = delete;
     ManagerTransitionWorker(ManagerTransitionWorker&&) = delete;
     ManagerTransitionWorker& operator=(ManagerTransitionWorker&&) = delete;
 
-    [[nodiscard]] Domain::Result<void> start() noexcept;
-    void shutdown() noexcept;
+    [[nodiscard]] Domain::Result<void> start() noexcept override;
+    void beginShutdown() noexcept override;
+    void shutdown() noexcept override;
 
 private:
     enum class Lifecycle {

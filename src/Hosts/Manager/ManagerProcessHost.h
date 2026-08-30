@@ -11,16 +11,20 @@
 
 namespace ForgeConductor::Hosts::Manager {
 
-// Owns the blocking manager ingress lifetime without constructing platform
-// services. The composition root retains the instance lease outside this class
-// so that it can release that lease after every injected owner has shut down.
+class IManagerTransitionWorker;
+
+// Owns controller initialization, the transition worker, and the blocking
+// manager ingress lifetime without constructing platform services. The
+// composition root retains the instance lease outside this class so it can
+// release that lease after every injected owner has shut down.
 class ManagerProcessHost final {
 public:
     ManagerProcessHost(
         std::shared_ptr<Contracts::IManagerController> controller,
         std::shared_ptr<ForgeConductor::Manager::ManagerRequestDispatcher>
             dispatcher,
-        std::unique_ptr<Contracts::IManagerServer> server);
+        std::unique_ptr<Contracts::IManagerServer> server,
+        std::unique_ptr<IManagerTransitionWorker> transitionWorker);
     ~ManagerProcessHost() noexcept;
 
     ManagerProcessHost(const ManagerProcessHost&) = delete;
@@ -32,10 +36,11 @@ public:
         const Domain::OperationContext& startupContext,
         const Domain::OperationContext& ingressContext) noexcept;
 
-    // Idempotently closes ingress before draining the dispatcher. Dispatcher
-    // shutdown closes the controller and therefore the runtime and store. If a
-    // run is active, this call only signals cancellation; the run thread owns
-    // final closure. The owner must keep this object alive until run returns.
+    // Idempotently closes ingress and requests nonblocking transition-worker
+    // and dispatcher cancellation. If a run is active, that run thread exact-
+    // joins the worker before dispatcher shutdown closes the controller,
+    // runtime, and store. The owner must keep this object alive until run
+    // returns.
     void shutdown() noexcept;
 
 private:
@@ -58,6 +63,7 @@ private:
     std::shared_ptr<ForgeConductor::Manager::ManagerRequestDispatcher>
         dispatcher_;
     std::unique_ptr<Contracts::IManagerServer> server_;
+    std::unique_ptr<IManagerTransitionWorker> transitionWorker_;
 
     std::mutex stateMutex_;
     std::stop_source startupStopSource_;

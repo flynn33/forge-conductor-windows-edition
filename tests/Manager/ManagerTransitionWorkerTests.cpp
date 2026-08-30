@@ -568,6 +568,45 @@ void capacityOneWorkerNeverOverlapsAndShutdownJoins()
             "worker shutdown did not join and close exact transition ownership");
 }
 
+void beginShutdownSignalsWithoutJoining()
+{
+    WorkerFixture fixture;
+    fixture.controller->blockControl();
+    require(
+        fixture.signal.requestRestart() ==
+            Host::ManagerProcessRestartRequestResult::Published,
+        "nonblocking-stop fixture could not publish its restart");
+    static_cast<void>(take(fixture.worker.start()));
+    require(fixture.controller->waitUntilControlEntered(),
+            "nonblocking-stop restart did not enter the controller");
+
+    const auto started = std::chrono::steady_clock::now();
+    fixture.worker.beginShutdown();
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    require(elapsed < 250ms,
+            "transition begin-shutdown waited for controller quiescence");
+    require(fixture.signal.closed(),
+            "transition begin-shutdown did not close successor admission");
+
+    std::atomic_bool exactShutdownReturned{};
+    std::jthread shutdownThread{[&]() {
+        fixture.worker.shutdown();
+        exactShutdownReturned.store(true, std::memory_order_release);
+    }};
+    const auto retentionDeadline = std::chrono::steady_clock::now() + 80ms;
+    while (std::chrono::steady_clock::now() < retentionDeadline &&
+           !exactShutdownReturned.load(std::memory_order_acquire)) {
+        std::this_thread::yield();
+    }
+    require(!exactShutdownReturned.load(std::memory_order_acquire),
+            "exact transition shutdown did not retain worker ownership");
+
+    fixture.controller->releaseControl();
+    shutdownThread.join();
+    require(exactShutdownReturned.load(std::memory_order_acquire),
+            "exact transition shutdown did not finish after quiescence");
+}
+
 void lifecycleAndTimingAdmissionAreBounded()
 {
     Host::ManagerProcessRestartSignal signal;
@@ -605,6 +644,16 @@ void lifecycleAndTimingAdmissionAreBounded()
         worker.start(),
         Domain::ErrorCodes::TransportClosed,
         "transition worker restarted after terminal shutdown");
+
+    Host::ManagerProcessRestartSignal inertSignal;
+    Host::ManagerTransitionWorker inertWorker{
+        controller, clock, uuids, inertSignal, {10ms, 250ms}};
+    inertWorker.beginShutdown();
+    requireError(
+        inertWorker.start(),
+        Domain::ErrorCodes::TransportClosed,
+        "transition worker started after a pre-start stop signal");
+    inertWorker.shutdown();
 }
 
 } // namespace
@@ -626,9 +675,11 @@ int main()
         std::cout << "PASS manager_transition.suppression\n";
         capacityOneWorkerNeverOverlapsAndShutdownJoins();
         std::cout << "PASS manager_transition.ownership\n";
+        beginShutdownSignalsWithoutJoining();
+        std::cout << "PASS manager_transition.nonblocking_stop\n";
         lifecycleAndTimingAdmissionAreBounded();
         std::cout << "PASS manager_transition.lifecycle\n";
-        std::cout << "SUMMARY passed=7 failed=0\n";
+        std::cout << "SUMMARY passed=8 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

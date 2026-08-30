@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-host-transition-lifecycle",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with Visual Studio 17 2022, MSBuild 17.14.40, MSVC 14.51.36231, Windows SDK 10.0.26100.0, C++20 Release x64, and CTest 4.4.2.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T105300721Z-9ebe1366.json",
+    "command_record_sha256": "456f9e13f45586a05673ec4422772792d1741872e91cca9d88a8812ba578bd2a",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Release",
+    "targets": [
+      "ForgeConductor.Manager.ProcessHostTests",
+      "ForgeConductor.Manager.TransitionWorkerTests",
+      "ForgeConductor.Manager.CompositionSupportTests"
+    ],
+    "elapsed_seconds": 10.21,
+    "stdout": ".forge-codex/state/commands/20260830T105300721Z-9ebe1366.stdout.txt",
+    "stdout_sha256": "863d9c43df4539db1e8a22a64ee0c3f59f8b2bcb2c939d26ae625bbf747a7e8e",
+    "stderr": ".forge-codex/state/commands/20260830T105300721Z-9ebe1366.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T105318136Z-e7176840.json",
+    "command_record_sha256": "8f7f6815bcd864a9a49cf3d2903104c3cbf8cb280f0d66708888d692cb445633",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 3,
+    "tests_failed": 0,
+    "real_seconds": 0.65,
+    "stdout": ".forge-codex/state/commands/20260830T105318136Z-e7176840.stdout.txt",
+    "stdout_sha256": "ba793a44f4a6581c08ab4609b358965a8c09710124ed079fdf021b823de962df",
+    "stderr": ".forge-codex/state/commands/20260830T105318136Z-e7176840.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_policy_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T105455151Z-582a36b6.json",
+    "command_record_sha256": "7ab706b5f49c0587bbfb82bd3e13a822a81d6534da7764b5a604c8f45835c46f",
+    "exit_code": 0,
+    "timed_out": false,
+    "source_hashes_matched": 8,
+    "binary_hashes_matched": 4,
+    "command_records_matched": 2,
+    "no_python": "passed",
+    "no_attribution": "passed",
+    "ledger_events_verified": 473,
+    "changed_text_files_crlf_utf8_no_bom": 9,
+    "focused_selection_not_G16_label_gate": "passed",
+    "p16_in_progress_and_g16_not_started": "passed",
+    "git_diff_check": "passed",
+    "stdout": ".forge-codex/state/commands/20260830T105455151Z-582a36b6.stdout.txt",
+    "stdout_sha256": "7d897f36ddbb61005f22db06dc645712c94b6e6a290329264f5e523fe9eaf85c",
+    "stderr": ".forge-codex/state/commands/20260830T105455151Z-582a36b6.stderr.txt",
+    "stderr_sha256": "40cd63169dafa9342d414867598e3559e86fcac54ab339565a16ba68205c2e6a"
+  },
+  "measured_results": {
+    "focused_native_test_executables_passed": 3,
+    "focused_native_test_executables_failed": 0,
+    "manager_process_host_cases_passed": 9,
+    "manager_transition_cases_passed": 8,
+    "startup_shutdown_race_iterations_passed": 64,
+    "transition_worker_capacity": 1,
+    "external_shutdown_exact_join_calls": 0,
+    "run_thread_exact_join_calls": 1
+  },
+  "behavior_proved": [
+    "ManagerProcessHost initializes the controller, starts the sole transition worker, and only then exposes manager ingress",
+    "initialization, transition-start, and ingress failures preserve their typed errors while exact cleanup closes ingress, the transition worker, and then the dispatcher/controller",
+    "external shutdown racing transition start treats only the externally caused transport_closed result as orderly termination and never exposes ingress",
+    "active external shutdown closes ingress and requests nonblocking worker and dispatcher cancellation without claiming the exact transition-worker join",
+    "the active run frame retains the exact transition-worker join before dispatcher shutdown can close the controller and runtime",
+    "the concrete transition worker beginShutdown closes successor admission and requests cancellation without waiting for a blocked controller callback",
+    "the concrete transition worker shutdown continues to retain exact jthread ownership until controller work quiesces",
+    "pre-run and repeated shutdown paths remain terminal, idempotent, and single-use"
+  ],
+  "evidence_scope": {
+    "proved": "Source structure and focused native Release behavior for Manager controller-to-worker-to-ingress startup ordering, nonblocking active cancellation, externally raced startup classification, exact run-thread worker join, idempotent closure, and linked composition-support compatibility on this Windows 11 alpha machine.",
+    "not_proved": "The production Manager composition root, packaged operational and dashboard services, real-process ownership/authentication/restart/startup/shutdown lifecycle, live Edge dashboard behavior, retained native UI automation, installer lifecycle, or the authoritative G16 gate."
+  },
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-027-manager-process-host-transition-lifecycle.md": "2ccfa88fdde95def8d279ec4494929074aaef7de5f93f53073059ab62cb7a83b",
+    ".forge-codex/state/run-state.json": "baebf9e014031f04dc7f2c3bca601bf19e7a3d6f3db6434ea1af8d47421375d3",
+    "src/Hosts/Manager/ManagerProcessHost.cpp": "a6abba0144dfad9f3628e3e581ffb9fa99ad3e6f84b2c63e63c756a19708ab51",
+    "src/Hosts/Manager/ManagerProcessHost.h": "b7234bc4cabacec18bba15917efb831f7c8bc394239dcf1209a920fc761f826f",
+    "src/Hosts/Manager/ManagerTransitionWorker.cpp": "a71914733c2a57970a0a09565727a5b37f335ab5bfa14c48b4d8ef132096c311",
+    "src/Hosts/Manager/ManagerTransitionWorker.h": "180958a789c22eb36ce896df617ab7627aeb35b4d0a6f65a74f817408c8ecaf5",
+    "tests/Manager/ManagerProcessHostTests.cpp": "79e1f69a3de3d2b2b41694fb6391d73acf4296bc92d2513be9ae7a9ddede43f3",
+    "tests/Manager/ManagerTransitionWorkerTests.cpp": "6f2158c40405c7d3750083c86f0c9e545440910da07313af6123c06d6bbbe04e"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Manager.ProcessHostTests.exe": "496a2843d202615fa100bc28ccd13c78569e067b36bb28cef4d87076c0f395a9",
+    "ForgeConductor.Manager.TransitionWorkerTests.exe": "9b4089874065e5a1023606859a5cac76cd4bce207d0b630eae0ebf10e37c32d7",
+    "ForgeConductor.Manager.CompositionSupportTests.exe": "b31ffa82b011fa9ae8a0b207181869639e720a143160253a8dcea68e5f1302c8",
+    "ForgeConductor.Manager.Host.lib": "47e8dba55ec80530db105543a9e94c344c6fd4534832e18d464ee3f281c77237"
+  },
+  "remaining_limitations": [
+    "P16 remains in progress and G16 remains not started.",
+    "Production Manager composition and operational services, real-process lifecycle evidence, live Edge dashboard behavior, and retained native UI automation remain pending.",
+    "Installer qualification is limited to this Windows 11 alpha machine; clean-environment qualification, security-only hardening, and bespoke UI polish remain owner-deferred until after alpha."
+  ]
+}
