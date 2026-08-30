@@ -72,7 +72,7 @@
     "dashboard_presence_overflow_probe_rows": 1,
     "dashboard_session_text_budget_bytes": 1048576,
     "dashboard_presence_text_budget_bytes": 524288,
-    "diagnostic_tail_backward_scan_block_bytes": 65536
+    "diagnostic_tail_backward_scan_block_bytes": 16384
   },
   "behavior_proved": [
     "client-presence registration carries the canonical working directory from the lifecycle and MCP composition boundary into persistence",
