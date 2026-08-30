@@ -478,8 +478,34 @@ void validateSystem(
     requireNonnegative(system.cpu.loadAverage.oneMinute, "cpu.load_avg.m1");
     requireNonnegative(system.cpu.loadAverage.fiveMinutes, "cpu.load_avg.m5");
     requireNonnegative(system.cpu.loadAverage.fifteenMinutes, "cpu.load_avg.m15");
-    requirePercent(system.ram.percent, "ram.percent");
-    requirePercent(system.ram.pressurePercent, "ram.pressure_percent");
+    const auto ramValid = Domain::validateRamMetrics(system.ram);
+    if (!ramValid) {
+        throw TelemetryCodecException{
+            ramValid.error().code,
+            "Dashboard telemetry contains invalid RAM metrics: " +
+                ramValid.error().message};
+    }
+    const auto validateRamMetricTimestamp = [](const auto& metric) {
+        if (metric.capturedAt) {
+            static_cast<void>(utcMilliseconds(*metric.capturedAt));
+        }
+        if (metric.observedAt) {
+            static_cast<void>(utcMilliseconds(*metric.observedAt));
+        }
+    };
+    validateRamMetricTimestamp(system.ram.totalBytes);
+    validateRamMetricTimestamp(system.ram.usedBytes);
+    validateRamMetricTimestamp(system.ram.availableBytes);
+    validateRamMetricTimestamp(system.ram.percent);
+    validateRamMetricTimestamp(system.ram.pressurePercent);
+    validateRamMetricTimestamp(system.ram.activeBytes);
+    validateRamMetricTimestamp(system.ram.wiredBytes);
+    validateRamMetricTimestamp(system.ram.compressedBytes);
+    validateRamMetricTimestamp(system.ram.swapTotalBytes);
+    validateRamMetricTimestamp(system.ram.swapUsedBytes);
+    validateRamMetricTimestamp(system.ram.swapPercent);
+    validateRamMetricTimestamp(system.ram.committedBytes);
+    validateRamMetricTimestamp(system.ram.pagedPoolBytes);
 
     for (const auto& disk : system.disks) {
         requirePercent(disk.percent, "disk.percent");
@@ -511,6 +537,23 @@ void validateSystem(
     text.add(system.platform);
     text.add(system.architecture);
     text.add(system.cpu.brand);
+    const auto addRamMetricText = [&](const auto& metric) {
+        text.add(metric.source);
+        text.addOptional(metric.unavailableReason);
+    };
+    addRamMetricText(system.ram.totalBytes);
+    addRamMetricText(system.ram.usedBytes);
+    addRamMetricText(system.ram.availableBytes);
+    addRamMetricText(system.ram.percent);
+    addRamMetricText(system.ram.pressurePercent);
+    addRamMetricText(system.ram.activeBytes);
+    addRamMetricText(system.ram.wiredBytes);
+    addRamMetricText(system.ram.compressedBytes);
+    addRamMetricText(system.ram.swapTotalBytes);
+    addRamMetricText(system.ram.swapUsedBytes);
+    addRamMetricText(system.ram.swapPercent);
+    addRamMetricText(system.ram.committedBytes);
+    addRamMetricText(system.ram.pagedPoolBytes);
     for (const auto& disk : system.disks) {
         text.add(disk.device);
         text.add(disk.mount.value());
@@ -669,36 +712,125 @@ void writeCpu(BoundedJsonWriter& writer, const Domain::CpuMetrics& cpu)
     writer.character('}');
 }
 
+void writeRamByteMetric(
+    BoundedJsonWriter& writer,
+    const Domain::TelemetryMetric<std::uint64_t>& metric)
+{
+    if (metric.value) {
+        writer.number(static_cast<double>(*metric.value) / BytesPerGibibyte);
+    } else {
+        writer.nullValue();
+    }
+}
+
+void writeRamPercentMetric(
+    BoundedJsonWriter& writer,
+    const Domain::TelemetryMetric<double>& metric)
+{
+    if (metric.value) {
+        writer.number(*metric.value);
+    } else {
+        writer.nullValue();
+    }
+}
+
+template <typename T>
+void writeRamAvailabilityMember(
+    BoundedJsonWriter& writer,
+    bool& first,
+    const std::string_view name,
+    const Domain::TelemetryMetric<T>& metric)
+{
+    writer.member(first, name);
+    writer.character('{');
+    bool metadataFirst{true};
+    writer.member(metadataFirst, "state");
+    writer.string(Domain::telemetryMetricAvailabilityName(metric.availability));
+    writer.member(metadataFirst, "stale");
+    writer.boolean(metric.stale);
+    writer.member(metadataFirst, "captured_at");
+    if (metric.capturedAt) {
+        writer.number(unixUtcSeconds(*metric.capturedAt));
+    } else {
+        writer.nullValue();
+    }
+    writer.member(metadataFirst, "observed_at");
+    if (metric.observedAt) {
+        writer.number(unixUtcSeconds(*metric.observedAt));
+    } else {
+        writer.nullValue();
+    }
+    writer.member(metadataFirst, "source");
+    writer.string(metric.source);
+    writer.member(metadataFirst, "reason");
+    if (metric.unavailableReason) {
+        writer.string(*metric.unavailableReason);
+    } else {
+        writer.nullValue();
+    }
+    writer.character('}');
+}
+
 void writeRam(BoundedJsonWriter& writer, const Domain::RamMetrics& ram)
 {
     writer.character('{');
     bool first{true};
     writer.member(first, "total_gb");
-    writer.number(static_cast<double>(ram.totalBytes) / BytesPerGibibyte);
+    writeRamByteMetric(writer, ram.totalBytes);
     writer.member(first, "used_gb");
-    writer.number(static_cast<double>(ram.usedBytes) / BytesPerGibibyte);
+    writeRamByteMetric(writer, ram.usedBytes);
     writer.member(first, "available_gb");
-    writer.number(static_cast<double>(ram.availableBytes) / BytesPerGibibyte);
+    writeRamByteMetric(writer, ram.availableBytes);
     writer.member(first, "percent");
-    writer.number(ram.percent);
+    writeRamPercentMetric(writer, ram.percent);
     writer.member(first, "pressure_percent");
-    writer.number(ram.pressurePercent);
+    writeRamPercentMetric(writer, ram.pressurePercent);
     writer.member(first, "active_gb");
-    writer.nullValue();
+    writeRamByteMetric(writer, ram.activeBytes);
     writer.member(first, "wired_gb");
-    writer.nullValue();
+    writeRamByteMetric(writer, ram.wiredBytes);
     writer.member(first, "compressed_gb");
-    writer.number(static_cast<double>(ram.compressedBytes) / BytesPerGibibyte);
+    writeRamByteMetric(writer, ram.compressedBytes);
     writer.member(first, "swap_total_gb");
-    writer.nullValue();
+    writeRamByteMetric(writer, ram.swapTotalBytes);
     writer.member(first, "swap_used_gb");
-    writer.nullValue();
+    writeRamByteMetric(writer, ram.swapUsedBytes);
     writer.member(first, "swap_percent");
-    writer.nullValue();
+    writeRamPercentMetric(writer, ram.swapPercent);
     writer.member(first, "committed_gb");
-    writer.number(static_cast<double>(ram.committedBytes) / BytesPerGibibyte);
+    writeRamByteMetric(writer, ram.committedBytes);
     writer.member(first, "paged_pool_gb");
-    writer.number(static_cast<double>(ram.pagedPoolBytes) / BytesPerGibibyte);
+    writeRamByteMetric(writer, ram.pagedPoolBytes);
+    writer.member(first, "availability");
+    writer.character('{');
+    bool availabilityFirst{true};
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "total_gb", ram.totalBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "used_gb", ram.usedBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "available_gb", ram.availableBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "percent", ram.percent);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "pressure_percent", ram.pressurePercent);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "active_gb", ram.activeBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "wired_gb", ram.wiredBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "compressed_gb", ram.compressedBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "swap_total_gb", ram.swapTotalBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "swap_used_gb", ram.swapUsedBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "swap_percent", ram.swapPercent);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "committed_gb", ram.committedBytes);
+    writeRamAvailabilityMember(
+        writer, availabilityFirst, "paged_pool_gb", ram.pagedPoolBytes);
+    writer.character('}');
     writer.character('}');
 }
 

@@ -206,8 +206,10 @@ public:
     cpu.perLogicalProcessor = {cpuPercent};
 
     Domain::RamMetrics ram;
-    ram.percent = 30.0;
-    ram.pressurePercent = 30.0;
+    ram.percent = Domain::makeAvailableTelemetryMetric(
+        30.0, Domain::UtcTimePoint{} + 100s, "test.fixture");
+    ram.pressurePercent = Domain::makeAvailableTelemetryMetric(
+        30.0, Domain::UtcTimePoint{} + 100s, "test.fixture");
 
     Domain::SystemMetrics system{
         Domain::UtcTimePoint{} + 100s,

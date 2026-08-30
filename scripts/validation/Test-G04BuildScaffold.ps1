@@ -165,22 +165,27 @@ Assert-NoMatch $rootCMake '(?:ForsettiCore|ForsettiPlatform|ForsettiHostTemplate
 Assert-NoMatch $rootCMake 'ForsettiExample|ForsettiDemo' 'consumer target graph must not reference examples'
 Assert-Match $rootCMake 'add_library\s*\(\s*ForgeConductor\.ForsettiModule\s+STATIC\s+src/ForsettiModule/ForgeConductorAppModule\.cpp\s*\)' 'one-source static Forsetti module target'
 Assert-NoMatch $rootCMake 'ModuleRegistration\.cpp|ForsettiHostSmoke\.cpp' 'obsolete P04 source placeholders'
-Assert-Match $rootCMake 'add_executable\s*\(\s*ForgeConductor\.Cli\s+src/Hosts/Cli/main\.cpp\s*\)' 'CLI target source'
+Assert-Match $rootCMake 'add_executable\s*\(\s*ForgeConductor\.Cli[\s\S]{0,600}?src/Hosts/Cli/main\.cpp\s*\)' 'CLI target source'
 Assert-Match $rootCMake 'OUTPUT_NAME\s+"forge-conductor"' 'CLI output name'
 Assert-Match $rootCMake 'add_executable\s*\(\s*ForgeConductor\.ForsettiHostSmoke\s+tests/ForsettiHostSmoke/main\.cpp\s*\)' 'Forsetti smoke target source'
 
 Assert-Sequence (Get-LinkItems $rootCMake 'ForgeConductor.ForsettiModule' 'PUBLIC') @('Forsetti::Core', 'ForgeConductor::Contracts') 'Forsetti module links'
 Assert-Sequence (Get-LinkItems $rootCMake 'ForgeConductor.ForsettiHostSmoke') @('ForgeConductor::ForsettiModule', 'Forsetti::HostTemplate') 'Forsetti smoke links'
-Assert-Sequence (Get-LinkItems $rootCMake 'ForgeConductor.Cli') @('ForgeConductor::Application') 'CLI links'
+Assert-Sequence (Get-LinkItems $rootCMake 'ForgeConductor.Cli') @('ForgeConductor::Composition.Windows') 'CLI links'
 
 $expectedLayerGraph = [ordered]@{
     'ForgeConductor.Domain' = [ordered]@{ alias = 'ForgeConductor::Domain'; dependencies = @() }
     'ForgeConductor.Contracts' = [ordered]@{ alias = 'ForgeConductor::Contracts'; dependencies = @('ForgeConductor::Domain') }
+    'ForgeConductor.Telemetry.Windows' = [ordered]@{ alias = 'ForgeConductor::Telemetry.Windows'; dependencies = @('ForgeConductor::Contracts') }
     'ForgeConductor.Application' = [ordered]@{ alias = 'ForgeConductor::Application'; dependencies = @('ForgeConductor::Contracts') }
-    'ForgeConductor.Infrastructure.Windows' = [ordered]@{ alias = 'ForgeConductor::Infrastructure.Windows'; dependencies = @('ForgeConductor::Contracts') }
+    'ForgeConductor.Manager.Protocol' = [ordered]@{ alias = 'ForgeConductor::Manager.Protocol'; dependencies = @('ForgeConductor::Contracts') }
+    'ForgeConductor.Manager.Startup' = [ordered]@{ alias = 'ForgeConductor::Manager.Startup'; dependencies = @('ForgeConductor::Contracts') }
+    'ForgeConductor.Dashboard.Protocol' = [ordered]@{ alias = 'ForgeConductor::Dashboard.Protocol'; dependencies = @('ForgeConductor::Contracts') }
+    'ForgeConductor.Dashboard.Windows' = [ordered]@{ alias = 'ForgeConductor::Dashboard.Windows'; dependencies = @('ForgeConductor::Dashboard.Protocol') }
+    'ForgeConductor.Infrastructure.Windows' = [ordered]@{ alias = 'ForgeConductor::Infrastructure.Windows'; dependencies = @('ForgeConductor::Contracts', 'ForgeConductor::Manager.Protocol') }
     'ForgeConductor.Persistence.Windows' = [ordered]@{ alias = 'ForgeConductor::Persistence.Windows'; dependencies = @('ForgeConductor::Contracts', 'ForgeConductor::Infrastructure.Windows') }
     'ForgeConductor.NativeTools.Windows' = [ordered]@{ alias = 'ForgeConductor::NativeTools.Windows'; dependencies = @('ForgeConductor::Contracts', 'ForgeConductor::Infrastructure.Windows') }
-    'ForgeConductor.SessionHost.Core' = [ordered]@{ alias = 'ForgeConductor::SessionHost.Core'; dependencies = @('ForgeConductor::Application', 'ForgeConductor::Contracts') }
+    'ForgeConductor.SessionHost.Core' = [ordered]@{ alias = 'ForgeConductor::SessionHost.Core'; dependencies = @('ForgeConductor::Application', 'ForgeConductor::Contracts', 'nlohmann_json::nlohmann_json') }
     'ForgeConductor.Mcp' = [ordered]@{ alias = 'ForgeConductor::Mcp'; dependencies = @('ForgeConductor::Application', 'ForgeConductor::Contracts') }
     'ForgeConductor.Composition.Windows' = [ordered]@{ alias = 'ForgeConductor::Composition.Windows'; dependencies = @('ForgeConductor::Application', 'ForgeConductor::Infrastructure.Windows', 'ForgeConductor::Persistence.Windows', 'ForgeConductor::NativeTools.Windows', 'ForgeConductor::SessionHost.Core', 'ForgeConductor::Mcp', 'Forsetti::Platform', 'Forsetti::HostTemplate') }
 }

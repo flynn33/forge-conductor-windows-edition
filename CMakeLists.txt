@@ -120,6 +120,23 @@ forge_add_layer(ForgeConductor.Contracts ForgeConductor::Contracts
     ForgeConductor::Domain)
 target_include_directories(ForgeConductor.Contracts INTERFACE
     "${PROJECT_SOURCE_DIR}/include")
+
+add_library(ForgeConductor.Telemetry.Windows STATIC
+    src/Telemetry/Windows/WindowsRamMetricsCollector.cpp)
+forge_add_layer(
+    ForgeConductor.Telemetry.Windows
+    ForgeConductor::Telemetry.Windows
+    ForgeConductor::Contracts)
+forge_configure_native_target(ForgeConductor.Telemetry.Windows)
+target_include_directories(ForgeConductor.Telemetry.Windows
+    PUBLIC "${PROJECT_SOURCE_DIR}/include"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_compile_definitions(ForgeConductor.Telemetry.Windows PRIVATE
+    WINVER=0x0A00
+    _WIN32_WINNT=0x0A00)
+target_link_libraries(ForgeConductor.Telemetry.Windows PRIVATE
+    psapi)
+
 set(FORGE_APPLICATION_SOURCES
     src/Application/AgentCatalog.cpp
     src/Application/AgentSessionService.cpp
@@ -632,6 +649,26 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 )
 
 if(BUILD_TESTING)
+    add_executable(ForgeConductor.Telemetry.WindowsTests
+        tests/Telemetry/TelemetryWindowsTestMain.cpp
+        tests/Telemetry/WindowsRamMetricsCollectorTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Telemetry.WindowsTests)
+    target_include_directories(
+        ForgeConductor.Telemetry.WindowsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Telemetry.WindowsTests PRIVATE
+        ForgeConductor::Telemetry.Windows)
+    add_test(
+        NAME ForgeConductor.Telemetry.WindowsTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Telemetry.WindowsTests>)
+    set_tests_properties(
+        ForgeConductor.Telemetry.WindowsTests PROPERTIES
+        LABELS "G17;T-TEL;T-UNIT;T-INTEGRATION"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Manager.CompositionFixture
         tests/Manager/ManagerCompositionFixture.cpp
         src/Hosts/Manager/Resources/Dashboard/DashboardAssets.rc)

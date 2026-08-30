@@ -1,0 +1,14 @@
+ANTECEDENT_BUILD_TEST_AND_POLICY_EVIDENCE_VERIFIED
+ARTIFACT_SHA256=0fe3b8b0ee3c9f04a21ce9701cfe507bc4cb5040850b30744a7b64aa05679c10 BYTES=202752 PATH=out/build/windows-msvc-x64/bin/Release/ForgeConductor.Telemetry.WindowsTests.exe
+ARTIFACT_SHA256=2b2fbafbacf42932fb8673393655be03b3c9e9af18fb048d131c36e20c143530 BYTES=371712 PATH=out/build/windows-msvc-x64/bin/Release/ForgeConductor.Domain.UnitTests.exe
+ARTIFACT_SHA256=681b1ace8bda4b43ae829afd926d6cbaccca40fd978dfedbf75bd73cee9ccbf2 BYTES=449024 PATH=out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe
+ARTIFACT_SHA256=6c234d9badcf8f135d1cd4f98e72b668f90427bf1f668f30ead7a77576eaa0b1 BYTES=362496 PATH=out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.TelemetrySourceTests.exe
+ARTIFACT_SHA256=77710c9851ab28ef93430af63093a18056e8a00d5e3bbaa4741f98f9ed4d9070 BYTES=747008 PATH=out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionApplicationTests.exe
+ARTIFACT_SHA256=93768b05d8ed015a71a12ad498a40c4b8db580c54c48ebef48bf1e3f7a1ca722 BYTES=368640 PATH=out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.DoctorServiceTests.exe
+ARTIFACT_SHA256=e0e1c464f6bce099d15ad2a7d6b4184f0e36aa39920ff1b958ab8a511bcd4e37 BYTES=861184 PATH=out/build/windows-msvc-x64/bin/Release/ForgeConductor.Contracts.ContractTests.exe
+ARTIFACT_SHA256=731705e78fb20ce29ba16581665f861149580e095541414d67c842c6f9d47027 BYTES=813594 PATH=out/build/windows-msvc-x64/lib/Release/ForgeConductor.Telemetry.Windows.lib
+ARTIFACT_SHA256=5862b21744a03d2cde71401a345ff1a91a5cd2352babd7df72eeb48eef124833 BYTES=5193474 PATH=out/build/windows-msvc-x64/lib/Release/ForgeConductor.Domain.lib
+No-Python gate passed.
+No-attribution gate passed.
+Ledger validation passed: 521 event(s).
+RAM_CHECKPOINT_CONTINUATION_PASSED

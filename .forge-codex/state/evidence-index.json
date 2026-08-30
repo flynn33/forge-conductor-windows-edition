@@ -231,6 +231,36 @@
       "path": ".forge-codex/state/validator-reports/P16-G16.json",
       "sha256": "a5d370d9206a381dba77f4d0c254356d6ec504ea0230f2e7829326e08d893eb9",
       "summary": "Independent Validator passed G16 after verifying the single authoritative 83/83 run and all hash-bound artifacts without rebuilding or rerunning tests."
+    },
+    {
+      "id": "P17-windows-ram-build-test-command",
+      "type": "command",
+      "phase": "P17",
+      "gate": null,
+      "created_at": "2026-08-30T22:03:22.8680604+00:00",
+      "path": ".forge-codex/state/commands/20260830T220206441Z-ee70768c.json",
+      "sha256": "f1598200b4db0c5c4f9716fa80c50514ec7e6b7258274b98abbdd86d8b612127",
+      "summary": "All planned RAM-slice build, 7/7 selected test, 11/11 telemetry case, machine, graph, policy, ledger, and diff substeps completed before the exit-1 record encountered a post-validation Get-FileHash availability error."
+    },
+    {
+      "id": "P17-windows-ram-checkpoint-continuation-command",
+      "type": "command",
+      "phase": "P17",
+      "gate": null,
+      "created_at": "2026-08-30T22:04:19.3799613+00:00",
+      "path": ".forge-codex/state/commands/20260830T220411393Z-c5d83fcd.json",
+      "sha256": "e9b0d178bac36ccc788716df929a26d6f88ab96cd2a55a142dea746e15430eec",
+      "summary": "The zero-rebuild continuation hash-verified the antecedent evidence and diagnostic cause, completed nine artifact hashes, and passed the policy, ledger, and diff checks."
+    },
+    {
+      "id": "P17-windows-ram-collector-checkpoint",
+      "type": "report",
+      "phase": "P17",
+      "gate": null,
+      "created_at": "2026-08-30T22:05:30.9692859+00:00",
+      "path": ".forge-codex/state/evidence/P17/windows-ram-collector-checkpoint.json",
+      "sha256": "579090d8f8274fac7fbbf9536d589437b3846a2305f853ab6ee3311cba01f95a",
+      "summary": "Hash-bound focused checkpoint qualifies typed telemetry observations and the Windows RAM collector on the owner machine; CPU, disk, GPU, process, power, producer lifecycle, and G17 remain open."
     }
   ]
 }

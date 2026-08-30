@@ -1,6 +1,6 @@
 # P16-030: Truthful Unavailable Telemetry and Manager Reachability
 
-Status: Accepted
+Status: Superseded in part by P17-001
 
 Date: 2026-08-30
 
@@ -18,7 +18,7 @@ listener indistinguishable from a healthy telemetry subsystem.
 ## Decision
 
 - `UnavailableTelemetryService` is an outer Windows-composition adapter used
-  only until the P17 production telemetry service replaces it.
+  only until the production telemetry service replaces it.
 - `start` admits a degraded Manager startup after enforcing cancellation and
   deadline precedence. It creates no worker, callback, queue, or snapshot.
 - `health` succeeds with the stable Windows telemetry identity while setting
@@ -44,7 +44,10 @@ telemetry exists. A healthy HTTP listener is no longer presented as evidence
 that collectors or SSE delivery are active, and no consumer capture or sample
 can accumulate behind an unavailable provider.
 
-P17 must replace this adapter with the bounded native collector composition.
+P17 must replace the missing collector side with the bounded native collector
+composition. P17-001 narrows the actual Manager service replacement to P18 so
+the producer, capacity-one delivery, histories, and callback lifetime are
+composed together.
 This checkpoint does not prove live telemetry, the production Manager
 executable, real-process lifecycle, Edge behavior, native UI automation, or the
 authoritative G16 gate.

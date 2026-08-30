@@ -1,0 +1,389 @@
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Telemetry.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Telemetry.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Telemetry.WindowsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Telemetry.WindowsTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.UnitTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Domain.UnitTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.TelemetryJsonCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ProjectMemoryRepositoryCache.cpp
+  AgentSessionService.cpp
+  AgentCatalog.cpp
+  DashboardOperationalService.cpp
+  DashboardTelemetrySource.cpp
+  DashboardConnectionApplication.cpp
+  LegacyContextContinuityService.cpp
+  DashboardConnectionApplicationFactory.cpp
+  ClientPresenceLifecycle.cpp
+  ProjectMemoryService.cpp
+  ContinuityCoordinator.cpp
+  ContinuityAutomation.cpp
+  ManagerController.cpp
+  Compiling...
+  AgentCatalog.cpp
+  ContinuityAutomation.cpp
+  ClientPresenceLifecycle.cpp
+  DashboardTelemetrySource.cpp
+  AgentSessionService.cpp
+  ManagerController.cpp
+  DashboardOperationalService.cpp
+  ContinuityCoordinator.cpp
+  ProjectMemoryRepositoryCache.cpp
+  DashboardConnectionApplication.cpp
+  ProjectMemoryService.cpp
+  LegacyContextContinuityService.cpp
+  DashboardConnectionApplicationFactory.cpp
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardTelemetrySourceTests.cpp
+  Compiling...
+  DashboardTelemetrySourceTests.cpp
+  ForgeConductor.Dashboard.TelemetrySourceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.TelemetrySourceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardConnectionApplicationTests.cpp
+  Compiling...
+  DashboardConnectionApplicationTests.cpp
+  ForgeConductor.Dashboard.ConnectionApplicationTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionApplicationTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  ManagerRequestDispatcher.cpp
+  ManagerDeadlineMapper.cpp
+  Compiling...
+  ManagerDeadlineMapper.cpp
+  ManagerRequestDispatcher.cpp
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ManagerProcessHost.cpp
+  ManagerMaintenanceWorker.cpp
+  ManagerTransitionWorker.cpp
+  ManagerProcessStopWatcher.cpp
+  WindowsDiagnosticSink.cpp
+  WindowsDashboardBrowserLauncher.cpp
+  WindowsProcessSupervisor.cpp
+  SecretRedactor.cpp
+  DeadlineScheduler.cpp
+  WindowsContinuityDocumentCodec.cpp
+  WindowsManagerNamedPipeClient.cpp
+  WindowsLMStudioDeploymentService.cpp
+  BCryptSha256Hasher.cpp
+  WindowsLMStudioServeVerifier.cpp
+  WindowsUuidGenerator.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  WindowsProjectWorkspaceAuthority.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  WindowsRuntimeDiagnostics.cpp
+  EtwProvider.cpp
+  WindowsNativeSessionLedger.cpp
+  WindowsCurrentUserIdentity.cpp
+  OperationGuard.cpp
+  WindowsManagerNamedPipeServer.cpp
+  WindowsLMStudioHostActivator.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  SystemClock.cpp
+  Compiling...
+  ManagerMaintenanceWorker.cpp
+  ManagerProcessStopWatcher.cpp
+  ManagerTransitionWorker.cpp
+  ManagerProcessHost.cpp
+  Compiling...
+  SecretRedactor.cpp
+  WindowsContinuityDocumentCodec.cpp
+  WindowsManagerNamedPipeServer.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  WindowsDashboardBrowserLauncher.cpp
+  WindowsNativeSessionLedger.cpp
+  OperationGuard.cpp
+  DeadlineScheduler.cpp
+  SystemClock.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  WindowsDiagnosticSink.cpp
+  BCryptSha256Hasher.cpp
+  WindowsLMStudioHostActivator.cpp
+  WindowsCurrentUserIdentity.cpp
+  WindowsManagerNamedPipeClient.cpp
+  WindowsLMStudioServeVerifier.cpp
+  WindowsProcessSupervisor.cpp
+  WindowsLMStudioDeploymentService.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  WindowsProjectWorkspaceAuthority.cpp
+  WindowsUuidGenerator.cpp
+  EtwProvider.cpp
+  WindowsRuntimeDiagnostics.cpp
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  WindowsProjectMemoryRepository.cpp
+  DatabaseBackupCoordinator.cpp
+  WindowsAgentSessionRepository.cpp
+  WindowsDatabaseStore.cpp
+  WindowsForgeStatusRepository.cpp
+  WindowsAuditRepository.cpp
+  WindowsProjectRegistryRepository.cpp
+  WindowsLegacyMemoryRepository.cpp
+  WindowsProjectMemoryArtifactStore.cpp
+  WindowsDashboardOperationalRepository.cpp
+  WindowsCentralDatabase.cpp
+  WindowsProjectMemoryRepositoryOpener.cpp
+  WindowsLegacyContinuityRepository.cpp
+  WindowsProjectDatabase.cpp
+  WindowsClientPresenceRepository.cpp
+  Compiling...
+  DatabaseBackupCoordinator.cpp
+  WindowsForgeStatusRepository.cpp
+  WindowsProjectMemoryArtifactStore.cpp
+  WindowsLegacyContinuityRepository.cpp
+  WindowsAuditRepository.cpp
+  WindowsClientPresenceRepository.cpp
+  WindowsProjectDatabase.cpp
+  WindowsCentralDatabase.cpp
+  WindowsDashboardOperationalRepository.cpp
+  WindowsAgentSessionRepository.cpp
+  WindowsLegacyMemoryRepository.cpp
+  WindowsProjectMemoryRepositoryOpener.cpp
+  WindowsProjectMemoryRepository.cpp
+  WindowsProjectRegistryRepository.cpp
+  WindowsDatabaseStore.cpp
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerMaintenanceService.cpp
+  ManagerDashboardOperationalDataSource.cpp
+  UnavailableLmStudioDeploymentService.cpp
+  UnavailableTelemetryService.cpp
+  ManagerDoctorService.cpp
+  Compiling...
+  ManagerDashboardOperationalDataSource.cpp
+  UnavailableTelemetryService.cpp
+  ManagerDoctorService.cpp
+  UnavailableLmStudioDeploymentService.cpp
+  ManagerMaintenanceService.cpp
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ManagerDoctorServiceTests.cpp
+  Compiling...
+  ManagerDoctorServiceTests.cpp
+  ForgeConductor.Manager.DoctorServiceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.DoctorServiceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  GroupedFakeContractTests.cpp
+  main.cpp
+  FoundationTelemetryFakeContractTests.cpp
+  Compiling...
+  GroupedFakeContractTests.cpp
+  main.cpp
+  FoundationTelemetryFakeContractTests.cpp
+  ForgeConductor.Contracts.ContractTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Contracts.ContractTests.exe
+UpdateCTestConfiguration  from :D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Parse Config file:D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/DartConfiguration.tcl
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start  1: ForgeConductor.Telemetry.WindowsTests
+
+1: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Telemetry.WindowsTests.exe
+1: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+1: Test timeout computed to be: 60
+1: [RUN] telemetry_windows.ram.mapping
+1: [PASS] telemetry_windows.ram.mapping
+1: [RUN] telemetry_windows.ram.partial-failure
+1: [PASS] telemetry_windows.ram.partial-failure
+1: [RUN] telemetry_windows.ram.stale-retention
+1: [PASS] telemetry_windows.ram.stale-retention
+1: [RUN] telemetry_windows.ram.successful-zero
+1: [PASS] telemetry_windows.ram.successful-zero
+1: [RUN] telemetry_windows.ram.context
+1: [PASS] telemetry_windows.ram.context
+1: [RUN] telemetry_windows.ram.overlap
+1: [PASS] telemetry_windows.ram.overlap
+1: [RUN] telemetry_windows.ram.shutdown
+1: [PASS] telemetry_windows.ram.shutdown
+1: [RUN] telemetry_windows.ram.shutdown-final-publication
+1: [PASS] telemetry_windows.ram.shutdown-final-publication
+1: [RUN] telemetry_windows.ram.shutdown-pre-admission
+1: [PASS] telemetry_windows.ram.shutdown-pre-admission
+1: [RUN] telemetry_windows.ram.invalid-raw
+1: [PASS] telemetry_windows.ram.invalid-raw
+1: [RUN] telemetry_windows.ram.machine-smoke
+1: [PASS] telemetry_windows.ram.machine-smoke
+1: 11/11 Windows telemetry tests passed.
+1/7 Test  #1: ForgeConductor.Telemetry.WindowsTests .................   Passed    0.02 sec
+test 18
+    Start 18: ForgeConductor.Manager.DoctorServiceTests
+
+18: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.DoctorServiceTests.exe
+18: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+18: Test timeout computed to be: 120
+18: Manager Doctor service tests passed.
+2/7 Test #18: ForgeConductor.Manager.DoctorServiceTests .............   Passed    0.14 sec
+test 35
+    Start 35: ForgeConductor.Dashboard.ConnectionApplicationTests
+
+35: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionApplicationTests.exe
+35: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+35: Test timeout computed to be: 120
+35: Dashboard connection application tests passed (1739 assertions).
+3/7 Test #35: ForgeConductor.Dashboard.ConnectionApplicationTests ...   Passed    0.06 sec
+test 38
+    Start 38: ForgeConductor.Dashboard.TelemetrySourceTests
+
+38: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.TelemetrySourceTests.exe
+38: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+38: Test timeout computed to be: 120
+38: Dashboard telemetry source tests passed (164 assertions).
+4/7 Test #38: ForgeConductor.Dashboard.TelemetrySourceTests .........   Passed    0.04 sec
+test 78
+    Start 78: ForgeConductor.Dashboard.TelemetryJsonCodecTests
+
+78: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe
+78: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+78: Test timeout computed to be: 60
+78: Dashboard telemetry JSON codec tests passed (350 assertions).
+5/7 Test #78: ForgeConductor.Dashboard.TelemetryJsonCodecTests ......   Passed    0.02 sec
+test 96
+    Start 96: ForgeConductor.Domain.UnitTests
+
+96: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Domain.UnitTests.exe
+96: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+96: Test timeout computed to be: 1500
+96: PASS result_and_identifier_boundaries
+96: PASS path_boundaries
+96: PASS resource_and_configuration_boundaries
+96: PASS agent_and_legacy_memory_parity
+96: PASS forge_status_projection_boundaries
+96: PASS project_memory_boundaries
+96: PASS continuity_state_and_integrity
+96: PASS process_tool_telemetry_and_manager_bounds
+96: PASS project_memory_request_boundaries
+96: PASS continuity_binding_and_isolation
+96: PASS deployment_and_manager_defaults
+96: PASS diagnostics_environment_and_graphics
+96: SUMMARY passed=12 failed=0
+6/7 Test #96: ForgeConductor.Domain.UnitTests .......................   Passed    0.02 sec
+test 98
+    Start 98: ForgeConductor.Contracts.ContractTests
+
+98: Test command: D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Contracts.ContractTests.exe
+98: Working Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+98: Test timeout computed to be: 60
+98: Contracts and deterministic fakes passed.
+7/7 Test #98: ForgeConductor.Contracts.ContractTests ................   Passed    0.05 sec
+
+The following tests passed:
+	ForgeConductor.Telemetry.WindowsTests
+	ForgeConductor.Manager.DoctorServiceTests
+	ForgeConductor.Dashboard.ConnectionApplicationTests
+	ForgeConductor.Dashboard.TelemetrySourceTests
+	ForgeConductor.Dashboard.TelemetryJsonCodecTests
+	ForgeConductor.Domain.UnitTests
+	ForgeConductor.Contracts.ContractTests
+
+100% tests passed out of 7
+
+Label Time Summary:
+G05              =   0.06 sec*proc (2 tests)
+G15              =   0.05 sec*proc (1 test)
+G16              =   0.26 sec*proc (4 tests)
+G17              =   0.02 sec*proc (1 test)
+T-INTEGRATION    =   0.16 sec*proc (2 tests)
+T-LMS            =   0.05 sec*proc (1 test)
+T-MGR            =   0.26 sec*proc (4 tests)
+T-PARITY         =   0.12 sec*proc (3 tests)
+T-SEC            =   0.08 sec*proc (2 tests)
+T-STRESS         =   0.10 sec*proc (2 tests)
+T-TEL            =   0.13 sec*proc (4 tests)
+T-UNIT           =   0.34 sec*proc (7 tests)
+
+Total Test time (real) =   0.36 sec
+QUALIFIED_MACHINE_PDH_COMPRESSED_PAGE_COUNT_MATCHES=0
+G04_STATIC_PREFIX_PASSED
+No-Python gate passed.
+No-attribution gate passed.
+Ledger validation passed: 520 event(s).

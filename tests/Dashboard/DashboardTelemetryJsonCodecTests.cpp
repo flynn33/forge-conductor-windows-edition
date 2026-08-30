@@ -64,6 +64,13 @@ void requireError(
     return take(Domain::PathText::create(value));
 }
 
+template <typename T>
+[[nodiscard]] Domain::TelemetryMetric<T> availableRamMetric(T value)
+{
+    return Domain::makeAvailableTelemetryMetric(
+        std::move(value), utc(), "fixture.available");
+}
+
 [[nodiscard]] Domain::TelemetrySnapshot richSnapshot()
 {
     Domain::CpuMetrics cpu{
@@ -79,14 +86,29 @@ void requireError(
         25.0,
         62.5};
     Domain::RamMetrics ram{
-        16ULL * 1024ULL * 1024ULL * 1024ULL,
-        6ULL * 1024ULL * 1024ULL * 1024ULL,
-        10ULL * 1024ULL * 1024ULL * 1024ULL,
-        37.5,
-        41.0,
-        7ULL * 1024ULL * 1024ULL * 1024ULL,
-        128ULL * 1024ULL * 1024ULL,
-        256ULL * 1024ULL * 1024ULL};
+        availableRamMetric<std::uint64_t>(
+            16ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric<std::uint64_t>(
+            6ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric<std::uint64_t>(
+            10ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric(37.5),
+        availableRamMetric(41.0),
+        availableRamMetric<std::uint64_t>(
+            5ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric<std::uint64_t>(
+            1ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric<std::uint64_t>(
+            256ULL * 1024ULL * 1024ULL),
+        availableRamMetric<std::uint64_t>(
+            4ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric<std::uint64_t>(
+            1ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric(25.0),
+        availableRamMetric<std::uint64_t>(
+            7ULL * 1024ULL * 1024ULL * 1024ULL),
+        availableRamMetric<std::uint64_t>(
+            128ULL * 1024ULL * 1024ULL)};
     Domain::DiskVolume disk{
         "Disk0",
         path("C:\\"),
@@ -243,15 +265,41 @@ void mapsTheCompleteMacCompatibleFrameContract()
     REQUIRE(cpu.at("brand") == "Forge CPU \xE2\x98\x83");
 
     const auto& ram = document.at("system").at("ram");
+    const std::set<std::string> ramValueKeys{
+        "active_gb", "available_gb", "committed_gb", "compressed_gb",
+        "paged_pool_gb", "percent", "pressure_percent", "swap_percent",
+        "swap_total_gb", "swap_used_gb", "total_gb", "used_gb", "wired_gb"};
+    auto expectedRamKeys = ramValueKeys;
+    expectedRamKeys.insert("availability");
+    REQUIRE(keys(ram) == expectedRamKeys);
     REQUIRE(ram.at("total_gb") == 16.0);
+    REQUIRE(ram.at("used_gb") == 6.0);
+    REQUIRE(ram.at("available_gb") == 10.0);
+    REQUIRE(ram.at("percent") == 37.5);
+    REQUIRE(ram.at("pressure_percent") == 41.0);
+    REQUIRE(ram.at("active_gb") == 5.0);
+    REQUIRE(ram.at("wired_gb") == 1.0);
     REQUIRE(ram.at("compressed_gb") == 0.25);
+    REQUIRE(ram.at("swap_total_gb") == 4.0);
+    REQUIRE(ram.at("swap_used_gb") == 1.0);
+    REQUIRE(ram.at("swap_percent") == 25.0);
     REQUIRE(ram.at("committed_gb") == 7.0);
     REQUIRE(ram.at("paged_pool_gb") == 0.125);
-    REQUIRE(ram.at("active_gb").is_null());
-    REQUIRE(ram.at("wired_gb").is_null());
-    REQUIRE(ram.at("swap_total_gb").is_null());
-    REQUIRE(ram.at("swap_used_gb").is_null());
-    REQUIRE(ram.at("swap_percent").is_null());
+    const auto& ramAvailability = ram.at("availability");
+    REQUIRE(keys(ramAvailability) == ramValueKeys);
+    for (const auto& name : ramValueKeys) {
+        const auto& metadata = ramAvailability.at(name);
+        REQUIRE(keys(metadata) == std::set<std::string>({
+            "captured_at", "observed_at", "reason", "source", "stale", "state"}));
+        REQUIRE(metadata.at("state") == "available");
+        REQUIRE(metadata.at("stale") == false);
+        REQUIRE(std::abs(metadata.at("captured_at").get<double>() -
+                         1'704'164'645.678) < 0.0001);
+        REQUIRE(std::abs(metadata.at("observed_at").get<double>() -
+                         1'704'164'645.678) < 0.0001);
+        REQUIRE(metadata.at("source") == "fixture.available");
+        REQUIRE(metadata.at("reason").is_null());
+    }
 
     const auto& diskIo = document.at("system").at("disk_io");
     REQUIRE(diskIo.at("read_mb_s") == 2.0);
@@ -337,6 +385,63 @@ void mapsTheCompleteMacCompatibleFrameContract()
     REQUIRE(document.at("history").at(0U).at("gpu").is_null());
     REQUIRE(document.at("history").at(0U).at("disk_io") == 3.0);
     REQUIRE(document.at("history").at(1U).at("orch") == "warn");
+}
+
+void mapsUnsupportedRamMetricsToNullWithExplicitMetadata()
+{
+    auto snapshot = richSnapshot();
+    snapshot.system.ram.compressedBytes =
+        Domain::makeUnavailableTelemetryMetric<std::uint64_t>(
+            Domain::TelemetryMetricAvailability::Unsupported,
+            utc() + 1s,
+            "windows.memory.compression",
+            "The selected Windows source does not expose compressed RAM.");
+
+    const auto ram = Json::parse(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)))
+                         .at("ram");
+    REQUIRE(ram.at("compressed_gb").is_null());
+    REQUIRE(ram.at("total_gb") == 16.0);
+    const auto& metadata = ram.at("availability").at("compressed_gb");
+    REQUIRE(keys(metadata) == std::set<std::string>({
+        "captured_at", "observed_at", "reason", "source", "stale", "state"}));
+    REQUIRE(metadata.at("state") == "unsupported");
+    REQUIRE(metadata.at("stale") == false);
+    REQUIRE(metadata.at("captured_at").is_null());
+    REQUIRE(std::abs(metadata.at("observed_at").get<double>() -
+                     1'704'164'646.678) < 0.0001);
+    REQUIRE(metadata.at("source") == "windows.memory.compression");
+    REQUIRE(metadata.at("reason") ==
+            "The selected Windows source does not expose compressed RAM.");
+}
+
+void mapsStaleRamValuesWithoutLosingTheLastGoodSample()
+{
+    auto snapshot = richSnapshot();
+    const auto previous = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+        6ULL * 1024ULL * 1024ULL * 1024ULL,
+        utc() - 5s,
+        "GlobalMemoryStatusEx");
+    snapshot.system.ram.usedBytes =
+        Domain::makeStaleTelemetryMetric(
+            previous,
+            Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+            utc() + 1s,
+            "The most recent refresh failed.");
+
+    const auto ram = Json::parse(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)))
+                         .at("ram");
+    REQUIRE(ram.at("used_gb") == 6.0);
+    const auto& metadata = ram.at("availability").at("used_gb");
+    REQUIRE(metadata.at("state") == "temporarily_unavailable");
+    REQUIRE(metadata.at("stale") == true);
+    REQUIRE(std::abs(metadata.at("captured_at").get<double>() -
+                     1'704'164'640.678) < 0.0001);
+    REQUIRE(std::abs(metadata.at("observed_at").get<double>() -
+                     1'704'164'646.678) < 0.0001);
+    REQUIRE(metadata.at("source") == "GlobalMemoryStatusEx");
+    REQUIRE(metadata.at("reason") == "The most recent refresh failed.");
 }
 
 void exposesHealthAndStandaloneViews()
@@ -612,6 +717,24 @@ void rejectsNonfiniteValuesInvalidTextAndNoncanonicalTimestamps()
         Domain::ErrorCodes::InvalidRequest);
 
     snapshot = richSnapshot();
+    snapshot.system.ram.percent.value.reset();
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.ram.totalBytes.source = std::string{"source\0bad", 10U};
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.ram.availableBytes.capturedAt = utc(-1);
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
     snapshot.updatedAt = utc(-1);
     requireError(
         Dashboard::DashboardTelemetryJsonCodec::encodeFrame(snapshot, 2.0),
@@ -738,6 +861,8 @@ int main()
 {
     try {
         mapsTheCompleteMacCompatibleFrameContract();
+        mapsUnsupportedRamMetricsToNullWithExplicitMetadata();
+        mapsStaleRamValuesWithoutLosingTheLastGoodSample();
         exposesHealthAndStandaloneViews();
         preservesRouteAliasesAndSseFraming();
         emitsBoundedMacCompatibleCompactSseFrames();

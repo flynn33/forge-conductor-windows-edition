@@ -1096,10 +1096,180 @@ void processToolTelemetryAndManagerBounds()
 
     Domain::SystemMetrics system{};
     system.cpu.percent = 25.0;
-    system.ram.percent = 50.0;
+    system.ram.percent = Domain::makeAvailableTelemetryMetric(
+        50.0, fixedTime(1), "test.fixture");
     Domain::ForgeSnapshot forge{fixedTime(1), take(Domain::PathText::create("C:\\forge"))};
     Domain::TelemetrySnapshot snapshot{system, forge, fixedTime(2), {}, "windows-native"};
     REQUIRE(Domain::validateTelemetrySnapshot(snapshot, budgets));
+
+    const auto availableRamPercent = Domain::makeAvailableTelemetryMetric(
+        50.0, fixedTime(3), "GlobalMemoryStatusEx");
+    REQUIRE(Domain::validateTelemetryMetric(availableRamPercent));
+
+    const auto unsupportedCompressedBytes =
+        Domain::makeUnavailableTelemetryMetric<std::uint64_t>(
+            Domain::TelemetryMetricAvailability::Unsupported,
+            fixedTime(3),
+            "Memory performance counters",
+            "The compressed-memory counter is unavailable on this system.");
+    REQUIRE(Domain::validateTelemetryMetric(unsupportedCompressedBytes));
+
+    const auto staleRamPercent = Domain::makeStaleTelemetryMetric(
+        availableRamPercent,
+        Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+        fixedTime(4),
+        "The latest refresh failed.");
+    REQUIRE(Domain::validateTelemetryMetric(staleRamPercent));
+    REQUIRE(staleRamPercent.value == availableRamPercent.value);
+    REQUIRE(staleRamPercent.capturedAt == availableRamPercent.capturedAt);
+    REQUIRE(staleRamPercent.observedAt.has_value());
+    REQUIRE(*staleRamPercent.observedAt == fixedTime(4));
+    REQUIRE(staleRamPercent.source == availableRamPercent.source);
+
+    const Domain::TelemetryMetric<double> neverObserved{};
+    REQUIRE(Domain::validateTelemetryMetric(neverObserved));
+
+    Domain::RamMetrics observedRam{};
+    observedRam.percent = availableRamPercent;
+    observedRam.pressurePercent =
+        Domain::makeUnavailableTelemetryMetric<double>(
+            Domain::TelemetryMetricAvailability::WarmingUp,
+            fixedTime(3),
+            "RAM pressure sampler",
+            "A baseline sample is required.");
+    observedRam.compressedBytes = unsupportedCompressedBytes;
+    observedRam.swapPercent = staleRamPercent;
+    REQUIRE(Domain::validateRamMetrics(observedRam));
+
+    auto availableWithoutValue = availableRamPercent;
+    availableWithoutValue.value.reset();
+    REQUIRE(!Domain::validateTelemetryMetric(availableWithoutValue));
+
+    auto availableWithoutCapture = availableRamPercent;
+    availableWithoutCapture.capturedAt.reset();
+    REQUIRE(!Domain::validateTelemetryMetric(availableWithoutCapture));
+
+    auto availableWithoutObservation = availableRamPercent;
+    availableWithoutObservation.observedAt.reset();
+    REQUIRE(!Domain::validateTelemetryMetric(availableWithoutObservation));
+
+    auto availableMarkedStale = availableRamPercent;
+    availableMarkedStale.stale = true;
+    REQUIRE(!Domain::validateTelemetryMetric(availableMarkedStale));
+
+    auto availableWithReason = availableRamPercent;
+    availableWithReason.unavailableReason = "No failure applies.";
+    REQUIRE(!Domain::validateTelemetryMetric(availableWithReason));
+
+    auto unavailableWithoutReason = unsupportedCompressedBytes;
+    unavailableWithoutReason.unavailableReason.reset();
+    REQUIRE(!Domain::validateTelemetryMetric(unavailableWithoutReason));
+
+    auto unavailableWithValue = unsupportedCompressedBytes;
+    unavailableWithValue.value = 1U;
+    REQUIRE(!Domain::validateTelemetryMetric(unavailableWithValue));
+
+    auto unavailableWithCapture = unsupportedCompressedBytes;
+    unavailableWithCapture.capturedAt = fixedTime(3);
+    REQUIRE(!Domain::validateTelemetryMetric(unavailableWithCapture));
+
+    auto unavailableWithoutObservation = unsupportedCompressedBytes;
+    unavailableWithoutObservation.observedAt.reset();
+    REQUIRE(!Domain::validateTelemetryMetric(unavailableWithoutObservation));
+
+    auto staleWithoutValue = staleRamPercent;
+    staleWithoutValue.value.reset();
+    REQUIRE(!Domain::validateTelemetryMetric(staleWithoutValue));
+
+    auto staleWithoutCapture = staleRamPercent;
+    staleWithoutCapture.capturedAt.reset();
+    REQUIRE(!Domain::validateTelemetryMetric(staleWithoutCapture));
+
+    auto reversedTimestamps = staleRamPercent;
+    reversedTimestamps.capturedAt = fixedTime(5);
+    reversedTimestamps.observedAt = fixedTime(4);
+    REQUIRE(!Domain::validateTelemetryMetric(reversedTimestamps));
+
+    auto negativeCapture = availableRamPercent;
+    negativeCapture.capturedAt =
+        Domain::UtcTimePoint{Domain::UtcTimePoint::duration{-1}};
+    REQUIRE(!Domain::validateTelemetryMetric(negativeCapture));
+
+    auto negativeObservation = unsupportedCompressedBytes;
+    negativeObservation.observedAt =
+        Domain::UtcTimePoint{Domain::UtcTimePoint::duration{-1}};
+    REQUIRE(!Domain::validateTelemetryMetric(negativeObservation));
+
+    auto unsupportedUtc = availableRamPercent;
+    unsupportedUtc.observedAt = Domain::UtcTimePoint{
+        std::chrono::seconds{253'402'300'800LL}};
+    REQUIRE(!Domain::validateTelemetryMetric(unsupportedUtc));
+
+    auto emptySource = availableRamPercent;
+    emptySource.source.clear();
+    REQUIRE(!Domain::validateTelemetryMetric(emptySource));
+
+    auto nulSource = availableRamPercent;
+    nulSource.source = std::string{"source\0suffix", 13U};
+    REQUIRE(!Domain::validateTelemetryMetric(nulSource));
+
+    auto invalidUtf8Source = availableRamPercent;
+    invalidUtf8Source.source = std::string{static_cast<char>(0xc3)};
+    REQUIRE(!Domain::validateTelemetryMetric(invalidUtf8Source));
+
+    auto maximumSource = availableRamPercent;
+    maximumSource.source.assign(
+        Domain::TelemetryMetricSourceBytesMaximum, 's');
+    REQUIRE(Domain::validateTelemetryMetric(maximumSource));
+
+    auto oversizedSource = availableRamPercent;
+    oversizedSource.source.assign(
+        Domain::TelemetryMetricSourceBytesMaximum + 1U, 's');
+    REQUIRE(!Domain::validateTelemetryMetric(oversizedSource));
+
+    auto oversizedReason = unsupportedCompressedBytes;
+    oversizedReason.unavailableReason = std::string(
+        Domain::TelemetryMetricReasonBytesMaximum + 1U, 'r');
+    REQUIRE(!Domain::validateTelemetryMetric(oversizedReason));
+
+    auto maximumReason = unsupportedCompressedBytes;
+    maximumReason.unavailableReason = std::string(
+        Domain::TelemetryMetricReasonBytesMaximum, 'r');
+    REQUIRE(Domain::validateTelemetryMetric(maximumReason));
+
+    auto nulReason = unsupportedCompressedBytes;
+    nulReason.unavailableReason = std::string{"reason\0suffix", 13U};
+    REQUIRE(!Domain::validateTelemetryMetric(nulReason));
+
+    auto invalidUtf8Reason = unsupportedCompressedBytes;
+    invalidUtf8Reason.unavailableReason =
+        std::string{static_cast<char>(0xc3)};
+    REQUIRE(!Domain::validateTelemetryMetric(invalidUtf8Reason));
+
+    auto invalidAvailability = unsupportedCompressedBytes;
+    invalidAvailability.availability =
+        static_cast<Domain::TelemetryMetricAvailability>(255);
+    REQUIRE(!Domain::validateTelemetryMetric(invalidAvailability));
+
+    Domain::RamMetrics invalidRam{};
+    invalidRam.percent = Domain::makeAvailableTelemetryMetric(
+        std::numeric_limits<double>::quiet_NaN(),
+        fixedTime(3),
+        "test.fixture");
+    REQUIRE(!Domain::validateRamMetrics(invalidRam));
+    invalidRam.percent = Domain::makeAvailableTelemetryMetric(
+        std::numeric_limits<double>::infinity(),
+        fixedTime(3),
+        "test.fixture");
+    REQUIRE(!Domain::validateRamMetrics(invalidRam));
+    invalidRam.percent = Domain::makeAvailableTelemetryMetric(
+        100.1, fixedTime(3), "test.fixture");
+    REQUIRE(!Domain::validateRamMetrics(invalidRam));
+    invalidRam.percent = Domain::TelemetryMetric<double>{};
+    invalidRam.totalBytes = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+        0U, fixedTime(3), "test.fixture");
+    REQUIRE(!Domain::validateRamMetrics(invalidRam));
+
     auto oneHistoryBudget = budgets;
     oneHistoryBudget.historyPointsHardMaximum = 1;
     snapshot.history.resize(2);

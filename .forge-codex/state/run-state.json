@@ -2,10 +2,10 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-30T21:06:47.5250754+00:00",
+  "updated_at": "2026-08-30T22:09:31.0297390+00:00",
   "status": "in_progress",
-  "active_role": "validator",
-  "active_phase": "P16",
+  "active_role": "builder",
+  "active_phase": "P17",
   "session_number": 0,
   "phases": [
     {
@@ -707,8 +707,26 @@
     },
     {
       "id": "P17",
-      "status": "not_started",
-      "evidence": []
+      "status": "in_progress",
+      "evidence": [
+        ".forge-codex/state/gate-results/G16.json",
+        ".forge-codex/instructions/plans/phases.json",
+        ".forge-codex/instructions/plans/gates.json",
+        ".forge-codex/instructions/plans/test-matrix.json",
+        ".forge-codex/instructions/plans/resource-budgets.json",
+        ".forge-codex/instructions/architecture/TELEMETRY_AND_RENDERING.md",
+        ".forge-codex/state/baseline/p02-telemetry-dashboard-inventory.json",
+        ".forge-codex/state/decisions/OWNER-002-alpha-release-qualification-scope.md",
+        ".forge-codex/state/decisions/P16-030-truthful-unavailable-telemetry-and-manager-reachability.md",
+        ".forge-codex/instructions/plans/feature-parity-matrix.json",
+        ".forge-codex/instructions/plans/feature-parity-matrix.tsv",
+        ".forge-codex/state/decisions/P17-001-typed-telemetry-observations-and-collector-boundaries.md",
+        ".forge-codex/state/decisions/P17-002-telemetry-layer-and-build-graph-guardrail.md",
+        ".forge-codex/state/evidence/P17/windows-ram-collector-checkpoint.json",
+        ".forge-codex/state/commands/20260830T220206441Z-ee70768c.json",
+        ".forge-codex/state/commands/20260830T220411393Z-c5d83fcd.json",
+        ".forge-codex/state/evidence-index.json"
+      ]
     },
     {
       "id": "P18",

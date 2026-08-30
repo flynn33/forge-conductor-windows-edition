@@ -84,8 +84,10 @@ template <typename Value>
     cpu.perLogicalProcessor = {cpuPercent};
 
     Domain::RamMetrics ram;
-    ram.percent = 40.0;
-    ram.pressurePercent = 35.0;
+    ram.percent = Domain::makeAvailableTelemetryMetric(
+        40.0, utc(), "test.fixture");
+    ram.pressurePercent = Domain::makeAvailableTelemetryMetric(
+        35.0, utc(), "test.fixture");
 
     Domain::SystemMetrics system{
         utc(),

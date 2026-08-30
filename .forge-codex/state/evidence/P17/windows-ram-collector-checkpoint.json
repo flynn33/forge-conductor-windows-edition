@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "phase": "P17",
+  "checkpoint": "windows-ram-collector",
+  "status": "passed",
+  "gate": "G17",
+  "gate_status": "focused-development-checkpoint-not-G17",
+  "recorded_utc": "2026-08-30T22:05:30.9692859+00:00",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "source_commit_before_slice": "addba0264bd21931f9a4ed23af69a474ef507ec5",
+  "toolchain": {
+    "generator": "Visual Studio 17 2022",
+    "visual_studio": "17.14.37012.4",
+    "msbuild": "17.14.40.60911",
+    "compiler": "MSVC 19.44.35223.0",
+    "toolset": "14.44.35207",
+    "windows_sdk": "10.0.26100.0",
+    "cmake": "4.4.2",
+    "ctest": "4.4.2",
+    "language": "C++20",
+    "platform": "x64",
+    "configuration": "Release",
+    "vcpkg_triplet": "x64-windows"
+  },
+  "qualified_machine": {
+    "operating_system": "Microsoft Windows 11 Pro",
+    "version": "10.0.26200",
+    "build": "26200",
+    "architecture": "64-bit AMD64",
+    "processor": "AMD Ryzen 9 5950X 16-Core Processor",
+    "processor_cores": 16,
+    "logical_processors": 32,
+    "physical_memory_bytes": 137351671808,
+    "graphics_adapter": "NVIDIA GeForce RTX 4090",
+    "graphics_driver": "32.0.15.9186"
+  },
+  "record_chain": {
+    "antecedent_command_record": ".forge-codex/state/commands/20260830T220206441Z-ee70768c.json",
+    "antecedent_command_record_sha256": "f1598200b4db0c5c4f9716fa80c50514ec7e6b7258274b98abbdd86d8b612127",
+    "antecedent_exit_code": 1,
+    "antecedent_timed_out": false,
+    "antecedent_output_limit_exceeded": false,
+    "antecedent_stdout_truncated": false,
+    "antecedent_stderr_truncated": false,
+    "antecedent_stdout": ".forge-codex/state/commands/20260830T220206441Z-ee70768c.stdout.txt",
+    "antecedent_stdout_sha256": "99a729cf98a18569435cca71c7b8ea6e9239d9abaab8056efdcfdbd4f74a8f1d",
+    "antecedent_stderr": ".forge-codex/state/commands/20260830T220206441Z-ee70768c.stderr.txt",
+    "antecedent_stderr_sha256": "025e9086e9305d93a094d7744fc9687ea7ddedc8a85bb09536b3d4c2376c9ba6",
+    "continuation_command_record": ".forge-codex/state/commands/20260830T220411393Z-c5d83fcd.json",
+    "continuation_command_record_sha256": "e9b0d178bac36ccc788716df929a26d6f88ab96cd2a55a142dea746e15430eec",
+    "continuation_exit_code": 0,
+    "continuation_timed_out": false,
+    "continuation_output_limit_exceeded": false,
+    "continuation_stdout_truncated": false,
+    "continuation_stderr_truncated": false,
+    "continuation_stdout": ".forge-codex/state/commands/20260830T220411393Z-c5d83fcd.stdout.txt",
+    "continuation_stdout_sha256": "51af1abd9531eb0d5f8ea65fd3a272425b7dbf892b2b094dc877a61eb962d958",
+    "continuation_stderr": ".forge-codex/state/commands/20260830T220411393Z-c5d83fcd.stderr.txt",
+    "continuation_stderr_sha256": "af8b0c78b9eb31e47443de3b3b522881a77bcb640a6995abbe853da0d1dd16dc",
+    "effective_exit_code": 0,
+    "diagnostic_resolution": [
+      "The antecedent Release build completed all seven affected targets and its verbose CTest selection passed all seven tests before evidence post-processing began.",
+      "The antecedent record also passed the current-machine PDH inventory probe, the G04 static-prefix build-graph guardrail, no-Python, no-attribution, ledger verification, and git diff --check.",
+      "The antecedent record exited one only after those checks because the isolated Windows PowerShell process did not auto-load Get-FileHash during artifact post-processing.",
+      "The continuation performed no build and no test. It hash-verified both antecedent streams and their expected success and failure markers, completed artifact hashing with the repository Common.ps1 helper, and reran the bounded policy, ledger, and diff checks."
+    ]
+  },
+  "measured_result": {
+    "affected_release_targets_built": 7,
+    "focused_ctest_tests": 7,
+    "focused_ctest_passed": 7,
+    "focused_ctest_failed": 0,
+    "focused_ctest_real_seconds": 0.36,
+    "windows_telemetry_cases": 11,
+    "windows_telemetry_cases_passed": 11,
+    "domain_test_groups_passed": 12,
+    "dashboard_connection_assertions": 1739,
+    "dashboard_telemetry_source_assertions": 164,
+    "dashboard_telemetry_json_assertions": 350,
+    "pdh_compressed_page_count_exact_matches": 0,
+    "g04_static_prefix_passed": true,
+    "no_python_passed": true,
+    "no_attribution_passed": true,
+    "ledger_passed": true,
+    "antecedent_ledger_events_verified": 520,
+    "continuation_ledger_events_verified": 521,
+    "git_diff_check_passed": true,
+    "g17_invoked": false
+  },
+  "qualified_tests": [
+    "ForgeConductor.Telemetry.WindowsTests",
+    "ForgeConductor.Domain.UnitTests",
+    "ForgeConductor.Dashboard.TelemetryJsonCodecTests",
+    "ForgeConductor.Dashboard.TelemetrySourceTests",
+    "ForgeConductor.Dashboard.ConnectionApplicationTests",
+    "ForgeConductor.Manager.DoctorServiceTests",
+    "ForgeConductor.Contracts.ContractTests"
+  ],
+  "artifacts": [
+    {
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Telemetry.WindowsTests.exe",
+      "bytes": 202752,
+      "sha256": "0fe3b8b0ee3c9f04a21ce9701cfe507bc4cb5040850b30744a7b64aa05679c10"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Domain.UnitTests.exe",
+      "bytes": 371712,
+      "sha256": "2b2fbafbacf42932fb8673393655be03b3c9e9af18fb048d131c36e20c143530"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe",
+      "bytes": 449024,
+      "sha256": "681b1ace8bda4b43ae829afd926d6cbaccca40fd978dfedbf75bd73cee9ccbf2"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.TelemetrySourceTests.exe",
+      "bytes": 362496,
+      "sha256": "6c234d9badcf8f135d1cd4f98e72b668f90427bf1f668f30ead7a77576eaa0b1"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionApplicationTests.exe",
+      "bytes": 747008,
+      "sha256": "77710c9851ab28ef93430af63093a18056e8a00d5e3bbaa4741f98f9ed4d9070"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.DoctorServiceTests.exe",
+      "bytes": 368640,
+      "sha256": "93768b05d8ed015a71a12ad498a40c4b8db580c54c48ebef48bf1e3f7a1ca722"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/bin/Release/ForgeConductor.Contracts.ContractTests.exe",
+      "bytes": 861184,
+      "sha256": "e0e1c464f6bce099d15ad2a7d6b4184f0e36aa39920ff1b958ab8a511bcd4e37"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Release/ForgeConductor.Telemetry.Windows.lib",
+      "bytes": 813594,
+      "sha256": "731705e78fb20ce29ba16581665f861149580e095541414d67c842c6f9d47027"
+    },
+    {
+      "path": "out/build/windows-msvc-x64/lib/Release/ForgeConductor.Domain.lib",
+      "bytes": 5193474,
+      "sha256": "5862b21744a03d2cde71401a345ff1a91a5cd2352babd7df72eeb48eef124833"
+    }
+  ],
+  "source_evidence": [
+    {
+      "path": ".forge-codex/state/decisions/P16-030-truthful-unavailable-telemetry-and-manager-reachability.md",
+      "bytes": 3064,
+      "sha256": "301a837c0ae99fb00a47afc8ab729001153029023de88f17beddab625d24c896"
+    },
+    {
+      "path": ".forge-codex/state/decisions/P17-001-typed-telemetry-observations-and-collector-boundaries.md",
+      "bytes": 5497,
+      "sha256": "cb3cf42c5b063c83e32e7c0ca9b42a1602672e27c62170e5e7190611e7aeda0f"
+    },
+    {
+      "path": ".forge-codex/state/decisions/P17-002-telemetry-layer-and-build-graph-guardrail.md",
+      "bytes": 2297,
+      "sha256": "062044222d802f4513e9cac4a056f8e33a99bdd4356344e66650713094e22806"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 157044,
+      "sha256": "de4b13badd659a99aeefb80e4debe5a8556bdd9f3809a22b937361a22a3c6f63"
+    },
+    {
+      "path": "include/ForgeConductor/Domain/TelemetryModels.h",
+      "bytes": 7735,
+      "sha256": "83965216ad99f325c8749e51a0ebee5780eef353a4f02376736509e13e6cb536"
+    },
+    {
+      "path": "include/ForgeConductor/Telemetry/Windows/TelemetryWindows.h",
+      "bytes": 87,
+      "sha256": "9df15a538a1e2ceb3cc3bf496370a3387d457a8f97f0df0fe41686786e595543"
+    },
+    {
+      "path": "include/ForgeConductor/Telemetry/Windows/WindowsRamMetricsCollector.h",
+      "bytes": 1603,
+      "sha256": "3fcac905b43413a91ea1edf32df768361ce8bd8f9e95fba5a88de58b23e4acc1"
+    },
+    {
+      "path": "scripts/validation/Test-G04BuildScaffold.ps1",
+      "bytes": 21675,
+      "sha256": "64cd690995c65018698ee19b106fe9433afc6731e237b29db6538258a84f4d3f"
+    },
+    {
+      "path": "src/Dashboard/DashboardTelemetryJsonCodec.cpp",
+      "bytes": 55959,
+      "sha256": "0349fdf38148a204d2601aca222757df58c7b4c76d11d0e9901a7867ad550df5"
+    },
+    {
+      "path": "src/Domain/TelemetryModels.cpp",
+      "bytes": 9262,
+      "sha256": "c3643bbd71b7a835a1352d858d24cd60af53517fa6451e1d145998b6c9570dec"
+    },
+    {
+      "path": "src/Telemetry/Windows/Detail/IRamMetricsPlatform.h",
+      "bytes": 912,
+      "sha256": "8528453b0bccecee4b39aedfddf806a0253dec6473a93c1d2d7e5fa1ddbc4ec9"
+    },
+    {
+      "path": "src/Telemetry/Windows/WindowsRamMetricsCollector.cpp",
+      "bytes": 24938,
+      "sha256": "a51d6a6211712999b1b6cf3ed88464765dbf816aa94168cf1c2482fe017908ba"
+    },
+    {
+      "path": "tests/Application/DashboardTelemetrySourceTests.cpp",
+      "bytes": 22712,
+      "sha256": "e0501650db005f128460b10826b321342c04c7baa238c671f7674ff3be98184f"
+    },
+    {
+      "path": "tests/Composition/Windows/ManagerDoctorServiceTests.cpp",
+      "bytes": 51695,
+      "sha256": "dc8276772f3afcfb998516bbfd964cf0d4933fae4f3c667e7ca6db95931ae371"
+    },
+    {
+      "path": "tests/Dashboard/DashboardTelemetryJsonCodecTests.cpp",
+      "bytes": 35602,
+      "sha256": "7177894d1f087f9d1f877a9a24657839b6125aa135c4821219fa299aaf2cc73b"
+    },
+    {
+      "path": "tests/Domain/DomainTests.cpp",
+      "bytes": 70352,
+      "sha256": "7aa332114687a3a241e1d405de985a573eeab36d69dee860631edcca6b530e7f"
+    },
+    {
+      "path": "tests/Telemetry/TelemetryWindowsTestMain.cpp",
+      "bytes": 1066,
+      "sha256": "5a70d079036b351d7e8a9f47b104f9d768828f68f56b4f96d0f84755437a2f10"
+    },
+    {
+      "path": "tests/Telemetry/WindowsRamMetricsCollectorTests.cpp",
+      "bytes": 34973,
+      "sha256": "2713647960a43da4adf8fec74f59f2def35a96ab9b959ad1646bb8406decbcb5"
+    }
+  ],
+  "behavior_proved": [
+    "TelemetryMetric<T> distinguishes a successful zero from unavailable and stale values while retaining bounded source, reason, capture time, and current observation time.",
+    "Available, warming-up, unsupported, temporarily unavailable, and access-denied states are structurally validated, including canonical UTC range and capture-before-observation ordering.",
+    "GlobalMemoryStatusEx maps total, available, derived used, and physical-utilization RAM values with exact source identities.",
+    "GetPerformanceInfo maps commit pressure, committed bytes, and paged-pool bytes with checked page-to-byte arithmetic and exact source identities.",
+    "Active bytes, wired bytes, and swap metrics remain explicitly unsupported rather than being synthesized from semantically different Windows counters.",
+    "Compressed bytes remain explicitly unsupported on this qualified machine because typeperf -q \\Memory reported zero exact matches for \\Memory\\Compressed Page Count.",
+    "Independent native probe failures preserve successful categories; failed refreshes retain prior values, capture time, and source as stale while recording the current failed observation and reason.",
+    "Cancellation and deadline checks bracket every native memory block, overlapping collection is rejected without a queue, and shutdown is idempotent and drains admitted work.",
+    "One lifecycle mutex linearizes closed-state checking, admission, active release, publication, and shutdown; deterministic tests bracket pre-admission and post-admission races and reject post-shutdown publication.",
+    "The dashboard JSON codec preserves all thirteen legacy RAM keys while adding per-field availability metadata and encoding unavailable values as null.",
+    "The new ForgeConductor.Telemetry.Windows layer depends inward on ForgeConductor.Contracts, and the synchronized G04 static graph guardrail accepts that exact dependency edge."
+  ],
+  "evidence_scope": {
+    "proved": "Typed telemetry observation invariants, Windows RAM collection and mapping, stale retention, cancellation/deadline/overlap/shutdown behavior, dashboard RAM JSON compatibility, the current-machine compressed-counter absence, and the telemetry layer boundary in Release x64 on the owner-qualified Windows 11 machine.",
+    "not_proved": "CPU, disk, GPU, process-list, network, power, or thermal collection; the P18 producer/mailbox/history lifecycle; production Manager composition replacement; end-to-end live dashboard refresh; resource-budget stress; or the authoritative G17 gate."
+  },
+  "remaining_limitations": [
+    "P17 remains in progress and G17 remains not started; this checkpoint is not a G17 pass.",
+    "CPU, disk, GPU, process-list, network, power, and thermal fields still require typed native collectors, exact mapping tests, and current-machine evidence.",
+    "P18 owns the capacity-one latest-value mailbox, bounded histories, producer scheduling, stall handling, queue bounds, and coordinated shutdown stress.",
+    "The production Manager continues to use the truthful unavailable telemetry adapter until the complete P17 collector composition is available and P18 owns its service lifecycle.",
+    "Installer qualification is limited to this Windows 11 alpha machine; clean-environment qualification, security-only hardening, and bespoke UI polish remain owner-deferred until after alpha."
+  ]
+}
