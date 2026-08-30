@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-operational-adapter",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with Visual Studio 17 2022, MSBuild 17.14.40, MSVC 14.51.36231, Windows SDK 10.0.26100.0, C++20 Release x64, and CTest 4.4.2.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T121844447Z-73198e87.json",
+    "command_record_sha256": "87f2ba744efa68da225aafb8d14491fc3e4fad2d2236dbb271672df456670385",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Release",
+    "targets": [
+      "ForgeConductor.Infrastructure.UnitTests",
+      "ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests",
+      "ForgeConductor.Manager.DashboardOperationalDataSourceTests"
+    ],
+    "elapsed_seconds": 8.84,
+    "stdout": ".forge-codex/state/commands/20260830T121844447Z-73198e87.stdout.txt",
+    "stdout_sha256": "de19b15c08ed81339cbb62bd05003c7865236a6d59ece50a2dd0bcd3a2af099d",
+    "stderr": ".forge-codex/state/commands/20260830T121844447Z-73198e87.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T121900281Z-374cefb4.json",
+    "command_record_sha256": "0e960803d3975069c56611d51f4ed04a9fd64ad9c5059676c912362bfc291bfc",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 3,
+    "tests_failed": 0,
+    "real_seconds": 7.95,
+    "stdout": ".forge-codex/state/commands/20260830T121900281Z-374cefb4.stdout.txt",
+    "stdout_sha256": "0386510c23f2d766893ea5e4f208abdc40b72c533b2938a3d8f0af4498ffb677",
+    "stderr": ".forge-codex/state/commands/20260830T121900281Z-374cefb4.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_policy_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T123102731Z-3ce8b700.json",
+    "command_record_sha256": "e3fcc6c09bc59825e52160fb1d80f2c2158ddab4adaeb966f9064da1315c75f9",
+    "exit_code": 0,
+    "timed_out": false,
+    "source_hashes_matched": 8,
+    "binary_hashes_matched": 8,
+    "command_records_matched": 2,
+    "changed_text_files_validated": 9,
+    "focused_selection_did_not_invoke_g16": true,
+    "durable_p16_g16_state_verified": true,
+    "no_python_passed": true,
+    "no_attribution_passed": true,
+    "ledger_passed": true,
+    "git_diff_check_passed": true,
+    "line_endings_passed": true,
+    "stdout": ".forge-codex/state/commands/20260830T123102731Z-3ce8b700.stdout.txt",
+    "stdout_sha256": "40a873342ccc1c62ae88bfeb5dbcee21ec58ea490b160173b43b5814884065d4",
+    "stderr": ".forge-codex/state/commands/20260830T123102731Z-3ce8b700.stderr.txt",
+    "stderr_sha256": "71e96d6f393ed3f0e462fc8b366189e4091979e8712b6743ba790190edacb481"
+  },
+  "independent_review": {
+    "status": "passed",
+    "mode": "read-only",
+    "blocking_findings": 0,
+    "edits": 0,
+    "gates_invoked": 0
+  },
+  "measured_results": {
+    "focused_native_test_executables_passed": 3,
+    "focused_native_test_executables_failed": 0,
+    "manager_operational_adapter_test_cases": 4,
+    "diagnostic_tail_registered_test_cases": 10,
+    "database_diagnostic_coexistence_deadline_milliseconds": 500,
+    "dashboard_diagnostic_maximum_lines": 100,
+    "dashboard_diagnostic_maximum_line_bytes": 16384,
+    "dashboard_diagnostic_maximum_aggregate_bytes": 524288
+  },
+  "behavior_proved": [
+    "the Manager operational adapter lives in an outer Windows composition target and does not reverse the neutral Manager host dependency direction",
+    "the adapter borrows its repositories, diagnostic reader, and clock without owning or closing their lifetimes",
+    "one repository snapshot is mapped without reconstructing presence and preserves bounded open-session overflow failures",
+    "bounded diagnostic lines retain newest-record order, exact content, cancellation, and invalid-bound classifications",
+    "administrative close targets only the requested session, preserves the supplied summary, clamps time through the repository, and retains not-found classification",
+    "the diagnostic tail reader coexists with the live central database data-root lease without weakening final diagnostics-root write exclusion",
+    "the read-only tail walk opens no missing directory, retains every existing ancestor without delete sharing, and rejects intermediate junctions, case-sensitive ancestors, hard-linked masters, and authority escapes",
+    "sanctioned packaged-path identity becomes the basis for handle-relative lock and master-file validation"
+  ],
+  "evidence_scope": {
+    "proved": "Source structure, independent review, and focused native Release behavior for the outer Manager operational adapter and database-compatible diagnostic anchoring on this Windows 11 alpha machine.",
+    "not_proved": "The doctor service, telemetry-unavailable projection, production Manager composition root or executable, real-process lifecycle, live Edge dashboard behavior, retained native UI automation, installer lifecycle, or the authoritative G16 gate."
+  },
+  "source_sha256": {
+    "CMakeLists.txt": "c963a6e24b07c27b654bbd8d24530d5beceaee6764fd7447e6c9f59f1038aa9b",
+    ".forge-codex/state/decisions/P16-029-manager-operational-adapter-and-compatible-diagnostic-anchoring.md": "d6ff1927e795582360ccb4df561126540c9828f6b3c4bc4878514b8af19d775c",
+    ".forge-codex/state/run-state.json": "937ebf854755d2fdea7905ebe80788ab22c92fec8d9a1625c9203ee9fa8c46da",
+    "src/Composition/Windows/ManagerDashboardOperationalDataSource.h": "bdd36a9abcd474613f63efcacdb91db3d8f6aeb6a36fbf220d47b85e81558383",
+    "src/Composition/Windows/ManagerDashboardOperationalDataSource.cpp": "7f864cb18a07e8f69e20dd0d5f320fb5b365973bc4a652dbb825cb7906c3c40e",
+    "src/Infrastructure/Windows/WindowsDiagnosticLogTailReader.cpp": "616ff981c228870cdde444327e5a8aed22e5df74b00fe2060cb3d5934c78e21a",
+    "tests/Composition/Windows/ManagerDashboardOperationalDataSourceTests.cpp": "88d1701c306b6aa8a9acf8cb0dadb44f610d3e99f065b4e9256a45d4360c1e19",
+    "tests/Infrastructure/WindowsDiagnosticLogTailReaderTests.cpp": "70cb669427a6fcc735a3e66411729693e751dc12f721d5a087a72a0f4f2d714d"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Infrastructure.UnitTests.exe": "417cf7edaa34f4f95922384307d4c10faf250880f1b32427045e1bfeee76d4be",
+    "ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests.exe": "5639f4a2b58b6d0c1922940d43230484c9b02242bcb273fe37c142164ac3acca",
+    "ForgeConductor.Manager.DashboardOperationalDataSourceTests.exe": "bfc1ea2301d47493577d8da0ab0f63f1f0087afe047efe644c6ffbe015ebd5de",
+    "ForgeConductor.Infrastructure.Windows.lib": "5bbe0501d918f50932fdf77972c8b15577bb961a4148ec860641f6b09bc27c7c",
+    "ForgeConductor.Manager.Composition.Windows.lib": "2b9ba3e5820b0d7454b0c19d84d71751771dd7873a7423b0c8b9bc61a75e823a",
+    "ForgeConductor.Persistence.Windows.lib": "1b50e04b772da14dd4810562cff71d743e955a1d1d5a1b3b73f77466ac358bdd",
+    "ForgeConductor.Application.lib": "5008a299b32c54e744a93c4892473ed16df8140683031c598ce40e2b010699ca",
+    "ForgeConductor.Manager.Host.lib": "77033439682c40fa88297db898d1e9bf2692094ad4fcddd17053d129dcb7d48e"
+  },
+  "remaining_limitations": [
+    "P16 remains in progress and G16 remains not started.",
+    "Doctor, telemetry-unavailable composition, the production Manager executable, real-process evidence, live Edge behavior, and retained native UI automation remain pending.",
+    "Installer qualification is limited to this Windows 11 alpha machine; clean-environment qualification, security-only hardening, and bespoke UI polish remain owner-deferred until after alpha."
+  ]
+}

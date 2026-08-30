@@ -77,6 +77,21 @@ constexpr auto MaximumLockPoll = std::chrono::milliseconds{25};
     return value;
 }
 
+[[nodiscard]] std::wstring extendedPath(const std::wstring_view value)
+{
+    constexpr std::wstring_view UncPrefix = L"\\\\";
+    constexpr std::wstring_view ExtendedUncPrefix = L"\\\\?\\UNC\\";
+    constexpr std::wstring_view ExtendedPrefix = L"\\\\?\\";
+    if (value.starts_with(ExtendedPrefix)) {
+        return std::wstring{value};
+    }
+    if (value.starts_with(UncPrefix)) {
+        return std::wstring{ExtendedUncPrefix} +
+               std::wstring{value.substr(UncPrefix.size())};
+    }
+    return std::wstring{ExtendedPrefix} + std::wstring{value};
+}
+
 [[nodiscard]] bool equalPath(
     const std::wstring_view left,
     const std::wstring_view right) noexcept
@@ -154,6 +169,95 @@ constexpr auto MaximumLockPoll = std::chrono::milliseconds{25};
         return Domain::Result<void>::failure(Domain::makeError(
             Domain::ErrorCodes::InternalFailure,
             "The diagnostic tail file identity could not be verified."));
+    }
+}
+
+[[nodiscard]] Domain::Result<void> verifyOpenedDirectory(
+    const HANDLE directory,
+    const std::wstring_view expectedPath,
+    std::wstring* const openedPath = nullptr) noexcept
+{
+    try {
+        FILE_ATTRIBUTE_TAG_INFO attributes{};
+        if (::GetFileInformationByHandleEx(
+                directory, FileAttributeTagInfo, &attributes,
+                sizeof(attributes)) == FALSE) {
+            return Domain::Result<void>::failure(Detail::makeWin32Error(
+                "inspect the diagnostic directory attributes",
+                ::GetLastError()));
+        }
+        if ((attributes.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0U ||
+            (attributes.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::PathOutsideAuthority,
+                "The diagnostic directory is not a direct directory."));
+        }
+
+        FILE_CASE_SENSITIVE_INFO caseSensitivity{};
+        if (::GetFileInformationByHandleEx(
+                directory, FileCaseSensitiveInfo, &caseSensitivity,
+                sizeof(caseSensitivity)) == FALSE) {
+            return Domain::Result<void>::failure(Detail::makeWin32Error(
+                "inspect the diagnostic directory case policy",
+                ::GetLastError()));
+        }
+        auto supportedCasePolicy =
+            Detail::WindowsPathResolver::validateDirectoryCaseSensitivityFlags(
+                caseSensitivity.Flags);
+        if (!supportedCasePolicy) {
+            return supportedCasePolicy;
+        }
+
+        FILE_STANDARD_INFO standard{};
+        if (::GetFileInformationByHandleEx(
+                directory, FileStandardInfo, &standard, sizeof(standard)) ==
+            FALSE) {
+            return Domain::Result<void>::failure(Detail::makeWin32Error(
+                "inspect the diagnostic directory state", ::GetLastError()));
+        }
+        if (standard.DeletePending != FALSE) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::PathOutsideAuthority,
+                "The diagnostic directory is delete-pending."));
+        }
+
+        const DWORD required = ::GetFinalPathNameByHandleW(
+            directory, nullptr, 0U, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+        if (required == 0U) {
+            return Domain::Result<void>::failure(Detail::makeWin32Error(
+                "resolve the diagnostic directory", ::GetLastError()));
+        }
+        if (required > Domain::PathText::MaximumBytes + 4U) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::PayloadTooLarge,
+                "The resolved diagnostic directory exceeds its path bound."));
+        }
+        std::vector<wchar_t> buffer(
+            static_cast<std::size_t>(required) + 1U, L'\0');
+        const DWORD written = ::GetFinalPathNameByHandleW(
+            directory, buffer.data(), static_cast<DWORD>(buffer.size()),
+            FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+        if (written == 0U || written >= buffer.size()) {
+            return Domain::Result<void>::failure(Detail::makeWin32Error(
+                "resolve the diagnostic directory", ::GetLastError()));
+        }
+        const auto opened = withoutExtendedPrefix(
+            std::wstring{buffer.data(), static_cast<std::size_t>(written)});
+        if (!equalPath(opened, expectedPath) &&
+            !Detail::WindowsPathResolver::
+                isExpectedPackagedLocalAppDataRedirect(expectedPath, opened)) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::PathOutsideAuthority,
+                "The opened diagnostic directory escaped its anchored path."));
+        }
+        if (openedPath != nullptr) {
+            *openedPath = opened;
+        }
+        return Domain::Result<void>::success();
+    } catch (...) {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "The diagnostic directory identity could not be verified."));
     }
 }
 
@@ -331,41 +435,210 @@ struct DiagnosticReadTransaction final {
     std::wstring masterPath;
 };
 
-[[nodiscard]] Domain::Result<DiagnosticReadTransaction> prepareTransaction(
+struct ExistingDiagnosticRoot final {
+    bool exists{};
+    AnchoredDiagnosticDirectoryTree root;
+};
+
+[[nodiscard]] Domain::Result<ExistingDiagnosticRoot>
+openExistingDiagnosticRoot(
     const Domain::PathText& rootText,
-    const Domain::OperationContext& context,
-    const HANDLE shutdownEvent) noexcept
+    const Domain::OperationContext& context) noexcept
 {
-    auto anchored = Detail::prepareAnchoredDiagnosticDirectory(
-        rootText, context, shutdownEvent);
+    try {
+        auto root = Detail::WindowsPathResolver::resolveAppOwnedRoot(
+            rootText.value());
+        if (!root) {
+            return Domain::Result<ExistingDiagnosticRoot>::failure(
+                std::move(root).error());
+        }
+
+        auto valid = validateContext(
+            context, "anchor the diagnostic tail directory");
+        if (!valid) {
+            return Domain::Result<ExistingDiagnosticRoot>::failure(
+                std::move(valid).error());
+        }
+
+        AnchoredDiagnosticDirectoryTree anchored;
+        std::vector<std::wstring> anchoredPaths;
+        anchoredPaths.reserve(16U);
+        anchored.handles.reserve(16U);
+
+        const bool volumeRootIsFinal = root.value().size() == 3U;
+        std::wstring current = root.value().substr(0U, 3U);
+        const auto nativePath = extendedPath(current);
+        UniqueHandle volumeRoot{::CreateFileW(
+            nativePath.c_str(),
+            FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_TRAVERSE,
+            FILE_SHARE_READ |
+                (volumeRootIsFinal ? 0U : FILE_SHARE_WRITE),
+            nullptr,
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+            nullptr)};
+        if (!volumeRoot) {
+            const DWORD nativeError = ::GetLastError();
+            return Domain::Result<ExistingDiagnosticRoot>::failure(
+                Detail::makeWin32Error(
+                    "open the diagnostic tail volume root",
+                    nativeError,
+                    Domain::ErrorCodes::InternalFailure,
+                    nativeError == ERROR_SHARING_VIOLATION));
+        }
+        auto verified = verifyOpenedDirectory(
+            volumeRoot.get(), current);
+        if (!verified) {
+            return Domain::Result<ExistingDiagnosticRoot>::failure(
+                std::move(verified).error());
+        }
+        anchoredPaths.push_back(current);
+        anchored.handles.push_back(std::move(volumeRoot));
+
+        std::size_t cursor = 3U;
+        while (cursor < root.value().size()) {
+            valid = validateContext(
+                context, "anchor the diagnostic tail directory");
+            if (!valid) {
+                return Domain::Result<ExistingDiagnosticRoot>::failure(
+                    std::move(valid).error());
+            }
+
+            const std::size_t separator = root.value().find(L'\\', cursor);
+            const std::size_t end = separator == std::wstring::npos
+                                        ? root.value().size()
+                                        : separator;
+            const std::wstring_view component{
+                root.value().data() + cursor, end - cursor};
+            const std::wstring expectedPath{root.value().substr(0U, end)};
+            const bool finalComponent = end == root.value().size();
+
+            RelativeOpenOptions options{};
+            options.desiredAccess =
+                FILE_READ_ATTRIBUTES | FILE_LIST_DIRECTORY | FILE_TRAVERSE;
+            options.shareAccess = FILE_SHARE_READ |
+                                  (finalComponent ? 0U : FILE_SHARE_WRITE);
+            options.disposition = RelativeOpenDisposition::OpenExisting;
+            options.objectType = RelativeObjectType::Directory;
+            auto opened = Detail::openRelative(
+                anchored.handles.back().get(), component, options);
+            if (!opened) {
+                valid = validateContext(
+                    context, "anchor the diagnostic tail directory");
+                if (!valid) {
+                    return Domain::Result<ExistingDiagnosticRoot>::failure(
+                        std::move(valid).error());
+                }
+                if (opened.win32Error == ERROR_FILE_NOT_FOUND ||
+                    opened.win32Error == ERROR_PATH_NOT_FOUND) {
+                    return Domain::Result<ExistingDiagnosticRoot>::success(
+                        ExistingDiagnosticRoot{});
+                }
+                return Domain::Result<ExistingDiagnosticRoot>::failure(
+                    Detail::makeWin32Error(
+                        "open an anchored diagnostic tail directory",
+                        opened.win32Error,
+                        Domain::ErrorCodes::InternalFailure,
+                        opened.win32Error == ERROR_SHARING_VIOLATION));
+            }
+
+            verified = verifyOpenedDirectory(
+                opened.handle.get(), expectedPath);
+            if (!verified) {
+                return Domain::Result<ExistingDiagnosticRoot>::failure(
+                    std::move(verified).error());
+            }
+            anchoredPaths.push_back(expectedPath);
+            anchored.handles.push_back(std::move(opened.handle));
+            current = expectedPath;
+            cursor = end + 1U;
+        }
+
+        std::wstring openedRoot;
+        for (std::size_t index = 0U; index < anchored.handles.size(); ++index) {
+            verified = verifyOpenedDirectory(
+                anchored.handles[index].get(),
+                anchoredPaths[index],
+                index + 1U == anchored.handles.size() ? &openedRoot : nullptr);
+            if (!verified) {
+                return Domain::Result<ExistingDiagnosticRoot>::failure(
+                    std::move(verified).error());
+            }
+        }
+        valid = validateContext(
+            context, "finish anchoring the diagnostic tail directory");
+        if (!valid) {
+            return Domain::Result<ExistingDiagnosticRoot>::failure(
+                std::move(valid).error());
+        }
+
+        anchored.root = std::move(openedRoot);
+        return Domain::Result<ExistingDiagnosticRoot>::success(
+            ExistingDiagnosticRoot{true, std::move(anchored)});
+    } catch (...) {
+        return Domain::Result<ExistingDiagnosticRoot>::failure(
+            Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The diagnostic tail directory could not be opened."));
+    }
+}
+
+[[nodiscard]] Domain::Result<std::optional<DiagnosticReadTransaction>>
+prepareTransaction(
+    const Domain::PathText& rootText,
+    const Domain::OperationContext& context) noexcept
+{
+    auto valid = validateContext(context, "open the diagnostic tail directory");
+    if (!valid) {
+        return Domain::Result<
+            std::optional<DiagnosticReadTransaction>>::failure(
+                std::move(valid).error());
+    }
+    auto anchored = openExistingDiagnosticRoot(rootText, context);
     if (!anchored) {
-        return Domain::Result<DiagnosticReadTransaction>::failure(
+        return Domain::Result<
+            std::optional<DiagnosticReadTransaction>>::failure(
             std::move(anchored).error());
     }
+    valid = validateContext(context, "open the diagnostic tail directory");
+    if (!valid) {
+        return Domain::Result<
+            std::optional<DiagnosticReadTransaction>>::failure(
+                std::move(valid).error());
+    }
+    if (!anchored.value().exists) {
+        return Domain::Result<
+            std::optional<DiagnosticReadTransaction>>::success(std::nullopt);
+    }
     auto masterPath = Detail::WindowsPathResolver::resolveAppOwnedChild(
-        anchored.value().root, DiagnosticLogName,
+        anchored.value().root.root, DiagnosticLogName,
         Detail::MissingPathPolicy::AllowLeaf);
     if (!masterPath) {
-        return Domain::Result<DiagnosticReadTransaction>::failure(
+        return Domain::Result<
+            std::optional<DiagnosticReadTransaction>>::failure(
             std::move(masterPath).error());
     }
     auto lockPath = Detail::WindowsPathResolver::resolveAppOwnedChild(
-        anchored.value().root, DiagnosticLockName,
+        anchored.value().root.root, DiagnosticLockName,
         Detail::MissingPathPolicy::AllowLeaf);
     if (!lockPath) {
-        return Domain::Result<DiagnosticReadTransaction>::failure(
+        return Domain::Result<
+            std::optional<DiagnosticReadTransaction>>::failure(
             std::move(lockPath).error());
     }
     auto lock = DiagnosticReadLock::acquire(
-        anchored.value(), lockPath.value(), context);
+        anchored.value().root, lockPath.value(), context);
     if (!lock) {
-        return Domain::Result<DiagnosticReadTransaction>::failure(
+        return Domain::Result<
+            std::optional<DiagnosticReadTransaction>>::failure(
             std::move(lock).error());
     }
-    return Domain::Result<DiagnosticReadTransaction>::success(
-        DiagnosticReadTransaction{
-            std::move(anchored).value(), std::move(lock).value(),
-            std::move(masterPath).value()});
+    return Domain::Result<
+        std::optional<DiagnosticReadTransaction>>::success(
+            DiagnosticReadTransaction{
+                std::move(anchored).value().root,
+                std::move(lock).value(),
+                std::move(masterPath).value()});
 }
 
 struct OpenedMaster final {
@@ -628,21 +901,15 @@ WindowsDiagnosticLogTailReader::newestLines(
             return Domain::Result<std::vector<std::string>>::success({});
         }
 
-        UniqueHandle shutdownEvent{
-            ::CreateEventW(nullptr, TRUE, FALSE, nullptr)};
-        if (!shutdownEvent) {
-            return Domain::Result<std::vector<std::string>>::failure(
-                Detail::makeWin32Error(
-                    "create the diagnostic tail anchoring event",
-                    ::GetLastError()));
-        }
-        auto transaction = prepareTransaction(
-            diagnosticsRoot_, context, shutdownEvent.get());
+        auto transaction = prepareTransaction(diagnosticsRoot_, context);
         if (!transaction) {
             return Domain::Result<std::vector<std::string>>::failure(
                 std::move(transaction).error());
         }
-        auto master = openMaster(transaction.value());
+        if (!transaction.value().has_value()) {
+            return Domain::Result<std::vector<std::string>>::success({});
+        }
+        auto master = openMaster(transaction.value().value());
         if (!master) {
             return Domain::Result<std::vector<std::string>>::failure(
                 std::move(master).error());

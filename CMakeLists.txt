@@ -401,6 +401,20 @@ target_link_libraries(ForgeConductor.Persistence.Windows PRIVATE
     bcrypt
     winsqlite3)
 
+add_library(ForgeConductor.Manager.Composition.Windows STATIC
+    src/Composition/Windows/ManagerDashboardOperationalDataSource.cpp
+    src/Composition/Windows/ManagerDashboardOperationalDataSource.h)
+add_library(ForgeConductor::Manager.Composition.Windows ALIAS
+    ForgeConductor.Manager.Composition.Windows)
+forge_configure_native_target(ForgeConductor.Manager.Composition.Windows)
+target_include_directories(ForgeConductor.Manager.Composition.Windows PUBLIC
+    "${PROJECT_SOURCE_DIR}/src/Composition/Windows")
+target_link_libraries(ForgeConductor.Manager.Composition.Windows PUBLIC
+    ForgeConductor::Application
+    ForgeConductor::Manager.Host
+    ForgeConductor::Infrastructure.Windows
+    ForgeConductor::Persistence.Windows)
+
 set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/NativeFileOperations.cpp
     src/NativeTools/Windows/WindowsFileSystem.cpp
@@ -724,6 +738,27 @@ if(BUILD_TESTING)
         ForgeConductor.Manager.CompositionSupportTests PROPERTIES
         LABELS "G16;T-MGR;T-UNIT;T-STRESS"
         TIMEOUT 60)
+
+    add_executable(
+        ForgeConductor.Manager.DashboardOperationalDataSourceTests
+        tests/Composition/Windows/ManagerDashboardOperationalDataSourceTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.DashboardOperationalDataSourceTests)
+    target_include_directories(
+        ForgeConductor.Manager.DashboardOperationalDataSourceTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.DashboardOperationalDataSourceTests PRIVATE
+        ForgeConductor::Manager.Composition.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.DashboardOperationalDataSourceTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Manager.DashboardOperationalDataSourceTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.DashboardOperationalDataSourceTests PROPERTIES
+        LABELS "G16;T-MGR;T-DB;T-INTEGRATION;T-UNIT"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Manager.ProcessRestartSignalTests
         tests/Manager/ManagerProcessRestartSignalTests.cpp)

@@ -278,6 +278,16 @@ void returnsNewestLinesInOriginalOrderAndNormalizesCrLf()
 void returnsEmptyForMissingOrEmptyMaster()
 {
     ScopedTestTree tree;
+    const auto missingRoot = tree.base() / L"missing-logs";
+    WindowsDiagnosticLogTailReader missingRootReader{pathText(missingRoot)};
+    require(
+        take(missingRootReader.newestLines(
+            10U, 64U, 128U, activeContext())).empty(),
+        "a missing diagnostic root did not return an empty result");
+    require(
+        !std::filesystem::exists(missingRoot),
+        "the read-only diagnostic tail reader created a missing root");
+
     WindowsDiagnosticLogTailReader reader{pathText(tree.root())};
     require(take(reader.newestLines(10U, 64U, 128U, activeContext())).empty(),
             "a missing diagnostic master did not return an empty result");
@@ -285,6 +295,31 @@ void returnsEmptyForMissingOrEmptyMaster()
     writeBytes(tree.master(), {});
     require(take(reader.newestLines(10U, 64U, 128U, activeContext())).empty(),
             "an empty diagnostic master did not return an empty result");
+}
+
+void coexistsWithAWriteCapableDataRootAnchor()
+{
+    ScopedTestTree tree;
+    writeBytes(tree.master(), "coexisting\n");
+    UniqueHandle dataRootAnchor{::CreateFileW(
+        tree.base().c_str(),
+        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
+            FILE_ADD_FILE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+        nullptr)};
+    require(
+        static_cast<bool>(dataRootAnchor),
+        "write-capable data-root anchor did not open");
+
+    WindowsDiagnosticLogTailReader reader{pathText(tree.root())};
+    require(
+        take(reader.newestLines(
+            1U, 64U, 64U, activeContext({}, 500ms))) ==
+            std::vector<std::string>{"coexisting"},
+        "diagnostic tail read did not coexist with the data-root anchor");
 }
 
 void rejectsInvalidBoundsAndOversizedSelectedRecordsWithoutTruncation()
@@ -436,6 +471,24 @@ void honorsPreflightAndInFlightCancellationAndDeadline()
 void rejectsReparseRootAndHardLinkedMaster()
 {
     ScopedTestTree tree;
+    const auto outsideLogs = tree.outside() / L"logs";
+    require(
+        std::filesystem::create_directory(outsideLogs),
+        "intermediate-junction target was not created");
+    writeBytes(outsideLogs / L"forge-diagnostics.jsonl", "foreign\n");
+    const auto redirectedParent = tree.base() / L"redirected-parent";
+    createJunction(redirectedParent, tree.outside());
+    WindowsDiagnosticLogTailReader intermediateReader{
+        pathText(redirectedParent / L"logs")};
+    requireError(
+        intermediateReader.newestLines(
+            1U, 64U, 64U, activeContext()),
+        Domain::ErrorCodes::PathOutsideAuthority,
+        "an intermediate diagnostic junction escaped its app-owned anchor");
+    require(
+        ::RemoveDirectoryW(redirectedParent.c_str()) != FALSE,
+        "intermediate diagnostic junction was not removed safely");
+
     const auto redirected = tree.base() / L"redirected-logs";
     createJunction(redirected, tree.outside());
     WindowsDiagnosticLogTailReader redirectedReader{pathText(redirected)};
@@ -457,6 +510,57 @@ void rejectsReparseRootAndHardLinkedMaster()
         reader.newestLines(1U, 64U, 64U, activeContext()),
         Domain::ErrorCodes::PathOutsideAuthority,
         "a hard-linked diagnostic master escaped its app-owned identity");
+}
+
+void rejectsCaseSensitiveIntermediateDirectoriesWhenSupported()
+{
+    ScopedTestTree tree;
+    const auto ancestor = tree.base() / L"case-sensitive-parent";
+    require(
+        std::filesystem::create_directory(ancestor),
+        "case-sensitive ancestor fixture was not created");
+    UniqueHandle handle{::CreateFileW(
+        ancestor.c_str(),
+        FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES | FILE_LIST_DIRECTORY |
+            FILE_ADD_SUBDIRECTORY | DELETE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+        nullptr)};
+    require(
+        static_cast<bool>(handle),
+        "case-sensitive ancestor fixture did not open");
+
+    FILE_CASE_SENSITIVE_INFO enabled{FILE_CS_FLAG_CASE_SENSITIVE_DIR};
+    if (::SetFileInformationByHandle(
+            handle.get(), FileCaseSensitiveInfo, &enabled,
+            sizeof(enabled)) == FALSE) {
+        const DWORD nativeError = ::GetLastError();
+        require(
+            nativeError == ERROR_ACCESS_DENIED ||
+                nativeError == ERROR_PRIVILEGE_NOT_HELD ||
+                nativeError == ERROR_NOT_SUPPORTED ||
+                nativeError == ERROR_INVALID_PARAMETER,
+            "case-sensitive ancestor capability probe failed unexpectedly");
+        std::printf(
+            "INFO diagnostic_tail.case_sensitive_ancestor "
+            "native_error=%lu\n",
+            static_cast<unsigned long>(nativeError));
+        return;
+    }
+    handle.reset();
+
+    const auto root = ancestor / L"logs";
+    require(
+        std::filesystem::create_directory(root),
+        "case-sensitive ancestor child was not created");
+    writeBytes(root / L"forge-diagnostics.jsonl", "ambiguous\n");
+    WindowsDiagnosticLogTailReader reader{pathText(root)};
+    requireError(
+        reader.newestLines(1U, 64U, 64U, activeContext()),
+        Domain::ErrorCodes::PathOutsideAuthority,
+        "a case-sensitive diagnostic ancestor was admitted");
 }
 
 void waitsForTheSinkLockBeforeInspectingAnIncompleteAppend()
@@ -492,6 +596,9 @@ int main()
         tests, "diagnostic_tail.missing_empty",
         returnsEmptyForMissingOrEmptyMaster);
     addTest(
+        tests, "diagnostic_tail.data_root_anchor",
+        coexistsWithAWriteCapableDataRootAnchor);
+    addTest(
         tests, "diagnostic_tail.bounds",
         rejectsInvalidBoundsAndOversizedSelectedRecordsWithoutTruncation);
     addTest(
@@ -506,6 +613,9 @@ int main()
     addTest(
         tests, "diagnostic_tail.reparse_hardlink",
         rejectsReparseRootAndHardLinkedMaster);
+    addTest(
+        tests, "diagnostic_tail.case_sensitive_ancestor",
+        rejectsCaseSensitiveIntermediateDirectoriesWhenSupported);
     addTest(
         tests, "diagnostic_tail.partial_append_lock",
         waitsForTheSinkLockBeforeInspectingAnIncompleteAppend);

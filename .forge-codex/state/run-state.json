@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-30T11:36:05.4539970+00:00",
+  "updated_at": "2026-08-30T12:19:38.8975355+00:00",
   "status": "in_progress",
   "active_role": "Implementer",
   "active_phase": "P16",
@@ -668,7 +668,11 @@
         ".forge-codex/state/decisions/P16-028-bounded-operational-dashboard-persistence-foundations.md",
         ".forge-codex/state/evidence/P16/dashboard-operational-persistence-foundations-checkpoint.json",
         ".forge-codex/state/commands/20260830T113133885Z-6fb8e63a.json",
-        ".forge-codex/state/commands/20260830T113326030Z-c898b0b4.json"
+        ".forge-codex/state/commands/20260830T113326030Z-c898b0b4.json",
+        ".forge-codex/state/decisions/P16-029-manager-operational-adapter-and-compatible-diagnostic-anchoring.md",
+        ".forge-codex/state/evidence/P16/manager-operational-adapter-checkpoint.json",
+        ".forge-codex/state/commands/20260830T121844447Z-73198e87.json",
+        ".forge-codex/state/commands/20260830T121900281Z-374cefb4.json"
       ]
     },
     {

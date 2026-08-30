@@ -1,0 +1,22 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 11: ForgeConductor.Manager.DashboardOperationalDataSourceTests
+1/3 Test #11: ForgeConductor.Manager.DashboardOperationalDataSourceTests ...   Passed    0.28 sec
+    Start 87: ForgeConductor.Infrastructure.UnitTests
+2/3 Test #87: ForgeConductor.Infrastructure.UnitTests ......................   Passed    7.12 sec
+    Start 88: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests
+3/3 Test #88: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests ...   Passed    0.54 sec
+
+100% tests passed out of 3
+
+Label Time Summary:
+G06              =   7.12 sec*proc (1 test)
+G15              =   7.12 sec*proc (1 test)
+G16              =   0.82 sec*proc (2 tests)
+T-DB             =   0.28 sec*proc (1 test)
+T-INTEGRATION    =   0.28 sec*proc (1 test)
+T-LMS            =   7.12 sec*proc (1 test)
+T-MGR            =   0.28 sec*proc (1 test)
+T-SEC            =   7.67 sec*proc (2 tests)
+T-UNIT           =   7.94 sec*proc (3 tests)
+
+Total Test time (real) =   7.95 sec
