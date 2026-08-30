@@ -126,6 +126,7 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/ContinuityAutomation.cpp
     src/Application/ContinuityCoordinator.cpp
     src/Application/DashboardConnectionApplication.cpp
+    src/Application/DashboardConnectionApplicationFactory.cpp
     src/Application/DashboardOperationalService.cpp
     src/Application/DashboardTelemetrySource.cpp
     src/Application/LegacyContextContinuityService.cpp
@@ -246,6 +247,21 @@ target_include_directories(ForgeConductor.Dashboard.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(ForgeConductor.Dashboard.Windows PRIVATE ws2_32)
+
+add_library(ForgeConductor.Manager.Windows STATIC
+    src/Hosts/Manager/WindowsManagerRuntime.cpp
+    src/Hosts/Manager/WindowsManagerRuntime.h)
+add_library(ForgeConductor::Manager.Windows ALIAS
+    ForgeConductor.Manager.Windows)
+forge_configure_native_target(ForgeConductor.Manager.Windows)
+target_include_directories(ForgeConductor.Manager.Windows
+    PUBLIC
+        "${PROJECT_SOURCE_DIR}/include"
+        "${PROJECT_SOURCE_DIR}/src/Hosts/Manager"
+    PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(ForgeConductor.Manager.Windows PUBLIC
+    ForgeConductor::Manager.Host
+    ForgeConductor::Dashboard.Windows)
 
 set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/LMStudioConfigurationCodec.cpp
@@ -687,6 +703,24 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-INTEGRATION;T-STRESS"
         TIMEOUT 120)
 
+    add_executable(ForgeConductor.Manager.WindowsRuntimeTests
+        tests/Manager/WindowsManagerRuntimeTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.WindowsRuntimeTests)
+    target_include_directories(
+        ForgeConductor.Manager.WindowsRuntimeTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src")
+    target_link_libraries(
+        ForgeConductor.Manager.WindowsRuntimeTests PRIVATE
+        ForgeConductor::Manager.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.WindowsRuntimeTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.WindowsRuntimeTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.WindowsRuntimeTests PROPERTIES
+        LABELS "G16;T-MGR;T-INTEGRATION;T-STRESS"
+        TIMEOUT 180)
+
     add_executable(ForgeConductor.Dashboard.PreparedExchangeTests
         tests/Dashboard/DashboardPreparedExchangeTests.cpp)
     forge_configure_standard_target(
@@ -764,6 +798,21 @@ if(BUILD_TESTING)
         ForgeConductor.Dashboard.ConnectionApplicationTests PROPERTIES
         LABELS "G16;T-MGR;T-PARITY;T-SEC;T-TEL;T-UNIT;T-STRESS"
         TIMEOUT 120)
+
+    add_executable(ForgeConductor.Dashboard.ConnectionApplicationFactoryTests
+        tests/Application/DashboardConnectionApplicationFactoryTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Dashboard.ConnectionApplicationFactoryTests)
+    target_link_libraries(
+        ForgeConductor.Dashboard.ConnectionApplicationFactoryTests PRIVATE
+        ForgeConductor::Application)
+    add_test(
+        NAME ForgeConductor.Dashboard.ConnectionApplicationFactoryTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Dashboard.ConnectionApplicationFactoryTests>)
+    set_tests_properties(
+        ForgeConductor.Dashboard.ConnectionApplicationFactoryTests PROPERTIES
+        LABELS "G16;T-MGR;T-PARITY;T-SEC;T-UNIT"
+        TIMEOUT 60)
 
     add_executable(ForgeConductor.Dashboard.OperationalServiceTests
         tests/Application/DashboardOperationalServiceTests.cpp)

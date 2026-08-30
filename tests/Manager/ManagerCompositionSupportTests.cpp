@@ -371,7 +371,8 @@ void processStopSignalPublishesOneEdgeAndSupportsWatcherTeardown()
 void controllerClientBindsOnceForwardsExactlyAndClosesOnlyItself()
 {
     Host::ManagerProcessRestartSignal restartSignal;
-    Host::ManagerControllerClient client{restartSignal};
+    Host::ManagerProcessStopSignal stopSignal;
+    Host::ManagerControllerClient client{restartSignal, stopSignal};
     const auto operation = context();
 
     requireError(
@@ -443,6 +444,9 @@ void controllerClientBindsOnceForwardsExactlyAndClosesOnlyItself()
     require(
         controller->requestShutdownCalls() == 1U,
         "shutdown request call count");
+    require(
+        stopSignal.requested(),
+        "post-delivery shutdown did not publish the process stop edge");
 
     const auto forwardedFailure = Domain::makeError(
         Domain::ErrorCodes::DeadlineExceeded,
@@ -486,7 +490,8 @@ void controllerClientBindsOnceForwardsExactlyAndClosesOnlyItself()
 void controllerClientReportsExpiredControllerAsTransportClosed()
 {
     Host::ManagerProcessRestartSignal restartSignal;
-    Host::ManagerControllerClient client{restartSignal};
+    Host::ManagerProcessStopSignal stopSignal;
+    Host::ManagerControllerClient client{restartSignal, stopSignal};
     auto controller = std::make_shared<RecordingController>();
     require(client.bind(controller).hasValue(), "expiry controller bind failed");
     controller.reset();
@@ -503,7 +508,8 @@ void pinnedControllerCallSurvivesConcurrentAdapterShutdown()
     gate->enabled = true;
     auto controller = std::make_shared<RecordingController>(gate);
     Host::ManagerProcessRestartSignal restartSignal;
-    Host::ManagerControllerClient client{restartSignal};
+    Host::ManagerProcessStopSignal stopSignal;
+    Host::ManagerControllerClient client{restartSignal, stopSignal};
     require(client.bind(controller).hasValue(), "pinned controller bind failed");
 
     std::optional<Domain::Result<Domain::ManagerStatus>> result;

@@ -1,6 +1,7 @@
 #include "ManagerControllerClient.h"
 
 #include "ManagerProcessRestartSignal.h"
+#include "ManagerProcessStopSignal.h"
 
 #include "ForgeConductor/Domain/Error.h"
 
@@ -21,8 +22,10 @@ namespace {
 } // namespace
 
 ManagerControllerClient::ManagerControllerClient(
-    ManagerProcessRestartSignal& restartSignal) noexcept
-    : restartSignal_{restartSignal}
+    ManagerProcessRestartSignal& restartSignal,
+    ManagerProcessStopSignal& stopSignal) noexcept
+    : restartSignal_{restartSignal},
+      stopSignal_{stopSignal}
 {
 }
 
@@ -187,6 +190,10 @@ Domain::Result<void> ManagerControllerClient::requestShutdown(
     if (!requested) {
         return Domain::Result<void>::failure(std::move(requested).error());
     }
+    // Dashboard invokes this local adapter only after the HTTP response has
+    // been delivered. Named-pipe shutdown has its own response/receipt edge
+    // and never traverses this adapter, so it cannot be cancelled early.
+    static_cast<void>(stopSignal_.requestStop());
     return Domain::Result<void>::success();
 }
 

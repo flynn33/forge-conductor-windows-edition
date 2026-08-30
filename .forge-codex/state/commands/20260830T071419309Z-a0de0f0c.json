@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "20260830T071419309Z-a0de0f0c",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$ErrorActionPreference = 'Stop'\n. '.forge-codex/instructions/scripts/Common.ps1'\n$evidencePath = '.forge-codex/state/evidence/P16/manager-windows-runtime-checkpoint.json'\n$evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json\n$mismatches = [System.Collections.Generic.List[string]]::new()\nforeach ($property in $evidence.source_sha256.PSObject.Properties) {\n  $actual = Get-FileSha256 -Path $property.Name\n  if ($actual -ne [string]$property.Value) { $mismatches.Add(\"source $($property.Name)\") }\n}\nforeach ($property in $evidence.binary_sha256.PSObject.Properties) {\n  $candidate = Get-ChildItem -LiteralPath 'out/build/windows-msvc-x64' -Recurse -File -Filter $property.Name | Select-Object -First 1\n  if ($null -eq $candidate) { $mismatches.Add(\"missing binary $($property.Name)\"); continue }\n  $actual = Get-FileSha256 -Path $candidate.FullName\n  if ($actual -ne [string]$property.Value) { $mismatches.Add(\"binary $($property.Name)\") }\n}\nforeach ($recordName in @('recorded_build','recorded_validation')) {\n  $record = $evidence.$recordName\n  $actual = Get-FileSha256 -Path $record.command_record\n  if ($actual -ne [string]$record.command_record_sha256) { $mismatches.Add(\"record $recordName\") }\n}\nif ($mismatches.Count -ne 0) { throw \"Evidence hash mismatch: $($mismatches -join ', ')\" }\nWrite-Host \"Evidence hash validation passed: $(@($evidence.source_sha256.PSObject.Properties).Count) source, $(@($evidence.binary_sha256.PSObject.Properties).Count) binary, 2 command records.\"\n& '.forge-codex/instructions/scripts/Validate-NoPython.ps1' -WorkspaceRoot 'D:\\GitHub\\Forge-Conductor-Windows-Edition'\n& '.forge-codex/instructions/scripts/Validate-NoAttribution.ps1' -WorkspaceRoot 'D:\\GitHub\\Forge-Conductor-Windows-Edition'\n& '.forge-codex/instructions/scripts/Verify-Ledger.ps1' -WorkspaceRoot 'D:\\GitHub\\Forge-Conductor-Windows-Edition'\n& git.exe diff --check\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n$changed = @(& git.exe diff --name-only; & git.exe ls-files --others --exclude-standard) | Sort-Object -Unique\n$textExtensions = @('.cpp','.cxx','.cc','.h','.hpp','.ixx','.js','.ts','.json','.jsonl','.md','.ps1','.cmake','.txt')\nforeach ($relativePath in $changed) {\n  if (-not (Test-Path -LiteralPath $relativePath -PathType Leaf)) { continue }\n  $extension = [System.IO.Path]::GetExtension($relativePath).ToLowerInvariant()\n  if (($textExtensions -notcontains $extension) -and ([System.IO.Path]::GetFileName($relativePath) -ne 'CMakeLists.txt')) { continue }\n  $bytes = [System.IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $relativePath).Path)\n  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xef -and $bytes[1] -eq 0xbb -and $bytes[2] -eq 0xbf) { throw \"UTF-8 BOM: $relativePath\" }\n  for ($index = 0; $index -lt $bytes.Length; $index++) {\n    if ($bytes[$index] -eq 0x0a -and ($index -eq 0 -or $bytes[$index - 1] -ne 0x0d)) { throw \"Bare LF: $relativePath\" }\n    if ($bytes[$index] -eq 0x0d -and ($index + 1 -ge $bytes.Length -or $bytes[$index + 1] -ne 0x0a)) { throw \"Bare CR: $relativePath\" }\n  }\n}\nWrite-Host \"CRLF/UTF-8 BOM validation passed for $($changed.Count) changed files.\"\nexit 0",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T07:14:19.3198782+00:00",
+  "end_utc": "2026-08-30T07:14:29.3287169+00:00",
+  "exit_code": 0,
+  "exit_code_source": "process",
+  "timed_out": false,
+  "maximum_output_bytes_per_stream": 67108864,
+  "output_limit_exceeded": false,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T071419309Z-a0de0f0c.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T071419309Z-a0de0f0c.stderr.txt",
+  "stdout_sha256": "7c08952bdc88a20e7ccd8dd09b47da84a152edcb954c1741fd05863d97157b27",
+  "stderr_sha256": "30b79f00e73a29cb7ddbe5bda0ef07950c9e9aff0122c537089ed45619f4e30f"
+}

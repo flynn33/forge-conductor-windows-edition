@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-windows-runtime",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with Visual Studio 17 2022, MSBuild 17.14.40, v143 MSVC, Windows SDK 10.0.26100.0, C++20 Debug, and CTest 4.4.2.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T071111143Z-98ba1aa6.json",
+    "command_record_sha256": "7c2acfb0197cfb1512bf7defacb3b1fb1b9166fe3e482026f030ff522530cd47",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Debug",
+    "targets": [
+      "ForgeConductor.Dashboard.ConnectionApplicationFactoryTests",
+      "ForgeConductor.Manager.WindowsRuntimeTests",
+      "ForgeConductor.Manager.CompositionSupportTests",
+      "ForgeConductor.Manager.ControllerTests",
+      "ForgeConductor.Manager.NamedPipeRoundTripTests",
+      "ForgeConductor.Manager.ProcessHostTests",
+      "ForgeConductor.Dashboard.WindowsRuntimeTests"
+    ]
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T071207341Z-0258bea8.json",
+    "command_record_sha256": "532d345889bcac8f68828c38875fb3226ba6509a906f03b19c1fbfa7a178bd2d",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 7,
+    "tests_failed": 0,
+    "real_seconds": 0.54,
+    "stdout": ".forge-codex/state/commands/20260830T071207341Z-0258bea8.stdout.txt",
+    "stdout_sha256": "e4adf052de063215afee2fc18af580c528f0ca7cc5716d76c767762d87bcc7c5"
+  },
+  "recorded_policy_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T071419309Z-a0de0f0c.json",
+    "command_record_sha256": "b6fb29688dc4d3d7b863b83a644395dc90951788d7668fecb6ba8d96f6ab7320",
+    "exit_code": 0,
+    "timed_out": false,
+    "source_hashes_matched": 13,
+    "binary_hashes_matched": 7,
+    "command_records_matched": 2,
+    "no_python": "passed",
+    "no_attribution": "passed",
+    "ledger_events_verified": 451,
+    "changed_text_files_crlf_utf8_no_bom": 21,
+    "stdout": ".forge-codex/state/commands/20260830T071419309Z-a0de0f0c.stdout.txt",
+    "stdout_sha256": "7c08952bdc88a20e7ccd8dd09b47da84a152edcb954c1741fd05863d97157b27",
+    "stderr": ".forge-codex/state/commands/20260830T071419309Z-a0de0f0c.stderr.txt",
+    "stderr_sha256": "30b79f00e73a29cb7ddbe5bda0ef07950c9e9aff0122c537089ed45619f4e30f"
+  },
+  "measured_results": {
+    "manager_runtime_operation_mutex_capacity": 1,
+    "explicit_restart_count_increment_per_invocation": 1,
+    "application_generations_observed": 3,
+    "loopback_endpoints_exercised": 2,
+    "dashboard_shutdown_deadline_seconds": 5,
+    "focused_native_tests_passed": 7,
+    "focused_native_tests_failed": 0
+  },
+  "behavior_proved": [
+    "the neutral dashboard application factory constructs distinct endpoint-specific immutable application generations and rejects invalid loopback, port, and refresh configuration",
+    "the native Manager.Windows layer depends on the dashboard factory interface and lower Windows dashboard transport without linking back to the Application implementation",
+    "initial Manager runtime start publishes a real loopback listener and active operational service without advancing restartCount",
+    "pause preserves the dashboard listener while suppressing operational service, and start resumes the same generation without resetting uptime or restart count",
+    "a same-endpoint factory failure occurs before destructive cutover, retains the healthy old listener and application, records the error, and preserves exactly one attempted restart count",
+    "successful same-endpoint restart drains, waits, destroys, and replaces the exclusive Winsock/IOCP graph before the successor serves on the same port",
+    "distinct-endpoint rebind uses the lower A/B path, publishes the successor, preserves the desired paused operational state, and releases the retired endpoint",
+    "nonbinding settings cannot silently change host or port and do not replace the application or advance restartCount",
+    "shutdown intent remains distinct from final drain: the runtime latches intent while the listener remains available, and idempotent final shutdown releases the port",
+    "dashboard post-delivery shutdown publishes the process-stop edge only after the controller successfully latches intent, while named-pipe shutdown retains its acknowledgement-before-self-stop owner",
+    "independent re-review found no remaining P0, P1, or P2 issue after delivery-safe stop ownership and exception-unsafe redundant configuration state were corrected"
+  ],
+  "evidence_scope": {
+    "proved": "Source structure, CMake layering, focused native contract behavior, and real IPv4 loopback Manager runtime start/pause/resume/failure/restart/rebind/shutdown behavior on this development machine.",
+    "not_proved": "Production Manager executable composition, concrete operational data/doctor/telemetry services, named-pipe retained-worker quiescence, watchdog recovery, Task Scheduler startup, live Edge behavior, packaged UI automation, or the authoritative G16 gate."
+  },
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-021-production-manager-runtime-and-delivery-safe-shutdown.md": "f2560cbc0da0b5af2623c46ff091726bc228668963f98a78d4a58c194e775c70",
+    "CMakeLists.txt": "760beb58bce5ce22b1b089ada2736d1e8b642aa14b50d186b435168aed2eb24a",
+    "include/ForgeConductor/Contracts/IManagerRuntime.h": "fccbf653eb94881b0390edfc187cf246ec8d9624b12b2e0b763166321ef4b409",
+    "include/ForgeConductor/Application/DashboardConnectionApplicationFactory.h": "e377ad4eaf7a78907781d3df3a78240b52b82f4daf8551209ef5531d6a9d9344",
+    "include/ForgeConductor/Dashboard/IDashboardConnectionApplicationFactory.h": "d248ff146d86a40846213d12cb4b31d130b027d1cde9a7c7e82ef868e369b68e",
+    "src/Application/DashboardConnectionApplicationFactory.cpp": "7dad428ba1c1d1bdfebcd3bbffb05a8b4f43617db2c808be05616f29b78551df",
+    "src/Hosts/Manager/ManagerControllerClient.h": "5e721f2af84c4a75dcf1365145d7b77881501ee0f5c1290db57b51b5782803b1",
+    "src/Hosts/Manager/ManagerControllerClient.cpp": "fd5927ea726d2cc3393bcb075289f0a7f8bd9025697f3a95b3db854ba2438879",
+    "src/Hosts/Manager/WindowsManagerRuntime.h": "af54e1427a49354ba6715986231fe7def9b58f600fd194cb17e7c4c9234e7b92",
+    "src/Hosts/Manager/WindowsManagerRuntime.cpp": "c2ff6a335ec46ee0a40ee78ef883027bd9f8739312eee463e2293538980afa93",
+    "tests/Application/DashboardConnectionApplicationFactoryTests.cpp": "f502c4e8599d2f2154568505b1872d8578eccff903f04322b82842fc26116357",
+    "tests/Manager/ManagerCompositionSupportTests.cpp": "db3d54bd4d6762f901ba42b603d8fefeef89e5b3ff762c2ef574c89bf841708e",
+    "tests/Manager/WindowsManagerRuntimeTests.cpp": "8ee963c38822dc9f5bab5d85cb2ab4d9780e23fa6b3f030a5682fda2c1df9a0e"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Application.lib": "1c8075dbaaf2abf1d0617bb6c76bc5953fed1e8ed4b039de5754ead36036084b",
+    "ForgeConductor.Manager.Host.lib": "bd652c420b92f019e4b3b781cc22f73082b96709ff5d7a234fe76d159ea1d756",
+    "ForgeConductor.Manager.Windows.lib": "919092f063f3ebc60cae2e42db403f9de32ea2769bc9f6e6c9c11e20cb976ad0",
+    "ForgeConductor.Dashboard.ConnectionApplicationFactoryTests.exe": "3ff7d0e8b52b27e891d3c0208f4a667519ce1590f96b98cc7554ebf15f84df86",
+    "ForgeConductor.Manager.WindowsRuntimeTests.exe": "cb64f66af708116cce6d60195c82ce7566be5dd2aa004289dc384b1ba0c902ee",
+    "ForgeConductor.Manager.CompositionSupportTests.exe": "c247932cdac7cf12ad91d391a5cf9400c11a645b2d89890168a55270dc00edca",
+    "ForgeConductor.Manager.NamedPipeRoundTripTests.exe": "a7d0fe2eb24d3f2cc769cbb30bab6898ae4f197c0fce6e30247f09b90e3c20ae"
+  },
+  "remaining_limitations": [
+    "P16 remains in progress and G16 remains not started.",
+    "The production Manager executable cannot yet be composed without real operational-data, doctor, and telemetry implementations.",
+    "Named-pipe terminal worker quiescence must be proved before the process lease can be released.",
+    "The Manager restart transition worker, in-process listener watchdog, and per-user Task Scheduler startup service remain pending.",
+    "Live Edge dashboard behavior and retained native UI Automation remain pending."
+  ]
+}

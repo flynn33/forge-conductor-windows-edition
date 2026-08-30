@@ -45,7 +45,9 @@ public:
     [[nodiscard]] virtual Domain::Result<Domain::ManagerRuntimeSnapshot> snapshot(
         const Domain::OperationContext& context) noexcept = 0;
 
-    // Signals the manager host run loop. This does not close client transports.
+    // Latches process-shutdown intent. The response-delivery owner signals the
+    // manager run loop only after its acknowledgement is safe; this call does
+    // not close client transports.
     [[nodiscard]] virtual Domain::Result<Domain::ManagerRuntimeSnapshot>
     requestShutdown(const Domain::OperationContext& context) noexcept = 0;
 
@@ -82,7 +84,7 @@ public:
     requestShutdown(const Domain::OperationContext& context) noexcept = 0;
 
     // Closes the application boundary and dependencies. It is intentionally
-    // distinct from requestShutdown, which only signals the manager run loop.
+    // distinct from requestShutdown, which only latches process intent.
     virtual void shutdown() noexcept = 0;
 };
 

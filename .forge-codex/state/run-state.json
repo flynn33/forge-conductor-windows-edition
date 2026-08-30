@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-30T06:31:48.3500718+00:00",
+  "updated_at": "2026-08-30T07:15:20.1143578+00:00",
   "status": "in_progress",
   "active_role": "Implementer",
   "active_phase": "P16",
@@ -633,7 +633,12 @@
         ".forge-codex/state/commands/20260830T060459728Z-6385c9ac.json",
         ".forge-codex/state/commands/20260830T062705657Z-48c3d881.json",
         ".forge-codex/state/commands/20260830T062756363Z-eef5b842.json",
-        ".forge-codex/state/commands/20260830T063052752Z-a43cf61b.json"
+        ".forge-codex/state/commands/20260830T063052752Z-a43cf61b.json",
+        ".forge-codex/state/decisions/P16-021-production-manager-runtime-and-delivery-safe-shutdown.md",
+        ".forge-codex/state/evidence/P16/manager-windows-runtime-checkpoint.json",
+        ".forge-codex/state/commands/20260830T071111143Z-98ba1aa6.json",
+        ".forge-codex/state/commands/20260830T071207341Z-0258bea8.json",
+        ".forge-codex/state/commands/20260830T071419309Z-a0de0f0c.json"
       ]
     },
     {

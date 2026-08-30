@@ -9,13 +9,15 @@
 namespace ForgeConductor::Hosts::Manager {
 
 class ManagerProcessRestartSignal;
+class ManagerProcessStopSignal;
 
 // Process-local dashboard adapter. It retains only a weak controller edge so
 // the controller/runtime/dashboard ownership graph cannot form a cycle.
 class ManagerControllerClient final : public Contracts::IManagerClient {
 public:
     explicit ManagerControllerClient(
-        ManagerProcessRestartSignal& restartSignal) noexcept;
+        ManagerProcessRestartSignal& restartSignal,
+        ManagerProcessStopSignal& stopSignal) noexcept;
     ~ManagerControllerClient() noexcept override;
 
     ManagerControllerClient(const ManagerControllerClient&) = delete;
@@ -62,6 +64,7 @@ private:
 
     std::mutex mutex_;
     ManagerProcessRestartSignal& restartSignal_;
+    ManagerProcessStopSignal& stopSignal_;
     std::weak_ptr<Contracts::IManagerController> controller_;
     bool bound_{};
     bool shutdown_{};

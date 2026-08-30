@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "20260830T071207341Z-0258bea8",
+  "phase": "P16",
+  "role": "Tester",
+  "command": "& ctest.exe --test-dir 'out/build/windows-msvc-x64' -C Debug -R '^(ForgeConductor[.]Dashboard[.](ConnectionApplicationFactoryTests|WindowsRuntimeTests)|ForgeConductor[.]Manager[.](WindowsRuntimeTests|CompositionSupportTests|ControllerTests|NamedPipeRoundTripTests|ProcessHostTests))$' --output-on-failure\nexit $LASTEXITCODE",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T07:12:07.3507250+00:00",
+  "end_utc": "2026-08-30T07:12:08.8831085+00:00",
+  "exit_code": 0,
+  "exit_code_source": "process",
+  "timed_out": false,
+  "maximum_output_bytes_per_stream": 67108864,
+  "output_limit_exceeded": false,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T071207341Z-0258bea8.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T071207341Z-0258bea8.stderr.txt",
+  "stdout_sha256": "e4adf052de063215afee2fc18af580c528f0ca7cc5716d76c767762d87bcc7c5",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

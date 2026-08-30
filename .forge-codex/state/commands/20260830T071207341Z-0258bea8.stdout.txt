@@ -1,0 +1,28 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  4: ForgeConductor.Manager.ControllerTests
+1/7 Test  #4: ForgeConductor.Manager.ControllerTests .......................   Passed    0.04 sec
+    Start  6: ForgeConductor.Manager.NamedPipeRoundTripTests
+2/7 Test  #6: ForgeConductor.Manager.NamedPipeRoundTripTests ...............   Passed    0.27 sec
+    Start  7: ForgeConductor.Manager.ProcessHostTests
+3/7 Test  #7: ForgeConductor.Manager.ProcessHostTests ......................   Passed    0.05 sec
+    Start  8: ForgeConductor.Manager.CompositionSupportTests
+4/7 Test  #8: ForgeConductor.Manager.CompositionSupportTests ...............   Passed    0.03 sec
+    Start 11: ForgeConductor.Dashboard.WindowsRuntimeTests
+5/7 Test #11: ForgeConductor.Dashboard.WindowsRuntimeTests .................   Passed    0.04 sec
+    Start 12: ForgeConductor.Manager.WindowsRuntimeTests
+6/7 Test #12: ForgeConductor.Manager.WindowsRuntimeTests ...................   Passed    0.05 sec
+    Start 18: ForgeConductor.Dashboard.ConnectionApplicationFactoryTests
+7/7 Test #18: ForgeConductor.Dashboard.ConnectionApplicationFactoryTests ...   Passed    0.03 sec
+
+100% tests passed out of 7
+
+Label Time Summary:
+G16              =   0.52 sec*proc (7 tests)
+T-INTEGRATION    =   0.36 sec*proc (3 tests)
+T-MGR            =   0.52 sec*proc (7 tests)
+T-PARITY         =   0.03 sec*proc (1 test)
+T-SEC            =   0.30 sec*proc (2 tests)
+T-STRESS         =   0.48 sec*proc (6 tests)
+T-UNIT           =   0.15 sec*proc (4 tests)
+
+Total Test time (real) =   0.54 sec

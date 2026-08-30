@@ -1,0 +1,5 @@
+Evidence hash validation passed: 13 source, 7 binary, 2 command records.
+No-Python gate passed.
+No-attribution gate passed.
+Ledger validation passed: 451 event(s).
+CRLF/UTF-8 BOM validation passed for 21 changed files.
