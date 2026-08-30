@@ -22,6 +22,9 @@ namespace Domain = ForgeConductor::Domain;
 namespace Host = ForgeConductor::Hosts::Manager;
 
 constexpr int InvalidArgumentsExitCode = 2;
+// Fixture-only process protocol. Production intentionally keeps its generic
+// failure exit contract while the fixture exposes the typed root result.
+constexpr int FixtureOwnershipConflictExitCode = 3;
 constexpr std::size_t MaximumFixtureArgumentCharacters = 32U * 1024U;
 
 template <typename Value>
@@ -93,6 +96,13 @@ void writeError(
               << '\n';
 }
 
+[[nodiscard]] int exitCodeFor(const Domain::Error& error) noexcept
+{
+    return error.code == Domain::ErrorCodes::OwnershipConflict
+        ? FixtureOwnershipConflictExitCode
+        : EXIT_FAILURE;
+}
+
 } // namespace
 
 int wmain(const int argc, wchar_t** const argv)
@@ -148,7 +158,7 @@ int wmain(const int argc, wchar_t** const argv)
             writeError(
                 "Manager composition fixture startup failed",
                 created.error());
-            return EXIT_FAILURE;
+            return exitCodeFor(created.error());
         }
 
         auto root = std::move(created).value();
@@ -157,7 +167,7 @@ int wmain(const int argc, wchar_t** const argv)
             writeError(
                 "Manager composition fixture runtime failed",
                 outcome.error());
-            return EXIT_FAILURE;
+            return exitCodeFor(outcome.error());
         }
         return EXIT_SUCCESS;
     } catch (const std::exception&) {

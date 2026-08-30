@@ -647,15 +647,46 @@ if(BUILD_TESTING)
             "${CMAKE_BINARY_DIR}/tests/manager-composition-fixture/Debug"
         RUNTIME_OUTPUT_DIRECTORY_RELEASE
             "${CMAKE_BINARY_DIR}/tests/manager-composition-fixture/Release")
-    add_dependencies(
-        ForgeConductor.Manager.CompositionFixture ForgeConductor.Cli)
-    add_custom_command(
-        TARGET ForgeConductor.Manager.CompositionFixture POST_BUILD
+    add_custom_target(
+        ForgeConductor.Manager.CompositionFixture.CliStage
+        COMMAND "${CMAKE_COMMAND}" -E make_directory
+            "${CMAKE_BINARY_DIR}/tests/manager-composition-fixture/$<CONFIG>"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
             "$<TARGET_FILE:ForgeConductor.Cli>"
-            "$<TARGET_FILE_DIR:ForgeConductor.Manager.CompositionFixture>/$<TARGET_FILE_NAME:ForgeConductor.Cli>"
+            "${CMAKE_BINARY_DIR}/tests/manager-composition-fixture/$<CONFIG>/$<TARGET_FILE_NAME:ForgeConductor.Cli>"
         COMMENT "Staging the exact sibling CLI beside the controlled Manager composition fixture"
         VERBATIM)
+    add_dependencies(
+        ForgeConductor.Manager.CompositionFixture.CliStage
+        ForgeConductor.Cli)
+    add_dependencies(
+        ForgeConductor.Manager.CompositionFixture
+        ForgeConductor.Manager.CompositionFixture.CliStage)
+
+    add_executable(ForgeConductor.Manager.CompositionLifecycleTests
+        tests/Manager/WindowsManagerCompositionLifecycleTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.CompositionLifecycleTests)
+    target_link_libraries(
+        ForgeConductor.Manager.CompositionLifecycleTests PRIVATE
+        ForgeConductor::Infrastructure.Windows
+        advapi32
+        winhttp
+        ws2_32)
+    add_dependencies(
+        ForgeConductor.Manager.CompositionLifecycleTests
+        ForgeConductor.Manager.CompositionFixture)
+    add_test(
+        NAME ForgeConductor.Manager.CompositionLifecycleTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Manager.CompositionLifecycleTests>
+            $<TARGET_FILE:ForgeConductor.Manager.CompositionFixture>
+            $<TARGET_FILE:ForgeConductor.Cli>)
+    set_tests_properties(
+        ForgeConductor.Manager.CompositionLifecycleTests PROPERTIES
+        LABELS "G16;T-MGR;T-PROC;T-SEC;T-INTEGRATION;T-STRESS"
+        RUN_SERIAL TRUE
+        TIMEOUT 480)
 
     add_executable(ForgeConductor.Manager.ProcessArgumentsTests
         tests/Manager/ManagerProcessArgumentsTests.cpp
