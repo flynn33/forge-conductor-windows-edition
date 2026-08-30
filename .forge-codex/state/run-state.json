@@ -676,7 +676,11 @@
         ".forge-codex/state/decisions/P16-030-truthful-unavailable-telemetry-and-manager-reachability.md",
         ".forge-codex/state/evidence/P16/manager-unavailable-telemetry-checkpoint.json",
         ".forge-codex/state/commands/20260830T132722732Z-804fd72a.json",
-        ".forge-codex/state/commands/20260830T132739991Z-483abbd8.json"
+        ".forge-codex/state/commands/20260830T132739991Z-483abbd8.json",
+        ".forge-codex/state/decisions/P16-031-bounded-manager-doctor-and-windows-check-identities.md",
+        ".forge-codex/state/evidence/P16/manager-doctor-service-checkpoint.json",
+        ".forge-codex/state/commands/20260830T142505153Z-ca5cd4a3.json",
+        ".forge-codex/state/commands/20260830T142528307Z-ef50acc9.json"
       ]
     },
     {

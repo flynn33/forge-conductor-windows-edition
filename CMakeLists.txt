@@ -404,6 +404,8 @@ target_link_libraries(ForgeConductor.Persistence.Windows PRIVATE
 add_library(ForgeConductor.Manager.Composition.Windows STATIC
     src/Composition/Windows/ManagerDashboardOperationalDataSource.cpp
     src/Composition/Windows/ManagerDashboardOperationalDataSource.h
+    src/Composition/Windows/ManagerDoctorService.cpp
+    src/Composition/Windows/ManagerDoctorService.h
     src/Composition/Windows/UnavailableTelemetryService.cpp
     src/Composition/Windows/UnavailableTelemetryService.h)
 add_library(ForgeConductor::Manager.Composition.Windows ALIAS
@@ -781,6 +783,26 @@ if(BUILD_TESTING)
         ForgeConductor.Manager.UnavailableTelemetryServiceTests PROPERTIES
         LABELS "G16;T-MGR;T-TEL;T-UNIT"
         TIMEOUT 60)
+
+    add_executable(
+        ForgeConductor.Manager.DoctorServiceTests
+        tests/Composition/Windows/ManagerDoctorServiceTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.DoctorServiceTests)
+    target_include_directories(
+        ForgeConductor.Manager.DoctorServiceTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.DoctorServiceTests PRIVATE
+        ForgeConductor::Manager.Composition.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.DoctorServiceTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.DoctorServiceTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.DoctorServiceTests PROPERTIES
+        LABELS "G16;T-MGR;T-INTEGRATION;T-UNIT"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Manager.ProcessRestartSignalTests
         tests/Manager/ManagerProcessRestartSignalTests.cpp)

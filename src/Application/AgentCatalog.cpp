@@ -726,13 +726,12 @@ public:
     return values;
 }
 
-constexpr std::array<std::string_view, AgentCatalog::MandatoryEntryCount> MandatoryIds{
-    "debug", "docs", "explore", "implement", "plan", "precommit-audit",
-    "research", "review", "security", "test"};
-
 [[nodiscard]] bool isMandatoryId(const std::string_view id) noexcept
 {
-    return std::find(MandatoryIds.begin(), MandatoryIds.end(), id) != MandatoryIds.end();
+    return std::find(
+               AgentCatalog::MandatoryIds.begin(),
+               AgentCatalog::MandatoryIds.end(),
+               id) != AgentCatalog::MandatoryIds.end();
 }
 
 struct RecommendationRule final {

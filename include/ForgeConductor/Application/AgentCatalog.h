@@ -3,10 +3,12 @@
 #include "ForgeConductor/Contracts/IAgentServices.h"
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace ForgeConductor::Application {
 
@@ -35,6 +37,18 @@ class AgentCatalog final : public Contracts::IAgentCatalog {
 public:
     static constexpr std::size_t MaximumEntries = 256U;
     static constexpr std::size_t MandatoryEntryCount = 10U;
+    static constexpr std::array<std::string_view, MandatoryEntryCount>
+        MandatoryIds{
+            "debug",
+            "docs",
+            "explore",
+            "implement",
+            "plan",
+            "precommit-audit",
+            "research",
+            "review",
+            "security",
+            "test"};
     static constexpr std::size_t MaximumDefinitionDocuments = 1024U;
     static constexpr std::size_t MaximumDefinitionBytes = 64U * 1024U;
     static constexpr std::size_t MaximumAggregateDefinitionBytes = 16U * 1024U * 1024U;

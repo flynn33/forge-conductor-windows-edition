@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "20260830T142528307Z-ef50acc9",
+  "phase": "P16",
+  "role": "Implementer",
+  "command": "ctest --test-dir out/build/windows-msvc-x64 -C Release --output-on-failure -R '^(ForgeConductor\\.Agents\\.CatalogTests|ForgeConductor\\.Manager\\.(DoctorServiceTests|DashboardOperationalDataSourceTests|UnavailableTelemetryServiceTests)|ForgeConductor\\.Dashboard\\.(ConnectionApplicationTests|OperationalServiceTests))$'",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T14:25:28.3168229+00:00",
+  "end_utc": "2026-08-30T14:25:30.0562518+00:00",
+  "exit_code": 0,
+  "exit_code_source": "sidecar",
+  "timed_out": false,
+  "maximum_output_bytes_per_stream": 67108864,
+  "output_limit_exceeded": false,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T142528307Z-ef50acc9.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T142528307Z-ef50acc9.stderr.txt",
+  "stdout_sha256": "072d6b551eb8eab8467f3a73f8555d4f542c2a9257d8804e81d284ecba0b363b",
+  "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+}

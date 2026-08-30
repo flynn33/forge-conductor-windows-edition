@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-doctor-service",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with Visual Studio 17 2022, MSBuild 17.14.40, MSVC 14.51.36231, Windows SDK 10.0.26100.0, C++20 Release x64, and CTest 4.4.2.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T142505153Z-ca5cd4a3.json",
+    "command_record_sha256": "2e4f0c00271d793156933020aa32ceeb0d06b976029dc0c03162b29295b3e690",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Release",
+    "targets": [
+      "ForgeConductor.Agents.CatalogTests",
+      "ForgeConductor.Manager.DoctorServiceTests",
+      "ForgeConductor.Manager.DashboardOperationalDataSourceTests",
+      "ForgeConductor.Manager.UnavailableTelemetryServiceTests",
+      "ForgeConductor.Dashboard.ConnectionApplicationTests",
+      "ForgeConductor.Dashboard.OperationalServiceTests"
+    ],
+    "elapsed_seconds": 17.11,
+    "stdout": ".forge-codex/state/commands/20260830T142505153Z-ca5cd4a3.stdout.txt",
+    "stdout_sha256": "3d5006253908f66e034ce5f6022cfc46504910a90a88563e6914659bd97227b7",
+    "stderr": ".forge-codex/state/commands/20260830T142505153Z-ca5cd4a3.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T142528307Z-ef50acc9.json",
+    "command_record_sha256": "e1b315419ad1f70c5c208ebe36c8645896761d10fb325eb9900c05ef33270632",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "real_seconds": 0.59,
+    "stdout": ".forge-codex/state/commands/20260830T142528307Z-ef50acc9.stdout.txt",
+    "stdout_sha256": "072d6b551eb8eab8467f3a73f8555d4f542c2a9257d8804e81d284ecba0b363b",
+    "stderr": ".forge-codex/state/commands/20260830T142528307Z-ef50acc9.stderr.txt",
+    "stderr_sha256": "a3639af5e23464fc391dae127fd5493f02c8178068a35866d9c7fdd35dcd623f"
+  },
+  "recorded_policy_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T142814209Z-4a1b4dec.json",
+    "command_record_sha256": "f4d6df7a50bd481792ab36d39ec1ac9ed13a6686f43b3dc64cfb823eb91dcbce",
+    "exit_code": 0,
+    "timed_out": false,
+    "source_hashes_matched": 8,
+    "binary_hashes_matched": 8,
+    "command_records_matched": 2,
+    "changed_text_files_validated": 9,
+    "focused_selection_did_not_invoke_g16": true,
+    "durable_p16_g16_state_verified": true,
+    "no_python_passed": true,
+    "no_attribution_passed": true,
+    "ledger_passed": true,
+    "git_diff_check_passed": true,
+    "line_endings_passed": true,
+    "stdout": ".forge-codex/state/commands/20260830T142814209Z-4a1b4dec.stdout.txt",
+    "stdout_sha256": "691bfd9b2b9c650220a27171da282be1180ebfaa6dee300c2a5306fdff12a058",
+    "stderr": ".forge-codex/state/commands/20260830T142814209Z-4a1b4dec.stderr.txt",
+    "stderr_sha256": "1b7a3dbe410b9d1c9c4670b92ab860083142c0d873684584bf67636841327ed5"
+  },
+  "independent_review": {
+    "status": "passed",
+    "mode": "read-only",
+    "blocking_findings": 0,
+    "findings_fixed_before_final_verdict": 2,
+    "edits": 0,
+    "builds_invoked": 0,
+    "gates_invoked": 0
+  },
+  "measured_results": {
+    "focused_native_test_executables_passed": 6,
+    "focused_native_test_executables_failed": 0,
+    "doctor_top_level_test_scenarios": 11,
+    "doctor_check_rows": 12,
+    "mandatory_agent_identities": 10,
+    "catalog_entries_hard_maximum": 256,
+    "legacy_launcher_exact_names": 4,
+    "platform_probe_retained_native_handles": 0,
+    "platform_probe_background_workers": 0
+  },
+  "behavior_proved": [
+    "the production Manager Doctor lives in the outer Windows composition target and depends on borrowed application interfaces plus a bounded Windows platform probe",
+    "Doctor emits the exact twelve ordered check identities and hardness values, including Windows-compatible native binary and LM Studio stdio names",
+    "the agent check requires the exact ten public mandatory identities in a duplicate-free bounded catalog while allowing additional unique custom agents",
+    "home, central store, Git, installed x64 CLI, and all four exact legacy launcher names are inspected without retaining handles or background work",
+    "exact non-directory legacy launcher entries include file reparse points when host policy permits the live symlink exercise; compile-time classifier assertions cover the reparse flag independent of host policy",
+    "repository quick-check, telemetry health and forced snapshot, and LM Studio read-only status receive the original bounded operation context",
+    "pre-P17 unavailable telemetry remains a successful Doctor document with failed hard telemetry rows and truthful overall failure",
+    "valid windows-native and windows-native-realtime telemetry snapshots pass the active history bound while invalid or null snapshots fail the hard diagnostic row",
+    "soft installed-binary and LM Studio gaps remain visible without changing overall success when every hard row passes",
+    "cancellation, deadline, closed transport, and LM Studio authority failures propagate as typed terminal request errors while ordinary dependency failures become bounded redacted rows",
+    "shutdown closes admission, drains active runs, rejects later runs, and does not shut down borrowed dependencies",
+    "invalid absolute-path, read-authority, resource-budget, oversized-catalog, duplicate-platform, and unknown-platform evidence is rejected at the appropriate boundary"
+  ],
+  "evidence_scope": {
+    "proved": "Source structure, final independent review, and focused native Release behavior for the bounded Manager Doctor service and Windows platform probe on this Windows 11 alpha machine.",
+    "not_proved": "The production Manager composition root or executable, browser-launch ownership, real-process lifecycle, live Edge behavior, retained native UI automation, installer lifecycle, or the authoritative G16 gate."
+  },
+  "source_sha256": {
+    "CMakeLists.txt": "fa944909dc8a30703577dd26b1dbd527fe1a54acee037525ec8a082de25a0da6",
+    ".forge-codex/state/decisions/P16-031-bounded-manager-doctor-and-windows-check-identities.md": "837c88d75d90bac4d8689d9330f93b7124100bcba2054fbe9646ef6a998daca9",
+    ".forge-codex/state/run-state.json": "5a01878c7699c9c49b8fedc5a29f1520f0b098d4166651478dee20e7574c13bc",
+    "include/ForgeConductor/Application/AgentCatalog.h": "245ffe865cafab0acc07e7289c5d303e42b84b25d05f704215135636ba76291d",
+    "src/Application/AgentCatalog.cpp": "966b7b8b2c28c5641a54aa71565278d80483bc08b53840e6c454efb5f48c2ef6",
+    "src/Composition/Windows/ManagerDoctorService.h": "ef1a1d0f1c551f9d7a1db49dca06b15d269adc50fd545d276600d9852915b828",
+    "src/Composition/Windows/ManagerDoctorService.cpp": "cd075da2d7b9cac2760ad0fbb46b56fa42dbb47847f4f63389d7d21a927c748a",
+    "tests/Composition/Windows/ManagerDoctorServiceTests.cpp": "935f99cc0e76d4e6675bf2bab82d17df1dd9b32013e09841f709385160f00b41"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Agents.CatalogTests.exe": "7673b4fb037995da2253fe2a94804dc51f06f0960ec2fc14961488417f6d3e3e",
+    "ForgeConductor.Manager.DoctorServiceTests.exe": "6e95107b09acbeda526f15664945e691ff8dd3bfa7422310c9121f90cecaa9af",
+    "ForgeConductor.Manager.DashboardOperationalDataSourceTests.exe": "d7d321ec919667d2a8f2b4d09de07417d98f343fbb73dccaaa111ffc15cb57be",
+    "ForgeConductor.Manager.UnavailableTelemetryServiceTests.exe": "641525bbc18aa3bc2ca567ee8fa471d3a0f5bcb111291b5befb68dec3fb8e678",
+    "ForgeConductor.Dashboard.ConnectionApplicationTests.exe": "4045828f2d851fd7c061cfd9729f406e2ea78c11091ee9436caaf1cd445f84aa",
+    "ForgeConductor.Dashboard.OperationalServiceTests.exe": "112bebb3775914840bd6e85f3e37d427ae632494b40326e546bd14dcbcf456a2",
+    "ForgeConductor.Manager.Composition.Windows.lib": "c28d9dd6386693e5070c059d935c4631f450b676aa3cbe33b38f1af5385a21c4",
+    "ForgeConductor.Application.lib": "6c6842dd507dabcf76ffeefa5f9b9b80a5e8e262412427bb0d6f041974c56f92"
+  },
+  "remaining_limitations": [
+    "P16 remains in progress and G16 remains not started.",
+    "The production Manager composition root and executable, browser-launch owner, and real-process ownership, authentication, restart, startup, shutdown, and residue evidence remain pending.",
+    "P17 must replace the unavailable telemetry adapter with bounded native collectors.",
+    "Installer qualification is limited to this Windows 11 alpha machine; clean-environment qualification, security-only hardening, and bespoke UI polish remain owner-deferred until after alpha."
+  ]
+}

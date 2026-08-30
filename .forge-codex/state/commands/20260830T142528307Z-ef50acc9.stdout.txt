@@ -1,0 +1,30 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 11: ForgeConductor.Manager.DashboardOperationalDataSourceTests
+1/6 Test #11: ForgeConductor.Manager.DashboardOperationalDataSourceTests ...   Passed    0.33 sec
+    Start 12: ForgeConductor.Manager.UnavailableTelemetryServiceTests
+2/6 Test #12: ForgeConductor.Manager.UnavailableTelemetryServiceTests ......   Passed    0.01 sec
+    Start 13: ForgeConductor.Manager.DoctorServiceTests
+3/6 Test #13: ForgeConductor.Manager.DoctorServiceTests ....................   Passed    0.11 sec
+    Start 23: ForgeConductor.Dashboard.ConnectionApplicationTests
+4/6 Test #23: ForgeConductor.Dashboard.ConnectionApplicationTests ..........   Passed    0.02 sec
+    Start 25: ForgeConductor.Dashboard.OperationalServiceTests
+5/6 Test #25: ForgeConductor.Dashboard.OperationalServiceTests .............   Passed    0.07 sec
+    Start 81: ForgeConductor.Agents.CatalogTests
+6/6 Test #81: ForgeConductor.Agents.CatalogTests ...........................   Passed    0.03 sec
+
+100% tests passed out of 6
+
+Label Time Summary:
+G10              =   0.03 sec*proc (1 test)
+G16              =   0.54 sec*proc (5 tests)
+T-AGENT          =   0.03 sec*proc (1 test)
+T-DB             =   0.33 sec*proc (1 test)
+T-INTEGRATION    =   0.44 sec*proc (2 tests)
+T-MGR            =   0.54 sec*proc (5 tests)
+T-PARITY         =   0.09 sec*proc (2 tests)
+T-SEC            =   0.05 sec*proc (2 tests)
+T-STRESS         =   0.09 sec*proc (2 tests)
+T-TEL            =   0.03 sec*proc (2 tests)
+T-UNIT           =   0.57 sec*proc (6 tests)
+
+Total Test time (real) =   0.59 sec
