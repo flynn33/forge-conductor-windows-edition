@@ -1,0 +1,1941 @@
+No-Python gate passed.
+No-attribution gate passed.
+Ledger validation passed: 514 event(s).
+G16: archived the prior context before starting its one replacement invocation.
+G16: running the single authoritative affected-target Release x64 build.
+Configuring x64 Release with preset windows-msvc-x64.
+-- Running vcpkg install
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+The following packages are already installed:
+    nlohmann-json:x64-windows@3.12.0#2
+  * vcpkg-cmake:x64-windows@2025-08-07
+  * vcpkg-cmake-config:x64-windows@2026-07-21
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+All requested installations completed successfully in: 168 us
+-- Running vcpkg install - done
+-- Configuring done (3.5s)
+-- Generating done (3.5s)
+-- Build files have been written to: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+Building x64 Release with preset windows-msvc-x64-release.
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Performing build step for 'forsetti_external'
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  
+    1>Checking Build System
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Release\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Release\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Release\ForsettiHostTemplate.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.NativeTools.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.SessionHost.Core.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\forge-conductor.exe
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.CompositionRoot.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.CompositionRoot.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.exe
+  	Staging the exact sibling CLI beside the production Manager
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Performing build step for 'forsetti_external'
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  
+    1>Checking Build System
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Release\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Release\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Release\ForsettiHostTemplate.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.SessionHost.Core.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.NativeTools.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\forge-conductor.exe
+  1>Staging the exact sibling CLI beside the controlled Manager composition fixture
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.CompositionRoot.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.CompositionRoot.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.CompositionFixture.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\tests\manager-composition-fixture\Release\ForgeConductor.Manager.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.AcceptedConnectionHandoffTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.AcceptedConnectionHandoffTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.AcceptSlotSetTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.AcceptSlotSetTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.AcceptSlotTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.AcceptSlotTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.AdmissionControllerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.AdmissionControllerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ApplicationErrorMapperTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ApplicationErrorMapperTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ApplicationJsonCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ApplicationJsonCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionApplicationFactoryTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionApplicationFactoryTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionApplicationTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionApplicationTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionEventBridgeTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionEventBridgeTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionRegistryTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionRegistryTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionResponseCatalogTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionResponseCatalogTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionRuntimeServicesTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionRuntimeServicesTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionSocketTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionSocketTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ConnectionStateTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ConnectionStateTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.DeadlineIocpBridgeTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.DeadlineIocpBridgeTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.DeadlineNotificationMailboxTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.DeadlineNotificationMailboxTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.DeadlineSchedulerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.DeadlineSchedulerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.HandlerExecutorTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.HandlerExecutorTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.HandlerOperationsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.HandlerOperationsTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.HttpParserSessionTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.HttpParserSessionTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.HttpParserTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.HttpParserTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.HttpResponseTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.HttpResponseTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.IoCompletionPortTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.IoCompletionPortTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.IocpCompletionRouterTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.IocpCompletionRouterTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.IocpWorkerKernelTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.IocpWorkerKernelTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ListenerGenerationTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ListenerGenerationTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ListeningSocketTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ListeningSocketTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.LoopbackEndpointTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.LoopbackEndpointTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ManagerJsonCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ManagerJsonCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.OperationalServiceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.OperationalServiceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.OverloadResponderSetTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.OverloadResponderSetTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.PreparedExchangeTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.PreparedExchangeTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.RequestPlannerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.RequestPlannerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.RequestPolicyTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.RequestPolicyTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ResponseComposerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ResponseComposerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.RouteCatalogTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.RouteCatalogTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.SessionCloseRequestDecoderTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.SessionCloseRequestDecoderTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ShutdownDrainTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ShutdownDrainTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.SseBroadcasterTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.SseBroadcasterTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.StaticAssetStoreTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.StaticAssetStoreTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.StaticResourcePathTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.StaticResourcePathTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.StaticShellContractTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.StaticShellContractTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.StreamQueryDecoderTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.StreamQueryDecoderTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.TelemetryJsonCodecTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.TelemetrySourceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.TelemetrySourceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.WindowsBearerTokenTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.WindowsBearerTokenTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.WindowsRuntimeTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.WindowsRuntimeTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.WindowsStaticAssetBundleTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.WindowsStaticAssetBundleTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.WinsockExtensionsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.WinsockExtensionsTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.WinsockRuntimeTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Dashboard.WinsockRuntimeTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Performing build step for 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  
+    1>Checking Build System
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Release\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Release\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Release\ForsettiHostTemplate.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.NativeTools.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.SessionHost.Core.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\forge-conductor.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.BrowserLauncherTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.BrowserLauncherTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Performing build step for 'forsetti_external'
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  
+    1>Checking Build System
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Release\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Release\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Release\ForsettiHostTemplate.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.NativeTools.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.SessionHost.Core.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\forge-conductor.exe
+  1>Staging the exact sibling CLI beside the controlled Manager composition fixture
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.CompositionRoot.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.CompositionRoot.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.CompositionFixture.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\tests\manager-composition-fixture\Release\ForgeConductor.Manager.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.CompositionLifecycleTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.CompositionLifecycleTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.CompositionSupportTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.CompositionSupportTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ControllerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ControllerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.DashboardOperationalDataSourceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.DashboardOperationalDataSourceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.DeadlineMapperTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.DeadlineMapperTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.DoctorServiceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.DoctorServiceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.LmStudioCompositionSupportTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.LmStudioCompositionSupportTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.LmStudioReadScopeResolverTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.LmStudioReadScopeResolverTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.MaintenanceServiceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.MaintenanceServiceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.MaintenanceWorkerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.MaintenanceWorkerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.NamedPipeRoundTripTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.NamedPipeRoundTripTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProcessArgumentsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ProcessArgumentsTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Performing build step for 'forsetti_external'
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+    1>Checking Build System
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Release\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Release\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Release\ForsettiHostTemplate.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.NativeTools.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.SessionHost.Core.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Mcp.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\forge-conductor.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProcessEnvironmentRealTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\tests\manager-process-environment-real\Release\ForgeConductor.Manager.exe
+  	Staging the exact sibling CLI for the real Manager process environment fixture
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProcessEnvironmentTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ProcessEnvironmentTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProcessHostTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ProcessHostTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProcessRestartSignalTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ProcessRestartSignalTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProcessStopWatcherTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ProcessStopWatcherTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProcessWorkerGroupTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ProcessWorkerGroupTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.ProtocolTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.ProtocolTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.RequestDispatcherTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.RequestDispatcherTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.StartupLifecycleFixture.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.StartupLifecycleFixture.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.StartupLifecycleIntegrationTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.StartupLifecycleIntegrationTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.StartupTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.StartupTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.TransitionWorkerTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.TransitionWorkerTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Composition.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Composition.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.UnavailableTelemetryServiceTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.UnavailableTelemetryServiceTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.WindowsInfrastructureTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.WindowsInfrastructureTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Host.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Host.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.WindowsRuntimeTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Manager.WindowsRuntimeTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests.exe
+G16: running the exact G16 CTest label once.
+Testing x64 Release with preset windows-msvc-x64-release.
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+      Start  26: ForgeConductor.Manager.TransitionWorkerTests
+      Start  24: ForgeConductor.Manager.MaintenanceWorkerTests
+ 1/83 Test  #24: ForgeConductor.Manager.MaintenanceWorkerTests ...........................   Passed    2.15 sec
+      Start  65: ForgeConductor.Dashboard.ConnectionStateTests
+ 2/83 Test  #26: ForgeConductor.Manager.TransitionWorkerTests ............................   Passed    2.59 sec
+      Start  49: ForgeConductor.Dashboard.IocpWorkerKernelTests
+ 3/83 Test  #49: ForgeConductor.Dashboard.IocpWorkerKernelTests ..........................   Passed    0.85 sec
+      Start  56: ForgeConductor.Dashboard.OverloadResponderSetTests
+ 4/83 Test  #56: ForgeConductor.Dashboard.OverloadResponderSetTests ......................   Passed    1.49 sec
+      Start 108: ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests
+ 5/83 Test #108: ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests ...   Passed    0.52 sec
+      Start  68: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+ 6/83 Test  #68: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests .........   Passed    0.30 sec
+      Start  45: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+ 7/83 Test  #45: ForgeConductor.Dashboard.DeadlineIocpBridgeTests ........................   Passed    0.19 sec
+      Start   8: ForgeConductor.Manager.WindowsInfrastructureTests
+ 8/83 Test  #65: ForgeConductor.Dashboard.ConnectionStateTests ...........................   Passed    5.02 sec
+      Start  74: ForgeConductor.Dashboard.WindowsBearerTokenTests
+ 9/83 Test  #74: ForgeConductor.Dashboard.WindowsBearerTokenTests ........................   Passed    0.26 sec
+      Start  43: ForgeConductor.Dashboard.AdmissionControllerTests
+10/83 Test  #43: ForgeConductor.Dashboard.AdmissionControllerTests .......................   Passed    0.07 sec
+      Start  69: ForgeConductor.Dashboard.DeadlineSchedulerTests
+11/83 Test   #8: ForgeConductor.Manager.WindowsInfrastructureTests .......................   Passed    2.54 sec
+      Start 101: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests
+12/83 Test  #69: ForgeConductor.Dashboard.DeadlineSchedulerTests .........................   Passed    1.02 sec
+      Start  40: ForgeConductor.Dashboard.StaticAssetStoreTests
+13/83 Test  #40: ForgeConductor.Dashboard.StaticAssetStoreTests ..........................   Passed    0.33 sec
+      Start  59: ForgeConductor.Dashboard.ConnectionSocketTests
+14/83 Test  #59: ForgeConductor.Dashboard.ConnectionSocketTests ..........................   Passed    0.12 sec
+      Start  12: ForgeConductor.Manager.BrowserLauncherTests
+15/83 Test #101: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests ..............   Passed    0.61 sec
+      Start   6: ForgeConductor.Manager.ProtocolTests
+16/83 Test  #12: ForgeConductor.Manager.BrowserLauncherTests .............................   Passed    0.15 sec
+      Start  60: ForgeConductor.Dashboard.ConnectionEventBridgeTests
+17/83 Test  #60: ForgeConductor.Dashboard.ConnectionEventBridgeTests .....................   Passed    0.04 sec
+      Start  66: ForgeConductor.Dashboard.ConnectionRegistryTests
+18/83 Test   #6: ForgeConductor.Manager.ProtocolTests ....................................   Passed    0.12 sec
+      Start  64: ForgeConductor.Dashboard.ConnectionResponseCatalogTests
+19/83 Test  #64: ForgeConductor.Dashboard.ConnectionResponseCatalogTests .................   Passed    0.05 sec
+      Start  20: ForgeConductor.Manager.ProcessEnvironmentRealTests
+20/83 Test  #20: ForgeConductor.Manager.ProcessEnvironmentRealTests ......................   Passed    0.08 sec
+      Start  15: ForgeConductor.Manager.DashboardOperationalDataSourceTests
+21/83 Test  #66: ForgeConductor.Dashboard.ConnectionRegistryTests ........................   Passed    0.20 sec
+      Start  22: ForgeConductor.Manager.LmStudioCompositionSupportTests
+22/83 Test  #22: ForgeConductor.Manager.LmStudioCompositionSupportTests ..................   Passed    0.08 sec
+      Start  71: ForgeConductor.Dashboard.HttpParserTests
+23/83 Test  #71: ForgeConductor.Dashboard.HttpParserTests ................................   Passed    0.23 sec
+      Start  10: ForgeConductor.Manager.NamedPipeRoundTripTests
+24/83 Test  #15: ForgeConductor.Manager.DashboardOperationalDataSourceTests ..............   Passed    0.40 sec
+      Start  79: ForgeConductor.Dashboard.StaticResourcePathTests
+25/83 Test  #79: ForgeConductor.Dashboard.StaticResourcePathTests ........................   Passed    0.05 sec
+      Start  33: ForgeConductor.Dashboard.SessionCloseRequestDecoderTests
+26/83 Test  #33: ForgeConductor.Dashboard.SessionCloseRequestDecoderTests ................   Passed    0.05 sec
+      Start   5: ForgeConductor.Manager.RequestDispatcherTests
+27/83 Test   #5: ForgeConductor.Manager.RequestDispatcherTests ...........................   Passed    0.09 sec
+      Start  78: ForgeConductor.Dashboard.HttpResponseTests
+28/83 Test  #10: ForgeConductor.Manager.NamedPipeRoundTripTests ..........................   Passed    0.45 sec
+      Start  61: ForgeConductor.Dashboard.ConnectionRuntimeServicesTests
+29/83 Test  #78: ForgeConductor.Dashboard.HttpResponseTests ..............................   Passed    0.24 sec
+      Start  29: ForgeConductor.Manager.WindowsRuntimeTests
+30/83 Test  #29: ForgeConductor.Manager.WindowsRuntimeTests ..............................   Passed    0.05 sec
+      Start  47: ForgeConductor.Dashboard.WinsockRuntimeTests
+31/83 Test  #47: ForgeConductor.Dashboard.WinsockRuntimeTests ............................   Passed    0.04 sec
+      Start  81: ForgeConductor.Dashboard.RequestPlannerTests
+32/83 Test  #61: ForgeConductor.Dashboard.ConnectionRuntimeServicesTests .................   Passed    0.16 sec
+      Start  46: ForgeConductor.Dashboard.LoopbackEndpointTests
+33/83 Test  #81: ForgeConductor.Dashboard.RequestPlannerTests ............................   Passed    0.06 sec
+      Start  70: ForgeConductor.Dashboard.HandlerExecutorTests
+34/83 Test  #46: ForgeConductor.Dashboard.LoopbackEndpointTests ..........................   Passed    0.06 sec
+      Start  48: ForgeConductor.Dashboard.IoCompletionPortTests
+35/83 Test  #48: ForgeConductor.Dashboard.IoCompletionPortTests ..........................   Passed    0.04 sec
+      Start  51: ForgeConductor.Dashboard.ListeningSocketTests
+36/83 Test  #51: ForgeConductor.Dashboard.ListeningSocketTests ...........................   Passed    0.04 sec
+      Start  21: ForgeConductor.Manager.LmStudioReadScopeResolverTests
+37/83 Test  #70: ForgeConductor.Dashboard.HandlerExecutorTests ...........................   Passed    0.16 sec
+      Start  72: ForgeConductor.Dashboard.HttpParserSessionTests
+38/83 Test  #21: ForgeConductor.Manager.LmStudioReadScopeResolverTests ...................   Passed    0.31 sec
+      Start  58: ForgeConductor.Dashboard.ListenerGenerationTests
+39/83 Test  #72: ForgeConductor.Dashboard.HttpParserSessionTests .........................   Passed    0.29 sec
+      Start  39: ForgeConductor.Dashboard.SseBroadcasterTests
+40/83 Test  #39: ForgeConductor.Dashboard.SseBroadcasterTests ............................   Passed    0.04 sec
+      Start  17: ForgeConductor.Manager.DoctorServiceTests
+41/83 Test  #17: ForgeConductor.Manager.DoctorServiceTests ...............................   Passed    0.13 sec
+      Start  57: ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests
+42/83 Test  #58: ForgeConductor.Dashboard.ListenerGenerationTests ........................   Passed    0.25 sec
+      Start  52: ForgeConductor.Dashboard.WinsockExtensionsTests
+43/83 Test  #57: ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests ................   Passed    0.08 sec
+      Start  31: ForgeConductor.Dashboard.ApplicationErrorMapperTests
+44/83 Test  #52: ForgeConductor.Dashboard.WinsockExtensionsTests .........................   Passed    0.07 sec
+      Start  35: ForgeConductor.Dashboard.ConnectionApplicationFactoryTests
+45/83 Test  #31: ForgeConductor.Dashboard.ApplicationErrorMapperTests ....................   Passed    0.06 sec
+      Start  36: ForgeConductor.Dashboard.OperationalServiceTests
+46/83 Test  #35: ForgeConductor.Dashboard.ConnectionApplicationFactoryTests ..............   Passed    0.04 sec
+      Start  28: ForgeConductor.Dashboard.WindowsRuntimeTests
+47/83 Test  #36: ForgeConductor.Dashboard.OperationalServiceTests ........................   Passed    0.07 sec
+      Start   3: ForgeConductor.Manager.StartupTests
+48/83 Test  #28: ForgeConductor.Dashboard.WindowsRuntimeTests ............................   Passed    0.21 sec
+      Start   2: ForgeConductor.Manager.ProcessArgumentsTests
+49/83 Test   #3: ForgeConductor.Manager.StartupTests .....................................   Passed    0.18 sec
+      Start  77: ForgeConductor.Dashboard.TelemetryJsonCodecTests
+50/83 Test   #2: ForgeConductor.Manager.ProcessArgumentsTests ............................   Passed    0.06 sec
+      Start  76: ForgeConductor.Dashboard.ManagerJsonCodecTests
+51/83 Test  #77: ForgeConductor.Dashboard.TelemetryJsonCodecTests ........................   Passed    0.07 sec
+      Start  53: ForgeConductor.Dashboard.AcceptSlotTests
+52/83 Test  #76: ForgeConductor.Dashboard.ManagerJsonCodecTests ..........................   Passed    0.07 sec
+      Start  19: ForgeConductor.Manager.ProcessEnvironmentTests
+53/83 Test  #53: ForgeConductor.Dashboard.AcceptSlotTests ................................   Passed    0.06 sec
+      Start  50: ForgeConductor.Dashboard.IocpCompletionRouterTests
+54/83 Test  #19: ForgeConductor.Manager.ProcessEnvironmentTests ..........................   Passed    0.06 sec
+      Start  44: ForgeConductor.Dashboard.DeadlineNotificationMailboxTests
+55/83 Test  #50: ForgeConductor.Dashboard.IocpCompletionRouterTests ......................   Passed    0.06 sec
+      Start  55: ForgeConductor.Dashboard.AcceptedConnectionHandoffTests
+56/83 Test  #44: ForgeConductor.Dashboard.DeadlineNotificationMailboxTests ...............   Passed    0.06 sec
+      Start  23: ForgeConductor.Manager.ProcessRestartSignalTests
+57/83 Test  #55: ForgeConductor.Dashboard.AcceptedConnectionHandoffTests .................   Passed    0.06 sec
+      Start  62: ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests
+58/83 Test  #23: ForgeConductor.Manager.ProcessRestartSignalTests ........................   Passed    0.06 sec
+      Start  73: ForgeConductor.Dashboard.RequestPolicyTests
+59/83 Test  #62: ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests .....................   Passed    0.09 sec
+      Start  54: ForgeConductor.Dashboard.AcceptSlotSetTests
+60/83 Test  #73: ForgeConductor.Dashboard.RequestPolicyTests .............................   Passed    0.09 sec
+      Start  67: ForgeConductor.Dashboard.ShutdownDrainTests
+61/83 Test  #54: ForgeConductor.Dashboard.AcceptSlotSetTests .............................   Passed    0.06 sec
+      Start  41: ForgeConductor.Dashboard.WindowsStaticAssetBundleTests
+62/83 Test  #67: ForgeConductor.Dashboard.ShutdownDrainTests .............................   Passed    0.08 sec
+      Start   7: ForgeConductor.Manager.ControllerTests
+63/83 Test  #41: ForgeConductor.Dashboard.WindowsStaticAssetBundleTests ..................   Passed    0.08 sec
+      Start  27: ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests
+64/83 Test   #7: ForgeConductor.Manager.ControllerTests ..................................   Passed    0.07 sec
+      Start  32: ForgeConductor.Dashboard.ApplicationJsonCodecTests
+65/83 Test  #27: ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests ..........   Passed    0.07 sec
+      Start   4: ForgeConductor.Manager.DeadlineMapperTests
+66/83 Test  #32: ForgeConductor.Dashboard.ApplicationJsonCodecTests ......................   Passed    0.06 sec
+      Start  63: ForgeConductor.Dashboard.HandlerOperationsTests
+67/83 Test   #4: ForgeConductor.Manager.DeadlineMapperTests ..............................   Passed    0.06 sec
+      Start  42: ForgeConductor.Dashboard.StaticShellContractTests
+68/83 Test  #63: ForgeConductor.Dashboard.HandlerOperationsTests .........................   Passed    0.17 sec
+      Start  80: ForgeConductor.Dashboard.StreamQueryDecoderTests
+69/83 Test  #42: ForgeConductor.Dashboard.StaticShellContractTests .......................   Passed    0.17 sec
+      Start  37: ForgeConductor.Dashboard.TelemetrySourceTests
+70/83 Test  #80: ForgeConductor.Dashboard.StreamQueryDecoderTests ........................   Passed    0.06 sec
+      Start  14: ForgeConductor.Manager.CompositionSupportTests
+71/83 Test  #37: ForgeConductor.Dashboard.TelemetrySourceTests ...........................   Passed    0.04 sec
+      Start  75: ForgeConductor.Dashboard.RouteCatalogTests
+72/83 Test  #14: ForgeConductor.Manager.CompositionSupportTests ..........................   Passed    0.04 sec
+      Start  38: ForgeConductor.Dashboard.ResponseComposerTests
+73/83 Test  #75: ForgeConductor.Dashboard.RouteCatalogTests ..............................   Passed    0.28 sec
+      Start  25: ForgeConductor.Manager.ProcessWorkerGroupTests
+74/83 Test  #38: ForgeConductor.Dashboard.ResponseComposerTests ..........................   Passed    0.25 sec
+      Start  30: ForgeConductor.Dashboard.PreparedExchangeTests
+75/83 Test  #25: ForgeConductor.Manager.ProcessWorkerGroupTests ..........................   Passed    0.27 sec
+      Start  16: ForgeConductor.Manager.UnavailableTelemetryServiceTests
+76/83 Test  #30: ForgeConductor.Dashboard.PreparedExchangeTests ..........................   Passed    0.29 sec
+      Start  34: ForgeConductor.Dashboard.ConnectionApplicationTests
+77/83 Test  #16: ForgeConductor.Manager.UnavailableTelemetryServiceTests .................   Passed    0.04 sec
+      Start  18: ForgeConductor.Manager.MaintenanceServiceTests
+78/83 Test  #34: ForgeConductor.Dashboard.ConnectionApplicationTests .....................   Passed    0.05 sec
+      Start  11: ForgeConductor.Manager.ProcessHostTests
+79/83 Test  #18: ForgeConductor.Manager.MaintenanceServiceTests ..........................   Passed    0.05 sec
+      Start  13: ForgeConductor.Manager.ProcessStopWatcherTests
+80/83 Test  #11: ForgeConductor.Manager.ProcessHostTests .................................   Passed    0.02 sec
+81/83 Test  #13: ForgeConductor.Manager.ProcessStopWatcherTests ..........................   Passed    0.02 sec
+      Start   1: ForgeConductor.Manager.CompositionLifecycleTests
+82/83 Test   #1: ForgeConductor.Manager.CompositionLifecycleTests ........................   Passed    0.83 sec
+      Start   9: ForgeConductor.Manager.StartupLifecycleIntegrationTests
+83/83 Test   #9: ForgeConductor.Manager.StartupLifecycleIntegrationTests .................   Passed    0.31 sec
+
+100% tests passed out of 83
+
+Label Time Summary:
+G16              =  26.72 sec*proc (83 tests)
+T-CONT           =   0.05 sec*proc (1 test)
+T-DB             =   0.92 sec*proc (2 tests)
+T-INTEGRATION    =   3.66 sec*proc (14 tests)
+T-LMS            =   0.43 sec*proc (3 tests)
+T-MGR            =  25.59 sec*proc (81 tests)
+T-PARITY         =   2.02 sec*proc (18 tests)
+T-PROC           =   0.97 sec*proc (3 tests)
+T-SEC            =  15.60 sec*proc (41 tests)
+T-STRESS         =  21.50 sec*proc (50 tests)
+T-TEL            =   0.96 sec*proc (10 tests)
+T-UNIT           =  24.78 sec*proc (77 tests)
+
+Total Test time (real) =  13.99 sec
+No-Python gate passed.
+No-attribution gate passed.
+Ledger validation passed: 514 event(s).
+G16 Manager/IPC/dashboard validation passed (17886 assertions).
+Validation summary: D:\GitHub\Forge-Conductor-Windows-Edition\.forge-codex\state\evidence\P16\g16-validation-summary.json
+Validation summary SHA-256: 93d129f6c89ab6c3b5d2c830ba5ddbfafb36403666323fda9ba72e139a59d4bc
+Terminal G16/P16 state remains deferred to the independent Validator.

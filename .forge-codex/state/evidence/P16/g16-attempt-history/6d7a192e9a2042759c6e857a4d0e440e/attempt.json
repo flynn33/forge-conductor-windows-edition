@@ -1,0 +1,231 @@
+{
+    "schema_version":  2,
+    "phase":  "P16",
+    "gate":  "G16",
+    "attempt_id":  "6d7a192e9a2042759c6e857a4d0e440e",
+    "status":  "build_started",
+    "started_utc":  "2026-08-30T20:17:26.5694021+00:00",
+    "updated_utc":  "2026-08-30T20:17:30.4984082+00:00",
+    "working_directory":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "context":  {
+                    "sha256":  "28d7b1e72a48f666ceb4b2ab95b43e7891ae44d1f0c6f989e0922e4d3c44f438",
+                    "evidence":  {
+                                     "working_directory":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+                                     "source":  {
+                                                    "files":  1069,
+                                                    "bytes":  15283445,
+                                                    "sha256":  "fa3b5b1a53325888eb8d1eb06074ddf281c46a91d561857b9fe57408927a9170",
+                                                    "excluded_mutable_governance_ledgers":  [
+                                                                                                ".forge-codex/instructions/plans/feature-parity-matrix.json",
+                                                                                                ".forge-codex/instructions/plans/feature-parity-matrix.tsv"
+                                                                                            ]
+                                                },
+                                     "toolchain":  {
+                                                       "state_sha256":  "e1f7590fffbe070312e95a8529e0d8acbf83147f2ee8a7a85a659a1a320617a6",
+                                                       "cmake":  {
+                                                                     "path":  "C:\\Program Files\\CMake\\bin\\cmake.exe",
+                                                                     "sha256":  "414ad2a5dcabbb2a49ba1514e6651523865ae306b73a0e769f18e14cab1570e8"
+                                                                 },
+                                                       "ctest":  {
+                                                                     "path":  "C:\\Program Files\\CMake\\bin\\ctest.exe",
+                                                                     "sha256":  "1692fa27fa742b3c77ef900ce1fcfff68975c3ef3c44c2f04f586b5057981c4e"
+                                                                 },
+                                                       "compiler":  {
+                                                                        "path":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+                                                                        "sha256":  "e6124b9236513ecd1cd6a16de0cfd8171662d649be9ab92ad007072c2161f004"
+                                                                    },
+                                                       "linker":  {
+                                                                      "path":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\link.exe",
+                                                                      "sha256":  "71cbc1f6288ce5acfe62ce5b1bbbfa68009e4fe638f0566bf56ec0260d4c4b12"
+                                                                  },
+                                                       "msbuild":  {
+                                                                       "path":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe",
+                                                                       "sha256":  "0f7daba445ba37b652ae4180270ab3eff27acbbe5d411d3b05dad51aab16404c"
+                                                                   },
+                                                       "git":  {
+                                                                   "path":  "C:\\Program Files\\Git\\cmd\\git.exe",
+                                                                   "sha256":  "da240fe9bc24895b3e04150a4990b8a6ff329ecabcd8f19684c2cc310da5ef3f"
+                                                               },
+                                                       "vcpkg":  {
+                                                                     "root":  "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg",
+                                                                     "executable":  "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg\\vcpkg.exe",
+                                                                     "executable_sha256":  "13b8175e99a884c5ad34249218754b45541a1a63f216e92603aee57a285ac741",
+                                                                     "checkout_head":  "00c5775211f45cd08b37fce0484b4cb940e422ab",
+                                                                     "builtin_baseline":  "00c5775211f45cd08b37fce0484b4cb940e422ab",
+                                                                     "toolchain_file":  "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+                                                                     "toolchain_file_sha256":  "f911a8769d07e10b26ce651f3cef6f52f2d5e598e3504d7f19e70bcbd3b3b25b"
+                                                                 }
+                                                   }
+                                 }
+                },
+    "source_fingerprint":  {
+                               "git_head":  "daa81fc486cdc767d36e8ac15191ee94be8e8ebc",
+                               "files":  1069,
+                               "bytes":  15283445,
+                               "sha256":  "fa3b5b1a53325888eb8d1eb06074ddf281c46a91d561857b9fe57408927a9170",
+                               "excluded_mutable_governance_ledgers":  [
+                                                                           ".forge-codex/instructions/plans/feature-parity-matrix.json",
+                                                                           ".forge-codex/instructions/plans/feature-parity-matrix.tsv"
+                                                                       ]
+                           },
+    "toolchain_identity":  {
+                               "state_sha256":  "e1f7590fffbe070312e95a8529e0d8acbf83147f2ee8a7a85a659a1a320617a6",
+                               "cmake":  {
+                                             "path":  "C:\\Program Files\\CMake\\bin\\cmake.exe",
+                                             "sha256":  "414ad2a5dcabbb2a49ba1514e6651523865ae306b73a0e769f18e14cab1570e8"
+                                         },
+                               "ctest":  {
+                                             "path":  "C:\\Program Files\\CMake\\bin\\ctest.exe",
+                                             "sha256":  "1692fa27fa742b3c77ef900ce1fcfff68975c3ef3c44c2f04f586b5057981c4e"
+                                         },
+                               "compiler":  {
+                                                "path":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+                                                "sha256":  "e6124b9236513ecd1cd6a16de0cfd8171662d649be9ab92ad007072c2161f004"
+                                            },
+                               "linker":  {
+                                              "path":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\link.exe",
+                                              "sha256":  "71cbc1f6288ce5acfe62ce5b1bbbfa68009e4fe638f0566bf56ec0260d4c4b12"
+                                          },
+                               "msbuild":  {
+                                               "path":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe",
+                                               "sha256":  "0f7daba445ba37b652ae4180270ab3eff27acbbe5d411d3b05dad51aab16404c"
+                                           },
+                               "git":  {
+                                           "path":  "C:\\Program Files\\Git\\cmd\\git.exe",
+                                           "sha256":  "da240fe9bc24895b3e04150a4990b8a6ff329ecabcd8f19684c2cc310da5ef3f"
+                                       },
+                               "vcpkg":  {
+                                             "root":  "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg",
+                                             "executable":  "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg\\vcpkg.exe",
+                                             "executable_sha256":  "13b8175e99a884c5ad34249218754b45541a1a63f216e92603aee57a285ac741",
+                                             "checkout_head":  "00c5775211f45cd08b37fce0484b4cb940e422ab",
+                                             "builtin_baseline":  "00c5775211f45cd08b37fce0484b4cb940e422ab",
+                                             "toolchain_file":  "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+                                             "toolchain_file_sha256":  "f911a8769d07e10b26ce651f3cef6f52f2d5e598e3504d7f19e70bcbd3b3b25b"
+                                         }
+                           },
+    "invocation":  {
+                       "sha256":  "51d89f206cdf47ae1e9a7d9320422821298fb3767e9be20bac72f11c44dc3aca",
+                       "evidence":  {
+                                        "configuration":  "Release",
+                                        "architecture":  "x64",
+                                        "parallel":  2,
+                                        "build_targets":  [
+                                                              "ForgeConductor.Manager",
+                                                              "ForgeConductor.Manager.CompositionFixture",
+                                                              "ForgeConductor.Dashboard.AcceptedConnectionHandoffTests",
+                                                              "ForgeConductor.Dashboard.AcceptSlotSetTests",
+                                                              "ForgeConductor.Dashboard.AcceptSlotTests",
+                                                              "ForgeConductor.Dashboard.AdmissionControllerTests",
+                                                              "ForgeConductor.Dashboard.ApplicationErrorMapperTests",
+                                                              "ForgeConductor.Dashboard.ApplicationJsonCodecTests",
+                                                              "ForgeConductor.Dashboard.ConnectionApplicationFactoryTests",
+                                                              "ForgeConductor.Dashboard.ConnectionApplicationTests",
+                                                              "ForgeConductor.Dashboard.ConnectionEventBridgeTests",
+                                                              "ForgeConductor.Dashboard.ConnectionRegistryTests",
+                                                              "ForgeConductor.Dashboard.ConnectionResponseCatalogTests",
+                                                              "ForgeConductor.Dashboard.ConnectionRuntimeServicesTests",
+                                                              "ForgeConductor.Dashboard.ConnectionSocketTests",
+                                                              "ForgeConductor.Dashboard.ConnectionStateTests",
+                                                              "ForgeConductor.Dashboard.DeadlineIocpBridgeTests",
+                                                              "ForgeConductor.Dashboard.DeadlineNotificationMailboxTests",
+                                                              "ForgeConductor.Dashboard.DeadlineSchedulerTests",
+                                                              "ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests",
+                                                              "ForgeConductor.Dashboard.HandlerExecutorTests",
+                                                              "ForgeConductor.Dashboard.HandlerOperationsTests",
+                                                              "ForgeConductor.Dashboard.HttpParserSessionTests",
+                                                              "ForgeConductor.Dashboard.HttpParserTests",
+                                                              "ForgeConductor.Dashboard.HttpResponseTests",
+                                                              "ForgeConductor.Dashboard.IoCompletionPortTests",
+                                                              "ForgeConductor.Dashboard.IocpCompletionRouterTests",
+                                                              "ForgeConductor.Dashboard.IocpWorkerKernelTests",
+                                                              "ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests",
+                                                              "ForgeConductor.Dashboard.ListenerGenerationTests",
+                                                              "ForgeConductor.Dashboard.ListeningSocketTests",
+                                                              "ForgeConductor.Dashboard.LoopbackEndpointTests",
+                                                              "ForgeConductor.Dashboard.ManagerJsonCodecTests",
+                                                              "ForgeConductor.Dashboard.OperationalServiceTests",
+                                                              "ForgeConductor.Dashboard.OverloadResponderSetTests",
+                                                              "ForgeConductor.Dashboard.PreparedExchangeTests",
+                                                              "ForgeConductor.Dashboard.RequestPlannerTests",
+                                                              "ForgeConductor.Dashboard.RequestPolicyTests",
+                                                              "ForgeConductor.Dashboard.ResponseComposerTests",
+                                                              "ForgeConductor.Dashboard.RouteCatalogTests",
+                                                              "ForgeConductor.Dashboard.SessionCloseRequestDecoderTests",
+                                                              "ForgeConductor.Dashboard.ShutdownDrainTests",
+                                                              "ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests",
+                                                              "ForgeConductor.Dashboard.SseBroadcasterTests",
+                                                              "ForgeConductor.Dashboard.StaticAssetStoreTests",
+                                                              "ForgeConductor.Dashboard.StaticResourcePathTests",
+                                                              "ForgeConductor.Dashboard.StaticShellContractTests",
+                                                              "ForgeConductor.Dashboard.StreamQueryDecoderTests",
+                                                              "ForgeConductor.Dashboard.TelemetryJsonCodecTests",
+                                                              "ForgeConductor.Dashboard.TelemetrySourceTests",
+                                                              "ForgeConductor.Dashboard.WindowsBearerTokenTests",
+                                                              "ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests",
+                                                              "ForgeConductor.Dashboard.WindowsRuntimeTests",
+                                                              "ForgeConductor.Dashboard.WindowsStaticAssetBundleTests",
+                                                              "ForgeConductor.Dashboard.WinsockExtensionsTests",
+                                                              "ForgeConductor.Dashboard.WinsockRuntimeTests",
+                                                              "ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests",
+                                                              "ForgeConductor.Manager.BrowserLauncherTests",
+                                                              "ForgeConductor.Manager.CompositionLifecycleTests",
+                                                              "ForgeConductor.Manager.CompositionSupportTests",
+                                                              "ForgeConductor.Manager.ControllerTests",
+                                                              "ForgeConductor.Manager.DashboardOperationalDataSourceTests",
+                                                              "ForgeConductor.Manager.DeadlineMapperTests",
+                                                              "ForgeConductor.Manager.DoctorServiceTests",
+                                                              "ForgeConductor.Manager.LmStudioCompositionSupportTests",
+                                                              "ForgeConductor.Manager.LmStudioReadScopeResolverTests",
+                                                              "ForgeConductor.Manager.MaintenanceServiceTests",
+                                                              "ForgeConductor.Manager.MaintenanceWorkerTests",
+                                                              "ForgeConductor.Manager.NamedPipeRoundTripTests",
+                                                              "ForgeConductor.Manager.ProcessArgumentsTests",
+                                                              "ForgeConductor.Manager.ProcessEnvironmentRealTests",
+                                                              "ForgeConductor.Manager.ProcessEnvironmentTests",
+                                                              "ForgeConductor.Manager.ProcessHostTests",
+                                                              "ForgeConductor.Manager.ProcessRestartSignalTests",
+                                                              "ForgeConductor.Manager.ProcessStopWatcherTests",
+                                                              "ForgeConductor.Manager.ProcessWorkerGroupTests",
+                                                              "ForgeConductor.Manager.ProtocolTests",
+                                                              "ForgeConductor.Manager.RequestDispatcherTests",
+                                                              "ForgeConductor.Manager.StartupLifecycleIntegrationTests",
+                                                              "ForgeConductor.Manager.StartupTests",
+                                                              "ForgeConductor.Manager.TransitionWorkerTests",
+                                                              "ForgeConductor.Manager.UnavailableTelemetryServiceTests",
+                                                              "ForgeConductor.Manager.WindowsInfrastructureTests",
+                                                              "ForgeConductor.Manager.WindowsRuntimeTests",
+                                                              "ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests"
+                                                          ],
+                                        "ctest_preset":  "windows-msvc-x64-release",
+                                        "ctest_label":  "G16",
+                                        "build_script":  {
+                                                             "path":  "scripts/build.ps1",
+                                                             "sha256":  "feaebb4ecfce3a9d60d3d8138c0a9ecc9e21f7d2c0052d3fef41ab38f66b2bb8"
+                                                         },
+                                        "test_script":  {
+                                                            "path":  "scripts/test.ps1",
+                                                            "sha256":  "25f56c2e64ddb01f83c1201a33f0f53b294308483b316a42c655e552f80df4e8"
+                                                        },
+                                        "gate_script":  {
+                                                            "path":  "scripts/validation/Test-G16ManagerIpcDashboard.ps1",
+                                                            "sha256":  "d1a599a2789fd22dd59e4339e3a162e8f7513e3d0f6fec7ce0c8f055dad46c6b"
+                                                        },
+                                        "cmake":  {
+                                                      "path":  "C:\\Program Files\\CMake\\bin\\cmake.exe",
+                                                      "sha256":  "414ad2a5dcabbb2a49ba1514e6651523865ae306b73a0e769f18e14cab1570e8"
+                                                  },
+                                        "ctest":  {
+                                                      "path":  "C:\\Program Files\\CMake\\bin\\ctest.exe",
+                                                      "sha256":  "1692fa27fa742b3c77ef900ce1fcfff68975c3ef3c44c2f04f586b5057981c4e"
+                                                  }
+                                    }
+                   },
+    "predecessor":  null,
+    "build_invocations":  1,
+    "test_invocations":  0,
+    "build_evidence":  null,
+    "test_started_utc":  null,
+    "prior_last_test_log":  null,
+    "transient_ctest_log":  null
+}

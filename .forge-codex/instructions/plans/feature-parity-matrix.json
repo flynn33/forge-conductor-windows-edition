@@ -205,11 +205,11 @@
       "behavior": "manager run owns dashboard lifecycle",
       "macos_evidence": "Sources/ForgeConductorCore/Application/ForgeProcessEntry.swift",
       "windows_acceptance": "Single-owner manager",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Hosts/Manager/main.cpp; src/Hosts/Manager/ManagerCompositionRoot.cpp; src/Hosts/Manager/ManagerProcessHost.cpp; src/Hosts/Manager/WindowsManagerRuntime.cpp",
+      "tests": "tests/Manager/WindowsManagerCompositionLifecycleTests.cpp; tests/Manager/ManagerProcessHostTests.cpp; tests/Manager/WindowsManagerRuntimeTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260830T203522380Z-255a4469.json; .forge-codex/state/evidence/P16/g16-validation-summary.json; .forge-codex/state/evidence/P16/g16-attempt.json; .forge-codex/state/evidence/P16/g16-LastTest.log; .forge-codex/state/evidence/P16/g16-attempt-history/6d7a192e9a2042759c6e857a4d0e440e/attempt.json; .forge-codex/state/evidence/P16/g16-attempt-history/6d7a192e9a2042759c6e857a4d0e440e/rollover.json; .forge-codex/state/evidence/P16/manager-host-lifecycle-checkpoint.json; .forge-codex/state/evidence/P16/manager-production-ownership-prerequisites-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P16-003-manager-host-lifecycle-and-composition-boundary.md; .forge-codex/state/decisions/P16-021-production-manager-runtime-and-delivery-safe-shutdown.md; .forge-codex/state/decisions/P16-037-production-manager-composition-boundaries.md; .forge-codex/state/decisions/P16-038-hash-bound-g16-qualification-and-independent-finalization.md; .forge-codex/state/decisions/P16-039-windows-powershell-evidence-runner-compatibility.md"
     },
     {
       "id": "CLI-001",
@@ -777,11 +777,11 @@
       "behavior": "Health, recovery, bounded restart",
       "macos_evidence": "Sources/ForgeConductorCore/Manager/ManagerNode.swift",
       "windows_acceptance": "Fault injection",
-      "status": "not_started",
-      "windows_files": "",
-      "tests": "",
-      "evidence": "",
-      "adr": ""
+      "status": "passed",
+      "windows_files": "src/Hosts/Manager/ManagerTransitionWorker.cpp; src/Hosts/Manager/ManagerProcessRestartSignal.cpp; src/Hosts/Manager/WindowsManagerRuntime.cpp; src/Hosts/Manager/ManagerCompositionRoot.cpp",
+      "tests": "tests/Manager/WindowsManagerCompositionLifecycleTests.cpp; tests/Manager/ManagerTransitionWorkerTests.cpp; tests/Manager/ManagerProcessRestartSignalTests.cpp; tests/Manager/WindowsManagerRuntimeTests.cpp",
+      "evidence": ".forge-codex/state/commands/20260830T203522380Z-255a4469.json; .forge-codex/state/evidence/P16/g16-validation-summary.json; .forge-codex/state/evidence/P16/g16-attempt.json; .forge-codex/state/evidence/P16/g16-LastTest.log; .forge-codex/state/evidence/P16/g16-attempt-history/6d7a192e9a2042759c6e857a4d0e440e/attempt.json; .forge-codex/state/evidence/P16/g16-attempt-history/6d7a192e9a2042759c6e857a4d0e440e/rollover.json; .forge-codex/state/evidence/P16/manager-terminal-pipe-transition-watchdog-checkpoint.json; .forge-codex/state/evidence/P16/manager-host-transition-lifecycle-checkpoint.json; .forge-codex/state/evidence/P16/dashboard-process-runtime-deferred-restart-checkpoint.json",
+      "adr": ".forge-codex/state/decisions/P16-020-process-owned-dashboard-runtime-and-deferred-restart-edge.md; .forge-codex/state/decisions/P16-021-production-manager-runtime-and-delivery-safe-shutdown.md; .forge-codex/state/decisions/P16-026-capacity-one-manager-transition-watchdog.md; .forge-codex/state/decisions/P16-027-manager-process-host-transition-lifecycle.md; .forge-codex/state/decisions/P16-038-hash-bound-g16-qualification-and-independent-finalization.md; .forge-codex/state/decisions/P16-039-windows-powershell-evidence-runner-compatibility.md"
     },
     {
       "id": "MGR-004",

@@ -1,0 +1,27 @@
+{
+    "schema_version":  1,
+    "phase":  "P16",
+    "gate":  "G16",
+    "attempt_id":  "6d7a192e9a2042759c6e857a4d0e440e",
+    "status":  "build_started",
+    "archived_utc":  "2026-08-30T20:35:40.6078193+00:00",
+    "reason":  "source_or_toolchain_context_changed",
+    "old_context_sha256":  "28d7b1e72a48f666ceb4b2ab95b43e7891ae44d1f0c6f989e0922e4d3c44f438",
+    "new_context_sha256":  "c8e1778ce8bb0667cf5b7f87f8d93471d3f90ee8ff27d5af7b548e1f65568ee3",
+    "files":  [
+                  {
+                      "name":  "attempt",
+                      "canonical_path":  ".forge-codex/state/evidence/P16/g16-attempt.json",
+                      "archive_path":  ".forge-codex/state/evidence/P16/g16-attempt-history/6d7a192e9a2042759c6e857a4d0e440e/attempt.json",
+                      "bytes":  22248,
+                      "sha256":  "04057d3ad2d430033857e2a45ca1c136e98bb940e3b08971ae0c01579adfa9dc"
+                  },
+                  {
+                      "name":  "transient_last_test",
+                      "canonical_path":  "out/build/windows-msvc-x64/Testing/Temporary/LastTest.log",
+                      "archive_path":  ".forge-codex/state/evidence/P16/g16-attempt-history/6d7a192e9a2042759c6e857a4d0e440e/transient_last_test.log",
+                      "bytes":  160,
+                      "sha256":  "d89075759dbd48c3da0443045b58f212b56c330055fc85a16c03767f9d69e6dd"
+                  }
+              ]
+}

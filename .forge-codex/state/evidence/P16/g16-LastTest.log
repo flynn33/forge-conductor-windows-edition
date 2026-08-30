@@ -1,0 +1,1564 @@
+Start testing: Aug 30 15:39 Central Daylight Time
+----------------------------------------------------------
+24/147 Testing: ForgeConductor.Manager.MaintenanceWorkerTests
+24/147 Test: ForgeConductor.Manager.MaintenanceWorkerTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.MaintenanceWorkerTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.MaintenanceWorkerTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager maintenance worker tests passed.
+<end of output>
+Test time =   2.15 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.MaintenanceWorkerTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.MaintenanceWorkerTests" time elapsed: 00:00:02
+----------------------------------------------------------
+
+26/147 Testing: ForgeConductor.Manager.TransitionWorkerTests
+26/147 Test: ForgeConductor.Manager.TransitionWorkerTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.TransitionWorkerTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.TransitionWorkerTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+PASS manager_transition.policy
+PASS manager_transition.timed_signal
+PASS manager_transition.explicit_restart
+PASS manager_transition.watchdog_repair
+PASS manager_transition.suppression
+PASS manager_transition.ownership
+PASS manager_transition.nonblocking_stop
+PASS manager_transition.recursive_shutdown
+PASS manager_transition.lifecycle
+SUMMARY passed=9 failed=0
+<end of output>
+Test time =   2.59 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.TransitionWorkerTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.TransitionWorkerTests" time elapsed: 00:00:02
+----------------------------------------------------------
+
+49/147 Testing: ForgeConductor.Dashboard.IocpWorkerKernelTests
+49/147 Test: ForgeConductor.Dashboard.IocpWorkerKernelTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.IocpWorkerKernelTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.IocpWorkerKernelTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard IOCP worker kernel tests passed: 69 assertions
+<end of output>
+Test time =   0.85 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.IocpWorkerKernelTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.IocpWorkerKernelTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+56/147 Testing: ForgeConductor.Dashboard.OverloadResponderSetTests
+56/147 Test: ForgeConductor.Dashboard.OverloadResponderSetTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.OverloadResponderSetTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.OverloadResponderSetTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard overload-responder tests passed with 669 assertions.
+<end of output>
+Test time =   1.49 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.OverloadResponderSetTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.OverloadResponderSetTests" time elapsed: 00:00:01
+----------------------------------------------------------
+
+108/147 Testing: ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests
+108/147 Test: ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+[PASS] canonical snapshot has deterministic ordering and content
+[PASS] complete collections fail rather than truncate
+[PASS] recent sessions are intentionally truncated
+[PASS] aggregate text budgets fail before retaining unbounded rows
+[PASS] hostile persisted rows fail integrity checks
+[PASS] contexts attach and close fail typed without closing shared database
+6/6 dashboard operational repository tests passed.
+<end of output>
+Test time =   0.52 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+68/147 Testing: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+68/147 Test: ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+DashboardShutdownDrainTombstoneIntegrationTests passed: 1 case, 14 assertions
+<end of output>
+Test time =   0.30 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ShutdownDrainTombstoneIntegrationTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+45/147 Testing: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+45/147 Test: ForgeConductor.Dashboard.DeadlineIocpBridgeTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.DeadlineIocpBridgeTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.DeadlineIocpBridgeTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard deadline IOCP bridge tests passed (3396 assertions).
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.DeadlineIocpBridgeTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.DeadlineIocpBridgeTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+65/147 Testing: ForgeConductor.Dashboard.ConnectionStateTests
+65/147 Test: ForgeConductor.Dashboard.ConnectionStateTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionStateTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionStateTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard connection state tests passed (243 assertions).
+<end of output>
+Test time =   5.02 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionStateTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionStateTests" time elapsed: 00:00:05
+----------------------------------------------------------
+
+74/147 Testing: ForgeConductor.Dashboard.WindowsBearerTokenTests
+74/147 Test: ForgeConductor.Dashboard.WindowsBearerTokenTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.WindowsBearerTokenTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.WindowsBearerTokenTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Windows dashboard bearer token tests passed (409 assertions).
+<end of output>
+Test time =   0.26 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.WindowsBearerTokenTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.WindowsBearerTokenTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+43/147 Testing: ForgeConductor.Dashboard.AdmissionControllerTests
+43/147 Test: ForgeConductor.Dashboard.AdmissionControllerTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.AdmissionControllerTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.AdmissionControllerTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard admission controller tests passed: 214 assertions
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.AdmissionControllerTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.AdmissionControllerTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/147 Testing: ForgeConductor.Manager.WindowsInfrastructureTests
+8/147 Test: ForgeConductor.Manager.WindowsInfrastructureTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.WindowsInfrastructureTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.WindowsInfrastructureTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+[RUN] manager_authentication.exact_lowercase_hex_encoding
+[PASS] manager_authentication.exact_lowercase_hex_encoding
+[RUN] manager_authentication.missing_create_persist_reload
+[PASS] manager_authentication.missing_create_persist_reload
+[RUN] manager_authentication.invalid_stored_lengths
+[PASS] manager_authentication.invalid_stored_lengths
+[RUN] manager_authentication.boundary_failures
+[PASS] manager_authentication.boundary_failures
+[RUN] manager_authentication.operation_context
+[PASS] manager_authentication.operation_context
+[RUN] manager_authentication.capacity_one
+[PASS] manager_authentication.capacity_one
+[RUN] manager_authentication.shutdown
+[PASS] manager_authentication.shutdown
+[RUN] manager_authentication.constant_time_comparison
+[PASS] manager_authentication.constant_time_comparison
+[RUN] manager_ownership.current_user_identity_is_stable_and_canonical
+[PASS] manager_ownership.current_user_identity_is_stable_and_canonical
+[RUN] manager_ownership.first_owner_rejects_second_owner
+[PASS] manager_ownership.first_owner_rejects_second_owner
+[RUN] manager_ownership.released_lease_can_be_reacquired
+[PASS] manager_ownership.released_lease_can_be_reacquired
+[RUN] manager_ownership.distinct_purpose_suffixes_are_isolated
+[PASS] manager_ownership.distinct_purpose_suffixes_are_isolated
+[RUN] manager_ownership.names_can_be_derived_without_taking_ownership
+[PASS] manager_ownership.names_can_be_derived_without_taking_ownership
+[RUN] manager_ownership.move_transfers_sole_ownership
+[PASS] manager_ownership.move_transfers_sole_ownership
+[RUN] manager_ownership.names_are_bounded_and_suffixes_are_validated
+[PASS] manager_ownership.names_are_bounded_and_suffixes_are_validated
+[RUN] manager_pipe.current_user_dacl_is_exact_and_reusable
+[PASS] manager_pipe.current_user_dacl_is_exact_and_reusable
+[RUN] manager_pipe.same_user_client_sid_is_accepted
+[PASS] manager_pipe.same_user_client_sid_is_accepted
+[RUN] manager_pipe.wrong_client_sid_is_rejected
+[PASS] manager_pipe.wrong_client_sid_is_rejected
+[RUN] manager_pipe.exact_maximum_frame_round_trips
+[PASS] manager_pipe.exact_maximum_frame_round_trips
+[RUN] manager_pipe.response_receipt_is_exact_and_bounded
+[PASS] manager_pipe.response_receipt_is_exact_and_bounded
+[RUN] manager_pipe.oversize_and_malformed_frames_are_rejected
+[PASS] manager_pipe.oversize_and_malformed_frames_are_rejected
+[RUN] manager_pipe.cancellation_deadline_and_shutdown_reap_io
+[PASS] manager_pipe.cancellation_deadline_and_shutdown_reap_io
+[RUN] manager_pipe.open_honors_cancellation_and_deadline
+[PASS] manager_pipe.open_honors_cancellation_and_deadline
+[RUN] manager_pipe.server_rejects_unbounded_transport_limits
+[PASS] manager_pipe.server_rejects_unbounded_transport_limits
+[RUN] manager_pipe.server_shutdown_cooperatively_joins
+[PASS] manager_pipe.server_shutdown_cooperatively_joins
+[RUN] manager_pipe.server_nonquiescence_fails_stopped
+[PASS] manager_pipe.server_nonquiescence_fails_stopped
+[RUN] manager_startup_com_worker_mta_payload
+[PASS] manager_startup_com_worker_mta_payload
+[RUN] manager_startup_com_worker_fifo_capacity
+[PASS] manager_startup_com_worker_fifo_capacity
+[RUN] manager_startup_com_worker_duplicate_ids
+[PASS] manager_startup_com_worker_duplicate_ids
+[RUN] manager_startup_com_worker_queued_cancellation
+[PASS] manager_startup_com_worker_queued_cancellation
+[RUN] manager_startup_com_worker_predispatch_cancellation
+[PASS] manager_startup_com_worker_predispatch_cancellation
+[RUN] manager_startup_com_worker_precancelled_admission
+[PASS] manager_startup_com_worker_precancelled_admission
+[RUN] manager_startup_com_worker_queued_deadline
+[PASS] manager_startup_com_worker_queued_deadline
+[RUN] manager_startup_com_worker_active_deadline_drain
+[PASS] manager_startup_com_worker_active_deadline_drain
+[RUN] manager_startup_com_worker_active_cancel_drain
+[PASS] manager_startup_com_worker_active_cancel_drain
+[RUN] manager_startup_com_worker_active_token_cancel_promotion
+[PASS] manager_startup_com_worker_active_token_cancel_promotion
+[RUN] manager_startup_com_worker_shutdown_drain
+[PASS] manager_startup_com_worker_shutdown_drain
+[RUN] manager_startup_com_worker_shutdown_active_queued
+[PASS] manager_startup_com_worker_shutdown_active_queued
+[RUN] manager_startup_com_worker_closed_idempotent_shutdown
+[PASS] manager_startup_com_worker_closed_idempotent_shutdown
+[RUN] manager_startup_definition_builder_exact_projection
+[PASS] manager_startup_definition_builder_exact_projection
+[RUN] manager_startup_definition_builder_quotes_home
+[PASS] manager_startup_definition_builder_quotes_home
+[RUN] manager_startup_definition_builder_drive_root_parent
+[PASS] manager_startup_definition_builder_drive_root_parent
+[RUN] manager_startup_definition_builder_suffix_validation
+[PASS] manager_startup_definition_builder_suffix_validation
+[RUN] manager_startup_definition_builder_path_validation
+[PASS] manager_startup_definition_builder_path_validation
+[RUN] manager_startup_definition_builder_suffix_isolation
+[PASS] manager_startup_definition_builder_suffix_isolation
+[RUN] manager_startup_definition_builder_current_identity
+[PASS] manager_startup_definition_builder_current_identity
+[RUN] manager_startup_ownership_projection_foreign_short_circuit
+[PASS] manager_startup_ownership_projection_foreign_short_circuit
+[RUN] manager_startup_ownership_projection_owned_requires_full_projection
+[PASS] manager_startup_ownership_projection_owned_requires_full_projection
+[RUN] manager_startup.duration.zero-equivalence
+[PASS] manager_startup.duration.zero-equivalence
+[RUN] manager_startup.duration.fixed-components
+[PASS] manager_startup.duration.fixed-components
+[RUN] manager_startup.duration.preserved-forms
+[PASS] manager_startup.duration.preserved-forms
+[RUN] manager_startup.duration.malformed
+[PASS] manager_startup.duration.malformed
+[RUN] manager_startup.duration.negative
+[PASS] manager_startup.duration.negative
+[RUN] manager_startup.duration.invalid-utf16
+[PASS] manager_startup.duration.invalid-utf16
+[RUN] manager_startup.duration.overflow
+[PASS] manager_startup.duration.overflow
+[RUN] manager_startup.handler.inspect
+[PASS] manager_startup.handler.inspect
+[RUN] manager_startup.handler.register
+[PASS] manager_startup.handler.register
+[RUN] manager_startup.handler.repair
+[PASS] manager_startup.handler.repair
+[RUN] manager_startup.handler.enablement
+[PASS] manager_startup.handler.enablement
+[RUN] manager_startup.handler.start
+[PASS] manager_startup.handler.start
+[RUN] manager_startup.handler.remove
+[PASS] manager_startup.handler.remove
+[RUN] manager_startup.handler.postconditions
+[PASS] manager_startup.handler.postconditions
+[RUN] manager_startup.handler.platform-failures
+[PASS] manager_startup.handler.platform-failures
+[RUN] manager_startup.handler.mutation-postconditions
+[PASS] manager_startup.handler.mutation-postconditions
+[RUN] manager_startup.handler.ownership-races
+[PASS] manager_startup.handler.ownership-races
+[RUN] manager_startup.handler.unknown-operation
+[PASS] manager_startup.handler.unknown-operation
+[RUN] manager_startup.handler.invalid-inputs
+[PASS] manager_startup.handler.invalid-inputs
+[RUN] manager_startup.com_raii.alias_query
+[PASS] manager_startup.com_raii.alias_query
+[RUN] manager_startup.com_raii.locked_safearray
+[PASS] manager_startup.com_raii.locked_safearray
+[RUN] manager_startup.com_raii.bstr
+[PASS] manager_startup.com_raii.bstr
+[RUN] manager_startup.com_raii.hresult
+[PASS] manager_startup.com_raii.hresult
+[RUN] manager_startup.service.shape
+[PASS] manager_startup.service.shape
+[RUN] manager_startup.service.inspect
+[PASS] manager_startup.service.inspect
+[RUN] manager_startup.service.mutations
+[PASS] manager_startup.service.mutations
+[RUN] manager_startup.service.null-platform
+[PASS] manager_startup.service.null-platform
+[RUN] manager_startup.service.shutdown
+[PASS] manager_startup.service.shutdown
+[RUN] manager_startup.service.context
+[PASS] manager_startup.service.context
+[RUN] manager_startup.service.platform-errors
+[PASS] manager_startup.service.platform-errors
+[RUN] manager_startup.service.invalid-suffix
+[PASS] manager_startup.service.invalid-suffix
+[RUN] manager_startup.service.active-cancellation
+[PASS] manager_startup.service.active-cancellation
+[RUN] manager_startup.service.queue-shutdown
+[PASS] manager_startup.service.queue-shutdown
+81/81 manager Windows infrastructure tests passed.
+<end of output>
+Test time =   2.54 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.WindowsInfrastructureTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.WindowsInfrastructureTests" time elapsed: 00:00:02
+----------------------------------------------------------
+
+69/147 Testing: ForgeConductor.Dashboard.DeadlineSchedulerTests
+69/147 Test: ForgeConductor.Dashboard.DeadlineSchedulerTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.DeadlineSchedulerTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.DeadlineSchedulerTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Windows dashboard deadline scheduler tests passed (109 assertions).
+<end of output>
+Test time =   1.02 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.DeadlineSchedulerTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.DeadlineSchedulerTests" time elapsed: 00:00:01
+----------------------------------------------------------
+
+40/147 Testing: ForgeConductor.Dashboard.StaticAssetStoreTests
+40/147 Test: ForgeConductor.Dashboard.StaticAssetStoreTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.StaticAssetStoreTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.StaticAssetStoreTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard static asset store tests passed: 78 assertions
+<end of output>
+Test time =   0.33 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.StaticAssetStoreTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.StaticAssetStoreTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+59/147 Testing: ForgeConductor.Dashboard.ConnectionSocketTests
+59/147 Test: ForgeConductor.Dashboard.ConnectionSocketTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionSocketTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionSocketTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard connection socket tests passed: 2909 assertions
+<end of output>
+Test time =   0.12 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionSocketTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionSocketTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+101/147 Testing: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests
+101/147 Test: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+PASS diagnostic_tail.order_crlf
+PASS diagnostic_tail.missing_empty
+PASS diagnostic_tail.data_root_anchor
+PASS diagnostic_tail.bounds
+PASS diagnostic_tail.scan_boundary
+PASS diagnostic_tail.encoding_integrity
+PASS diagnostic_tail.context_lock_wait
+PASS diagnostic_tail.reparse_hardlink
+PASS diagnostic_tail.case_sensitive_ancestor
+PASS diagnostic_tail.partial_append_lock
+SUMMARY passed=10 failed=0
+<end of output>
+Test time =   0.61 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/147 Testing: ForgeConductor.Manager.BrowserLauncherTests
+12/147 Test: ForgeConductor.Manager.BrowserLauncherTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.BrowserLauncherTests.exe" "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/forge-conductor.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.BrowserLauncherTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Windows dashboard browser launcher tests passed.
+<end of output>
+Test time =   0.15 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.BrowserLauncherTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.BrowserLauncherTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+60/147 Testing: ForgeConductor.Dashboard.ConnectionEventBridgeTests
+60/147 Test: ForgeConductor.Dashboard.ConnectionEventBridgeTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionEventBridgeTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionEventBridgeTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+DashboardConnectionEventBridgeTests passed: 13 cases, 131 assertions
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionEventBridgeTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionEventBridgeTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/147 Testing: ForgeConductor.Manager.ProtocolTests
+6/147 Test: ForgeConductor.Manager.ProtocolTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ProtocolTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProtocolTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+PASS type-and-prefix
+PASS request-round-trips
+PASS response-round-trips
+PASS settings-update-outcome-round-trips
+PASS optional-fields
+PASS timestamp-precision-bounds
+PASS hostile-framing-json
+PASS hostile-request
+PASS hostile-response
+PASS hostile-settings-update-outcome
+PASS invalid-models
+PASS exact-maximum
+PASS manager protocol codec assertions=446
+<end of output>
+Test time =   0.12 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProtocolTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProtocolTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+64/147 Testing: ForgeConductor.Dashboard.ConnectionResponseCatalogTests
+64/147 Test: ForgeConductor.Dashboard.ConnectionResponseCatalogTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionResponseCatalogTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionResponseCatalogTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard connection response catalog tests passed (51 assertions).
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionResponseCatalogTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionResponseCatalogTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/147 Testing: ForgeConductor.Manager.ProcessEnvironmentRealTests
+20/147 Test: ForgeConductor.Manager.ProcessEnvironmentRealTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/tests/manager-process-environment-real/Release/ForgeConductor.Manager.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProcessEnvironmentRealTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager process environment real-process tests passed
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProcessEnvironmentRealTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProcessEnvironmentRealTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+66/147 Testing: ForgeConductor.Dashboard.ConnectionRegistryTests
+66/147 Test: ForgeConductor.Dashboard.ConnectionRegistryTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionRegistryTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionRegistryTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+DashboardConnectionRegistryTests passed: 48 cases, 340 assertions
+<end of output>
+Test time =   0.20 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionRegistryTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionRegistryTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/147 Testing: ForgeConductor.Manager.LmStudioCompositionSupportTests
+22/147 Test: ForgeConductor.Manager.LmStudioCompositionSupportTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.LmStudioCompositionSupportTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.LmStudioCompositionSupportTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager LM Studio composition support tests passed.
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.LmStudioCompositionSupportTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.LmStudioCompositionSupportTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+71/147 Testing: ForgeConductor.Dashboard.HttpParserTests
+71/147 Test: ForgeConductor.Dashboard.HttpParserTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.HttpParserTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.HttpParserTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard HTTP parser tests passed (293 assertions).
+<end of output>
+Test time =   0.23 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.HttpParserTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.HttpParserTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/147 Testing: ForgeConductor.Manager.DashboardOperationalDataSourceTests
+15/147 Test: ForgeConductor.Manager.DashboardOperationalDataSourceTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.DashboardOperationalDataSourceTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.DashboardOperationalDataSourceTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager dashboard operational data source tests passed.
+<end of output>
+Test time =   0.40 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.DashboardOperationalDataSourceTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.DashboardOperationalDataSourceTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+79/147 Testing: ForgeConductor.Dashboard.StaticResourcePathTests
+79/147 Test: ForgeConductor.Dashboard.StaticResourcePathTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.StaticResourcePathTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.StaticResourcePathTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard static-resource path tests passed (1313 assertions).
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.StaticResourcePathTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.StaticResourcePathTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+33/147 Testing: ForgeConductor.Dashboard.SessionCloseRequestDecoderTests
+33/147 Test: ForgeConductor.Dashboard.SessionCloseRequestDecoderTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.SessionCloseRequestDecoderTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.SessionCloseRequestDecoderTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard session-close request decoder tests passed (634 assertions).
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.SessionCloseRequestDecoderTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.SessionCloseRequestDecoderTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/147 Testing: ForgeConductor.Manager.RequestDispatcherTests
+5/147 Test: ForgeConductor.Manager.RequestDispatcherTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.RequestDispatcherTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.RequestDispatcherTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager request dispatcher tests passed: 7 groups
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.RequestDispatcherTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.RequestDispatcherTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/147 Testing: ForgeConductor.Manager.NamedPipeRoundTripTests
+10/147 Test: ForgeConductor.Manager.NamedPipeRoundTripTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.NamedPipeRoundTripTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.NamedPipeRoundTripTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager named-pipe round-trip tests passed: 1 group
+<end of output>
+Test time =   0.45 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.NamedPipeRoundTripTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.NamedPipeRoundTripTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+78/147 Testing: ForgeConductor.Dashboard.HttpResponseTests
+78/147 Test: ForgeConductor.Dashboard.HttpResponseTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.HttpResponseTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.HttpResponseTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard HTTP response tests passed (377 assertions).
+<end of output>
+Test time =   0.24 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.HttpResponseTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.HttpResponseTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+29/147 Testing: ForgeConductor.Manager.WindowsRuntimeTests
+29/147 Test: ForgeConductor.Manager.WindowsRuntimeTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.WindowsRuntimeTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.WindowsRuntimeTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+PASS manager_windows_runtime.lifecycle
+PASS manager_windows_runtime.validation
+SUMMARY assertions=56 failed=0
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.WindowsRuntimeTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.WindowsRuntimeTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+47/147 Testing: ForgeConductor.Dashboard.WinsockRuntimeTests
+47/147 Test: ForgeConductor.Dashboard.WinsockRuntimeTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.WinsockRuntimeTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.WinsockRuntimeTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard Winsock runtime tests passed: 177 assertions
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.WinsockRuntimeTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.WinsockRuntimeTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+61/147 Testing: ForgeConductor.Dashboard.ConnectionRuntimeServicesTests
+61/147 Test: ForgeConductor.Dashboard.ConnectionRuntimeServicesTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionRuntimeServicesTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionRuntimeServicesTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard connection runtime services tests passed (14422 assertions).
+<end of output>
+Test time =   0.16 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionRuntimeServicesTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionRuntimeServicesTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+81/147 Testing: ForgeConductor.Dashboard.RequestPlannerTests
+81/147 Test: ForgeConductor.Dashboard.RequestPlannerTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.RequestPlannerTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.RequestPlannerTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard request planner tests passed (235 assertions).
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.RequestPlannerTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.RequestPlannerTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+46/147 Testing: ForgeConductor.Dashboard.LoopbackEndpointTests
+46/147 Test: ForgeConductor.Dashboard.LoopbackEndpointTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.LoopbackEndpointTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.LoopbackEndpointTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard loopback endpoint tests passed: 160 assertions
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.LoopbackEndpointTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.LoopbackEndpointTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+48/147 Testing: ForgeConductor.Dashboard.IoCompletionPortTests
+48/147 Test: ForgeConductor.Dashboard.IoCompletionPortTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.IoCompletionPortTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.IoCompletionPortTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard IOCP owner tests passed: 213 assertions
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.IoCompletionPortTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.IoCompletionPortTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+51/147 Testing: ForgeConductor.Dashboard.ListeningSocketTests
+51/147 Test: ForgeConductor.Dashboard.ListeningSocketTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ListeningSocketTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ListeningSocketTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard listening socket tests passed: 414 assertions
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ListeningSocketTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ListeningSocketTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+70/147 Testing: ForgeConductor.Dashboard.HandlerExecutorTests
+70/147 Test: ForgeConductor.Dashboard.HandlerExecutorTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.HandlerExecutorTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.HandlerExecutorTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Windows dashboard handler executor tests passed: 2248 assertions
+<end of output>
+Test time =   0.16 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.HandlerExecutorTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.HandlerExecutorTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+21/147 Testing: ForgeConductor.Manager.LmStudioReadScopeResolverTests
+21/147 Test: ForgeConductor.Manager.LmStudioReadScopeResolverTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.LmStudioReadScopeResolverTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.LmStudioReadScopeResolverTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager LM Studio read-scope resolver tests passed.
+<end of output>
+Test time =   0.31 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.LmStudioReadScopeResolverTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.LmStudioReadScopeResolverTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+72/147 Testing: ForgeConductor.Dashboard.HttpParserSessionTests
+72/147 Test: ForgeConductor.Dashboard.HttpParserSessionTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.HttpParserSessionTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.HttpParserSessionTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard HTTP parser session tests passed (1454 assertions).
+<end of output>
+Test time =   0.29 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.HttpParserSessionTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.HttpParserSessionTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+39/147 Testing: ForgeConductor.Dashboard.SseBroadcasterTests
+39/147 Test: ForgeConductor.Dashboard.SseBroadcasterTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.SseBroadcasterTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.SseBroadcasterTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard SSE broadcaster tests passed (520 assertions).
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.SseBroadcasterTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.SseBroadcasterTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/147 Testing: ForgeConductor.Manager.DoctorServiceTests
+17/147 Test: ForgeConductor.Manager.DoctorServiceTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.DoctorServiceTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.DoctorServiceTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager Doctor service tests passed.
+<end of output>
+Test time =   0.13 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.DoctorServiceTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.DoctorServiceTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+58/147 Testing: ForgeConductor.Dashboard.ListenerGenerationTests
+58/147 Test: ForgeConductor.Dashboard.ListenerGenerationTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ListenerGenerationTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ListenerGenerationTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard listener generation tests passed (306 assertions).
+<end of output>
+Test time =   0.25 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ListenerGenerationTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ListenerGenerationTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+57/147 Testing: ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests
+57/147 Test: ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard listener completion-key lease tests passed (17 assertions).
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ListenerCompletionKeyLeaseTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+52/147 Testing: ForgeConductor.Dashboard.WinsockExtensionsTests
+52/147 Test: ForgeConductor.Dashboard.WinsockExtensionsTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.WinsockExtensionsTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.WinsockExtensionsTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard Winsock extension tests passed: 396 assertions.
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.WinsockExtensionsTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.WinsockExtensionsTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+31/147 Testing: ForgeConductor.Dashboard.ApplicationErrorMapperTests
+31/147 Test: ForgeConductor.Dashboard.ApplicationErrorMapperTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ApplicationErrorMapperTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ApplicationErrorMapperTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard application error mapper tests passed (217 assertions).
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ApplicationErrorMapperTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ApplicationErrorMapperTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+35/147 Testing: ForgeConductor.Dashboard.ConnectionApplicationFactoryTests
+35/147 Test: ForgeConductor.Dashboard.ConnectionApplicationFactoryTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionApplicationFactoryTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionApplicationFactoryTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard connection application factory tests passed (37 assertions).
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionApplicationFactoryTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionApplicationFactoryTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+36/147 Testing: ForgeConductor.Dashboard.OperationalServiceTests
+36/147 Test: ForgeConductor.Dashboard.OperationalServiceTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.OperationalServiceTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.OperationalServiceTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard operational service tests passed: 789 assertions.
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.OperationalServiceTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.OperationalServiceTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/147 Testing: ForgeConductor.Dashboard.WindowsRuntimeTests
+28/147 Test: ForgeConductor.Dashboard.WindowsRuntimeTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.WindowsRuntimeTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.WindowsRuntimeTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Windows dashboard runtime tests passed (43 assertions).
+<end of output>
+Test time =   0.21 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.WindowsRuntimeTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.WindowsRuntimeTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/147 Testing: ForgeConductor.Manager.StartupTests
+3/147 Test: ForgeConductor.Manager.StartupTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.StartupTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.StartupTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager startup task policy tests passed: 7 groups
+<end of output>
+Test time =   0.18 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.StartupTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.StartupTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/147 Testing: ForgeConductor.Manager.ProcessArgumentsTests
+2/147 Test: ForgeConductor.Manager.ProcessArgumentsTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ProcessArgumentsTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProcessArgumentsTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager process argument tests passed: 5 groups
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProcessArgumentsTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProcessArgumentsTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+77/147 Testing: ForgeConductor.Dashboard.TelemetryJsonCodecTests
+77/147 Test: ForgeConductor.Dashboard.TelemetryJsonCodecTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.TelemetryJsonCodecTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.TelemetryJsonCodecTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard telemetry JSON codec tests passed (228 assertions).
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.TelemetryJsonCodecTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.TelemetryJsonCodecTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+76/147 Testing: ForgeConductor.Dashboard.ManagerJsonCodecTests
+76/147 Test: ForgeConductor.Dashboard.ManagerJsonCodecTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ManagerJsonCodecTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ManagerJsonCodecTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard manager JSON codec tests passed (558 assertions).
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ManagerJsonCodecTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ManagerJsonCodecTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+53/147 Testing: ForgeConductor.Dashboard.AcceptSlotTests
+53/147 Test: ForgeConductor.Dashboard.AcceptSlotTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.AcceptSlotTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.AcceptSlotTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard accept slot tests passed: 370 assertions
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.AcceptSlotTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.AcceptSlotTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/147 Testing: ForgeConductor.Manager.ProcessEnvironmentTests
+19/147 Test: ForgeConductor.Manager.ProcessEnvironmentTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ProcessEnvironmentTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProcessEnvironmentTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager process environment tests passed.
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProcessEnvironmentTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProcessEnvironmentTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+50/147 Testing: ForgeConductor.Dashboard.IocpCompletionRouterTests
+50/147 Test: ForgeConductor.Dashboard.IocpCompletionRouterTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.IocpCompletionRouterTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.IocpCompletionRouterTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard IOCP completion router tests passed (36 assertions).
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.IocpCompletionRouterTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.IocpCompletionRouterTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+44/147 Testing: ForgeConductor.Dashboard.DeadlineNotificationMailboxTests
+44/147 Test: ForgeConductor.Dashboard.DeadlineNotificationMailboxTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.DeadlineNotificationMailboxTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.DeadlineNotificationMailboxTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard deadline notification mailbox tests passed (63 assertions).
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.DeadlineNotificationMailboxTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.DeadlineNotificationMailboxTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+55/147 Testing: ForgeConductor.Dashboard.AcceptedConnectionHandoffTests
+55/147 Test: ForgeConductor.Dashboard.AcceptedConnectionHandoffTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.AcceptedConnectionHandoffTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.AcceptedConnectionHandoffTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard accepted-connection handoff tests passed with 65 assertions.
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.AcceptedConnectionHandoffTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.AcceptedConnectionHandoffTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/147 Testing: ForgeConductor.Manager.ProcessRestartSignalTests
+23/147 Test: ForgeConductor.Manager.ProcessRestartSignalTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ProcessRestartSignalTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProcessRestartSignalTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager process restart signal tests passed.
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProcessRestartSignalTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProcessRestartSignalTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+62/147 Testing: ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests
+62/147 Test: ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard fixed IOCP key authority tests passed (44 assertions).
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.FixedIocpKeyAuthorityTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+73/147 Testing: ForgeConductor.Dashboard.RequestPolicyTests
+73/147 Test: ForgeConductor.Dashboard.RequestPolicyTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.RequestPolicyTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.RequestPolicyTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard request policy tests passed.
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.RequestPolicyTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.RequestPolicyTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+54/147 Testing: ForgeConductor.Dashboard.AcceptSlotSetTests
+54/147 Test: ForgeConductor.Dashboard.AcceptSlotSetTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.AcceptSlotSetTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.AcceptSlotSetTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+DashboardAcceptSlotSetTests passed 24 cases with 380 assertions.
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.AcceptSlotSetTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.AcceptSlotSetTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+67/147 Testing: ForgeConductor.Dashboard.ShutdownDrainTests
+67/147 Test: ForgeConductor.Dashboard.ShutdownDrainTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ShutdownDrainTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ShutdownDrainTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+DashboardShutdownDrainTests passed: 10 cases, 202 assertions
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ShutdownDrainTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ShutdownDrainTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+41/147 Testing: ForgeConductor.Dashboard.WindowsStaticAssetBundleTests
+41/147 Test: ForgeConductor.Dashboard.WindowsStaticAssetBundleTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.WindowsStaticAssetBundleTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.WindowsStaticAssetBundleTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Windows dashboard static asset bundle tests passed (54 assertions).
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.WindowsStaticAssetBundleTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.WindowsStaticAssetBundleTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/147 Testing: ForgeConductor.Manager.ControllerTests
+7/147 Test: ForgeConductor.Manager.ControllerTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ControllerTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ControllerTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+PASS manager_controller.lifecycle
+PASS manager_controller.settings
+PASS manager_controller.atomicity
+PASS manager_controller.failures
+PASS manager_controller.shutdown
+PASS manager_controller.concurrency
+PASS manager_controller.invalid_config
+SUMMARY passed=7 failed=0
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ControllerTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ControllerTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+27/147 Testing: ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests
+27/147 Test: ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Windows dashboard listener-generation factory tests passed (49 assertions).
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.WindowsListenerGenerationFactoryTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+32/147 Testing: ForgeConductor.Dashboard.ApplicationJsonCodecTests
+32/147 Test: ForgeConductor.Dashboard.ApplicationJsonCodecTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ApplicationJsonCodecTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ApplicationJsonCodecTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard application JSON codec tests passed (139 assertions).
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ApplicationJsonCodecTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ApplicationJsonCodecTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/147 Testing: ForgeConductor.Manager.DeadlineMapperTests
+4/147 Test: ForgeConductor.Manager.DeadlineMapperTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.DeadlineMapperTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.DeadlineMapperTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager deadline mapper tests passed: 5 groups
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.DeadlineMapperTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.DeadlineMapperTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+63/147 Testing: ForgeConductor.Dashboard.HandlerOperationsTests
+63/147 Test: ForgeConductor.Dashboard.HandlerOperationsTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.HandlerOperationsTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.HandlerOperationsTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard handler operation tests passed (52 assertions).
+<end of output>
+Test time =   0.17 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.HandlerOperationsTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.HandlerOperationsTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+42/147 Testing: ForgeConductor.Dashboard.StaticShellContractTests
+42/147 Test: ForgeConductor.Dashboard.StaticShellContractTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.StaticShellContractTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.StaticShellContractTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard static shell contract tests passed (268 assertions).
+<end of output>
+Test time =   0.17 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.StaticShellContractTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.StaticShellContractTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+80/147 Testing: ForgeConductor.Dashboard.StreamQueryDecoderTests
+80/147 Test: ForgeConductor.Dashboard.StreamQueryDecoderTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.StreamQueryDecoderTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.StreamQueryDecoderTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard stream query decoder tests passed (593 assertions).
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.StreamQueryDecoderTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.StreamQueryDecoderTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+37/147 Testing: ForgeConductor.Dashboard.TelemetrySourceTests
+37/147 Test: ForgeConductor.Dashboard.TelemetrySourceTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.TelemetrySourceTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.TelemetrySourceTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard telemetry source tests passed (164 assertions).
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.TelemetrySourceTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.TelemetrySourceTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/147 Testing: ForgeConductor.Manager.CompositionSupportTests
+14/147 Test: ForgeConductor.Manager.CompositionSupportTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.CompositionSupportTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.CompositionSupportTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager composition support tests passed.
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.CompositionSupportTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.CompositionSupportTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+75/147 Testing: ForgeConductor.Dashboard.RouteCatalogTests
+75/147 Test: ForgeConductor.Dashboard.RouteCatalogTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.RouteCatalogTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.RouteCatalogTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard route catalog tests passed (1633 assertions).
+<end of output>
+Test time =   0.28 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.RouteCatalogTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.RouteCatalogTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+38/147 Testing: ForgeConductor.Dashboard.ResponseComposerTests
+38/147 Test: ForgeConductor.Dashboard.ResponseComposerTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ResponseComposerTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ResponseComposerTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard response composer tests passed (73 assertions).
+<end of output>
+Test time =   0.25 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ResponseComposerTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ResponseComposerTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+25/147 Testing: ForgeConductor.Manager.ProcessWorkerGroupTests
+25/147 Test: ForgeConductor.Manager.ProcessWorkerGroupTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ProcessWorkerGroupTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProcessWorkerGroupTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager process worker group tests passed.
+<end of output>
+Test time =   0.27 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProcessWorkerGroupTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProcessWorkerGroupTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+30/147 Testing: ForgeConductor.Dashboard.PreparedExchangeTests
+30/147 Test: ForgeConductor.Dashboard.PreparedExchangeTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.PreparedExchangeTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.PreparedExchangeTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard prepared exchange tests passed (163 assertions).
+<end of output>
+Test time =   0.29 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.PreparedExchangeTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.PreparedExchangeTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/147 Testing: ForgeConductor.Manager.UnavailableTelemetryServiceTests
+16/147 Test: ForgeConductor.Manager.UnavailableTelemetryServiceTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.UnavailableTelemetryServiceTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.UnavailableTelemetryServiceTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Unavailable telemetry service tests passed.
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.UnavailableTelemetryServiceTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.UnavailableTelemetryServiceTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+34/147 Testing: ForgeConductor.Dashboard.ConnectionApplicationTests
+34/147 Test: ForgeConductor.Dashboard.ConnectionApplicationTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Dashboard.ConnectionApplicationTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Dashboard.ConnectionApplicationTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Dashboard connection application tests passed (1739 assertions).
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Dashboard.ConnectionApplicationTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Dashboard.ConnectionApplicationTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/147 Testing: ForgeConductor.Manager.MaintenanceServiceTests
+18/147 Test: ForgeConductor.Manager.MaintenanceServiceTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.MaintenanceServiceTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.MaintenanceServiceTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager maintenance service tests passed.
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.MaintenanceServiceTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.MaintenanceServiceTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/147 Testing: ForgeConductor.Manager.ProcessHostTests
+11/147 Test: ForgeConductor.Manager.ProcessHostTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ProcessHostTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProcessHostTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager process host tests passed.
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProcessHostTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProcessHostTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/147 Testing: ForgeConductor.Manager.ProcessStopWatcherTests
+13/147 Test: ForgeConductor.Manager.ProcessStopWatcherTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.ProcessStopWatcherTests.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.ProcessStopWatcherTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+Manager process stop watcher tests passed.
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.ProcessStopWatcherTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.ProcessStopWatcherTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+1/147 Testing: ForgeConductor.Manager.CompositionLifecycleTests
+1/147 Test: ForgeConductor.Manager.CompositionLifecycleTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.CompositionLifecycleTests.exe" "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/tests/manager-composition-fixture/Release/ForgeConductor.Manager.exe" "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/forge-conductor.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.CompositionLifecycleTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+[PASS] manager_composition.real_process.lifecycle
+<end of output>
+Test time =   0.83 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.CompositionLifecycleTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.CompositionLifecycleTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/147 Testing: ForgeConductor.Manager.StartupLifecycleIntegrationTests
+9/147 Test: ForgeConductor.Manager.StartupLifecycleIntegrationTests
+Command: "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.StartupLifecycleIntegrationTests.exe" "D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/bin/Release/ForgeConductor.Manager.StartupLifecycleFixture.exe"
+Directory: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+"ForgeConductor.Manager.StartupLifecycleIntegrationTests" start time: Aug 30 15:39 Central Daylight Time
+Output:
+----------------------------------------------------------
+[PASS] manager_startup.real_machine.lifecycle
+<end of output>
+Test time =   0.31 sec
+----------------------------------------------------------
+Test Passed.
+"ForgeConductor.Manager.StartupLifecycleIntegrationTests" end time: Aug 30 15:39 Central Daylight Time
+"ForgeConductor.Manager.StartupLifecycleIntegrationTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Aug 30 15:39 Central Daylight Time
+
+G16 =  26.72 sec*proc
+
+T-CONT =   0.05 sec*proc
+
+T-DB =   0.92 sec*proc
+
+T-INTEGRATION =   3.66 sec*proc
+
+T-LMS =   0.43 sec*proc
+
+T-MGR =  25.59 sec*proc
+
+T-PARITY =   2.02 sec*proc
+
+T-PROC =   0.97 sec*proc
+
+T-SEC =  15.60 sec*proc
+
+T-STRESS =  21.50 sec*proc
+
+T-TEL =   0.96 sec*proc
+
+T-UNIT =  24.78 sec*proc
+
