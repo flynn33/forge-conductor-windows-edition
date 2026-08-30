@@ -95,6 +95,12 @@ Domain::Result<void> ManagerTransitionWorker::start() noexcept
 
         worker_ = std::jthread{
             [this](const std::stop_token cancellation) noexcept {
+                try {
+                    const std::lock_guard lock{lifecycleMutex_};
+                    workerThreadId_ = std::this_thread::get_id();
+                } catch (...) {
+                    return;
+                }
                 run(cancellation);
             }};
         lifecycle_ = Lifecycle::Running;
@@ -134,6 +140,22 @@ void ManagerTransitionWorker::shutdown() noexcept
     std::jthread claimedWorker;
     try {
         std::unique_lock lock{lifecycleMutex_};
+        if (lifecycle_ == Lifecycle::Stopped) {
+            return;
+        }
+        if (workerThreadId_ == std::this_thread::get_id()) {
+            // A controller callback can request process shutdown from this
+            // worker. It cannot join itself or wait for an external join
+            // owner that is necessarily waiting for the callback to return.
+            if (lifecycle_ == Lifecycle::Running) {
+                lifecycle_ = Lifecycle::Stopping;
+            }
+            restartSignal_.close();
+            if (worker_.joinable()) {
+                worker_.request_stop();
+            }
+            return;
+        }
         while (lifecycle_ == Lifecycle::Stopping && shutdownJoinOwned_) {
             lifecycleCondition_.wait(
                 lock,
@@ -147,11 +169,6 @@ void ManagerTransitionWorker::shutdown() noexcept
         restartSignal_.close();
         if (worker_.joinable()) {
             worker_.request_stop();
-            if (worker_.get_id() == std::this_thread::get_id()) {
-                // A dependency callback may request stop, but only a distinct
-                // process owner is allowed to claim and join this worker.
-                return;
-            }
             shutdownJoinOwned_ = true;
             claimedWorker = std::move(worker_);
         }

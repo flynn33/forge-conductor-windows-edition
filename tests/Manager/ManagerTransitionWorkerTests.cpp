@@ -25,6 +25,41 @@
 #include <utility>
 #include <vector>
 
+namespace ForgeConductor::Hosts::Manager::Detail {
+
+struct ManagerTransitionWorkerTestAccess final {
+    [[nodiscard]] static bool waitUntilExternalJoinOwned(
+        ManagerTransitionWorker& worker,
+        const std::chrono::milliseconds timeout) noexcept
+    {
+        try {
+            std::unique_lock lock{worker.lifecycleMutex_};
+            return worker.lifecycleCondition_.wait_for(
+                lock,
+                timeout,
+                [&worker]() noexcept { return worker.shutdownJoinOwned_; });
+        } catch (...) {
+            return false;
+        }
+    }
+
+    static void releaseExternalJoinWaitForFailedTestCleanup(
+        ManagerTransitionWorker& worker) noexcept
+    {
+        try {
+            {
+                const std::lock_guard lock{worker.lifecycleMutex_};
+                worker.shutdownJoinOwned_ = false;
+            }
+            worker.lifecycleCondition_.notify_all();
+        } catch (...) {
+            worker.lifecycleCondition_.notify_all();
+        }
+    }
+};
+
+} // namespace ForgeConductor::Hosts::Manager::Detail
+
 namespace ForgeConductor::Tests {
 namespace {
 
@@ -186,6 +221,15 @@ public:
             condition_.notify_all();
             condition_.wait(lock, [this]() noexcept { return !blockControl_; });
 
+            auto* const recursiveWorker = recursiveShutdownWorker_;
+            if (recursiveWorker != nullptr) {
+                lock.unlock();
+                recursiveWorker->shutdown();
+                lock.lock();
+                recursiveShutdownReturned_ = true;
+                condition_.notify_all();
+            }
+
             if (nextControlFailure_) {
                 auto failure = std::move(*nextControlFailure_);
                 nextControlFailure_.reset();
@@ -263,6 +307,31 @@ public:
         condition_.notify_all();
     }
 
+    void requestRecursiveShutdownFromControl(
+        Host::ManagerTransitionWorker& worker) noexcept
+    {
+        try {
+            const std::lock_guard lock{mutex_};
+            recursiveShutdownWorker_ = &worker;
+            recursiveShutdownReturned_ = false;
+        } catch (...) {
+        }
+    }
+
+    [[nodiscard]] bool waitUntilRecursiveShutdownReturns(
+        const std::chrono::milliseconds timeout = 2s) const noexcept
+    {
+        try {
+            std::unique_lock lock{mutex_};
+            return condition_.wait_for(
+                lock,
+                timeout,
+                [this]() noexcept { return recursiveShutdownReturned_; });
+        } catch (...) {
+            return false;
+        }
+    }
+
     [[nodiscard]] bool waitForControlCount(
         const std::size_t count,
         const std::chrono::milliseconds timeout = 2s) const
@@ -304,6 +373,8 @@ private:
     std::optional<Domain::Error> nextControlFailure_;
     bool blockControl_{};
     bool controlEntered_{};
+    Host::ManagerTransitionWorker* recursiveShutdownWorker_{};
+    bool recursiveShutdownReturned_{};
 };
 
 struct WorkerFixture final {
@@ -607,6 +678,54 @@ void beginShutdownSignalsWithoutJoining()
             "exact transition shutdown did not finish after quiescence");
 }
 
+void recursiveWorkerShutdownDoesNotWaitOnExternalJoinOwner()
+{
+    WorkerFixture fixture;
+    fixture.controller->blockControl();
+    fixture.controller->requestRecursiveShutdownFromControl(fixture.worker);
+    require(
+        fixture.signal.requestRestart() ==
+            Host::ManagerProcessRestartRequestResult::Published,
+        "recursive transition fixture could not publish its restart");
+    static_cast<void>(take(fixture.worker.start()));
+    require(
+        fixture.controller->waitUntilControlEntered(),
+        "recursive transition controller call was not entered");
+
+    std::atomic_bool externalShutdownEntered{};
+    std::atomic_bool externalShutdownReturned{};
+    std::jthread externalShutdown{[&] {
+        externalShutdownEntered.store(true, std::memory_order_release);
+        fixture.worker.shutdown();
+        externalShutdownReturned.store(true, std::memory_order_release);
+    }};
+
+    const bool externalJoinOwned =
+        Host::Detail::ManagerTransitionWorkerTestAccess::
+            waitUntilExternalJoinOwned(fixture.worker, 2s);
+    fixture.controller->releaseControl();
+    const bool recursiveShutdownReturned =
+        fixture.controller->waitUntilRecursiveShutdownReturns();
+    if (!recursiveShutdownReturned) {
+        Host::Detail::ManagerTransitionWorkerTestAccess::
+            releaseExternalJoinWaitForFailedTestCleanup(fixture.worker);
+    }
+    externalShutdown.join();
+
+    require(
+        externalShutdownEntered.load(std::memory_order_acquire),
+        "external transition shutdown did not enter");
+    require(
+        externalJoinOwned,
+        "external transition shutdown did not claim the join edge");
+    require(
+        recursiveShutdownReturned,
+        "worker-thread recursive shutdown waited on its external join owner");
+    require(
+        externalShutdownReturned.load(std::memory_order_acquire),
+        "external transition exact-join owner did not return");
+}
+
 void lifecycleAndTimingAdmissionAreBounded()
 {
     Host::ManagerProcessRestartSignal signal;
@@ -677,9 +796,11 @@ int main()
         std::cout << "PASS manager_transition.ownership\n";
         beginShutdownSignalsWithoutJoining();
         std::cout << "PASS manager_transition.nonblocking_stop\n";
+        recursiveWorkerShutdownDoesNotWaitOnExternalJoinOwner();
+        std::cout << "PASS manager_transition.recursive_shutdown\n";
         lifecycleAndTimingAdmissionAreBounded();
         std::cout << "PASS manager_transition.lifecycle\n";
-        std::cout << "SUMMARY passed=8 failed=0\n";
+        std::cout << "SUMMARY passed=9 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

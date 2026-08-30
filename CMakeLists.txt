@@ -168,12 +168,18 @@ target_include_directories(ForgeConductor.Manager.Startup PUBLIC
 add_library(ForgeConductor.Manager.Host STATIC
     src/Hosts/Manager/ManagerControllerClient.cpp
     src/Hosts/Manager/ManagerControllerClient.h
+    src/Hosts/Manager/ManagerMaintenanceWorker.cpp
+    src/Hosts/Manager/ManagerMaintenanceWorker.h
     src/Hosts/Manager/ManagerProcessHost.cpp
     src/Hosts/Manager/ManagerProcessHost.h
     src/Hosts/Manager/ManagerProcessRestartSignal.cpp
     src/Hosts/Manager/ManagerProcessRestartSignal.h
     src/Hosts/Manager/ManagerProcessStopSignal.cpp
     src/Hosts/Manager/ManagerProcessStopSignal.h
+    src/Hosts/Manager/ManagerProcessStopWatcher.cpp
+    src/Hosts/Manager/ManagerProcessStopWatcher.h
+    src/Hosts/Manager/ManagerProcessWorkerGroup.cpp
+    src/Hosts/Manager/ManagerProcessWorkerGroup.h
     src/Hosts/Manager/ManagerTransitionWorker.cpp
     src/Hosts/Manager/ManagerTransitionWorker.h
     src/Hosts/Manager/ManagerWatchdogPolicy.cpp
@@ -292,9 +298,12 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsContinuityDocumentCodec.cpp
     src/Infrastructure/Windows/WindowsCurrentUserIdentity.cpp
     src/Infrastructure/Windows/WindowsDashboardBearerToken.cpp
+    src/Infrastructure/Windows/WindowsDashboardBrowserLauncher.cpp
+    src/Infrastructure/Windows/WindowsDashboardUriActivationCommand.cpp
     src/Infrastructure/Windows/WindowsDiagnosticLogTailReader.cpp
     src/Infrastructure/Windows/WindowsDiagnosticSink.cpp
     src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp
+    src/Infrastructure/Windows/WindowsLMStudioCandidateSelector.cpp
     src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp
     src/Infrastructure/Windows/WindowsLMStudioEnvironment.cpp
     src/Infrastructure/Windows/WindowsLMStudioHostActivator.cpp
@@ -316,6 +325,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/Detail/BoundedSerialExecutor.cpp
     src/Infrastructure/Windows/Detail/CommandLineBuilder.cpp
     src/Infrastructure/Windows/Detail/CurrentUserPipeSecurity.cpp
+    src/Infrastructure/Windows/Detail/WindowsDashboardUriLaunchPlatform.cpp
     src/Infrastructure/Windows/Detail/EtwProvider.cpp
     src/Infrastructure/Windows/Detail/JobObject.cpp
     src/Infrastructure/Windows/Detail/ManagerPipeIo.cpp
@@ -406,6 +416,12 @@ add_library(ForgeConductor.Manager.Composition.Windows STATIC
     src/Composition/Windows/ManagerDashboardOperationalDataSource.h
     src/Composition/Windows/ManagerDoctorService.cpp
     src/Composition/Windows/ManagerDoctorService.h
+    src/Composition/Windows/ManagerLmStudioReadScopeResolver.cpp
+    src/Composition/Windows/ManagerLmStudioReadScopeResolver.h
+    src/Composition/Windows/ManagerMaintenanceService.cpp
+    src/Composition/Windows/ManagerMaintenanceService.h
+    src/Composition/Windows/ManagerProcessEnvironment.cpp
+    src/Composition/Windows/ManagerProcessEnvironment.h
     src/Composition/Windows/UnavailableTelemetryService.cpp
     src/Composition/Windows/UnavailableTelemetryService.h)
 add_library(ForgeConductor::Manager.Composition.Windows ALIAS
@@ -724,6 +740,44 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-UNIT;T-STRESS"
         TIMEOUT 60)
 
+    add_executable(ForgeConductor.Manager.BrowserLauncherTests
+        tests/Manager/WindowsDashboardBrowserLauncherTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.BrowserLauncherTests)
+    target_include_directories(
+        ForgeConductor.Manager.BrowserLauncherTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.BrowserLauncherTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+    add_dependencies(
+        ForgeConductor.Manager.BrowserLauncherTests
+        ForgeConductor.Cli)
+    add_test(
+        NAME ForgeConductor.Manager.BrowserLauncherTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.BrowserLauncherTests>
+            "$<TARGET_FILE:ForgeConductor.Cli>")
+    set_tests_properties(
+        ForgeConductor.Manager.BrowserLauncherTests PROPERTIES
+        LABELS "G16;T-INTEGRATION;T-MGR;T-SEC;T-STRESS;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.ProcessStopWatcherTests
+        tests/Manager/ManagerProcessStopWatcherTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Manager.ProcessStopWatcherTests)
+    target_link_libraries(
+        ForgeConductor.Manager.ProcessStopWatcherTests PRIVATE
+        ForgeConductor::Manager.Host)
+    add_test(
+        NAME ForgeConductor.Manager.ProcessStopWatcherTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProcessStopWatcherTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.ProcessStopWatcherTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Manager.CompositionSupportTests
         tests/Manager/ManagerCompositionSupportTests.cpp)
     forge_configure_native_target(
@@ -804,6 +858,105 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-INTEGRATION;T-UNIT"
         TIMEOUT 120)
 
+    add_executable(
+        ForgeConductor.Manager.MaintenanceServiceTests
+        tests/Composition/Windows/ManagerMaintenanceServiceTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.MaintenanceServiceTests)
+    target_include_directories(
+        ForgeConductor.Manager.MaintenanceServiceTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.MaintenanceServiceTests PRIVATE
+        ForgeConductor::Manager.Composition.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.MaintenanceServiceTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.MaintenanceServiceTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.MaintenanceServiceTests PROPERTIES
+        LABELS "G16;T-MGR;T-LMS;T-CONT;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(
+        ForgeConductor.Manager.ProcessEnvironmentTests
+        tests/Composition/Windows/ManagerProcessEnvironmentTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.ProcessEnvironmentTests)
+    target_include_directories(
+        ForgeConductor.Manager.ProcessEnvironmentTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.ProcessEnvironmentTests PRIVATE
+        ForgeConductor::Manager.Composition.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.ProcessEnvironmentTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProcessEnvironmentTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.ProcessEnvironmentTests PROPERTIES
+        LABELS "G16;T-MGR;T-INTEGRATION;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(
+        ForgeConductor.Manager.ProcessEnvironmentRealTests
+        tests/Composition/Windows/ManagerProcessEnvironmentRealTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.ProcessEnvironmentRealTests)
+    target_include_directories(
+        ForgeConductor.Manager.ProcessEnvironmentRealTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.ProcessEnvironmentRealTests PRIVATE
+        ForgeConductor::Manager.Composition.Windows)
+    set_target_properties(
+        ForgeConductor.Manager.ProcessEnvironmentRealTests PROPERTIES
+        OUTPUT_NAME "ForgeConductor.Manager"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG
+            "${CMAKE_BINARY_DIR}/tests/manager-process-environment-real/Debug"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE
+            "${CMAKE_BINARY_DIR}/tests/manager-process-environment-real/Release")
+    add_dependencies(
+        ForgeConductor.Manager.ProcessEnvironmentRealTests
+        ForgeConductor.Cli)
+    add_custom_command(
+        TARGET ForgeConductor.Manager.ProcessEnvironmentRealTests POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "$<TARGET_FILE:ForgeConductor.Cli>"
+            "$<TARGET_FILE_DIR:ForgeConductor.Manager.ProcessEnvironmentRealTests>/forge-conductor.exe"
+        COMMENT "Staging the exact sibling CLI for the real Manager process environment fixture"
+        VERBATIM)
+    add_test(
+        NAME ForgeConductor.Manager.ProcessEnvironmentRealTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Manager.ProcessEnvironmentRealTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.ProcessEnvironmentRealTests PROPERTIES
+        LABELS "G16;T-MGR;T-PROC;T-INTEGRATION"
+        TIMEOUT 60)
+
+    add_executable(
+        ForgeConductor.Manager.LmStudioReadScopeResolverTests
+        tests/Composition/Windows/ManagerLmStudioReadScopeResolverTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Manager.LmStudioReadScopeResolverTests)
+    target_include_directories(
+        ForgeConductor.Manager.LmStudioReadScopeResolverTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Manager.LmStudioReadScopeResolverTests PRIVATE
+        ForgeConductor::Manager.Composition.Windows)
+    add_test(
+        NAME ForgeConductor.Manager.LmStudioReadScopeResolverTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Manager.LmStudioReadScopeResolverTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.LmStudioReadScopeResolverTests PROPERTIES
+        LABELS "G16;T-MGR;T-LMS;T-INTEGRATION;T-UNIT"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Manager.ProcessRestartSignalTests
         tests/Manager/ManagerProcessRestartSignalTests.cpp)
     forge_configure_standard_target(
@@ -816,6 +969,36 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProcessRestartSignalTests>)
     set_tests_properties(
         ForgeConductor.Manager.ProcessRestartSignalTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.MaintenanceWorkerTests
+        tests/Manager/ManagerMaintenanceWorkerTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Manager.MaintenanceWorkerTests)
+    target_link_libraries(
+        ForgeConductor.Manager.MaintenanceWorkerTests PRIVATE
+        ForgeConductor::Manager.Host)
+    add_test(
+        NAME ForgeConductor.Manager.MaintenanceWorkerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.MaintenanceWorkerTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.MaintenanceWorkerTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT;T-STRESS"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.ProcessWorkerGroupTests
+        tests/Manager/ManagerProcessWorkerGroupTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.Manager.ProcessWorkerGroupTests)
+    target_link_libraries(
+        ForgeConductor.Manager.ProcessWorkerGroupTests PRIVATE
+        ForgeConductor::Manager.Host)
+    add_test(
+        NAME ForgeConductor.Manager.ProcessWorkerGroupTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProcessWorkerGroupTests>)
+    set_tests_properties(
+        ForgeConductor.Manager.ProcessWorkerGroupTests PROPERTIES
         LABELS "G16;T-MGR;T-UNIT;T-STRESS"
         TIMEOUT 60)
 

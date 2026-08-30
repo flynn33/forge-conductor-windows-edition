@@ -2,7 +2,7 @@
   "schema_version": 1,
   "run_id": "4f3c5e3f-81c5-4379-bb9d-fde6febd3d64",
   "created_at": "2026-08-25T03:20:26.6708637-05:00",
-  "updated_at": "2026-08-30T13:27:54.1968678+00:00",
+  "updated_at": "2026-08-30T17:17:02.7647342+00:00",
   "status": "in_progress",
   "active_role": "Implementer",
   "active_phase": "P16",
@@ -680,7 +680,16 @@
         ".forge-codex/state/decisions/P16-031-bounded-manager-doctor-and-windows-check-identities.md",
         ".forge-codex/state/evidence/P16/manager-doctor-service-checkpoint.json",
         ".forge-codex/state/commands/20260830T142505153Z-ca5cd4a3.json",
-        ".forge-codex/state/commands/20260830T142528307Z-ef50acc9.json"
+        ".forge-codex/state/commands/20260830T142528307Z-ef50acc9.json",
+        ".forge-codex/state/decisions/P16-032-lease-ordered-manager-process-environment-and-terminal-ownership.md",
+        ".forge-codex/state/decisions/P16-033-post-listener-browser-and-event-driven-stop-edge.md",
+        ".forge-codex/state/decisions/P16-034-authority-bound-lm-studio-selected-read-scope.md",
+        ".forge-codex/state/decisions/P16-035-capacity-one-manager-maintenance-reconciliation.md",
+        ".forge-codex/state/evidence/P16/manager-production-ownership-prerequisites-checkpoint.json",
+        ".forge-codex/state/commands/20260830T165116831Z-885aeb41.json",
+        ".forge-codex/state/commands/20260830T165303729Z-2f441ec2.json",
+        ".forge-codex/state/commands/20260830T165326310Z-97faef7a.json",
+        "scripts/validation/Test-P16ManagerOwnershipPrerequisitesCheckpoint.ps1"
       ]
     },
     {

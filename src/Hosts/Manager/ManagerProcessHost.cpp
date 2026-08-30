@@ -27,15 +27,20 @@ ManagerProcessHost::ManagerProcessHost(
     std::shared_ptr<ForgeConductor::Manager::ManagerRequestDispatcher>
         dispatcher,
     std::unique_ptr<Contracts::IManagerServer> server,
-    std::unique_ptr<IManagerTransitionWorker> transitionWorker)
+    std::unique_ptr<IManagerTransitionWorker> transitionWorker,
+    std::unique_ptr<Contracts::IDashboardBrowserLauncher> browserLauncher,
+    const ManagerProcessHostOptions options)
     : controller_{std::move(controller)},
       dispatcher_{std::move(dispatcher)},
       server_{std::move(server)},
-      transitionWorker_{std::move(transitionWorker)}
+      transitionWorker_{std::move(transitionWorker)},
+      browserLauncher_{std::move(browserLauncher)},
+      options_{options}
 {
-    if (!controller_ || !dispatcher_ || !server_ || !transitionWorker_) {
+    if (!controller_ || !dispatcher_ || !server_ || !transitionWorker_ ||
+        !browserLauncher_) {
         throw std::invalid_argument{
-            "The manager process host requires a controller, dispatcher, server, and transition worker."};
+            "The manager process host requires a controller, dispatcher, server, transition worker, and browser launcher."};
     }
 }
 
@@ -107,6 +112,19 @@ Domain::Result<void> ManagerProcessHost::run(
             return Domain::Result<void>::failure(std::move(error));
         }
 
+        const auto& initializedStatus = initialized.value();
+        if (options_.openBrowserOverride ||
+            initializedStatus.openBrowserOnStart) {
+            // macOS treats browser activation as a best-effort presentation
+            // side effect after the listener is live. The Windows adapter
+            // admits bounded asynchronous work and records its typed result,
+            // while Manager startup proceeds without waiting on the Shell.
+            static_cast<void>(browserLauncher_->launch(
+                initializedStatus.dashboardHost,
+                initializedStatus.dashboardPort,
+                ownedStartupContext));
+        }
+
         auto transitionStarted = transitionWorker_->start();
         if (!transitionStarted) {
             auto error = std::move(transitionStarted).error();
@@ -173,6 +191,7 @@ void ManagerProcessHost::completeRun() noexcept
         }
         if (finalize) {
             server_->shutdown();
+            browserLauncher_->shutdown();
             transitionWorker_->shutdown();
             dispatcher_->shutdown();
         }
@@ -218,6 +237,11 @@ void ManagerProcessHost::shutdown() noexcept
         // cancellation; the run thread retains the exact worker join and final
         // dispatcher/controller closure.
         server_->shutdown();
+        if (finalize) {
+            browserLauncher_->shutdown();
+        } else {
+            browserLauncher_->beginShutdown();
+        }
         if (finalize) {
             transitionWorker_->shutdown();
         } else {

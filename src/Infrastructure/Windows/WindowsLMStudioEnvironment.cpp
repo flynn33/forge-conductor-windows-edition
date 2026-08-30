@@ -23,7 +23,6 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -95,15 +94,6 @@ private:
     return std::find(values.begin(), values.end(), candidate) != values.end();
 }
 
-[[nodiscard]] bool isCandidateLocalReadError(const Domain::Error& error) noexcept
-{
-    return error.code == Domain::ErrorCodes::RecordNotFound ||
-           error.code == Domain::ErrorCodes::Unauthorized ||
-           error.code == Domain::ErrorCodes::PathOutsideAuthority ||
-           error.code == Domain::ErrorCodes::InvalidRequest ||
-           error.code == Domain::ErrorCodes::PayloadTooLarge;
-}
-
 [[nodiscard]] std::string appendDetail(std::string detail, const std::string_view addition)
 {
     if (addition.empty()) {
@@ -128,25 +118,6 @@ private:
 [[nodiscard]] Domain::Result<std::wstring> widePath(const Domain::PathText& path) noexcept
 {
     return Detail::strictUtf8ToUtf16(path.value());
-}
-
-[[nodiscard]] std::optional<Domain::PathText> parentPath(
-    const Domain::PathText& child) noexcept
-{
-    try {
-        auto converted = widePath(child);
-        if (!converted) {
-            return std::nullopt;
-        }
-        const auto parent = std::filesystem::path{converted.value()}.parent_path();
-        if (parent.empty()) {
-            return std::nullopt;
-        }
-        auto encoded = pathText(parent.native());
-        return encoded ? std::optional<Domain::PathText>{std::move(encoded).value()} : std::nullopt;
-    } catch (...) {
-        return std::nullopt;
-    }
 }
 
 [[nodiscard]] std::optional<std::wstring> environmentPath(const wchar_t* const name) noexcept
@@ -464,135 +435,6 @@ private:
         std::nullopt,
         false,
         std::move(detail)};
-}
-
-[[nodiscard]] int sourcePriority(const Domain::LMStudioDiscoverySource source) noexcept
-{
-    switch (source) {
-    case Domain::LMStudioDiscoverySource::ExplicitConfiguration:
-        return 0;
-    case Domain::LMStudioDiscoverySource::InstalledApplication:
-        return 1;
-    case Domain::LMStudioDiscoverySource::KnownUserLocation:
-        return 2;
-    case Domain::LMStudioDiscoverySource::RunningProcess:
-        return 3;
-    }
-    return 4;
-}
-
-struct ConfigurationValidation final {
-    bool valid{};
-    std::string detail;
-};
-
-[[nodiscard]] Domain::Result<ConfigurationValidation> parseConfiguration(
-    const std::vector<std::byte>& bytes,
-    const std::size_t maximumDepth) noexcept
-{
-    try {
-        if (bytes.empty()) {
-            return Domain::Result<ConfigurationValidation>::success(
-                ConfigurationValidation{false, "The configuration file is empty."});
-        }
-        const std::string text{
-            reinterpret_cast<const char*>(bytes.data()), bytes.size()};
-        std::vector<std::unordered_set<std::string>> objectKeys;
-        bool rejectedDepth{};
-        bool rejectedDuplicate{};
-        const auto callback = [&](const int depth, const Json::parse_event_t event, Json& value) {
-            if (depth < 0 || static_cast<std::size_t>(depth) > maximumDepth) {
-                rejectedDepth = true;
-                return false;
-            }
-            if (event == Json::parse_event_t::object_start) {
-                objectKeys.emplace_back();
-            } else if (event == Json::parse_event_t::key) {
-                if (objectKeys.empty() ||
-                    !objectKeys.back().insert(value.get<std::string>()).second) {
-                    rejectedDuplicate = true;
-                    return false;
-                }
-            } else if (event == Json::parse_event_t::object_end && !objectKeys.empty()) {
-                objectKeys.pop_back();
-            }
-            return true;
-        };
-        const auto document = Json::parse(text, callback, false, false);
-        if (rejectedDepth) {
-            return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-                false, "The configuration JSON exceeds the bounded nesting depth."});
-        }
-        if (rejectedDuplicate) {
-            return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-                false, "The configuration JSON contains a duplicate object key."});
-        }
-        if (document.is_discarded()) {
-            return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-                false, "The configuration file is not valid strict JSON."});
-        }
-        if (!document.is_object()) {
-            return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-                false, "The configuration JSON root is not an object."});
-        }
-        const auto servers = document.find("mcpServers");
-        if (servers != document.end()) {
-            if (!servers->is_object()) {
-                return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-                    false, "The configuration mcpServers member is not an object."});
-            }
-            for (const auto& [name, server] : servers->items()) {
-                static_cast<void>(name);
-                if (!server.is_object()) {
-                    return Domain::Result<ConfigurationValidation>::success(
-                        ConfigurationValidation{
-                            false, "An MCP server registration is not a JSON object."});
-                }
-            }
-        }
-        return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-            true, "The configuration file parsed as bounded strict JSON."});
-    } catch (...) {
-        return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-            false, "The configuration file could not be parsed as strict JSON."});
-    }
-}
-
-[[nodiscard]] Domain::Result<ConfigurationValidation> validateConfiguration(
-    Contracts::IWorkspaceAuthority& workspaceAuthority,
-    Contracts::IFileSystem& fileSystem,
-    const Domain::PathText& candidate,
-    const Contracts::WorkspaceAuthority& readAuthority,
-    const WindowsLMStudioEnvironmentOptions& options,
-    const Domain::OperationContext& context)
-{
-    auto authorized = workspaceAuthority.authorize(
-        readAuthority,
-        Domain::PathAuthorizationRequest{
-            candidate, std::nullopt, Domain::FileAccess::Read, false},
-        context);
-    if (!authorized) {
-        if (!isCandidateLocalReadError(authorized.error())) {
-            return Domain::Result<ConfigurationValidation>::failure(
-                std::move(authorized).error());
-        }
-        return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-            false,
-            "Read authority rejected the configuration candidate (" +
-                authorized.error().code + ")."});
-    }
-    auto content = fileSystem.readFile(
-        authorized.value(), options.maximumConfigurationBytes, context);
-    if (!content) {
-        if (!isCandidateLocalReadError(content.error())) {
-            return Domain::Result<ConfigurationValidation>::failure(
-                std::move(content).error());
-        }
-        return Domain::Result<ConfigurationValidation>::success(ConfigurationValidation{
-            false,
-            "The configuration candidate could not be read (" + content.error().code + ")."});
-    }
-    return parseConfiguration(content.value(), options.maximumJsonDepth);
 }
 
 [[nodiscard]] bool validConnectionHealth(
@@ -1041,10 +883,15 @@ public:
         Contracts::IFileSystem& fileSystem,
         IWindowsLMStudioDiscoverySource& discoverySource,
         WindowsLMStudioEnvironmentOptions options)
-        : workspaceAuthority_{workspaceAuthority},
-          fileSystem_{fileSystem},
-          discoverySource_{discoverySource},
-          options_{std::move(options)}
+        : discoverySource_{discoverySource},
+          options_{std::move(options)},
+          candidateSelector_{
+              workspaceAuthority,
+              fileSystem,
+              WindowsLMStudioCandidateSelectorOptions{
+                  options_.maximumCandidates,
+                  options_.maximumConfigurationBytes,
+                  options_.maximumJsonDepth}}
     {
         if (options_.maximumCandidates == 0U || options_.maximumCandidates > 256U ||
             options_.maximumConfigurationBytes == 0U ||
@@ -1100,78 +947,14 @@ public:
             for (auto& candidate : discovered.value()) {
                 candidates.emplace_back(std::move(candidate));
             }
-            if (candidates.size() > options_.maximumCandidates) {
+            auto selection = candidateSelector_.select(
+                std::move(candidates), readAuthority, context);
+            if (!selection) {
                 return Domain::Result<Domain::LMStudioEnvironmentStatus>::failure(
-                    Domain::makeError(
-                        Domain::ErrorCodes::LimitExceeded,
-                        "LM Studio environment inspection exceeded its candidate bound."));
+                    std::move(selection).error());
             }
-            std::stable_sort(
-                candidates.begin(), candidates.end(), [](const auto& left, const auto& right) {
-                    return sourcePriority(left.source) < sourcePriority(right.source);
-                });
-
-            Domain::LMStudioEnvironmentStatus status;
-            status.discoveryEvidence.reserve(candidates.size());
-            for (const auto& candidate : candidates) {
-                auto active = Detail::validateOperationContext(
-                    context,
-                    std::chrono::steady_clock::now(),
-                    "continue LM Studio environment inspection");
-                if (!active) {
-                    return Domain::Result<Domain::LMStudioEnvironmentStatus>::failure(
-                        std::move(active).error());
-                }
-                bool valid = candidate.valid;
-                bool selected{};
-                std::string detail = candidate.detail;
-                const std::size_t resourceCount =
-                    static_cast<std::size_t>(candidate.applicationExecutable.has_value()) +
-                    static_cast<std::size_t>(candidate.configurationPath.has_value());
-                if (candidate.valid && resourceCount != 1U) {
-                    valid = false;
-                    detail = appendDetail(
-                        std::move(detail),
-                        "The source candidate did not identify exactly one resource.");
-                }
-                if (candidate.configurationPath && candidate.valid && resourceCount == 1U) {
-                    auto validation = validateConfiguration(
-                        workspaceAuthority_,
-                        fileSystem_,
-                        *candidate.configurationPath,
-                        readAuthority,
-                        options_,
-                        context);
-                    if (!validation) {
-                        return Domain::Result<Domain::LMStudioEnvironmentStatus>::failure(
-                            std::move(validation).error());
-                    }
-                    valid = validation.value().valid;
-                    detail = appendDetail(
-                        std::move(detail), validation.value().detail);
-                    if (valid && !status.configurationPath) {
-                        status.configurationPath = candidate.configurationPath;
-                        selected = true;
-                    }
-                }
-                if (candidate.applicationExecutable && valid &&
-                    !status.applicationExecutable) {
-                    status.applicationExecutable = candidate.applicationExecutable;
-                    status.installationRoot = candidate.installationRoot ?
-                        candidate.installationRoot : parentPath(*candidate.applicationExecutable);
-                    status.version = candidate.version;
-                    selected = true;
-                }
-                status.discoveryEvidence.emplace_back(Domain::LMStudioDiscoveryEvidence{
-                    candidate.source,
-                    candidate.evidencePath,
-                    valid,
-                    selected,
-                    std::move(detail)});
-            }
-            status.lmStudioPresent = status.applicationExecutable.has_value();
             return Domain::Result<Domain::LMStudioEnvironmentStatus>::success(
-                std::move(status));
+                selection.value().status());
         } catch (...) {
             return Domain::Result<Domain::LMStudioEnvironmentStatus>::failure(
                 Domain::makeError(
@@ -1224,10 +1007,9 @@ public:
     void shutdown() noexcept { executor_.shutdown(); }
 
 private:
-    Contracts::IWorkspaceAuthority& workspaceAuthority_;
-    Contracts::IFileSystem& fileSystem_;
     IWindowsLMStudioDiscoverySource& discoverySource_;
     WindowsLMStudioEnvironmentOptions options_;
+    WindowsLMStudioCandidateSelector candidateSelector_;
     Detail::BoundedSerialExecutor executor_;
     Domain::LMStudioConnectionHealth cachedHealth_;
     std::optional<Domain::Error> constructionError_;

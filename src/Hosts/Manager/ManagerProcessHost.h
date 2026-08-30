@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ForgeConductor/Contracts/IDashboardBrowserLauncher.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagerServices.h"
 #include "ForgeConductor/Domain/OperationContext.h"
@@ -13,10 +14,17 @@ namespace ForgeConductor::Hosts::Manager {
 
 class IManagerTransitionWorker;
 
-// Owns controller initialization, the transition worker, and the blocking
-// manager ingress lifetime without constructing platform services. The
-// composition root retains the instance lease outside this class so it can
-// release that lease after every injected owner has shut down.
+struct ManagerProcessHostOptions final {
+    // Explicit process argument override. The initialized Manager setting is
+    // evaluated independently and the two values use OR semantics.
+    bool openBrowserOverride{};
+};
+
+// Owns controller initialization, the one-shot browser startup adapter, the
+// transition worker, and the blocking manager ingress lifetime without
+// constructing platform services. The composition root retains the instance
+// lease outside this class so it can release that lease after every injected
+// owner has shut down.
 class ManagerProcessHost final {
 public:
     ManagerProcessHost(
@@ -24,7 +32,9 @@ public:
         std::shared_ptr<ForgeConductor::Manager::ManagerRequestDispatcher>
             dispatcher,
         std::unique_ptr<Contracts::IManagerServer> server,
-        std::unique_ptr<IManagerTransitionWorker> transitionWorker);
+        std::unique_ptr<IManagerTransitionWorker> transitionWorker,
+        std::unique_ptr<Contracts::IDashboardBrowserLauncher> browserLauncher,
+        ManagerProcessHostOptions options = {});
     ~ManagerProcessHost() noexcept;
 
     ManagerProcessHost(const ManagerProcessHost&) = delete;
@@ -36,11 +46,11 @@ public:
         const Domain::OperationContext& startupContext,
         const Domain::OperationContext& ingressContext) noexcept;
 
-    // Idempotently closes ingress and requests nonblocking transition-worker
-    // and dispatcher cancellation. If a run is active, that run thread exact-
-    // joins the worker before dispatcher shutdown closes the controller,
-    // runtime, and store. The owner must keep this object alive until run
-    // returns.
+    // Idempotently closes ingress and requests nonblocking browser,
+    // transition-worker, and dispatcher cancellation. If a run is active,
+    // that run thread exact-joins the browser and workers before dispatcher
+    // shutdown closes the controller, runtime, and store. The owner must keep
+    // this object alive until run returns.
     void shutdown() noexcept;
 
 private:
@@ -64,6 +74,8 @@ private:
         dispatcher_;
     std::unique_ptr<Contracts::IManagerServer> server_;
     std::unique_ptr<IManagerTransitionWorker> transitionWorker_;
+    std::unique_ptr<Contracts::IDashboardBrowserLauncher> browserLauncher_;
+    const ManagerProcessHostOptions options_;
 
     std::mutex stateMutex_;
     std::stop_source startupStopSource_;

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "20260830T171723894Z-555c5aac",
+  "phase": "P16",
+  "role": "Validator",
+  "command": "$global:LASTEXITCODE = 0\n& scripts\\validation\\Test-P16ManagerOwnershipPrerequisitesCheckpoint.ps1 -WorkspaceRoot (Resolve-Path '.').Path",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "start_utc": "2026-08-30T17:17:23.9043034+00:00",
+  "end_utc": "2026-08-30T17:17:33.3581814+00:00",
+  "exit_code": 0,
+  "exit_code_source": "sidecar",
+  "timed_out": false,
+  "maximum_output_bytes_per_stream": 67108864,
+  "output_limit_exceeded": false,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout": ".forge-codex\\state\\commands\\20260830T171723894Z-555c5aac.stdout.txt",
+  "stderr": ".forge-codex\\state\\commands\\20260830T171723894Z-555c5aac.stderr.txt",
+  "stdout_sha256": "5f8932945db20b52c874f64738edf40dd4c31f6341b69b18706220a707d21b90",
+  "stderr_sha256": "06a974d10f3afa97a6ed8cc170def17eb1b85b2707e68edb4b05f4fdcc724285"
+}

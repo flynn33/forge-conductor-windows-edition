@@ -1,0 +1,715 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.02 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.02 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.02 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.16 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.17 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+    Start 16: ForgeConductor.Manager.MaintenanceServiceTests
+    Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+    Start 11: ForgeConductor.Manager.ProcessStopWatcherTests
+    Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Start 22: ForgeConductor.Manager.ProcessWorkerGroupTests
+1/7 Test #16: ForgeConductor.Manager.MaintenanceServiceTests ...   Passed    0.01 sec
+2/7 Test #11: ForgeConductor.Manager.ProcessStopWatcherTests ...   Passed    0.01 sec
+3/7 Test #22: ForgeConductor.Manager.ProcessWorkerGroupTests ...   Passed    0.01 sec
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.02 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+    Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+4/7 Test  #9: ForgeConductor.Manager.ProcessHostTests ..........   Passed    0.01 sec
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.16 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.16 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+    Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.14 sec
+    Start 10: ForgeConductor.Manager.BrowserLauncherTests
+5/7 Test #10: ForgeConductor.Manager.BrowserLauncherTests ......   Passed    0.15 sec
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.14 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.57 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.15 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.55 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.60 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.14 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.14 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.14 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.57 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.14 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.14 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.60 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.55 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.11 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.57 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.57 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.57 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.14 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.54 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.13 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Start 21: ForgeConductor.Manager.MaintenanceWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.60 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+6/7 Test #21: ForgeConductor.Manager.MaintenanceWorkerTests ....   Passed    2.12 sec
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.57 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.56 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.59 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+    Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.55 sec
+    Start 23: ForgeConductor.Manager.TransitionWorkerTests
+7/7 Test #23: ForgeConductor.Manager.TransitionWorkerTests .....   Passed    2.58 sec
+
+100% tests passed out of 7
+
+Label Time Summary:
+G16              =   4.89 sec*proc (7 tests)
+T-CONT           =   0.01 sec*proc (1 test)
+T-INTEGRATION    =   0.15 sec*proc (1 test)
+T-LMS            =   0.01 sec*proc (1 test)
+T-MGR            =   4.89 sec*proc (7 tests)
+T-SEC            =   0.15 sec*proc (1 test)
+T-STRESS         =   4.88 sec*proc (6 tests)
+T-UNIT           =   4.89 sec*proc (7 tests)
+
+Total Test time (real) = 128.80 sec

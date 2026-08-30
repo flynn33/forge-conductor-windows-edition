@@ -80,6 +80,11 @@ public:
         blockInitialization_ = true;
     }
 
+    void setOpenBrowserOnStart(const bool value) noexcept
+    {
+        openBrowserOnStart_ = value;
+    }
+
     [[nodiscard]] bool waitUntilInitialization(
         const std::chrono::milliseconds timeout)
     {
@@ -131,7 +136,7 @@ public:
                 std::nullopt,
                 true,
                 3s,
-                false,
+                openBrowserOnStart_,
                 "127.0.0.1",
                 7788U,
                 8s,
@@ -217,6 +222,189 @@ private:
     bool blockInitialization_{};
     bool initializationEntered_{};
     bool shutdown_{};
+    bool openBrowserOnStart_{};
+};
+
+class RecordingBrowserLauncher final
+    : public Contracts::IDashboardBrowserLauncher {
+public:
+    explicit RecordingBrowserLauncher(std::shared_ptr<EventLog> events)
+        : events_{std::move(events)}
+    {
+    }
+
+    void failWith(Domain::Error error)
+    {
+        const std::lock_guard lock{mutex_};
+        failure_ = std::move(error);
+    }
+
+    [[nodiscard]] Domain::Result<void> launch(
+        const std::string_view host,
+        const std::uint16_t port,
+        const Domain::OperationContext& context) noexcept override
+    {
+        std::optional<Domain::Error> failure;
+        {
+            const std::lock_guard lock{mutex_};
+            ++launchCalls_;
+            host_ = host;
+            port_ = port;
+            cancellationObserved_ = context.isCancellationRequested();
+            failure = failure_;
+        }
+        events_->append("browser.launch");
+        if (failure) {
+            return Domain::Result<void>::failure(std::move(*failure));
+        }
+        return Domain::Result<void>::success();
+    }
+
+    void beginShutdown() noexcept override
+    {
+        bool record = false;
+        {
+            const std::lock_guard lock{mutex_};
+            if (!shutdownBegun_) {
+                shutdownBegun_ = true;
+                ++beginShutdownCalls_;
+                record = true;
+            }
+        }
+        if (record) {
+            events_->append("browser.begin_shutdown");
+        }
+    }
+
+    void blockShutdown()
+    {
+        const std::lock_guard lock{mutex_};
+        blockShutdown_ = true;
+    }
+
+    [[nodiscard]] bool waitUntilShutdown(
+        const std::chrono::milliseconds timeout)
+    {
+        std::unique_lock lock{mutex_};
+        return changed_.wait_for(
+            lock, timeout, [this]() noexcept { return shutdownEntered_; });
+    }
+
+    void releaseShutdown()
+    {
+        {
+            const std::lock_guard lock{mutex_};
+            shutdownReleased_ = true;
+        }
+        changed_.notify_all();
+    }
+
+    void shutdown() noexcept override
+    {
+        beginShutdown();
+        bool record = false;
+        {
+            std::unique_lock lock{mutex_};
+            if (shutdownInProgress_) {
+                changed_.wait(lock, [this]() noexcept { return shutdown_; });
+                return;
+            }
+            if (!shutdown_) {
+                shutdownInProgress_ = true;
+                shutdownEntered_ = true;
+                changed_.notify_all();
+                if (blockShutdown_) {
+                    changed_.wait(
+                        lock,
+                        [this]() noexcept { return shutdownReleased_; });
+                }
+                shutdown_ = true;
+                shutdownInProgress_ = false;
+                ++shutdownCalls_;
+                record = true;
+            }
+        }
+        if (record) {
+            events_->append("browser.shutdown");
+        }
+        changed_.notify_all();
+    }
+
+    [[nodiscard]] std::size_t launchCalls() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return launchCalls_;
+    }
+
+    [[nodiscard]] std::size_t shutdownCalls() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return shutdownCalls_;
+    }
+
+    [[nodiscard]] std::size_t beginShutdownCalls() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return beginShutdownCalls_;
+    }
+
+    [[nodiscard]] std::string host() const
+    {
+        const std::lock_guard lock{mutex_};
+        return host_;
+    }
+
+    [[nodiscard]] std::uint16_t port() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return port_;
+    }
+
+    [[nodiscard]] bool cancellationObserved() const noexcept
+    {
+        const std::lock_guard lock{mutex_};
+        return cancellationObserved_;
+    }
+
+private:
+    std::shared_ptr<EventLog> events_;
+    mutable std::mutex mutex_;
+    std::condition_variable changed_;
+    std::optional<Domain::Error> failure_;
+    std::string host_;
+    std::size_t launchCalls_{};
+    std::size_t beginShutdownCalls_{};
+    std::size_t shutdownCalls_{};
+    std::uint16_t port_{};
+    bool cancellationObserved_{};
+    bool blockShutdown_{};
+    bool shutdownBegun_{};
+    bool shutdownEntered_{};
+    bool shutdownInProgress_{};
+    bool shutdownReleased_{};
+    bool shutdown_{};
+};
+
+class RecordingBrowserLauncherRelease final {
+public:
+    explicit RecordingBrowserLauncherRelease(
+        RecordingBrowserLauncher& launcher) noexcept
+        : launcher_{launcher}
+    {
+    }
+
+    ~RecordingBrowserLauncherRelease() noexcept
+    {
+        launcher_.releaseShutdown();
+    }
+
+    RecordingBrowserLauncherRelease(
+        const RecordingBrowserLauncherRelease&) = delete;
+    RecordingBrowserLauncherRelease& operator=(
+        const RecordingBrowserLauncherRelease&) = delete;
+
+private:
+    RecordingBrowserLauncher& launcher_;
 };
 
 enum class ServerBehavior {
@@ -571,7 +759,9 @@ void requireError(
 }
 
 struct Fixture final {
-    Fixture(const ServerBehavior behavior)
+    Fixture(
+        const ServerBehavior behavior,
+        const Host::ManagerProcessHostOptions options = {})
         : events{std::make_shared<EventLog>()},
           clock{std::make_shared<FakeClock>()},
           controller{std::make_shared<RecordingController>(events)},
@@ -581,11 +771,15 @@ struct Fixture final {
           serverObserver{server.get()},
           transitionWorker{std::make_unique<RecordingTransitionWorker>(events)},
           transitionWorkerObserver{transitionWorker.get()},
+          browserLauncher{std::make_unique<RecordingBrowserLauncher>(events)},
+          browserLauncherObserver{browserLauncher.get()},
           host{
               controller,
               dispatcher,
               std::move(server),
-              std::move(transitionWorker)}
+              std::move(transitionWorker),
+              std::move(browserLauncher),
+              options}
     {
     }
 
@@ -597,8 +791,76 @@ struct Fixture final {
     RecordingServer* serverObserver;
     std::unique_ptr<RecordingTransitionWorker> transitionWorker;
     RecordingTransitionWorker* transitionWorkerObserver;
+    std::unique_ptr<RecordingBrowserLauncher> browserLauncher;
+    RecordingBrowserLauncher* browserLauncherObserver;
     Host::ManagerProcessHost host;
 };
+
+void browserLaunchUsesConfigurationOrExplicitOverrideOnce()
+{
+    Fixture disabled{ServerBehavior::ReturnSuccess};
+    require(disabled.host.run(context(), context()).hasValue(),
+            "disabled browser host run");
+    require(disabled.browserLauncherObserver->launchCalls() == 0U,
+            "disabled browser setting launched a browser");
+
+    Fixture configured{ServerBehavior::ReturnSuccess};
+    configured.controller->setOpenBrowserOnStart(true);
+    require(configured.host.run(context(), context()).hasValue(),
+            "configured browser host run");
+    require(configured.browserLauncherObserver->launchCalls() == 1U,
+            "configured browser setting did not launch exactly once");
+    require(configured.browserLauncherObserver->host() == "127.0.0.1" &&
+                configured.browserLauncherObserver->port() == 7788U,
+            "browser launcher did not receive the initialized listener endpoint");
+    require(!configured.browserLauncherObserver->cancellationObserved(),
+            "browser launcher received a cancelled startup context");
+    const auto configuredEvents = configured.events->snapshot();
+    require(eventIndex(configuredEvents, "controller.initialize") <
+                eventIndex(configuredEvents, "browser.launch"),
+            "browser launch preceded listener-owning initialization");
+    require(eventIndex(configuredEvents, "browser.launch") <
+                eventIndex(configuredEvents, "transition.start"),
+            "browser launch did not preserve the macOS startup ordering");
+
+    Fixture overridden{
+        ServerBehavior::ReturnSuccess,
+        Host::ManagerProcessHostOptions{true}};
+    require(overridden.host.run(context(), context()).hasValue(),
+            "explicit browser override host run");
+    require(overridden.browserLauncherObserver->launchCalls() == 1U,
+            "explicit browser override did not launch exactly once");
+
+    Fixture both{
+        ServerBehavior::ReturnSuccess,
+        Host::ManagerProcessHostOptions{true}};
+    both.controller->setOpenBrowserOnStart(true);
+    require(both.host.run(context(), context()).hasValue(),
+            "combined browser request host run");
+    require(both.browserLauncherObserver->launchCalls() == 1U,
+            "combined browser requests launched more than once");
+}
+
+void browserActivationFailureDoesNotStopManagerOwnership()
+{
+    Fixture fixture{
+        ServerBehavior::ReturnSuccess,
+        Host::ManagerProcessHostOptions{true}};
+    fixture.browserLauncherObserver->failWith(Domain::makeError(
+        Domain::ErrorCodes::HostCapabilityUnavailable,
+        "The scripted default browser is unavailable.",
+        true));
+
+    require(fixture.host.run(context(), context()).hasValue(),
+            "best-effort browser failure stopped the manager");
+    require(fixture.browserLauncherObserver->launchCalls() == 1U,
+            "best-effort browser failure was not attempted exactly once");
+    require(fixture.transitionWorkerObserver->startCalls() == 1U &&
+                fixture.serverObserver->runCalls() == 1U,
+            "browser failure prevented manager workers or ingress");
+    require(fixture.browserLauncherObserver->shutdownCalls() == 1U,
+            "browser launcher was not shut down exactly once");
+}
 
 void shutdownClosesIngressBeforeController()
 {
@@ -621,6 +883,9 @@ void shutdownClosesIngressBeforeController()
     require(
         fixture.transitionWorkerObserver->shutdownCalls() == 1U,
         "transition worker shutdown once");
+    require(
+        fixture.browserLauncherObserver->shutdownCalls() == 1U,
+        "browser launcher shutdown once");
     require(fixture.controller->shutdownCalls() == 1U, "controller shutdown once");
     const auto events = fixture.events->snapshot();
     require(
@@ -633,8 +898,12 @@ void shutdownClosesIngressBeforeController()
         "the transition worker must start before ingress is exposed");
     require(
         eventIndex(events, "server.shutdown") <
+            eventIndex(events, "browser.shutdown"),
+        "ingress must close before the browser startup owner");
+    require(
+        eventIndex(events, "browser.shutdown") <
             eventIndex(events, "transition.shutdown"),
-        "ingress must close before the transition worker");
+        "the browser startup owner must close before the transition worker");
     require(
         eventIndex(events, "transition.shutdown") <
             eventIndex(events, "controller.shutdown"),
@@ -833,6 +1102,7 @@ void transitionStartShutdownRaceIsOrderly()
 void activeShutdownDefersExactWorkerJoinToRunThread()
 {
     Fixture fixture{ServerBehavior::BlockUntilShutdown};
+    fixture.browserLauncherObserver->blockShutdown();
     fixture.transitionWorkerObserver->blockShutdown();
     std::optional<Domain::Result<void>> runResult;
     std::jthread worker{[&fixture, &runResult] {
@@ -840,6 +1110,8 @@ void activeShutdownDefersExactWorkerJoinToRunThread()
     }};
     RecordingTransitionWorkerRelease release{
         *fixture.transitionWorkerObserver};
+    RecordingBrowserLauncherRelease browserRelease{
+        *fixture.browserLauncherObserver};
 
     if (!fixture.serverObserver->waitUntilRun(2s)) {
         fixture.host.shutdown();
@@ -857,6 +1129,7 @@ void activeShutdownDefersExactWorkerJoinToRunThread()
     const auto elapsed = std::chrono::steady_clock::now() - started;
     if (!returnedInTime) {
         fixture.serverObserver->shutdown();
+        fixture.browserLauncherObserver->releaseShutdown();
         fixture.transitionWorkerObserver->releaseShutdown();
         shutdownThread.join();
         worker.join();
@@ -864,6 +1137,16 @@ void activeShutdownDefersExactWorkerJoinToRunThread()
     }
     shutdownThread.join();
     require(elapsed < 300ms, "active shutdown exceeded its bounded return");
+    if (!fixture.browserLauncherObserver->waitUntilShutdown(2s)) {
+        fail("run-thread browser launcher shutdown entry");
+    }
+    require(
+        fixture.browserLauncherObserver->beginShutdownCalls() == 1U,
+        "active shutdown signalled the browser launcher once");
+    require(
+        fixture.browserLauncherObserver->shutdownCalls() == 0U,
+        "external shutdown performed the exact browser join");
+    fixture.browserLauncherObserver->releaseShutdown();
     if (!fixture.transitionWorkerObserver->waitUntilShutdown(2s)) {
         fail("run-thread transition worker shutdown entry");
     }
@@ -880,6 +1163,9 @@ void activeShutdownDefersExactWorkerJoinToRunThread()
     require(
         fixture.transitionWorkerObserver->shutdownCalls() == 1U,
         "run thread completed exact transition shutdown once");
+    require(
+        fixture.browserLauncherObserver->shutdownCalls() == 1U,
+        "run thread completed exact browser shutdown once");
     require(fixture.controller->shutdownCalls() == 1U, "deferred-join controller close once");
 }
 
@@ -922,6 +1208,8 @@ int main()
     try {
         shutdownClosesIngressBeforeController();
         initializationFailureSkipsIngressAndClosesOwners();
+        browserLaunchUsesConfigurationOrExplicitOverrideOnce();
+        browserActivationFailureDoesNotStopManagerOwnership();
         transitionStartFailureSkipsIngressAndClosesOwners();
         ingressFailureIsPropagatedAfterCleanup();
         runIsSingleUseAndPreShutdownRejectsRun();

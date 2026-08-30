@@ -18,6 +18,10 @@ class IUuidGenerator;
 
 namespace ForgeConductor::Hosts::Manager {
 
+namespace Detail {
+struct ManagerTransitionWorkerTestAccess;
+}
+
 class ManagerProcessRestartSignal;
 
 // Process-host lifecycle boundary for the sole serialized transition owner.
@@ -67,6 +71,8 @@ public:
     void shutdown() noexcept override;
 
 private:
+    friend struct Detail::ManagerTransitionWorkerTestAccess;
+
     enum class Lifecycle {
         Constructed,
         Running,
@@ -88,6 +94,7 @@ private:
     std::condition_variable lifecycleCondition_;
     Lifecycle lifecycle_{Lifecycle::Constructed};
     bool shutdownJoinOwned_{};
+    std::thread::id workerThreadId_{};
     std::jthread worker_;
 };
 

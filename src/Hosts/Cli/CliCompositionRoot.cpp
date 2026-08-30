@@ -1,6 +1,8 @@
 #include "CliCompositionRoot.h"
 #include "McpServeCompositionRoot.h"
 
+#include "ForgeConductor/Infrastructure/Windows/WindowsDashboardUriActivationCommand.h"
+
 #include <iostream>
 #include <optional>
 #include <stdexcept>
@@ -25,6 +27,23 @@ public:
         }
 
         const auto command = arguments.front();
+        if (command == "--internal-open-dashboard-uri") {
+            if (arguments.size() != 1U) {
+                std::cerr << "Invalid internal dashboard activation request.\n";
+                return 2;
+            }
+            Infrastructure::Windows::WindowsDashboardUriActivationCommand
+                activation;
+            auto opened = activation.run(std::cin);
+            if (!opened) {
+                // Never emit the URI, child stdin, or platform message. The
+                // parent records only this typed code in its diagnostics.
+                std::cerr << "Dashboard activation failed: "
+                          << opened.error().code << '\n';
+                return 1;
+            }
+            return 0;
+        }
         if (command == "--version" || command == "version") {
             std::cout << ProductName << ' ' << ProductVersion << " (Windows native)\n";
             return 0;

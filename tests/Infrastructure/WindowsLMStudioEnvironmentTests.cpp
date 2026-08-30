@@ -23,6 +23,8 @@ namespace ForgeConductor::Tests {
 namespace {
 
 using Infrastructure::Windows::IWindowsLMStudioDiscoverySource;
+using Infrastructure::Windows::WindowsLMStudioCandidateSelector;
+using Infrastructure::Windows::WindowsLMStudioCandidateSelectorOptions;
 using Infrastructure::Windows::WindowsLMStudioDiscoveryCandidate;
 using Infrastructure::Windows::WindowsLMStudioDiscoverySource;
 using Infrastructure::Windows::WindowsLMStudioEnvironment;
@@ -30,9 +32,15 @@ using Infrastructure::Windows::WindowsLMStudioEnvironmentOptions;
 
 static_assert(std::is_final_v<WindowsLMStudioEnvironment>);
 static_assert(!std::is_copy_constructible_v<WindowsLMStudioEnvironment>);
+static_assert(std::is_final_v<WindowsLMStudioCandidateSelector>);
+static_assert(!std::is_copy_constructible_v<WindowsLMStudioCandidateSelector>);
 static_assert(
     WindowsLMStudioEnvironmentOptions::DefaultMaximumConfigurationBytes ==
     NativeTools::Windows::WindowsFileSystem::MaximumTextFileBytes);
+static_assert(
+    WindowsLMStudioCandidateSelectorOptions::
+        DefaultMaximumConfigurationBytes ==
+    WindowsLMStudioEnvironmentOptions::DefaultMaximumConfigurationBytes);
 
 [[nodiscard]] Domain::PathText path(const std::string_view value)
 {
@@ -311,6 +319,69 @@ private:
         [&](const auto& evidence) { return evidence.path.value() == candidate; });
     require(found != status.discoveryEvidence.end(), "Expected discovery evidence is missing.");
     return *found;
+}
+
+void testCandidateSelectorRetainsExactBoundedSelectionEvidence()
+{
+    AuthorityFixture fixture;
+    MapFileSystem files;
+    const auto configurationPath =
+        path("C:\\lm-studio-test\\known\\mcp.json");
+    const auto installedExecutable =
+        path("C:\\lm-studio-test\\installed\\LM Studio.exe");
+    const auto runningExecutable =
+        path("C:\\lm-studio-test\\running\\LM Studio.exe");
+    files.seed(configurationPath, R"({"mcpServers":{}})");
+
+    WindowsLMStudioCandidateSelector selector{fixture.provider, files};
+    auto selection = take(selector.select(
+        {
+            application(
+                Domain::LMStudioDiscoverySource::RunningProcess,
+                runningExecutable.value(),
+                true,
+                std::string{"0.4.20"}),
+            configuration(
+                Domain::LMStudioDiscoverySource::KnownUserLocation,
+                configurationPath.value(),
+                true),
+            application(
+                Domain::LMStudioDiscoverySource::InstalledApplication,
+                installedExecutable.value(),
+                true,
+                std::string{"0.4.21"}),
+        },
+        fixture.authority,
+        activeContext()));
+
+    require(
+        selection.authorityId() == fixture.authority.authorityId() &&
+            selection.projectId() == fixture.authority.projectId() &&
+            selection.callerId() == fixture.authority.callerId() &&
+            selection.authorityGeneration() ==
+                fixture.authority.generation(),
+        "Candidate selection did not retain its exact authority binding.");
+    require(
+        selection.evaluations().size() == 3U &&
+            selection.status().discoveryEvidence.size() == 3U,
+        "Candidate selection did not retain one bounded evaluation per input.");
+    require(
+        selection.status().applicationExecutable == installedExecutable &&
+            selection.status().configurationPath == configurationPath,
+        "Candidate selection did not preserve environment precedence.");
+    require(
+        selection.evaluations()[0U].candidate().source ==
+                Domain::LMStudioDiscoverySource::InstalledApplication &&
+            selection.evaluations()[0U].selected() &&
+            selection.evaluations()[1U].candidate().source ==
+                Domain::LMStudioDiscoverySource::KnownUserLocation &&
+            selection.evaluations()[1U].selected() &&
+            !selection.evaluations()[2U].selected(),
+        "Candidate evaluations did not retain stable priority and selection.");
+    require(
+        files.readCalls() == 1U,
+        "Candidate selector did not perform the exact bounded configuration "
+        "read.");
 }
 
 void testExplicitAndInstalledApplicationPrecedence()
@@ -658,6 +729,10 @@ void testNativeSourceReadOnlySmoke()
 
 void registerWindowsLMStudioEnvironmentTests(TestRegistry& tests)
 {
+    addTest(
+        tests,
+        "lm_studio_environment.public_candidate_selector_evidence",
+        testCandidateSelectorRetainsExactBoundedSelectionEvidence);
     addTest(
         tests,
         "lm_studio_environment.explicit_and_installed_precedence",

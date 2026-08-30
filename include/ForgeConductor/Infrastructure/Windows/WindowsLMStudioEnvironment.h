@@ -2,6 +2,7 @@
 
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/ILMStudioEnvironment.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioCandidateSelector.h"
 
 #include <cstddef>
 #include <memory>
@@ -10,21 +11,6 @@
 #include <vector>
 
 namespace ForgeConductor::Infrastructure::Windows {
-
-// A discovery candidate represents exactly one resource: either an application
-// executable or a configuration file. Splitting the resources keeps evidence
-// truthful when, for example, an installed executable exists but mcp.json is
-// missing or malformed.
-struct WindowsLMStudioDiscoveryCandidate final {
-    Domain::LMStudioDiscoverySource source;
-    Domain::PathText evidencePath;
-    std::optional<Domain::PathText> applicationExecutable;
-    std::optional<Domain::PathText> configurationPath;
-    std::optional<Domain::PathText> installationRoot;
-    std::optional<std::string> version;
-    bool valid{};
-    std::string detail;
-};
 
 class IWindowsLMStudioDiscoverySource {
 public:
