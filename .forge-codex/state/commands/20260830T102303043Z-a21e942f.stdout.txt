@@ -1,0 +1,25 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  6: ForgeConductor.Manager.WindowsInfrastructureTests
+1/5 Test  #6: ForgeConductor.Manager.WindowsInfrastructureTests .....   Passed    2.56 sec
+    Start  9: ForgeConductor.Manager.ProcessHostTests
+2/5 Test  #9: ForgeConductor.Manager.ProcessHostTests ...............   Passed    0.05 sec
+    Start 11: ForgeConductor.Manager.ProcessRestartSignalTests
+3/5 Test #11: ForgeConductor.Manager.ProcessRestartSignalTests ......   Passed    0.03 sec
+    Start 12: ForgeConductor.Manager.TransitionWorkerTests
+4/5 Test #12: ForgeConductor.Manager.TransitionWorkerTests ..........   Passed    0.52 sec
+    Start 89: ForgeConductor.Infrastructure.HeaderSelfContainment
+5/5 Test #89: ForgeConductor.Infrastructure.HeaderSelfContainment ...   Passed    0.03 sec
+
+100% tests passed out of 5
+
+Label Time Summary:
+G06         =   0.03 sec*proc (1 test)
+G15         =   0.03 sec*proc (1 test)
+G16         =   3.16 sec*proc (4 tests)
+T-LMS       =   0.03 sec*proc (1 test)
+T-MGR       =   3.16 sec*proc (4 tests)
+T-SEC       =   2.56 sec*proc (1 test)
+T-STRESS    =   3.16 sec*proc (4 tests)
+T-UNIT      =   3.19 sec*proc (5 tests)
+
+Total Test time (real) =   3.21 sec

@@ -31,6 +31,7 @@ namespace {
 
 using Infrastructure::Windows::WindowsCurrentUserIdentity;
 using Infrastructure::Windows::SystemClock;
+using Infrastructure::Windows::IManagerNamedPipeServerFailFast;
 using Infrastructure::Windows::WindowsManagerNamedPipeClient;
 using Infrastructure::Windows::WindowsManagerNamedPipeServer;
 using Infrastructure::Windows::WindowsManagerNamedPipeServerOptions;
@@ -83,7 +84,9 @@ class NonCooperativeManagerController final
     : public Contracts::IManagerController {
 public:
     NonCooperativeManagerController()
-        : entered_{createShutdownEvent()}, release_{createShutdownEvent()}
+        : entered_{createShutdownEvent()},
+          release_{createShutdownEvent()},
+          returned_{createShutdownEvent()}
     {
     }
 
@@ -105,6 +108,7 @@ public:
         static_cast<void>(::SetEvent(entered_.get()));
         // Deliberately ignore cancellation until the test releases this fake.
         static_cast<void>(::WaitForSingleObject(release_.get(), INFINITE));
+        static_cast<void>(::SetEvent(returned_.get()));
         return unavailable<Domain::ManagerStatus>();
     }
 
@@ -151,6 +155,11 @@ public:
         static_cast<void>(::SetEvent(release_.get()));
     }
 
+    [[nodiscard]] bool hasReturned() const noexcept
+    {
+        return ::WaitForSingleObject(returned_.get(), 0U) == WAIT_OBJECT_0;
+    }
+
 private:
     template <typename Value>
     [[nodiscard]] static Domain::Result<Value> unavailable() noexcept
@@ -162,6 +171,39 @@ private:
 
     UniqueHandle entered_;
     UniqueHandle release_;
+    UniqueHandle returned_;
+};
+
+class RecordingManagerPipeFailFast final
+    : public IManagerNamedPipeServerFailFast {
+public:
+    RecordingManagerPipeFailFast()
+        : invoked_{createShutdownEvent()}
+    {
+    }
+
+    void failFast() noexcept override
+    {
+        count_.fetch_add(1U, std::memory_order_release);
+        static_cast<void>(::SetEvent(invoked_.get()));
+    }
+
+    [[nodiscard]] bool waitUntilInvoked(
+        const std::chrono::milliseconds timeout) const noexcept
+    {
+        return ::WaitForSingleObject(
+            invoked_.get(), static_cast<DWORD>(timeout.count())) ==
+            WAIT_OBJECT_0;
+    }
+
+    [[nodiscard]] std::size_t count() const noexcept
+    {
+        return count_.load(std::memory_order_acquire);
+    }
+
+private:
+    UniqueHandle invoked_;
+    std::atomic_size_t count_{};
 };
 
 struct ConnectedPipePair final {
@@ -567,7 +609,75 @@ void serverRejectsTransportLimitsOutsideHardBounds()
     dispatcher->shutdown();
 }
 
-void serverShutdownDetachesOnlyAfterBoundedNonCooperativeDrain()
+void serverShutdownCooperativelyJoinsInsideTheBound()
+{
+    const auto clock = std::make_shared<SystemClock>();
+    const auto controller =
+        std::make_shared<NonCooperativeManagerController>();
+    Manager::ManagerTransportLimits limits;
+    limits.shutdownDrainTimeout = std::chrono::milliseconds{250};
+    limits.maximumActiveRegularOperations = 1U;
+    const auto dispatcher =
+        std::make_shared<Manager::ManagerRequestDispatcher>(
+            controller, clock, limits);
+    const auto identity = take(WindowsCurrentUserIdentity::load());
+    const auto authenticationToken = take(
+        Domain::Sha256Digest::parse(std::string(64U, 'd')));
+    const std::wstring name = pipeName(L"cooperative-shutdown");
+    WindowsManagerNamedPipeServerOptions options;
+    options.pipeName = name;
+    options.limits = limits;
+    options.workerCount = 2U;
+    options.ingressTimeout = std::chrono::milliseconds{500};
+    auto failFast = std::make_shared<RecordingManagerPipeFailFast>();
+    auto server = take(WindowsManagerNamedPipeServer::create(
+        clock, dispatcher, identity, authenticationToken, options, failFast));
+    auto client = take(WindowsManagerNamedPipeClient::create(
+        clock, name, authenticationToken, limits));
+
+    auto runComplete = createShutdownEvent();
+    std::optional<Domain::Result<void>> runResult;
+    const Domain::OperationContext runContext = operationContext(
+        {}, std::chrono::seconds{5});
+    std::jthread runThread{[&] {
+        runResult.emplace(server->run(runContext));
+        static_cast<void>(::SetEvent(runComplete.get()));
+    }};
+    std::optional<Domain::Result<Domain::ManagerStatus>> clientResult;
+    const Domain::OperationContext clientContext = operationContext(
+        {}, std::chrono::seconds{5});
+    std::jthread clientThread{[&] {
+        clientResult.emplace(client->status(clientContext));
+    }};
+
+    const bool callbackEntered = controller->waitUntilEntered(
+        std::chrono::seconds{2});
+    controller->release();
+    clientThread.join();
+    const auto shutdownStart = std::chrono::steady_clock::now();
+    server->shutdown();
+    const bool runReturned = ::WaitForSingleObject(
+        runComplete.get(), 750U) == WAIT_OBJECT_0;
+    const auto shutdownElapsed = std::chrono::steady_clock::now() -
+        shutdownStart;
+
+    runThread.join();
+    client->shutdown();
+    dispatcher->shutdown();
+
+    require(callbackEntered && controller->hasReturned(),
+            "the cooperative controller callback did not drain");
+    require(clientResult.has_value(),
+            "the cooperative manager client did not return");
+    require(runReturned && shutdownElapsed < std::chrono::milliseconds{750},
+            "cooperative manager server shutdown crossed its bounded drain");
+    require(runResult.has_value() && static_cast<bool>(runResult.value()),
+            "cooperative manager server shutdown did not return success");
+    require(failFast->count() == 0U,
+            "cooperative manager server shutdown invoked fail-fast");
+}
+
+void serverNonQuiescenceFailsStoppedAndRetainsWorkers()
 {
     const auto clock = std::make_shared<SystemClock>();
     const auto controller =
@@ -587,8 +697,9 @@ void serverShutdownDetachesOnlyAfterBoundedNonCooperativeDrain()
     options.limits = limits;
     options.workerCount = 2U;
     options.ingressTimeout = std::chrono::milliseconds{500};
+    auto failFast = std::make_shared<RecordingManagerPipeFailFast>();
     auto server = take(WindowsManagerNamedPipeServer::create(
-        clock, dispatcher, identity, authenticationToken, options));
+        clock, dispatcher, identity, authenticationToken, options, failFast));
     auto client = take(WindowsManagerNamedPipeClient::create(
         clock, name, authenticationToken, limits));
 
@@ -611,13 +722,17 @@ void serverShutdownDetachesOnlyAfterBoundedNonCooperativeDrain()
         std::chrono::seconds{2});
     const auto shutdownStart = std::chrono::steady_clock::now();
     server->shutdown();
-    const bool runReturned = ::WaitForSingleObject(
-        runComplete.get(), 750U) == WAIT_OBJECT_0;
-    const auto shutdownElapsed = std::chrono::steady_clock::now() -
+    const bool failFastInvoked = failFast->waitUntilInvoked(
+        std::chrono::milliseconds{750});
+    const auto escalationElapsed = std::chrono::steady_clock::now() -
         shutdownStart;
+    const bool runReturnedBeforeRelease = ::WaitForSingleObject(
+        runComplete.get(), 100U) == WAIT_OBJECT_0;
+    const bool callbackReturnedBeforeRelease = controller->hasReturned();
 
-    // Always release the deliberately stuck callback before assertions so a
-    // failed regression remains a bounded test failure.
+    // The production boundary terminates. This returning verification seam
+    // releases the deliberately stuck callback only after observing that the
+    // run frame is still retaining every worker and dependency.
     controller->release();
     clientThread.join();
     runThread.join();
@@ -626,10 +741,18 @@ void serverShutdownDetachesOnlyAfterBoundedNonCooperativeDrain()
 
     require(callbackEntered,
             "the non-cooperative controller callback did not start");
-    require(runReturned && shutdownElapsed < std::chrono::milliseconds{750},
-            "manager server shutdown waited past its configured callback drain");
-    require(runResult.has_value() && static_cast<bool>(runResult.value()),
-            "manager server shutdown did not return its orderly result");
+    require(failFastInvoked &&
+                escalationElapsed < std::chrono::milliseconds{750},
+            "manager server shutdown did not fail stopped at its worker drain bound");
+    require(failFast->count() == 1U,
+            "manager server terminal worker failure did not fail-fast exactly once");
+    require(!runReturnedBeforeRelease && !callbackReturnedBeforeRelease,
+            "manager server released its run frame while a worker could still execute");
+    require(controller->hasReturned(),
+            "manager server return did not follow exact callback quiescence");
+    require(runResult.has_value() && !static_cast<bool>(runResult.value()) &&
+                runResult->error().code == Domain::ErrorCodes::IntegrityFailure,
+            "returning fail-fast seam did not retain the terminal worker failure");
     require(clientResult.has_value(),
             "the non-cooperative manager client did not return after release");
 }
@@ -656,8 +779,10 @@ void registerManagerPipeInfrastructureTests(TestRegistry& tests)
             openHonorsCancellationAndDeadline);
     addTest(tests, "manager_pipe.server_rejects_unbounded_transport_limits",
             serverRejectsTransportLimitsOutsideHardBounds);
-    addTest(tests, "manager_pipe.server_shutdown_is_noncooperative_bounded",
-            serverShutdownDetachesOnlyAfterBoundedNonCooperativeDrain);
+    addTest(tests, "manager_pipe.server_shutdown_cooperatively_joins",
+            serverShutdownCooperativelyJoinsInsideTheBound);
+    addTest(tests, "manager_pipe.server_nonquiescence_fails_stopped",
+            serverNonQuiescenceFailsStoppedAndRetainsWorkers);
 }
 
 } // namespace ForgeConductor::Tests

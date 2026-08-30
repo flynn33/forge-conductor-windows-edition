@@ -20,6 +20,16 @@ struct WindowsManagerNamedPipeServerOptions final {
     std::chrono::milliseconds ingressTimeout{std::chrono::seconds{2}};
 };
 
+// Process boundary for a named-pipe worker that cannot quiesce inside the
+// bounded shutdown drain. Production terminates. Focused tests inject a
+// recorder that returns; the server must then retain every worker and borrowed
+// dependency behind an exact join barrier before returning a failure.
+class IManagerNamedPipeServerFailFast {
+public:
+    virtual ~IManagerNamedPipeServerFailFast() noexcept = default;
+    virtual void failFast() noexcept = 0;
+};
+
 // Fixed-worker current-user manager ingress. Each connected pipe instance owns
 // exactly one authenticated request/response exchange before disconnecting.
 class WindowsManagerNamedPipeServer final : public Contracts::IManagerServer {
@@ -31,6 +41,17 @@ public:
         WindowsCurrentUserIdentity ownerIdentity,
         Domain::Sha256Digest nonce,
         WindowsManagerNamedPipeServerOptions options) noexcept;
+
+    // Focused verification seam. Production composition must use the overload
+    // above so terminal worker non-quiescence cannot return to its caller.
+    [[nodiscard]] static Domain::Result<std::unique_ptr<WindowsManagerNamedPipeServer>>
+    create(
+        std::shared_ptr<Contracts::IClock> clock,
+        std::shared_ptr<Manager::ManagerRequestDispatcher> dispatcher,
+        WindowsCurrentUserIdentity ownerIdentity,
+        Domain::Sha256Digest nonce,
+        WindowsManagerNamedPipeServerOptions options,
+        std::shared_ptr<IManagerNamedPipeServerFailFast> failFast) noexcept;
 
     ~WindowsManagerNamedPipeServer() noexcept override;
 

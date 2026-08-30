@@ -81,6 +81,64 @@ ManagerProcessRestartWaitResult ManagerProcessRestartSignal::waitAndBegin(
     }
 }
 
+ManagerProcessRestartWaitResult
+ManagerProcessRestartSignal::waitAndBeginUntil(
+    const std::stop_token cancellation,
+    const std::chrono::steady_clock::time_point watchdogDeadline) noexcept
+{
+    try {
+        std::unique_lock lock{waitMutex_};
+        for (;;) {
+            const bool ready = waitCondition_.wait_until(
+                lock,
+                cancellation,
+                watchdogDeadline,
+                [this]() noexcept {
+                    const State state = state_.load(std::memory_order_acquire);
+                    return state == State::Pending ||
+                        state == State::ClosingInFlight ||
+                        state == State::Closed;
+                });
+            if (!ready) {
+                return cancellation.stop_requested()
+                    ? ManagerProcessRestartWaitResult::Cancelled
+                    : ManagerProcessRestartWaitResult::WatchdogDue;
+            }
+
+            const State state = state_.load(std::memory_order_acquire);
+            if (state == State::ClosingInFlight || state == State::Closed) {
+                return ManagerProcessRestartWaitResult::Closed;
+            }
+
+            State expected = State::Pending;
+            if (state_.compare_exchange_strong(
+                    expected,
+                    State::InFlight,
+                    std::memory_order_acq_rel,
+                    std::memory_order_acquire)) {
+                return ManagerProcessRestartWaitResult::RestartRequested;
+            }
+        }
+    } catch (...) {
+        const State state = state_.load(std::memory_order_acquire);
+        if (state == State::ClosingInFlight || state == State::Closed) {
+            return ManagerProcessRestartWaitResult::Closed;
+        }
+
+        State expected = State::Pending;
+        if (state_.compare_exchange_strong(
+                expected,
+                State::InFlight,
+                std::memory_order_acq_rel,
+                std::memory_order_acquire)) {
+            return ManagerProcessRestartWaitResult::RestartRequested;
+        }
+        return cancellation.stop_requested()
+            ? ManagerProcessRestartWaitResult::Cancelled
+            : ManagerProcessRestartWaitResult::WatchdogDue;
+    }
+}
+
 bool ManagerProcessRestartSignal::completeRestart() noexcept
 {
     State state = state_.load(std::memory_order_acquire);

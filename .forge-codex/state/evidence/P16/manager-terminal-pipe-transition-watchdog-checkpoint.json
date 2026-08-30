@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-terminal-pipe-transition-watchdog",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with Visual Studio 17 2022, MSBuild 17.14.40, MSVC 14.51.36231, Windows SDK 10.0.26100.0, C++20 Debug x64, and CTest 4.4.2.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T102222416Z-d2c2c1c9.json",
+    "command_record_sha256": "1c5eca9b7ddeb423686ba2ce7ce30c0ae9b9ec718e20fd3afd8dcef78d57ebf3",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Debug",
+    "targets": [
+      "ForgeConductor.Manager.TransitionWorkerTests",
+      "ForgeConductor.Manager.ProcessRestartSignalTests",
+      "ForgeConductor.Manager.ProcessHostTests",
+      "ForgeConductor.Manager.WindowsInfrastructureTests",
+      "ForgeConductor.Infrastructure.HeaderSelfContainment"
+    ],
+    "elapsed_seconds": 32.94,
+    "stdout": ".forge-codex/state/commands/20260830T102222416Z-d2c2c1c9.stdout.txt",
+    "stdout_sha256": "8638914c85fb94e0d520d31b5fb3f793b1425ba9449da05c05a80e3e7463bc7c",
+    "stderr": ".forge-codex/state/commands/20260830T102222416Z-d2c2c1c9.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T102303043Z-a21e942f.json",
+    "command_record_sha256": "7d146acdf8b7dccd7a8227b4981ba79691319986609a3c04dbce1a7a129cb228",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 5,
+    "tests_failed": 0,
+    "real_seconds": 3.21,
+    "stdout": ".forge-codex/state/commands/20260830T102303043Z-a21e942f.stdout.txt",
+    "stdout_sha256": "ee0c196322e7d31fb71201af1d0f24ec83f290c6c7069c1b47b14bf61c13c890",
+    "stderr": ".forge-codex/state/commands/20260830T102303043Z-a21e942f.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "recorded_policy_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T102507566Z-8b1fced4.json",
+    "command_record_sha256": "6847f67d122f6efb0ad7259ee016750cc2274d6188cf8718d46562e8def1cdaf",
+    "exit_code": 0,
+    "timed_out": false,
+    "source_hashes_matched": 13,
+    "binary_hashes_matched": 7,
+    "command_records_matched": 2,
+    "no_python": "passed",
+    "no_attribution": "passed",
+    "ledger_events_verified": 465,
+    "changed_text_files_crlf_utf8_no_bom": 14,
+    "git_diff_check": "passed",
+    "stdout": ".forge-codex/state/commands/20260830T102507566Z-8b1fced4.stdout.txt",
+    "stdout_sha256": "02c86d5b55a0de02702cf4f596feea24f448ec6d3f3b17a11934d9bfcc806fab",
+    "stderr": ".forge-codex/state/commands/20260830T102507566Z-8b1fced4.stderr.txt",
+    "stderr_sha256": "988ae5467071753977c53347e29a78d0cc1536773754ab5672b42b633d37f205"
+  },
+  "measured_results": {
+    "focused_native_test_executables_passed": 5,
+    "focused_native_test_executables_failed": 0,
+    "manager_windows_infrastructure_cases_passed": 81,
+    "manager_transition_cases_passed": 7,
+    "restart_pending_or_inflight_capacity": 1,
+    "transition_worker_capacity": 1,
+    "watchdog_interval_minimum_seconds": 1,
+    "watchdog_interval_maximum_seconds": 60,
+    "operation_timeout_maximum_seconds": 60,
+    "terminal_pipe_fail_fast_invocations": 1
+  },
+  "behavior_proved": [
+    "manager named-pipe shutdown never detaches a worker or returns success while an admitted callback can still execute",
+    "cooperative named-pipe shutdown joins inside the configured drain while terminal non-quiescence records integrity_failure and invokes the production fail-fast boundary",
+    "a returning verification seam retains the run frame and every worker behind exact joins and returns the retained integrity failure only after callback quiescence",
+    "explicit manager restarts use a capacity-one pending-or-in-flight signal, coalesce successors, and release the signal through typed failures",
+    "one process-owned jthread serializes explicit Restart and watchdog Repair controller calls with no overlap or task queue",
+    "watchdog policy repairs a missing listener regardless of automatic-restart preference, conditionally recovers desired-running operational drift, reconciles undesired active state, and suppresses mutation after shutdown intent",
+    "watchdog cadence and operation deadlines are bounded, and every controller call receives fresh operation and correlation identities plus worker cancellation ownership",
+    "concurrent worker shutdown retains one exact join owner and does not publish stopped state while controller work can still execute",
+    "the modified public Windows infrastructure header remains self-contained"
+  ],
+  "evidence_scope": {
+    "proved": "Source structure, terminal named-pipe worker ownership, capacity-one explicit restart execution, watchdog policy and scheduling, bounded contexts, exact worker join behavior, focused Manager host compatibility, and public-header containment on this Windows 11 alpha machine.",
+    "not_proved": "The production Manager composition root, packaged operational and dashboard services, real-process ownership/authentication/restart/startup/shutdown lifecycle, live Edge dashboard behavior, retained native UI automation, installer lifecycle, or the authoritative G16 gate."
+  },
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-025-terminal-manager-pipe-worker-ownership.md": "1408d0a3676efabeb437569d8f80b7bb66fd9ab28bc7b907dde8e70d70357d5f",
+    ".forge-codex/state/decisions/P16-026-capacity-one-manager-transition-watchdog.md": "71d5c767774ae378cd955822ed65c704fd7310f7e40228aa0e63717508a6f374",
+    "CMakeLists.txt": "4edb6599830c034fa8a5f5e19b51e4539837f58595b769934f6a1a21465b8b79",
+    "include/ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeServer.h": "77a3a191b0596027909f09979abe947f4cfff62007b6321cd1b03d350184401d",
+    "src/Hosts/Manager/ManagerProcessRestartSignal.cpp": "cf89b145da30616f53111c34959aea7eda814dc879387b578e3828720ccc1a2a",
+    "src/Hosts/Manager/ManagerProcessRestartSignal.h": "3d1498e5280382c10cdb92640ceaa15a070458a2ed99fe031ca64361c04ada91",
+    "src/Hosts/Manager/ManagerTransitionWorker.cpp": "65b2fbd4890aae01f456321e226869ca988555af769ab8c97cc96440342b8174",
+    "src/Hosts/Manager/ManagerTransitionWorker.h": "15072acef193f8c720cf4f5ce4b699e75f684e037b2749432464c8ce873c694a",
+    "src/Hosts/Manager/ManagerWatchdogPolicy.cpp": "06084cff2d2bba1d15ce398a16145cb935b63bd50a92fa5154383516e1bae507",
+    "src/Hosts/Manager/ManagerWatchdogPolicy.h": "3a19c0aaba8d5863e83e37711f5342d0696830da0bbe8abdbb88833930eb9b16",
+    "src/Infrastructure/Windows/WindowsManagerNamedPipeServer.cpp": "cce5814e09eb117bbe4b728b9a8301ed92b5adf5f14c8ee7173c9dcb4c450526",
+    "tests/Manager/ManagerPipeInfrastructureTests.cpp": "4de39d0dda4e74d8aa200f4452787c04b8f45887a46fe0c960d986ebfb1ec7ed",
+    "tests/Manager/ManagerTransitionWorkerTests.cpp": "54c3621134c5302596f14aec6db40ec0b36042e2c58b9a87f470489b1182b846"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Manager.TransitionWorkerTests.exe": "51990c66d32d1eeac7374579326f32863b0bf5e45b517e17d976be72c7eb81ed",
+    "ForgeConductor.Manager.ProcessRestartSignalTests.exe": "79f880f2194d2bbba87bf748b7afc5f8162599d5083efc53a4ffab2196369352",
+    "ForgeConductor.Manager.ProcessHostTests.exe": "538533df6a36152a8d5245a0f739f92b250cc1d334c26181b5251191b57999e9",
+    "ForgeConductor.Manager.WindowsInfrastructureTests.exe": "9f2dde9ca617340f295658b01bb9a28688b873deb9d5ab3c302d6ae126de37f5",
+    "ForgeConductor.Infrastructure.HeaderSelfContainment.exe": "3d35a28876da0df58a7e0f9962a5472c25ac8da097d741696d1dd531e63c4efa",
+    "ForgeConductor.Manager.Host.lib": "6e9621a67e9ef57fe294d408da1bd701ca2b1eafd487d4f39da8de080e18d75b",
+    "ForgeConductor.Infrastructure.Windows.lib": "130761d5cc9911326fb670eb655b0fb9b9ad08f398d6e30510f1a00e2763194d"
+  },
+  "remaining_limitations": [
+    "P16 remains in progress and G16 remains not started.",
+    "Production Manager composition and operational services, real-process lifecycle evidence, live Edge dashboard behavior, and retained native UI automation remain pending.",
+    "Installer qualification is limited to this Windows 11 alpha machine; clean-environment qualification, security-only hardening, and bespoke UI polish remain owner-deferred until after alpha."
+  ]
+}

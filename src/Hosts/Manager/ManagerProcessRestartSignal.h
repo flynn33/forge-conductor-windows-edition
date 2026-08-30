@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
@@ -16,6 +17,7 @@ enum class ManagerProcessRestartRequestResult : std::uint8_t {
 
 enum class ManagerProcessRestartWaitResult : std::uint8_t {
     RestartRequested,
+    WatchdogDue,
     Closed,
     Cancelled,
 };
@@ -41,6 +43,14 @@ public:
     // caller. There must be only one composition-root worker calling this API.
     [[nodiscard]] ManagerProcessRestartWaitResult waitAndBegin(
         std::stop_token cancellation) noexcept;
+
+    // Shares the same capacity-one claim edge with explicit restarts while
+    // allowing the sole transition worker to wake for a watchdog observation.
+    // A timeout never mutates signal state, so an explicit request racing the
+    // deadline remains pending for the worker's next wait.
+    [[nodiscard]] ManagerProcessRestartWaitResult waitAndBeginUntil(
+        std::stop_token cancellation,
+        std::chrono::steady_clock::time_point watchdogDeadline) noexcept;
 
     // Returns true only when the caller completes the active restart.
     [[nodiscard]] bool completeRestart() noexcept;

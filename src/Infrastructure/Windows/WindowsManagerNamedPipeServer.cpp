@@ -125,6 +125,12 @@ constexpr DWORD RunWaitMilliseconds = 25U;
     return acknowledgement != nullptr && acknowledgement->acknowledged;
 }
 
+class ManagerNamedPipeServerProcessFailFast final
+    : public IManagerNamedPipeServerFailFast {
+public:
+    void failFast() noexcept override { std::terminate(); }
+};
+
 } // namespace
 
 class WindowsManagerNamedPipeServer::Impl final
@@ -136,6 +142,7 @@ public:
         WindowsCurrentUserIdentity ownerIdentity,
         Domain::Sha256Digest nonce,
         WindowsManagerNamedPipeServerOptions options,
+        std::shared_ptr<IManagerNamedPipeServerFailFast> failFast,
         std::unique_ptr<Detail::CurrentUserPipeSecurity> security,
         Detail::UniqueHandle shutdownEvent) noexcept
         : clock_{std::move(clock)},
@@ -143,6 +150,7 @@ public:
           ownerIdentity_{std::move(ownerIdentity)},
           nonce_{std::move(nonce)},
           options_{std::move(options)},
+          failFast_{std::move(failFast)},
           security_{std::move(security)},
           shutdownEvent_{std::move(shutdownEvent)}
     {
@@ -305,21 +313,25 @@ private:
                 return;
             }
             joined_ = true;
-            // Cancel application work and native I/O before joining. A
-            // non-cooperative controller callback cannot hold run() or
-            // destruction indefinitely: after the bounded drain, its worker
-            // detaches while retaining shared ownership of this complete
-            // implementation until that callback eventually returns.
+            // Cancel application work and native I/O before joining. Ordinary
+            // cooperative shutdown remains bounded by shutdownDrainTimeout.
+            // A callback that crosses that terminal boundary makes releasing
+            // the process lease or borrowed dependencies unsafe: production
+            // fails stopped. If the focused verification seam returns, this
+            // run frame remains behind the exact joins below until every
+            // worker is gone, and then returns the retained failure.
             owner_.dispatcher_->beginShutdown();
             owner_.signalShutdown();
             if (!owner_.waitForWorkers(
                     owner_.options_.limits.shutdownDrainTimeout)) {
-                for (auto& worker : workers_) {
-                    if (worker.joinable()) {
-                        worker.detach();
-                    }
-                }
+                owner_.recordFatal(serverError(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "Manager named-pipe workers did not quiesce before the terminal shutdown deadline."));
+                owner_.failFast_->failFast();
             }
+            // std::jthread destruction joins. In the returning verification
+            // seam this is an intentional terminal retention barrier, not an
+            // extension of the ordinary bounded shutdown contract.
             workers_.clear();
         }
 
@@ -634,6 +646,7 @@ private:
     WindowsCurrentUserIdentity ownerIdentity_;
     Domain::Sha256Digest nonce_;
     WindowsManagerNamedPipeServerOptions options_;
+    const std::shared_ptr<IManagerNamedPipeServerFailFast> failFast_;
     std::unique_ptr<Detail::CurrentUserPipeSecurity> security_;
     Detail::UniqueHandle shutdownEvent_;
 
@@ -657,11 +670,36 @@ WindowsManagerNamedPipeServer::create(
     WindowsManagerNamedPipeServerOptions options) noexcept
 {
     try {
-        if (!clock || !dispatcher) {
+        return create(
+            std::move(clock),
+            std::move(dispatcher),
+            std::move(ownerIdentity),
+            std::move(nonce),
+            std::move(options),
+            std::make_shared<ManagerNamedPipeServerProcessFailFast>());
+    } catch (...) {
+        return Domain::Result<std::unique_ptr<WindowsManagerNamedPipeServer>>::failure(
+            serverError(
+                Domain::ErrorCodes::InternalFailure,
+                "The manager named-pipe server could not allocate its fail-fast owner."));
+    }
+}
+
+Domain::Result<std::unique_ptr<WindowsManagerNamedPipeServer>>
+WindowsManagerNamedPipeServer::create(
+    std::shared_ptr<Contracts::IClock> clock,
+    std::shared_ptr<Manager::ManagerRequestDispatcher> dispatcher,
+    WindowsCurrentUserIdentity ownerIdentity,
+    Domain::Sha256Digest nonce,
+    WindowsManagerNamedPipeServerOptions options,
+    std::shared_ptr<IManagerNamedPipeServerFailFast> failFast) noexcept
+{
+    try {
+        if (!clock || !dispatcher || !failFast) {
             return Domain::Result<std::unique_ptr<WindowsManagerNamedPipeServer>>::failure(
                 serverError(
                     Domain::ErrorCodes::InvalidRequest,
-                    "The manager server requires a clock and dispatcher."));
+                    "The manager server requires a clock, dispatcher, and fail-fast boundary."));
         }
         auto valid = validateOptions(options);
         if (!valid) {
@@ -688,6 +726,7 @@ WindowsManagerNamedPipeServer::create(
             std::move(ownerIdentity),
             std::move(nonce),
             std::move(options),
+            std::move(failFast),
             std::move(security).value(),
             std::move(shutdownEvent));
         return Domain::Result<std::unique_ptr<WindowsManagerNamedPipeServer>>::success(
