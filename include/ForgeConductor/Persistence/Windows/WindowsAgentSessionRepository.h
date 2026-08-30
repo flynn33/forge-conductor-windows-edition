@@ -8,6 +8,7 @@
 #include "ForgeConductor/Persistence/Windows/WindowsCentralDatabase.h"
 
 #include <memory>
+#include <string_view>
 
 namespace ForgeConductor::Persistence::Windows {
 
@@ -78,6 +79,15 @@ public:
         const std::optional<Domain::SessionStatus>& status,
         std::size_t maximumCount,
         const Domain::OperationContext& context) noexcept override;
+    // Manager-only administrative close. Unlike client-owned completion, this
+    // accepts every existing session status and does not alter report data.
+    // The row update, run-projection rewrite, and conditional active-pointer
+    // removal are one transaction.
+    [[nodiscard]] Domain::Result<Domain::AgentSession> administrativelyClose(
+        const Domain::SessionId& sessionId,
+        std::string_view summary,
+        Domain::UtcTimePoint closedAt,
+        const Domain::OperationContext& context) noexcept;
     [[nodiscard]] Domain::Result<Domain::AgentRunStartPersistenceOutcome> startRun(
         const Domain::AgentRunStartMutation& mutation,
         const Domain::OperationContext& context) noexcept override;

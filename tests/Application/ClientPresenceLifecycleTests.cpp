@@ -57,6 +57,11 @@ template <typename T>
     return take(T::parse(value));
 }
 
+[[nodiscard]] Domain::PathText path(const std::string_view value)
+{
+    return take(Domain::PathText::create(value));
+}
+
 class AdvancingClock final : public Contracts::IClock {
 public:
     [[nodiscard]] Domain::UtcTimePoint utcNow() const noexcept override
@@ -470,6 +475,11 @@ struct Fixture final {
             4242U};
     }
 
+    [[nodiscard]] Domain::PathText workingDirectory() const
+    {
+        return path("D:\\workspaces\\presence-primary");
+    }
+
     std::shared_ptr<AdvancingClock> clock;
     std::shared_ptr<SequentialUuidGenerator> uuids;
     std::shared_ptr<RecordingRuntimeDiagnostics> diagnostics;
@@ -500,7 +510,9 @@ void registrationPrecedesRepeatedBoundedHeartbeats()
 
     Fixture fixture;
     const auto identity = fixture.identity();
-    take(fixture.lifecycle.start(identity, fixture.context("presence-start")));
+    const auto workingDirectory = fixture.workingDirectory();
+    take(fixture.lifecycle.start(
+        identity, workingDirectory, fixture.context("presence-start")));
     require(fixture.diagnostics->active() == 1U,
             "the heartbeat worker did not retain its runtime ownership lease");
     require(fixture.repository->waitForHeartbeats(3U, 2s),
@@ -513,6 +525,8 @@ void registrationPrecedesRepeatedBoundedHeartbeats()
     require(registrations.size() == 1U, "registration count was not exact");
     require(registrations.front().identity == identity,
             "registration did not retain the complete identity");
+    require(registrations.front().workingDirectory == workingDirectory,
+            "registration did not retain the working directory");
     require(registrations.front().firstSeenAt == registrations.front().lastSeenAt,
             "registration did not use one initial observation time");
 
@@ -550,7 +564,8 @@ void transientFailureRetriesWithoutOverlap()
     Fixture fixture;
     fixture.repository->setHeartbeatResults({-1, 1});
     take(fixture.lifecycle.start(
-        fixture.identity(), fixture.context("presence-retry-start")));
+        fixture.identity(), fixture.workingDirectory(),
+        fixture.context("presence-retry-start")));
     require(fixture.repository->waitForHeartbeats(2U, 2s),
             "a transient heartbeat failure was not retried");
     require(fixture.repository->maximumConcurrentHeartbeats() == 1U,
@@ -564,7 +579,8 @@ void supersededOwnerRetiresWithoutReclaim()
     fixture.repository->setHeartbeatResults({0});
     fixture.repository->setRemoveResult(false);
     take(fixture.lifecycle.start(
-        fixture.identity(), fixture.context("presence-superseded-start")));
+        fixture.identity(), fixture.workingDirectory(),
+        fixture.context("presence-superseded-start")));
     require(fixture.repository->waitForHeartbeats(1U, 2s),
             "the supersession heartbeat did not execute");
     std::this_thread::sleep_for(80ms);
@@ -581,7 +597,8 @@ void stopCancelsInflightHeartbeatAndJoinsBeforeRemove()
     Fixture fixture;
     fixture.repository->setBlockHeartbeat(true);
     take(fixture.lifecycle.start(
-        fixture.identity(), fixture.context("presence-blocked-start")));
+        fixture.identity(), fixture.workingDirectory(),
+        fixture.context("presence-blocked-start")));
     require(fixture.repository->waitForHeartbeats(1U, 2s),
             "the blocked heartbeat did not enter");
 
@@ -600,9 +617,10 @@ void failedRegistrationIsBestEffortAndRetries()
 {
     Fixture fixture;
     const auto identity = fixture.identity();
+    const auto workingDirectory = fixture.workingDirectory();
     fixture.repository->setUpsertFailures(1U);
     take(fixture.lifecycle.start(
-        identity, fixture.context("presence-failed-start")));
+        identity, workingDirectory, fixture.context("presence-failed-start")));
     require(fixture.diagnostics->active() == 1U,
             "a transient store lock prevented worker ownership");
     require(fixture.repository->waitForUpserts(2U, 2s),
@@ -615,6 +633,9 @@ void failedRegistrationIsBestEffortAndRetries()
     require(registrations[0].identity == identity &&
                 registrations[1].identity == identity,
             "the registration retry changed the exact owner identity");
+    require(registrations[0].workingDirectory == workingDirectory &&
+                registrations[1].workingDirectory == workingDirectory,
+            "the registration retry changed the working directory");
     take(fixture.lifecycle.stop(fixture.context("presence-failed-stop")));
     require(fixture.repository->removeCount() == 1U,
             "recovered registration did not receive exact cleanup");
@@ -640,6 +661,7 @@ void stopAndDestructorAreIdempotent()
         clock->monotonicNow() + 5s,
         {},
         parse<Domain::CorrelationId>("presence-idempotence")};
+    const auto workingDirectory = path("D:\\workspaces\\destructor");
     {
         Application::ClientPresenceLifecycle lifecycle{
             repository,
@@ -647,7 +669,7 @@ void stopAndDestructorAreIdempotent()
             uuids,
             diagnostics,
             Application::ClientPresenceTiming{15ms, 100ms}};
-        take(lifecycle.start(identity, context));
+        take(lifecycle.start(identity, workingDirectory, context));
         take(lifecycle.stop(context));
         take(lifecycle.stop(context));
     }
@@ -667,7 +689,7 @@ void stopAndDestructorAreIdempotent()
             uuids,
             fallbackDiagnostics,
             Application::ClientPresenceTiming{15ms, 100ms}};
-        take(lifecycle.start(identity, context));
+        take(lifecycle.start(identity, workingDirectory, context));
     }
     require(fallbackRepository->removeCount() == 1U,
             "destruction did not perform bounded exact cleanup");
@@ -681,7 +703,8 @@ void failedRemovalRetainsIdentityForRetryAndDestruction()
     const auto identity = fixture.identity();
     fixture.repository->setRemoveFailures(1U);
     take(fixture.lifecycle.start(
-        identity, fixture.context("presence-remove-retry-start")));
+        identity, fixture.workingDirectory(),
+        fixture.context("presence-remove-retry-start")));
     const auto failed = fixture.lifecycle.stop(
         fixture.context("presence-remove-retry-first"));
     require(!failed, "a transient remove failure reported success");
@@ -718,7 +741,8 @@ void failedRemovalRetainsIdentityForRetryAndDestruction()
             clock->monotonicNow() + 5s,
             {},
             parse<Domain::CorrelationId>("presence-remove-destructor")};
-        take(lifecycle.start(identity, context));
+        take(lifecycle.start(
+            identity, path("D:\\workspaces\\remove-destructor"), context));
         const auto failedStop = lifecycle.stop(context);
         require(!failedStop,
                 "the destructor-retry setup remove did not fail");

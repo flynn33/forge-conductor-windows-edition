@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ForgeConductor/Domain/FileSystemModels.h"
 #include "ForgeConductor/Domain/Identifiers.h"
 #include "ForgeConductor/Domain/OperationContext.h"
 
@@ -28,6 +29,7 @@ struct ClientPresenceIdentity final {
 
 struct ClientPresenceRegistration final {
     ClientPresenceIdentity identity;
+    PathText workingDirectory;
     UtcTimePoint firstSeenAt;
     UtcTimePoint lastSeenAt;
 

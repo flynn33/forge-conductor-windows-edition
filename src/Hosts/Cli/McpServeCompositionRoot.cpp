@@ -403,6 +403,7 @@ public:
                         : std::string{"primary"},
                     deploymentId_,
                     static_cast<std::uint32_t>(::GetCurrentProcessId())},
+                currentDirectory(),
                 startContext));
             presenceStarted_ = true;
 

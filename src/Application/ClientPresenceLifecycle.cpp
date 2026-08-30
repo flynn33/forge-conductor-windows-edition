@@ -64,6 +64,7 @@ ClientPresenceLifecycle::~ClientPresenceLifecycle() noexcept
 
 Domain::Result<void> ClientPresenceLifecycle::start(
     Domain::ClientPresenceIdentity identity,
+    Domain::PathText workingDirectory,
     const Domain::OperationContext& context) noexcept
 {
     try {
@@ -77,6 +78,13 @@ Domain::Result<void> ClientPresenceLifecycle::start(
         if (!valid) {
             return valid;
         }
+        auto validWorkingDirectory =
+            Domain::PathText::create(workingDirectory.value());
+        if (!validWorkingDirectory) {
+            return Domain::Result<void>::failure(
+                std::move(validWorkingDirectory).error());
+        }
+        workingDirectory = std::move(validWorkingDirectory).value();
         state_ = State::Starting;
 
         auto ownership = runtimeDiagnostics_->acquire(
@@ -93,16 +101,19 @@ Domain::Result<void> ClientPresenceLifecycle::start(
             stopRequested_ = false;
         }
         identity_.emplace(identity);
+        workingDirectory_.emplace(workingDirectory);
         try {
             worker_ = std::jthread{
                 [this, workerIdentity = std::move(identity),
+                 workerDirectory = std::move(workingDirectory),
                  lease = std::move(ownership).value()](
                     const std::stop_token cancellation) mutable noexcept {
                     workerLoop(
-                        std::move(workerIdentity), cancellation,
+                        std::move(workerIdentity), std::move(workerDirectory), cancellation,
                         std::move(lease));
                 }};
         } catch (...) {
+            workingDirectory_.reset();
             identity_.reset();
             state_ = State::Idle;
             return Domain::Result<void>::failure(internalError(
@@ -111,7 +122,9 @@ Domain::Result<void> ClientPresenceLifecycle::start(
 
         const auto now = clock_->utcNow();
         auto registered = repository_->upsert(
-            Domain::ClientPresenceRegistration{*identity_, now, now}, context);
+            Domain::ClientPresenceRegistration{
+                *identity_, *workingDirectory_, now, now},
+            context);
         {
             std::lock_guard waitLock{waitMutex_};
             // Presence storage is deliberately best-effort so a transiently
@@ -158,6 +171,7 @@ Domain::Result<void> ClientPresenceLifecycle::stop(
                     std::move(removed).error());
             }
         }
+        workingDirectory_.reset();
         identity_.reset();
         state_ = State::Stopped;
         return Domain::Result<void>::success();
@@ -199,6 +213,7 @@ ClientPresenceLifecycle::makeCleanupContext() noexcept
 
 void ClientPresenceLifecycle::workerLoop(
     Domain::ClientPresenceIdentity identity,
+    Domain::PathText workingDirectory,
     const std::stop_token cancellation,
     Contracts::RuntimeOwnershipLease ownershipLease) noexcept
 {
@@ -238,7 +253,8 @@ void ClientPresenceLifecycle::workerLoop(
             if (!registered) {
                 const auto now = clock_->utcNow();
                 auto registration = repository_->upsert(
-                    Domain::ClientPresenceRegistration{identity, now, now},
+                    Domain::ClientPresenceRegistration{
+                        identity, workingDirectory, now, now},
                     context.value());
                 if (registration) {
                     registered = true;
@@ -297,6 +313,7 @@ void ClientPresenceLifecycle::shutdown() noexcept
                     *identity_, context.value()));
             }
         }
+        workingDirectory_.reset();
         identity_.reset();
         state_ = State::Stopped;
     } catch (...) {

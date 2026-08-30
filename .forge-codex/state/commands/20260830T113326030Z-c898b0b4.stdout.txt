@@ -1,0 +1,37 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start 80: ForgeConductor.Agents.RepositoryWindowsTests
+1/8 Test #80: ForgeConductor.Agents.RepositoryWindowsTests ............................   Passed    6.38 sec
+    Start 85: ForgeConductor.Contracts.HeaderSelfContainment
+2/8 Test #85: ForgeConductor.Contracts.HeaderSelfContainment ..........................   Passed    0.03 sec
+    Start 87: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests
+3/8 Test #87: ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests ..............   Passed    0.49 sec
+    Start 91: ForgeConductor.Persistence.UnitTests
+4/8 Test #91: ForgeConductor.Persistence.UnitTests ....................................   Passed   21.08 sec
+    Start 93: ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests
+5/8 Test #93: ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests ............   Passed    0.48 sec
+    Start 94: ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests
+6/8 Test #94: ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests ...   Passed    0.52 sec
+    Start 95: ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests
+7/8 Test #95: ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests .........   Passed    0.26 sec
+    Start 96: ForgeConductor.Application.ClientPresenceLifecycleTests
+8/8 Test #96: ForgeConductor.Application.ClientPresenceLifecycleTests .................   Passed    0.32 sec
+
+100% tests passed out of 8
+
+Label Time Summary:
+G05              =   0.03 sec*proc (1 test)
+G07              =  21.08 sec*proc (1 test)
+G10              =   6.38 sec*proc (1 test)
+G14              =   1.07 sec*proc (3 tests)
+G15              =   0.03 sec*proc (1 test)
+G16              =   1.01 sec*proc (2 tests)
+T-AGENT          =   6.38 sec*proc (1 test)
+T-DB             =  28.73 sec*proc (5 tests)
+T-INTEGRATION    =   1.26 sec*proc (3 tests)
+T-LMS            =   0.03 sec*proc (1 test)
+T-MCP            =   1.07 sec*proc (3 tests)
+T-SEC            =  28.96 sec*proc (5 tests)
+T-STRESS         =   0.32 sec*proc (1 test)
+T-UNIT           =  29.58 sec*proc (8 tests)
+
+Total Test time (real) =  29.60 sec

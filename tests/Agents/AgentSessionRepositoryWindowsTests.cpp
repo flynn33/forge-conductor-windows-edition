@@ -1436,6 +1436,254 @@ void staleCloseCancellationDeadlineAndSharedShutdown()
         activeContext(*fixture.clock, "p10-shared-central-close")));
 }
 
+void administrativeCloseIsAtomicAndStatusAgnostic()
+{
+    {
+        Support::ScopedTestDirectory directory{
+            L"agent-session-administrative-replacement"};
+        RepositoryFixture fixture{directory.path()};
+        const auto client = parse<Domain::ClientId>("client-admin-replacement");
+        const auto originalId = parse<Domain::SessionId>(
+            "40000000-0000-4000-8000-000000000001");
+        const auto replacementId = parse<Domain::SessionId>(
+            "40000000-0000-4000-8000-000000000002");
+        const auto original = start(
+            fixture,
+            originalId,
+            client,
+            "p16-admin-original",
+            "preserve completed metadata");
+        fixture.clock->advance(10s);
+        const std::string report{
+            "{\"evidence\":[\"dashboard-native-test\"],\"result\":\"done\"}"};
+        const auto completed = take(fixture.repository->completeRun(
+            Domain::AgentRunCompleteMutation{
+                originalId,
+                client,
+                report,
+                "owner completion summary",
+                {},
+                fixture.clock->utcNow()},
+            activeContext(*fixture.clock, "p16-admin-complete-original")));
+        fixture.clock->advance(10s);
+        const auto replacement = start(
+            fixture,
+            replacementId,
+            client,
+            "p16-admin-replacement",
+            "remain the active replacement");
+        require(replacement.activeBinding.has_value(),
+                "administrative replacement has no active projection");
+
+        const auto requestedClosedAt =
+            completed.run.session.updatedAt - 5s;
+        const std::string summary{"Closed from dashboard \xE2\x80\x94 exact"};
+        const auto closed = take(fixture.repository->administrativelyClose(
+            originalId,
+            summary,
+            requestedClosedAt,
+            activeContext(*fixture.clock, "p16-admin-close-original")));
+        require(closed.id == originalId &&
+                    closed.agentId == original.run.session.agentId &&
+                    closed.clientId == std::optional<Domain::ClientId>{client} &&
+                    closed.status == Domain::SessionStatus::Closed &&
+                    closed.summary == std::optional<std::string>{summary} &&
+                    closed.createdAt == original.run.session.createdAt &&
+                    closed.updatedAt == completed.run.session.updatedAt,
+                "administrative close did not preserve the core session or monotonic time");
+        const auto durable = take(fixture.repository->getRun(
+            originalId,
+            activeContext(*fixture.clock, "p16-admin-read-original")));
+        require(durable && durable->session.id == closed.id &&
+                    durable->session.agentId == closed.agentId &&
+                    durable->session.clientId == closed.clientId &&
+                    durable->session.status == closed.status &&
+                    durable->session.summary == closed.summary &&
+                    durable->session.createdAt == closed.createdAt &&
+                    durable->session.updatedAt == closed.updatedAt &&
+                    durable->projectId == original.run.projectId &&
+                    durable->goal == original.run.goal &&
+                    durable->workingDirectory == original.run.workingDirectory &&
+                    durable->outputSchema == original.run.outputSchema &&
+                    durable->firstMoves == original.run.firstMoves &&
+                    durable->reportJson == std::optional<std::string>{report},
+                "administrative close changed non-close run fields");
+        const auto recovered = take(fixture.repository->recoverRun(
+            Domain::AgentRunRecoveryRequest{client},
+            activeContext(*fixture.clock, "p16-admin-recover-replacement")));
+        require(recovered.run && recovered.binding &&
+                    recovered.run->session.id == replacementId &&
+                    recovered.binding->sessionId == replacementId,
+                "administrative close removed the replacement active projection");
+        fixture.close();
+        SqliteDatabase database{directory.path() / L"store.sqlite", false};
+        requireRunProjectionMatches(database, *durable);
+        requireActiveProjectionMatches(
+            database, client, *replacement.activeBinding);
+    }
+
+    {
+        Support::ScopedTestDirectory directory{
+            L"agent-session-administrative-statuses"};
+        RepositoryFixture fixture{directory.path()};
+        const std::array statuses{
+            Domain::SessionStatus::Open,
+            Domain::SessionStatus::Active,
+            Domain::SessionStatus::Running,
+            Domain::SessionStatus::Started,
+            Domain::SessionStatus::Closed,
+            Domain::SessionStatus::Completed,
+            Domain::SessionStatus::Failed};
+        const std::array<std::string_view, 7U> sessionIds{
+            "41000000-0000-4000-8000-000000000001",
+            "41000000-0000-4000-8000-000000000002",
+            "41000000-0000-4000-8000-000000000003",
+            "41000000-0000-4000-8000-000000000004",
+            "41000000-0000-4000-8000-000000000005",
+            "41000000-0000-4000-8000-000000000006",
+            "41000000-0000-4000-8000-000000000007"};
+        std::optional<Domain::SessionId> firstId;
+        for (std::size_t index{}; index < statuses.size(); ++index) {
+            if (!fixture.repository) {
+                fixture.open("p16-admin-status-reopen");
+            }
+            const auto sessionId = parse<Domain::SessionId>(sessionIds[index]);
+            const auto client = parse<Domain::ClientId>(
+                "client-admin-status-" + std::to_string(index));
+            const auto started = start(
+                fixture,
+                sessionId,
+                client,
+                "p16-admin-status-start");
+            if (!firstId) {
+                firstId = sessionId;
+            }
+            fixture.close();
+            const std::string status{Domain::wireName(statuses[index])};
+            {
+                SqliteDatabase database{
+                    directory.path() / L"store.sqlite", false};
+                database.execute(
+                    "UPDATE agent_sessions SET status='" + status +
+                    "',summary='prior-summary' WHERE id='" +
+                    sessionId.value() + "';"
+                    "UPDATE memory_notes SET body=replace(body,"
+                    "'\"status\":\"open\"','\"status\":\"" + status +
+                    "\"') WHERE key='" + runProjectionKey(sessionId) + "';");
+            }
+            fixture.open("p16-admin-status-mutated-reopen");
+            const auto closedAt =
+                started.run.session.updatedAt +
+                std::chrono::seconds{static_cast<long long>(index + 1U)};
+            const std::string summary{
+                "dashboard-close-from-" + status};
+            const auto closed = take(fixture.repository->administrativelyClose(
+                sessionId,
+                summary,
+                closedAt,
+                activeContext(*fixture.clock, "p16-admin-status-close")));
+            require(closed.status == Domain::SessionStatus::Closed &&
+                        closed.summary == std::optional<std::string>{summary} &&
+                        closed.id == started.run.session.id &&
+                        closed.agentId == started.run.session.agentId &&
+                        closed.clientId == started.run.session.clientId &&
+                        closed.createdAt == started.run.session.createdAt &&
+                        closed.updatedAt == closedAt,
+                    "administrative close rejected or changed a prior status");
+            const auto durable = take(fixture.repository->getRun(
+                sessionId,
+                activeContext(*fixture.clock, "p16-admin-status-read")));
+            require(durable &&
+                        durable->projectId == started.run.projectId &&
+                        durable->goal == started.run.goal &&
+                        durable->workingDirectory == started.run.workingDirectory &&
+                        durable->outputSchema == started.run.outputSchema &&
+                        durable->firstMoves == started.run.firstMoves &&
+                        durable->reportJson == started.run.reportJson,
+                    "administrative close did not preserve extended run fields");
+            fixture.close();
+            SqliteDatabase database{
+                directory.path() / L"store.sqlite", false};
+            requireRunProjectionMatches(database, *durable);
+            requireActiveProjectionAbsent(database, client);
+        }
+        fixture.open("p16-admin-status-validation-reopen");
+        const auto missing = fixture.repository->administrativelyClose(
+            parse<Domain::SessionId>(
+                "41000000-0000-4000-8000-000000000099"),
+            "missing",
+            fixture.clock->utcNow(),
+            activeContext(*fixture.clock, "p16-admin-not-found"));
+        require(!missing &&
+                    missing.error().code == Domain::ErrorCodes::SessionNotFound,
+                "administrative close did not return session_not_found");
+        std::string oversizedSummary(
+            Domain::AgentSessionLimits::MaximumSummaryUnits * 4U + 1U,
+            'x');
+        const auto invalid = fixture.repository->administrativelyClose(
+            *firstId,
+            oversizedSummary,
+            fixture.clock->utcNow(),
+            activeContext(*fixture.clock, "p16-admin-invalid-summary"));
+        require(!invalid &&
+                    invalid.error().code == Domain::ErrorCodes::PayloadTooLarge,
+                "administrative close accepted an oversized summary");
+    }
+
+    {
+        Support::ScopedTestDirectory directory{
+            L"agent-session-administrative-rollback"};
+        RepositoryFixture fixture{directory.path()};
+        const auto client = parse<Domain::ClientId>("client-admin-rollback");
+        const auto sessionId = parse<Domain::SessionId>(
+            "42000000-0000-4000-8000-000000000001");
+        const auto started = start(
+            fixture,
+            sessionId,
+            client,
+            "p16-admin-rollback-start");
+        SqliteDatabase database{directory.path() / L"store.sqlite", false};
+        database.execute(
+            "CREATE TRIGGER fail_administrative_run_projection "
+            "BEFORE UPDATE ON memory_notes WHEN OLD.key='" +
+            runProjectionKey(sessionId) + "' BEGIN SELECT "
+            "RAISE(ABORT,'forced administrative projection failure'); END;");
+        const auto failed = fixture.repository->administrativelyClose(
+            sessionId,
+            "must roll back",
+            fixture.clock->utcNow() + 1min,
+            activeContext(*fixture.clock, "p16-admin-rollback-close"));
+        require(!failed && failed.error().code == Domain::ErrorCodes::Conflict,
+                "administrative projection failure returned the wrong error");
+        const auto durable = take(fixture.repository->getRun(
+            sessionId,
+            activeContext(*fixture.clock, "p16-admin-rollback-read")));
+        require(durable &&
+                    durable->session.status == Domain::SessionStatus::Open &&
+                    !durable->session.summary &&
+                    durable->session.updatedAt == started.run.session.updatedAt,
+                "administrative projection failure committed the session row");
+        const auto recovered = take(fixture.repository->recoverRun(
+            Domain::AgentRunRecoveryRequest{client},
+            activeContext(*fixture.clock, "p16-admin-rollback-recover")));
+        require(recovered.run && recovered.binding &&
+                    recovered.run->session.id == sessionId &&
+                    recovered.binding->sessionId == sessionId,
+                "administrative projection failure committed active removal");
+        requireRunProjectionMatches(database, started.run);
+        requireActiveProjectionMatches(
+            database, client, *started.activeBinding);
+        database.execute("DROP TRIGGER fail_administrative_run_projection;");
+        const auto retried = take(fixture.repository->administrativelyClose(
+            sessionId,
+            "retry after rollback",
+            fixture.clock->utcNow() + 1min,
+            activeContext(*fixture.clock, "p16-admin-rollback-retry")));
+        require(retried.status == Domain::SessionStatus::Closed,
+                "administrative close did not recover after rollback");
+    }
+}
+
 void crashRollbackAndCommittedRecovery(
     const std::filesystem::path& processFixture)
 {
@@ -1970,6 +2218,8 @@ int main(const int argumentCount, const char* const arguments[])
         std::cout << "PASS agent_session_repository.v5_hostile_rows\n";
         staleCloseCancellationDeadlineAndSharedShutdown();
         std::cout << "PASS agent_session_repository.bounds_shutdown\n";
+        administrativeCloseIsAtomicAndStatusAgnostic();
+        std::cout << "PASS agent_session_repository.administrative_close\n";
         timestampOrderingMonotonicTouchAndMaximumReport();
         std::cout << "PASS agent_session_repository.timestamp_report_bounds\n";
         legacyContinuitySessionSourceIsAuthoritativeAndBounded();
@@ -1980,7 +2230,7 @@ int main(const int argumentCount, const char* const arguments[])
         std::cout << "PASS agent_session_repository.completion_crash_retry\n";
         crossProcessReattachCas(processFixture);
         std::cout << "PASS agent_session_repository.cross_process_cas\n";
-        std::cout << "SUMMARY passed=9 failed=0\n";
+        std::cout << "SUMMARY passed=10 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

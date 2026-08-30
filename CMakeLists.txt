@@ -292,6 +292,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsContinuityDocumentCodec.cpp
     src/Infrastructure/Windows/WindowsCurrentUserIdentity.cpp
     src/Infrastructure/Windows/WindowsDashboardBearerToken.cpp
+    src/Infrastructure/Windows/WindowsDiagnosticLogTailReader.cpp
     src/Infrastructure/Windows/WindowsDiagnosticSink.cpp
     src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp
     src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp
@@ -364,6 +365,7 @@ set(FORGE_PERSISTENCE_WINDOWS_SOURCES
     src/Persistence/Windows/WindowsAuditRepository.cpp
     src/Persistence/Windows/WindowsCentralDatabase.cpp
     src/Persistence/Windows/WindowsClientPresenceRepository.cpp
+    src/Persistence/Windows/WindowsDashboardOperationalRepository.cpp
     src/Persistence/Windows/WindowsForgeStatusRepository.cpp
     src/Persistence/Windows/WindowsLegacyContinuityRepository.cpp
     src/Persistence/Windows/WindowsLegacyMemoryRepository.cpp
@@ -2041,6 +2043,30 @@ if(BUILD_TESTING)
         TIMEOUT 180
     )
 
+    add_executable(
+        ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests
+        tests/Infrastructure/WindowsDiagnosticLogTailReaderTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests)
+    target_include_directories(
+        ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
+
+    add_test(
+        NAME ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests PROPERTIES
+        LABELS "T-UNIT;T-SEC;G16"
+        TIMEOUT 120
+    )
+
     add_executable(ForgeConductor.Infrastructure.ShutdownTests
         tests/Infrastructure/ShutdownWindowsTests.cpp)
     forge_configure_native_target(ForgeConductor.Infrastructure.ShutdownTests)
@@ -2224,6 +2250,31 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests PROPERTIES
         LABELS "G14;T-MCP;T-DB;T-UNIT;T-INTEGRATION;T-SEC"
+        TIMEOUT 180
+    )
+
+    add_executable(
+        ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests
+        tests/Persistence/DashboardOperationalRepositoryWindowsTests.cpp)
+    forge_configure_native_target(
+        ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests)
+    target_include_directories(
+        ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(
+        ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests PRIVATE
+        ForgeConductor::Persistence.Windows)
+
+    add_test(
+        NAME ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests
+        COMMAND
+            $<TARGET_FILE:ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests>
+    )
+    set_tests_properties(
+        ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests
+        PROPERTIES
+        LABELS "G16;T-DB;T-UNIT;T-INTEGRATION;T-SEC"
         TIMEOUT 180
     )
 

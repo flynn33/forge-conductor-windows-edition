@@ -295,14 +295,19 @@ Domain::Result<void> WindowsClientPresenceRepository::upsert(
                     {
                         auto statement = take(connection.prepare(
                             "INSERT INTO client_presence("
-                            "client_id,role,deployment_id,process_id,first_seen_at,last_seen_at) "
-                            "VALUES(?,?,?,?,?,?) ON CONFLICT(client_id) DO UPDATE SET "
+                            "client_id,role,deployment_id,process_id,working_directory,"
+                            "first_seen_at,last_seen_at) "
+                            "VALUES(?,?,?,?,?,?,?) ON CONFLICT(client_id) DO UPDATE SET "
                             "role=excluded.role,deployment_id=excluded.deployment_id,"
-                            "process_id=excluded.process_id,last_seen_at=excluded.last_seen_at",
+                            "process_id=excluded.process_id,"
+                            "working_directory=excluded.working_directory,"
+                            "last_seen_at=excluded.last_seen_at",
                             context));
                         bindIdentity(statement, 1, registration.identity);
-                        take(statement.bindText(5, firstSeenAt));
-                        take(statement.bindText(6, lastSeenAt));
+                        take(statement.bindText(
+                            5, registration.workingDirectory.value()));
+                        take(statement.bindText(6, firstSeenAt));
+                        take(statement.bindText(7, lastSeenAt));
                         stepDone(statement);
                     }
                     if (!oneRowChanged(connection, context)) {

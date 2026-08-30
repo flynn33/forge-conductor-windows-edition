@@ -115,16 +115,58 @@ CREATE INDEX idx_audit_events_occurred_at
     ON audit_events(occurred_at DESC);
 UPDATE schema_version SET version = 6;)sql";
 
-constexpr std::array<MigrationStep, 6> Steps{{
+constexpr std::string_view C007Sql = R"sql(CREATE TABLE client_presence_v7 (
+    client_id TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    deployment_id TEXT,
+    process_id INTEGER,
+    working_directory TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
+INSERT INTO client_presence_v7(
+    client_id, role, deployment_id, process_id, working_directory,
+    first_seen_at, last_seen_at
+)
+SELECT canonical.client_id, canonical.role, canonical.deployment_id,
+       canonical.process_id, legacy.cwd,
+       strftime('%Y-%m-%dT%H:%M:%fZ', canonical.first_seen_at),
+       strftime('%Y-%m-%dT%H:%M:%fZ', canonical.last_seen_at)
+FROM client_presence AS canonical
+JOIN presence AS legacy
+  ON legacy.client_id = canonical.client_id
+ AND COALESCE(legacy.host_kind, 'unknown') = canonical.role
+ AND legacy.pid IS canonical.process_id
+ AND legacy.last_heartbeat = canonical.first_seen_at
+WHERE canonical.deployment_id IS NULL
+  AND typeof(legacy.cwd) = 'text'
+  AND length(CAST(legacy.cwd AS BLOB)) BETWEEN 1 AND 32768
+  AND instr(legacy.cwd, char(0)) = 0;
+DROP TABLE client_presence;
+ALTER TABLE client_presence_v7 RENAME TO client_presence;
+UPDATE agent_sessions
+SET created_at = strftime('%Y-%m-%dT%H:%M:%fZ', created_at),
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', updated_at);
+CREATE INDEX idx_agent_sessions_created_id
+    ON agent_sessions(created_at DESC, id DESC);
+CREATE INDEX idx_agent_sessions_open_created_id
+    ON agent_sessions(created_at DESC, id DESC)
+    WHERE status IN ('open','active','running','started');
+CREATE INDEX idx_client_presence_last_seen_client
+    ON client_presence(last_seen_at DESC, client_id DESC);
+UPDATE schema_version SET version = 7;)sql";
+
+constexpr std::array<MigrationStep, 7> Steps{{
     {1, "C001", C001Sql, "6d34b6a07a3d74440b598f2ca8b73ce84b615f99b814911b0f23e517e77c3eeb"},
     {2, "C002", C002Sql, "3c6fed9dd5aad4cda6d1bf511c48bfb27e450b68cba7b9446e6ddc9ef0d60315"},
     {3, "C003", C003Sql, "600c16d28acd5f54a53a900d20e9ca51392a764e4bc9cdcb0b0b895a335173d9"},
     {4, "C004", C004Sql, "653de9cd69b5a570b2269304715742375958e80335fead0a708362a134328936"},
     {5, "C005", C005Sql, "e710c085f429574b82013d1bd5d711418147fdb15b91a1de7f74a83e14703cba"},
     {6, "C006", C006Sql, "2f4ebc81ba122ca1a471504ce69fad1b11e7cbeecedd972024a521ebc849c427"},
+    {7, "C007", C007Sql, "e484d351fc622d0664bddeaa17a47b17929213a226341a98a9bed055df0864bd"},
 }};
 
-constexpr std::array<SchemaObject, 13> RequiredSchema{{
+constexpr std::array<SchemaObject, 16> RequiredSchema{{
     {"table", "agent_sessions"},
     {"table", "audit_events"},
     {"table", "client_presence"},
@@ -135,6 +177,9 @@ constexpr std::array<SchemaObject, 13> RequiredSchema{{
     {"table", "schema_version"},
     {"index", "idx_audit_events_event_id"},
     {"index", "idx_audit_events_occurred_at"},
+    {"index", "idx_agent_sessions_created_id"},
+    {"index", "idx_agent_sessions_open_created_id"},
+    {"index", "idx_client_presence_last_seen_client"},
     {"index", "idx_context_handoffs_client_sequence"},
     {"index", "idx_context_handoffs_sequence"},
     {"index", "idx_context_handoffs_updated"},

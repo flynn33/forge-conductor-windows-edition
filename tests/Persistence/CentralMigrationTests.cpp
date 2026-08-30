@@ -44,7 +44,8 @@ constexpr std::string_view CentralLedger =
     "3:C003:600c16d28acd5f54a53a900d20e9ca51392a764e4bc9cdcb0b0b895a335173d9|"
     "4:C004:653de9cd69b5a570b2269304715742375958e80335fead0a708362a134328936|"
     "5:C005:e710c085f429574b82013d1bd5d711418147fdb15b91a1de7f74a83e14703cba|"
-    "6:C006:2f4ebc81ba122ca1a471504ce69fad1b11e7cbeecedd972024a521ebc849c427";
+    "6:C006:2f4ebc81ba122ca1a471504ce69fad1b11e7cbeecedd972024a521ebc849c427|"
+    "7:C007:e484d351fc622d0664bddeaa17a47b17929213a226341a98a9bed055df0864bd";
 
 const std::vector<std::string> CentralTables{
     "agent_sessions",
@@ -57,8 +58,11 @@ const std::vector<std::string> CentralTables{
     "schema_version"};
 
 const std::vector<std::string> CentralIndexes{
+    "idx_agent_sessions_created_id",
+    "idx_agent_sessions_open_created_id",
     "idx_audit_events_event_id",
     "idx_audit_events_occurred_at",
+    "idx_client_presence_last_seen_client",
     "idx_context_handoffs_client_sequence",
     "idx_context_handoffs_sequence",
     "idx_context_handoffs_updated"};
@@ -264,7 +268,7 @@ void requireCurrentSnapshot(
     const auto snapshot = take(database.schemaSnapshot(context));
     require(snapshot.kind == PersistenceWindows::DatabaseStoreKind::Central,
             "central facade reported the wrong database kind");
-    require(snapshot.physicalVersion == 6 &&
+    require(snapshot.physicalVersion == 7 &&
                 snapshot.sourceCompatibilityVersion == 5,
             "central facade reported the wrong schema versions");
     require(!snapshot.fts5Enabled,
@@ -288,9 +292,9 @@ void requireCurrentLedgerAndConstraints(
         *environment, WinsqliteOpenMode::ReadOnlyExisting, context);
 
     require(queryInteger(connection,
-                         "SELECT COUNT(*) FROM schema_version WHERE version = 6;",
+                         "SELECT COUNT(*) FROM schema_version WHERE version = 7;",
                          context) == 1,
-            "central target does not have exactly one version-6 marker");
+            "central target does not have exactly one version-7 marker");
     require(queryInteger(connection, "SELECT COUNT(*) FROM schema_version;", context) == 1,
             "central target retained an ambiguous version ledger");
     require(queryText(
@@ -335,7 +339,8 @@ void requireCurrentLedgerAndConstraints(
     require(queryText(connection, columnSignatureSql("client_presence"), context) ==
                 "0:client_id:TEXT:0:<null>:1:0|1:role:TEXT:1:<null>:0:0|"
                 "2:deployment_id:TEXT:0:<null>:0:0|3:process_id:INTEGER:0:<null>:0:0|"
-                "4:first_seen_at:TEXT:1:<null>:0:0|5:last_seen_at:TEXT:1:<null>:0:0",
+                "4:working_directory:TEXT:1:<null>:0:0|"
+                "5:first_seen_at:TEXT:1:<null>:0:0|6:last_seen_at:TEXT:1:<null>:0:0",
             "central client-presence columns changed");
 
     require(queryText(connection,
@@ -355,6 +360,48 @@ void requireCurrentLedgerAndConstraints(
                       indexKeySql("idx_audit_events_occurred_at"), context) ==
                 "occurred_at:1",
             "central audit ordering index columns changed");
+    require(queryText(connection,
+                      indexKeySql("idx_agent_sessions_created_id"), context) ==
+                "created_at:1|id:1" &&
+                queryText(connection,
+                          indexKeySql("idx_agent_sessions_open_created_id"), context) ==
+                    "created_at:1|id:1",
+            "central dashboard session ordering indexes changed");
+    require(queryText(connection,
+                      indexKeySql("idx_client_presence_last_seen_client"), context) ==
+                "last_seen_at:1|client_id:1",
+            "central dashboard presence ordering index changed");
+    require(queryText(connection,
+                      "SELECT [unique] || ':' || origin || ':' || partial FROM "
+                      "pragma_index_list('agent_sessions') WHERE "
+                      "name = 'idx_agent_sessions_open_created_id';",
+                      context) == "0:c:1",
+            "central open-session ordering index lost its partial property");
+    const std::string openSessionPlan = queryPlanDetails(
+        connection,
+        "EXPLAIN QUERY PLAN SELECT id FROM agent_sessions "
+        "WHERE status IN ('open','active','running','started') "
+        "ORDER BY created_at DESC,id DESC LIMIT 8;",
+        context);
+    require(openSessionPlan.find("idx_agent_sessions_open_created_id") !=
+                std::string::npos,
+            "central open-session query did not use its bounded ordering index");
+    const std::string recentSessionPlan = queryPlanDetails(
+        connection,
+        "EXPLAIN QUERY PLAN SELECT id FROM agent_sessions "
+        "ORDER BY created_at DESC,id DESC LIMIT 8;",
+        context);
+    require(recentSessionPlan.find("idx_agent_sessions_created_id") !=
+                std::string::npos,
+            "central recent-session query did not use its bounded ordering index");
+    const std::string presencePlan = queryPlanDetails(
+        connection,
+        "EXPLAIN QUERY PLAN SELECT client_id FROM client_presence "
+        "ORDER BY last_seen_at DESC,client_id DESC LIMIT 8;",
+        context);
+    require(presencePlan.find("idx_client_presence_last_seen_client") !=
+                std::string::npos,
+            "central presence query did not use its bounded ordering index");
     const std::string auditOrderingPlan = queryPlanDetails(
         connection,
         "EXPLAIN QUERY PLAN "
@@ -625,8 +672,9 @@ void testCentralVersion5MigrationPreservesData(
     require(queryInteger(connection,
                          "SELECT COUNT(*) FROM client_presence WHERE "
                          "client_id = 'legacy-client-1' AND role = 'cli' AND "
-                         "process_id = 4242 AND first_seen_at = '2025-01-02T03:04:09Z' "
-                         "AND last_seen_at = first_seen_at;",
+                         "process_id = 4242 AND first_seen_at = '2025-01-02T03:04:09.000Z' "
+                         "AND last_seen_at = first_seen_at AND "
+                         "working_directory = 'legacy-root';",
                          context) == 1,
             "central v5 presence row was not copied into client_presence");
     require(queryInteger(connection,
@@ -646,6 +694,82 @@ void testCentralVersion5MigrationPreservesData(
                          context) == 1,
             "central v5 handoff was not preserved and backfilled");
     take(connection.close(context));
+}
+
+void testCentralVersion6MigrationRecoversOnlyProvenDirectories(
+    const std::filesystem::path& fixtures)
+{
+    ScopedTestDirectory directory{L"central-v6"};
+    createFixture(directory.path(), fixtures / L"central-v6.sql");
+    const auto context = activeContext("p07-central-v6");
+    CentralDependencies dependencies{directory.path()};
+    {
+        auto database = openCentral(dependencies, context);
+        requireCurrentSnapshot(*database, context);
+        take(database->close(context));
+    }
+
+    const auto backupPath = directory.path() /
+        L"store.sqlite.pre-migration.11111111-1111-4111-8111-111111111111.sqlite";
+    require(std::filesystem::is_regular_file(backupPath),
+            "central v6 migration did not publish its required online backup");
+    {
+        auto backupEnvironment = KernelEnvironment::create(
+            directory.path(), backupPath.filename().native());
+        const auto backupContext = activeContext("p07-central-v6-backup");
+        auto backup = openDatabase(
+            *backupEnvironment, WinsqliteOpenMode::ReadOnlyExisting, backupContext);
+        require(queryInteger(backup,
+                             "SELECT COUNT(*) FROM schema_version WHERE version = 6;",
+                             backupContext) == 1 &&
+                    queryInteger(backup,
+                                 "SELECT COUNT(*) FROM client_presence;",
+                                 backupContext) == 3 &&
+                    queryInteger(backup,
+                                 "SELECT COUNT(*) FROM "
+                                 "pragma_table_xinfo('client_presence') WHERE "
+                                 "name = 'working_directory';",
+                                 backupContext) == 0,
+                "central v6 backup did not retain the exact pre-migration generation");
+        take(backup.close(backupContext));
+    }
+
+    requireCurrentLedgerAndConstraints(
+        directory.path(), AdoptedVersion5ContextColumns);
+    auto environment = KernelEnvironment::create(directory.path(), L"store.sqlite");
+    auto connection = openDatabase(
+        *environment, WinsqliteOpenMode::ReadOnlyExisting, context);
+    require(queryInteger(connection,
+                         "SELECT COUNT(*) FROM client_presence;",
+                         context) == 1,
+            "central v6 migration retained unrecoverable ephemeral presence rows");
+    require(queryInteger(connection,
+                         "SELECT COUNT(*) FROM client_presence WHERE "
+                         "client_id = 'recoverable-client' AND role = 'cli' AND "
+                         "deployment_id IS NULL AND process_id = 6101 AND "
+                         "working_directory = 'D:/workspaces/recoverable' AND "
+                         "first_seen_at = '2026-08-29T12:00:00.000Z' AND "
+                         "last_seen_at = '2026-08-29T12:00:05.000Z';",
+                         context) == 1,
+            "central v6 migration did not recover the exact proven working directory");
+    require(queryInteger(connection,
+                         "SELECT COUNT(*) FROM client_presence WHERE client_id IN "
+                         "('orphan-client','empty-directory-client');",
+                         context) == 0,
+            "central v6 migration fabricated a working directory for an unproven owner");
+    take(connection.close(context));
+    environment.reset();
+
+    const auto databasePath = directory.path() / L"store.sqlite";
+    const std::string beforeReopen = PersistenceSupport::readFixture(databasePath);
+    CentralDependencies reopenedDependencies{directory.path()};
+    {
+        auto database = openCentral(reopenedDependencies, context);
+        requireCurrentSnapshot(*database, context);
+        take(database->close(context));
+    }
+    require(PersistenceSupport::readFixture(databasePath) == beforeReopen,
+            "central v6 migration changed bytes during an idempotent reopen");
 }
 
 void requireRejectedWithoutMainMutation(
@@ -690,7 +814,7 @@ void testCentralRejectsUnsupportedFutureAndAmbiguousLayouts(
         auto environment = KernelEnvironment::create(directory.path(), L"store.sqlite");
         auto connection = openDatabase(
             *environment, WinsqliteOpenMode::ReadWriteExisting, context);
-        take(connection.execute("UPDATE schema_version SET version = 7;", context));
+        take(connection.execute("UPDATE schema_version SET version = 8;", context));
         take(connection.close(context));
         environment.reset();
         requireRejectedWithoutMainMutation(
@@ -734,6 +858,10 @@ void registerCentralMigrationTests(
             });
     addTest(tests, "persistence.central.v5-preservation",
             [fixtures] { testCentralVersion5MigrationPreservesData(fixtures); });
+    addTest(tests, "persistence.central.v6-presence-recovery",
+            [fixtures] {
+                testCentralVersion6MigrationRecoversOnlyProvenDirectories(fixtures);
+            });
     addTest(tests, "persistence.central.reject-read-only",
             [fixtures] {
                 testCentralRejectsUnsupportedFutureAndAmbiguousLayouts(fixtures);

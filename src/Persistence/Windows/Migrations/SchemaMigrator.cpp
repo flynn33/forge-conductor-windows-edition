@@ -269,9 +269,16 @@ constexpr std::array ContextHandoffVersion6ManifestColumns{
     column("content_sha256", "TEXT"),
 };
 
-constexpr std::array ClientPresenceColumns{
+constexpr std::array ClientPresenceVersion6Columns{
     column("client_id", "TEXT", false, 1), column("role", "TEXT", true),
     column("deployment_id", "TEXT"),       column("process_id", "INTEGER"),
+    column("first_seen_at", "TEXT", true), column("last_seen_at", "TEXT", true),
+};
+
+constexpr std::array ClientPresenceVersion7Columns{
+    column("client_id", "TEXT", false, 1), column("role", "TEXT", true),
+    column("deployment_id", "TEXT"),       column("process_id", "INTEGER"),
+    column("working_directory", "TEXT", true),
     column("first_seen_at", "TEXT", true), column("last_seen_at", "TEXT", true),
 };
 
@@ -512,6 +519,16 @@ constexpr std::array OccurredAtDescendingIndexColumns{
     IndexColumnSpec{"occurred_at", true},
 };
 
+constexpr std::array AgentSessionCreatedDescendingIndexColumns{
+    IndexColumnSpec{"created_at", true},
+    IndexColumnSpec{"id", true},
+};
+
+constexpr std::array ClientPresenceLastSeenDescendingIndexColumns{
+    IndexColumnSpec{"last_seen_at", true},
+    IndexColumnSpec{"client_id", true},
+};
+
 constexpr std::array ProjectIdIndexColumns{
     IndexColumnSpec{"project_id", false},
 };
@@ -609,7 +626,19 @@ constexpr std::array CentralVersion5Indexes{
 constexpr std::array CentralVersion6Tables{
     TableSpec{"agent_sessions", CentralAgentSessionVersion6Columns, {}},
     TableSpec{"audit_events", AuditEventVersion6Columns, {}},
-    TableSpec{"client_presence", ClientPresenceColumns, {}},
+    TableSpec{"client_presence", ClientPresenceVersion6Columns, {}},
+    TableSpec{"context_handoffs", ContextHandoffVersion6FixtureColumns,
+              ContextHandoffVersion6ManifestColumns},
+    TableSpec{"memory_notes", MemoryNoteColumns, {}},
+    TableSpec{"presence", PresenceColumns, {}},
+    TableSpec{"schema_migrations", SchemaMigrationColumns, {}},
+    TableSpec{"schema_version", SchemaVersionColumns, {}},
+};
+
+constexpr std::array CentralVersion7Tables{
+    TableSpec{"agent_sessions", CentralAgentSessionVersion6Columns, {}},
+    TableSpec{"audit_events", AuditEventVersion6Columns, {}},
+    TableSpec{"client_presence", ClientPresenceVersion7Columns, {}},
     TableSpec{"context_handoffs", ContextHandoffVersion6FixtureColumns,
               ContextHandoffVersion6ManifestColumns},
     TableSpec{"memory_notes", MemoryNoteColumns, {}},
@@ -626,6 +655,53 @@ constexpr std::array CentralVersion6Indexes{
               false,
               false,
               OccurredAtDescendingIndexColumns,
+              {}},
+    IndexSpec{"idx_context_handoffs_client_sequence",
+              "context_handoffs",
+              false,
+              false,
+              ClientWriteSequenceIndexColumns,
+              {}},
+    IndexSpec{"idx_context_handoffs_sequence",
+              "context_handoffs",
+              false,
+              false,
+              WriteSequenceDescendingIndexColumns,
+              {}},
+    IndexSpec{"idx_context_handoffs_updated",
+              "context_handoffs",
+              false,
+              false,
+              UpdatedAtDescendingIndexColumns,
+              {}},
+};
+
+constexpr std::array CentralVersion7Indexes{
+    IndexSpec{"idx_agent_sessions_created_id",
+              "agent_sessions",
+              false,
+              false,
+              AgentSessionCreatedDescendingIndexColumns,
+              {}},
+    IndexSpec{"idx_agent_sessions_open_created_id",
+              "agent_sessions",
+              false,
+              true,
+              AgentSessionCreatedDescendingIndexColumns,
+              "status IN ('open','active','running','started')"},
+    IndexSpec{"idx_audit_events_event_id", "audit_events", true, true, EventIdIndexColumns,
+              "event_id IS NOT NULL"},
+    IndexSpec{"idx_audit_events_occurred_at",
+              "audit_events",
+              false,
+              false,
+              OccurredAtDescendingIndexColumns,
+              {}},
+    IndexSpec{"idx_client_presence_last_seen_client",
+              "client_presence",
+              false,
+              false,
+              ClientPresenceLastSeenDescendingIndexColumns,
               {}},
     IndexSpec{"idx_context_handoffs_client_sequence",
               "context_handoffs",
@@ -802,8 +878,13 @@ constexpr LayoutSpec CentralVersion5Layout{
 };
 
 constexpr LayoutSpec CentralVersion6Layout{
-    DatabaseKind::Central, SchemaLayout::CentralVersion6, 6, CentralPhysicalVersion, false, true,
+    DatabaseKind::Central, SchemaLayout::CentralVersion6, 6, CentralPhysicalVersion, true, true,
     CentralVersion6Tables, CentralVersion6Indexes,
+};
+
+constexpr LayoutSpec CentralVersion7Layout{
+    DatabaseKind::Central, SchemaLayout::CentralVersion7, 7, CentralPhysicalVersion, false, true,
+    CentralVersion7Tables, CentralVersion7Indexes,
 };
 
 constexpr LayoutSpec ProjectVersion1Layout{
@@ -928,7 +1009,8 @@ template <typename T>
     {
         return layout == SchemaLayout::CentralVersion3Minimal ||
                layout == SchemaLayout::CentralVersion3 || layout == SchemaLayout::CentralVersion5 ||
-               layout == SchemaLayout::CentralVersion6;
+               layout == SchemaLayout::CentralVersion6 ||
+               layout == SchemaLayout::CentralVersion7;
     }
     if (databaseKind == DatabaseKind::Project)
     {
@@ -2254,7 +2336,9 @@ template <typename Reader>
     }
     const auto checkCount = countCanonicalToken(canonical, "CHECK(");
     const bool expectsMutatingCheck =
-        layout.layout == SchemaLayout::CentralVersion6 && table.name == "audit_events";
+        (layout.layout == SchemaLayout::CentralVersion6 ||
+         layout.layout == SchemaLayout::CentralVersion7) &&
+        table.name == "audit_events";
     if (checkCount != (expectsMutatingCheck ? 1U : 0U) ||
         (expectsMutatingCheck && canonical.find("CHECK(MUTATINGIN(0,1))") == std::string::npos))
     {
@@ -2496,9 +2580,13 @@ template <typename Reader>
         {
             layout = &CentralVersion5Layout;
         }
-        else if (sourceVersion.value() == CentralPhysicalVersion)
+        else if (sourceVersion.value() == 6)
         {
             layout = &CentralVersion6Layout;
+        }
+        else if (sourceVersion.value() == CentralPhysicalVersion)
+        {
+            layout = &CentralVersion7Layout;
         }
         else
         {
@@ -2513,7 +2601,10 @@ template <typename Reader>
         }
         if (layout->requiresLedger)
         {
-            validated = validateMigrationLedger(reader, centralMigrationSteps());
+            validated = validateMigrationLedger(
+                reader,
+                centralMigrationSteps().first(
+                    static_cast<std::size_t>(layout->sourceVersion)));
             if (!validated)
             {
                 return Domain::Result<SchemaAssessment>::failure(std::move(validated).error());
@@ -2634,11 +2725,16 @@ template <typename T>
 
     if (assessment.databaseKind == DatabaseKind::Central)
     {
-        auto ledgerCreated = transaction.execute(steps.front().sql);
-        if (!ledgerCreated)
+        const bool ledgerAlreadyExists =
+            assessment.layout == SchemaLayout::CentralVersion6;
+        if (!ledgerAlreadyExists)
         {
-            return Domain::Result<void>::failure(
-                asMigrationError(std::move(ledgerCreated).error()));
+            auto ledgerCreated = transaction.execute(steps.front().sql);
+            if (!ledgerCreated)
+            {
+                return Domain::Result<void>::failure(
+                    asMigrationError(std::move(ledgerCreated).error()));
+            }
         }
         if (assessment.layout == SchemaLayout::CentralVersion3Minimal)
         {
@@ -2713,7 +2809,9 @@ CREATE INDEX idx_context_handoffs_updated
     }
     const auto steps = assessment.databaseKind == DatabaseKind::Central ? centralMigrationSteps()
                                                                          : projectMigrationSteps();
-    const bool ledgerAlreadyExists = assessment.layout == SchemaLayout::ProjectVersion2;
+    const bool ledgerAlreadyExists =
+        assessment.layout == SchemaLayout::ProjectVersion2 ||
+        assessment.layout == SchemaLayout::CentralVersion6;
     for (const auto &step : steps)
     {
         if (ledgerAlreadyExists && step.version <= assessment.sourceVersion)
@@ -3063,7 +3161,7 @@ Domain::Result<SchemaAssessment> SchemaMigrator::migrate(
                                                      std::move(finalAssessment).error());
         }
         const SchemaLayout expectedCurrentLayout =
-            priorAssessment.databaseKind == DatabaseKind::Central ? SchemaLayout::CentralVersion6
+            priorAssessment.databaseKind == DatabaseKind::Central ? SchemaLayout::CentralVersion7
                                                                   : SchemaLayout::ProjectVersion3;
         if (finalAssessment.value().layout != expectedCurrentLayout ||
             finalAssessment.value().sourceVersion != priorAssessment.targetVersion ||

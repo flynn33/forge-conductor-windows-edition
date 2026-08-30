@@ -48,6 +48,7 @@ public:
 
     [[nodiscard]] Domain::Result<void> start(
         Domain::ClientPresenceIdentity identity,
+        Domain::PathText workingDirectory,
         const Domain::OperationContext& context) noexcept;
 
     [[nodiscard]] Domain::Result<void> stop(
@@ -68,6 +69,7 @@ private:
         noexcept;
     void workerLoop(
         Domain::ClientPresenceIdentity identity,
+        Domain::PathText workingDirectory,
         std::stop_token cancellation,
         Contracts::RuntimeOwnershipLease ownershipLease) noexcept;
     [[nodiscard]] bool stopWorker() noexcept;
@@ -84,6 +86,7 @@ private:
     std::mutex waitMutex_;
     std::condition_variable_any wake_;
     std::optional<Domain::ClientPresenceIdentity> identity_;
+    std::optional<Domain::PathText> workingDirectory_;
     State state_{State::Idle};
     bool startPublished_{};
     bool registered_{};

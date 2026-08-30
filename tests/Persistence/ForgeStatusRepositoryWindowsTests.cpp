@@ -190,10 +190,11 @@ void statusProjectionUsesOnlyCanonicalBoundedRows()
         SqliteDatabase database{fixture.databasePath()};
         database.execute(
             "INSERT INTO client_presence("
-            "client_id,role,deployment_id,process_id,first_seen_at,last_seen_at) "
-            "VALUES('primary-client','primary','deploy-primary',101,"
+            "client_id,role,deployment_id,process_id,working_directory,"
+            "first_seen_at,last_seen_at) "
+            "VALUES('primary-client','primary','deploy-primary',101,'D:/primary',"
             "'2026-08-27T12:00:00Z','2026-08-27T12:00:01Z'),"
-            "('fallback-client','fallback','deploy-fallback',102,"
+            "('fallback-client','fallback','deploy-fallback',102,'D:/fallback',"
             "'2026-08-27T12:00:00Z','2026-08-27T12:00:01Z');"
             "INSERT INTO presence(client_id,host_kind,pid,cwd,last_heartbeat) "
             "VALUES('legacy-only','legacy',103,'D:/legacy',"

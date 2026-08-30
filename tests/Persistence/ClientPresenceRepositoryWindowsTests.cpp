@@ -80,6 +80,11 @@ template <typename T>
     return Domain::UtcTimePoint{std::chrono::seconds{seconds}};
 }
 
+[[nodiscard]] Domain::PathText workingDirectory(const std::string_view value)
+{
+    return take(Domain::PathText::create(value));
+}
+
 [[nodiscard]] Domain::ClientPresenceIdentity identity(
     const std::string_view clientId,
     std::string role,
@@ -253,7 +258,10 @@ void replacementRejectsStaleOwnerAndPreservesFirstSeen()
 
     take(fixture.repository->upsert(
         Domain::ClientPresenceRegistration{
-            firstIdentity, atSeconds(1'700'000'000), atSeconds(1'700'000'010)},
+            firstIdentity,
+            workingDirectory("D:\\workspaces\\first"),
+            atSeconds(1'700'000'000),
+            atSeconds(1'700'000'010)},
         Support::activeContext("presence-register-first")));
     require(
         take(fixture.repository->heartbeat(
@@ -264,6 +272,7 @@ void replacementRejectsStaleOwnerAndPreservesFirstSeen()
     take(fixture.repository->upsert(
         Domain::ClientPresenceRegistration{
             replacementIdentity,
+            workingDirectory("D:\\workspaces\\replacement"),
             atSeconds(1'700'000'030),
             atSeconds(1'700'000'030)},
         Support::activeContext("presence-register-replacement")));
@@ -312,6 +321,12 @@ void replacementRejectsStaleOwnerAndPreservesFirstSeen()
             "replacement process was not persisted");
         require(
             database.text(
+                "SELECT working_directory FROM client_presence "
+                "WHERE client_id='client-one'") ==
+                "D:\\workspaces\\replacement",
+            "replacement working directory was not persisted");
+        require(
+            database.text(
                 "SELECT first_seen_at FROM client_presence "
                 "WHERE client_id='client-one'") ==
                 "2023-11-14T22:13:20.000Z",
@@ -346,7 +361,10 @@ void nullableOwnerFieldsParticipateInExactMatching()
         parse<Domain::ClientId>("manager-client"), "manager", {}, 44U};
     take(fixture.repository->upsert(
         Domain::ClientPresenceRegistration{
-            owner, atSeconds(1'700'001'000), atSeconds(1'700'001'000)},
+            owner,
+            workingDirectory("D:\\workspaces\\manager"),
+            atSeconds(1'700'001'000),
+            atSeconds(1'700'001'000)},
         Support::activeContext("presence-null-register")));
     require(
         !take(fixture.repository->heartbeat(
@@ -383,7 +401,8 @@ void validationContextsAndCloseFailTyped()
     requireError(
         fixture.repository->upsert(
             Domain::ClientPresenceRegistration{
-                emptyRole, atSeconds(10), atSeconds(10)},
+                emptyRole, workingDirectory("D:\\workspaces\\invalid"),
+                atSeconds(10), atSeconds(10)},
             Support::activeContext("presence-empty-role")),
         Domain::ErrorCodes::InvalidRequest);
 
@@ -416,7 +435,8 @@ void validationContextsAndCloseFailTyped()
     requireError(
         fixture.repository->upsert(
             Domain::ClientPresenceRegistration{
-                goodIdentity, atSeconds(20), atSeconds(19)},
+                goodIdentity, workingDirectory("D:\\workspaces\\validated"),
+                atSeconds(20), atSeconds(19)},
             Support::activeContext("presence-reversed-time")),
         Domain::ErrorCodes::InvalidRequest);
     requireError(
@@ -433,7 +453,8 @@ void validationContextsAndCloseFailTyped()
     requireError(
         fixture.repository->upsert(
             Domain::ClientPresenceRegistration{
-                goodIdentity, atSeconds(30), atSeconds(30)},
+                goodIdentity, workingDirectory("D:\\workspaces\\validated"),
+                atSeconds(30), atSeconds(30)},
             cancelled),
         Domain::ErrorCodes::Cancelled);
 

@@ -1,0 +1,600 @@
+CMake is re-running because D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/CMakeFiles/generate.stamp is out-of-date.
+  the file 'D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt'
+  is newer than 'D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/CMakeFiles/generate.stamp.depend'
+  result='-1'
+-- Running vcpkg install
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+The following packages are already installed:
+    nlohmann-json:x64-windows@3.12.0#2
+  * vcpkg-cmake:x64-windows@2025-08-07
+  * vcpkg-cmake-config:x64-windows@2026-07-21
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+All requested installations completed successfully in: 188 us
+-- Running vcpkg install - done
+-- Configuring done (2.7s)
+-- Generating done (2.5s)
+-- Build files have been written to: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Performing configure step for 'forsetti_external'
+  -- Configuring done (0.1s)
+  -- Generating done (0.3s)
+  -- Build files have been written to: D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64/_deps/forsetti-framework
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Performing build step for 'forsetti_external'
+  MSBuild version 17.14.40+3e7442088 for .NET Framework
+  
+    1>Checking Build System
+    Scanning sources for module dependencies...
+    ForsettiCore.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiCore\Release\ForsettiCore.lib
+    Scanning sources for module dependencies...
+    ForsettiPlatform.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiPlatform\Release\ForsettiPlatform.lib
+    Scanning sources for module dependencies...
+    ForsettiHostTemplate.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\_deps\forsetti-framework\src\ForsettiHostTemplate\Release\ForsettiHostTemplate.lib
+  No install step for 'forsetti_external'
+  No test step for 'forsetti_external'
+  Completed 'forsetti_external'
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ClientPresenceModels.cpp
+  Compiling...
+  ClientPresenceModels.cpp
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ManagerDeadlineMapper.cpp
+  ManagerRequestDispatcher.cpp
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Compiling...
+  Scanning sources for module dependencies...
+  ManagerDeadlineMapper.cpp
+  ManagerRequestDispatcher.cpp
+  AgentSessionService.cpp
+  ContinuityCoordinator.cpp
+  DashboardTelemetrySource.cpp
+  DashboardOperationalService.cpp
+  ContinuityAutomation.cpp
+  DashboardConnectionApplication.cpp
+  ClientPresenceLifecycle.cpp
+  AgentCatalog.cpp
+  DashboardConnectionApplicationFactory.cpp
+  LegacyMemoryService.cpp
+  LegacyContextContinuityService.cpp
+  ManagerController.cpp
+  ProjectMemoryService.cpp
+  ProjectMemoryRepositoryCache.cpp
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Compiling...
+  AgentSessionService.cpp
+  ClientPresenceLifecycle.cpp
+  DashboardOperationalService.cpp
+  ContinuityCoordinator.cpp
+  AgentCatalog.cpp
+  LegacyMemoryService.cpp
+  DashboardConnectionApplication.cpp
+  ContinuityAutomation.cpp
+  DashboardConnectionApplicationFactory.cpp
+  ProjectMemoryRepositoryCache.cpp
+  DashboardTelemetrySource.cpp
+  ManagerController.cpp
+  ProjectMemoryService.cpp
+  LegacyContextContinuityService.cpp
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  SystemClock.cpp
+  BCryptSha256Hasher.cpp
+  WindowsLMStudioHostActivator.cpp
+  WindowsDiagnosticSink.cpp
+  WindowsNativeSessionLedger.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  WindowsContinuityDocumentCodec.cpp
+  WindowsManagerNamedPipeClient.cpp
+  SecretRedactor.cpp
+  WindowsDiagnosticLogTailReader.cpp
+  WindowsLMStudioDeploymentService.cpp
+  WindowsUuidGenerator.cpp
+  DeadlineScheduler.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  WindowsRuntimeDiagnostics.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  WindowsManagerNamedPipeServer.cpp
+  WindowsProjectWorkspaceAuthority.cpp
+  WindowsProcessSupervisor.cpp
+  WindowsLMStudioServeVerifier.cpp
+  WindowsCurrentUserIdentity.cpp
+  Compiling...
+  DeadlineScheduler.cpp
+  WindowsDiagnosticLogTailReader.cpp
+  WindowsLMStudioDeploymentService.cpp
+  WindowsContinuityDocumentCodec.cpp
+  BCryptSha256Hasher.cpp
+  WinHttpLocalModelSessionTransport.cpp
+  WindowsAgentCompletionReportInspector.cpp
+  SecretRedactor.cpp
+  WindowsCurrentUserIdentity.cpp
+  SystemClock.cpp
+  WindowsLegacyContinuityProjectionStore.cpp
+  WindowsDiagnosticSink.cpp
+  WindowsLMStudioServeVerifier.cpp
+  WindowsLMStudioHostActivator.cpp
+  WindowsManagerNamedPipeClient.cpp
+  WindowsManagerNamedPipeServer.cpp
+  WindowsNativeSessionLedger.cpp
+  WindowsRuntimeDiagnostics.cpp
+  WindowsProcessSupervisor.cpp
+  WindowsUuidGenerator.cpp
+  WindowsProjectWorkspaceAuthority.cpp
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  LocalLogicalSessionTransport.cpp
+  ForgeNativeSessionHostAdapter.cpp
+  WindowsStdioMcpTransport.cpp
+  McpClientWorkspaceContext.cpp
+  BoundedLogicalContinuationQueue.cpp
+  McpToolCatalog.cpp
+  McpServer.cpp
+  McpToolRouter.cpp
+  McpToolPackAdapter.cpp
+  McpProtocol.cpp
+  McpExecutionServices.cpp
+  McpJsonCodec.cpp
+  McpInvocationGuard.cpp
+  Compiling...
+  ForgeNativeSessionHostAdapter.cpp
+  BoundedLogicalContinuationQueue.cpp
+  LocalLogicalSessionTransport.cpp
+  Compiling...
+  McpProtocol.cpp
+  McpToolPackAdapter.cpp
+  McpToolRouter.cpp
+  McpToolCatalog.cpp
+  McpServer.cpp
+  McpJsonCodec.cpp
+  McpClientWorkspaceContext.cpp
+  McpExecutionServices.cpp
+  WindowsStdioMcpTransport.cpp
+  McpInvocationGuard.cpp
+  ForgeConductor.SessionHost.Core.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.SessionHost.Core.lib
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  WindowsProjectMemoryRepositoryOpener.cpp
+  WindowsLegacyContinuityRepository.cpp
+  WindowsProjectRegistryRepository.cpp
+  WindowsDashboardOperationalRepository.cpp
+  WindowsProjectDatabase.cpp
+  WindowsForgeStatusRepository.cpp
+  WindowsAgentSessionRepository.cpp
+  WindowsAuditRepository.cpp
+  WindowsClientPresenceRepository.cpp
+  CentralMigrations.cpp
+  SchemaMigrator.cpp
+  WindowsDatabaseStore.cpp
+  WindowsProjectMemoryArtifactStore.cpp
+  WindowsLegacyMemoryRepository.cpp
+  WindowsProjectMemoryRepository.cpp
+  WindowsCentralDatabase.cpp
+  DatabaseBackupCoordinator.cpp
+  Scanning sources for module dependencies...
+  WindowsFileSystem.cpp
+  NativeFileOperations.cpp
+  WindowsGitService.cpp
+  WindowsTextSearchService.cpp
+  WindowsShellService.cpp
+  WindowsPathGlobService.cpp
+  WindowsPdfService.cpp
+  Compiling...
+  WindowsAgentSessionRepository.cpp
+  WindowsCentralDatabase.cpp
+  WindowsProjectDatabase.cpp
+  WindowsProjectMemoryRepository.cpp
+  WindowsAuditRepository.cpp
+  WindowsDashboardOperationalRepository.cpp
+  WindowsProjectRegistryRepository.cpp
+  CentralMigrations.cpp
+  WindowsClientPresenceRepository.cpp
+  WindowsLegacyMemoryRepository.cpp
+  SchemaMigrator.cpp
+  DatabaseBackupCoordinator.cpp
+  WindowsProjectMemoryArtifactStore.cpp
+  WindowsForgeStatusRepository.cpp
+  WindowsLegacyContinuityRepository.cpp
+  WindowsProjectMemoryRepositoryOpener.cpp
+  WindowsDatabaseStore.cpp
+  Compiling...
+  WindowsGitService.cpp
+  WindowsFileSystem.cpp
+  WindowsPdfService.cpp
+  WindowsTextSearchService.cpp
+  WindowsShellService.cpp
+  WindowsPathGlobService.cpp
+  NativeFileOperations.cpp
+  ForgeConductor.Mcp.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Mcp.lib
+  ForgeConductor.NativeTools.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.NativeTools.Windows.lib
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  McpServeCompositionRoot.cpp
+  CliCompositionRoot.cpp
+  main.cpp
+  Compiling...
+  CliCompositionRoot.cpp
+  McpServeCompositionRoot.cpp
+  main.cpp
+  ForgeConductor.Cli.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\forge-conductor.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor_Contracts_Contracts_h.cpp
+  ForgeConductor_Contracts_IAgentServices_h.cpp
+  ForgeConductor_Contracts_IContinuityProjectionStore_h.cpp
+  ForgeConductor_Contracts_IClientPresenceRepository_h.cpp
+  ForgeConductor_Contracts_AuthorizedToolCall_h.cpp
+  ForgeConductor_Contracts_ILegacyContextContinuityService_h.cpp
+  ForgeConductor_Contracts_IConfigurationStore_h.cpp
+  ForgeConductor_Contracts_AuthorityCapabilities_h.cpp
+  ForgeConductor_Contracts_IContinuityDocumentCodec_h.cpp
+  ForgeConductor_Contracts_IContinuityCoordinator_h.cpp
+  ForgeConductor_Contracts_IDiagnosticsServices_h.cpp
+  ForgeConductor_Contracts_IDashboardBearerToken_h.cpp
+  ForgeConductor_Contracts_IContinuityAutomation_h.cpp
+  ForgeConductor_Contracts_IForgeApplicationLifecycle_h.cpp
+  ForgeConductor_Contracts_ILMStudioDeploymentService_h.cpp
+  ForgeConductor_Contracts_IFileSystemServices_h.cpp
+  ForgeConductor_Contracts_ILMStudioHostActivator_h.cpp
+  ForgeConductor_Contracts_ILMStudioServeVerifier_h.cpp
+  ForgeConductor_Contracts_ILegacyMemoryRepository_h.cpp
+  ForgeConductor_Contracts_IGraphicsServices_h.cpp
+  ForgeConductor_Contracts_ILegacyContinuityRepository_h.cpp
+  ForgeConductor_Contracts_ILegacyMemoryService_h.cpp
+  ForgeConductor_Contracts_IForgeStatusRepository_h.cpp
+  ForgeConductor_Contracts_IFoundationServices_h.cpp
+  ForgeConductor_Contracts_ILatestValueMailbox_h.cpp
+  ForgeConductor_Contracts_ILegacyContinuitySessionSource_h.cpp
+  ForgeConductor_Contracts_IManagerAuthentication_h.cpp
+  ForgeConductor_Contracts_IManagerStartupService_h.cpp
+  ForgeConductor_Contracts_IInstallerDeploymentService_h.cpp
+  ForgeConductor_Contracts_IManagerServices_h.cpp
+  ForgeConductor_Contracts_IManagerRuntime_h.cpp
+  ForgeConductor_Contracts_ILMStudioEnvironment_h.cpp
+  ForgeConductor_Contracts_IMcpClientWorkspaceContext_h.cpp
+  ForgeConductor_Contracts_IMcpServer_h.cpp
+  ForgeConductor_Contracts_IMcpTransport_h.cpp
+  ForgeConductor_Contracts_INativeToolServices_h.cpp
+  ForgeConductor_Contracts_IPathGlobService_h.cpp
+  ForgeConductor_Contracts_INativeSessionHostServices_h.cpp
+  ForgeConductor_Contracts_IProcessSupervisor_h.cpp
+  ForgeConductor_Contracts_IProjectMemoryService_h.cpp
+  ForgeConductor_Contracts_ISecureStorage_h.cpp
+  ForgeConductor_Contracts_IProjectMemoryArtifactStore_h.cpp
+  ForgeConductor_Contracts_ISessionHostAdapter_h.cpp
+  ForgeConductor_Contracts_IUnicodeCanonicalizer_h.cpp
+  ForgeConductor_Contracts_ITelemetryService_h.cpp
+  ForgeConductor_Domain_ClientPresenceModels_h.cpp
+  ForgeConductor_Contracts_IToolServices_h.cpp
+  ForgeConductor_Domain_AgentModels_h.cpp
+  ForgeConductor_Domain_ContinuityAutomationModels_h.cpp
+  ForgeConductor_Domain_ContinuityModels_h.cpp
+  ForgeConductor_Domain_ConfigurationModels_h.cpp
+  ForgeConductor_Domain_DeploymentModels_h.cpp
+  ForgeConductor_Domain_Domain_h.cpp
+  ForgeConductor_Domain_DiagnosticsModels_h.cpp
+  ForgeConductor_Domain_Error_h.cpp
+  ForgeConductor_Domain_EnvironmentModels_h.cpp
+  ForgeConductor_Domain_FileSystemModels_h.cpp
+  ForgeConductor_Domain_ForgeStatusModels_h.cpp
+  ForgeConductor_Domain_ManagerModels_h.cpp
+  ForgeConductor_Domain_ManagerRuntimeModels_h.cpp
+  ForgeConductor_Domain_GraphicsModels_h.cpp
+  ForgeConductor_Domain_Identifiers_h.cpp
+  ForgeConductor_Domain_LegacyMemoryModels_h.cpp
+  ForgeConductor_Domain_LegacyContinuityModels_h.cpp
+  ForgeConductor_Domain_ManagerStartupModels_h.cpp
+  ForgeConductor_Domain_OperationContext_h.cpp
+  ForgeConductor_Domain_PdfModels_h.cpp
+  ForgeConductor_Domain_ProcessModels_h.cpp
+  ForgeConductor_Domain_ProjectMemoryModels_h.cpp
+  ForgeConductor_Domain_Result_h.cpp
+  ForgeConductor_Domain_ToolModels_h.cpp
+  ForgeConductor_Domain_TelemetryModels_h.cpp
+  ForgeConductor_Domain_SessionHostModels_h.cpp
+  Compiling...
+  ForgeConductor_Contracts_AuthorityCapabilities_h.cpp
+  ForgeConductor_Contracts_IConfigurationStore_h.cpp
+  ForgeConductor_Contracts_IAgentServices_h.cpp
+  ForgeConductor_Contracts_AuthorizedToolCall_h.cpp
+  ForgeConductor_Contracts_IContinuityAutomation_h.cpp
+  ForgeConductor_Contracts_IClientPresenceRepository_h.cpp
+  ForgeConductor_Contracts_IManagerServices_h.cpp
+  ForgeConductor_Contracts_IInstallerDeploymentService_h.cpp
+  ForgeConductor_Contracts_Contracts_h.cpp
+  ForgeConductor_Contracts_IContinuityCoordinator_h.cpp
+  ForgeConductor_Contracts_IContinuityProjectionStore_h.cpp
+  ForgeConductor_Contracts_IContinuityDocumentCodec_h.cpp
+  ForgeConductor_Contracts_IDashboardBearerToken_h.cpp
+  ForgeConductor_Contracts_IDiagnosticsServices_h.cpp
+  ForgeConductor_Contracts_IForgeApplicationLifecycle_h.cpp
+  ForgeConductor_Contracts_IFileSystemServices_h.cpp
+  ForgeConductor_Contracts_IForgeStatusRepository_h.cpp
+  ForgeConductor_Contracts_IFoundationServices_h.cpp
+  ForgeConductor_Contracts_ILMStudioEnvironment_h.cpp
+  ForgeConductor_Contracts_ILMStudioDeploymentService_h.cpp
+  ForgeConductor_Contracts_ILMStudioHostActivator_h.cpp
+  ForgeConductor_Contracts_IGraphicsServices_h.cpp
+  ForgeConductor_Contracts_ILegacyMemoryRepository_h.cpp
+  ForgeConductor_Contracts_IManagerAuthentication_h.cpp
+  ForgeConductor_Contracts_IManagerRuntime_h.cpp
+  ForgeConductor_Contracts_ILegacyContinuityRepository_h.cpp
+  ForgeConductor_Contracts_ILegacyContextContinuityService_h.cpp
+  ForgeConductor_Contracts_IManagerStartupService_h.cpp
+  ForgeConductor_Contracts_ILegacyContinuitySessionSource_h.cpp
+  ForgeConductor_Contracts_ILegacyMemoryService_h.cpp
+  ForgeConductor_Contracts_ILatestValueMailbox_h.cpp
+  ForgeConductor_Contracts_ILMStudioServeVerifier_h.cpp
+  ForgeConductor_Contracts_IMcpClientWorkspaceContext_h.cpp
+  ForgeConductor_Contracts_IMcpServer_h.cpp
+  ForgeConductor_Contracts_IMcpTransport_h.cpp
+  ForgeConductor_Contracts_INativeSessionHostServices_h.cpp
+  ForgeConductor_Contracts_INativeToolServices_h.cpp
+  ForgeConductor_Contracts_IProcessSupervisor_h.cpp
+  ForgeConductor_Contracts_IProjectMemoryArtifactStore_h.cpp
+  ForgeConductor_Contracts_IPathGlobService_h.cpp
+  ForgeConductor_Contracts_IProjectMemoryService_h.cpp
+  ForgeConductor_Contracts_ISessionHostAdapter_h.cpp
+  ForgeConductor_Contracts_IUnicodeCanonicalizer_h.cpp
+  ForgeConductor_Contracts_ITelemetryService_h.cpp
+  ForgeConductor_Domain_ManagerRuntimeModels_h.cpp
+  ForgeConductor_Contracts_ISecureStorage_h.cpp
+  ForgeConductor_Domain_LegacyContinuityModels_h.cpp
+  ForgeConductor_Domain_Domain_h.cpp
+  ForgeConductor_Domain_ClientPresenceModels_h.cpp
+  ForgeConductor_Domain_AgentModels_h.cpp
+  ForgeConductor_Contracts_IToolServices_h.cpp
+  ForgeConductor_Domain_ContinuityModels_h.cpp
+  ForgeConductor_Domain_LegacyMemoryModels_h.cpp
+  ForgeConductor_Domain_DeploymentModels_h.cpp
+  ForgeConductor_Domain_ForgeStatusModels_h.cpp
+  ForgeConductor_Domain_ManagerModels_h.cpp
+  ForgeConductor_Domain_EnvironmentModels_h.cpp
+  ForgeConductor_Domain_ContinuityAutomationModels_h.cpp
+  ForgeConductor_Domain_FileSystemModels_h.cpp
+  ForgeConductor_Domain_GraphicsModels_h.cpp
+  ForgeConductor_Domain_ConfigurationModels_h.cpp
+  ForgeConductor_Domain_Error_h.cpp
+  ForgeConductor_Domain_DiagnosticsModels_h.cpp
+  ForgeConductor_Domain_Identifiers_h.cpp
+  ForgeConductor_Domain_ManagerStartupModels_h.cpp
+  ForgeConductor_Domain_OperationContext_h.cpp
+  ForgeConductor_Domain_PdfModels_h.cpp
+  ForgeConductor_Domain_ProcessModels_h.cpp
+  ForgeConductor_Domain_ProjectMemoryModels_h.cpp
+  ForgeConductor_Domain_Result_h.cpp
+  ForgeConductor_Domain_SessionHostModels_h.cpp
+  ForgeConductor_Domain_TelemetryModels_h.cpp
+  ForgeConductor_Domain_ToolModels_h.cpp
+  ForgeConductor.DomainContracts.HeaderObjects.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\ForgeConductor.DomainContracts.HeaderObjects.dir\Release\ForgeConductor.DomainContracts.HeaderObjects.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Contracts.HeaderSelfContainment.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Contracts.HeaderSelfContainment.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Dashboard.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Dashboard.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Application.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Application.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ClientPresenceLifecycleTests.cpp
+  Compiling...
+  ClientPresenceLifecycleTests.cpp
+  ForgeConductor.Application.ClientPresenceLifecycleTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Application.ClientPresenceLifecycleTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ClientPresenceRepositoryWindowsTests.cpp
+  Compiling...
+  ClientPresenceRepositoryWindowsTests.cpp
+  ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Persistence.ClientPresenceRepositoryWindowsTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeStatusRepositoryWindowsTests.cpp
+  Compiling...
+  ForgeStatusRepositoryWindowsTests.cpp
+  ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Persistence.ForgeStatusRepositoryWindowsTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.ProcessFixture.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Persistence.ProcessFixture.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DatabaseStoreSerializationTests.cpp
+  DatabaseConcurrencyTests.cpp
+  PersistenceTestMain.cpp
+  BackupIntegrityTests.cpp
+  WinsqliteKernelTests.cpp
+  DatabaseAuthorityTests.cpp
+  CentralMigrationTests.cpp
+  IntegrityRecoveryTests.cpp
+  ProjectMigrationTests.cpp
+  Compiling...
+  DatabaseConcurrencyTests.cpp
+  PersistenceTestMain.cpp
+  WinsqliteKernelTests.cpp
+  DatabaseStoreSerializationTests.cpp
+  ProjectMigrationTests.cpp
+  BackupIntegrityTests.cpp
+  IntegrityRecoveryTests.cpp
+  DatabaseAuthorityTests.cpp
+  CentralMigrationTests.cpp
+  ForgeConductor.Persistence.UnitTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Persistence.UnitTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  AgentSessionProcessFixture.cpp
+  Compiling...
+  AgentSessionProcessFixture.cpp
+  ForgeConductor.Agents.ProcessFixture.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Agents.ProcessFixture.exe
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  AgentSessionRepositoryWindowsTests.cpp
+  Compiling...
+  AgentSessionRepositoryWindowsTests.cpp
+  ForgeConductor.Agents.RepositoryWindowsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Agents.RepositoryWindowsTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  WindowsDiagnosticLogTailReaderTests.cpp
+  Compiling...
+  WindowsDiagnosticLogTailReaderTests.cpp
+  ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Infrastructure.DiagnosticLogTailReaderTests.exe
+MSBuild version 17.14.40+3e7442088 for .NET Framework
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Domain.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Domain.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Protocol.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Protocol.lib
+  Scanning sources for module dependencies...
+  ForgeConductor.Manager.Startup.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Manager.Startup.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Infrastructure.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Infrastructure.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  ForgeConductor.Persistence.Windows.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\lib\Release\ForgeConductor.Persistence.Windows.lib
+  Building Custom Rule D:/GitHub/Forge-Conductor-Windows-Edition/CMakeLists.txt
+  Scanning sources for module dependencies...
+  DashboardOperationalRepositoryWindowsTests.cpp
+  Compiling...
+  DashboardOperationalRepositoryWindowsTests.cpp
+  ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests.vcxproj -> D:\GitHub\Forge-Conductor-Windows-Edition\out\build\windows-msvc-x64\bin\Release\ForgeConductor.Persistence.DashboardOperationalRepositoryWindowsTests.exe

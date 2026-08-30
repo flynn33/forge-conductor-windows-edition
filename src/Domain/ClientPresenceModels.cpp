@@ -62,6 +62,12 @@ Result<void> validateClientPresenceRegistration(
         if (!valid) {
             return valid;
         }
+        auto validWorkingDirectory =
+            PathText::create(registration.workingDirectory.value());
+        if (!validWorkingDirectory) {
+            return Result<void>::failure(
+                std::move(validWorkingDirectory).error());
+        }
         if (precedesUnixEpoch(registration.firstSeenAt) ||
             precedesUnixEpoch(registration.lastSeenAt)) {
             return invalid(

@@ -19,6 +19,7 @@ class WindowsLegacyContinuityRepository;
 class WindowsAuditRepository;
 class WindowsForgeStatusRepository;
 class WindowsClientPresenceRepository;
+class WindowsDashboardOperationalRepository;
 
 class WindowsCentralDatabase final {
 public:
@@ -53,6 +54,7 @@ private:
     friend class WindowsAuditRepository;
     friend class WindowsForgeStatusRepository;
     friend class WindowsClientPresenceRepository;
+    friend class WindowsDashboardOperationalRepository;
 
     explicit WindowsCentralDatabase(std::unique_ptr<Impl> implementation) noexcept;
 

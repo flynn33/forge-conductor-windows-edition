@@ -357,19 +357,13 @@ template <typename Identifier>
             "An agent timestamp is outside the supported UTC range."));
     }
     std::array<char, 25U> buffer{};
-    const int written = milliseconds.count() == 0
-        ? std::snprintf(
-              buffer.data(), buffer.size(), "%04d-%02d-%02dT%02d:%02d:%02dZ",
-              utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
-              utc.tm_hour, utc.tm_min, utc.tm_sec)
-        : std::snprintf(
-              buffer.data(), buffer.size(),
-              "%04d-%02d-%02dT%02d:%02d:%02d.%03lldZ",
-              utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
-              utc.tm_hour, utc.tm_min, utc.tm_sec,
-              static_cast<long long>(milliseconds.count()));
-    if ((milliseconds.count() == 0 && written != 20) ||
-        (milliseconds.count() != 0 && written != 24)) {
+    const int written = std::snprintf(
+        buffer.data(), buffer.size(),
+        "%04d-%02d-%02dT%02d:%02d:%02d.%03lldZ",
+        utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
+        utc.tm_hour, utc.tm_min, utc.tm_sec,
+        static_cast<long long>(milliseconds.count()));
+    if (written != 24) {
         fail(Domain::makeError(
             Domain::ErrorCodes::InternalFailure,
             "An agent timestamp could not be formatted."));
@@ -1523,6 +1517,63 @@ WindowsAgentSessionRepository::list(
                         sessions.push_back(readRunRow(statement).session);
                     }
                     return sessions;
+                });
+            }));
+    });
+}
+
+Domain::Result<Domain::AgentSession>
+WindowsAgentSessionRepository::administrativelyClose(
+    const Domain::SessionId& sessionId,
+    const std::string_view summary,
+    const Domain::UtcTimePoint closedAt,
+    const Domain::OperationContext& context) noexcept
+{
+    return guarded<Domain::AgentSession>([&]() {
+        validateSummary(summary, "Administrative close summary");
+        static_cast<void>(timestampText(closedAt));
+        auto& store = requireStore(
+            implementation_ ? implementation_->repositoryStore() : nullptr);
+        return take(runOnStore<Domain::AgentSession>(
+            store,
+            "Administratively close agent session",
+            context,
+            [&](WinsqliteConnection& connection) noexcept {
+                return guarded<Domain::AgentSession>([&]() {
+                    auto transaction = take(
+                        WinsqliteTransaction::beginImmediate(connection, context));
+                    auto existing = selectEnrichedRunById(
+                        transaction, sessionId, context);
+                    if (!existing) {
+                        fail(sessionNotFound(sessionId));
+                    }
+                    const auto effectiveClosedAt =
+                        (std::max)(closedAt, existing->session.updatedAt);
+                    auto update = take(transaction.prepare(
+                        "UPDATE agent_sessions SET "
+                        "status='closed',summary=?,updated_at=? WHERE id=?"));
+                    take(update.bindText(1, summary));
+                    take(update.bindText(2, timestampText(effectiveClosedAt)));
+                    take(update.bindText(3, sessionId.value()));
+                    stepDone(update);
+                    if (changes(transaction, context) != 1) {
+                        fail(integrityError(
+                            "An agent session changed during administrative closure."));
+                    }
+                    existing->session.status = Domain::SessionStatus::Closed;
+                    existing->session.summary = std::string{summary};
+                    existing->session.updatedAt = effectiveClosedAt;
+                    if (existing->session.clientId) {
+                        static_cast<void>(deleteMatchingActiveProjection(
+                            transaction,
+                            *existing->session.clientId,
+                            sessionId,
+                            context));
+                    }
+                    writeRunProjection(
+                        transaction, *existing, effectiveClosedAt, context);
+                    take(transaction.commit());
+                    return std::move(existing->session);
                 });
             }));
     });
