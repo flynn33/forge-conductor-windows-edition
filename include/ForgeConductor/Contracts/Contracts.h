@@ -25,6 +25,7 @@
 #include "ForgeConductor/Contracts/IManagerAuthentication.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagerServices.h"
+#include "ForgeConductor/Contracts/IManagerStartupService.h"
 #include "ForgeConductor/Contracts/IMcpServer.h"
 #include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"
 #include "ForgeConductor/Contracts/IMcpTransport.h"

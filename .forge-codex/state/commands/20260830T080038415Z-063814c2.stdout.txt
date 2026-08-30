@@ -1,0 +1,17 @@
+Test project D:/GitHub/Forge-Conductor-Windows-Edition/out/build/windows-msvc-x64
+    Start  1: ForgeConductor.Manager.StartupTests
+1/2 Test  #1: ForgeConductor.Manager.StartupTests ..............   Passed    0.04 sec
+    Start 83: ForgeConductor.Contracts.HeaderSelfContainment
+2/2 Test #83: ForgeConductor.Contracts.HeaderSelfContainment ...   Passed    0.03 sec
+
+100% tests passed out of 2
+
+Label Time Summary:
+G05       =   0.03 sec*proc (1 test)
+G15       =   0.03 sec*proc (1 test)
+G16       =   0.04 sec*proc (1 test)
+T-LMS     =   0.03 sec*proc (1 test)
+T-MGR     =   0.04 sec*proc (1 test)
+T-UNIT    =   0.07 sec*proc (2 tests)
+
+Total Test time (real) =   0.09 sec

@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "checkpoint": "manager-startup-policy",
+  "status": "passed",
+  "gate_status": "focused-development-checkpoint-not-G16",
+  "working_directory": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "toolchain": "CMake 4.4.2 with Visual Studio 17 2022, MSBuild 17.14.40, v143 MSVC, Windows SDK 10.0.26100.0, C++20 Debug, and CTest 4.4.2.",
+  "recorded_build": {
+    "command_record": ".forge-codex/state/commands/20260830T075931966Z-8af7d831.json",
+    "command_record_sha256": "06c026d4d2206e8b61548973fb3e67a346f5c799ca5a97e8f3909c0026702fa2",
+    "exit_code": 0,
+    "timed_out": false,
+    "configuration": "Debug",
+    "targets": [
+      "ForgeConductor.Manager.StartupTests",
+      "ForgeConductor.Contracts.HeaderSelfContainment"
+    ],
+    "stdout": ".forge-codex/state/commands/20260830T075931966Z-8af7d831.stdout.txt",
+    "stdout_sha256": "e7c75911655ffbd727c0b71cbdc8f8bc7440c45ac85f186064a863d6c18f192b",
+    "stderr": ".forge-codex/state/commands/20260830T075931966Z-8af7d831.stderr.txt",
+    "stderr_sha256": "b023cce7f59c2f1c43194eda1c599a1ba6f4b06c50d1375dab0f30952298c2c8"
+  },
+  "recorded_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T080038415Z-063814c2.json",
+    "command_record_sha256": "f5522ed484e985e0fb68610ace868bde75d454dcf7f368fc811b5205e0323005",
+    "exit_code": 0,
+    "timed_out": false,
+    "tests_passed": 2,
+    "tests_failed": 0,
+    "real_seconds": 0.09,
+    "stdout": ".forge-codex/state/commands/20260830T080038415Z-063814c2.stdout.txt",
+    "stdout_sha256": "cd580e8559a842f69eb5b075af72ff7def6344db363993fed1b9617d7ad076e9",
+    "stderr": ".forge-codex/state/commands/20260830T080038415Z-063814c2.stderr.txt",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "transient_validation_retry": {
+    "command_record": ".forge-codex/state/commands/20260830T080409784Z-75ae5d64.json",
+    "command_record_sha256": "af0cc69235d502d0a1b3f28458c3b18990ff53d800df900cc5f8ffbee2afdd9e",
+    "exit_code": 1,
+    "timed_out": false,
+    "cause": "The recorded child environment did not expose Get-FileHash. The retry used the repository Common.ps1 Get-FileSha256 helper; no source, binary, build, or test change was required."
+  },
+  "recorded_policy_validation": {
+    "command_record": ".forge-codex/state/commands/20260830T080456208Z-33242f3a.json",
+    "command_record_sha256": "d73b1adf5d45aad67772856d93cf9c66f85fcb098f0813007bb9774d4c0567a2",
+    "exit_code": 0,
+    "timed_out": false,
+    "source_hashes_matched": 10,
+    "binary_hashes_matched": 4,
+    "command_records_matched": 2,
+    "no_python": "passed",
+    "no_attribution": "passed",
+    "ledger_events_verified": 458,
+    "changed_text_files_crlf_utf8_no_bom": 11,
+    "git_diff_check": "passed",
+    "stdout": ".forge-codex/state/commands/20260830T080456208Z-33242f3a.stdout.txt",
+    "stdout_sha256": "7292482ec864c820ff012ae40e26868513c55530fe5d3f237a3152ce7fc285fd",
+    "stderr": ".forge-codex/state/commands/20260830T080456208Z-33242f3a.stderr.txt",
+    "stderr_sha256": "e36bae8c6db0766c7f54baa0d2b875102f5826cf1d9230e76481fd8f605ad05c"
+  },
+  "measured_results": {
+    "focused_native_tests_passed": 2,
+    "focused_native_tests_failed": 0,
+    "one_change_drift_cases": 55,
+    "maximum_observed_triggers": 48,
+    "maximum_observed_actions": 32,
+    "maximum_observed_required_privileges": 64,
+    "maximum_task_path_utf16_units": 260,
+    "maximum_command_line_utf16_units": 32767,
+    "independent_reviews_with_no_remaining_p0_p1_p2": 2
+  },
+  "behavior_proved": [
+    "transport-neutral Manager startup definitions, statuses, mutation outcomes, and service operations validate coherent missing, disabled, ready, drifted, and foreign states",
+    "every startup service operation receives its expected definition plus bounded operation context, so a fresh process does not depend on cached launch state",
+    "canonical ownership, current-user SID syntax, least-privilege principal, immediate logon trigger, hidden-window executable action, restart policy, and launch-affecting settings are exact",
+    "native enablement is classified independently so an exact disabled registration remains Disabled instead of Drifted",
+    "unmistakably foreign ownership is classified before complete launch projection, while incomplete owned projection fails integrity validation",
+    "fixed durations and preserved non-fixed XSD duration text are mutually exclusive by construction",
+    "all modeled principal, trigger, action, action-context, and settings changes classify as owned drift, while each ownership-field change classifies as foreign",
+    "Task Scheduler native collection maxima remain repairable drift and each maximum-plus-one observation is rejected before policy acceptance",
+    "strict UTF-8, canonical low- and high-authority SID forms, Task Scheduler path bounds, and the combined Windows command-line ceiling are enforced",
+    "both new public headers are self-contained and the domain, contract, policy, and focused test targets compile with the required C++20 toolchain",
+    "two independent read-only reviews found no remaining P0, P1, or P2 issue after all reported findings were corrected"
+  ],
+  "evidence_scope": {
+    "proved": "Source structure, layer integration, model invariants, exact normalized policy classification, bounded-input behavior, public-header containment, and focused native tests on this Windows 11 development machine.",
+    "not_proved": "COM Task Scheduler connection, real task registration or mutation, concrete worker cancellation and shutdown, watchdog recovery, packaged UI automation, or the authoritative G16 gate."
+  },
+  "source_sha256": {
+    ".forge-codex/state/decisions/P16-022-exact-per-user-manager-startup-policy.md": "8630a85dd6cef9274c3dd2721c21b10c2e2cc969cf19055ca578b4733daae6be",
+    "CMakeLists.txt": "a0f4a028aafa0dbae345155e22f70afee0ad9eded13ffe688115bbbc45c99b9a",
+    "include/ForgeConductor/Contracts/Contracts.h": "b728a20a804391740455f52a913a357bafcf86b084bad63b981e35386714669c",
+    "include/ForgeConductor/Contracts/IManagerStartupService.h": "63f5b7006d07dbd9d8ad108f3d66592368dd1caefa16345acc763a50c6a33ea9",
+    "include/ForgeConductor/Domain/Domain.h": "203d33b7e6b925250f86258d7ae72682852d22962abeb093b3a2a4a6450cf2c7",
+    "include/ForgeConductor/Domain/ManagerStartupModels.h": "755fe84f8f8d5f075010d8e6b1fd4bfb973ecc359543c2177926d7cf548b4778",
+    "include/ForgeConductor/Manager/ManagerStartupTaskPolicy.h": "73a4928dfbb86c792121b9226e2ea6f03a49cd11b3a1bf59fcfb9fd54d0493d6",
+    "src/Domain/ManagerStartupModels.cpp": "9f535a9cb2f1f939e18945f5eb7b78e69b2b9155978052417abd64f37b8f748e",
+    "src/Manager/ManagerStartupTaskPolicy.cpp": "56386ee943bd8ff911a4a1870887414d6857b245454474a1749866df509b1012",
+    "tests/Manager/ManagerStartupTaskPolicyTests.cpp": "646319908a34471de3cf474c90c5f26912ab693cb4b4bb48602b472ccd3a7bfa"
+  },
+  "binary_sha256": {
+    "ForgeConductor.Manager.StartupTests.exe": "3bd7be7f2c154b80dd615ee85f029d634e3f4e767452a7b2f1fd020e8a5c6052",
+    "ForgeConductor.Manager.Startup.lib": "b408cc37f9ad90dcadf6489a886616421870b398bc676e9d44e530bbe51819d0",
+    "ForgeConductor.Domain.lib": "f32f08c227e1cf5a31a5b7bc9a4068ecb02f608567f4426cb715962257f52ed1",
+    "ForgeConductor.Contracts.HeaderSelfContainment.exe": "dfc5cacc9681a7a789a101c04cf7830b15a8eca6ab81cd448c7465ba8e5b204c"
+  },
+  "remaining_limitations": [
+    "P16 remains in progress and G16 remains not started.",
+    "The concrete Windows Task Scheduler adapter, dedicated bounded COM worker, post-mutation reinspection, and real-machine task lifecycle test remain pending.",
+    "The Manager watchdog, production composition and operational services, terminal named-pipe quiescence, live Edge dashboard behavior, and native UI automation remain pending."
+  ]
+}

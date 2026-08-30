@@ -100,6 +100,7 @@ set(FORGE_DOMAIN_SOURCES
     src/Domain/LegacyContinuityModels.cpp
     src/Domain/LegacyMemoryModels.cpp
     src/Domain/ManagerModels.cpp
+    src/Domain/ManagerStartupModels.cpp
     src/Domain/ProcessModels.cpp
     src/Domain/ProjectMemoryModels.cpp
     src/Domain/ResourcePolicy.cpp
@@ -153,6 +154,16 @@ target_include_directories(ForgeConductor.Manager.Protocol PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(ForgeConductor.Manager.Protocol PRIVATE
     nlohmann_json::nlohmann_json)
+
+add_library(ForgeConductor.Manager.Startup STATIC
+    src/Manager/ManagerStartupTaskPolicy.cpp)
+forge_add_layer(
+    ForgeConductor.Manager.Startup
+    ForgeConductor::Manager.Startup
+    ForgeConductor::Contracts)
+forge_configure_standard_target(ForgeConductor.Manager.Startup)
+target_include_directories(ForgeConductor.Manager.Startup PUBLIC
+    "${PROJECT_SOURCE_DIR}/include")
 
 add_library(ForgeConductor.Manager.Host STATIC
     src/Hosts/Manager/ManagerControllerClient.cpp
@@ -529,6 +540,18 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 )
 
 if(BUILD_TESTING)
+    add_executable(ForgeConductor.Manager.StartupTests
+        tests/Manager/ManagerStartupTaskPolicyTests.cpp)
+    forge_configure_standard_target(ForgeConductor.Manager.StartupTests)
+    target_link_libraries(ForgeConductor.Manager.StartupTests PRIVATE
+        ForgeConductor::Manager.Startup)
+    add_test(
+        NAME ForgeConductor.Manager.StartupTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.StartupTests>)
+    set_tests_properties(ForgeConductor.Manager.StartupTests PROPERTIES
+        LABELS "G16;T-MGR;T-UNIT"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Manager.DeadlineMapperTests
         tests/Manager/ManagerDeadlineMapperTests.cpp)
     forge_configure_standard_target(ForgeConductor.Manager.DeadlineMapperTests)
