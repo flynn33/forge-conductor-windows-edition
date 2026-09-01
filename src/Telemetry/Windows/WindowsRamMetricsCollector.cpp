@@ -1,18 +1,17 @@
 #include "ForgeConductor/Telemetry/Windows/WindowsRamMetricsCollector.h"
 
 #include "Detail/IRamMetricsPlatform.h"
+#include "Detail/SynchronousCollectorGate.h"
 #include "ForgeConductor/Domain/Utf8.h"
 
 #include <Windows.h>
 #include <Psapi.h>
 
 #include <cmath>
-#include <condition_variable>
 #include <cstdint>
 #include <exception>
 #include <limits>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -45,26 +44,6 @@ constexpr std::string_view CompressedBytesSource =
     "PDH \\Memory\\Compressed Page Count";
 constexpr std::string_view SwapSource =
     "Windows memory model: no equivalent swap metric";
-
-[[nodiscard]] Domain::Result<void> validateContext(
-    const Domain::OperationContext& context,
-    const Contracts::IClock& clock,
-    const std::string_view action)
-{
-    if (context.isCancellationRequested()) {
-        return Domain::Result<void>::failure(Domain::makeError(
-            Domain::ErrorCodes::Cancelled,
-            "The RAM telemetry collection was cancelled before " +
-                std::string{action} + "."));
-    }
-    if (context.isExpired(clock.monotonicNow())) {
-        return Domain::Result<void>::failure(Domain::makeError(
-            Domain::ErrorCodes::DeadlineExceeded,
-            "The RAM telemetry collection deadline expired before " +
-                std::string{action} + "."));
-    }
-    return Domain::Result<void>::success();
-}
 
 [[nodiscard]] Availability availabilityFor(const Domain::Error& error) noexcept
 {
@@ -162,36 +141,6 @@ template <typename T>
             "The Windows RAM collector failed at its native boundary."));
     }
 }
-
-class AdmissionRelease final {
-public:
-    AdmissionRelease(
-        std::mutex& lifecycleMutex,
-        bool& active,
-        std::condition_variable& changed) noexcept
-        : lifecycleMutex_{lifecycleMutex},
-          active_{active},
-          changed_{changed}
-    {
-    }
-
-    ~AdmissionRelease() noexcept
-    {
-        {
-            const std::lock_guard lock{lifecycleMutex_};
-            active_ = false;
-        }
-        changed_.notify_all();
-    }
-
-    AdmissionRelease(const AdmissionRelease&) = delete;
-    AdmissionRelease& operator=(const AdmissionRelease&) = delete;
-
-private:
-    std::mutex& lifecycleMutex_;
-    bool& active_;
-    std::condition_variable& changed_;
-};
 
 } // namespace
 
@@ -302,32 +251,21 @@ public:
     Impl(
         Contracts::IClock& clock,
         std::shared_ptr<Detail::IRamMetricsPlatform> platform)
-        : clock_{clock}, platform_{std::move(platform)}
+        : clock_{clock},
+          lifecycle_{clock, "RAM telemetry collection"},
+          platform_{std::move(platform)}
     {
     }
 
     [[nodiscard]] Domain::Result<Domain::RamMetrics> collect(
         const Domain::OperationContext& context)
     {
-        const auto initial = validateContext(context, clock_, "collector admission");
-        if (!initial) {
-            return Domain::Result<Domain::RamMetrics>::failure(initial.error());
+        auto admission = lifecycle_.tryAcquire(context);
+        if (!admission) {
+            return Domain::Result<Domain::RamMetrics>::failure(
+                std::move(admission).error());
         }
-        {
-            const std::lock_guard lock{lifecycleMutex_};
-            if (closed_) {
-                return closedCollector();
-            }
-            if (active_) {
-                return Domain::Result<Domain::RamMetrics>::failure(
-                    Domain::makeError(
-                        Domain::ErrorCodes::LimitExceeded,
-                        "The synchronous RAM collector already has an active operation."));
-            }
-            active_ = true;
-        }
-        AdmissionRelease release{
-            lifecycleMutex_, active_, lifecycleChanged_};
+        auto lease = std::move(admission).value();
 
         if (!platform_) {
             return Domain::Result<Domain::RamMetrics>::failure(Domain::makeError(
@@ -335,25 +273,25 @@ public:
                 "The RAM collector requires a Windows memory platform."));
         }
 
-        auto ready = validateContinuation(context, "query physical memory");
+        auto ready = lifecycle_.checkpoint(context, "query physical memory");
         if (!ready) {
             return Domain::Result<Domain::RamMetrics>::failure(
                 std::move(ready).error());
         }
         auto physical = platform_->queryPhysicalMemory();
-        ready = validateContinuation(context, "map physical memory");
+        ready = lifecycle_.checkpoint(context, "map physical memory");
         if (!ready) {
             return Domain::Result<Domain::RamMetrics>::failure(
                 std::move(ready).error());
         }
 
-        ready = validateContinuation(context, "query performance memory");
+        ready = lifecycle_.checkpoint(context, "query performance memory");
         if (!ready) {
             return Domain::Result<Domain::RamMetrics>::failure(
                 std::move(ready).error());
         }
         auto performance = platform_->queryPerformanceMemory();
-        ready = validateContinuation(context, "map performance memory");
+        ready = lifecycle_.checkpoint(context, "map performance memory");
         if (!ready) {
             return Domain::Result<Domain::RamMetrics>::failure(
                 std::move(ready).error());
@@ -374,7 +312,10 @@ public:
                         valid.error().message));
         }
 
-        const auto committed = commit(context, metrics);
+        const auto committed = lifecycle_.publish(
+            context,
+            "publish RAM metrics",
+            [this, &metrics]() { previous_ = metrics; });
         if (!committed) {
             return Domain::Result<Domain::RamMetrics>::failure(
                 committed.error());
@@ -384,59 +325,10 @@ public:
 
     void shutdown()
     {
-        std::unique_lock lock{lifecycleMutex_};
-        closed_ = true;
-        lifecycleChanged_.wait(lock, [this]() noexcept {
-            return !active_;
-        });
+        lifecycle_.shutdownAndDrain();
     }
 
 private:
-    [[nodiscard]] Domain::Result<Domain::RamMetrics> closedCollector() const
-    {
-        return Domain::Result<Domain::RamMetrics>::failure(Domain::makeError(
-            Domain::ErrorCodes::TransportClosed,
-            "The Windows RAM collector is shut down."));
-    }
-
-    [[nodiscard]] Domain::Result<void> validateContinuation(
-        const Domain::OperationContext& context,
-        const std::string_view action)
-    {
-        const auto current = validateContext(context, clock_, action);
-        if (!current) {
-            return current;
-        }
-        {
-            const std::lock_guard lock{lifecycleMutex_};
-            if (closed_) {
-                return Domain::Result<void>::failure(Domain::makeError(
-                    Domain::ErrorCodes::TransportClosed,
-                    "The Windows RAM collector was shut down during collection."));
-            }
-        }
-        return Domain::Result<void>::success();
-    }
-
-    [[nodiscard]] Domain::Result<void> commit(
-        const Domain::OperationContext& context,
-        const Domain::RamMetrics& metrics)
-    {
-        const std::lock_guard lock{lifecycleMutex_};
-        const auto current = validateContext(
-            context, clock_, "publish RAM metrics");
-        if (!current) {
-            return current;
-        }
-        if (closed_) {
-            return Domain::Result<void>::failure(Domain::makeError(
-                Domain::ErrorCodes::TransportClosed,
-                "The Windows RAM collector was shut down before publication."));
-        }
-        previous_ = metrics;
-        return Domain::Result<void>::success();
-    }
-
     void mapPhysical(
         Domain::RamMetrics& metrics,
         const Domain::Result<Detail::PhysicalMemoryObservation>& observation,
@@ -607,11 +499,8 @@ private:
     }
 
     Contracts::IClock& clock_;
+    Detail::SynchronousCollectorGate lifecycle_;
     std::shared_ptr<Detail::IRamMetricsPlatform> platform_;
-    std::mutex lifecycleMutex_;
-    std::condition_variable lifecycleChanged_;
-    bool closed_{};
-    bool active_{};
     std::optional<Domain::RamMetrics> previous_;
 };
 

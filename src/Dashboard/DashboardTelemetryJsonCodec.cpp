@@ -427,14 +427,18 @@ void validateSystem(
     const std::size_t maximumEncodedBytes)
 {
     static_cast<void>(utcMilliseconds(system.timestamp));
-    requireCollectionBound(
-        system.cpu.perLogicalProcessor.size(),
-        DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries,
-        "per-logical-processor samples");
-    requireCollectionBound(
-        system.cpu.perCoreFrequencyMhz.size(),
-        DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries,
-        "per-core frequencies");
+    if (system.cpu.perLogicalProcessor.value) {
+        requireCollectionBound(
+            system.cpu.perLogicalProcessor.value->size(),
+            DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries,
+            "per-logical-processor samples");
+    }
+    if (system.cpu.perCoreFrequencyMhz.value) {
+        requireCollectionBound(
+            system.cpu.perCoreFrequencyMhz.value->size(),
+            DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries,
+            "per-core frequencies");
+    }
     requireCollectionBound(
         system.disks.size(),
         DashboardTelemetryJsonCodec::MaximumDiskVolumes,
@@ -447,37 +451,23 @@ void validateSystem(
         system.processes.size(),
         DashboardTelemetryJsonCodec::MaximumProcesses,
         "process rows");
-    if (system.cpu.logicalProcessorCount >
-            DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries ||
-        system.cpu.physicalCoreCount >
-            DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries) {
+    if ((system.cpu.logicalProcessorCount.value &&
+         *system.cpu.logicalProcessorCount.value >
+             DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries) ||
+        (system.cpu.physicalCoreCount.value &&
+         *system.cpu.physicalCoreCount.value >
+             DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries)) {
         reject(
             Domain::ErrorCodes::LimitExceeded,
             "Dashboard telemetry processor counts exceed the supported bound.");
     }
-
-    requirePercent(system.cpu.percent, "cpu.percent");
-    requirePercent(system.cpu.userPercent, "cpu.user");
-    requirePercent(system.cpu.systemPercent, "cpu.system");
-    requirePercent(system.cpu.idlePercent, "cpu.idle");
-    for (const auto value : system.cpu.perLogicalProcessor) {
-        requirePercent(value, "cpu.per_cpu");
+    const auto cpuValid = Domain::validateCpuMetrics(system.cpu);
+    if (!cpuValid) {
+        throw TelemetryCodecException{
+            cpuValid.error().code,
+            "Dashboard telemetry contains invalid CPU metrics: " +
+                cpuValid.error().message};
     }
-    if (system.cpu.frequencyMhz && *system.cpu.frequencyMhz == 0U) {
-        reject(
-            Domain::ErrorCodes::InvalidRequest,
-            "Dashboard telemetry cpu.freq_mhz must be positive when available.");
-    }
-    for (const auto value : system.cpu.perCoreFrequencyMhz) {
-        if (value == 0U) {
-            reject(
-                Domain::ErrorCodes::InvalidRequest,
-                "Dashboard telemetry cpu.freq_per_core_mhz values must be positive.");
-        }
-    }
-    requireNonnegative(system.cpu.loadAverage.oneMinute, "cpu.load_avg.m1");
-    requireNonnegative(system.cpu.loadAverage.fiveMinutes, "cpu.load_avg.m5");
-    requireNonnegative(system.cpu.loadAverage.fifteenMinutes, "cpu.load_avg.m15");
     const auto ramValid = Domain::validateRamMetrics(system.ram);
     if (!ramValid) {
         throw TelemetryCodecException{
@@ -485,7 +475,7 @@ void validateSystem(
             "Dashboard telemetry contains invalid RAM metrics: " +
                 ramValid.error().message};
     }
-    const auto validateRamMetricTimestamp = [](const auto& metric) {
+    const auto validateMetricTimestamp = [](const auto& metric) {
         if (metric.capturedAt) {
             static_cast<void>(utcMilliseconds(*metric.capturedAt));
         }
@@ -493,19 +483,30 @@ void validateSystem(
             static_cast<void>(utcMilliseconds(*metric.observedAt));
         }
     };
-    validateRamMetricTimestamp(system.ram.totalBytes);
-    validateRamMetricTimestamp(system.ram.usedBytes);
-    validateRamMetricTimestamp(system.ram.availableBytes);
-    validateRamMetricTimestamp(system.ram.percent);
-    validateRamMetricTimestamp(system.ram.pressurePercent);
-    validateRamMetricTimestamp(system.ram.activeBytes);
-    validateRamMetricTimestamp(system.ram.wiredBytes);
-    validateRamMetricTimestamp(system.ram.compressedBytes);
-    validateRamMetricTimestamp(system.ram.swapTotalBytes);
-    validateRamMetricTimestamp(system.ram.swapUsedBytes);
-    validateRamMetricTimestamp(system.ram.swapPercent);
-    validateRamMetricTimestamp(system.ram.committedBytes);
-    validateRamMetricTimestamp(system.ram.pagedPoolBytes);
+    validateMetricTimestamp(system.cpu.percent);
+    validateMetricTimestamp(system.cpu.perLogicalProcessor);
+    validateMetricTimestamp(system.cpu.logicalProcessorCount);
+    validateMetricTimestamp(system.cpu.physicalCoreCount);
+    validateMetricTimestamp(system.cpu.frequencyMhz);
+    validateMetricTimestamp(system.cpu.perCoreFrequencyMhz);
+    validateMetricTimestamp(system.cpu.loadAverage);
+    validateMetricTimestamp(system.cpu.brand);
+    validateMetricTimestamp(system.cpu.userPercent);
+    validateMetricTimestamp(system.cpu.systemPercent);
+    validateMetricTimestamp(system.cpu.idlePercent);
+    validateMetricTimestamp(system.ram.totalBytes);
+    validateMetricTimestamp(system.ram.usedBytes);
+    validateMetricTimestamp(system.ram.availableBytes);
+    validateMetricTimestamp(system.ram.percent);
+    validateMetricTimestamp(system.ram.pressurePercent);
+    validateMetricTimestamp(system.ram.activeBytes);
+    validateMetricTimestamp(system.ram.wiredBytes);
+    validateMetricTimestamp(system.ram.compressedBytes);
+    validateMetricTimestamp(system.ram.swapTotalBytes);
+    validateMetricTimestamp(system.ram.swapUsedBytes);
+    validateMetricTimestamp(system.ram.swapPercent);
+    validateMetricTimestamp(system.ram.committedBytes);
+    validateMetricTimestamp(system.ram.pagedPoolBytes);
 
     for (const auto& disk : system.disks) {
         requirePercent(disk.percent, "disk.percent");
@@ -536,24 +537,37 @@ void validateSystem(
     text.add(system.host);
     text.add(system.platform);
     text.add(system.architecture);
-    text.add(system.cpu.brand);
-    const auto addRamMetricText = [&](const auto& metric) {
+    const auto addMetricText = [&](const auto& metric) {
         text.add(metric.source);
         text.addOptional(metric.unavailableReason);
     };
-    addRamMetricText(system.ram.totalBytes);
-    addRamMetricText(system.ram.usedBytes);
-    addRamMetricText(system.ram.availableBytes);
-    addRamMetricText(system.ram.percent);
-    addRamMetricText(system.ram.pressurePercent);
-    addRamMetricText(system.ram.activeBytes);
-    addRamMetricText(system.ram.wiredBytes);
-    addRamMetricText(system.ram.compressedBytes);
-    addRamMetricText(system.ram.swapTotalBytes);
-    addRamMetricText(system.ram.swapUsedBytes);
-    addRamMetricText(system.ram.swapPercent);
-    addRamMetricText(system.ram.committedBytes);
-    addRamMetricText(system.ram.pagedPoolBytes);
+    addMetricText(system.cpu.percent);
+    addMetricText(system.cpu.perLogicalProcessor);
+    addMetricText(system.cpu.logicalProcessorCount);
+    addMetricText(system.cpu.physicalCoreCount);
+    addMetricText(system.cpu.frequencyMhz);
+    addMetricText(system.cpu.perCoreFrequencyMhz);
+    addMetricText(system.cpu.loadAverage);
+    addMetricText(system.cpu.brand);
+    addMetricText(system.cpu.userPercent);
+    addMetricText(system.cpu.systemPercent);
+    addMetricText(system.cpu.idlePercent);
+    if (system.cpu.brand.value) {
+        text.add(*system.cpu.brand.value);
+    }
+    addMetricText(system.ram.totalBytes);
+    addMetricText(system.ram.usedBytes);
+    addMetricText(system.ram.availableBytes);
+    addMetricText(system.ram.percent);
+    addMetricText(system.ram.pressurePercent);
+    addMetricText(system.ram.activeBytes);
+    addMetricText(system.ram.wiredBytes);
+    addMetricText(system.ram.compressedBytes);
+    addMetricText(system.ram.swapTotalBytes);
+    addMetricText(system.ram.swapUsedBytes);
+    addMetricText(system.ram.swapPercent);
+    addMetricText(system.ram.committedBytes);
+    addMetricText(system.ram.pagedPoolBytes);
     for (const auto& disk : system.disks) {
         text.add(disk.device);
         text.add(disk.mount.value());
@@ -661,81 +675,8 @@ void writeOptionalInteger(
     }
 }
 
-void writeCpu(BoundedJsonWriter& writer, const Domain::CpuMetrics& cpu)
-{
-    writer.character('{');
-    bool first{true};
-    writer.member(first, "percent");
-    writer.number(cpu.percent);
-    writer.member(first, "per_cpu");
-    writer.character('[');
-    for (std::size_t index{}; index < cpu.perLogicalProcessor.size(); ++index) {
-        if (index != 0U) writer.character(',');
-        writer.number(cpu.perLogicalProcessor[index]);
-    }
-    writer.character(']');
-    writer.member(first, "count_logical");
-    writer.integer(cpu.logicalProcessorCount);
-    writer.member(first, "count_physical");
-    writer.integer(cpu.physicalCoreCount);
-    writer.member(first, "freq_mhz");
-    writeOptionalInteger(writer, cpu.frequencyMhz);
-    writer.member(first, "freq_per_core_mhz");
-    if (cpu.perCoreFrequencyMhz.empty()) {
-        writer.nullValue();
-    } else {
-        writer.character('[');
-        for (std::size_t index{}; index < cpu.perCoreFrequencyMhz.size(); ++index) {
-            if (index != 0U) writer.character(',');
-            writer.integer(cpu.perCoreFrequencyMhz[index]);
-        }
-        writer.character(']');
-    }
-    writer.member(first, "load_avg");
-    writer.character('{');
-    bool loadFirst{true};
-    writer.member(loadFirst, "m1");
-    writer.number(cpu.loadAverage.oneMinute);
-    writer.member(loadFirst, "m5");
-    writer.number(cpu.loadAverage.fiveMinutes);
-    writer.member(loadFirst, "m15");
-    writer.number(cpu.loadAverage.fifteenMinutes);
-    writer.character('}');
-    writer.member(first, "brand");
-    writer.string(cpu.brand);
-    writer.member(first, "user");
-    writer.number(cpu.userPercent);
-    writer.member(first, "system");
-    writer.number(cpu.systemPercent);
-    writer.member(first, "idle");
-    writer.number(cpu.idlePercent);
-    writer.character('}');
-}
-
-void writeRamByteMetric(
-    BoundedJsonWriter& writer,
-    const Domain::TelemetryMetric<std::uint64_t>& metric)
-{
-    if (metric.value) {
-        writer.number(static_cast<double>(*metric.value) / BytesPerGibibyte);
-    } else {
-        writer.nullValue();
-    }
-}
-
-void writeRamPercentMetric(
-    BoundedJsonWriter& writer,
-    const Domain::TelemetryMetric<double>& metric)
-{
-    if (metric.value) {
-        writer.number(*metric.value);
-    } else {
-        writer.nullValue();
-    }
-}
-
 template <typename T>
-void writeRamAvailabilityMember(
+void writeMetricAvailabilityMember(
     BoundedJsonWriter& writer,
     bool& first,
     const std::string_view name,
@@ -771,6 +712,121 @@ void writeRamAvailabilityMember(
     writer.character('}');
 }
 
+void writeCpu(BoundedJsonWriter& writer, const Domain::CpuMetrics& cpu)
+{
+    writer.character('{');
+    bool first{true};
+    writer.member(first, "percent");
+    writeOptionalNumber(writer, cpu.percent.value);
+    writer.member(first, "per_cpu");
+    if (cpu.perLogicalProcessor.value) {
+        writer.character('[');
+        for (std::size_t index{};
+             index < cpu.perLogicalProcessor.value->size();
+             ++index) {
+            if (index != 0U) writer.character(',');
+            writer.number((*cpu.perLogicalProcessor.value)[index]);
+        }
+        writer.character(']');
+    } else {
+        writer.nullValue();
+    }
+    writer.member(first, "count_logical");
+    writeOptionalInteger(writer, cpu.logicalProcessorCount.value);
+    writer.member(first, "count_physical");
+    writeOptionalInteger(writer, cpu.physicalCoreCount.value);
+    writer.member(first, "freq_mhz");
+    writeOptionalInteger(writer, cpu.frequencyMhz.value);
+    writer.member(first, "freq_per_core_mhz");
+    if (cpu.perCoreFrequencyMhz.value) {
+        writer.character('[');
+        for (std::size_t index{};
+             index < cpu.perCoreFrequencyMhz.value->size();
+             ++index) {
+            if (index != 0U) writer.character(',');
+            writer.integer((*cpu.perCoreFrequencyMhz.value)[index]);
+        }
+        writer.character(']');
+    } else {
+        writer.nullValue();
+    }
+    writer.member(first, "load_avg");
+    if (cpu.loadAverage.value) {
+        writer.character('{');
+        bool loadFirst{true};
+        writer.member(loadFirst, "m1");
+        writer.number(cpu.loadAverage.value->oneMinute);
+        writer.member(loadFirst, "m5");
+        writer.number(cpu.loadAverage.value->fiveMinutes);
+        writer.member(loadFirst, "m15");
+        writer.number(cpu.loadAverage.value->fifteenMinutes);
+        writer.character('}');
+    } else {
+        writer.nullValue();
+    }
+    writer.member(first, "brand");
+    if (cpu.brand.value) {
+        writer.string(*cpu.brand.value);
+    } else {
+        writer.nullValue();
+    }
+    writer.member(first, "user");
+    writeOptionalNumber(writer, cpu.userPercent.value);
+    writer.member(first, "system");
+    writeOptionalNumber(writer, cpu.systemPercent.value);
+    writer.member(first, "idle");
+    writeOptionalNumber(writer, cpu.idlePercent.value);
+    writer.member(first, "availability");
+    writer.character('{');
+    bool availabilityFirst{true};
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "percent", cpu.percent);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "per_cpu", cpu.perLogicalProcessor);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "count_logical", cpu.logicalProcessorCount);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "count_physical", cpu.physicalCoreCount);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "freq_mhz", cpu.frequencyMhz);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "freq_per_core_mhz", cpu.perCoreFrequencyMhz);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "load_avg", cpu.loadAverage);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "brand", cpu.brand);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "user", cpu.userPercent);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "system", cpu.systemPercent);
+    writeMetricAvailabilityMember(
+        writer, availabilityFirst, "idle", cpu.idlePercent);
+    writer.character('}');
+    writer.character('}');
+}
+
+void writeRamByteMetric(
+    BoundedJsonWriter& writer,
+    const Domain::TelemetryMetric<std::uint64_t>& metric)
+{
+    if (metric.value) {
+        writer.number(static_cast<double>(*metric.value) / BytesPerGibibyte);
+    } else {
+        writer.nullValue();
+    }
+}
+
+void writeRamPercentMetric(
+    BoundedJsonWriter& writer,
+    const Domain::TelemetryMetric<double>& metric)
+{
+    if (metric.value) {
+        writer.number(*metric.value);
+    } else {
+        writer.nullValue();
+    }
+}
+
 void writeRam(BoundedJsonWriter& writer, const Domain::RamMetrics& ram)
 {
     writer.character('{');
@@ -804,31 +860,31 @@ void writeRam(BoundedJsonWriter& writer, const Domain::RamMetrics& ram)
     writer.member(first, "availability");
     writer.character('{');
     bool availabilityFirst{true};
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "total_gb", ram.totalBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "used_gb", ram.usedBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "available_gb", ram.availableBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "percent", ram.percent);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "pressure_percent", ram.pressurePercent);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "active_gb", ram.activeBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "wired_gb", ram.wiredBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "compressed_gb", ram.compressedBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "swap_total_gb", ram.swapTotalBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "swap_used_gb", ram.swapUsedBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "swap_percent", ram.swapPercent);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "committed_gb", ram.committedBytes);
-    writeRamAvailabilityMember(
+    writeMetricAvailabilityMember(
         writer, availabilityFirst, "paged_pool_gb", ram.pagedPoolBytes);
     writer.character('}');
     writer.character('}');

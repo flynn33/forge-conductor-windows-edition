@@ -199,11 +199,20 @@ public:
     const double cpuPercent = 20.0)
 {
     Domain::CpuMetrics cpu;
-    cpu.percent = cpuPercent;
-    cpu.idlePercent = 100.0 - cpuPercent;
-    cpu.logicalProcessorCount = 1U;
-    cpu.physicalCoreCount = 1U;
-    cpu.perLogicalProcessor = {cpuPercent};
+    cpu.percent = Domain::makeAvailableTelemetryMetric(
+        cpuPercent, Domain::UtcTimePoint{} + 100s, "test.fixture");
+    cpu.idlePercent = Domain::makeAvailableTelemetryMetric(
+        100.0 - cpuPercent,
+        Domain::UtcTimePoint{} + 100s,
+        "test.fixture");
+    cpu.logicalProcessorCount = Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+        1U, Domain::UtcTimePoint{} + 100s, "test.fixture");
+    cpu.physicalCoreCount = Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+        1U, Domain::UtcTimePoint{} + 100s, "test.fixture");
+    cpu.perLogicalProcessor = Domain::makeAvailableTelemetryMetric(
+        std::vector<double>{cpuPercent},
+        Domain::UtcTimePoint{} + 100s,
+        "test.fixture");
 
     Domain::RamMetrics ram;
     ram.percent = Domain::makeAvailableTelemetryMetric(

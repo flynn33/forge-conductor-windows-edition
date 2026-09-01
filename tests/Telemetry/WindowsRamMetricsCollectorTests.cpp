@@ -1,6 +1,7 @@
 #include "ForgeConductor/Telemetry/Windows/WindowsRamMetricsCollector.h"
 #include "Infrastructure/TestSupport.h"
 #include "Telemetry/Windows/Detail/IRamMetricsPlatform.h"
+#include "Telemetry/Windows/Detail/SynchronousCollectorGate.h"
 
 #include <atomic>
 #include <chrono>
@@ -44,6 +45,7 @@ namespace Detail = Telemetry::Windows::Detail;
 using Collector = TelemetryWindows::WindowsRamMetricsCollector;
 using Interface = Contracts::IRamMetricsCollector;
 using Availability = Domain::TelemetryMetricAvailability;
+using LifecycleGate = Detail::SynchronousCollectorGate;
 using namespace std::chrono_literals;
 
 using CollectMember = Domain::Result<Domain::RamMetrics> (
@@ -59,6 +61,11 @@ static_assert(!std::is_move_constructible_v<Collector>);
 static_assert(!std::is_move_assignable_v<Collector>);
 static_assert(std::is_same_v<decltype(&Collector::collect), CollectMember>);
 static_assert(std::is_same_v<decltype(&Collector::shutdown), ShutdownMember>);
+static_assert(std::is_final_v<LifecycleGate>);
+static_assert(std::is_move_constructible_v<LifecycleGate::Lease>);
+static_assert(std::is_move_assignable_v<LifecycleGate::Lease>);
+static_assert(!std::is_copy_constructible_v<LifecycleGate::Lease>);
+static_assert(!std::is_copy_assignable_v<LifecycleGate::Lease>);
 
 class TestClock final : public Contracts::IClock {
 public:
@@ -659,11 +666,15 @@ void overlappingCollectionIsRejectedWithoutAQueue()
         std::launch::async,
         [&collector, context]() { return collector->collect(context); });
     const bool entered = platform->waitForPhysicalEntry(2s);
+    if (!entered) {
+        platform->releasePhysical();
+        static_cast<void>(first.get());
+        require(false, "the overlap fixture did not enter its physical probe");
+    }
     const auto overlapping = collector->collect(context);
     platform->releasePhysical();
     const auto completed = first.get();
 
-    require(entered, "the overlap fixture did not enter its physical probe");
     requireError(
         overlapping,
         Domain::ErrorCodes::LimitExceeded,
@@ -675,6 +686,106 @@ void overlappingCollectionIsRejectedWithoutAQueue()
         platform->physicalCalls.load() == 1U &&
             platform->performanceCalls.load() == 1U,
         "the rejected overlap reached a native probe");
+}
+
+void publicationAlreadyInProgressLinearizesBeforeShutdown()
+{
+    TestClock clock;
+    LifecycleGate lifecycle{clock, "test telemetry collection"};
+    const auto context = activeContext(clock);
+
+    auto admission = lifecycle.tryAcquire(context);
+    require(
+        admission.hasValue(),
+        "the shared lifecycle gate rejected its first operation");
+    std::optional<LifecycleGate::Lease> lease{
+        std::move(admission).value()};
+
+    std::mutex publicationMutex;
+    std::condition_variable publicationChanged;
+    bool publicationEntered{};
+    bool publicationReleased{};
+    bool publicationCompleted{};
+
+    auto publishing = std::async(
+        std::launch::async,
+        [&]() {
+            return lifecycle.publish(
+                context,
+                "publish test metrics",
+                [&]() {
+                    std::unique_lock lock{publicationMutex};
+                    publicationEntered = true;
+                    publicationChanged.notify_all();
+                    publicationChanged.wait(lock, [&]() noexcept {
+                        return publicationReleased;
+                    });
+                    publicationCompleted = true;
+                });
+        });
+
+    bool entered{};
+    {
+        std::unique_lock lock{publicationMutex};
+        entered = publicationChanged.wait_for(
+            lock,
+            2s,
+            [&]() noexcept { return publicationEntered; });
+    }
+    if (!entered) {
+        {
+            const std::lock_guard lock{publicationMutex};
+            publicationReleased = true;
+        }
+        publicationChanged.notify_all();
+        static_cast<void>(publishing.get());
+        lease.reset();
+        lifecycle.shutdownAndDrain();
+        require(false, "the publication fixture did not enter its callback");
+    }
+
+    std::promise<void> shutdownInvoked;
+    auto shutdownStarted = shutdownInvoked.get_future();
+    auto stopping = std::async(
+        std::launch::async,
+        [&lifecycle, signal = std::move(shutdownInvoked)]() mutable {
+            signal.set_value();
+            lifecycle.shutdownAndDrain();
+        });
+    shutdownStarted.get();
+    const bool shutdownWaitedForPublication =
+        stopping.wait_for(0ms) == std::future_status::timeout;
+
+    {
+        const std::lock_guard lock{publicationMutex};
+        publicationReleased = true;
+    }
+    publicationChanged.notify_all();
+    const auto published = publishing.get();
+    const bool shutdownStillDrainingLease =
+        stopping.wait_for(0ms) == std::future_status::timeout;
+    lease.reset();
+    const bool shutdownCompletedAfterRelease =
+        stopping.wait_for(2s) == std::future_status::ready;
+    stopping.get();
+
+    lifecycle.shutdownAndDrain();
+    requireError(
+        lifecycle.tryAcquire(context),
+        Domain::ErrorCodes::TransportClosed,
+        "the shared lifecycle gate admitted work after shutdown");
+    require(
+        published.hasValue() && publicationCompleted,
+        "publication did not finish after winning lifecycle linearization");
+    require(
+        shutdownWaitedForPublication,
+        "shutdown completed while a publication callback held lifecycle ownership");
+    require(
+        shutdownStillDrainingLease,
+        "shutdown completed before the admitted operation released its lease");
+    require(
+        shutdownCompletedAfterRelease,
+        "shutdown did not complete after the publication and lease were released");
 }
 
 void shutdownIsIdempotentAndClosesAdmission()
@@ -904,6 +1015,10 @@ void registerWindowsRamMetricsCollectorTests(TestRegistry& tests)
         tests,
         "telemetry_windows.ram.overlap",
         overlappingCollectionIsRejectedWithoutAQueue);
+    addTest(
+        tests,
+        "telemetry_windows.ram.lifecycle-publication-wins",
+        publicationAlreadyInProgressLinearizesBeforeShutdown);
     addTest(
         tests,
         "telemetry_windows.ram.shutdown",

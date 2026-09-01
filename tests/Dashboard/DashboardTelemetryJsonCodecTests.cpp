@@ -65,7 +65,7 @@ void requireError(
 }
 
 template <typename T>
-[[nodiscard]] Domain::TelemetryMetric<T> availableRamMetric(T value)
+[[nodiscard]] Domain::TelemetryMetric<T> availableMetric(T value)
 {
     return Domain::makeAvailableTelemetryMetric(
         std::move(value), utc(), "fixture.available");
@@ -74,40 +74,40 @@ template <typename T>
 [[nodiscard]] Domain::TelemetrySnapshot richSnapshot()
 {
     Domain::CpuMetrics cpu{
-        37.5,
-        {25.0, 50.0},
-        2U,
-        1U,
-        3'600U,
-        {3'500U, 3'600U},
-        Domain::LoadAverage{0.5, 0.25, 0.125},
-        "Forge CPU \xE2\x98\x83",
-        12.5,
-        25.0,
-        62.5};
+        availableMetric(37.5),
+        availableMetric(std::vector<double>{25.0, 50.0}),
+        availableMetric<std::uint32_t>(2U),
+        availableMetric<std::uint32_t>(1U),
+        availableMetric<std::uint32_t>(3'600U),
+        availableMetric(std::vector<std::uint32_t>{3'500U, 3'600U}),
+        availableMetric(Domain::LoadAverage{0.5, 0.25, 0.125}),
+        availableMetric(std::string{"Forge CPU \xE2\x98\x83"}),
+        availableMetric(12.5),
+        availableMetric(25.0),
+        availableMetric(62.5)};
     Domain::RamMetrics ram{
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             16ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             6ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             10ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric(37.5),
-        availableRamMetric(41.0),
-        availableRamMetric<std::uint64_t>(
+        availableMetric(37.5),
+        availableMetric(41.0),
+        availableMetric<std::uint64_t>(
             5ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             1ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             256ULL * 1024ULL * 1024ULL),
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             4ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             1ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric(25.0),
-        availableRamMetric<std::uint64_t>(
+        availableMetric(25.0),
+        availableMetric<std::uint64_t>(
             7ULL * 1024ULL * 1024ULL * 1024ULL),
-        availableRamMetric<std::uint64_t>(
+        availableMetric<std::uint64_t>(
             128ULL * 1024ULL * 1024ULL)};
     Domain::DiskVolume disk{
         "Disk0",
@@ -257,12 +257,41 @@ void mapsTheCompleteMacCompatibleFrameContract()
                      1'704'164'647.678) < 0.0001);
 
     const auto& cpu = document.at("system").at("cpu");
+    const std::set<std::string> cpuValueKeys{
+        "brand", "count_logical", "count_physical", "freq_mhz",
+        "freq_per_core_mhz", "idle", "load_avg", "per_cpu", "percent",
+        "system", "user"};
+    auto expectedCpuKeys = cpuValueKeys;
+    expectedCpuKeys.insert("availability");
+    REQUIRE(keys(cpu) == expectedCpuKeys);
     REQUIRE(cpu.at("percent") == 37.5);
     REQUIRE(cpu.at("per_cpu") == Json::array({25.0, 50.0}));
+    REQUIRE(cpu.at("count_logical") == 2U);
+    REQUIRE(cpu.at("count_physical") == 1U);
     REQUIRE(cpu.at("freq_mhz") == 3'600U);
     REQUIRE(cpu.at("freq_per_core_mhz") == Json::array({3'500U, 3'600U}));
+    REQUIRE(cpu.at("load_avg").at("m1") == 0.5);
+    REQUIRE(cpu.at("load_avg").at("m5") == 0.25);
     REQUIRE(cpu.at("load_avg").at("m15") == 0.125);
     REQUIRE(cpu.at("brand") == "Forge CPU \xE2\x98\x83");
+    REQUIRE(cpu.at("user") == 12.5);
+    REQUIRE(cpu.at("system") == 25.0);
+    REQUIRE(cpu.at("idle") == 62.5);
+    const auto& cpuAvailability = cpu.at("availability");
+    REQUIRE(keys(cpuAvailability) == cpuValueKeys);
+    for (const auto& name : cpuValueKeys) {
+        const auto& metadata = cpuAvailability.at(name);
+        REQUIRE(keys(metadata) == std::set<std::string>({
+            "captured_at", "observed_at", "reason", "source", "stale", "state"}));
+        REQUIRE(metadata.at("state") == "available");
+        REQUIRE(metadata.at("stale") == false);
+        REQUIRE(std::abs(metadata.at("captured_at").get<double>() -
+                         1'704'164'645.678) < 0.0001);
+        REQUIRE(std::abs(metadata.at("observed_at").get<double>() -
+                         1'704'164'645.678) < 0.0001);
+        REQUIRE(metadata.at("source") == "fixture.available");
+        REQUIRE(metadata.at("reason").is_null());
+    }
 
     const auto& ram = document.at("system").at("ram");
     const std::set<std::string> ramValueKeys{
@@ -385,6 +414,131 @@ void mapsTheCompleteMacCompatibleFrameContract()
     REQUIRE(document.at("history").at(0U).at("gpu").is_null());
     REQUIRE(document.at("history").at(0U).at("disk_io") == 3.0);
     REQUIRE(document.at("history").at(1U).at("orch") == "warn");
+}
+
+void mapsUnsupportedCpuMetricsToNullWithExplicitMetadata()
+{
+    auto snapshot = richSnapshot();
+    snapshot.system.cpu.frequencyMhz =
+        Domain::makeUnavailableTelemetryMetric<std::uint32_t>(
+            Domain::TelemetryMetricAvailability::Unsupported,
+            utc() + 1s,
+            "windows.cpu.frequency",
+            "The selected Windows source does not expose current frequency.");
+
+    const auto cpu = Json::parse(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)))
+                         .at("cpu");
+    REQUIRE(cpu.at("freq_mhz").is_null());
+    REQUIRE(cpu.at("percent") == 37.5);
+    const auto& metadata = cpu.at("availability").at("freq_mhz");
+    REQUIRE(keys(metadata) == std::set<std::string>({
+        "captured_at", "observed_at", "reason", "source", "stale", "state"}));
+    REQUIRE(metadata.at("state") == "unsupported");
+    REQUIRE(metadata.at("stale") == false);
+    REQUIRE(metadata.at("captured_at").is_null());
+    REQUIRE(std::abs(metadata.at("observed_at").get<double>() -
+                     1'704'164'646.678) < 0.0001);
+    REQUIRE(metadata.at("source") == "windows.cpu.frequency");
+    REQUIRE(metadata.at("reason") ==
+            "The selected Windows source does not expose current frequency.");
+}
+
+void mapsNeverObservedCpuMetricsToNullWithoutSynthesizingZeroes()
+{
+    auto snapshot = richSnapshot();
+    snapshot.system.cpu = Domain::CpuMetrics{};
+
+    const auto cpu = Json::parse(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)))
+                         .at("cpu");
+    const std::set<std::string> cpuValueKeys{
+        "brand", "count_logical", "count_physical", "freq_mhz",
+        "freq_per_core_mhz", "idle", "load_avg", "per_cpu", "percent",
+        "system", "user"};
+    for (const auto& name : cpuValueKeys) {
+        REQUIRE(cpu.at(name).is_null());
+        const auto& metadata = cpu.at("availability").at(name);
+        REQUIRE(metadata.at("state") == "warming_up");
+        REQUIRE(metadata.at("stale") == false);
+        REQUIRE(metadata.at("captured_at").is_null());
+        REQUIRE(metadata.at("observed_at").is_null());
+        REQUIRE(metadata.at("source") == "not_collected");
+        REQUIRE(metadata.at("reason") == "No sample has been collected.");
+    }
+}
+
+void mapsStaleCpuValuesWithoutLosingTheLastGoodSample()
+{
+    auto snapshot = richSnapshot();
+    const auto previous = Domain::makeAvailableTelemetryMetric(
+        37.5,
+        utc() - 5s,
+        "GetSystemTimes busy delta");
+    snapshot.system.cpu.percent = Domain::makeStaleTelemetryMetric(
+        previous,
+        Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+        utc() + 1s,
+        "The most recent refresh failed.");
+
+    const auto cpu = Json::parse(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)))
+                         .at("cpu");
+    REQUIRE(cpu.at("percent") == 37.5);
+    const auto& metadata = cpu.at("availability").at("percent");
+    REQUIRE(metadata.at("state") == "temporarily_unavailable");
+    REQUIRE(metadata.at("stale") == true);
+    REQUIRE(std::abs(metadata.at("captured_at").get<double>() -
+                     1'704'164'640.678) < 0.0001);
+    REQUIRE(std::abs(metadata.at("observed_at").get<double>() -
+                     1'704'164'646.678) < 0.0001);
+    REQUIRE(metadata.at("source") == "GetSystemTimes busy delta");
+    REQUIRE(metadata.at("reason") == "The most recent refresh failed.");
+}
+
+void distinguishesAvailableEmptyCpuCollectionsFromUnavailableCollections()
+{
+    auto snapshot = richSnapshot();
+    snapshot.system.cpu.logicalProcessorCount =
+        Domain::makeUnavailableTelemetryMetric<std::uint32_t>(
+            Domain::TelemetryMetricAvailability::WarmingUp,
+            utc(),
+            "Processor topology",
+            "Processor topology has not been sampled.");
+    snapshot.system.cpu.perLogicalProcessor = Domain::makeAvailableTelemetryMetric(
+        std::vector<double>{}, utc(), "fixture.empty");
+    snapshot.system.cpu.perCoreFrequencyMhz = Domain::makeAvailableTelemetryMetric(
+        std::vector<std::uint32_t>{}, utc(), "fixture.empty");
+
+    auto cpu = Json::parse(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)))
+                   .at("cpu");
+    REQUIRE(cpu.at("per_cpu") == Json::array());
+    REQUIRE(cpu.at("freq_per_core_mhz") == Json::array());
+    REQUIRE(cpu.at("availability").at("per_cpu").at("state") == "available");
+    REQUIRE(cpu.at("availability").at("freq_per_core_mhz").at("state") ==
+            "available");
+
+    snapshot.system.cpu.perLogicalProcessor =
+        Domain::makeUnavailableTelemetryMetric<std::vector<double>>(
+            Domain::TelemetryMetricAvailability::WarmingUp,
+            utc() + 1s,
+            "PDH \\Processor Information(*)\\% Processor Time",
+            "A baseline sample is required.");
+    snapshot.system.cpu.perCoreFrequencyMhz =
+        Domain::makeUnavailableTelemetryMetric<std::vector<std::uint32_t>>(
+            Domain::TelemetryMetricAvailability::AccessDenied,
+            utc() + 1s,
+            "PDH \\Processor Information(*)\\Actual Frequency",
+            "The frequency source denied access.");
+    cpu = Json::parse(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)))
+              .at("cpu");
+    REQUIRE(cpu.at("per_cpu").is_null());
+    REQUIRE(cpu.at("freq_per_core_mhz").is_null());
+    REQUIRE(cpu.at("availability").at("per_cpu").at("state") == "warming_up");
+    REQUIRE(cpu.at("availability").at("freq_per_core_mhz").at("state") ==
+            "access_denied");
 }
 
 void mapsUnsupportedRamMetricsToNullWithExplicitMetadata()
@@ -686,9 +840,61 @@ void enforcesTheEncodedResponseCeilingDuringSerialization()
 void rejectsNonfiniteValuesInvalidTextAndNoncanonicalTimestamps()
 {
     auto snapshot = richSnapshot();
-    snapshot.system.cpu.percent = std::numeric_limits<double>::quiet_NaN();
+    snapshot.system.cpu.percent.value = std::numeric_limits<double>::quiet_NaN();
     requireError(
         Dashboard::DashboardTelemetryJsonCodec::encodeFrame(snapshot, 2.0),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.percent.value.reset();
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.frequencyMhz.value = 0U;
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.loadAverage.value->fiveMinutes =
+        std::numeric_limits<double>::infinity();
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.physicalCoreCount.value = 3U;
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.brand.value = std::string{"brand\0bad", 9U};
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.brand.value->assign(Domain::CpuBrandBytesMaximum, 'b');
+    static_cast<void>(take(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system)));
+    snapshot.system.cpu.brand.value->push_back('b');
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.percent.source = std::string{"source\0bad", 10U};
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
+        Domain::ErrorCodes::InvalidRequest);
+
+    snapshot = richSnapshot();
+    snapshot.system.cpu.percent.capturedAt = utc(-1);
+    requireError(
+        Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
         Domain::ErrorCodes::InvalidRequest);
 
     snapshot = richSnapshot();
@@ -781,17 +987,29 @@ void escapesValidTextDeterministically()
 void enforcesEveryCollectionBoundBeforeSerialization()
 {
     auto snapshot = richSnapshot();
-    snapshot.system.cpu.perLogicalProcessor.assign(
+    snapshot.system.cpu.logicalProcessorCount.value =
+        static_cast<std::uint32_t>(
+            Dashboard::DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries);
+    snapshot.system.cpu.perCoreFrequencyMhz =
+        Domain::makeUnavailableTelemetryMetric<std::vector<std::uint32_t>>(
+            Domain::TelemetryMetricAvailability::Unsupported,
+            utc(),
+            "test.fixture",
+            "Per-core frequency is unavailable for this bound fixture.");
+    snapshot.system.cpu.perLogicalProcessor.value->assign(
         Dashboard::DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries,
         1.0);
     REQUIRE(Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system));
-    snapshot.system.cpu.perLogicalProcessor.push_back(1.0);
+    snapshot.system.cpu.perLogicalProcessor.value->push_back(1.0);
     requireError(
         Dashboard::DashboardTelemetryJsonCodec::encodeSystem(snapshot.system),
         Domain::ErrorCodes::LimitExceeded);
 
     snapshot = richSnapshot();
-    snapshot.system.cpu.perCoreFrequencyMhz.assign(
+    snapshot.system.cpu.logicalProcessorCount.value =
+        static_cast<std::uint32_t>(
+            Dashboard::DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries);
+    snapshot.system.cpu.perCoreFrequencyMhz.value->assign(
         Dashboard::DashboardTelemetryJsonCodec::MaximumLogicalProcessorEntries + 1U,
         1U);
     requireError(
@@ -861,6 +1079,10 @@ int main()
 {
     try {
         mapsTheCompleteMacCompatibleFrameContract();
+        mapsUnsupportedCpuMetricsToNullWithExplicitMetadata();
+        mapsNeverObservedCpuMetricsToNullWithoutSynthesizingZeroes();
+        mapsStaleCpuValuesWithoutLosingTheLastGoodSample();
+        distinguishesAvailableEmptyCpuCollectionsFromUnavailableCollections();
         mapsUnsupportedRamMetricsToNullWithExplicitMetadata();
         mapsStaleRamValuesWithoutLosingTheLastGoodSample();
         exposesHealthAndStandaloneViews();
