@@ -207,6 +207,129 @@ Result<void> validateRamMetrics(const RamMetrics& metrics)
     return Result<void>::success();
 }
 
+Result<void> validateCpuMetrics(const CpuMetrics& metrics)
+{
+    const auto validate = [](const std::string_view field, const auto& metric)
+        -> Result<void> {
+        const auto result = validateTelemetryMetric(metric);
+        if (!result) {
+            return Result<void>::failure(makeError(
+                result.error().code,
+                "CPU telemetry field '" + std::string{field} +
+                    "' is invalid: " + result.error().message));
+        }
+        return Result<void>::success();
+    };
+
+    const Result<void> stateResults[] = {
+        validate("percent", metrics.percent),
+        validate("per_cpu", metrics.perLogicalProcessor),
+        validate("count_logical", metrics.logicalProcessorCount),
+        validate("count_physical", metrics.physicalCoreCount),
+        validate("freq_mhz", metrics.frequencyMhz),
+        validate("freq_per_core_mhz", metrics.perCoreFrequencyMhz),
+        validate("load_avg", metrics.loadAverage),
+        validate("brand", metrics.brand),
+        validate("user", metrics.userPercent),
+        validate("system", metrics.systemPercent),
+        validate("idle", metrics.idlePercent)};
+    for (const auto& result : stateResults) {
+        if (!result) {
+            return Result<void>::failure(result.error());
+        }
+    }
+
+    const auto percentInvalid = [](const double value) {
+        return !std::isfinite(value) || value < 0.0 || value > 100.0;
+    };
+    if ((metrics.percent.value && percentInvalid(*metrics.percent.value)) ||
+        (metrics.userPercent.value && percentInvalid(*metrics.userPercent.value)) ||
+        (metrics.systemPercent.value && percentInvalid(*metrics.systemPercent.value)) ||
+        (metrics.idlePercent.value && percentInvalid(*metrics.idlePercent.value)) ||
+        (metrics.perLogicalProcessor.value &&
+         std::any_of(
+             metrics.perLogicalProcessor.value->begin(),
+             metrics.perLogicalProcessor.value->end(),
+             percentInvalid))) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "CPU telemetry percentages must be finite values within 0...100."));
+    }
+
+    if ((metrics.logicalProcessorCount.value &&
+         *metrics.logicalProcessorCount.value == 0U) ||
+        (metrics.physicalCoreCount.value &&
+         *metrics.physicalCoreCount.value == 0U)) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Available CPU processor counts must be greater than zero."));
+    }
+    if (metrics.logicalProcessorCount.value &&
+        metrics.physicalCoreCount.value &&
+        *metrics.physicalCoreCount.value >
+            *metrics.logicalProcessorCount.value) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "The physical CPU core count cannot exceed the logical processor count."));
+    }
+    if (metrics.logicalProcessorCount.availability ==
+            TelemetryMetricAvailability::Available &&
+        metrics.perLogicalProcessor.availability ==
+            TelemetryMetricAvailability::Available &&
+        metrics.perLogicalProcessor.value->size() !=
+            *metrics.logicalProcessorCount.value) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Available per-processor CPU utilization must match the logical processor count."));
+    }
+    if (metrics.logicalProcessorCount.availability ==
+            TelemetryMetricAvailability::Available &&
+        metrics.perCoreFrequencyMhz.availability ==
+            TelemetryMetricAvailability::Available &&
+        metrics.perCoreFrequencyMhz.value->size() !=
+            *metrics.logicalProcessorCount.value) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Available per-core CPU frequencies must match the logical processor count."));
+    }
+
+    if ((metrics.frequencyMhz.value && *metrics.frequencyMhz.value == 0U) ||
+        (metrics.perCoreFrequencyMhz.value &&
+         std::any_of(
+             metrics.perCoreFrequencyMhz.value->begin(),
+             metrics.perCoreFrequencyMhz.value->end(),
+             [](const std::uint32_t value) { return value == 0U; }))) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Available CPU frequencies must be greater than zero."));
+    }
+
+    if (metrics.loadAverage.value) {
+        const auto& load = *metrics.loadAverage.value;
+        const auto invalidLoad = [](const double value) {
+            return !std::isfinite(value) || value < 0.0;
+        };
+        if (invalidLoad(load.oneMinute) ||
+            invalidLoad(load.fiveMinutes) ||
+            invalidLoad(load.fifteenMinutes)) {
+            return Result<void>::failure(makeError(
+                ErrorCodes::InvalidRequest,
+                "CPU load averages must be finite nonnegative values."));
+        }
+    }
+
+    if (metrics.brand.value &&
+        (metrics.brand.value->empty() ||
+         metrics.brand.value->size() > CpuBrandBytesMaximum ||
+         metrics.brand.value->find('\0') != std::string::npos ||
+         !isValidUtf8(*metrics.brand.value))) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "CPU brand text is empty, oversized, or invalid UTF-8."));
+    }
+    return Result<void>::success();
+}
+
 Result<void> validateTelemetrySnapshot(
     const TelemetrySnapshot& snapshot,
     const ResourceBudgets& budgets)
@@ -216,19 +339,13 @@ Result<void> validateTelemetrySnapshot(
             ErrorCodes::LimitExceeded,
             "Telemetry history exceeds the active hard limit."));
     }
-    const auto percentInvalid = [](const double value) {
-        return !std::isfinite(value) || value < 0.0 || value > 100.0;
-    };
+    const auto cpuValid = validateCpuMetrics(snapshot.system.cpu);
+    if (!cpuValid) {
+        return Result<void>::failure(cpuValid.error());
+    }
     const auto ramValid = validateRamMetrics(snapshot.system.ram);
     if (!ramValid) {
         return Result<void>::failure(ramValid.error());
-    }
-    if (percentInvalid(snapshot.system.cpu.percent) ||
-        std::any_of(snapshot.system.cpu.perLogicalProcessor.begin(),
-                    snapshot.system.cpu.perLogicalProcessor.end(), percentInvalid)) {
-        return Result<void>::failure(makeError(
-            ErrorCodes::InvalidRequest,
-            "Telemetry utilization percentages must be finite values within 0...100."));
     }
     return Result<void>::success();
 }

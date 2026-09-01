@@ -1095,12 +1095,141 @@ void processToolTelemetryAndManagerBounds()
     REQUIRE(!Domain::validateMcpFrame(Domain::McpFrame{"{}\n{}"}, budgets));
 
     Domain::SystemMetrics system{};
-    system.cpu.percent = 25.0;
+    system.cpu.percent = Domain::makeAvailableTelemetryMetric(
+        25.0, fixedTime(1), "test.fixture");
     system.ram.percent = Domain::makeAvailableTelemetryMetric(
         50.0, fixedTime(1), "test.fixture");
     Domain::ForgeSnapshot forge{fixedTime(1), take(Domain::PathText::create("C:\\forge"))};
     Domain::TelemetrySnapshot snapshot{system, forge, fixedTime(2), {}, "windows-native"};
     REQUIRE(Domain::validateTelemetrySnapshot(snapshot, budgets));
+
+    Domain::CpuMetrics observedCpu{
+        Domain::makeAvailableTelemetryMetric(
+            25.0, fixedTime(3), "GetSystemTimes busy delta"),
+        Domain::makeAvailableTelemetryMetric(
+            std::vector<double>{20.0, 30.0},
+            fixedTime(3),
+            "PDH \\Processor Information(*)\\% Processor Time"),
+        Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+            2U,
+            fixedTime(3),
+            "GetLogicalProcessorInformationEx(RelationProcessorCore) affinity masks"),
+        Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+            1U,
+            fixedTime(3),
+            "GetLogicalProcessorInformationEx(RelationProcessorCore) record count"),
+        Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+            3'600U,
+            fixedTime(3),
+            "PDH \\Processor Information(_Total)\\Actual Frequency"),
+        Domain::makeAvailableTelemetryMetric(
+            std::vector<std::uint32_t>{3'500U, 3'600U},
+            fixedTime(3),
+            "PDH \\Processor Information(*)\\Actual Frequency"),
+        Domain::makeUnavailableTelemetryMetric<Domain::LoadAverage>(
+            Domain::TelemetryMetricAvailability::Unsupported,
+            fixedTime(3),
+            "Windows scheduling model: no 1/5/15 load-average equivalent",
+            "Windows does not expose the POSIX load-average contract."),
+        Domain::makeAvailableTelemetryMetric(
+            std::string{"Test CPU"},
+            fixedTime(3),
+            "RegGetValueW HKLM\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0\\ProcessorNameString"),
+        Domain::makeAvailableTelemetryMetric(
+            10.0, fixedTime(3), "GetSystemTimes.UserTime delta"),
+        Domain::makeAvailableTelemetryMetric(
+            15.0,
+            fixedTime(3),
+            "GetSystemTimes.KernelTime minus IdleTime delta"),
+        Domain::makeAvailableTelemetryMetric(
+            75.0, fixedTime(3), "GetSystemTimes.IdleTime delta")};
+    REQUIRE(Domain::validateCpuMetrics(observedCpu));
+
+    auto staleCpu = observedCpu;
+    staleCpu.percent = Domain::makeStaleTelemetryMetric(
+        observedCpu.percent,
+        Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+        fixedTime(4),
+        "The latest CPU refresh failed.");
+    REQUIRE(Domain::validateCpuMetrics(staleCpu));
+    REQUIRE(staleCpu.percent.value == observedCpu.percent.value);
+    REQUIRE(staleCpu.percent.source == observedCpu.percent.source);
+
+    auto availableEmptyCpuCollections = observedCpu;
+    availableEmptyCpuCollections.logicalProcessorCount =
+        Domain::makeUnavailableTelemetryMetric<std::uint32_t>(
+            Domain::TelemetryMetricAvailability::WarmingUp,
+            fixedTime(3),
+            "Processor topology",
+            "Processor topology has not been sampled.");
+    availableEmptyCpuCollections.perLogicalProcessor =
+        Domain::makeAvailableTelemetryMetric(
+            std::vector<double>{}, fixedTime(3), "Empty CPU fixture");
+    availableEmptyCpuCollections.perCoreFrequencyMhz =
+        Domain::makeAvailableTelemetryMetric(
+            std::vector<std::uint32_t>{}, fixedTime(3), "Empty CPU fixture");
+    REQUIRE(Domain::validateCpuMetrics(availableEmptyCpuCollections));
+
+    auto invalidCpu = observedCpu;
+    invalidCpu.percent.value = std::numeric_limits<double>::quiet_NaN();
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.userPercent.value = std::numeric_limits<double>::infinity();
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.idlePercent.value = 100.1;
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.perLogicalProcessor.value->front() = -0.1;
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.logicalProcessorCount.value = 0U;
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.physicalCoreCount.value = 0U;
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.physicalCoreCount.value = 3U;
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.perLogicalProcessor.value->push_back(40.0);
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.perCoreFrequencyMhz.value->push_back(3'700U);
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.frequencyMhz.value = 0U;
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.perCoreFrequencyMhz.value->front() = 0U;
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.loadAverage = Domain::makeAvailableTelemetryMetric(
+        Domain::LoadAverage{-0.1, 0.0, 0.0},
+        fixedTime(3),
+        "test.fixture");
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu.loadAverage.value->oneMinute = 0.0;
+    invalidCpu.loadAverage.value->fiveMinutes =
+        std::numeric_limits<double>::infinity();
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.brand.value->clear();
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    *invalidCpu.brand.value = std::string{"brand\0suffix", 12U};
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    *invalidCpu.brand.value = std::string{static_cast<char>(0xc3)};
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.brand.value->assign(Domain::CpuBrandBytesMaximum, 'b');
+    REQUIRE(Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu.brand.value->push_back('b');
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
+    invalidCpu = observedCpu;
+    invalidCpu.frequencyMhz.value.reset();
+    REQUIRE(!Domain::validateCpuMetrics(invalidCpu));
 
     const auto availableRamPercent = Domain::makeAvailableTelemetryMetric(
         50.0, fixedTime(3), "GlobalMemoryStatusEx");

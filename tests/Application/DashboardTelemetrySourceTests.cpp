@@ -75,13 +75,20 @@ template <typename Value>
     const std::size_t historyCount = 1U)
 {
     Domain::CpuMetrics cpu;
-    cpu.percent = cpuPercent;
-    cpu.userPercent = 10.0;
-    cpu.systemPercent = 15.0;
-    cpu.idlePercent = 75.0;
-    cpu.logicalProcessorCount = 1U;
-    cpu.physicalCoreCount = 1U;
-    cpu.perLogicalProcessor = {cpuPercent};
+    cpu.percent = Domain::makeAvailableTelemetryMetric(
+        cpuPercent, utc(), "test.fixture");
+    cpu.userPercent = Domain::makeAvailableTelemetryMetric(
+        10.0, utc(), "test.fixture");
+    cpu.systemPercent = Domain::makeAvailableTelemetryMetric(
+        15.0, utc(), "test.fixture");
+    cpu.idlePercent = Domain::makeAvailableTelemetryMetric(
+        75.0, utc(), "test.fixture");
+    cpu.logicalProcessorCount = Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+        1U, utc(), "test.fixture");
+    cpu.physicalCoreCount = Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+        1U, utc(), "test.fixture");
+    cpu.perLogicalProcessor = Domain::makeAvailableTelemetryMetric(
+        std::vector<double>{cpuPercent}, utc(), "test.fixture");
 
     Domain::RamMetrics ram;
     ram.percent = Domain::makeAvailableTelemetryMetric(

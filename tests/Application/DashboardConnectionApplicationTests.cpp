@@ -261,9 +261,12 @@ template <typename Value>
 [[nodiscard]] Domain::TelemetrySnapshot telemetrySnapshot()
 {
     Domain::CpuMetrics cpu{};
-    cpu.logicalProcessorCount = 1U;
-    cpu.physicalCoreCount = 1U;
-    cpu.brand = "Test CPU";
+    cpu.logicalProcessorCount = Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+        1U, utc(), "test.fixture");
+    cpu.physicalCoreCount = Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+        1U, utc(), "test.fixture");
+    cpu.brand = Domain::makeAvailableTelemetryMetric(
+        std::string{"Test CPU"}, utc(), "test.fixture");
     Domain::SystemMetrics system{
         utc(),
         "forge-host",

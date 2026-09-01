@@ -17,6 +17,7 @@ namespace ForgeConductor::Domain {
 inline constexpr std::size_t TelemetryPendingSnapshotsMaximum = 1;
 inline constexpr std::size_t TelemetryMetricSourceBytesMaximum = 128U;
 inline constexpr std::size_t TelemetryMetricReasonBytesMaximum = 256U;
+inline constexpr std::size_t CpuBrandBytesMaximum = 256U;
 
 enum class TelemetryHealth { Ok, Warn, Error, Down, Config };
 enum class TelemetryStatusTone { Healthy, Caution, Failure, Informational, Unavailable };
@@ -93,17 +94,17 @@ template <typename T>
 struct LoadAverage final { double oneMinute{}; double fiveMinutes{}; double fifteenMinutes{}; };
 
 struct CpuMetrics final {
-    double percent{};
-    std::vector<double> perLogicalProcessor;
-    std::uint32_t logicalProcessorCount{};
-    std::uint32_t physicalCoreCount{};
-    std::optional<std::uint32_t> frequencyMhz;
-    std::vector<std::uint32_t> perCoreFrequencyMhz;
-    LoadAverage loadAverage;
-    std::string brand;
-    double userPercent{};
-    double systemPercent{};
-    double idlePercent{};
+    TelemetryMetric<double> percent;
+    TelemetryMetric<std::vector<double>> perLogicalProcessor;
+    TelemetryMetric<std::uint32_t> logicalProcessorCount;
+    TelemetryMetric<std::uint32_t> physicalCoreCount;
+    TelemetryMetric<std::uint32_t> frequencyMhz;
+    TelemetryMetric<std::vector<std::uint32_t>> perCoreFrequencyMhz;
+    TelemetryMetric<LoadAverage> loadAverage;
+    TelemetryMetric<std::string> brand;
+    TelemetryMetric<double> userPercent;
+    TelemetryMetric<double> systemPercent;
+    TelemetryMetric<double> idlePercent;
 };
 
 using CPUMetrics = CpuMetrics;
@@ -262,6 +263,7 @@ template <typename T>
 }
 
 [[nodiscard]] Result<void> validateRamMetrics(const RamMetrics& metrics);
+[[nodiscard]] Result<void> validateCpuMetrics(const CpuMetrics& metrics);
 [[nodiscard]] Result<void> validateTelemetrySnapshot(
     const TelemetrySnapshot& snapshot,
     const ResourceBudgets& budgets);
