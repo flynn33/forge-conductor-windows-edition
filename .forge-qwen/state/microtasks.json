@@ -476,16 +476,17 @@
                                               "focused build/test/validation passes",
                                               "evidence and handoff recorded"
                                           ],
-                           "status":  "not_started",
+                           "status":  "passed",
                            "evidence":  [
-
+                                            ".forge-qwen/docs/PORT_TASK_CONTRACT.json"
                                         ],
                            "required_capabilities":  [
                                                          "filesystem",
                                                          "shell",
                                                          "rag_v1",
                                                          "persistent_memory"
-                                                     ]
+                                                     ],
+                           "last_message":  "P01-C closed per handoff packet 473ed56c: PORT_TASK_CONTRACT.json delivered at .forge-qwen/docs/PORT_TASK_CONTRACT.json with pinned build environment (Win11 Pro 26200 x64, VS Community 17.14.35.98, MSVC v143 cl 14.44.35208 _MSC_VER 1944, SDK 10.0.26100.0 with winsqlite3.h present, CMake 4.3.2, Ninja 1.13.2, git 2.53.0.windows.1, node v24.13.1 harness-only); cross-checked vs P01-B FACTS (baseline hash and nlohmann-json 3.12.0#2 match). Open item: vcpkg root ambiguity - resolve before first cmake configure."
                        },
                        {
                            "id":  "P01-V",
