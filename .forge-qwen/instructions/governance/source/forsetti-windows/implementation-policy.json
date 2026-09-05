@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1.0",
+  "policyName": "Forsetti Implementation Policy — Windows",
+  "rules": [
+    {
+      "id": "R001",
+      "name": "Native Technologies Only",
+      "description": "Use only C++20 standard library, Windows SDK, WinUI 3 (C++/WinRT), and Microsoft-provided tools (vcpkg, MSVC, CppUnitTest). nlohmann/json via vcpkg is allowed. No Boost, no non-Microsoft third-party tools.",
+      "severity": "error"
+    },
+    {
+      "id": "R002",
+      "name": "Sealed Framework",
+      "description": "ForsettiCore, ForsettiPlatform, and ForsettiHostTemplate are sealed framework libraries. Consumers use public headers only. No subclassing framework classes unless explicitly designed for extension.",
+      "severity": "error"
+    },
+    {
+      "id": "R003",
+      "name": "No Internal Patching",
+      "description": "Never modify internal implementation files of the framework libraries. Extend functionality through public interfaces (abstract base classes) only.",
+      "severity": "error"
+    },
+    {
+      "id": "R004",
+      "name": "Public APIs Only",
+      "description": "Modules interact with the framework exclusively through published interfaces (abstract base classes in include/ headers).",
+      "severity": "error"
+    },
+    {
+      "id": "R005",
+      "name": "Strict OOP",
+      "description": "Interface-first design (abstract base classes with pure virtuals). Constructor dependency injection — no hidden globals. All classes must be 'final' unless extension is intentional and documented.",
+      "severity": "error"
+    },
+    {
+      "id": "R006",
+      "name": "One-Way Dependencies",
+      "description": "ForsettiCore depends on nothing. ForsettiPlatform depends on Core. ForsettiHostTemplate depends on Core and Platform. Example modules depend on Core only and not on each other. Samples may compose public targets. No reverse or lateral imports.",
+      "severity": "error"
+    },
+    {
+      "id": "R007",
+      "name": "Run Verification",
+      "description": "Before opening a PR, run Scripts/verify-forsetti-guardrails.ps1. The wrapper executes CMake configure/build, CTest, architecture and dependency checks, manifest validation, pull request compatibility checks, and script regression tests.",
+      "severity": "error"
+    },
+    {
+      "id": "R008",
+      "name": "Proprietary Licensing",
+      "description": "All source files carry proprietary header comment. Copyright James Daley 2026. All Rights Reserved.",
+      "severity": "error"
+    },
+    {
+      "id": "R009",
+      "name": "CI Build Parity",
+      "description": "Current remote pull request enforcement is limited to repository marker scanning while local verification uses Scripts/verify-forsetti-guardrails.ps1 for build, test, and guardrail evidence. Restore full remote build/test parity when the aligned workflow set is added.",
+      "severity": "error"
+    }
+  ],
+  "framework_repo_architecture_constraints": {
+    "must_not_import_rules": [
+      {
+        "source": "ForsettiCore",
+        "must_not_include": ["ForsettiPlatform", "ForsettiHostTemplate", "ForsettiExampleServiceModule", "ForsettiExampleUIModule", "ForsettiExampleAppModule"]
+      },
+      {
+        "source": "ForsettiPlatform",
+        "must_not_include": ["ForsettiHostTemplate", "ForsettiExampleServiceModule", "ForsettiExampleUIModule", "ForsettiExampleAppModule"]
+      },
+      {
+        "source": "ForsettiExampleServiceModule",
+        "must_not_include": ["ForsettiPlatform", "ForsettiHostTemplate", "ForsettiExampleUIModule", "ForsettiExampleAppModule"]
+      },
+      {
+        "source": "ForsettiExampleUIModule",
+        "must_not_include": ["ForsettiPlatform", "ForsettiHostTemplate", "ForsettiExampleServiceModule", "ForsettiExampleAppModule"]
+      },
+      {
+        "source": "ForsettiExampleAppModule",
+        "must_not_include": ["ForsettiPlatform", "ForsettiHostTemplate", "ForsettiExampleServiceModule", "ForsettiExampleUIModule"]
+      }
+    ],
+    "framework_behavior_invariants": [
+      "Only one UI module may be active at a time",
+      "Service modules may run concurrently without limit",
+      "Module activation requires passing compatibility check AND entitlement check",
+      "UIThemeMask capability is limited to declared, policy-approved UI theme IDs; framework host chrome remains framework-owned",
+      "Module communication guard blocks: empty IDs, self-messaging, forsetti.internal.* namespace",
+      "UISurfaceManager accepts validated module UI contributions and preserves declared theme masks"
+    ]
+  }
+}

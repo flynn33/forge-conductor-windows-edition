@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "suites": [
+    {
+      "id": "T-UNIT",
+      "scope": "domain/contracts/services/parsers/state machines",
+      "required": true
+    },
+    {
+      "id": "T-DB",
+      "scope": "Winsqlite3 migrations/integrity/busy/backup/corruption",
+      "required": true
+    },
+    {
+      "id": "T-MCP",
+      "scope": "framing/53 tools/errors/EOF/concurrency/roles",
+      "required": true
+    },
+    {
+      "id": "T-MEM",
+      "scope": "legacy/project memory/isolation/reset/redaction",
+      "required": true
+    },
+    {
+      "id": "T-CONT",
+      "scope": "continuity crash points/autonomous rollover",
+      "required": true
+    },
+    {
+      "id": "T-PROC",
+      "scope": "process pipes/jobs/timeouts/tree cleanup",
+      "required": true
+    },
+    {
+      "id": "T-MGR",
+      "scope": "manager/IPC/routes/startup/recovery",
+      "required": true
+    },
+    {
+      "id": "T-TEL",
+      "scope": "collector mapping/mailbox/histories",
+      "required": true
+    },
+    {
+      "id": "T-GFX",
+      "scope": "shared resources/hidden pause/device loss",
+      "required": true
+    },
+    {
+      "id": "T-UI",
+      "scope": "seven surfaces/DPI/theme/accessibility",
+      "required": true
+    },
+    {
+      "id": "T-LMS",
+      "scope": "LM Studio deploy/API/live or fixture",
+      "required": true
+    },
+    {
+      "id": "T-IMPORT",
+      "scope": "macOS dry-run/import/rollback",
+      "required": true
+    },
+    {
+      "id": "T-INSTALL",
+      "scope": "install/repair/update/uninstall/purge",
+      "required": true
+    },
+    {
+      "id": "T-SEC",
+      "scope": "path/IPC/secrets/malformed/shell",
+      "required": true
+    },
+    {
+      "id": "T-STRESS",
+      "scope": "one-hour and repeated lifecycle",
+      "required": true
+    },
+    {
+      "id": "T-ANALYZE",
+      "scope": "MSVC analyze/ASan/AppVerifier/PageHeap/WPR",
+      "required": true
+    }
+  ]
+}

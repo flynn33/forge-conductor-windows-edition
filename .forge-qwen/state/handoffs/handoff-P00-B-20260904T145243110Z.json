@@ -1,0 +1,49 @@
+{
+    "schema_version":  1,
+    "mission_id":  "forge-conductor-windows11-port-qwen-guided-v2",
+    "handoff_id":  "handoff-P00-B-20260904T145243110Z",
+    "run_id":  "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+    "workspace_fingerprint":  "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+    "target_repository":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "memory_namespace":  "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+    "assignment_id":  ".forge-qwen\\state\\ACTIVE_ASSIGNMENT.json",
+    "microtask_id":  "P00-B",
+    "created_utc":  "2026-09-04T14:52:43.1778228Z",
+    "status":  "passed",
+    "objective":  "Bootstrap verification (no-op): confirm workspace lock, active assignment, and state integrity before substantive port work.",
+    "verified_facts":  [
+                           "ACTIVE_ASSIGNMENT.json microtask = P00-B",
+                           "P00-B state transitions driven exclusively via canonical Set-Microtask-State.ps1",
+                           "event-ledger received microtask_status and handoff_created events",
+                           "git version 2.53.0.windows.1",
+                           "dotnet SDK: 9.0.311 [C:\\Program Files\\dotnet\\sdk]"
+                       ],
+    "files_changed":  [
+
+                      ],
+    "commands":  [
+                     "Set-Microtask-State.ps1 -Microtask P00-B -Status in_progress",
+                     "Write-Qwen-Handoff.ps1 -Microtask P00-B -Status passed",
+                     "Set-Microtask-State.ps1 -Microtask P00-B -Status passed"
+                 ],
+    "evidence":  [
+
+                 ],
+    "decisions":  [
+                      "Canonical scripts live at .forge-qwen\\instructions\\scripts; step-card path .forge-qwen\\scripts was stale",
+                      "Assert-QwenWritePaths skipped because no-op step has zero planned file writes",
+                      "Handoff written while microtask still in_progress, then flipped to passed: Assert-QwenActiveAssignment rejects handoffs for already-passed microtasks (idempotency guard)"
+                  ],
+    "blockers":  [
+
+                 ],
+    "next_action":  "Bootstrap complete and workspace verified. Select the next microtask with Select-Next-Microtask.ps1 and begin substantive port work.",
+    "git_state":  {
+                      "head":  "2efd6b72fc00f60cf3755ff8c265b965f39034c5",
+                      "status":  "## forge-windows-port-1df367e1\r\n?? .forge-qwen/\r\n?? QWEN_SYSTEM_PROMPT.txt\r\n?? READ-THIS-FIRST-QWEN.txt\r\n?? RECOVER-QWEN-NOW.txt\r\n?? scripts/Run-Static-Gates.ps1",
+                      "branch":  "forge-windows-port-1df367e1"
+                  },
+    "tool_binding_revision":  0,
+    "ledger_head":  "a783e7611982886b85a9463a95689a19f9ae6cf34e2a0c17f4515e8569b36d35",
+    "checksum":  "78d31751c6c72186a6d5096510514d51ce81375646ce5c0c68159225a19a85d8"
+}

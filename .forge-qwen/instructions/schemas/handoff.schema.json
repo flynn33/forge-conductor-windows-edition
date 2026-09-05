@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "handoff_id",
+    "run_id",
+    "workspace_fingerprint",
+    "target_repository",
+    "memory_namespace",
+    "microtask_id",
+    "created_utc",
+    "status",
+    "objective",
+    "verified_facts",
+    "files_changed",
+    "commands",
+    "evidence",
+    "decisions",
+    "blockers",
+    "next_action",
+    "git_state",
+    "checksum"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "mission_id": {
+      "const": "forge-conductor-windows11-port-qwen-guided-v2"
+    },
+    "handoff_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "workspace_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "target_repository": {
+      "type": "string"
+    },
+    "memory_namespace": {
+      "type": "string"
+    },
+    "assignment_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "microtask_id": {
+      "type": "string"
+    },
+    "created_utc": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "in_progress",
+        "blocked",
+        "failed"
+      ]
+    },
+    "objective": {
+      "type": "string"
+    },
+    "verified_facts": {
+      "type": "array"
+    },
+    "files_changed": {
+      "type": "array"
+    },
+    "commands": {
+      "type": "array"
+    },
+    "evidence": {
+      "type": "array"
+    },
+    "decisions": {
+      "type": "array"
+    },
+    "blockers": {
+      "type": "array"
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "git_state": {
+      "type": "object"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "additionalProperties": true
+}

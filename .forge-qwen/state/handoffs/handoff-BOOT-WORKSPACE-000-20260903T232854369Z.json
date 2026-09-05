@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "mission_id": "forge-conductor-windows11-port-qwen-guided-v2",
+  "handoff_id": "handoff-BOOT-WORKSPACE-000-20260903T232854369Z",
+  "run_id": "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+  "workspace_fingerprint": "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+  "target_repository": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "memory_namespace": "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+  "assignment_id": ".forge-qwen\\state\\ACTIVE_ASSIGNMENT.json",
+  "microtask_id": "BOOT-WORKSPACE-000",
+  "created_utc": "2026-09-03T23:28:54.4315073Z",
+  "status": "passed",
+  "objective": "Close BOOT-WORKSPACE-000: prove workspace lock, record verified facts, and resolve the Assert-QwenWritePaths.ps1 write-scope defect per operator decision.",
+  "verified_facts": [
+    "Workspace lock verified (run 1df367e1, fingerprint 98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7, branch forge-windows-port-1df367e1); Assert-QwenWritePaths.ps1 TrimStart([char[]]./) defect confirmed and fixed per operator decision OP-DECISION-001; regression check 3/3 PASS (dot-dir allowed, outside rejected, sibling-prefix rejected); FACTS.md evidence complete."
+  ],
+  "files_changed": [
+    ".forge-qwen/state/evidence/BOOT-WORKSPACE-000/FACTS.md; .forge-qwen/instructions/scripts/Assert-QwenWritePaths.ps1"
+  ],
+  "commands": [
+    "Assert-QwenWorkspace.ps1 -RequireCurrentDirectory (exit 0); fs_write FACTS.md (WRITE_SCOPE_VIOLATION pre-fix); Set-Microtask-State.ps1 in_progress; operator fix directive OP-DECISION-001; fs_edit Assert-QwenWritePaths.ps1; regression harness 3/3 PASS; Write-Qwen-Handoff under pwsh (PS7 tolerates native stderr with EAP=Stop, matching script intent on unborn git HEAD)"
+  ],
+  "evidence": [
+    "FACTS.md VERIFIED section incl. OP-DECISION-001 and regression table; pre-fix error WRITE_SCOPE_VIOLATION: not allowed by assignment: forge-qwen/state/evidence/BOOT-WORKSPACE-000/FACTS.md; post-fix 3/3 PASS output"
+  ],
+  "decisions": [
+    "OP-DECISION-001 (operator, this session): fix the package script rather than document an exception - TrimStart([char[]]./) replaced with a leading-slash-only trim so dot-directory roots match their own allowed_write_roots patterns; no other behavior changed. Runtime note: Write-Qwen-Handoff.ps1 executed unmodified under PowerShell 7 because Windows PowerShell 5.1 throws NativeCommandError on the script git rev-parse HEAD call in this zero-commit repository (unborn branch), defeating its intended graceful degradation."
+  ],
+  "blockers": [],
+  "next_action": "Operator: review handoff and FACTS.md, then approve the next microtask in the plan.",
+  "git_state": {
+    "head": "HEAD",
+    "status": "## No commits yet on forge-windows-port-1df367e1\r\n?? .editorconfig\r\n?? .forge-qwen/\r\n?? .gitignore\r\n?? .vscode/\r\n?? AGENTS.md\r\n?? CMakeLists.txt\r\n?? CMakePresets.json\r\n?? Directory.Build.props\r\n?? QWEN_SYSTEM_PROMPT.txt\r\n?? READ-THIS-FIRST-QWEN.txt\r\n?? README.md\r\n?? RECOVER-QWEN-NOW.txt\r\n?? manifests/\r\n?? packaging/\r\n?? scripts/\r\n?? src/\r\n?? vcpkg.json",
+    "branch": "forge-windows-port-1df367e1"
+  },
+  "tool_binding_revision": 0,
+  "ledger_head": "737ef59e5b954768a6552cae2d777dc15ab9f476b3227764f6d4ee38f85654f0",
+  "checksum": "738673b44d9da78ff6650cc818d5e943ee50217fdbb36fdb0e32ee531a9d9ea0"
+}

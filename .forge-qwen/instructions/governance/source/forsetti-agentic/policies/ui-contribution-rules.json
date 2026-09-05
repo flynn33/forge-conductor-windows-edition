@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "id": "UI-001",
+      "decision": "block",
+      "description": "UI contributions require matching declared UI capabilities and runtime UI requirements."
+    }
+  ]
+}

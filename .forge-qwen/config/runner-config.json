@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "api_base": "http://127.0.0.1:1234",
+  "model_id": "REPLACE_WITH_EXACT_LM_STUDIO_MODEL_ID",
+  "context_length": 32768,
+  "max_output_tokens": 6144,
+  "temperature": 0.2,
+  "top_p": 0.8,
+  "top_k": 20,
+  "repeat_penalty": 1.05,
+  "reasoning": "low",
+  "plugin_bindings": [
+    {
+      "capability": "shell",
+      "id": "mcp/REPLACE_WITH_MCP_PLUGIN_ID_FOR_SHELL",
+      "allowed_tools": []
+    },
+    {
+      "capability": "filesystem",
+      "id": "mcp/REPLACE_WITH_MCP_PLUGIN_ID_FOR_FILESYSTEM",
+      "allowed_tools": []
+    },
+    {
+      "capability": "github",
+      "id": "mcp/REPLACE_WITH_MCP_PLUGIN_ID_FOR_GITHUB",
+      "allowed_tools": []
+    },
+    {
+      "capability": "rag_v1",
+      "id": "mcp/REPLACE_WITH_MCP_PLUGIN_ID_FOR_RAG_V1",
+      "allowed_tools": []
+    },
+    {
+      "capability": "js_sandbox",
+      "id": "mcp/REPLACE_WITH_MCP_PLUGIN_ID_FOR_JS_SANDBOX",
+      "allowed_tools": []
+    },
+    {
+      "capability": "long_term_memory",
+      "id": "mcp/REPLACE_WITH_MCP_PLUGIN_ID_FOR_LONG_TERM_MEMORY",
+      "allowed_tools": []
+    },
+    {
+      "capability": "persistent_memory",
+      "id": "mcp/REPLACE_WITH_MCP_PLUGIN_ID_FOR_PERSISTENT_MEMORY",
+      "allowed_tools": []
+    }
+  ],
+  "maximum_microtasks_per_run": 200,
+  "maximum_continuations_per_microtask": 2,
+  "request_timeout_seconds": 5400
+}

@@ -1,0 +1,490 @@
+{
+  "schema_version": 1,
+  "expected_tool_count": 53,
+  "rules": [
+    "exact names",
+    "source-backed schemas/results/errors/limits",
+    "deterministic order",
+    "primary/fallback smoke",
+    "stdout protocol only"
+  ],
+  "tools": [
+    {
+      "index": 1,
+      "name": "forge_status",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 2,
+      "name": "agent_list",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 3,
+      "name": "agent_get",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 4,
+      "name": "agent_context",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 5,
+      "name": "agent_recommend",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 6,
+      "name": "agent_run_start",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 7,
+      "name": "agent_run_status",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 8,
+      "name": "agent_run_complete",
+      "group": "agent",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 9,
+      "name": "fs_read",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 10,
+      "name": "fs_write",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 11,
+      "name": "fs_edit",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 12,
+      "name": "fs_list",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 13,
+      "name": "fs_glob",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 14,
+      "name": "fs_mkdir",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 15,
+      "name": "fs_delete",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 16,
+      "name": "fs_move",
+      "group": "filesystem",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 17,
+      "name": "git_status",
+      "group": "git",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 18,
+      "name": "git_diff",
+      "group": "git",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 19,
+      "name": "git_log",
+      "group": "git",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 20,
+      "name": "git_add",
+      "group": "git",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 21,
+      "name": "git_commit",
+      "group": "git",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 22,
+      "name": "search_text",
+      "group": "search",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 23,
+      "name": "pdf_write",
+      "group": "documents",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 24,
+      "name": "pdf_from_file",
+      "group": "documents",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 25,
+      "name": "shell_exec",
+      "group": "shell",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 26,
+      "name": "memory_set",
+      "group": "legacy_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 27,
+      "name": "memory_get",
+      "group": "legacy_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 28,
+      "name": "memory_list",
+      "group": "legacy_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 29,
+      "name": "memory_delete",
+      "group": "legacy_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 30,
+      "name": "memory_search",
+      "group": "legacy_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 31,
+      "name": "session_checkpoint",
+      "group": "legacy_continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 32,
+      "name": "session_handoff",
+      "group": "legacy_continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 33,
+      "name": "context_get",
+      "group": "legacy_continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 34,
+      "name": "context_list",
+      "group": "legacy_continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 35,
+      "name": "project_memory.initialize",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 36,
+      "name": "project_memory.remember",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 37,
+      "name": "project_memory.remember_batch",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 38,
+      "name": "project_memory.search",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 39,
+      "name": "project_memory.get",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 40,
+      "name": "project_memory.update",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 41,
+      "name": "project_memory.forget",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 42,
+      "name": "project_memory.list_recent",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 43,
+      "name": "project_memory.link",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 44,
+      "name": "project_memory.export",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 45,
+      "name": "project_memory.import",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 46,
+      "name": "project_memory.status",
+      "group": "project_memory",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 47,
+      "name": "continuity.checkpoint",
+      "group": "continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 48,
+      "name": "continuity.prepare_handoff",
+      "group": "continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 49,
+      "name": "continuity.get_pending_handoff",
+      "group": "continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 50,
+      "name": "continuity.acknowledge_handoff",
+      "group": "continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 51,
+      "name": "continuity.resume",
+      "group": "continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 52,
+      "name": "continuity.status",
+      "group": "continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    },
+    {
+      "index": 53,
+      "name": "continuity.request_rollover",
+      "group": "continuity",
+      "status": "not_started",
+      "windows_files": [],
+      "tests": [],
+      "evidence": []
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+Audit bundle validation passed.
+{
+  "repository_root": "/mnt/data/forge_conductor_audit_repo/Forge-Conductor-MacOS-main",
+  "swift_files": 112,
+  "swift_lines": 30335,
+  "findings": 29,
+  "tier_counts": {
+    "A": 5,
+    "B": 1,
+    "C": 23
+  },
+  "severity_counts": {
+    "Critical": 3,
+    "High": 25,
+    "Medium": 1
+  },
+  "command_failures": 5
+}

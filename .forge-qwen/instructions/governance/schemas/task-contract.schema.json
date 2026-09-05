@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forsetti.dev/schemas/agentic-edition/task-contract.schema.json",
+  "title": "Forsetti Agentic Edition Task Contract",
+  "description": "Machine-readable task contract for scope, approval, documentation, release, and evidence enforcement.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id",
+    "title",
+    "date",
+    "initiating_request",
+    "contract_authoring_role",
+    "acting_role",
+    "reviewer_role",
+    "change_class",
+    "approval_class",
+    "forsetti_project_context",
+    "objective",
+    "business_reason",
+    "scope",
+    "required_outputs",
+    "documentation_impact",
+    "release_impact",
+    "validation_requirements",
+    "evidence_requirements",
+    "definition_of_done",
+    "completion_summary_requirements"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Unique task identifier following current or legacy FAE naming conventions.",
+      "pattern": "^FAE-(TASK|BUG|GOV|REL|META)-(\\d{3,}|\\d{4}-\\d{2}-\\d{2}-\\d{3,})$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "initiating_request": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contract_authoring_role": {
+      "$ref": "#/$defs/governed_role"
+    },
+    "acting_role": {
+      "$ref": "#/$defs/governed_role"
+    },
+    "reviewer_role": {
+      "$ref": "#/$defs/reviewer_role"
+    },
+    "release_review_role": {
+      "$ref": "#/$defs/reviewer_role"
+    },
+    "documentation_review_role": {
+      "$ref": "#/$defs/reviewer_role"
+    },
+    "required_advisory_reviewers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "change_class": {
+      "type": "string",
+      "enum": [
+        "feature",
+        "bugfix",
+        "refactor",
+        "docs",
+        "governance",
+        "release",
+        "metadata",
+        "breaking-change"
+      ]
+    },
+    "approval_class": {
+      "type": "string",
+      "enum": [
+        "standard",
+        "sensitive",
+        "governance-class",
+        "emergency",
+        "release-critical"
+      ]
+    },
+    "governance_authorization": {
+      "type": "object",
+      "required": [
+        "required",
+        "authority",
+        "evidence"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "authority": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "business_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "in_scope",
+        "out_of_scope"
+      ],
+      "properties": {
+        "in_scope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "required_outputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "documentation_impact": {
+      "type": "object",
+      "required": [
+        "readme_update",
+        "wiki_update",
+        "glossary_update",
+        "changelog_update",
+        "rationale"
+      ],
+      "properties": {
+        "readme_update": {
+          "type": "boolean"
+        },
+        "wiki_update": {
+          "type": "boolean"
+        },
+        "glossary_update": {
+          "type": "boolean"
+        },
+        "changelog_update": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "release_impact": {
+      "type": "string",
+      "enum": [
+        "none",
+        "patch",
+        "minor",
+        "major",
+        "governance-only"
+      ]
+    },
+    "validation_requirements": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "evidence_requirements": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "escalation_triggers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "definition_of_done": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "completion_summary_requirements": {
+      "$ref": "#/$defs/non_empty_string_array"
+    },
+    "forsetti_project_context": {
+      "$ref": "forsetti-project-context.schema.json"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "approval_class": {
+            "const": "governance-class"
+          }
+        },
+        "required": [
+          "approval_class"
+        ]
+      },
+      "then": {
+        "required": [
+          "governance_authorization"
+        ],
+        "properties": {
+          "governance_authorization": {
+            "properties": {
+              "required": {
+                "const": true
+              },
+              "authority": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "governed_role": {
+      "type": "string",
+      "enum": [
+        "architect",
+        "builder",
+        "validator",
+        "release_manager",
+        "documentation_manager",
+        "governance_steward"
+      ]
+    },
+    "reviewer_role": {
+      "type": "string",
+      "enum": [
+        "architect",
+        "builder",
+        "validator",
+        "release_manager",
+        "documentation_manager",
+        "governance_steward"
+      ]
+    },
+    "non_empty_string_array": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

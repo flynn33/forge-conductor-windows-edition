@@ -1,0 +1,37 @@
+FORGE CONDUCTOR WINDOWS PORT — ZERO-AMBIGUITY START
+
+You are not allowed to choose the repository from memory, a continuity packet, Git status, a package-local or foreign remediation work directory, or a prior conversation.
+
+THE ONLY WORKSPACE AUTHORITY IS:
+  <target-repository>\.forge-qwen\state\WORKSPACE_LOCK.json
+
+Before reading any project source, before inspecting Git changes, and before retrieving long-term memory:
+
+1. Print the current working directory.
+2. Confirm that the current directory itself contains all four items:
+     AGENTS.md
+     QWEN_SYSTEM_PROMPT.txt
+     .forge-qwen\state\WORKSPACE_LOCK.json
+     .forge-qwen\state\run-state.json
+3. Read WORKSPACE_LOCK.json.
+4. Verify all of these exact facts:
+     mission_id = forge-conductor-windows11-port-qwen-guided-v2
+     target_os = Windows 11
+     target_language = C++20
+     bootstrap_completed = true
+     target_repository = the current working directory
+5. Run:
+     powershell.exe -NoProfile -ExecutionPolicy Bypass -File .forge-qwen\instructions\scripts\Assert-QwenWorkspace.ps1 -Repository "<current directory>" -RequireCurrentDirectory
+6. Read .forge-qwen\state\ACTIVE_ASSIGNMENT.json.
+7. Execute only the numbered steps in ACTIVE_ASSIGNMENT.json.
+
+STOP CONDITIONS
+
+- If WORKSPACE_LOCK.json is missing: stop. Do not search other repositories and do not inspect uncommitted changes.
+- If the lock target does not equal the current directory: stop and change to the exact lock target.
+- If the current directory is inside an instruction package, .forge-inputs, a macOS source tree, .forge-codex, .forsetti/remediation*, or a package-local/foreign remediation work directory: stop. It is not the writable Windows port repository.
+- If memory or a continuity packet names another path, run ID, mission, or fingerprint: classify it as FOREIGN_STALE_CONTEXT and ignore it.
+- Do not say “workspace adopted from continuity.” Continuity never grants workspace authority.
+- Do not use “latest handoff.” Use only the exact handoff path stored in this run’s run-state.json.
+
+The package directory and all source baselines are read-only evidence. Only the locked Windows target repository is writable.

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "owner_supplied_model_label": "Qwen3.8-27B 4bit",
+  "verification_rule": "Record exact LM Studio model id, architecture, quantization, loaded context, and runtime version through LM Studio APIs; do not infer capabilities from the label.",
+  "recommended_starting_generation": {
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0.0,
+    "repeat_penalty": 1.05,
+    "max_output_tokens": 6144,
+    "reasoning_default": "low",
+    "reasoning_architecture_debug": "medium"
+  },
+  "context": {
+    "target_tokens": 32768,
+    "minimum_agentic_target_tokens": 24576,
+    "soft_checkpoint_percent": 50,
+    "handoff_percent": 65,
+    "hard_stop_percent": 75
+  },
+  "session_limits": {
+    "microtasks_per_fresh_chat": 1,
+    "parallel_tool_calls_max": 2,
+    "tool_calls_checkpoint": 8,
+    "tool_calls_handoff": 16,
+    "tool_calls_hard_max": 22,
+    "writes_default_max": 5,
+    "changed_lines_default_max": 400,
+    "continuation_turns_max": 2
+  },
+  "reliability_controls": [
+    "fresh chat per microtask",
+    "fixed schemas",
+    "direct verification after RAG",
+    "read-after-write",
+    "build/test after coherent slice",
+    "separate validator context",
+    "repository-first durable state"
+  ]
+}

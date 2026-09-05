@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "constrained_8gb": {
+      "telemetry_hz": 1,
+      "ui_hz_max": 2,
+      "hidden_ui_hz_max": 0.2,
+      "pending_snapshots_max": 1,
+      "history_points_default": 600,
+      "history_points_hard_max": 1800,
+      "open_project_repositories_max": 4,
+      "process_output_bytes_per_stream": 4194304,
+      "mcp_frame_bytes_max": 1048576,
+      "gui_private_bytes_steady_mib_max": 240,
+      "manager_private_bytes_steady_mib_max": 110,
+      "mcp_private_bytes_steady_mib_max": 100,
+      "idle_cpu_percent_max": 2.0,
+      "hidden_gpu_percent_max": 1.0,
+      "one_hour_private_growth_mib_max": 48,
+      "one_hour_handle_growth_percent_max": 5
+    },
+    "standard_16gb": {
+      "telemetry_hz": 2,
+      "ui_hz_max": 4,
+      "hidden_ui_hz_max": 0.2,
+      "pending_snapshots_max": 1,
+      "history_points_default": 1200,
+      "history_points_hard_max": 3600,
+      "open_project_repositories_max": 8,
+      "process_output_bytes_per_stream": 8388608,
+      "mcp_frame_bytes_max": 2097152,
+      "gui_private_bytes_steady_mib_max": 320,
+      "manager_private_bytes_steady_mib_max": 150,
+      "mcp_private_bytes_steady_mib_max": 120,
+      "idle_cpu_percent_max": 2.0,
+      "hidden_gpu_percent_max": 1.0,
+      "one_hour_private_growth_mib_max": 64,
+      "one_hour_handle_growth_percent_max": 5
+    },
+    "expanded_32gb_plus": {
+      "telemetry_hz": 2,
+      "ui_hz_max": 5,
+      "hidden_ui_hz_max": 0.5,
+      "pending_snapshots_max": 1,
+      "history_points_default": 1800,
+      "history_points_hard_max": 7200,
+      "open_project_repositories_max": 16,
+      "process_output_bytes_per_stream": 16777216,
+      "mcp_frame_bytes_max": 4194304,
+      "gui_private_bytes_steady_mib_max": 400,
+      "manager_private_bytes_steady_mib_max": 180,
+      "mcp_private_bytes_steady_mib_max": 140,
+      "idle_cpu_percent_max": 2.0,
+      "hidden_gpu_percent_max": 1.0,
+      "one_hour_private_growth_mib_max": 80,
+      "one_hour_handle_growth_percent_max": 5
+    }
+  },
+  "rules": [
+    "all growth bounded",
+    "pressure reduces optional retention/cadence",
+    "same-flow before/after evidence",
+    "raising budget requires owner ADR"
+  ]
+}

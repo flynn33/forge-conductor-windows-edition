@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "rules": {
+    "hard_gate_failure_blocks_completion": true,
+    "builder_cannot_pass_own_gate": true,
+    "evidence_required": true
+  },
+  "gates": [
+    {
+      "id": "G00",
+      "title": "Package integrity and governing intake",
+      "class": "hard",
+      "acceptance": "Package/source hashes, governing intake, durable state, tool bindings, and first handoff valid.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G01",
+      "title": "Windows toolchain discovery and provisioning",
+      "class": "hard",
+      "acceptance": "Required first-party Windows build tools discovered/provisioned and versions recorded.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G02",
+      "title": "Source archaeology and parity baseline",
+      "class": "hard",
+      "acceptance": "Source-backed feature/MCP/CLI/schema/data/test baseline complete.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G03",
+      "title": "Forsetti contract and architecture decisions",
+      "class": "hard",
+      "acceptance": "Forsetti contract/profile/public-API/module architecture and ADRs valid.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G04",
+      "title": "Repository and build scaffold",
+      "class": "hard",
+      "acceptance": "Canonical x64 Debug/Release scaffold builds.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G05",
+      "title": "Domain models and abstract contracts",
+      "class": "hard",
+      "acceptance": "Domain/contracts are platform-independent and tests pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G06",
+      "title": "Windows infrastructure foundation",
+      "class": "hard",
+      "acceptance": "RAII, cancellation, shutdown, config, secrets, diagnostics, process foundations pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G07",
+      "title": "Winsqlite3 persistence and migrations",
+      "class": "hard",
+      "acceptance": "Winsqlite3 migrations/integrity/concurrency/backup/corruption tests pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G08",
+      "title": "Project identity and project memory",
+      "class": "hard",
+      "acceptance": "All twelve project memory tools, isolation, reset, import/export, bounds/redaction pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G09",
+      "title": "Legacy memory compatibility",
+      "class": "hard",
+      "acceptance": "Five legacy memory tools and migration compatibility pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G10",
+      "title": "Agent catalog and durable sessions",
+      "class": "hard",
+      "acceptance": "Agent catalog and durable run lifecycle pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G11",
+      "title": "Continuity repositories and state machine",
+      "class": "hard",
+      "acceptance": "Continuity tools and crash-safe state machine pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G12",
+      "title": "Native session host and autonomous rollover",
+      "class": "hard",
+      "acceptance": "Autonomous successor logical session rollover is runtime-proven.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G13",
+      "title": "Filesystem, search, Git, shell, and PDF tools",
+      "class": "hard",
+      "acceptance": "Native filesystem/search/Git/shell/PDF tools and security tests pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G14",
+      "title": "MCP transport, router, audit, and loop protection",
+      "class": "hard",
+      "acceptance": "JSON-RPC roles and exact 53-tool semantic snapshot pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G15",
+      "title": "Windows LM Studio environment and deployment",
+      "class": "hard",
+      "acceptance": "Transactional LM Studio deployment and live/fixture verification pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G16",
+      "title": "Manager process, startup, IPC, and dashboard",
+      "class": "hard",
+      "acceptance": "Single manager, authenticated IPC, startup/restart/shutdown and routes pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G17",
+      "title": "Windows telemetry collectors",
+      "class": "hard",
+      "acceptance": "Telemetry fields map to verified Windows sources with availability/staleness.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G18",
+      "title": "Bounded telemetry delivery and histories",
+      "class": "hard",
+      "acceptance": "UI delivery depth <=1 and all histories/queues bounded.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G19",
+      "title": "Shared native gauge rendering",
+      "class": "hard",
+      "acceptance": "Shared graphics, hidden pause, device loss, idle CPU/GPU and lifetime pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G20",
+      "title": "WinUI 3 shell and seven feature surfaces",
+      "class": "hard",
+      "acceptance": "Seven WinUI surfaces and desktop accessibility automation pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G21",
+      "title": "CLI and process entry parity",
+      "class": "hard",
+      "acceptance": "Process modes/commands/exit codes/JSON outputs pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G22",
+      "title": "Security hardening and fault containment",
+      "class": "hard",
+      "acceptance": "Threat model controls, negative tests, scans, and fault containment pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G23",
+      "title": "macOS data import and upgrade compatibility",
+      "class": "hard",
+      "acceptance": "macOS dry-run/import/rollback/idempotency/corruption pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G24",
+      "title": "MSIX, setup bootstrapper, startup, and update",
+      "class": "hard",
+      "acceptance": "Fresh install, launch, startup, repair, update, uninstall, reinstall, purge pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G25",
+      "title": "Full native test and analyzer pass",
+      "class": "hard",
+      "acceptance": "All native builds/tests/analyzers pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G26",
+      "title": "Resource, leak, performance, and endurance qualification",
+      "class": "hard",
+      "acceptance": "Resource budgets/endurance pass with no monotonic product-owned leak.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G27",
+      "title": "End-to-end feature parity qualification",
+      "class": "hard",
+      "acceptance": "Every feature row and all 53 tools passed with evidence.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G28",
+      "title": "Independent validation and documentation synchronization",
+      "class": "hard",
+      "acceptance": "Independent Validator/Documentation reports pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G29",
+      "title": "Release artifacts and installer qualification",
+      "class": "hard",
+      "acceptance": "Release artifacts/hashes/signing/SBOM/clean install pass.",
+      "status": "not_started",
+      "evidence": []
+    },
+    {
+      "id": "G30",
+      "title": "Final completion audit",
+      "class": "hard",
+      "acceptance": "All gates remain passed; no Python/prohibited stack/attribution/secrets/open critical-high issue.",
+      "status": "not_started",
+      "evidence": []
+    }
+  ]
+}

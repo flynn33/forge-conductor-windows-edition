@@ -1,0 +1,1751 @@
+{
+  "schema_version": 1,
+  "root": "forsetti-agentic-edition-main",
+  "files": [
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/baseline-python-acceptance.log",
+      "bytes": 1376,
+      "sha256": "acfa2a0d482facc822a1e36a4d1f61e4c5e3613d5c506bb0db3a7f3a0c6e927b"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/changed-file-status.txt",
+      "bytes": 2364,
+      "sha256": "e4f2e8362dbb61b58f846250e3948ca2d7f167bf837881ea9aa379099cb649c6"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/changed-files.txt",
+      "bytes": 2270,
+      "sha256": "095d5ee3e1f22a8fec275d32773470f77de9df70fdfecee3b71142848730c920"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/commands.json",
+      "bytes": 6171,
+      "sha256": "c9cea3a047bc0b9482814ffeeb327860d7fe219317c55a9f77fc279aa94cdb99"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/git-diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/powershell-static-structure.json",
+      "bytes": 1852,
+      "sha256": "e65ba030ce9fd36297e4a92c33d1881f91556b3fce4c22473bc983231025b335"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/product-manifest-sha256.txt",
+      "bytes": 443,
+      "sha256": "cddd294d49dcd152695db27e159854d00bf2d6a174c126e91f40ae3f3d486b75"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/product-manifest-summary.json",
+      "bytes": 318,
+      "sha256": "6e3ff995881a5580b2b17016ed8a392f77a98e6c0aeed6aa3d6a7620ea047407"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/python-acceptance.log",
+      "bytes": 3181,
+      "sha256": "c880443819b1a3385570ee63e41065ae665ba4971391287763bb4d2ff8843482"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/schema-and-source-hash-validation.json",
+      "bytes": 1140,
+      "sha256": "43444237bc3e5ff7467495718703b9ca3779e10421ec9497a61f23bd442fdb1f"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/scope-validation.json",
+      "bytes": 465,
+      "sha256": "12939d09c385e6d5b98fc32c6c0387dffa43b86b4126dc33ffdad811e20164c1"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/source-contract.json",
+      "bytes": 6509,
+      "sha256": "68c43eae522493b150aaef4ef0b6ac1dd7f879b5a2744e2644103fe3fb59f5fd"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/source-semantic-validation.json",
+      "bytes": 3066,
+      "sha256": "1587e6b20db2e6713293e269940c9147da82b784e3255f7f83aa2a550a6fbcf3"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/swift-parse.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/swift-test-linux.log",
+      "bytes": 4028,
+      "sha256": "29c12a7707b4867c2656df28221fc3d59c14b5a7c1eff358244ecb25a62344ec"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/swift-version.txt",
+      "bytes": 75,
+      "sha256": "eb9fe405b65bcda75635327f6ca704543098f4e7d882bf5d2541a6fca34725d6"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/upstream-framework-final-report.json",
+      "bytes": 7375,
+      "sha256": "3f41614d90e9dea55618a3acf90fec750d5361a62d997020864e2fe623952ede"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/validate-repo-wrapper.log",
+      "bytes": 98,
+      "sha256": "d500d775d1a9620fb364724ffdc3c5397c8ef6ce01db20e2c5b41cd1b51053e9"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/validation-report.json",
+      "bytes": 8709,
+      "sha256": "8dc85947811347374382b55623575fb706a94fddeba679e41dfcac6201533c13"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/validation-report.md",
+      "bytes": 5120,
+      "sha256": "93f4b1ae2d244258ff78b53118721ce866325d5a620f3b02afe7bc0f71d1e7e0"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/windows-bundle-verify.log",
+      "bytes": 25,
+      "sha256": "076d167c64e37dee19e4a81b78070207482bb34fcab5a736effb77b021a414f5"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/windows-cmake-build.log",
+      "bytes": 611,
+      "sha256": "c223bc347e11011c75e561fcae56184cb9a68e67ddc10a984f7f966c96374372"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/windows-cmake-configure.log",
+      "bytes": 378,
+      "sha256": "cdc891191faa044fcf2b88410e5738e6ec11f316f09e84ee7b9a05c0a2453a2d"
+    },
+    {
+      "path": ".forsetti/alignment/apple-0.1.5/windows-ctest.log",
+      "bytes": 300,
+      "sha256": "d05d4a10e8619b641f4bb856d6e706d8320a04127149fde8a75e0202cad93a59"
+    },
+    {
+      "path": ".forsetti/product-completion/baseline.json",
+      "bytes": 4756,
+      "sha256": "18ccd1b5ffdaf31bef4ee41fb26fb62775cebb957494c96956b3ab1a2a4b0137"
+    },
+    {
+      "path": ".forsetti/product-completion/phase-00-report.md",
+      "bytes": 2940,
+      "sha256": "88c900e5598d8f961c9e99b7d919321d4ecdd9951ab6376cd782ee01d2c75eeb"
+    },
+    {
+      "path": ".forsetti/product-completion/phase-01-report.md",
+      "bytes": 2632,
+      "sha256": "91e7f8654438e354d115abcb915e7bab63e1d597a1a6665324642bfb46ff4c9a"
+    },
+    {
+      "path": ".forsetti/product-completion/phase-02-report.md",
+      "bytes": 2522,
+      "sha256": "b85b223bc40d7e74fd103c5a72e8a1a884297b4be68be3aa511089084c6a1af9"
+    },
+    {
+      "path": ".forsetti/product-completion/phase-03-report.md",
+      "bytes": 3397,
+      "sha256": "31b934b32165388520b8908bbf0471527d4c87ddbd5f9f361079515f9e3c2be1"
+    },
+    {
+      "path": ".forsetti/product-completion/phase-04-report.md",
+      "bytes": 2969,
+      "sha256": "2650d516defcc31077c948b3bd49b212bd76bcc741cbc69a98954977a0904afb"
+    },
+    {
+      "path": ".forsetti/product-completion/phase-05-report.md",
+      "bytes": 2841,
+      "sha256": "be982e15910e0b9e8b8f8cbb184df7775c9261b66e248e7a23b7f0d38866d533"
+    },
+    {
+      "path": ".forsetti/remediation/final-validation-report.md",
+      "bytes": 2552,
+      "sha256": "7ec2feaca978f76d8fc84e6e69fac48f61395f7fe25af628db3310cb080fa5e3"
+    },
+    {
+      "path": ".forsetti/remediation/final-validator-result.json",
+      "bytes": 939,
+      "sha256": "7a84941ad13523e1354403cbae6690c9ca5c14d691b9863e023ba258e5e30111"
+    },
+    {
+      "path": ".forsetti/remediation/json-validation-results.json",
+      "bytes": 564,
+      "sha256": "a4530fc17f4cafdd39e51c081903cadff82d9de29c6ac557ade9206c776892cd"
+    },
+    {
+      "path": ".forsetti/remediation/known-limitations.md",
+      "bytes": 255,
+      "sha256": "6a795d89b5d214c81417cadb58bfe930a863116990f73921e205d261f4270512"
+    },
+    {
+      "path": ".forsetti/remediation/phase-00-report.md",
+      "bytes": 888,
+      "sha256": "5ae8f4d90d13c37acd9a035b6b0ff6204d10fcea90971bb0db6fdf0fcaa3fcc1"
+    },
+    {
+      "path": ".forsetti/remediation/phase-01-report.md",
+      "bytes": 927,
+      "sha256": "05216ee11ab36237fcba44ba4059e104ab7f6b8def6c54a97d4cc402f1d3120c"
+    },
+    {
+      "path": ".forsetti/remediation/phase-02-report.md",
+      "bytes": 927,
+      "sha256": "6f550e447dad5696ed7f908be1f824f44f0d675beca0db2bf1deb649e1fb01b8"
+    },
+    {
+      "path": ".forsetti/remediation/phase-03-report.md",
+      "bytes": 1262,
+      "sha256": "f798ff92c554a8d39fa53a4059158c36606061003df8926a033a09083eb39e35"
+    },
+    {
+      "path": ".forsetti/remediation/phase-04-report.md",
+      "bytes": 892,
+      "sha256": "3eb7313c69f12d2855b5b417e84b2d670ab93f6b092de811dc41533a77463b84"
+    },
+    {
+      "path": ".forsetti/remediation/phase-05-report.md",
+      "bytes": 929,
+      "sha256": "eb35224883d8dd0ae1acf0eaac265486e530192899844ef17019e5fb27f68fb3"
+    },
+    {
+      "path": ".forsetti/remediation/phase-06-report.md",
+      "bytes": 1068,
+      "sha256": "155c48e0a21838120a4d61265f1df5aa3bbc66a1c4eaad74682d76a6172a7610"
+    },
+    {
+      "path": ".forsetti/remediation/phase-07-report.md",
+      "bytes": 903,
+      "sha256": "5ff93082f38a30596e4b2958ee36b3188e4e4e6d8a570c8ea7fc36210b38378a"
+    },
+    {
+      "path": ".forsetti/remediation/phase-08-report.md",
+      "bytes": 887,
+      "sha256": "f467ed85bd407125cdb8068aad5487953221cf3b74b1ff846ac49a2b7435da87"
+    },
+    {
+      "path": ".forsetti/remediation/phase-09-report.md",
+      "bytes": 912,
+      "sha256": "d7d1222d0be0d623d3bc275c2f350cdf0f3ae1672cee3c9b333ca07a290cd7a1"
+    },
+    {
+      "path": ".forsetti/remediation/phase-10-report.md",
+      "bytes": 905,
+      "sha256": "c2fd8b756e37c1355cd6834f1d8cbf859c0d541dedb53fc032b4777a1ca7fb65"
+    },
+    {
+      "path": ".forsetti/remediation/phase-11-report.md",
+      "bytes": 894,
+      "sha256": "f580af01d30bccab9e88981e19fc1ee485d34d92a50089c12799bb4cdf9b91b2"
+    },
+    {
+      "path": ".forsetti/remediation/phase-12-report.md",
+      "bytes": 892,
+      "sha256": "e3d55c7d63634d44c2eff42a016d0d660b3a12697b7175860ab297e328bd4295"
+    },
+    {
+      "path": ".forsetti/remediation/phase-13-report.md",
+      "bytes": 889,
+      "sha256": "ca233da2c85e8968387a5341c2badac7bdcb2d3e1321d996adad7c0355720aa2"
+    },
+    {
+      "path": ".forsetti/remediation/phase-14-report.md",
+      "bytes": 1302,
+      "sha256": "a1ba9a36e488a10d9895850d127c37058137b2e495e9ae6a5cf35fb9068eae4d"
+    },
+    {
+      "path": ".forsetti/remediation/phase-15-report.md",
+      "bytes": 1357,
+      "sha256": "901c30cd48f66fb9cf034a53fbd8562ed8552e40f0ea4999ac51ee0d111e5755"
+    },
+    {
+      "path": ".forsetti/remediation/phase-16-report.md",
+      "bytes": 1263,
+      "sha256": "d64e93b46f7f564e3032da867d8217a5e7b52b1d0384916b461055790a485797"
+    },
+    {
+      "path": ".forsetti/remediation/source-baseline.md",
+      "bytes": 1559,
+      "sha256": "542627e893a0f8d2edc09c52a9ddd0df41bb401e42678c2ed1eaadedb75fde30"
+    },
+    {
+      "path": ".forsetti/remediation/source-inventory.json",
+      "bytes": 5688,
+      "sha256": "c998e8dd523ff347f5c7a431a7c4aef06f7086c2fd6076cd6f0c6d102a1b1c1e"
+    },
+    {
+      "path": ".forsetti/remediation-v2/baseline-report.json",
+      "bytes": 7641,
+      "sha256": "0f53c378a5a7447ee1ef2dbc68825312886861791caf9283d6a137b8967f3dae"
+    },
+    {
+      "path": ".forsetti/remediation-v2/baseline-report.md",
+      "bytes": 9871,
+      "sha256": "7eb8f92d733ba445f0fdafa7bd79f2335aa323180970b978543e69ff842363de"
+    },
+    {
+      "path": ".forsetti/remediation-v2/changed-files-baseline.txt",
+      "bytes": 240,
+      "sha256": "870fba5435b4eb69afd3748893472960e1ccce5564cf2c873b0779268c7e9cad"
+    },
+    {
+      "path": ".forsetti/remediation-v2/phase-00-completion.json",
+      "bytes": 3614,
+      "sha256": "ade0d07774a52d6edb83060a22e9fc7f1829852c9ecb7c4d554f187a0751dc7f"
+    },
+    {
+      "path": ".forsetti/remediation-v2/phase-00-completion.md",
+      "bytes": 3480,
+      "sha256": "8717f18eea5d5772579eb6f58512ebbfd4991e83ba179d4b96500ece06edbafc"
+    },
+    {
+      "path": ".forsetti/remediation-v3/docs-sync-rules-drift-report.json",
+      "bytes": 4859,
+      "sha256": "cfb5a02b8bf4ce171a51cc53332a35a8dc86e8b42349a01251ef9909e554a5d7"
+    },
+    {
+      "path": ".forsetti/remediation-v3/docs-sync-rules-drift-report.md",
+      "bytes": 3573,
+      "sha256": "4ec83189d66c80edd1277f7ade7d4be7179cfa809825e80d9a27d919122c8d8a"
+    },
+    {
+      "path": ".forsetti/remediation-v3/evidence-normalization-report.json",
+      "bytes": 2298,
+      "sha256": "7d702d269ddac54404822490c65a5e71a09a20bb982a24eacc1484b78bfe0eca"
+    },
+    {
+      "path": ".forsetti/remediation-v3/evidence-normalization-report.md",
+      "bytes": 2660,
+      "sha256": "978dc01cb45259f520dd0babae8cec848238b1e0a5eda530cedd77f2cdc4ccc8"
+    },
+    {
+      "path": ".forsetti/remediation-v3/final-acceptance-decision.md",
+      "bytes": 1068,
+      "sha256": "6b0b687c380c489e9aef156eb839187e90e4924022a006e2585860a71c17d8de"
+    },
+    {
+      "path": ".forsetti/remediation-v3/final-validation-changed-files.txt",
+      "bytes": 441,
+      "sha256": "7166686a0cbe38aa35e78b458752e133f55fa0c6c814251f8614cccbc0805634"
+    },
+    {
+      "path": ".forsetti/remediation-v3/final-validation-contract-result.json",
+      "bytes": 4084,
+      "sha256": "a53a5aed65f249ed125fecb8ccb4b35a97824b19d093a7e129768cb547578d38"
+    },
+    {
+      "path": ".forsetti/remediation-v3/final-validation-report.md",
+      "bytes": 8345,
+      "sha256": "f3d30207ecd40f00a4c68437aaf47df75a18ed402e282ace412adddfe66b8010"
+    },
+    {
+      "path": ".forsetti/remediation-v3/final-validation-validator-result.json",
+      "bytes": 8260,
+      "sha256": "108b2f93788cfe994889b311c8485ffceca91dcf3331f14bfbe6938316dc22b7"
+    },
+    {
+      "path": ".forsetti/remediation-v3/final-validation.json",
+      "bytes": 6032,
+      "sha256": "fdb080ed35c24644cebe097d5ce572f9f534ede85f5f6047efd917fd5c684258"
+    },
+    {
+      "path": ".forsetti/remediation-v3/local-mcp-inventory-report.md",
+      "bytes": 7603,
+      "sha256": "654d3e2305fcc271c11a6ee09d64a0b2059c4c597156989e016375c707e3d87b"
+    },
+    {
+      "path": ".forsetti/remediation-v3/local-mcp-inventory.json",
+      "bytes": 10325,
+      "sha256": "0af4ea401f7c72832c741ef1453c4fa03c513c3ec2f3fc4b8c1ac3f9156bd0ed"
+    },
+    {
+      "path": ".forsetti/remediation-v3/local-subagent-inventory-report.md",
+      "bytes": 3394,
+      "sha256": "f3bd6ef3f62a6118565081dc5d5e63c4509e6de34d1c0fb5ea47c6ffe85f520d"
+    },
+    {
+      "path": ".forsetti/remediation-v3/local-subagent-inventory.json",
+      "bytes": 3134,
+      "sha256": "4adc7fbf2377b0331224999f26347a29e3d58dfcf6419362b1ca1dda8d0832c8"
+    },
+    {
+      "path": ".forsetti/remediation-v3/mcp-provider-decision-log.json",
+      "bytes": 8615,
+      "sha256": "8b1028c6e201056bae36ec20486547f729c7759386b347eebd7f7c2c20609c26"
+    },
+    {
+      "path": ".forsetti/remediation-v3/mcp-subagent-execution-policy.json",
+      "bytes": 2387,
+      "sha256": "6c1db0168c032caa1b3ebb63f2e166c85adcc4490a5e5f380cb3f1e717ee24db"
+    },
+    {
+      "path": ".forsetti/remediation-v3/mcp-subagent-execution-policy.md",
+      "bytes": 3352,
+      "sha256": "65dae7c2fe7a20e23e32e3389bcf51b6ab4d42833dd2468b5a39303a07ebf98d"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-00-baseline-report.md",
+      "bytes": 8999,
+      "sha256": "e4c1e74f465656499d1cfe3a52c6997a7a298e260d3d7461d00950ca7d0c25fb"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-00-baseline.json",
+      "bytes": 9316,
+      "sha256": "2815847df0a4867c760834ccc277390255d6def638e2fa3fedcfbb2ea19e20c2"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-00b-report.md",
+      "bytes": 8202,
+      "sha256": "cfd5a0ec312c4962b6a8dbd818699e0fb9a1eda91906301636bbeb031d065ee7"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-01-report.json",
+      "bytes": 7661,
+      "sha256": "a9bc74d3a7a90619bb741a4e606f31866d04371dfbbd4436305b5fd716dc6f78"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-01-report.md",
+      "bytes": 8350,
+      "sha256": "0d54c3d96fb73413768a93ca3379093b64452e1be0bf1fed74c68c8b87096117"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-02-report.json",
+      "bytes": 8232,
+      "sha256": "ccb73be5b861d04c1082286cdc87921ad10fa2f5eddd2189e6bbdd23b16726ff"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-02-report.md",
+      "bytes": 7558,
+      "sha256": "8405f400f4a32eeb1616a34452da2ab6c8ea6defcfd95f9c030f995649678a35"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-03-report.md",
+      "bytes": 8096,
+      "sha256": "249cdbd30e8ced1d986ae416c427d2891bee53553d27fa0c8896615a60bbad25"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-03-validator-result.json",
+      "bytes": 9578,
+      "sha256": "e6563b70ac37c05ed76b6f88cac4154c19e7c71054a7eb2249f5e5f4f1cbbd03"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-04-contract-result.json",
+      "bytes": 4932,
+      "sha256": "022e2ba8bd168e7a9c9db12b66a74714048492da14fc629aa1b9ae8b7d425bb5"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-04-report.md",
+      "bytes": 9548,
+      "sha256": "2d4c64c0b58aec45dabe83dac9ab794058ade1fae5a4f28e09bd7c6d79512005"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-04-validator-result.json",
+      "bytes": 10275,
+      "sha256": "b3cf41dddd84af4a6445a367799fe4fae8f998542dc7a5ef4da0c85d4755f418"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-05-changed-files.txt",
+      "bytes": 937,
+      "sha256": "a11e2d1e5ef82ff8e61e14d7c31189ca2a43d2bf4cebe4745658e41a1cf9403e"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-05-contract-result.json",
+      "bytes": 6482,
+      "sha256": "fc9eba054c7284f933e56cd2ace8751c3130c332e276ac5a55f205b91ada78da"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-05-report.md",
+      "bytes": 7906,
+      "sha256": "331149c702cedc62f162ccdfc8be9715c8b78c0fdb739db877151acd53f43756"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-05-validator-result.json",
+      "bytes": 13327,
+      "sha256": "4b542d3c6dcf334e3ef0f606505849c4349e0e08b00fc808c0fe855db683a4aa"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06-boundary-protection-changed-files.txt",
+      "bytes": 502,
+      "sha256": "abe4593897d7f032fc40ce0eca11a7cb3c1f376b931f015bb9825ef237c2b638"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06-boundary-protection-contract-result.json",
+      "bytes": 6515,
+      "sha256": "b613c92b8eda6f5017e2ae28116dae7372f02a191e82d4fd722ef6562756ce86"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06-boundary-protection-report.md",
+      "bytes": 4688,
+      "sha256": "d59bab8afb6a9070319a5201ad6c1e03672569d0b9133fea1e847daeb68256ef"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06-boundary-protection-validator-result.json",
+      "bytes": 13327,
+      "sha256": "0047d872242cf67359c67e018137ea4c8af7ca594e1b34f39456de3306ab2ac0"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06a-changed-files.txt",
+      "bytes": 1397,
+      "sha256": "967719abe8143b3521035d0c98c79cf4fe2b7a56a15901b8f45f2410ce401075"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06a-contract-result.json",
+      "bytes": 4185,
+      "sha256": "7cd6be95b2e720fe62d8e240a0eef6bf3f8e1fdd96b6a82b0b87d16fc76537d5"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06a-report.md",
+      "bytes": 5986,
+      "sha256": "a507448a030c7ebde9b672da1c9e3b74156a188c4a0636812b7942b5edc5da44"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06a-validator-result.json",
+      "bytes": 8260,
+      "sha256": "f6d7c0f4d086251f828c5e4619db88f8fe26b95fc41bc34d5d7c70d5b49cf83f"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06b-changed-files.txt",
+      "bytes": 413,
+      "sha256": "97f0e6b2ab121b7eb7c4957048fbf55dfa7371139c552d73cbcb6073f00f0d59"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06b-contract-result.json",
+      "bytes": 4133,
+      "sha256": "fc5365d228592b4030a87cd71b7697e4d86e2f8e87f16448fabd1de6f9ba293c"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06b-report.md",
+      "bytes": 3407,
+      "sha256": "52783a90805333fc22955b082b961a9e6f9b54d52904e1c21f28e9e30f7511e0"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-06b-validator-result.json",
+      "bytes": 8260,
+      "sha256": "30b06582b9609eb7017ae68f6b74333610f1024f47add130b32a1947ce9fb12c"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-07-changed-files.txt",
+      "bytes": 704,
+      "sha256": "1ea1d2a37354bfcfa12e7fb2fdefd93e7cca9cfa42267b61a7d6354a12cec26b"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-07-contract-result.json",
+      "bytes": 4119,
+      "sha256": "e5d52f7d0a57d5daee6596c18cf0f5094fb95faa5a2604b6e02b11d56115f018"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-07-report.md",
+      "bytes": 5035,
+      "sha256": "369713e6733459e824b0ba42fd0d1bc59cb7fdddfc22c1e089365467c6d69876"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-07-validator-result.json",
+      "bytes": 8260,
+      "sha256": "a6998080bc780fe56546219dc66639b521aeb1daf72a96f6c0598fd9dd2180aa"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-08-changed-files.txt",
+      "bytes": 472,
+      "sha256": "9826ac57f5a15852a5700ff44904fd952c06feabb2978d169f5e43dc6b7831af"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-08-contract-result.json",
+      "bytes": 4028,
+      "sha256": "03943d0670e31141d6784f29d377ead241fd6340327e7804281ef2eac99e0b87"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-08-report.md",
+      "bytes": 5398,
+      "sha256": "6380a896a98d915150c5a9f32aa68b8ead8f1e402626da9ca4584734455db4cc"
+    },
+    {
+      "path": ".forsetti/remediation-v3/phase-08-validator-result.json",
+      "bytes": 8260,
+      "sha256": "6f55e0daa8320e16b74c5d839097025bc04e39ed12ce2bdb9de70480c4f67141"
+    },
+    {
+      "path": ".forsetti/remediation-v3/tool-discovery-report.md",
+      "bytes": 13386,
+      "sha256": "eef5781a74b43399281ae7c5a18dacbedc86483817787c0942ad8fae697816a9"
+    },
+    {
+      "path": ".forsetti/remediation-v3/tool-discovery.json",
+      "bytes": 13279,
+      "sha256": "a2275d84f8d2dcfc347e10ba2dfb0196533307f86c684928af3e14864cc07084"
+    },
+    {
+      "path": ".forsetti/remediation-v3/validator-root-repair-report.md",
+      "bytes": 2630,
+      "sha256": "f6dbd655ffebfb5fd3cf42b885cebfa83a71ad12d2da4c3260017cbe40937967"
+    },
+    {
+      "path": ".forsetti/remediation-v3/validator-root-repair.json",
+      "bytes": 3663,
+      "sha256": "a656988b0373f705cc83cc7567cb242df2cce66b5ea3bbc70185105253830915"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "bytes": 1413,
+      "sha256": "360ae26c1dda1537ed78e48b00f57ec2e9573a0ec40c19f87ea9de38c447fd53"
+    },
+    {
+      "path": ".github/FUNDING.yaml",
+      "bytes": 63,
+      "sha256": "40bef4cae743d7a4049964a4bf6a218ed820d138370ac67a4756d0cc6109ba03"
+    },
+    {
+      "path": ".github/FUNDING.yml",
+      "bytes": 63,
+      "sha256": "40bef4cae743d7a4049964a4bf6a218ed820d138370ac67a4756d0cc6109ba03"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/agent_task.md",
+      "bytes": 910,
+      "sha256": "579edfc6253a44c14883cfec92b35ffb013319430824bb3a91a508fb68bcbce8"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "bytes": 698,
+      "sha256": "00e52879377bdee497fcf746a6dc33d5c9cbf269180b0832a67535a419d21ed4"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "bytes": 45,
+      "sha256": "e71bea835ed1158881306294d96968f125b0b0c5eff66cd94df559336bd0b210"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.md",
+      "bytes": 656,
+      "sha256": "124417f889d3ae27c30df2dc24aa9249f07ceca17118170654da9fa7bf56524f"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/governance_change.md",
+      "bytes": 814,
+      "sha256": "a87e6f03bac0c968e711214268ca589451c09dea9844dbe013560d0901c1ec47"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "bytes": 401,
+      "sha256": "6c0993e31d3fe85b432744ad6e5ce8107929c12f55022e07f382ecbe17a43620"
+    },
+    {
+      "path": ".github/labels.json",
+      "bytes": 7578,
+      "sha256": "d2e5f68455985ec1068210471a3c05b491c4df59afa99af502f6e67a590e637a"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 10,
+      "sha256": "cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e"
+    },
+    {
+      "path": "ACCOUNTABILITY_POLICY.md",
+      "bytes": 1506,
+      "sha256": "0588d0007121f4726a81f733ddea621ec1b4c0af49f23c73e0f572939f144031"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 6126,
+      "sha256": "7e065e5a2e41ccc72006953afa392acf4debe3b2de9b99392bf7c87289cb0d31"
+    },
+    {
+      "path": "CHANGE_CONTROL_POLICY.md",
+      "bytes": 13414,
+      "sha256": "6f6cabf54264ed923136d1b32205eeb0a81d835079314eb4a1ea5a1b996040fc"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "bytes": 5536,
+      "sha256": "e7876dc747bd285e6f0e3ea5c54f6d207328c77d737657bf54238327987e2a9a"
+    },
+    {
+      "path": "CODE_OF_DELIVERY.md",
+      "bytes": 5343,
+      "sha256": "1771e4650d40596e84d1c7e003f64a13a97154e05ca7367a3562c4b2225330d9"
+    },
+    {
+      "path": "COMPLIANCE_POLICY.md",
+      "bytes": 12380,
+      "sha256": "5bbda5c440fa05728354529040e81a986d18a246c3c855df221f261f6c01238b"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 1157,
+      "sha256": "9b28bec160e71d7160db22647f84631be89cb1a3ec22ff43364e751bd4765166"
+    },
+    {
+      "path": "DOCUMENTATION_POLICY.md",
+      "bytes": 15692,
+      "sha256": "b6ca037ecd021902a986686529f4ec65b239796d2048a4582d7d1d7a4ce8e783"
+    },
+    {
+      "path": "FORSETTI_CONSTITUTION.md",
+      "bytes": 16014,
+      "sha256": "0ea5fe6a5481be9c66984c05b054dbc95274fe24d4f3b7dc19a8d01d4e1ad062"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 11341,
+      "sha256": "6e3ca1bde7ac8930e70eacf814f07b767e6742268c1bd43f90756a48f6a71c9a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 18262,
+      "sha256": "06d588776afe78d5973cba3a58f83d8824b8074f635d7d354eec3f5f73277e3f"
+    },
+    {
+      "path": "RELEASE_POLICY.md",
+      "bytes": 10784,
+      "sha256": "033d06446ac70ac953538eb2b04faaa04372507c1608627b8e433031c1fcb537"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 1361,
+      "sha256": "32d4760c426a0a500b023859c3229f4b5e48be8369141c23ebd3f51da0b83934"
+    },
+    {
+      "path": "VERSION",
+      "bytes": 6,
+      "sha256": "1575e1af4a95f12f70b4ee6a6adce8160953d93ea17dc2611b90883ccc3ad3b8"
+    },
+    {
+      "path": "VISION.md",
+      "bytes": 13273,
+      "sha256": "d157924ffd9c8192142a1dd27dd13468efcb0ddb085b0a8d8db201fa13022706"
+    },
+    {
+      "path": "adapters/github-actions/README.md",
+      "bytes": 3220,
+      "sha256": "cc13a24a98a98ea0e189f1b6af93c97c8b36736cf01be1889a5b5c6a9b6bbbee"
+    },
+    {
+      "path": "adapters/github-actions/workflows/assign-version-release.ps1",
+      "bytes": 5192,
+      "sha256": "14e7a7cda61484809612cc9592f66544f13e99a114e1a1d45c9ced3828f12fee"
+    },
+    {
+      "path": "adapters/github-actions/workflows/check-accountability-guard.ps1",
+      "bytes": 3488,
+      "sha256": "89c3b5d360664531ed4490c0fd1b405ffa91004496b0cf0aad31f0cdeb95ee02"
+    },
+    {
+      "path": "adapters/github-actions/workflows/check-changelog-entry.ps1",
+      "bytes": 5657,
+      "sha256": "288e33e7e98e3b392821f2489e6cbe2b0a587a615b115c273528abdda87a45b9"
+    },
+    {
+      "path": "adapters/github-actions/workflows/check-pr-template.ps1",
+      "bytes": 1811,
+      "sha256": "99c6a823e939b63d21f5968addff5b86d72f3ddbd4a12bf1c33b8425ced00f61"
+    },
+    {
+      "path": "adapters/github-actions/workflows/check-protected-paths.ps1",
+      "bytes": 2453,
+      "sha256": "c47c84713f4d379d8ca2b7a5419fa2ed79d269fb08de6f2558dc6e38ca68aae3"
+    },
+    {
+      "path": "adapters/github-actions/workflows/check-release-readiness.ps1",
+      "bytes": 3371,
+      "sha256": "f73f719e5cb99f34b217a52467dd5ddc30007e27da9a25249af7ae30215d5a02"
+    },
+    {
+      "path": "adapters/github-actions/workflows/check-version-impact.ps1",
+      "bytes": 3224,
+      "sha256": "33ea233f8c81734f065dfb45667f90586298940529acd60caf4717c16fcf30dc"
+    },
+    {
+      "path": "adapters/github-actions/workflows/github-context.ps1",
+      "bytes": 11469,
+      "sha256": "97d3593fc1172be22e5ea7c72c289c2f852b5f37cf9a87fadffa82cb66ca1e07"
+    },
+    {
+      "path": "adapters/github-actions/workflows/invoke-local-validation.ps1",
+      "bytes": 1246,
+      "sha256": "cba7ea49bd0841fd81675d50154fc527f3f81c89bed369bbac01e726e95eb6a5"
+    },
+    {
+      "path": "adapters/github-actions/workflows/sync-documentation.ps1",
+      "bytes": 4246,
+      "sha256": "4c65d0984ef23304451ccd2c926d30e402b39c5b2229ae2dda6dcecb32a92177"
+    },
+    {
+      "path": "adapters/github-actions/workflows/sync-wiki-pages.ps1",
+      "bytes": 2822,
+      "sha256": "cdf36da0685070938cd5e534d29ab4a4d7bec765e2233eba2531de2a004afe82"
+    },
+    {
+      "path": "adapters/github-actions/workflows/update-changelog-entry.ps1",
+      "bytes": 7594,
+      "sha256": "9ebe1922bebce02f244550ee037f65a924d3a556e31ffb4fe664d14eafc657ee"
+    },
+    {
+      "path": "agents/architect.md",
+      "bytes": 3532,
+      "sha256": "156142752f40ec2305aa5f878b771db54c7b50ec68106d4e34c33e0c67411f70"
+    },
+    {
+      "path": "agents/builder.md",
+      "bytes": 3887,
+      "sha256": "ee5c39a919b51cf7057ed9f08f8898f787bc85bc7db82564b52e204ad5e66ce0"
+    },
+    {
+      "path": "agents/docs-manager.md",
+      "bytes": 3674,
+      "sha256": "8006b69496739e0ef1027c93b02383c4460752b36c8b091ba78c71173f3e1441"
+    },
+    {
+      "path": "agents/release-manager.md",
+      "bytes": 3354,
+      "sha256": "0bd6de476c56c07b6865ddbb3f5827627c92a21f9af05e4ce2d0f37832333282"
+    },
+    {
+      "path": "agents/validator.md",
+      "bytes": 4049,
+      "sha256": "8d58e60fb6a191bb262db9858d64a51f5ac286c84332a255dc7218e5f2a8d6a8"
+    },
+    {
+      "path": "bundle/VERSION",
+      "bytes": 6,
+      "sha256": "1575e1af4a95f12f70b4ee6a6adce8160953d93ea17dc2611b90883ccc3ad3b8"
+    },
+    {
+      "path": "bundle/editions/apple/forsetti-apple-0.1.3.profile.json",
+      "bytes": 1910,
+      "sha256": "81af5e20dbee88900f490e37479e87a85e4f2c7b7fe093d2ab237bc22534293f"
+    },
+    {
+      "path": "bundle/editions/apple/forsetti-apple-0.1.5.profile.json",
+      "bytes": 19720,
+      "sha256": "58249aa73f44be694e687a1106a1dd47c7f5352086f995b811e6a1ade7e613fd"
+    },
+    {
+      "path": "bundle/editions/shared/shared-forsetti-invariants.json",
+      "bytes": 878,
+      "sha256": "a6ce108da5ba8f65140b6c4b77e7204763d86153828bb3412c9b37fb73263ec0"
+    },
+    {
+      "path": "bundle/editions/windows/forsetti-windows-0.2.0.profile.json",
+      "bytes": 1852,
+      "sha256": "4a65c4c986da951cddd2376de39ebc87f1186b21c147c53c122ce0c10ac19c8a"
+    },
+    {
+      "path": "bundle/instructions/target-agents-section.md",
+      "bytes": 999,
+      "sha256": "91ec96492e413bcdc783b260a1eccb87f0a685f534e5bf76c443f9931e5fccc5"
+    },
+    {
+      "path": "bundle/policies/accountability-rules.json",
+      "bytes": 363,
+      "sha256": "a50615ab184f49e6203c76564c382f1dd7c785be15f0553d2f17329bb56e2e0f"
+    },
+    {
+      "path": "bundle/policies/agent-enforcement-actions.json",
+      "bytes": 131,
+      "sha256": "92db4f6ebfe2ede1b663ad6c89b2675dcf302109ffad8678864b4228c14b5a50"
+    },
+    {
+      "path": "bundle/policies/agent-roles.json",
+      "bytes": 7380,
+      "sha256": "1881906db1ff0269f9292e5a98d607f8a31388ae95091c0c32335a74b9647f22"
+    },
+    {
+      "path": "bundle/policies/capability-rules.json",
+      "bytes": 175,
+      "sha256": "fc3f71e3feaedac3dd147d98da12b49957f283e1ec7479c959628d3025692d55"
+    },
+    {
+      "path": "bundle/policies/changelog-rules.json",
+      "bytes": 15351,
+      "sha256": "ed5b818a66ea9145f21b89361f5291e1b145350d27b47d33abfe93b3b6826cc7"
+    },
+    {
+      "path": "bundle/policies/compliance-rules.json",
+      "bytes": 11995,
+      "sha256": "807458bdfe356eccdbbb250636aa68ac3c6561c4f6938b50406bed27e4910be7"
+    },
+    {
+      "path": "bundle/policies/dependency-boundary-rules.json",
+      "bytes": 168,
+      "sha256": "b4cc2ea0a9ae9a9e3fc021d94fcfb05b6af3e8f8681cf09ca0c1471f0e7dff7a"
+    },
+    {
+      "path": "bundle/policies/docs-sync-rules.json",
+      "bytes": 22811,
+      "sha256": "2a9b4f1bd439fd72c2e582d4736f276341d2d7067aae628a37b1c280756e2089"
+    },
+    {
+      "path": "bundle/policies/forsetti-enforcement-rules.json",
+      "bytes": 17397,
+      "sha256": "52ed93f4a4c22c2094791339f88092e034fa727dedd4c0d26fbb9f820b2a7669"
+    },
+    {
+      "path": "bundle/policies/labels.json",
+      "bytes": 7578,
+      "sha256": "d2e5f68455985ec1068210471a3c05b491c4df59afa99af502f6e67a590e637a"
+    },
+    {
+      "path": "bundle/policies/manifest-rules.json",
+      "bytes": 195,
+      "sha256": "cdcc0c34f3b8a899a8b97eb1be576d7550f5c061f2c4382cfd38b7872fc127b1"
+    },
+    {
+      "path": "bundle/policies/mcp-provider-policy.json",
+      "bytes": 345,
+      "sha256": "99371eabc9dc6cf8b316d6d1f600a1bdd2dcddf4d9a6bdb59732bc551e7d772c"
+    },
+    {
+      "path": "bundle/policies/mcp-resolution-order.json",
+      "bytes": 195,
+      "sha256": "a2952c18acf8b92b5370f98fc1eaf331a54f78a3a01743e2d842c1f52720affd"
+    },
+    {
+      "path": "bundle/policies/module-isolation-rules.json",
+      "bytes": 212,
+      "sha256": "1067a233545ac2f4195f912d4626cb8a0c6ebead414639b6bc681cb08988ee62"
+    },
+    {
+      "path": "bundle/policies/public-api-rules.json",
+      "bytes": 200,
+      "sha256": "37f70e0880144dbb977f43b0d7a33a522de275b4bcbf035634184e76e2312fe1"
+    },
+    {
+      "path": "bundle/policies/repo-boundaries.json",
+      "bytes": 16889,
+      "sha256": "a70d4451f74c2d0355dfa9a964b446daf92c6e0b40e8d6bfc3a75e4f3af0ce2d"
+    },
+    {
+      "path": "bundle/policies/runtime-requirement-rules.json",
+      "bytes": 210,
+      "sha256": "10da5a42e90d961e272219361e66d8488f52a38322a033634f5ee4b41b80bf87"
+    },
+    {
+      "path": "bundle/policies/service-access-rules.json",
+      "bytes": 190,
+      "sha256": "b4b0557fbf365dc73fd504f9b1a8bf1af17c4212cd46a4f27761c592b533a7b2"
+    },
+    {
+      "path": "bundle/policies/ui-contribution-rules.json",
+      "bytes": 193,
+      "sha256": "9d6467e5b4b6108aaa6c5df498b2393f497eee2b6e6f4dffe72c008b69da588b"
+    },
+    {
+      "path": "bundle/policies/versioning-rules.json",
+      "bytes": 12542,
+      "sha256": "fe8260f371cffe0f39d91bf08de5661b12235b3b9fbd58e3380daa9cc9c35bff"
+    },
+    {
+      "path": "bundle/product-manifest.json",
+      "bytes": 8481,
+      "sha256": "1c7874ef108d6cdfe01946811602f18570a3bca280a1eae518afdfe2d88ebff9"
+    },
+    {
+      "path": "bundle/schemas/command-evidence.schema.json",
+      "bytes": 1943,
+      "sha256": "7c2f18ab344ef64e3c1989c8e87b07f36e6a3462d4dfdba67f740ace97c399fd"
+    },
+    {
+      "path": "bundle/schemas/edition-profile-v2.schema.json",
+      "bytes": 4615,
+      "sha256": "80098cec1623731889604cdbd4945e8effe2d41d0153b0b29e1ae082bdd00ecc"
+    },
+    {
+      "path": "bundle/schemas/evidence-bundle.schema.json",
+      "bytes": 3188,
+      "sha256": "e0a14051329e2b76d781d6a945477dfd30e68bf1131c78b2f4f8d42036542a1a"
+    },
+    {
+      "path": "bundle/schemas/fixture-expectation.schema.json",
+      "bytes": 1215,
+      "sha256": "c658dde3d4695c9bec0c85910a324c92fe722cecab1d2fda2f7ba09adedcad22"
+    },
+    {
+      "path": "bundle/schemas/forsetti-module-manifest-1.0.schema.json",
+      "bytes": 3267,
+      "sha256": "c8cdd5ab65b993c737a9b42cb8e9d705081f8ab085845090990d456e49bcb6e8"
+    },
+    {
+      "path": "bundle/schemas/forsetti-module-manifest-1.1.schema.json",
+      "bytes": 7232,
+      "sha256": "2e6aa9e444c864da427ee6292e0a0b33737ebeb9dd486bbfb492629b55f1a512"
+    },
+    {
+      "path": "bundle/schemas/modules.schema.json",
+      "bytes": 2927,
+      "sha256": "065e43cf480a0c92ddd31bb05225c6ad46ffe3521f53d7a624b41b8ab48a3ef9"
+    },
+    {
+      "path": "bundle/schemas/policy-lock.schema.json",
+      "bytes": 819,
+      "sha256": "62ff70ceab62533501a4ebd970a13e1d50ee5c39ba25fe7509e8d8b3a7aacb8d"
+    },
+    {
+      "path": "bundle/schemas/policy-registry-v2.schema.json",
+      "bytes": 3042,
+      "sha256": "af206e53e2209034d0a792dcde3e2e3d5264e79a553b555457df299a77c51148"
+    },
+    {
+      "path": "bundle/schemas/product-lock.schema.json",
+      "bytes": 902,
+      "sha256": "6c34ad11c8768f992eef55731768d5f61e50e9a24773c49bcd8869e815aff24c"
+    },
+    {
+      "path": "bundle/schemas/product-manifest.schema.json",
+      "bytes": 1853,
+      "sha256": "e1a114935a41de4ef8121bfc2d4933b8494438abb72a8c0504e84b5a5d8f6353"
+    },
+    {
+      "path": "bundle/schemas/profile-lock.schema.json",
+      "bytes": 1234,
+      "sha256": "5ac3b5e2646a5650b79a5405b85b6a237f4d9167c391b52a63188d69f91fb30a"
+    },
+    {
+      "path": "bundle/schemas/profile-registry.schema.json",
+      "bytes": 2242,
+      "sha256": "a3a7977e0e03281188c38a15f48bd491ad46c0859203b3032879d9d296fa575a"
+    },
+    {
+      "path": "bundle/schemas/project-discovery-result.schema.json",
+      "bytes": 1549,
+      "sha256": "864bb342655ca0c50f700edc7256081e69662ccddf360ecd797eab37fdd881c1"
+    },
+    {
+      "path": "bundle/schemas/project.schema.json",
+      "bytes": 3423,
+      "sha256": "ed729d727ee99d9b5104c844b75c7b7a639421a2c69f49700f3d7abdf2f18e8e"
+    },
+    {
+      "path": "bundle/schemas/release-manifest.schema.json",
+      "bytes": 1648,
+      "sha256": "f6eb02daa32e79fa23a86ee6340f51f2f9f406a8dd7432d0d02540bad05877e6"
+    },
+    {
+      "path": "bundle/schemas/role-ledger.schema.json",
+      "bytes": 1332,
+      "sha256": "eb4431977a5f8de63395b72cc6a8271d443f0df2becbb25d755fe83414d0b58c"
+    },
+    {
+      "path": "bundle/schemas/task-contract-v2.schema.json",
+      "bytes": 3798,
+      "sha256": "5e12305322cb95a864e75eb1863491bef5abfc5097ea84c5683c037ed8902f57"
+    },
+    {
+      "path": "bundle/schemas/task-state.schema.json",
+      "bytes": 2573,
+      "sha256": "bc51a84257c5341e1690415720ef2df57eb1c10e13d610b5d128b68021d5cc26"
+    },
+    {
+      "path": "bundle/schemas/validation-request-v2.schema.json",
+      "bytes": 1074,
+      "sha256": "e422c2a7d9961b83d2133d767c4c332959e4fdfecd3dad1f335b8220ef938432"
+    },
+    {
+      "path": "bundle/schemas/validation-result-v2.schema.json",
+      "bytes": 3237,
+      "sha256": "60c86b2aa875a96903a86fad14c0777469afd2d55e5c9b5d9c8bebc4a1bb8e97"
+    },
+    {
+      "path": "changelog/CHANGELOG.md",
+      "bytes": 22472,
+      "sha256": "9f6513d2528489c63943417463dcae6ba6e3e7fc0c1fbe75505cb6f00f95371d"
+    },
+    {
+      "path": "changelog/release-notes-template.md",
+      "bytes": 937,
+      "sha256": "f080832f8db2e0fc9e4a99992d5a4a942a4f0dbcebc8026239db6775c97d092d"
+    },
+    {
+      "path": "contracts/FAE-BUG-2026-05-08-001-validator-root.md",
+      "bytes": 3884,
+      "sha256": "2c0b0f513840e4fe57e36a1873e93efc79e87a24dc02744ab4db8865d1096c45"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-05-08-004-docs-sync-rules-drift.md",
+      "bytes": 5093,
+      "sha256": "cc34bccc2f9371983df76242b8fb615c575c45d6625e8ea0bda49dcc087e9e55"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-05-08-005-canonical-policy-registry.md",
+      "bytes": 6073,
+      "sha256": "9915c1b0f63887a99a58f9a7dd9f8211a8ab62b63b638be49e44c900555c79b0"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-05-10-007-task-contract-scope-approval-evidence-enforcement.md",
+      "bytes": 6648,
+      "sha256": "55f8a3f6e4a24320a5a00002752689e52a31f359df25924f41274e457a2fd57f"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-05-10-008-policy-paths-docs-release-accuracy.md",
+      "bytes": 7280,
+      "sha256": "5724b2e6c0f655b125fa58bc03757168fcbf4138958e49f5de207c2ff7d341c6"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-05-11-009-adapter-workflow-boundary-protection.md",
+      "bytes": 5419,
+      "sha256": "aefcc8ca1de0069e538db0901a6353076bb4108cd26a6ade1ee4c2f70c3c3240"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-05-11-012-accountability-no-attribution.md",
+      "bytes": 8989,
+      "sha256": "51a5d2f8a0f42893f74e2e2846d165643cabed68f7d5673b8c6d1accab1f930f"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-06-19-001-wiki-visual-system.md",
+      "bytes": 5574,
+      "sha256": "f8f75450f91f048e75684633941e3ee36973a8303cca58b855c74e01c93d81d6"
+    },
+    {
+      "path": "contracts/FAE-GOV-2026-08-20-015-apple-0.1.5-alignment.md",
+      "bytes": 8380,
+      "sha256": "dcdde8ea4d9c5963fc6d72db1852ea561256b45c5235f6adfab3e9d5640c19ad"
+    },
+    {
+      "path": "contracts/FAE-META-2026-05-08-003-remediation-evidence-normalization.md",
+      "bytes": 4237,
+      "sha256": "014c0afc489a59d74dff06485ed37854d196bf6377409415a92284bada0759b6"
+    },
+    {
+      "path": "contracts/FAE-TASK-2026-05-08-002-portable-core-scaffold.md",
+      "bytes": 7637,
+      "sha256": "48f6723cb85be92b4399367f2cb1fcdbe46d7b261c027d6ccb00a4096f762f08"
+    },
+    {
+      "path": "contracts/FAE-TASK-2026-05-08-006-local-validator-cli.md",
+      "bytes": 5732,
+      "sha256": "26203ec2409ea9b765ee673b4ec34e7f71ba033762baf059128106f2502823e9"
+    },
+    {
+      "path": "contracts/FAE-TASK-2026-05-11-010-github-actions-adapter-implementation.md",
+      "bytes": 7209,
+      "sha256": "1e682d83840982066089986bd129f0fa22897ed9fd2570fea39b8c2c87b2f9be"
+    },
+    {
+      "path": "contracts/FAE-TASK-2026-05-11-011-github-actions-adapter-docs-sync.md",
+      "bytes": 6152,
+      "sha256": "2512bf0e85070ce049c804a53c4437b289732b9d47199ff2604dd57634e75093"
+    },
+    {
+      "path": "contracts/FAE-TASK-2026-05-11-013-platform-overlays.md",
+      "bytes": 6431,
+      "sha256": "d69ad72982362f48d39e5b1173d786f72db9f4cbcbfb3bbbd99e251392c8c935"
+    },
+    {
+      "path": "contracts/FAE-TASK-2026-05-12-014-final-validation-audit.md",
+      "bytes": 7922,
+      "sha256": "c9537c3c20793b8e41a94bb28a651245c7aa1ce4d4a054cbecb14850de5a9b12"
+    },
+    {
+      "path": "contracts/bugfix-contract-template.md",
+      "bytes": 2463,
+      "sha256": "883dd5de69ee53e46c5cb7a6d29dd40c502cb175e52a660f10912269ab4981a7"
+    },
+    {
+      "path": "contracts/governance-change-template.md",
+      "bytes": 2994,
+      "sha256": "538ce1d28828539f686dea6b580c84f64916460393338722c037f9105b456db4"
+    },
+    {
+      "path": "contracts/release-contract-template.md",
+      "bytes": 2826,
+      "sha256": "90dae8cf4ab9ef908cd59f070b88e210f71904519d405066a5a025015886e994"
+    },
+    {
+      "path": "contracts/task-contract-template.md",
+      "bytes": 4309,
+      "sha256": "fa0175fea912db0ba5ba6c5df3d23041619cd6bd4f5f2ea481cf5f15344c6874"
+    },
+    {
+      "path": "core/AGENTS.md",
+      "bytes": 2365,
+      "sha256": "36c1a01e0dd94e11f824264c0137b7f3c202557ce35417a2277e838c9b62a976"
+    },
+    {
+      "path": "core/FORSETTI_AGENTIC_CONSTITUTION.md",
+      "bytes": 2172,
+      "sha256": "7ed2d047cb0795c5819d424c1816f201238002658fa15e27f19b92876b052e9e"
+    },
+    {
+      "path": "core/README.md",
+      "bytes": 7772,
+      "sha256": "b55db76989e670b8e065a24bebbebade47fefcedc7a8da05311109d25bbf364f"
+    },
+    {
+      "path": "core/contracts/forsetti-project-context-template.json",
+      "bytes": 598,
+      "sha256": "19e10197c0827c9baf90b9a264f35d93abc534b75a7fb6574c3f7022bd547a07"
+    },
+    {
+      "path": "core/contracts/task-contract-template.json",
+      "bytes": 2821,
+      "sha256": "32d306a66acf92e621f5d4be1d01826965dcf77941142ee8c43fa512045e3e5c"
+    },
+    {
+      "path": "core/enforcement/authority-model.md",
+      "bytes": 2007,
+      "sha256": "2819629883fdfaa67bb7bbf63aaf6aa2533e15a9a9f169799845cc9bd72f36cd"
+    },
+    {
+      "path": "core/policies/accountability-rules.json",
+      "bytes": 363,
+      "sha256": "a50615ab184f49e6203c76564c382f1dd7c785be15f0553d2f17329bb56e2e0f"
+    },
+    {
+      "path": "core/policies/agent-enforcement-actions.json",
+      "bytes": 131,
+      "sha256": "92db4f6ebfe2ede1b663ad6c89b2675dcf302109ffad8678864b4228c14b5a50"
+    },
+    {
+      "path": "core/policies/capability-rules.json",
+      "bytes": 175,
+      "sha256": "fc3f71e3feaedac3dd147d98da12b49957f283e1ec7479c959628d3025692d55"
+    },
+    {
+      "path": "core/policies/changelog-rules.json",
+      "bytes": 15351,
+      "sha256": "ed5b818a66ea9145f21b89361f5291e1b145350d27b47d33abfe93b3b6826cc7"
+    },
+    {
+      "path": "core/policies/compliance-rules.json",
+      "bytes": 11995,
+      "sha256": "807458bdfe356eccdbbb250636aa68ac3c6561c4f6938b50406bed27e4910be7"
+    },
+    {
+      "path": "core/policies/dependency-boundary-rules.json",
+      "bytes": 168,
+      "sha256": "b4cc2ea0a9ae9a9e3fc021d94fcfb05b6af3e8f8681cf09ca0c1471f0e7dff7a"
+    },
+    {
+      "path": "core/policies/docs-sync-rules.json",
+      "bytes": 22811,
+      "sha256": "2a9b4f1bd439fd72c2e582d4736f276341d2d7067aae628a37b1c280756e2089"
+    },
+    {
+      "path": "core/policies/forsetti-enforcement-rules.json",
+      "bytes": 17397,
+      "sha256": "52ed93f4a4c22c2094791339f88092e034fa727dedd4c0d26fbb9f820b2a7669"
+    },
+    {
+      "path": "core/policies/manifest-rules.json",
+      "bytes": 195,
+      "sha256": "cdcc0c34f3b8a899a8b97eb1be576d7550f5c061f2c4382cfd38b7872fc127b1"
+    },
+    {
+      "path": "core/policies/mcp-provider-policy.json",
+      "bytes": 345,
+      "sha256": "99371eabc9dc6cf8b316d6d1f600a1bdd2dcddf4d9a6bdb59732bc551e7d772c"
+    },
+    {
+      "path": "core/policies/mcp-resolution-order.json",
+      "bytes": 195,
+      "sha256": "a2952c18acf8b92b5370f98fc1eaf331a54f78a3a01743e2d842c1f52720affd"
+    },
+    {
+      "path": "core/policies/module-isolation-rules.json",
+      "bytes": 212,
+      "sha256": "1067a233545ac2f4195f912d4626cb8a0c6ebead414639b6bc681cb08988ee62"
+    },
+    {
+      "path": "core/policies/public-api-rules.json",
+      "bytes": 200,
+      "sha256": "37f70e0880144dbb977f43b0d7a33a522de275b4bcbf035634184e76e2312fe1"
+    },
+    {
+      "path": "core/policies/repo-boundaries.json",
+      "bytes": 16889,
+      "sha256": "a70d4451f74c2d0355dfa9a964b446daf92c6e0b40e8d6bfc3a75e4f3af0ce2d"
+    },
+    {
+      "path": "core/policies/runtime-requirement-rules.json",
+      "bytes": 210,
+      "sha256": "10da5a42e90d961e272219361e66d8488f52a38322a033634f5ee4b41b80bf87"
+    },
+    {
+      "path": "core/policies/service-access-rules.json",
+      "bytes": 190,
+      "sha256": "b4b0557fbf365dc73fd504f9b1a8bf1af17c4212cd46a4f27761c592b533a7b2"
+    },
+    {
+      "path": "core/policies/ui-contribution-rules.json",
+      "bytes": 193,
+      "sha256": "9d6467e5b4b6108aaa6c5df498b2393f497eee2b6e6f4dffe72c008b69da588b"
+    },
+    {
+      "path": "core/policies/versioning-rules.json",
+      "bytes": 12542,
+      "sha256": "fe8260f371cffe0f39d91bf08de5661b12235b3b9fbd58e3380daa9cc9c35bff"
+    },
+    {
+      "path": "core/schemas/edition-profile.schema.json",
+      "bytes": 13886,
+      "sha256": "729c40a25e5431762a42bca9e3466f8488d3acbbaa83d46ccd9e858154b1948d"
+    },
+    {
+      "path": "core/schemas/forsetti-project-context.schema.json",
+      "bytes": 2162,
+      "sha256": "ecacc24f5fa89eff0010a18927e93da1894973d89f340b371c83e16713f93be6"
+    },
+    {
+      "path": "core/schemas/module-manifest-1.1.schema.json",
+      "bytes": 7242,
+      "sha256": "0d768364790214335ca3b1b585cfd3be2af5e81313b771463f367a61bd0ed90d"
+    },
+    {
+      "path": "core/schemas/task-contract.schema.json",
+      "bytes": 6971,
+      "sha256": "3f724d88dd1757c2612b98a61135ce50a2f66c6541c986dbc8b5ff287feab619"
+    },
+    {
+      "path": "core/schemas/validator-result.schema.json",
+      "bytes": 1438,
+      "sha256": "31427e15affea5903f57dc9be8b7199633f3388179145baab9d0fd0f12438ca5"
+    },
+    {
+      "path": "core/validator/README.md",
+      "bytes": 2780,
+      "sha256": "c73ba88d911bff295485b96a5f6662e3b0bf6348a18110ac27d5194fc63c37ea"
+    },
+    {
+      "path": "core/validator/contract_rules.ps1",
+      "bytes": 58718,
+      "sha256": "2f1deef32d1b424b0a8df732451e0d9566f5102f4a4f4d207eb090b30fd55844"
+    },
+    {
+      "path": "core/validator/forsetti_validate.ps1",
+      "bytes": 78420,
+      "sha256": "dea0a2a144953589448143b6538702c5050b3d03a16bb257a8f77aa90215ab13"
+    },
+    {
+      "path": "core/validator/rules/forsetti_project_rules.ps1",
+      "bytes": 2356,
+      "sha256": "b5ad411965eccf8623bd0c602cc016a0962af8bac22d183f32abe824d44fda5d"
+    },
+    {
+      "path": "editions/README.md",
+      "bytes": 2984,
+      "sha256": "e68669c73a84fb980e6dae23da0310f6cfee05879f186789527a99f9160f7cbb"
+    },
+    {
+      "path": "editions/apple/forsetti-apple-0.1.3.profile.json",
+      "bytes": 1910,
+      "sha256": "81af5e20dbee88900f490e37479e87a85e4f2c7b7fe093d2ab237bc22534293f"
+    },
+    {
+      "path": "editions/apple/forsetti-apple-0.1.5.profile.json",
+      "bytes": 19720,
+      "sha256": "58249aa73f44be694e687a1106a1dd47c7f5352086f995b811e6a1ade7e613fd"
+    },
+    {
+      "path": "editions/shared/shared-forsetti-invariants.json",
+      "bytes": 878,
+      "sha256": "a6ce108da5ba8f65140b6c4b77e7204763d86153828bb3412c9b37fb73263ec0"
+    },
+    {
+      "path": "editions/windows/forsetti-windows-0.2.0.profile.json",
+      "bytes": 1852,
+      "sha256": "4a65c4c986da951cddd2376de39ebc87f1186b21c147c53c122ce0c10ac19c8a"
+    },
+    {
+      "path": "overlays/forsetti-apple/README.md",
+      "bytes": 5634,
+      "sha256": "b68313fa046ce05c2eba3083da3d20a8d45f5c043a46682c15bc353eedd00a4d"
+    },
+    {
+      "path": "overlays/forsetti-windows/README.md",
+      "bytes": 1472,
+      "sha256": "9fcffbb845f8d2fb4737469b4b96c8f238867d27a31de8fa5afdc3f9eba443dd"
+    },
+    {
+      "path": "overlays/generic/README.md",
+      "bytes": 1099,
+      "sha256": "8c3331150d4c72c59922c9d06ae4114702d512a86517698524723ec98beae778"
+    },
+    {
+      "path": "policies/accountability-rules.json",
+      "bytes": 363,
+      "sha256": "a50615ab184f49e6203c76564c382f1dd7c785be15f0553d2f17329bb56e2e0f"
+    },
+    {
+      "path": "policies/agent-enforcement-actions.json",
+      "bytes": 131,
+      "sha256": "92db4f6ebfe2ede1b663ad6c89b2675dcf302109ffad8678864b4228c14b5a50"
+    },
+    {
+      "path": "policies/agent-roles.json",
+      "bytes": 7380,
+      "sha256": "1881906db1ff0269f9292e5a98d607f8a31388ae95091c0c32335a74b9647f22"
+    },
+    {
+      "path": "policies/capability-rules.json",
+      "bytes": 175,
+      "sha256": "fc3f71e3feaedac3dd147d98da12b49957f283e1ec7479c959628d3025692d55"
+    },
+    {
+      "path": "policies/changelog-rules.json",
+      "bytes": 15351,
+      "sha256": "ed5b818a66ea9145f21b89361f5291e1b145350d27b47d33abfe93b3b6826cc7"
+    },
+    {
+      "path": "policies/compliance-rules.json",
+      "bytes": 11995,
+      "sha256": "807458bdfe356eccdbbb250636aa68ac3c6561c4f6938b50406bed27e4910be7"
+    },
+    {
+      "path": "policies/dependency-boundary-rules.json",
+      "bytes": 168,
+      "sha256": "b4cc2ea0a9ae9a9e3fc021d94fcfb05b6af3e8f8681cf09ca0c1471f0e7dff7a"
+    },
+    {
+      "path": "policies/docs-sync-rules.json",
+      "bytes": 22811,
+      "sha256": "2a9b4f1bd439fd72c2e582d4736f276341d2d7067aae628a37b1c280756e2089"
+    },
+    {
+      "path": "policies/forsetti-enforcement-rules.json",
+      "bytes": 17397,
+      "sha256": "52ed93f4a4c22c2094791339f88092e034fa727dedd4c0d26fbb9f820b2a7669"
+    },
+    {
+      "path": "policies/labels.json",
+      "bytes": 7578,
+      "sha256": "d2e5f68455985ec1068210471a3c05b491c4df59afa99af502f6e67a590e637a"
+    },
+    {
+      "path": "policies/manifest-rules.json",
+      "bytes": 195,
+      "sha256": "cdcc0c34f3b8a899a8b97eb1be576d7550f5c061f2c4382cfd38b7872fc127b1"
+    },
+    {
+      "path": "policies/mcp-provider-policy.json",
+      "bytes": 345,
+      "sha256": "99371eabc9dc6cf8b316d6d1f600a1bdd2dcddf4d9a6bdb59732bc551e7d772c"
+    },
+    {
+      "path": "policies/mcp-resolution-order.json",
+      "bytes": 195,
+      "sha256": "a2952c18acf8b92b5370f98fc1eaf331a54f78a3a01743e2d842c1f52720affd"
+    },
+    {
+      "path": "policies/module-isolation-rules.json",
+      "bytes": 212,
+      "sha256": "1067a233545ac2f4195f912d4626cb8a0c6ebead414639b6bc681cb08988ee62"
+    },
+    {
+      "path": "policies/public-api-rules.json",
+      "bytes": 200,
+      "sha256": "37f70e0880144dbb977f43b0d7a33a522de275b4bcbf035634184e76e2312fe1"
+    },
+    {
+      "path": "policies/repo-boundaries.json",
+      "bytes": 16889,
+      "sha256": "a70d4451f74c2d0355dfa9a964b446daf92c6e0b40e8d6bfc3a75e4f3af0ce2d"
+    },
+    {
+      "path": "policies/runtime-requirement-rules.json",
+      "bytes": 210,
+      "sha256": "10da5a42e90d961e272219361e66d8488f52a38322a033634f5ee4b41b80bf87"
+    },
+    {
+      "path": "policies/service-access-rules.json",
+      "bytes": 190,
+      "sha256": "b4b0557fbf365dc73fd504f9b1a8bf1af17c4212cd46a4f27761c592b533a7b2"
+    },
+    {
+      "path": "policies/ui-contribution-rules.json",
+      "bytes": 193,
+      "sha256": "9d6467e5b4b6108aaa6c5df498b2393f497eee2b6e6f4dffe72c008b69da588b"
+    },
+    {
+      "path": "policies/versioning-rules.json",
+      "bytes": 12542,
+      "sha256": "fe8260f371cffe0f39d91bf08de5661b12235b3b9fbd58e3380daa9cc9c35bff"
+    },
+    {
+      "path": "products/apple/Package.swift",
+      "bytes": 1132,
+      "sha256": "43850395de0f6e152451d5a1e14e4b538b5e08415dee45019049de49a8ec274e"
+    },
+    {
+      "path": "products/apple/Sources/ForsettiGovernanceCLI/CommandLineRouter.swift",
+      "bytes": 7844,
+      "sha256": "d8dac4f81060f78dda38dbcb869826d36cc7d4fee1f69f343e8314a68bc8c519"
+    },
+    {
+      "path": "products/apple/Sources/ForsettiGovernanceCLI/main.swift",
+      "bytes": 1702,
+      "sha256": "a5e2be7895c227742fe5f6f1332b475b0874f5128f0095e0191e0b021f6a270f"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/FoundationJSONLoader.swift",
+      "bytes": 551,
+      "sha256": "69e06f5b6c1682acd3c9e0dcedb95e988f41d4fbf2a39d64f1c56a0819bce531"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/LocalFileSystem.swift",
+      "bytes": 1361,
+      "sha256": "a76ec80fb6513aa16ca1d994b6b614e9649a801fe277c4e6567b5a8722f5bbe3"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/LocalProcessRunner.swift",
+      "bytes": 976,
+      "sha256": "2338515569595efcc0eb85ab195584ba210ee84b6766a5193b232b9934bfe518"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/ProjectDiscoveryService.swift",
+      "bytes": 26386,
+      "sha256": "8a0f832530bab75b80f20651a4ebedf4b7e7524997dff7715512c143582f9dfc"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/RepositoryBootstrapService.swift",
+      "bytes": 32020,
+      "sha256": "8fb0117c89b05988ecfc577aca8ffa453a390e758122ab558948b825673b99eb"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/SHA256BundleVerifier.swift",
+      "bytes": 7302,
+      "sha256": "6560286090ec659f796f38c3a753dd37016009158ef7b04474eb60826d88d544"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/SystemClock.swift",
+      "bytes": 163,
+      "sha256": "1de53883167ad69b8b5ba357982f0053a13338fb19ef08d1a58fc112629ea2aa"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceApple/SystemIdentifierGenerator.swift",
+      "bytes": 228,
+      "sha256": "6ccccc62effbd4dc5a9ba5866cc3af8a75e6e3d86abbb7c1eff72992e6d28cc0"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceContracts/Contracts.swift",
+      "bytes": 1915,
+      "sha256": "2b2387d631f51493a010a54a4572e01809a12c3ad87c637fdbbcd3d28c9b341b"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceContracts/ValidationModels.swift",
+      "bytes": 3393,
+      "sha256": "f1b7a81222c780164ea417507448f0ba42235e05fad816b7e7d920d79bd0f667"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceCore/CoreTypes.swift",
+      "bytes": 1651,
+      "sha256": "090ffde44768aed86f66a7d46fde28d19817dd36597f203e28790bff8b4e71bb"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceCore/JSONResultCodec.swift",
+      "bytes": 582,
+      "sha256": "7a5bcb73b1243563e17300cffe0d2850d8d2db1275663bbf69166a22c0041801"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceCore/ProductManifest.swift",
+      "bytes": 859,
+      "sha256": "e7b56a4621b81669054ee54352ebeaadcd7e36620a1e34995a58786606cc7060"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceCore/ResultFactory.swift",
+      "bytes": 1277,
+      "sha256": "572cb9198af0219c7f653ebc1f32e2c1a964aec0333f2d75072283e810412796"
+    },
+    {
+      "path": "products/apple/Sources/GovernanceCore/VersionService.swift",
+      "bytes": 873,
+      "sha256": "701a05bc11ae3113c32765834d4bd283e1cf247f09c867e31ab27be63b5ee1a8"
+    },
+    {
+      "path": "products/apple/Tests/GovernanceCoreTests/ValidationResultTests.swift",
+      "bytes": 23196,
+      "sha256": "806a657067ce44373e3ff3661560a0754e4318b28de6d17a5574f3d057729b34"
+    },
+    {
+      "path": "products/windows/CMakeLists.txt",
+      "bytes": 811,
+      "sha256": "ab00eb58ed91bbb5dda58236a7fe6a11c60b2ef090188faa60f69ada426c17c7"
+    },
+    {
+      "path": "products/windows/include/ForsettiGovernance/BundleVerifier.hpp",
+      "bytes": 436,
+      "sha256": "0ab9e7261de675db914ea76812d4846611b9d6989998eb474ae2379ee26e4284"
+    },
+    {
+      "path": "products/windows/include/ForsettiGovernance/Contracts.hpp",
+      "bytes": 1790,
+      "sha256": "e16595c3ef67f4a9fb831a46a52f96eb7d722c1896859334201a6e19e5befb9d"
+    },
+    {
+      "path": "products/windows/include/ForsettiGovernance/Result.hpp",
+      "bytes": 1159,
+      "sha256": "0c5bf57b0ec9dcc4e24c6e333ab636c2e9f44839ff268d2ce5251943d47d17cc"
+    },
+    {
+      "path": "products/windows/include/ForsettiGovernance/SHA256.hpp",
+      "bytes": 169,
+      "sha256": "dbc8486b251548d7350be1a870b9583ca833cbedc48975485092d6370aa2cadd"
+    },
+    {
+      "path": "products/windows/src/CLI/main.cpp",
+      "bytes": 3142,
+      "sha256": "58f56f2a406d6ade1ade0a51f015d94522022f6321e4b396a69267bac2ccc655"
+    },
+    {
+      "path": "products/windows/src/Core/BundleVerifier.cpp",
+      "bytes": 10102,
+      "sha256": "28fc870c67be9251ab32c78a80f553a4b1060fc15ab3b7371ce4ecf97af64f44"
+    },
+    {
+      "path": "products/windows/src/Core/Result.cpp",
+      "bytes": 1962,
+      "sha256": "b5b802d2136b6b6b7f586db166fd749b9b951f315387cd283cb96028de1355f5"
+    },
+    {
+      "path": "products/windows/src/Core/SHA256.cpp",
+      "bytes": 4551,
+      "sha256": "9d0392142b4b1d8300dea710c0fb97606c20a683307f6977b8034e4889c8b677"
+    },
+    {
+      "path": "products/windows/src/Windows/WindowsFileSystem.hpp",
+      "bytes": 1066,
+      "sha256": "de12279c5fb0478cdf95dcd964dbd588490f5ed81c5a932807b4c8af2c8bd186"
+    },
+    {
+      "path": "products/windows/tests/result_tests.cpp",
+      "bytes": 6461,
+      "sha256": "273df986d4bf5248b9298399657c3f5b1f9a5523c2bdab3cc2ea7a39ec94aafa"
+    },
+    {
+      "path": "schemas/compliance-report.schema.json",
+      "bytes": 2097,
+      "sha256": "d4a76e14f4a098978039289726a1ff24f477d979f07c6c0cea1ed5eeab06b199"
+    },
+    {
+      "path": "schemas/forsetti-project-context.schema.json",
+      "bytes": 2162,
+      "sha256": "ecacc24f5fa89eff0010a18927e93da1894973d89f340b371c83e16713f93be6"
+    },
+    {
+      "path": "schemas/module-manifest-1.1.schema.json",
+      "bytes": 7242,
+      "sha256": "0d768364790214335ca3b1b585cfd3be2af5e81313b771463f367a61bd0ed90d"
+    },
+    {
+      "path": "schemas/release-entry.schema.json",
+      "bytes": 2499,
+      "sha256": "b0dfc419ceb967ed299099bd21f6937bc019fdfc1fbc37afc926dfa1cbde5934"
+    },
+    {
+      "path": "schemas/task-contract.schema.json",
+      "bytes": 6971,
+      "sha256": "3f724d88dd1757c2612b98a61135ce50a2f66c6541c986dbc8b5ff287feab619"
+    },
+    {
+      "path": "scripts/generate-product-manifest.py",
+      "bytes": 4445,
+      "sha256": "5738f041741252d18c02e91e53f488ff75af096691717c27572db1d03f129ef6"
+    },
+    {
+      "path": "scripts/validate-repo.ps1",
+      "bytes": 2035,
+      "sha256": "568dadd36c056907296900a6293abb3486a0a3fd0197e3949a3a342be3710d59"
+    },
+    {
+      "path": "scripts/validate-repo.sh",
+      "bytes": 1011,
+      "sha256": "c8405669d857073a0877f6fdceeb0283650d59645cc5ca549911adec11ac25c8"
+    },
+    {
+      "path": "standards/changelog-standard.md",
+      "bytes": 3910,
+      "sha256": "0ba02a50f1ee79d5e23950124ae4c0efc1d2756274a8dfc6b066dd76364923da"
+    },
+    {
+      "path": "standards/documentation-standard.md",
+      "bytes": 5205,
+      "sha256": "ef63059a47479a554cea16132ed11ab4e04753ca85841bf8c772a84917351dbc"
+    },
+    {
+      "path": "standards/mcp-local-helper-standard.md",
+      "bytes": 988,
+      "sha256": "bae4634db1a2250fca37e461bb05aa98289e001a1b0419167692cb50fbee4a3e"
+    },
+    {
+      "path": "standards/naming-standard.md",
+      "bytes": 4184,
+      "sha256": "cebec5d57c685f64fe5424dfea640f8f87779a7dac185f4fac576d2e811ef343"
+    },
+    {
+      "path": "standards/review-standard.md",
+      "bytes": 5867,
+      "sha256": "a98fb0ba9d6e6a74aaa9fab7bb6f07878421746250b24ff74908b2c9f4e24aaf"
+    },
+    {
+      "path": "standards/versioning-standard.md",
+      "bytes": 4174,
+      "sha256": "2bf2d760f1b32ab10b9940430fc4c34bba95e2eae9cb0fe5b9d60e833a50b260"
+    },
+    {
+      "path": "tests/conformance/README.md",
+      "bytes": 232,
+      "sha256": "18edaa70e9ee7f252952231e7015d4d648718587c956fe2188c404b3fcd300a7"
+    },
+    {
+      "path": "tests/test_remediation_acceptance.py",
+      "bytes": 25257,
+      "sha256": "22ba741ecd9110bf4722969e8dcee983efcfb581953f844396b5ab4ad7713816"
+    },
+    {
+      "path": "wiki/Agent-Roles.md",
+      "bytes": 6304,
+      "sha256": "c03e11303c8f26163ca5108e6bad203e9dbd88dc46df57d03cbdcaf16c437996"
+    },
+    {
+      "path": "wiki/Changelog.md",
+      "bytes": 5895,
+      "sha256": "9f98beffa57f45a62dcf1815d0e0f408c30ea470ff0b1126a0ceed3070e1a7ac"
+    },
+    {
+      "path": "wiki/Compliance.md",
+      "bytes": 9363,
+      "sha256": "27b895853dec08fdc15b06d563d6e8cfe2e16da8d2b9b52ad0754041517dd1e8"
+    },
+    {
+      "path": "wiki/Constitution.md",
+      "bytes": 5493,
+      "sha256": "df4a9734df8c498902a262ff42e503600b7e154550d9f34794d04f5dd375e1bc"
+    },
+    {
+      "path": "wiki/Documentation.md",
+      "bytes": 5982,
+      "sha256": "8f54afd3d50219a529b06948b84a8d74b56317ede8fba23abb4908378a9a96bf"
+    },
+    {
+      "path": "wiki/Glossary.md",
+      "bytes": 5973,
+      "sha256": "f10cce9ee2cee61194445f7ccea251ce0e36c73d3678c8c29fc0d17a8dfaca18"
+    },
+    {
+      "path": "wiki/Home.md",
+      "bytes": 8241,
+      "sha256": "47000863ec293f854a389fe6c42aa936c5a01935795c3cc8297bb2649b088c95"
+    },
+    {
+      "path": "wiki/Overview.md",
+      "bytes": 8799,
+      "sha256": "040ca774774bdd08a552125f2efb5849af7981bcaa89917c17d663eebff47cff"
+    },
+    {
+      "path": "wiki/Releases.md",
+      "bytes": 5522,
+      "sha256": "61bf64c03a8cc60148c26b477cc400e278278eda60ee12577112c8a0de741c54"
+    },
+    {
+      "path": "wiki/Workflow.md",
+      "bytes": 7652,
+      "sha256": "3a9a782b19a984b88e6b066eab0f0c94aa072064060a950f44ba01063865180d"
+    },
+    {
+      "path": "wiki/_Footer.md",
+      "bytes": 356,
+      "sha256": "d7e7d02adc0ac69a47da90e4c62b45153c745a34dee43fd3fb39951db2cffb75"
+    },
+    {
+      "path": "wiki/_Sidebar.md",
+      "bytes": 672,
+      "sha256": "d80a07cbf4236b15c07e2e72eeafc7814345d4497ecc3f2fc6bed1c75bcecb28"
+    }
+  ]
+}

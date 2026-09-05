@@ -1,0 +1,22 @@
+Do not use loaded continuity, long-term memory, persistent memory, Git status, or a package-local/foreign remediation work directory to select the workspace.
+
+The only workspace authority is:
+  {{TARGET_REPOSITORY}}\.forge-qwen\state\WORKSPACE_LOCK.json
+
+Use filesystem or shell tools to change to exactly:
+  {{TARGET_REPOSITORY}}
+
+Then perform exactly:
+1. Read `READ-THIS-FIRST-QWEN.txt` from that repository.
+2. Read `.forge-qwen/state/WORKSPACE_LOCK.json`.
+3. Run `.forge-qwen/instructions/scripts/Assert-QwenWorkspace.ps1 -Repository "{{TARGET_REPOSITORY}}" -RequireCurrentDirectory`.
+4. Read `.forge-qwen/state/ACTIVE_ASSIGNMENT.json`.
+5. Execute only its numbered steps.
+
+Ignore every memory/handoff whose namespace is not:
+  {{MEMORY_NAMESPACE}}
+
+Begin the first verified response with:
+  WORKSPACE_LOCK_VERIFIED {{RUN_ID}} {{WORKSPACE_FINGERPRINT}}
+
+If the lock cannot be proven, emit WRONG_WORKSPACE_BLOCKED and perform no repository writes.

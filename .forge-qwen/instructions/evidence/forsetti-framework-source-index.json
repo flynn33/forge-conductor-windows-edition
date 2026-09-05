@@ -1,0 +1,861 @@
+{
+  "schema_version": 1,
+  "root": "Forsetti-Framework-Windows-main",
+  "files": [
+    {
+      "path": ".forsetti/alignment/baseline-file-inventory.json",
+      "bytes": 25384,
+      "sha256": "7e7b49ee848b86137052931abeb495147cfca9d189ba3fa80345a79195971706"
+    },
+    {
+      "path": ".forsetti/alignment/baseline.json",
+      "bytes": 4408,
+      "sha256": "b0cd5b1e2a9fb48e2bc8f1e6db478a8f4d984d2cd6f501f78c52d0a03aac95d4"
+    },
+    {
+      "path": ".forsetti/alignment/final-report.json",
+      "bytes": 8341,
+      "sha256": "01a66910e64819796c1aed417a83fa1a10cf749d06cfc6bd51f0e2fc45ff6305"
+    },
+    {
+      "path": ".forsetti/alignment/final-report.md",
+      "bytes": 2352,
+      "sha256": "5ab50266cc64b0b53fcba3ea0dc1ae1eb5120309fde80b5ac3491930b4d21212"
+    },
+    {
+      "path": ".forsetti/alignment/phase-00-report.json",
+      "bytes": 3009,
+      "sha256": "7eef94a91d698a1bc991f3288261e73c877298c80df5bdaecc93ccde2c37a06b"
+    },
+    {
+      "path": ".forsetti/alignment/phase-00-report.md",
+      "bytes": 1617,
+      "sha256": "9a697f5f48952f293976e9615e093e3df3cb93ecb038fc09db8577460615b393"
+    },
+    {
+      "path": ".forsetti/alignment/phase-01-report.json",
+      "bytes": 2737,
+      "sha256": "2757aec316c06dde8503529be226e485a6725521734b1e50ad9d9273e2ca9f2c"
+    },
+    {
+      "path": ".forsetti/alignment/phase-01-report.md",
+      "bytes": 1295,
+      "sha256": "f5d2d10433fc37b9362d624cf2261e6180e28525949a3dfe8d664c0f6fc03a34"
+    },
+    {
+      "path": ".forsetti/alignment/phase-02-report.json",
+      "bytes": 2840,
+      "sha256": "ab09d2f6e20e7f634f589ab8a2a319aeb84028f6aa230db126689cad3e7b6c98"
+    },
+    {
+      "path": ".forsetti/alignment/phase-02-report.md",
+      "bytes": 1644,
+      "sha256": "9a03e0d16a50f5d083327cb1c9f9394c9ae02d0b82aa1f897f06c8d952e16a6e"
+    },
+    {
+      "path": ".forsetti/alignment/phase-03-report.json",
+      "bytes": 2271,
+      "sha256": "1d01297201179ef1cef6dabb9cf9d4735164db6778f65f2550599e98ff95975d"
+    },
+    {
+      "path": ".forsetti/alignment/phase-03-report.md",
+      "bytes": 1225,
+      "sha256": "cdfe06ff8f922808bb1b26bb1b3a808441b44e69ac5ea707a4b5950c813318c1"
+    },
+    {
+      "path": ".forsetti/alignment/phase-04-report.json",
+      "bytes": 2280,
+      "sha256": "c33b30965d96296dc57f628b6b3c08da8325ca42c1406da9616823afee11f8fc"
+    },
+    {
+      "path": ".forsetti/alignment/phase-04-report.md",
+      "bytes": 1184,
+      "sha256": "0a94ef1d88062d8f87987681ba07cb417357741e621d5c0503e8c0568775266e"
+    },
+    {
+      "path": ".forsetti/alignment/phase-05-report.json",
+      "bytes": 2133,
+      "sha256": "40bce89dcc69e173611dd3bb7d76447520d0eaacf6deb3240110b3b241d9dfae"
+    },
+    {
+      "path": ".forsetti/alignment/phase-05-report.md",
+      "bytes": 1057,
+      "sha256": "13b77620ef1c29aa93aac3b07346156281472a27ba4dcce2ef0569c85c7f7d3e"
+    },
+    {
+      "path": ".forsetti/alignment/phase-06-report.json",
+      "bytes": 1986,
+      "sha256": "5b596575b7bcad9f4f1f61c635f424d5fd2468d04339f86d6cad11616c145efa"
+    },
+    {
+      "path": ".forsetti/alignment/phase-06-report.md",
+      "bytes": 1076,
+      "sha256": "1ec06f6adf6235d46752f216cd9f912b46bfae5423500a3dfff2ce084b0f7dd9"
+    },
+    {
+      "path": ".forsetti/alignment/phase-07-report.json",
+      "bytes": 1613,
+      "sha256": "2e8dbe723a1cfe4c476a1a015531852ae64eea2b24edd0c7bd12f7c3fff3f522"
+    },
+    {
+      "path": ".forsetti/alignment/phase-07-report.md",
+      "bytes": 1005,
+      "sha256": "e4bf7933c444fd214091d32cde583bcdfb9cde1136ead17765c959da589ef630"
+    },
+    {
+      "path": ".forsetti/alignment/phase-08-report.json",
+      "bytes": 1574,
+      "sha256": "9a6ff7d1de7922ebc4e7bd9efe68300b9b606d5a43d766e45ba24130de793f98"
+    },
+    {
+      "path": ".forsetti/alignment/phase-08-report.md",
+      "bytes": 837,
+      "sha256": "3975da6ae07a11f053cb2bd58e9e0b9fb39d300309917f22643047dd3318deea"
+    },
+    {
+      "path": ".forsetti/alignment/phase-09-report.json",
+      "bytes": 2069,
+      "sha256": "a45aa44c29bd773759d390777bee8ad20095966b11568664dcf90a503db208e5"
+    },
+    {
+      "path": ".forsetti/alignment/phase-09-report.md",
+      "bytes": 873,
+      "sha256": "48d9ff149c285de2cf3694425a66359ef1a1b495d5e27b4120f4f93fdb82b4f2"
+    },
+    {
+      "path": ".github/FUNDING.yaml",
+      "bytes": 63,
+      "sha256": "40bef4cae743d7a4049964a4bf6a218ed820d138370ac67a4756d0cc6109ba03"
+    },
+    {
+      "path": ".github/FUNDING.yml",
+      "bytes": 63,
+      "sha256": "40bef4cae743d7a4049964a4bf6a218ed820d138370ac67a4756d0cc6109ba03"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "bytes": 661,
+      "sha256": "b71be1421c385723cc4943f30eb73cf0f18e3e02a15e9a56d0cee6afdd640767"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "bytes": 45,
+      "sha256": "e71bea835ed1158881306294d96968f125b0b0c5eff66cd94df559336bd0b210"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.md",
+      "bytes": 603,
+      "sha256": "e3574a6d4a51d78e54db6ef1b74c8fb79f451fbeba6b30ae9d99e48f725d067c"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "bytes": 401,
+      "sha256": "6c0993e31d3fe85b432744ad6e5ce8107929c12f55022e07f382ecbe17a43620"
+    },
+    {
+      "path": ".github/discussion-automation.json",
+      "bytes": 3481,
+      "sha256": "a449e17ebc104f49f24b5a0fea6504a981ce82273088e3f944964dd5c3909ea1"
+    },
+    {
+      "path": ".github/discussion_moderation_policy.json",
+      "bytes": 2286,
+      "sha256": "9c36fe2175f0ab44bbc772a5c51183005db3fdc09d3ee15fab09c0fef8d784f0"
+    },
+    {
+      "path": ".github/discussion_topic_generator.json",
+      "bytes": 1333,
+      "sha256": "65fd26abaa50411d791f51439998081c0f47987f774d17b5c0b2d6feb5d687e5"
+    },
+    {
+      "path": ".github/labeler.yml",
+      "bytes": 743,
+      "sha256": "434e2324893a97e1d52bc73466c3b0ddef36292a625de529b9c0be35006b6c65"
+    },
+    {
+      "path": ".github/release-drafter-config.yml",
+      "bytes": 1087,
+      "sha256": "b48896b8807dbb1e7858c1c63500a106531f835d204ce354650464c9ba5d028f"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 427,
+      "sha256": "f932380839ea4c0fcfe4a1b3efd9a1408de329d627415688232049ac5766de68"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 2420,
+      "sha256": "bc80c51fd00f144427fb12c1238382264ce39fdec00901e96baa42563fe3f477"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 1222,
+      "sha256": "d586bb4b7c9f6d00a987357c0df916718485aba34c13c86a3b5050c32cdbaa3d"
+    },
+    {
+      "path": "CMakePresets.json",
+      "bytes": 1416,
+      "sha256": "ab59fa1a4b74f92ca2058fa29c952adb30e9475ed27b89228bcd310f035ef99c"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "bytes": 457,
+      "sha256": "045d24a24c7cd53e2b63cbfcefa8b1ee1853dc1467007a96ce038aa7eada94bc"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 1157,
+      "sha256": "9b28bec160e71d7160db22647f84631be89cb1a3ec22ff43364e751bd4765166"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 11341,
+      "sha256": "6e3ca1bde7ac8930e70eacf814f07b767e6742268c1bd43f90756a48f6a71c9a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 10873,
+      "sha256": "f1fdd6daadeec2a03a7da32094fb8f0a3fcc367f84fd390f1bc1816c596a6e17"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 1361,
+      "sha256": "32d4760c426a0a500b023859c3229f4b5e48be8369141c23ebd3f51da0b83934"
+    },
+    {
+      "path": "Scripts/check-architecture.ps1",
+      "bytes": 4795,
+      "sha256": "551009cf92045dd2b893fc42b188a1ab949f5a3f772e27cea1f5e39203744347"
+    },
+    {
+      "path": "Scripts/check-dependencies.ps1",
+      "bytes": 5501,
+      "sha256": "338e3338882e6d5711db28c8ef0275c4e65a297bfaf3fff46854ef539da5d9cf"
+    },
+    {
+      "path": "Scripts/check-manifests.ps1",
+      "bytes": 12452,
+      "sha256": "f5b6c2392a31edfab222949068274f19e045314beaa70e2f4bea0a7f7565d859"
+    },
+    {
+      "path": "Scripts/check-pr-compatibility.ps1",
+      "bytes": 6241,
+      "sha256": "6021130acc6f7666804e60e517cff507003b0054a9293dbdfdbc037f334fcd2d"
+    },
+    {
+      "path": "Scripts/github/discussion_moderator.py",
+      "bytes": 27718,
+      "sha256": "dc54bea7a301b11f8341c412d169d2a8a561aa121e7bbba59e5c87350ddda5b9"
+    },
+    {
+      "path": "Scripts/github/discussion_router.py",
+      "bytes": 18478,
+      "sha256": "5d4dd5ed8a1f42c0a3e033528af5ee87d2b833dd9a0a708b7fc03c16c39f7068"
+    },
+    {
+      "path": "Scripts/github/discussion_topic_seeder.py",
+      "bytes": 22775,
+      "sha256": "70dcabae3ab01ce2174f93bf33e7859148cf31b81004c940a2f1c50803d77cf6"
+    },
+    {
+      "path": "Scripts/test-guardrail-scripts.ps1",
+      "bytes": 3623,
+      "sha256": "10443e52a8f5ab2f9e570aab02709fb55b27fde82d920921fe07f810e456eef7"
+    },
+    {
+      "path": "Scripts/verify-forsetti-guardrails.ps1",
+      "bytes": 2043,
+      "sha256": "340b057e3d797d5477b8c6df2ee6163bfe0a04c420d0366e147284d8e85d9267"
+    },
+    {
+      "path": "docs/governance/discussion_moderation_policy.md",
+      "bytes": 2923,
+      "sha256": "603f45065e9baf69e8275c2875c121b985f0330a561e73b4a5d8bed6ca24eece"
+    },
+    {
+      "path": "docs/governance/github-discussion-automation.md",
+      "bytes": 3734,
+      "sha256": "5e7b61672af085dc93977dc2f190bc613776e2dac5dfec6504dd933b8212af01"
+    },
+    {
+      "path": "framework-policy.json",
+      "bytes": 6905,
+      "sha256": "2331dffd25a17356457cc64f9fce8fd4b8a8e92f758cea29a13dec44cac9e150"
+    },
+    {
+      "path": "implementation-policy.json",
+      "bytes": 4557,
+      "sha256": "3b9a1ea2c84aa27f3d1c29f97ab9324095b5fc56a2025ab3e7ad5486bf15e658"
+    },
+    {
+      "path": "include/ForsettiCore/ActivationStore.h",
+      "bytes": 1385,
+      "sha256": "fda9021c6424457c384663283092997731b25208185926407d83d96eea8d962a"
+    },
+    {
+      "path": "include/ForsettiCore/CapabilityPolicy.h",
+      "bytes": 1969,
+      "sha256": "13b13b0d9966cff731bb442563df5ba174bd8ff893ebd7005877d8cac92eeffa"
+    },
+    {
+      "path": "include/ForsettiCore/CompatibilityChecker.h",
+      "bytes": 2103,
+      "sha256": "07cf620190616d50a00c263e49000b9d19f7d9608c35bfd8f6ac3f740d692c23"
+    },
+    {
+      "path": "include/ForsettiCore/DefaultModuleRoles.h",
+      "bytes": 1972,
+      "sha256": "dca7c9fdfd1ee9992806e07a34d1889915eefa0ae6726133ab5f174eb1cc61f2"
+    },
+    {
+      "path": "include/ForsettiCore/EntitlementProviders.h",
+      "bytes": 1904,
+      "sha256": "e6db317b68dbe5466afd46169529d8012a5b1d7030691b0a1282f1d598b2f9a2"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiContext.h",
+      "bytes": 7703,
+      "sha256": "7ce35872aa2b3c950e8a11fa42f5f2365590bd3fe289f492b114d83d2738eb28"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiEventBus.h",
+      "bytes": 2026,
+      "sha256": "e34da294e4912f33165e8851850a15c9c8ab94b7b9ca6dcfc27d3f1ff9b6d0c9"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiLogger.h",
+      "bytes": 1226,
+      "sha256": "19db5961470c33e9c666d9ca9af73a83cb275e02e39f8c57c1dcc0bbea9c81cc"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiProtocols.h",
+      "bytes": 2199,
+      "sha256": "7b5ae10f232186f1958369c5021fd6d4c92e961333265fe3d8e72fbe9653f55d"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiRuntime.h",
+      "bytes": 1597,
+      "sha256": "bd81a9866817624c85e41427be52c0d5ac5fda345083b10e81912d63a6e991fd"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiServiceContainer.h",
+      "bytes": 3666,
+      "sha256": "cefa67b3a8cb785de9a2c038e796c392e223bfd9981ac72921db357c77f22b39"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiServices.h",
+      "bytes": 2917,
+      "sha256": "e0776abd915ffd0792e35d1302077fd42419fd7f4bde55a87e0a94ba234afb87"
+    },
+    {
+      "path": "include/ForsettiCore/ForsettiVersion.h",
+      "bytes": 380,
+      "sha256": "d79ef46a130f4fcac2b2f92968f12d5fd11ce4f676da7c7789eff22dcae8b2ca"
+    },
+    {
+      "path": "include/ForsettiCore/ManifestLoader.h",
+      "bytes": 1439,
+      "sha256": "e4955f00b503213c32430dc222537e744ab9b5a6ef68cfc5b6b2174c6b39d570"
+    },
+    {
+      "path": "include/ForsettiCore/ModuleManager.h",
+      "bytes": 5918,
+      "sha256": "f617c23c0befeedfafd3e666fc45014386ca16570a504bd3ba8508c6cfe4cb70"
+    },
+    {
+      "path": "include/ForsettiCore/ModuleModels.h",
+      "bytes": 3014,
+      "sha256": "ae4ee5d8111b7b7eb4e1c59862f4672e39ed8534290403794fc2b958285d872b"
+    },
+    {
+      "path": "include/ForsettiCore/ModuleRegistration.h",
+      "bytes": 4475,
+      "sha256": "4317f66e9f96c97a4ca641f8cb76f6cfd27047716d057b554557bcfa76a8c1d3"
+    },
+    {
+      "path": "include/ForsettiCore/ModuleRegistry.h",
+      "bytes": 2448,
+      "sha256": "57f0bebbaf07dfdf1afe4ebf097ab4f805d3d8539589ad1f19d34a93c273475b"
+    },
+    {
+      "path": "include/ForsettiCore/ModuleRequirementValidator.h",
+      "bytes": 1364,
+      "sha256": "ab06ac6ad75b421226159712a324220a99a9fa697213b321ee4b800dc44d7e4f"
+    },
+    {
+      "path": "include/ForsettiCore/ModuleRequirements.h",
+      "bytes": 4018,
+      "sha256": "a05607da1ec5511e3cff537ce2b3c494fc2bb6482c22f7872c0654a73e0bfb01"
+    },
+    {
+      "path": "include/ForsettiCore/SemVer.h",
+      "bytes": 1333,
+      "sha256": "dd1adf4ca5730a185139557ae3334098386e829069ed48d57a862fc259ba10c8"
+    },
+    {
+      "path": "include/ForsettiCore/StaticModuleRegistry.h",
+      "bytes": 480,
+      "sha256": "e0aa8e25a4ddd2e3a9a0360bf572435122144072527563587119e9828ef43bf5"
+    },
+    {
+      "path": "include/ForsettiCore/UIModels.h",
+      "bytes": 7817,
+      "sha256": "fc3c806b400e77f6c6a9527ce5a54a7b576d041d86f2b49bfc7192659e3135a2"
+    },
+    {
+      "path": "include/ForsettiCore/UISurfaceManager.h",
+      "bytes": 1756,
+      "sha256": "0c4a840650e4491b4b1167638a14f560d44d43a4c1e41aa9e6cdc456a6c8f100"
+    },
+    {
+      "path": "include/ForsettiHostTemplate/ForsettiHostBootstrap.h",
+      "bytes": 2025,
+      "sha256": "83083eded3387541fbff847ebf3c26e54087f3c807f580ca7ae6710a5b6fc965"
+    },
+    {
+      "path": "include/ForsettiHostTemplate/ForsettiHostController.h",
+      "bytes": 1631,
+      "sha256": "e2e39b80a0fc65839d269f9d3fa0b4fec96474d5ed8a4b89171dcd75ab3d8b4c"
+    },
+    {
+      "path": "include/ForsettiHostTemplate/ForsettiHostOverlayRouter.h",
+      "bytes": 968,
+      "sha256": "25d4957ae7fc38952088f5eeebfed637c8dc8902764a848d11d447b0321bd94b"
+    },
+    {
+      "path": "include/ForsettiHostTemplate/ForsettiHostState.h",
+      "bytes": 1478,
+      "sha256": "d714443e0c14ee7417ab1677679ec023b6650a2d24410136e571c87c9b37fd6e"
+    },
+    {
+      "path": "include/ForsettiHostTemplate/ForsettiSurfaceStateAdapter.h",
+      "bytes": 1146,
+      "sha256": "5a23405c876e9141fba7c6630047449313b6838c742c868a33ebebe653e1b3db"
+    },
+    {
+      "path": "include/ForsettiPlatform/DefaultPlatformServices.h",
+      "bytes": 1112,
+      "sha256": "4edf2f8da80408cff6252abcb29c85fdd6f860359bf763d01096775de6524c62"
+    },
+    {
+      "path": "include/ForsettiPlatform/EntitlementProviders.h",
+      "bytes": 823,
+      "sha256": "d62b4ac7e0ea67d83f277b633e5534df75d7094a2c68c3ce651aeaa098e4663d"
+    },
+    {
+      "path": "include/ForsettiPlatform/ModuleRegistrationPlatform.h",
+      "bytes": 1131,
+      "sha256": "1ddecf5b34c03250f4866ad86d2a1e69d78bc9efbe87ed9d871c2bcfa6295268"
+    },
+    {
+      "path": "include/ForsettiPlatform/PlatformServices.h",
+      "bytes": 3376,
+      "sha256": "a91780ad39a2c2c79b553c3e50b0226a191f05887960d7aac91b2d92404f48c2"
+    },
+    {
+      "path": "include/ForsettiPlatform/WindowsViewFactoryRegistry.h",
+      "bytes": 2857,
+      "sha256": "c97ec08c85d710bbba44dcd25b6ae78e37ba37bf71a091e21d693a2450c224b7"
+    },
+    {
+      "path": "samples/ForsettiDemo/CMakeLists.txt",
+      "bytes": 397,
+      "sha256": "fa7ad289f72160e5bbed946c648df2598bac21800e8796acad3a6a1ce39e5ab0"
+    },
+    {
+      "path": "samples/ForsettiDemo/README.md",
+      "bytes": 329,
+      "sha256": "c51de724478479d0e8370c726f2d6c2a02712c42fa35fbe837cf3ceb14a842ae"
+    },
+    {
+      "path": "samples/ForsettiDemo/main.cpp",
+      "bytes": 1536,
+      "sha256": "cfbbe421136b7501980da9e098a389cd769c7f2af6a5efad9d2e6ce9c6585cea"
+    },
+    {
+      "path": "src/ForsettiCore/ActivationStore.cpp",
+      "bytes": 1715,
+      "sha256": "8c96797d23104ca16422f0c3df53436360ed0da015fe9cbea2f98c248c17aa9b"
+    },
+    {
+      "path": "src/ForsettiCore/CMakeLists.txt",
+      "bytes": 988,
+      "sha256": "69b2f7b0a7a21dc58b2ab511ae4b87eecc3efabfe7783ec50d0e04e167b70b45"
+    },
+    {
+      "path": "src/ForsettiCore/CapabilityPolicy.cpp",
+      "bytes": 1242,
+      "sha256": "05c3cac1213ce8c5b5fa6375bfb08c467d511fdf527c2def2b2a5a2fc549d4b1"
+    },
+    {
+      "path": "src/ForsettiCore/CompatibilityChecker.cpp",
+      "bytes": 3496,
+      "sha256": "6e84aefb4070ae2414feaf3dddbd10ceaf905a67b2c896be5d385a19295a57f4"
+    },
+    {
+      "path": "src/ForsettiCore/DefaultModuleRoles.cpp",
+      "bytes": 3298,
+      "sha256": "65f0f8f719bd8d21beab28d86f47097504c32b410bed5c28bd356ad10992f6e1"
+    },
+    {
+      "path": "src/ForsettiCore/EntitlementProviders.cpp",
+      "bytes": 2484,
+      "sha256": "e8d1660e8c4e4dfdf0b2e8a2b7f9a4fc3130b33e800b1440b89a632f23c51354"
+    },
+    {
+      "path": "src/ForsettiCore/ForsettiContext.cpp",
+      "bytes": 8516,
+      "sha256": "5fd09740d22817fa229747fe34905163ae212f152f001880365a6ff817714edc"
+    },
+    {
+      "path": "src/ForsettiCore/ForsettiEventBus.cpp",
+      "bytes": 2626,
+      "sha256": "6490fb3ef2c38c822e15aa813015b3570a296d431819e498f53626c8b6cecca8"
+    },
+    {
+      "path": "src/ForsettiCore/ForsettiLogger.cpp",
+      "bytes": 1205,
+      "sha256": "f53a183693d9024dc7784fb8bc2027ecdcab061d56fac086bb6c81eff6c3d32b"
+    },
+    {
+      "path": "src/ForsettiCore/ForsettiRuntime.cpp",
+      "bytes": 5819,
+      "sha256": "93992f2302e71ebfde3ef68757225fbb247ace0faa3b1f1b5b4086b53a49cbce"
+    },
+    {
+      "path": "src/ForsettiCore/ForsettiServiceContainer.cpp",
+      "bytes": 8661,
+      "sha256": "44636ff3b768756c5f1d28360838686e6c2dce88cfbf33092f4de5b5b5fa5026"
+    },
+    {
+      "path": "src/ForsettiCore/ManifestLoader.cpp",
+      "bytes": 21246,
+      "sha256": "a08b96f1b0f8c79058531431ba4822caec02f2608fae5664914a6612760032aa"
+    },
+    {
+      "path": "src/ForsettiCore/ModuleManager.cpp",
+      "bytes": 28809,
+      "sha256": "5705fea886c43d231dcb2aee98aa010966733fd806511be3c7101d6d1cede7b7"
+    },
+    {
+      "path": "src/ForsettiCore/ModuleModels.cpp",
+      "bytes": 8018,
+      "sha256": "faa91e07ce16ad656bc2e6312160f3e4bb69cf351663e626b06e1045eee0a8e2"
+    },
+    {
+      "path": "src/ForsettiCore/ModuleRegistration.cpp",
+      "bytes": 14907,
+      "sha256": "fed37f9e2701f20800b40993ce236d498dacc64e1eb67fd65e86e78ea42ea978"
+    },
+    {
+      "path": "src/ForsettiCore/ModuleRegistry.cpp",
+      "bytes": 1250,
+      "sha256": "e0e22ca300a998f86dbe58793685f81d131aaf2e1a3852c5a0033b2fbdc48196"
+    },
+    {
+      "path": "src/ForsettiCore/ModuleRequirementValidator.cpp",
+      "bytes": 3680,
+      "sha256": "99ca30fcd422ae57b82c12ca6b25636c6175d2b089e7c7b9436385e0144342a8"
+    },
+    {
+      "path": "src/ForsettiCore/ModuleRequirements.cpp",
+      "bytes": 11264,
+      "sha256": "df958f7a97047818f94f3ca50da5bd72e8c24d2814ce2e9fe6e1795784a00d01"
+    },
+    {
+      "path": "src/ForsettiCore/SemVer.cpp",
+      "bytes": 7670,
+      "sha256": "9e847ab43d7390760c9b95d65652ce907c2469af5a7c1a766baf80d9dd8feff5"
+    },
+    {
+      "path": "src/ForsettiCore/StaticModuleRegistry.cpp",
+      "bytes": 235,
+      "sha256": "008c6b4903458f1686301ca303bc4f15f80efb79fba866ecfdd95b056f87ba6a"
+    },
+    {
+      "path": "src/ForsettiCore/UIModels.cpp",
+      "bytes": 11250,
+      "sha256": "c791d00d4e765699f069372b1c518ca2661d31847047cfca82d192388ea7ab98"
+    },
+    {
+      "path": "src/ForsettiCore/UISurfaceManager.cpp",
+      "bytes": 5170,
+      "sha256": "6b5d233df21b95704e384722a5073106e5af8faa57aa6eb071706e8bdd7e68db"
+    },
+    {
+      "path": "src/ForsettiExampleAppModule/CMakeLists.txt",
+      "bytes": 536,
+      "sha256": "2152ea21a279876d553df2472b9460a0807043bb8d14faf31af896849eb8104f"
+    },
+    {
+      "path": "src/ForsettiExampleAppModule/ExampleAppModule.cpp",
+      "bytes": 2946,
+      "sha256": "ffe1da8acc6e306b9fad1b071cb2950db2c3590658183bff51a3d734bd751465"
+    },
+    {
+      "path": "src/ForsettiExampleAppModule/ExampleAppModule.h",
+      "bytes": 779,
+      "sha256": "4ac5468be4d24e46110bb0507f0469913120e13b5a9efbe0de6a91cd34749495"
+    },
+    {
+      "path": "src/ForsettiExampleAppModule/ExampleAppModuleRegistry.cpp",
+      "bytes": 544,
+      "sha256": "674db2cd5b72566a383ac01ed18b9ce9b674f721515ae62a6ba93f30dae2539c"
+    },
+    {
+      "path": "src/ForsettiExampleAppModule/Resources/ForsettiManifests/ExampleAppModule.json",
+      "bytes": 1035,
+      "sha256": "a1710712727299cf402cfe27cdb86b6db75de18c5fd0e3ad5ab3eea2c23742ce"
+    },
+    {
+      "path": "src/ForsettiExampleServiceModule/CMakeLists.txt",
+      "bytes": 564,
+      "sha256": "bc2133d4bfce01916b41d916b7bc2c2f8b7bcfe0913798cb60bd4b6ac19c1223"
+    },
+    {
+      "path": "src/ForsettiExampleServiceModule/ExampleServiceModule.cpp",
+      "bytes": 2577,
+      "sha256": "10033c6c436577928c6d50ef24056db44428ee4114e2e12366104970650c79a8"
+    },
+    {
+      "path": "src/ForsettiExampleServiceModule/ExampleServiceModule.h",
+      "bytes": 695,
+      "sha256": "96f8ddd5475c7f61e67366ba2f0ff8e9f387da8d02356d5b0d1c51735b52c170"
+    },
+    {
+      "path": "src/ForsettiExampleServiceModule/ExampleServiceModuleRegistry.cpp",
+      "bytes": 564,
+      "sha256": "b6cb4f3d2d4ae015914a2e0f63d9e53a9ffe47b9c6e2b859ffd382d8f6b66f83"
+    },
+    {
+      "path": "src/ForsettiExampleServiceModule/Resources/ForsettiManifests/ExampleServiceModule.json",
+      "bytes": 1207,
+      "sha256": "7aa5d1b9fee455bbe76cd66b2d5a69332aac89b6ee38b237c641c63f0a93c604"
+    },
+    {
+      "path": "src/ForsettiExampleUIModule/CMakeLists.txt",
+      "bytes": 529,
+      "sha256": "e613ecce7e638655a658531ac81a3102a7c2f4fcbbe66c016ce925f16202f5a6"
+    },
+    {
+      "path": "src/ForsettiExampleUIModule/ExampleUIModule.cpp",
+      "bytes": 4472,
+      "sha256": "6bd532ee3cd07d6a25b896828592180bc5f717f05515caed32736ad9068bde6d"
+    },
+    {
+      "path": "src/ForsettiExampleUIModule/ExampleUIModule.h",
+      "bytes": 776,
+      "sha256": "b72f0e852b2c216d2d74d30e1cdd3b593a2a548a7d3f45c3a33e04d87df7b53e"
+    },
+    {
+      "path": "src/ForsettiExampleUIModule/ExampleUIModuleRegistry.cpp",
+      "bytes": 539,
+      "sha256": "06ef569d9f93c9428dac706dd63b891baa4417f7036b9c872e3584dfc14c1509"
+    },
+    {
+      "path": "src/ForsettiExampleUIModule/Resources/ForsettiManifests/ExampleUIModule.json",
+      "bytes": 1235,
+      "sha256": "9f6835c26fef959d4d7ca97d17f3783c54a42b353094af75161c816719bcaaeb"
+    },
+    {
+      "path": "src/ForsettiHostTemplate/CMakeLists.txt",
+      "bytes": 577,
+      "sha256": "13aeb04d11a3809c14e2ff9967b4f2c5b1dc5d4b34674c241d0077424d184e48"
+    },
+    {
+      "path": "src/ForsettiHostTemplate/ForsettiHostBootstrap.cpp",
+      "bytes": 3112,
+      "sha256": "f3c42f6eb94886910e325895ab89487b4a29ba637a91a9292f75d6c2beae9f0b"
+    },
+    {
+      "path": "src/ForsettiHostTemplate/ForsettiHostController.cpp",
+      "bytes": 4739,
+      "sha256": "f87f85918ebd2091edf4d261401f8aadc5735127fb63430b5d17a3ede87a7cd4"
+    },
+    {
+      "path": "src/ForsettiHostTemplate/ForsettiHostOverlayRouter.cpp",
+      "bytes": 845,
+      "sha256": "a102f7be2983f067250175de4e8dea51b6ca94b98742daf6929890f77d4f5b00"
+    },
+    {
+      "path": "src/ForsettiHostTemplate/ForsettiHostState.cpp",
+      "bytes": 1976,
+      "sha256": "0dfb35fca2c0946b2e91a140d7795e3d3459700888c7786ca2abe95ff1123cea"
+    },
+    {
+      "path": "src/ForsettiHostTemplate/ForsettiSurfaceStateAdapter.cpp",
+      "bytes": 981,
+      "sha256": "f6bdf0a6d5f23f7296230c6b7fbfe7939699419ffe31c7f384c6039d80fda83b"
+    },
+    {
+      "path": "src/ForsettiPlatform/CMakeLists.txt",
+      "bytes": 678,
+      "sha256": "2561d6fb33ac1ffcdf5bafbb3661744566d54604bcccc215a8619be2988568cb"
+    },
+    {
+      "path": "src/ForsettiPlatform/DefaultPlatformServices.cpp",
+      "bytes": 898,
+      "sha256": "201b6615cc5086ad99c14ad1a3804534355742d136bf8d5aa93877a4d4e33b32"
+    },
+    {
+      "path": "src/ForsettiPlatform/EntitlementProviders.cpp",
+      "bytes": 489,
+      "sha256": "a75f4d4338445fa52262f9ebe7dd25c2aa2a0773b6f5eb393dc8bac87446cbf3"
+    },
+    {
+      "path": "src/ForsettiPlatform/ModuleRegistrationPlatform.cpp",
+      "bytes": 10365,
+      "sha256": "f93a477dad2e237537ecf3d74a62ba8407a93d4f1a556bd794772439dd1eaa3e"
+    },
+    {
+      "path": "src/ForsettiPlatform/PlatformServices.cpp",
+      "bytes": 21247,
+      "sha256": "c1aa42880f60bb3e375edb300f23512152091730630cdbaecae4e1e96c38dc0a"
+    },
+    {
+      "path": "src/ForsettiPlatform/WindowsViewFactoryRegistry.cpp",
+      "bytes": 2937,
+      "sha256": "56158b990afa5c4b9a1d4509936ac288821a83c3988064810845104d5eb8e05c"
+    },
+    {
+      "path": "templates/windows-app-module/ForsettiManifests/TemplateAppModule.json",
+      "bytes": 1042,
+      "sha256": "ed4d9d82c313609edac2ac6a8111e205b2f2d8040fabf040f8c26221092c41b2"
+    },
+    {
+      "path": "templates/windows-app-module/README.md",
+      "bytes": 195,
+      "sha256": "d826e6cf14a10f5c9f3580c568c6a6693783b42057986fe6cc37914d447a6ea3"
+    },
+    {
+      "path": "templates/windows-host/README.md",
+      "bytes": 241,
+      "sha256": "ae4f8bd39e0b1fb864d1f91f5680179135f305f5ae99530239d5302dfabc6fec"
+    },
+    {
+      "path": "templates/windows-service-module/CMakeLists.txt",
+      "bytes": 365,
+      "sha256": "1ceab8a730d7103d85a274eb8280b87e51543f96e7b0f06bd8f63589e358ab4d"
+    },
+    {
+      "path": "templates/windows-service-module/ForsettiManifests/TemplateServiceModule.json",
+      "bytes": 909,
+      "sha256": "432a6f62033a3b8cb54787d1549099b5e304d9cf87350f12802602d1ab57af50"
+    },
+    {
+      "path": "templates/windows-service-module/README.md",
+      "bytes": 218,
+      "sha256": "3125f9e0c020e64260260c4d2abfcd5f288e6c508b15ab6fbca3c8bb38e82a1e"
+    },
+    {
+      "path": "templates/windows-service-module/TemplateServiceModule.cpp",
+      "bytes": 2657,
+      "sha256": "5c8467157b3f5952e9e9e8d59a8588734b6466a660a44a0e28970b692335ca6d"
+    },
+    {
+      "path": "templates/windows-service-module/TemplateServiceModule.h",
+      "bytes": 704,
+      "sha256": "48e69668505d1b261d0fa74e8929a4c6752f3f1f5118dacedb47f9034fe1bedf"
+    },
+    {
+      "path": "templates/windows-shared-database-module/ForsettiManifests/TemplateSharedDatabaseModule.json",
+      "bytes": 973,
+      "sha256": "7c2d9c33b1bbccf9ea47c356077989803597de22370bcc08e818f104d94b8909"
+    },
+    {
+      "path": "templates/windows-shared-database-module/README.md",
+      "bytes": 266,
+      "sha256": "08b08b5db135336d575c841510dae29bbf67332ac06aa93af9d59b8b1412e750"
+    },
+    {
+      "path": "templates/windows-ui-module/ForsettiManifests/TemplateUIModule.json",
+      "bytes": 1099,
+      "sha256": "64bb1e4cc5e5a86006c69f796c5d38f4ea7fd403c9c0f54bc5c822a7d91fa46e"
+    },
+    {
+      "path": "templates/windows-ui-module/README.md",
+      "bytes": 186,
+      "sha256": "3b295ba2b91800c1de4851121d42f64a4e568d4af119398529f4edea45364c49"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "bytes": 5189,
+      "sha256": "f07875d7b2da62d82eae552170815e810886cc78e1ebe28aba3ba44eab9e2e0b"
+    },
+    {
+      "path": "tests/ForsettiArchitectureTests/ArchitectureEnforcementTests.cpp",
+      "bytes": 10426,
+      "sha256": "51e085de1ab137e6b07e64ea7238e41fb73dbb7d22cf58799e97ac00aa100617"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/BootstrapTests.cpp",
+      "bytes": 5665,
+      "sha256": "1ad98e1fdbd850c580af81fcac63013a5186e2f9acfcdb1882642cabe0bbf28c"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/CompatibilityCheckerTests.cpp",
+      "bytes": 7685,
+      "sha256": "92e8fc079090d18563209fb982375a78ec04c64b476dbe820a37f0a693f59a79"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/EntitlementProviderTests.cpp",
+      "bytes": 4563,
+      "sha256": "84fa8451faad55c4bb5f54ec27e1b1605e001bd66a167e35fe5ba6540a4a53d1"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/ManifestLoaderTests.cpp",
+      "bytes": 21563,
+      "sha256": "529825aa89242a973aa6919daab839eab1f4d7d50463007edc3cb271c36ead78"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/ModuleCommunicationTests.cpp",
+      "bytes": 16865,
+      "sha256": "a2f188eb02b8cb138cc56f3e47f4303e54745c40832116b70440d451e94b8be3"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/ModuleLoggingTests.cpp",
+      "bytes": 2783,
+      "sha256": "9bb6d3a522735d49db7d477b45637c35e71e7a3b1182ef225b911659c69d8ab2"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/ModuleRegistrationTests.cpp",
+      "bytes": 6418,
+      "sha256": "4e146f9fc536fe1495ab3afee5172318522f3bf6be4f77ea829917ebb274aa51"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/RuntimeLifecycleTests.cpp",
+      "bytes": 57750,
+      "sha256": "676000d2a63354cb497a5b2032f6df94d6e08dc21e589867faaf473606510dc6"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/SemVerTests.cpp",
+      "bytes": 5721,
+      "sha256": "f085dec8d51bef85ec581e91f1a9165068794c9b97907fcfbeebf372c0c393cf"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/TestHelpers.h",
+      "bytes": 5930,
+      "sha256": "5d236ae3b70df3b85432e060c71cc5363c80c2c67ac1d14b6134c784de1dec55"
+    },
+    {
+      "path": "tests/ForsettiCoreTests/UISurfaceManagerTests.cpp",
+      "bytes": 7742,
+      "sha256": "1ef65f614642cb1cd7d840b49311c518e2f712e685056cfd56b29c8d34f4c635"
+    },
+    {
+      "path": "tests/ForsettiPlatformTests/PlatformServicesTests.cpp",
+      "bytes": 9328,
+      "sha256": "fa40324073a78818e3013a72903242df8042aaa6fa687516a394c8718817cab1"
+    },
+    {
+      "path": "vcpkg.json",
+      "bytes": 264,
+      "sha256": "7aa9072e3c1c9cb37512e17e95cbfb6367eec07b40165d44d9042b3442806990"
+    },
+    {
+      "path": "wiki.md",
+      "bytes": 3404,
+      "sha256": "acf34dc1b0c15afddf397ddf546b8e6eb8e96cc30827231cd881a53f9f44c42b"
+    }
+  ]
+}

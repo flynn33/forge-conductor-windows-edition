@@ -1,0 +1,5 @@
+Do not trust the continuity packet or persistent memory that may already be loaded. Do not adopt a workspace from them.
+
+First use a filesystem or shell tool to confirm the current directory contains `.forge-qwen/state/WORKSPACE_LOCK.json`. Read `READ-THIS-FIRST-QWEN.txt`, run the workspace assertion script with `-RequireCurrentDirectory`, and read `.forge-qwen/state/ACTIVE_ASSIGNMENT.json`.
+
+If the lock is missing or mismatched, emit `WRONG_WORKSPACE_BLOCKED` and stop without inspecting Git changes. If it passes, begin with `WORKSPACE_LOCK_VERIFIED <run_id> <fingerprint>` and execute only the active assignment step card. Do not broadly review the package, use a `work/` directory, or resume macOS remediation state.

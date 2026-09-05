@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "id": "MANIFEST-001",
+      "decision": "block",
+      "description": "A Forsetti module must have a valid manifest matching the selected edition profile."
+    }
+  ]
+}

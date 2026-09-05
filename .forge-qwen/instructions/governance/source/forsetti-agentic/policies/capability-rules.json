@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "id": "CAP-001",
+      "decision": "block",
+      "description": "Capability-using behavior requires the matching manifest capability."
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "key",
+    "value",
+    "value_sha256",
+    "replacement_mode"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "key": {
+      "type": "string"
+    },
+    "value": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "mission_id",
+        "run_id",
+        "workspace_fingerprint",
+        "target_repository",
+        "expected_branch",
+        "active_microtask",
+        "latest_handoff",
+        "latest_handoff_checksum",
+        "blocker_ids",
+        "next_action",
+        "updated_utc"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "mission_id": {
+          "const": "forge-conductor-windows11-port-qwen-guided-v2"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "workspace_fingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "target_repository": {
+          "type": "string"
+        },
+        "expected_branch": {
+          "type": "string"
+        },
+        "active_microtask": {
+          "type": "string"
+        },
+        "latest_handoff": {
+          "type": "string"
+        },
+        "latest_handoff_checksum": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "last_validated_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "blocker_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "next_action": {
+          "type": "string"
+        },
+        "updated_utc": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "value_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "replacement_mode": {
+      "const": "replace_exact_key_only"
+    }
+  },
+  "additionalProperties": false
+}

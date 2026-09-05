@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "mission_id": "forge-conductor-windows11-port-qwen-guided-v2",
+  "handoff_id": "handoff-BOOT-TOOLS-001-20260904T112534478Z",
+  "run_id": "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+  "workspace_fingerprint": "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+  "target_repository": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "memory_namespace": "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+  "assignment_id": ".forge-qwen\\state\\ACTIVE_ASSIGNMENT.json",
+  "microtask_id": "BOOT-TOOLS-001",
+  "created_utc": "2026-09-04T11:25:34.5405388Z",
+  "status": "passed",
+  "objective": "Bind exact LM Studio tool/plugin/function names and argument shapes, run harmless probes, and persist verified bindings.",
+  "verified_facts": [
+    "5 MCP tools bound to Qwen Code on Windows; bindings persisted in .forge-qwen/state/tool-bindings.json",
+    "Verified facts with evidence recorded in .forge-qwen/state/FACTS.md"
+  ],
+  "files_changed": [
+    ".forge-qwen/state/FACTS.md",
+    ".forge-qwen/state/tool-bindings.json"
+  ],
+  "commands": [],
+  "evidence": [
+    "Set-Microtask-State.ps1 ledger events show in_progress then passed transitions for BOOT-TOOLS-001"
+  ],
+  "decisions": [
+    "Repaired interrupted close protocol: handoff written while task still in_progress, status re-set to passed, active assignment advanced to P00-A via Prepare-QwenAssignment.ps1"
+  ],
+  "blockers": [],
+  "next_action": "P00-A",
+  "git_state": {
+    "head": "HEAD",
+    "status": "## No commits yet on forge-windows-port-1df367e1\r\n?? .editorconfig\r\n?? .forge-qwen/\r\n?? .gitignore\r\n?? .vscode/\r\n?? AGENTS.md\r\n?? CMakeLists.txt\r\n?? CMakePresets.json\r\n?? Directory.Build.props\r\n?? QWEN_SYSTEM_PROMPT.txt\r\n?? READ-THIS-FIRST-QWEN.txt\r\n?? README.md\r\n?? RECOVER-QWEN-NOW.txt\r\n?? manifests/\r\n?? packaging/\r\n?? scripts/\r\n?? src/\r\n?? vcpkg.json",
+    "branch": "forge-windows-port-1df367e1"
+  },
+  "tool_binding_revision": 0,
+  "ledger_head": "8e2bcf12bc1384adc6202f400e3a8e30b4afda0265298c8bc62e1531274572b6",
+  "checksum": "8ded29319109f7a155b9ecdaae2ac9c147eb64e2c2d26de600aa1102dae70571"
+}

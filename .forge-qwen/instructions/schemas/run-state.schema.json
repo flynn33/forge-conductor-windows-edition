@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "run_id",
+    "status",
+    "active_microtask",
+    "last_event_hash",
+    "workspace_verified",
+    "release_eligible"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "mission_id": {
+      "const": "forge-conductor-windows11-port-qwen-guided-v2"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "not_started",
+        "running",
+        "blocked",
+        "failed",
+        "completed"
+      ]
+    },
+    "active_microtask": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "active_assignment": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "last_event_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "workspace_fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "target_repository": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_branch": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "memory_namespace": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "workspace_verified": {
+      "type": "boolean"
+    },
+    "release_eligible": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

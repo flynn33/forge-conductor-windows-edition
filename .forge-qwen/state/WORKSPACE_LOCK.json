@@ -1,0 +1,65 @@
+{
+    "schema_version":  1,
+    "mission_id":  "forge-conductor-windows11-port-qwen-guided-v2",
+    "run_id":  "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+    "target_os":  "Windows 11",
+    "target_language":  "C++20",
+    "target_repository":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "repository_fingerprint":  "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+    "expected_branch":  "forge-windows-port-1df367e1",
+    "memory_namespace":  "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+    "bootstrap_completed":  true,
+    "package_root":  "A:\\Qwen-Projects\\Forge-Conductor-Windows11-Qwen3.8-27B-4bit-Guided-v2-Instructions",
+    "package_manifest_sha256":  "6011289eac98d9775b0c9b96de3ab0c5649d9277bbce4a6e4dd8afd2bfa8401f",
+    "source_hashes_sha256":  "2bfbac5ddb84d9ff9e85b9aadd11c1552662b79f9ffd5abc9893cb03871dc13d",
+    "source_roots":  {
+                         "macos":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main",
+                         "forsetti_framework":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main",
+                         "forsetti_agentic":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                         "audit":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit"
+                     },
+    "read_only_roots":  [
+                            "A:\\Qwen-Projects\\Forge-Conductor-Windows11-Qwen3.8-27B-4bit-Guided-v2-Instructions",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-qwen\\instructions",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit"
+                        ],
+    "writable_roots":  [
+                           "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+                           "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-qwen\\state"
+                       ],
+    "forbidden_roots":  [
+                            "A:\\Qwen-Projects\\Forge-Conductor-Windows11-Qwen3.8-27B-4bit-Guided-v2-Instructions\\work",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-qwen\\instructions",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forsetti\\remediation-v3",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forsetti\\remediation-v3",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forsetti\\remediation-v3",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forsetti\\remediation-v3"
+                        ],
+    "forbidden_path_markers":  [
+                                   ".forge-codex",
+                                   ".forsetti\\remediation",
+                                   ".forsetti/remediation"
+                               ],
+    "created_utc":  "2026-09-03T23:04:34.1885229Z"
+}

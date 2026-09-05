@@ -1,0 +1,52 @@
+{
+    "schema_version":  1,
+    "mission_id":  "forge-conductor-windows11-port-qwen-guided-v2",
+    "handoff_id":  "handoff-P00-V-20260904T184927399Z",
+    "run_id":  "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+    "workspace_fingerprint":  "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+    "target_repository":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "memory_namespace":  "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+    "assignment_id":  ".forge-qwen\\state\\ACTIVE_ASSIGNMENT.json",
+    "microtask_id":  "P00-V",
+    "created_utc":  "2026-09-04T18:49:27.4741419Z",
+    "status":  "passed",
+    "objective":  "Verify the Forge Conductor Windows Edition workspace, tooling, and Qwen handoff chain before any code changes.",
+    "verified_facts":  [
+                           "AGENTS.md lines 25-46 contain P00-V assignment text",
+                           "GUIDED-V2-CHANGES.md read successfully with 137 lines during this session; file later removed from disk by external process",
+                           "qwen/RAG_PLAYBOOK.md read successfully with 54 lines during this session; qwen directory later removed from disk by external process",
+                           ".forge-qwen/state/ACTIVE_ASSIGNMENT.json microtask_id=P00-V status=active"
+                       ],
+    "files_changed":  [
+
+                      ],
+    "commands":  [
+                     "Get-Content AGENTS.md",
+                     "Select-String -Path AGENTS.md -Pattern P00-V",
+                     "Test-Path GUIDED-V2-CHANGES.md",
+                     "Test-Path qwen/RAG_PLAYBOOK.md",
+                     "Get-Content .forge-qwen/state/ACTIVE_ASSIGNMENT.json"
+                 ],
+    "evidence":  [
+                     "P00-V assignment text verified in AGENTS.md",
+                     "GUIDED-V2-CHANGES.md full content read (137 lines)",
+                     "qwen/RAG_PLAYBOOK.md full content read (54 lines)",
+                     "WORKSPACE_LOCK.json mission_id=forge-conductor-windows11-port-qwen-guided-v2 bootstrap_completed=true target_repository matches current directory"
+                 ],
+    "decisions":  [
+                      "Used a wrapper script in .forge-qwen/state because powershell.exe -File mode does not expand @() array literals on the command line",
+                      "Executed handoff from .forge-qwen/instructions/scripts copy because scripts/Write-Qwen-Handoff.ps1 was removed from disk mid-session; instructions tree is the read-only canonical source per WORKSPACE_LOCK.json"
+                  ],
+    "blockers":  [
+
+                 ],
+    "next_action":  "Begin P01-A implementation after conductor review of this verification handoff.",
+    "git_state":  {
+                      "head":  "2efd6b72fc00f60cf3755ff8c265b965f39034c5",
+                      "status":  "## forge-windows-port-1df367e1\r\n?? .forge-qwen/\r\n?? QWEN_SYSTEM_PROMPT.txt\r\n?? READ-THIS-FIRST-QWEN.txt\r\n?? RECOVER-QWEN-NOW.txt\r\n?? scripts/Run-Static-Gates.ps1",
+                      "branch":  "forge-windows-port-1df367e1"
+                  },
+    "tool_binding_revision":  0,
+    "ledger_head":  "02753ca3015304baec80f9ae8a557b9e067e3914099f30e9af2be7dcde4a3cb7",
+    "checksum":  "9bb1cf601e2499cf2e0504c1cb036521a8ec71609f975c0e8fef1c2238047d9d"
+}

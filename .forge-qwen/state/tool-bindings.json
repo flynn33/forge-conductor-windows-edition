@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "microtask_id": "BOOT-TOOLS-001",
+  "run_namespace": "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+  "workspace_fingerprint": "98601f23820832b5",
+  "harness_note": "Exact tool names and argument shapes as exposed on this session's MCP function surface (Forge Conductor Windows Edition chat). No other tool/plugin/function names are assumed.",
+  "bindings": [
+    {
+      "capability": "shell",
+      "bound_tool": "shell_exec",
+      "arguments": {
+        "command": {"type": "string", "required": true},
+        "cwd": {"type": "string", "required": false, "note": "absolute working directory"},
+        "timeout_sec": {"type": "string(int)", "required": false, "note": "default 30, max 120"}
+      },
+      "probe_status": "verified",
+      "evidence": [
+        "shell_exec 'git --version' exit_code=0 stdout='git version 2.53.0.windows.1'",
+        "Assert-QwenWorkspace.ps1 exit_code=0 lock verified target_repository=D:\\GitHub\\Forge-Conductor-Windows-Edition",
+        "Set-Microtask-State.ps1 -Status in_progress exit_code=0"
+      ]
+    },
+    {
+      "capability": "filesystem",
+      "bound_tool": ["fs_read", "fs_write", "fs_list", "fs_edit", "fs_mkdir", "fs_move", "fs_delete", "fs_glob"],
+      "arguments": {
+        "fs_read": {"path": "string(required)", "offset": "optional 1-based line", "length": "optional lines"},
+        "fs_write": {"path": "string(required)", "content": "string(required); creates parent dirs"},
+        "fs_list": {"path": "string(required absolute dir)"},
+        "fs_edit": {"path+old_string+new_string": "all string required; first occurrence"}
+      },
+      "probe_status": "verified",
+      "evidence": [
+        "fs_list repo root ok:true (AGENTS.md, CMakeLists.txt, src, scripts, .forge-qwen)",
+        "fs_read of all 4 routed docs ok:true"
+      ]
+    },
+    {
+      "capability": "github",
+      "bound_tool": ["git_status", "git_log", "git_diff", "git_add", "git_commit"],
+      "arguments": {
+        "git_status/git_log/git_diff": {"cwd": "string(optional abs git dir)"},
+        "git_add": {"path": "string(required)", "cwd": "optional"},
+        "git_commit": {"message": "string(required)", "cwd": "optional", "note": "do not push"}
+      },
+      "probe_status": "verified_local",
+      "evidence": [
+        "git 2.53.0.windows.1 exit 0",
+        "'git remote -v' empty: no remotes configured"
+      ],
+      "scoped_limitation": "No GitHub API tool on surface and no git remote; issues/PR/review BLOCKED until remote origin exists."
+    },
+    {
+      "capability": "rag_v1",
+      "bound_tool": ["search_text", "memory_search"],
+      "arguments": {
+        "search_text": {"path": "string(required abs file or dir)", "query": "string(required literal)"},
+        "memory_search": {"query": "string(required)"}
+      },
+      "probe_status": "verified_corpus_retrieval",
+      "evidence": [
+        "search_text exact-phrase query -> count=1 hit qwen/TOOL_DISCOVERY.md:17",
+        "memory_search routed query 0 results (shape accepted)"
+      ],
+      "scoped_limitation": "Literal text retrieval only; no semantic/embedding RAG tool."
+    },
+    {
+      "capability": "js_sandbox",
+      "bound_tool": "shell_exec + node v24.13.1 via 'node -e <pure JSON expression>'",
+      "arguments": {"command": "string; pattern node -e \"<JSON.parse/JSON.stringify pure computation>\""},
+      "probe_status": "verified",
+      "evidence": [
+        "node --version exit 0 stdout=v24.13.1",
+        "node -e JSON.parse(JSON.stringify({a:[1,2],b:'x'})) round-trip exit_code=0 stdout='ROUNDTRIP_OK'"
+      ],
+      "scoped_limitation": "Indirect binding through verified shell capability; Node never added to product."
+    },
+    {
+      "capability": "long_term_memory",
+      "bound_tool": ["memory_set", "memory_get", "memory_list", "memory_search", "memory_delete"],
+      "arguments": {
+        "memory_set": {"key+body": "string required"},
+        "memory_get/memory_delete": {"key": "string required"},
+        "memory_list": {"prefix": "optional"},
+        "memory_search": {"query": "required"}
+      },
+      "probe_status": "verified",
+      "evidence": [
+        "namespaced probe key set ok:true then get returned exact body"
+      ]
+    },
+    {
+      "capability": "persistent_memory",
+      "bound_tool": ["memory_set", "memory_get"],
+      "arguments": {"note": "Same MCP memory_* surface; discipline = only exact run-scoped cursor key from .forge-qwen\\state\\MEMORY_CURSOR.json"},
+      "probe_status": "verified_shared_store",
+      "evidence": [
+        "namespaced probe cycle under exact run namespace"
+      ]
+    }
+  ],
+  "unbound_or_blocked": [],
+  "notes": [
+    "All 7 required capabilities bound to exact tool names.",
+    "Scoped limitations recorded per capability; no full blockers for the 7 bindings.",
+    "Harness context-budget wall intermittently rejected calls mid-task."
+  ]
+}

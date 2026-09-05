@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "file": "Forge-Conductor-MacOS-main.zip",
+      "bytes": 15040337,
+      "sha256": "3e344d4b3bb0fff80487f99a7c69e7ceadf22aa1e64da3a6f2640ea2fa0072dd",
+      "role": "authoritative feature and behavior baseline"
+    },
+    {
+      "file": "Forsetti-Framework-Windows-main.zip",
+      "bytes": 340536,
+      "sha256": "3fc89cba058830a53a2e20bd015b3c89e13c77151ca63c0ec132d0dacef0204d",
+      "role": "sealed Windows Forsetti framework baseline"
+    },
+    {
+      "file": "forsetti-agentic-edition-main.zip",
+      "bytes": 789736,
+      "sha256": "e8ef20ad917bd3165335c03beecc674f21f69ff93cbc64fe5edb4e9ffd79692b",
+      "role": "Forsetti governance baseline"
+    },
+    {
+      "file": "Forge-Conductor-Audit-Bundle.zip",
+      "bytes": 371895,
+      "sha256": "7be0130778d980567a961c51b5172d0948b4923b134c7dac608f805272f86e6c",
+      "role": "known memory, telemetry, gauge, lifecycle, and performance regression evidence"
+    }
+  ]
+}

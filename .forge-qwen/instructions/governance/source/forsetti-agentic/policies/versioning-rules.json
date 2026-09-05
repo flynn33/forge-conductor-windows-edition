@@ -1,0 +1,212 @@
+{
+  "schema_version": "2.0",
+  "canonical_source": "core/policies/versioning-rules.json",
+  "root_mirror": "policies/versioning-rules.json",
+  "mirror_policy": {
+    "status": "byte_identical_compatibility_mirror",
+    "rule_id": "FAE-C011",
+    "failure_action": "block_merge"
+  },
+  "versioning_scheme": "semver",
+  "version_classes": [
+    {
+      "version_impact": "none",
+      "description": "Changes that have no effect on the released artifact version. Includes internal documentation fixes, metadata updates, CI configuration changes, and comment-only edits that do not alter behavior, public API, policy meaning, or user-facing output.",
+      "semver_effect": "no version bump"
+    },
+    {
+      "version_impact": "patch",
+      "description": "Backward-compatible bug fixes that correct incorrect behavior without adding new functionality or changing existing public API, policy, schema, or consumer obligations.",
+      "semver_effect": "increment patch (0.0.x)"
+    },
+    {
+      "version_impact": "minor",
+      "description": "Backward-compatible additions of new functionality. Includes new features, new public API surface that does not alter existing contracts, new configuration options with safe defaults, and non-breaking enhancements to existing behavior.",
+      "semver_effect": "increment minor (0.x.0), reset patch to 0"
+    },
+    {
+      "version_impact": "major",
+      "description": "Changes that break backward compatibility. Includes removal of public API surface, changes to default behavior, configuration schema changes requiring migration, renamed or restructured public contracts, policy data-shape changes requiring consumers to adapt, and any change that requires consumers to modify their integration.",
+      "semver_effect": "increment major (x.0.0), reset minor and patch to 0"
+    },
+    {
+      "version_impact": "governance-only",
+      "description": "Changes to governance policy, process definitions, constitutional documents, or compliance rules that do not alter the software artifact itself and do not require downstream consumers to adapt their integrations. These changes affect how the project is governed, not what it ships.",
+      "semver_effect": "no version bump unless governance versioning is enabled"
+    }
+  ],
+  "change_type_mapping": {
+    "description": "Maps each change_class to its typical version_impact. Architects and release managers use this as the baseline classification. Deviations from the typical mapping must be justified in the task contract.",
+    "mappings": [
+      {"change_class": "feature", "typical_version_impact": "minor", "notes": "New functionality is minor unless it replaces or removes existing behavior, which makes it major."},
+      {"change_class": "bugfix", "typical_version_impact": "patch", "notes": "Bug fixes are patch unless the fix changes public API, policy, schema, or consumer behavior in a breaking way, which makes it major."},
+      {"change_class": "refactor", "typical_version_impact": "none", "notes": "Internal restructuring with no behavior change is none. If refactoring changes public API surface, policy meaning, schema shape, or consumer obligations, reclassify as breaking-change with major impact."},
+      {"change_class": "docs", "typical_version_impact": "none", "notes": "Documentation-only changes do not affect the artifact version unless they introduce new binding requirements."},
+      {"change_class": "governance", "typical_version_impact": "governance-only", "notes": "Governance changes are governance-only when they do not require downstream consumers to adapt. Governance changes that alter policy data shape, required fields, enforcement behavior, or consumer obligations are major."},
+      {"change_class": "release", "typical_version_impact": "none", "notes": "Release process changes are none unless they change artifact output, required release evidence, or enforcement behavior."},
+      {"change_class": "metadata", "typical_version_impact": "none", "notes": "Metadata changes do not affect artifact version unless they change build output, release output, or enforcement routing."},
+      {"change_class": "breaking-change", "typical_version_impact": "major", "notes": "Breaking changes are always major. This classification must not be downgraded without governance_steward approval and release_manager confirmation."}
+    ]
+  },
+  "classification_decision_table": [
+    {
+      "rule_id": "VERSION-CLASS-FEATURE",
+      "when": {"change_class": "feature", "breaking_change": false},
+      "version_impact": "minor",
+      "evidence_required": ["task contract", "change summary"],
+      "rejection_condition": "feature_underclassified"
+    },
+    {
+      "rule_id": "VERSION-CLASS-BUGFIX",
+      "when": {"change_class": "bugfix", "breaking_change": false},
+      "version_impact": "patch",
+      "evidence_required": ["task contract", "defect summary"],
+      "rejection_condition": "bugfix_underclassified"
+    },
+    {
+      "rule_id": "VERSION-CLASS-GOVERNANCE",
+      "when": {"change_class": "governance", "consumer_obligation_changed": false},
+      "version_impact": "governance-only",
+      "evidence_required": ["task contract", "downstream impact assessment"],
+      "rejection_condition": "governance_impact_unjustified"
+    },
+    {
+      "rule_id": "VERSION-CLASS-BREAKING",
+      "when": {"change_class": "breaking-change"},
+      "version_impact": "major",
+      "evidence_required": ["task contract", "changelog migration guidance", "affected consumers"],
+      "rejection_condition": "breaking_change_not_major"
+    },
+    {
+      "rule_id": "VERSION-CLASS-POLICY-SHAPE",
+      "when": {"policy_data_shape_changed": true},
+      "version_impact": "major",
+      "evidence_required": ["changed policy manifest", "migration guidance", "affected consumers"],
+      "rejection_condition": "policy_shape_change_not_major"
+    },
+    {
+      "rule_id": "VERSION-CLASS-ENFORCEMENT",
+      "when": {"previously_passing_change_can_now_fail": true},
+      "version_impact": "major",
+      "evidence_required": ["enforcement change description", "migration guidance", "affected consumers"],
+      "rejection_condition": "enforcement_breaking_change_not_major"
+    }
+  ],
+  "breaking_change_rules": {
+    "definition": "A change is breaking if it removes or renames public API, changes function or schema signatures, alters default behavior, invalidates existing configuration, removes a supported platform, changes serialization or policy-manifest structure in a way that breaks consumers, changes required governance fields, or causes previously passing governed changes to fail without consumer adaptation.",
+    "requirements": [
+      "Must be classified as change_class breaking-change with version_impact major.",
+      "Must include a changelog entry with the breaking_change field set to true.",
+      "Must include migration_note and migration guidance in the changelog entry describing the migration path.",
+      "Must identify affected consumers in the task contract and changelog entry.",
+      "Must be disclosed in the task contract before implementation begins.",
+      "Must be independently confirmed by the release_manager before release authorization.",
+      "Must not be bundled with unrelated non-breaking changes in the same pull request unless the task contract explicitly justifies the bundling."
+    ],
+    "compliance_rule_ids": ["FAE-C006", "FAE-C009", "FAE-C011"]
+  },
+  "downgrade_controls": {
+    "description": "Version impact downgrades are treated as governance decisions, not implementation convenience.",
+    "major_downgrade": {
+      "allowed": true,
+      "required_authority": ["governance_steward", "release_manager"],
+      "required_evidence": ["written exception rationale", "consumer impact assessment", "changelog explanation"],
+      "rejection_condition": "major_downgrade_without_authority",
+      "failure_action": "block_merge"
+    },
+    "retroactive_reclassification": {
+      "allowed": false,
+      "rejection_condition": "retroactive_version_mutation",
+      "failure_action": "block_merge"
+    }
+  },
+  "changelog_requirements": {
+    "description": "Defines when a changelog entry is required based on change_class and version_impact.",
+    "required_when": [
+      "change_class is feature",
+      "change_class is bugfix",
+      "change_class is refactor and version_impact is not none",
+      "change_class is breaking-change",
+      "change_class is governance",
+      "change_class is release and version_impact is not none"
+    ],
+    "exempt_when": [
+      "change_class is docs and version_impact is none",
+      "change_class is metadata and version_impact is none",
+      "change_class is refactor and version_impact is none",
+      "change_class is release and version_impact is none"
+    ]
+  },
+  "release_note_requirements": {
+    "description": "Defines what must appear in release notes for each version impact class.",
+    "by_version_impact": {
+      "major": {
+        "required_sections": ["breaking_changes", "migration_guide", "affected_consumers", "new_features", "bug_fixes", "known_issues"],
+        "notes": "Major releases must prominently list all breaking changes with migration instructions and affected consumers."
+      },
+      "minor": {
+        "required_sections": ["new_features", "bug_fixes", "known_issues"],
+        "notes": "Minor releases highlight new functionality and include any relevant fixes."
+      },
+      "patch": {
+        "required_sections": ["bug_fixes", "known_issues"],
+        "notes": "Patch releases focus on fixes and any residual known issues."
+      },
+      "none": {
+        "required_sections": [],
+        "notes": "No release notes required for changes with no version impact."
+      },
+      "governance-only": {
+        "required_sections": ["governance_changes"],
+        "notes": "Governance changes are documented separately from artifact release notes unless they also require consumer migration."
+      }
+    }
+  },
+  "classification_rules": [
+    "The architect assigns initial change_class and version_impact in the task contract.",
+    "The builder must not alter the classification without a contract amendment from the architect.",
+    "The release_manager independently confirms the classification before authorizing a release.",
+    "If the release_manager disagrees with the classification, the task is escalated to the architect for reclassification.",
+    "Downgrading a major classification to minor, patch, governance-only, or none requires governance_steward approval and release_manager confirmation.",
+    "Version impact must be consistent across the task contract, changelog entry, release notes, and validator result evidence.",
+    "Version impact must not be retroactively changed for released history outside a dedicated governance correction process."
+  ],
+  "pre_merge_gates": [
+    {
+      "gate_id": "version-contract-changelog-consistency",
+      "compliance_rule_id": "FAE-C009",
+      "validator_mode": "contract",
+      "inputs": ["task_contract", "changelog entry", "versioning-rules.json"],
+      "evidence_required": ["task contract release_impact", "changelog version_impact", "classification decision table"],
+      "rejection_condition": "version_impact_mismatch",
+      "failure_status": "request_changes"
+    },
+    {
+      "gate_id": "version-breaking-major",
+      "compliance_rule_id": "FAE-C006",
+      "validator_mode": "contract",
+      "inputs": ["task_contract", "changelog entry"],
+      "evidence_required": ["change_class=breaking-change", "version_impact=major", "migration guidance", "affected consumers"],
+      "rejection_condition": "breaking_change_not_major",
+      "failure_status": "block"
+    },
+    {
+      "gate_id": "version-downgrade-control",
+      "compliance_rule_id": "FAE-C009",
+      "validator_mode": "contract",
+      "inputs": ["task_contract", "release reviewer evidence"],
+      "evidence_required": ["Governance Steward exception", "Release Manager confirmation"],
+      "rejection_condition": "major_downgrade_without_authority",
+      "failure_status": "block"
+    },
+    {
+      "gate_id": "version-policy-shape-change",
+      "compliance_rule_id": "FAE-C006",
+      "validator_mode": "contract",
+      "inputs": ["changed_files", "policy manifests", "task_contract"],
+      "evidence_required": ["major version impact", "migration guidance", "affected consumers"],
+      "rejection_condition": "policy_shape_change_not_major",
+      "failure_status": "block"
+    }
+  ]
+}

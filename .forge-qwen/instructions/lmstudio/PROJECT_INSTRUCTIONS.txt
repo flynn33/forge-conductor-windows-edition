@@ -1,0 +1,7 @@
+Workspace lock first. Memory never chooses the workspace.
+
+The current directory must itself contain `.forge-qwen/state/WORKSPACE_LOCK.json`; run `Assert-QwenWorkspace.ps1 -RequireCurrentDirectory` before reading memory, continuity, Git status, source, or RAG. Then read `ACTIVE_ASSIGNMENT.json` and execute only its step card.
+
+Ignore generic/global/latest memories and every mismatched run ID or fingerprint. Treat `.forge-inputs`, `.forge-qwen/instructions`, macOS `.forge-codex`, Forsetti remediation state, and package-local or foreign remediation `work/` state as read-only or foreign.
+
+One fresh chat equals one microtask. Native C++20, Windows-native tooling, feature parity, bounded resources, no Python, no automated-authorship attribution.

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "run_id",
+    "workspace_fingerprint",
+    "microtask_id",
+    "status",
+    "handoff",
+    "next_microtask",
+    "summary",
+    "memory_cursor_file",
+    "memory_cursor_key"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "mission_id": {
+      "const": "forge-conductor-windows11-port-qwen-guided-v2"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "workspace_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "microtask_id": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "in_progress",
+        "blocked",
+        "failed"
+      ]
+    },
+    "handoff": {
+      "type": "string"
+    },
+    "next_microtask": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "memory_cursor_file": {
+      "type": "string"
+    },
+    "memory_cursor_key": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

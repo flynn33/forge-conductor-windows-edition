@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "1.0",
+  "projectName": "Forsetti Framework — Windows",
+  "projectDescription": "A modular runtime framework for Windows 11, built with C++20, a sealed host composition layer, and Windows SDK service adapters.",
+  "owner": "James Daley",
+  "license": "Proprietary",
+  "principles": [
+    "Strict modularity: all features live inside first- or third-party modules",
+    "Framework-mediated everything: modules never talk to each other directly",
+    "Single active UI/app surface module at a time; unlimited service modules",
+    "UI/app contributions must declare matching capabilities before activation",
+    "Entitlement-gated activation with runtime reconciliation"
+  ],
+  "architecture": {
+    "layers": [
+      {
+        "name": "ForsettiCore",
+        "type": "static_library",
+        "description": "Pure C++20 foundation. No platform dependencies.",
+        "dependencies": []
+      },
+      {
+        "name": "ForsettiPlatform",
+        "type": "static_library",
+        "description": "Windows SDK service implementations.",
+        "dependencies": ["ForsettiCore"]
+      },
+      {
+        "name": "ForsettiHostTemplate",
+        "type": "static_library",
+        "status": "implemented",
+        "description": "Sealed host composition layer with controller, bootstrap, overlay routing, and surface-state adapters.",
+        "dependencies": ["ForsettiCore", "ForsettiPlatform"]
+      },
+      {
+        "name": "ForsettiExampleServiceModule",
+        "type": "static_library",
+        "description": "Isolated reference service module.",
+        "dependencies": ["ForsettiCore"]
+      },
+      {
+        "name": "ForsettiExampleUIModule",
+        "type": "static_library",
+        "description": "Isolated reference UI module.",
+        "dependencies": ["ForsettiCore"]
+      },
+      {
+        "name": "ForsettiExampleAppModule",
+        "type": "static_library",
+        "description": "Isolated reference app module.",
+        "dependencies": ["ForsettiCore"]
+      },
+      {
+        "name": "ForsettiDemo",
+        "type": "sample_application",
+        "description": "Downstream demonstration composition root.",
+        "dependencies": ["ForsettiHostTemplate", "ForsettiExampleServiceModule", "ForsettiExampleUIModule", "ForsettiExampleAppModule"]
+      }
+    ],
+    "dependencyRule": "One-way only. Core depends on nothing. Platform depends on Core. HostTemplate depends on Core and Platform. Example modules depend on Core only and not on each other. Samples may compose public targets. No reverse or lateral dependencies."
+  },
+  "moduleModel": {
+    "types": ["service", "ui", "app"],
+    "lifecycle": "discover -> validate -> activate -> deactivate",
+    "activationSemantics": {
+      "serviceModules": "Multiple service modules may be active at the same time.",
+      "uiAndAppModules": "UI and app modules share one active surface slot. Activating one replaces the previous UI/app module and its surface contributions.",
+      "uiContributionCapabilities": {
+        "toolbarItems": "toolbar_items",
+        "viewInjections": "view_injection",
+        "overlaySchema": "routing_overlay",
+        "toolbarOpenOverlayAction": "routing_overlay",
+        "toolbarPublishEventAction": "event_publishing",
+        "themeMask": "requires ui_theme_mask and declared, policy-approved runtimeRequirements.ui.themeIDs"
+      }
+    },
+    "manifest": {
+      "format": "JSON",
+      "supportedSchemaVersions": ["1.0", "1.1"],
+      "currentSchemaVersion": "1.1",
+      "requiredFields": ["schemaVersion", "manifestTemplateVersion", "moduleID", "displayName", "moduleVersion", "moduleType", "supportedPlatforms", "minForsettiVersion", "maxForsettiVersion", "capabilitiesRequested", "iapProductID", "entryPoint", "defaultModuleRole", "runtimeRequirements"],
+      "backwardCompatibility": "Schema 1.0 manifests load with default 1.0 template, no default role, no I/O requirements, no UI requirements, and private-to-module data isolation."
+    }
+  },
+  "corePublicAPI": {
+    "interfaces": [
+      "IForsettiModule",
+      "IForsettiUIModule",
+      "IForsettiAppModule",
+      "IForsettiModuleContext",
+      "IEntitlementProvider",
+      "ICapabilityPolicy",
+      "IActivationStore",
+      "IForsettiEventBus",
+      "IServiceProvider",
+      "IForsettiLogger",
+      "IOverlayRouter",
+      "IModuleCommunicationGuard",
+      "ISharedDatabaseService",
+      "IAuthenticationService",
+      "IDiagnosticsService",
+      "IApiService",
+      "ISecurityService",
+      "ICryptoUtilitiesService",
+      "IForsettiHostController",
+      "IForsettiHostBootstrap",
+      "IForsettiHostOverlayRouter",
+      "IHostSurfaceStateSource",
+      "IWindowsViewFactory",
+      "IWindowsViewFactoryRegistry",
+      "IWindowsDispatcher"
+    ],
+    "valueTypes": [
+      "SemVer",
+      "ModuleManifest",
+      "ModuleRuntimeRequirements",
+      "ModuleIORequirement",
+      "ModuleUIRequirements",
+      "ModuleDataIsolation",
+      "ModuleDescriptor",
+      "ForsettiEvent",
+      "ActivationState",
+      "CompatibilityReport",
+      "CompatibilityIssue",
+      "UIContributions",
+      "ToolbarItemDescriptor",
+      "ViewInjectionDescriptor",
+      "OverlaySchema",
+      "ForsettiHostStateSnapshot",
+      "ForsettiHostLaunchStrategy",
+      "ForsettiSurfaceStateSnapshot",
+      "WindowsViewCreationContext"
+    ],
+    "enums": [
+      "Platform",
+      "ModuleType",
+      "Capability",
+      "ManifestTemplateVersion",
+      "DefaultModuleRole",
+      "ModuleIOKind",
+      "ModuleIOAccess",
+      "ModuleDataIsolationMode",
+      "LogLevel",
+      "CapabilityPolicyDecision",
+      "CompatibilitySeverity",
+      "ToolbarAction",
+      "OverlayPresentation",
+      "OverlayDestination",
+      "ForsettiHostStateKind",
+      "ForsettiHostLaunchStrategyKind",
+      "WindowsViewFactoryRegistryError"
+    ]
+  },
+  "runtimeComponents": [
+    "ForsettiRuntime",
+    "ModuleManager",
+    "ManifestLoader",
+    "ModuleRegistry",
+    "ForsettiStaticModuleRegistry",
+    "CompatibilityChecker",
+    "InMemoryEventBus",
+    "ServiceContainer",
+    "ForsettiContext",
+    "UISurfaceManager",
+    "ConsoleLogger"
+  ],
+  "hostAppContract": {
+    "description": "ForsettiHostTemplate provides the sealed host composition layer. Downstream applications compose it with a module registry, activation store, platform services, and module targets.",
+    "components": [
+      "ForsettiHostController",
+      "ForsettiHostBootstrap",
+      "ForsettiHostOverlayRouter",
+      "ForsettiSurfaceStateAdapter",
+      "ForsettiViewFactoryRegistry"
+    ]
+  },
+  "documentation": {
+    "readme": "README.md",
+    "changelog": "CHANGELOG.md",
+    "wikiIndex": "wiki.md",
+    "publicWiki": "https://github.com/flynn33/Forsetti-Framework-Windows/wiki",
+    "governanceDocs": [
+      "docs/governance/github-discussion-automation.md",
+      "docs/governance/discussion_moderation_policy.md"
+    ]
+  }
+}

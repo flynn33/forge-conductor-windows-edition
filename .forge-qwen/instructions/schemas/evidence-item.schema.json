@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "id",
+    "microtask_id",
+    "kind",
+    "created_utc",
+    "path",
+    "sha256",
+    "summary"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "microtask_id": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "source",
+        "command",
+        "test",
+        "profile",
+        "installer",
+        "artifact",
+        "decision",
+        "report"
+      ]
+    },
+    "created_utc": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

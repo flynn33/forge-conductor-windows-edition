@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "per_fresh_chat": {
+    "microtasks_max": 1,
+    "tool_calls_checkpoint": 8,
+    "tool_calls_handoff": 16,
+    "tool_calls_hard_max": 22,
+    "parallel_calls_max": 2,
+    "filesystem_writes_default_max": 5,
+    "changed_lines_default_max": 400,
+    "rag_queries_before_direct_read_max": 3,
+    "continuation_turns_max": 2,
+    "no_progress_attempts_max": 3
+  },
+  "rules": [
+    "tool result must be inspected",
+    "writes reread",
+    "commands exit checked",
+    "state/handoff before stop"
+  ]
+}

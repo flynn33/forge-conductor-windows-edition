@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "run_id",
+    "repository_fingerprint",
+    "target_repository",
+    "microtask",
+    "step_card",
+    "preflight_steps",
+    "execution_steps",
+    "close_steps",
+    "read_only_roots",
+    "allowed_write_roots",
+    "forbidden_roots",
+    "memory_namespace",
+    "required_final_marker",
+    "created_utc",
+    "expected_branch",
+    "memory_cursor_key"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "mission_id": {
+      "const": "forge-conductor-windows11-port-qwen-guided-v2"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "repository_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "target_repository": {
+      "type": "string"
+    },
+    "microtask": {
+      "type": "object"
+    },
+    "step_card": {
+      "type": "string"
+    },
+    "preflight_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "execution_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "close_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "read_only_roots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowed_write_roots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_roots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "memory_namespace": {
+      "type": "string"
+    },
+    "required_final_marker": {
+      "type": "string"
+    },
+    "created_utc": {
+      "type": "string"
+    },
+    "expected_branch": {
+      "type": "string"
+    },
+    "memory_cursor_key": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

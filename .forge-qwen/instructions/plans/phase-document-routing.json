@@ -1,0 +1,267 @@
+{
+  "schema_version": 1,
+  "routes": {
+    "P00": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "governance/PORT_TASK_CONTRACT.json",
+      "architecture/TARGET_ARCHITECTURE.md",
+      "architecture/FORSETTI_MODULES.md",
+      "docs/WINDOWS_TOOLCHAIN.md"
+    ],
+    "P01": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "governance/PORT_TASK_CONTRACT.json",
+      "architecture/TARGET_ARCHITECTURE.md",
+      "architecture/FORSETTI_MODULES.md",
+      "docs/WINDOWS_TOOLCHAIN.md"
+    ],
+    "P02": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "governance/PORT_TASK_CONTRACT.json",
+      "architecture/TARGET_ARCHITECTURE.md",
+      "architecture/FORSETTI_MODULES.md",
+      "docs/WINDOWS_TOOLCHAIN.md"
+    ],
+    "P03": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "governance/PORT_TASK_CONTRACT.json",
+      "architecture/TARGET_ARCHITECTURE.md",
+      "architecture/FORSETTI_MODULES.md",
+      "docs/WINDOWS_TOOLCHAIN.md"
+    ],
+    "P04": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "governance/PORT_TASK_CONTRACT.json",
+      "architecture/TARGET_ARCHITECTURE.md",
+      "architecture/FORSETTI_MODULES.md",
+      "docs/WINDOWS_TOOLCHAIN.md"
+    ],
+    "P05": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+      "architecture/PERSISTENCE_MIGRATION.md",
+      "architecture/SECURITY.md"
+    ],
+    "P06": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+      "architecture/PERSISTENCE_MIGRATION.md",
+      "architecture/SECURITY.md"
+    ],
+    "P07": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+      "architecture/PERSISTENCE_MIGRATION.md",
+      "architecture/SECURITY.md"
+    ],
+    "P08": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/PROJECT_MEMORY.md",
+      "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+    ],
+    "P09": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/PROJECT_MEMORY.md",
+      "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+    ],
+    "P10": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/CONTINUITY_SESSION_HOST.md",
+      "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+    ],
+    "P11": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/CONTINUITY_SESSION_HOST.md",
+      "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+    ],
+    "P12": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/CONTINUITY_SESSION_HOST.md",
+      "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+    ],
+    "P13": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/MCP_LM_STUDIO.md",
+      "architecture/PROCESS_IPC_MANAGER.md"
+    ],
+    "P14": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/MCP_LM_STUDIO.md",
+      "architecture/PROCESS_IPC_MANAGER.md"
+    ],
+    "P15": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/MCP_LM_STUDIO.md",
+      "architecture/PROCESS_IPC_MANAGER.md"
+    ],
+    "P16": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/PROCESS_IPC_MANAGER.md"
+    ],
+    "P17": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/TELEMETRY_RENDERING.md",
+      "evidence/audit/Forge-Conductor-Key-Evidence.md"
+    ],
+    "P18": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/TELEMETRY_RENDERING.md",
+      "evidence/audit/Forge-Conductor-Key-Evidence.md"
+    ],
+    "P19": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/TELEMETRY_RENDERING.md",
+      "evidence/audit/Forge-Conductor-Key-Evidence.md"
+    ],
+    "P20": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/WINDOWS_UI.md",
+      "architecture/TELEMETRY_RENDERING.md"
+    ],
+    "P21": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/PROCESS_IPC_MANAGER.md",
+      "architecture/SECURITY.md"
+    ],
+    "P22": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/PROCESS_IPC_MANAGER.md",
+      "architecture/SECURITY.md"
+    ],
+    "P23": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/PERSISTENCE_MIGRATION.md"
+    ],
+    "P24": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/INSTALLER_RELEASE.md"
+    ],
+    "P25": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "docs/EVIDENCE_RULES.md",
+      "docs/DEFINITION_OF_DONE.md",
+      "architecture/RESOURCE_BUDGETS.md"
+    ],
+    "P26": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "docs/EVIDENCE_RULES.md",
+      "docs/DEFINITION_OF_DONE.md",
+      "architecture/RESOURCE_BUDGETS.md"
+    ],
+    "P27": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "docs/EVIDENCE_RULES.md",
+      "docs/DEFINITION_OF_DONE.md",
+      "architecture/RESOURCE_BUDGETS.md"
+    ],
+    "P28": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "docs/EVIDENCE_RULES.md",
+      "docs/DEFINITION_OF_DONE.md",
+      "architecture/RESOURCE_BUDGETS.md"
+    ],
+    "P29": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "architecture/INSTALLER_RELEASE.md"
+    ],
+    "P30": [
+      "AGENTS.md",
+      "qwen/MICROTASK_PROTOCOL.md",
+      "qwen/TOOL_ROUTING.md",
+      "qwen/RAG_PLAYBOOK.md",
+      "docs/EVIDENCE_RULES.md",
+      "docs/DEFINITION_OF_DONE.md",
+      "architecture/RESOURCE_BUDGETS.md"
+    ]
+  }
+}

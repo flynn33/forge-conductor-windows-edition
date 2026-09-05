@@ -1,0 +1,26 @@
+Do not use loaded continuity, long-term memory, persistent memory, Git status, or a package-local/foreign remediation work directory to select the workspace.
+
+The only workspace authority is:
+  D:\GitHub\Forge-Conductor-Windows-Edition\.forge-qwen\state\WORKSPACE_LOCK.json
+
+Use filesystem or shell tools to change to exactly:
+  D:\GitHub\Forge-Conductor-Windows-Edition
+
+Then perform exactly:
+1. Read `READ-THIS-FIRST-QWEN.txt` from that repository.
+2. Read `.forge-qwen/state/WORKSPACE_LOCK.json`.
+3. Run `.forge-qwen/instructions/scripts/Assert-QwenWorkspace.ps1 -Repository "D:\GitHub\Forge-Conductor-Windows-Edition" -RequireCurrentDirectory`.
+4. Read `.forge-qwen/state/ACTIVE_ASSIGNMENT.json`.
+5. Execute only its numbered steps.
+
+Ignore every memory/handoff whose namespace is not:
+  forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5
+
+Begin the first verified response with:
+  WORKSPACE_LOCK_VERIFIED 1df367e1-3584-41e9-b2cb-8fbbe721addf 98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7
+
+If the lock cannot be proven, emit WRONG_WORKSPACE_BLOCKED and perform no repository writes.
+
+ACTIVE MICROTASK: P01-A
+STEP CARD: .forge-qwen\state\assignments\P01-A.md
+MEMORY CURSOR KEY: forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5::cursor

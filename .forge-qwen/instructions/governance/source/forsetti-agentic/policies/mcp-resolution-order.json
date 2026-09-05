@@ -1,0 +1,12 @@
+{
+  "order": [
+    "local",
+    "local_wrapper",
+    "provider_supplied_after_local_first",
+    "approved_exception"
+  ],
+  "blocked": [
+    "non_local_third_party",
+    "unknown_provider"
+  ]
+}

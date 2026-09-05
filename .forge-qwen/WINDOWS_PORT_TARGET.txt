@@ -1,0 +1,4 @@
+mission_id=forge-conductor-windows11-port-qwen-guided-v2
+run_id=1df367e1-3584-41e9-b2cb-8fbbe721addf
+fingerprint=98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7
+target=D:\GitHub\Forge-Conductor-Windows-Edition

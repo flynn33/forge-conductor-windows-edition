@@ -1,0 +1,16 @@
+{
+  "policy": "no_attribution_accountability",
+  "prohibited": [
+    "tool attribution",
+    "tool authorship credit",
+    "credit-by notices",
+    "tool/model/vendor/agent credit"
+  ],
+  "requiredEvidence": [
+    "accountable human owner",
+    "contract or phase ID",
+    "review evidence",
+    "validation evidence",
+    "approval evidence when required"
+  ]
+}

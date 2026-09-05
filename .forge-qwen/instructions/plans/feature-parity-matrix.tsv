@@ -1,0 +1,85 @@
+id	category	feature	macos_evidence	windows_acceptance	status	windows_files	tests	evidence
+UI-001	UI	Seven-surface navigation	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-002	UI	Navigation show/hide	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-003	UI	Refresh controls	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-004	UI	Version/home/error status	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-005	UI	Forge Rig	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-006	UI	LM Studio MCP surface	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-007	UI	Agents surface	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-008	UI	Tools surface	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-009	UI	Feed surface	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-010	UI	Diagnostics surface	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-011	UI	Manager settings surface	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-012	UI	Desktop accessibility	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+UI-013	UI	Theme/DPI/high contrast	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PROC-001	Process	GUI mode	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PROC-002	Process	MCP stdio mode	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PROC-003	Process	Manager run mode	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CLI-001	CLI	Install command	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CLI-002	CLI	LM Studio deploy command	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CLI-003	CLI	Doctor/status/version/agents	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CLI-004	CLI	Manager lifecycle commands	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-001	MCP	JSON-RPC stdio	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-002	MCP	Exact 53-tool list	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-003	MCP	Primary role	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-004	MCP	Fallback role	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-005	MCP	Transactional registration	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-006	MCP	Host revision synchronization	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-007	MCP	Auto-heal	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MCP-008	MCP	Independent serve verifier	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-001	Tools	Filesystem tools	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-002	Tools	Git tools	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-003	Tools	Text search	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-004	Tools	PDF tools	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-005	Tools	Shell tool	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-006	Tools	Authorization	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-007	Tools	Audit	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TOOL-008	Tools	Identical-call loop protection	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+AGENT-001	Agents	Embedded catalog	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+AGENT-002	Agents	Recommend agent	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+AGENT-003	Agents	Durable runs	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MEM-001	Memory	Legacy memory tools	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MEM-002	Memory	Memory bounds	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-001	Project Memory	Multi-project identity	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-002	Project Memory	Per-project database isolation	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-003	Project Memory	Initialize/remember/batch	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-004	Project Memory	Search/get/recent	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-005	Project Memory	Update/forget/link	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-006	Project Memory	Export/import/status	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-007	Project Memory	Redaction	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PMEM-008	Project Memory	Settings/CLI reset	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-001	Continuity	Legacy tools	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-002	Continuity	Lifecycle tools	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-003	Continuity	Automatic checkpoints	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-004	Continuity	Automatic rollover	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-005	Continuity	Native session host	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-006	Continuity	Exact acknowledgment	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-007	Continuity	Project isolation	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+CONT-008	Continuity	Settings/CLI reset	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MGR-001	Manager	Single dashboard owner	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MGR-002	Manager	Startup installation	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MGR-003	Manager	Watchdog/restart	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+MGR-004	Manager	Typed client	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+DASH-001	Dashboard	Loopback dashboard	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TEL-001	Telemetry	CPU metrics	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TEL-002	Telemetry	GPU metrics	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TEL-003	Telemetry	RAM metrics	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TEL-004	Telemetry	Disk metrics	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TEL-005	Telemetry	Process metrics	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TEL-006	Telemetry	Latest-value delivery	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+TEL-007	Telemetry	Bounded histories	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+GFX-001	Rendering	Shared graphics resources	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+GFX-002	Rendering	Render-on-demand	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+GFX-003	Rendering	Device-loss recovery	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+DIAG-001	Diagnostics	Structured diagnostics	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+DIAG-002	Diagnostics	Runtime ownership snapshot	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+SEC-001	Security	DPAPI secrets	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+SEC-002	Security	Job Object process containment	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+SEC-003	Security	Authenticated IPC	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+DATA-001	Data	macOS import	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PKG-001	Packaging	MSIX package	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PKG-002	Packaging	Native setup EXE	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PKG-003	Packaging	Startup and CLI alias	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PKG-004	Packaging	Upgrade/data preservation	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PKG-005	Packaging	x64/ARM64	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			
+PKG-006	Packaging	No Python/no attribution	to be source-verified	behavioral parity plus Windows-native implementation and tests	not_started			

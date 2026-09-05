@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "risks": [
+    {
+      "id": "R-QWEN-01",
+      "risk": "quantized local model loses objective or fabricates tool/source state",
+      "mitigation": "one microtask/fresh chat, fixed schemas, RAG then direct verification, small edits, read-after-write, build/test",
+      "release_effect": "none if gates pass"
+    },
+    {
+      "id": "R-TOOLS-01",
+      "risk": "LM Studio tool labels/schema differ",
+      "mitigation": "capability discovery/probes and recorded bindings",
+      "release_effect": "blocked capability tasks only"
+    },
+    {
+      "id": "R-LMS-01",
+      "risk": "LM Studio API/config version drift",
+      "mitigation": "runtime discovery, official docs, versioned adapters, fixture plus live gate",
+      "release_effect": "live gate blocked"
+    },
+    {
+      "id": "R-WIN-01",
+      "risk": "Windows toolchain/signing/ARM64 unavailable",
+      "mitigation": "unattended first-party provisioning, local test signing, cross-build and explicit qualification gap",
+      "release_effect": "corresponding gate remains blocked"
+    },
+    {
+      "id": "R-MEM-01",
+      "risk": "telemetry/rendering memory growth",
+      "mitigation": "capacity-one mailbox, fixed rings, shared renderer, lifecycle profiles",
+      "release_effect": "G26 block"
+    }
+  ]
+}

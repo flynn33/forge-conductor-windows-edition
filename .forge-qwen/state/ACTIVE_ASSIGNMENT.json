@@ -1,0 +1,141 @@
+{
+    "schema_version":  1,
+    "mission_id":  "forge-conductor-windows11-port-qwen-guided-v2",
+    "run_id":  "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+    "repository_fingerprint":  "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+    "target_repository":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "expected_branch":  "forge-windows-port-1df367e1",
+    "memory_namespace":  "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+    "memory_cursor_key":  "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5::cursor",
+    "microtask":  {
+                      "id":  "P01-A",
+                      "phase_id":  "P01",
+                      "role":  "builder",
+                      "title":  "Discover actual Windows/VS/MSVC/SDK/CMake/vcpkg/WinUI tools",
+                      "objective":  "Discover actual Windows/VS/MSVC/SDK/CMake/vcpkg/WinUI tools",
+                      "dependencies":  [
+                                           "BOOT-TOOLS-001",
+                                           "P00-V"
+                                       ],
+                      "document_routes":  [
+                                              "AGENTS.md",
+                                              "qwen/MICROTASK_PROTOCOL.md",
+                                              "qwen/TOOL_ROUTING.md",
+                                              "qwen/RAG_PLAYBOOK.md",
+                                              "governance/PORT_TASK_CONTRACT.json",
+                                              "architecture/TARGET_ARCHITECTURE.md",
+                                              "architecture/FORSETTI_MODULES.md",
+                                              "docs/WINDOWS_TOOLCHAIN.md"
+                                          ],
+                      "rag_queries":  [
+                                          "Forge Conductor P01 Windows toolchain discovery and provisioning Discover actual Windows/VS/MSVC/SDK/CMake/vcpkg/WinUI tools macOS source Forsetti Windows target audit evidence"
+                                      ],
+                      "allowed_write_roots":  [
+                                                  "src/**",
+                                                  "include/**",
+                                                  "modules/**",
+                                                  "products/**",
+                                                  "tests/**",
+                                                  "scripts/**",
+                                                  "packaging/**",
+                                                  "docs/**",
+                                                  ".forsetti/**",
+                                                  ".forge-qwen/**"
+                                              ],
+                      "max_files_changed":  5,
+                      "max_lines_changed":  400,
+                      "max_tool_calls":  18,
+                      "max_attempts":  3,
+                      "acceptance":  [
+                                         "required source/governance evidence verified",
+                                         "implementation or declared source-only output complete",
+                                         "focused build/test/validation passes",
+                                         "evidence and handoff recorded"
+                                     ],
+                      "status":  "not_started",
+                      "evidence":  [
+
+                                   ],
+                      "required_capabilities":  [
+                                                    "filesystem",
+                                                    "shell",
+                                                    "rag_v1",
+                                                    "persistent_memory"
+                                                ]
+                  },
+    "step_card":  ".forge-qwen\\state\\assignments\\P01-A.md",
+    "preflight_steps":  [
+                            "Print the current directory with a tool; do not run Git first.",
+                            "Read WORKSPACE_LOCK.json from this exact directory.",
+                            "Run Assert-QwenWorkspace.ps1 with RequireCurrentDirectory.",
+                            "Confirm assignment mission, run ID, fingerprint, target, and branch match the lock.",
+                            "Retrieve the exact cursor only when persistent_memory is required; otherwise do not call memory."
+                        ],
+    "execution_steps":  [
+                            "Read the generated step card.",
+                            "Read only routed documents.",
+                            "Run only routed RAG queries and directly verify every material fact.",
+                            "Write VERIFIED, INFERRED, UNKNOWN, and BLOCKED facts.",
+                            "Set the microtask in progress.",
+                            "Execute each numbered step in order.",
+                            "Reread writes and run focused tests.",
+                            "Record commands, exit codes, evidence, and acceptance results."
+                        ],
+    "close_steps":  [
+                        "Validate every changed path against allowed write roots.",
+                        "Update microtask and run state.",
+                        "Write a lock-bound checksummed handoff.",
+                        "Generate MEMORY_CURSOR.json.",
+                        "Replace only the exact namespaced persistent-memory cursor when required.",
+                        "Write session-result.json.",
+                        "Emit FORGE_QWEN_RESULT and end the chat."
+                    ],
+    "read_only_roots":  [
+                            "A:\\Qwen-Projects\\Forge-Conductor-Windows11-Qwen3.8-27B-4bit-Guided-v2-Instructions",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-qwen\\instructions",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit"
+                        ],
+    "allowed_write_roots":  [
+                                "src/**",
+                                "include/**",
+                                "modules/**",
+                                "products/**",
+                                "tests/**",
+                                "scripts/**",
+                                "packaging/**",
+                                "docs/**",
+                                ".forsetti/**",
+                                ".forge-qwen/**"
+                            ],
+    "forbidden_roots":  [
+                            "A:\\Qwen-Projects\\Forge-Conductor-Windows11-Qwen3.8-27B-4bit-Guided-v2-Instructions\\work",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-qwen\\instructions",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main\\.forsetti\\remediation-v3",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main\\.forsetti\\remediation-v3",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main\\.forsetti\\remediation-v3",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forge-codex",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forsetti\\remediation",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forsetti\\remediation-v2",
+                            "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\audit\\.forsetti\\remediation-v3"
+                        ],
+    "required_final_marker":  "FORGE_QWEN_RESULT",
+    "created_utc":  "2026-09-04T18:53:37.3387879Z"
+}

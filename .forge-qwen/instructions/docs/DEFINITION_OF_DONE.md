@@ -1,0 +1,3 @@
+# Definition of done
+
+All phases/microtasks and hard gates passed; all feature rows and 53 tools evidenced; sealed Forsetti hash/guardrails passed; native Windows builds/tests/analyzers/stress/security passed; project memory/continuity/autonomous rollover proved; LM Studio integration transactional/live where available; shared renderer/resource budgets passed; x64 and ARM64 artifacts built with truthful runtime qualification; clean install/upgrade/repair/uninstall/purge passed; docs synchronized; separate Validator/Documentation/Release decisions passed; no Python, prohibited stack, secrets, unresolved critical/high defects, or automated-authorship attribution.

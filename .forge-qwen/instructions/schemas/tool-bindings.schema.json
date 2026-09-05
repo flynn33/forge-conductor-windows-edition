@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "revision",
+    "bindings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "capability",
+          "status",
+          "plugin_id",
+          "tool_names",
+          "probe_evidence"
+        ],
+        "properties": {
+          "capability": {
+            "enum": [
+              "shell",
+              "filesystem",
+              "github",
+              "rag_v1",
+              "js_sandbox",
+              "long_term_memory",
+              "persistent_memory"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "verified",
+              "missing",
+              "blocked"
+            ]
+          },
+          "plugin_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tool_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "probe_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

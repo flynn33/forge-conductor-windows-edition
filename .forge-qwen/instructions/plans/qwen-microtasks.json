@@ -1,0 +1,6419 @@
+{
+  "schema_version": 1,
+  "selection_rule": "Controller selects the first dependency-ready, non-passed, non-blocked microtask after workspace-lock validation. Memory and continuity never select a repository, phase, or task.",
+  "microtask_count": 126,
+  "microtasks": [
+    {
+      "id": "BOOT-WORKSPACE-000",
+      "phase_id": "P00",
+      "role": "architect",
+      "title": "Prove the exact Windows-port workspace and quarantine stale context",
+      "objective": "Verify the lock-bound Windows target repository, prove read-only and writable roots, classify all mismatched continuity/memory as foreign, and prepare the first active assignment without inspecting another repository.",
+      "dependencies": [],
+      "document_routes": [
+        "READ-THIS-FIRST-QWEN.txt",
+        "qwen/WORKSPACE_AUTHORITY.md",
+        "qwen/WRONG_WORKSPACE_RECOVERY.md",
+        "qwen/STEP_BY_STEP_EXECUTION.md"
+      ],
+      "rag_queries": [],
+      "allowed_write_roots": [
+        ".forge-qwen/state/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 250,
+      "max_tool_calls": 12,
+      "max_attempts": 2,
+      "acceptance": [
+        "workspace assertion passes from exact current root",
+        "mission/run/fingerprint/target/branch recorded",
+        "read-only source and instruction roots verified",
+        "stale or mismatched continuity/memory is ignored",
+        "ACTIVE_ASSIGNMENT and namespaced memory cursor instructions are evidenced"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell"
+      ]
+    },
+    {
+      "id": "BOOT-TOOLS-001",
+      "phase_id": "P00",
+      "role": "builder",
+      "title": "Discover and harmlessly verify all seven tool capabilities",
+      "objective": "Bind exact LM Studio tool/plugin/function names and argument shapes, run harmless probes, and persist verified bindings.",
+      "dependencies": [
+        "BOOT-WORKSPACE-000"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/TOOL_DISCOVERY.md",
+        "qwen/TOOL_CAPABILITY_MAP.json",
+        "qwen/TOOL_ROUTING.md"
+      ],
+      "rag_queries": [
+        "Forge Qwen tool discovery capability bindings shell filesystem github rag-v1 js sandbox long-term memory persistent memory"
+      ],
+      "allowed_write_roots": [
+        ".forge-qwen/state/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 250,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "all visible tools enumerated",
+        "seven capabilities bound or exact missing blockers recorded",
+        "harmless probes evidenced",
+        "tool-bindings schema valid"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "shell",
+        "filesystem",
+        "github",
+        "rag_v1",
+        "js_sandbox",
+        "long_term_memory",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P00-A",
+      "phase_id": "P00",
+      "role": "builder",
+      "title": "Validate package/source hashes and state",
+      "objective": "Validate package/source hashes and state",
+      "dependencies": [
+        "BOOT-TOOLS-001"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P00 Package integrity and governing intake Validate package/source hashes and state macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P00-B",
+      "phase_id": "P00",
+      "role": "builder",
+      "title": "Read governing rules and task contract",
+      "objective": "Read governing rules and task contract",
+      "dependencies": [
+        "P00-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P00 Package integrity and governing intake Read governing rules and task contract macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P00-C",
+      "phase_id": "P00",
+      "role": "builder",
+      "title": "Create first verified handoff and baseline",
+      "objective": "Create first verified handoff and baseline",
+      "dependencies": [
+        "P00-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P00 Package integrity and governing intake Create first verified handoff and baseline macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P00-V",
+      "phase_id": "P00",
+      "role": "validator",
+      "title": "Validate P00: Package integrity and governing intake",
+      "objective": "Independently validate gate G00 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P00-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G00 acceptance adversarial validation Package integrity and governing intake"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G00 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P01-A",
+      "phase_id": "P01",
+      "role": "builder",
+      "title": "Discover actual Windows/VS/MSVC/SDK/CMake/vcpkg/WinUI tools",
+      "objective": "Discover actual Windows/VS/MSVC/SDK/CMake/vcpkg/WinUI tools",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P00-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P01 Windows toolchain discovery and provisioning Discover actual Windows/VS/MSVC/SDK/CMake/vcpkg/WinUI tools macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P01-B",
+      "phase_id": "P01",
+      "role": "builder",
+      "title": "Provision missing first-party tools noninteractively",
+      "objective": "Provision missing first-party tools noninteractively",
+      "dependencies": [
+        "P01-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P01 Windows toolchain discovery and provisioning Provision missing first-party tools noninteractively macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P01-C",
+      "phase_id": "P01",
+      "role": "builder",
+      "title": "Record pinned versions and build environment",
+      "objective": "Record pinned versions and build environment",
+      "dependencies": [
+        "P01-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P01 Windows toolchain discovery and provisioning Record pinned versions and build environment macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P01-V",
+      "phase_id": "P01",
+      "role": "validator",
+      "title": "Validate P01: Windows toolchain discovery and provisioning",
+      "objective": "Independently validate gate G01 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P01-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G01 acceptance adversarial validation Windows toolchain discovery and provisioning"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G01 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P02-A",
+      "phase_id": "P02",
+      "role": "builder",
+      "title": "Regenerate feature/MCP/CLI/schema/data/test inventories",
+      "objective": "Regenerate feature/MCP/CLI/schema/data/test inventories",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P00-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P02 Source archaeology and parity baseline Regenerate feature/MCP/CLI/schema/data/test inventories macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P02-B",
+      "phase_id": "P02",
+      "role": "builder",
+      "title": "Verify 53 tools and seven UI surfaces from source",
+      "objective": "Verify 53 tools and seven UI surfaces from source",
+      "dependencies": [
+        "P02-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P02 Source archaeology and parity baseline Verify 53 tools and seven UI surfaces from source macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P02-C",
+      "phase_id": "P02",
+      "role": "builder",
+      "title": "Update parity matrices without deleting rows",
+      "objective": "Update parity matrices without deleting rows",
+      "dependencies": [
+        "P02-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P02 Source archaeology and parity baseline Update parity matrices without deleting rows macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P02-V",
+      "phase_id": "P02",
+      "role": "validator",
+      "title": "Validate P02: Source archaeology and parity baseline",
+      "objective": "Independently validate gate G02 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P02-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G02 acceptance adversarial validation Source archaeology and parity baseline"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G02 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P03-A",
+      "phase_id": "P03",
+      "role": "builder",
+      "title": "Validate profile/task/module contracts",
+      "objective": "Validate profile/task/module contracts",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P01-V",
+        "P02-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P03 Forsetti contract and architecture decisions Validate profile/task/module contracts macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P03-B",
+      "phase_id": "P03",
+      "role": "builder",
+      "title": "Inventory public Forsetti APIs and sealed boundaries",
+      "objective": "Inventory public Forsetti APIs and sealed boundaries",
+      "dependencies": [
+        "P03-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P03 Forsetti contract and architecture decisions Inventory public Forsetti APIs and sealed boundaries macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P03-C",
+      "phase_id": "P03",
+      "role": "builder",
+      "title": "Create architecture/dependency/module ADRs",
+      "objective": "Create architecture/dependency/module ADRs",
+      "dependencies": [
+        "P03-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P03 Forsetti contract and architecture decisions Create architecture/dependency/module ADRs macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P03-V",
+      "phase_id": "P03",
+      "role": "validator",
+      "title": "Validate P03: Forsetti contract and architecture decisions",
+      "objective": "Independently validate gate G03 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P03-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G03 acceptance adversarial validation Forsetti contract and architecture decisions"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G03 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P04-A",
+      "phase_id": "P04",
+      "role": "builder",
+      "title": "Create CMake/MSBuild/VS Code structure",
+      "objective": "Create CMake/MSBuild/VS Code structure",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P03-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P04 Repository and build scaffold Create CMake/MSBuild/VS Code structure macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P04-B",
+      "phase_id": "P04",
+      "role": "builder",
+      "title": "Add manifests/composition roots/canonical scripts",
+      "objective": "Add manifests/composition roots/canonical scripts",
+      "dependencies": [
+        "P04-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P04 Repository and build scaffold Add manifests/composition roots/canonical scripts macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P04-C",
+      "phase_id": "P04",
+      "role": "builder",
+      "title": "Build minimal x64 Debug and Release",
+      "objective": "Build minimal x64 Debug and Release",
+      "dependencies": [
+        "P04-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P04 Repository and build scaffold Build minimal x64 Debug and Release macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P04-V",
+      "phase_id": "P04",
+      "role": "validator",
+      "title": "Validate P04: Repository and build scaffold",
+      "objective": "Independently validate gate G04 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P04-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "governance/PORT_TASK_CONTRACT.json",
+        "architecture/TARGET_ARCHITECTURE.md",
+        "architecture/FORSETTI_MODULES.md",
+        "docs/WINDOWS_TOOLCHAIN.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G04 acceptance adversarial validation Repository and build scaffold"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G04 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P05-A",
+      "phase_id": "P05",
+      "role": "builder",
+      "title": "Port IDs/value objects/errors/policies",
+      "objective": "Port IDs/value objects/errors/policies",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P04-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P05 Domain models and abstract contracts Port IDs/value objects/errors/policies macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P05-B",
+      "phase_id": "P05",
+      "role": "builder",
+      "title": "Create interface-first contracts and composition roots",
+      "objective": "Create interface-first contracts and composition roots",
+      "dependencies": [
+        "P05-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P05 Domain models and abstract contracts Create interface-first contracts and composition roots macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P05-C",
+      "phase_id": "P05",
+      "role": "builder",
+      "title": "Add deterministic native tests",
+      "objective": "Add deterministic native tests",
+      "dependencies": [
+        "P05-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P05 Domain models and abstract contracts Add deterministic native tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P05-V",
+      "phase_id": "P05",
+      "role": "validator",
+      "title": "Validate P05: Domain models and abstract contracts",
+      "objective": "Independently validate gate G05 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P05-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G05 acceptance adversarial validation Domain models and abstract contracts"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G05 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P06-A",
+      "phase_id": "P06",
+      "role": "builder",
+      "title": "Implement paths/config/atomic files/DPAPI/logging/ETW",
+      "objective": "Implement paths/config/atomic files/DPAPI/logging/ETW",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P05-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P06 Windows infrastructure foundation Implement paths/config/atomic files/DPAPI/logging/ETW macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P06-B",
+      "phase_id": "P06",
+      "role": "builder",
+      "title": "Implement RAII handles/clock/filesystem/process primitives",
+      "objective": "Implement RAII handles/clock/filesystem/process primitives",
+      "dependencies": [
+        "P06-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P06 Windows infrastructure foundation Implement RAII handles/clock/filesystem/process primitives macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P06-C",
+      "phase_id": "P06",
+      "role": "builder",
+      "title": "Prove shutdown/failure/cancellation paths",
+      "objective": "Prove shutdown/failure/cancellation paths",
+      "dependencies": [
+        "P06-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P06 Windows infrastructure foundation Prove shutdown/failure/cancellation paths macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P06-V",
+      "phase_id": "P06",
+      "role": "validator",
+      "title": "Validate P06: Windows infrastructure foundation",
+      "objective": "Independently validate gate G06 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P06-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G06 acceptance adversarial validation Windows infrastructure foundation"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G06 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P07-A",
+      "phase_id": "P07",
+      "role": "builder",
+      "title": "Implement database RAII and migrations",
+      "objective": "Implement database RAII and migrations",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P06-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P07 Winsqlite3 persistence and migrations Implement database RAII and migrations macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P07-B",
+      "phase_id": "P07",
+      "role": "builder",
+      "title": "Implement backup/integrity/busy/WAL policies",
+      "objective": "Implement backup/integrity/busy/WAL policies",
+      "dependencies": [
+        "P07-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P07 Winsqlite3 persistence and migrations Implement backup/integrity/busy/WAL policies macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P07-C",
+      "phase_id": "P07",
+      "role": "builder",
+      "title": "Pass schema fixture/concurrency/corruption tests",
+      "objective": "Pass schema fixture/concurrency/corruption tests",
+      "dependencies": [
+        "P07-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P07 Winsqlite3 persistence and migrations Pass schema fixture/concurrency/corruption tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P07-V",
+      "phase_id": "P07",
+      "role": "validator",
+      "title": "Validate P07: Winsqlite3 persistence and migrations",
+      "objective": "Independently validate gate G07 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P07-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/OOP_OWNERSHIP_CONCURRENCY.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "architecture/SECURITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G07 acceptance adversarial validation Winsqlite3 persistence and migrations"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G07 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P08-A",
+      "phase_id": "P08",
+      "role": "builder",
+      "title": "Implement multi-project registry and bounded repository LRU",
+      "objective": "Implement multi-project registry and bounded repository LRU",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P07-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P08 Project identity and project memory Implement multi-project registry and bounded repository LRU macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P08-B",
+      "phase_id": "P08",
+      "role": "builder",
+      "title": "Implement twelve project_memory tools",
+      "objective": "Implement twelve project_memory tools",
+      "dependencies": [
+        "P08-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P08 Project identity and project memory Implement twelve project_memory tools macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P08-C",
+      "phase_id": "P08",
+      "role": "builder",
+      "title": "Pass reset/export/import/redaction/isolation tests",
+      "objective": "Pass reset/export/import/redaction/isolation tests",
+      "dependencies": [
+        "P08-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P08 Project identity and project memory Pass reset/export/import/redaction/isolation tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P08-V",
+      "phase_id": "P08",
+      "role": "validator",
+      "title": "Validate P08: Project identity and project memory",
+      "objective": "Independently validate gate G08 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P08-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G08 acceptance adversarial validation Project identity and project memory"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G08 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P09-A",
+      "phase_id": "P09",
+      "role": "builder",
+      "title": "Port five memory tools",
+      "objective": "Port five memory tools",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P07-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P09 Legacy memory compatibility Port five memory tools macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P09-B",
+      "phase_id": "P09",
+      "role": "builder",
+      "title": "Preserve limits/errors/migration behavior",
+      "objective": "Preserve limits/errors/migration behavior",
+      "dependencies": [
+        "P09-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P09 Legacy memory compatibility Preserve limits/errors/migration behavior macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P09-C",
+      "phase_id": "P09",
+      "role": "builder",
+      "title": "Pass compatibility tests",
+      "objective": "Pass compatibility tests",
+      "dependencies": [
+        "P09-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P09 Legacy memory compatibility Pass compatibility tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P09-V",
+      "phase_id": "P09",
+      "role": "validator",
+      "title": "Validate P09: Legacy memory compatibility",
+      "objective": "Independently validate gate G09 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P09-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROJECT_MEMORY.md",
+        "evidence/macos-reference/docs/DURABLE-MEMORY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G09 acceptance adversarial validation Legacy memory compatibility"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G09 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P10-A",
+      "phase_id": "P10",
+      "role": "builder",
+      "title": "Port embedded catalog/playbooks",
+      "objective": "Port embedded catalog/playbooks",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P07-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P10 Agent catalog and durable sessions Port embedded catalog/playbooks macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P10-B",
+      "phase_id": "P10",
+      "role": "builder",
+      "title": "Implement run start/status/complete",
+      "objective": "Implement run start/status/complete",
+      "dependencies": [
+        "P10-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P10 Agent catalog and durable sessions Implement run start/status/complete macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P10-C",
+      "phase_id": "P10",
+      "role": "builder",
+      "title": "Pass crash/restart persistence tests",
+      "objective": "Pass crash/restart persistence tests",
+      "dependencies": [
+        "P10-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P10 Agent catalog and durable sessions Pass crash/restart persistence tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P10-V",
+      "phase_id": "P10",
+      "role": "validator",
+      "title": "Validate P10: Agent catalog and durable sessions",
+      "objective": "Independently validate gate G10 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P10-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G10 acceptance adversarial validation Agent catalog and durable sessions"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G10 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P11-A",
+      "phase_id": "P11",
+      "role": "builder",
+      "title": "Port legacy/lifecycle continuity tools",
+      "objective": "Port legacy/lifecycle continuity tools",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P08-V",
+        "P10-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P11 Continuity repositories and state machine Port legacy/lifecycle continuity tools macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P11-B",
+      "phase_id": "P11",
+      "role": "builder",
+      "title": "Implement CAS transitions/checksums/recovery",
+      "objective": "Implement CAS transitions/checksums/recovery",
+      "dependencies": [
+        "P11-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P11 Continuity repositories and state machine Implement CAS transitions/checksums/recovery macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P11-C",
+      "phase_id": "P11",
+      "role": "builder",
+      "title": "Pass multi-project crash/concurrency tests",
+      "objective": "Pass multi-project crash/concurrency tests",
+      "dependencies": [
+        "P11-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P11 Continuity repositories and state machine Pass multi-project crash/concurrency tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P11-V",
+      "phase_id": "P11",
+      "role": "validator",
+      "title": "Validate P11: Continuity repositories and state machine",
+      "objective": "Independently validate gate G11 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P11-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G11 acceptance adversarial validation Continuity repositories and state machine"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G11 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P12-A",
+      "phase_id": "P12",
+      "role": "builder",
+      "title": "Implement session-host interfaces/providers",
+      "objective": "Implement session-host interfaces/providers",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P11-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P12 Native session host and autonomous rollover Implement session-host interfaces/providers macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P12-B",
+      "phase_id": "P12",
+      "role": "builder",
+      "title": "Build Forge-native logical session host/plugin",
+      "objective": "Build Forge-native logical session host/plugin",
+      "dependencies": [
+        "P12-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P12 Native session host and autonomous rollover Build Forge-native logical session host/plugin macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P12-C",
+      "phase_id": "P12",
+      "role": "builder",
+      "title": "Prove successor/bootstrap/ack/seal/resume/recovery",
+      "objective": "Prove successor/bootstrap/ack/seal/resume/recovery",
+      "dependencies": [
+        "P12-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P12 Native session host and autonomous rollover Prove successor/bootstrap/ack/seal/resume/recovery macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P12-V",
+      "phase_id": "P12",
+      "role": "validator",
+      "title": "Validate P12: Native session host and autonomous rollover",
+      "objective": "Independently validate gate G12 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P12-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/CONTINUITY_SESSION_HOST.md",
+        "evidence/macos-reference/docs/CONTEXT-AGENT-CONTINUITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G12 acceptance adversarial validation Native session host and autonomous rollover"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G12 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P13-A",
+      "phase_id": "P13",
+      "role": "builder",
+      "title": "Port bounded tools with workspace authority",
+      "objective": "Port bounded tools with workspace authority",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P06-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P13 Filesystem, search, Git, shell, and PDF tools Port bounded tools with workspace authority macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P13-B",
+      "phase_id": "P13",
+      "role": "builder",
+      "title": "Use CreateProcessW/Job Objects and native search/PDF",
+      "objective": "Use CreateProcessW/Job Objects and native search/PDF",
+      "dependencies": [
+        "P13-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P13 Filesystem, search, Git, shell, and PDF tools Use CreateProcessW/Job Objects and native search/PDF macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P13-C",
+      "phase_id": "P13",
+      "role": "builder",
+      "title": "Pass security/timeout/output/tree cleanup tests",
+      "objective": "Pass security/timeout/output/tree cleanup tests",
+      "dependencies": [
+        "P13-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P13 Filesystem, search, Git, shell, and PDF tools Pass security/timeout/output/tree cleanup tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P13-V",
+      "phase_id": "P13",
+      "role": "validator",
+      "title": "Validate P13: Filesystem, search, Git, shell, and PDF tools",
+      "objective": "Independently validate gate G13 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P13-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G13 acceptance adversarial validation Filesystem, search, Git, shell, and PDF tools"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G13 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P14-A",
+      "phase_id": "P14",
+      "role": "builder",
+      "title": "Implement newline JSON-RPC stdio",
+      "objective": "Implement newline JSON-RPC stdio",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P08-V",
+        "P09-V",
+        "P10-V",
+        "P11-V",
+        "P13-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P14 MCP transport, router, audit, and loop protection Implement newline JSON-RPC stdio macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P14-B",
+      "phase_id": "P14",
+      "role": "builder",
+      "title": "Expose exact 53 descriptors/schemas",
+      "objective": "Expose exact 53 descriptors/schemas",
+      "dependencies": [
+        "P14-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P14 MCP transport, router, audit, and loop protection Expose exact 53 descriptors/schemas macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P14-C",
+      "phase_id": "P14",
+      "role": "builder",
+      "title": "Pass framing/error/EOF/concurrency/role tests",
+      "objective": "Pass framing/error/EOF/concurrency/role tests",
+      "dependencies": [
+        "P14-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P14 MCP transport, router, audit, and loop protection Pass framing/error/EOF/concurrency/role tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P14-V",
+      "phase_id": "P14",
+      "role": "validator",
+      "title": "Validate P14: MCP transport, router, audit, and loop protection",
+      "objective": "Independently validate gate G14 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P14-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G14 acceptance adversarial validation MCP transport, router, audit, and loop protection"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G14 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P15-A",
+      "phase_id": "P15",
+      "role": "builder",
+      "title": "Implement evidence-based discovery/capability adapters",
+      "objective": "Implement evidence-based discovery/capability adapters",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P14-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P15 Windows LM Studio environment and deployment Implement evidence-based discovery/capability adapters macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P15-B",
+      "phase_id": "P15",
+      "role": "builder",
+      "title": "Implement transactional primary/fallback deployment",
+      "objective": "Implement transactional primary/fallback deployment",
+      "dependencies": [
+        "P15-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P15 Windows LM Studio environment and deployment Implement transactional primary/fallback deployment macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P15-C",
+      "phase_id": "P15",
+      "role": "builder",
+      "title": "Pass smoke/rollback/drift/live-host tests",
+      "objective": "Pass smoke/rollback/drift/live-host tests",
+      "dependencies": [
+        "P15-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P15 Windows LM Studio environment and deployment Pass smoke/rollback/drift/live-host tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P15-V",
+      "phase_id": "P15",
+      "role": "validator",
+      "title": "Validate P15: Windows LM Studio environment and deployment",
+      "objective": "Independently validate gate G15 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P15-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/MCP_LM_STUDIO.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G15 acceptance adversarial validation Windows LM Studio environment and deployment"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G15 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P16-A",
+      "phase_id": "P16",
+      "role": "builder",
+      "title": "Implement single-instance manager/leases",
+      "objective": "Implement single-instance manager/leases",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P06-V",
+        "P07-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P16 Manager process, startup, IPC, and dashboard Implement single-instance manager/leases macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P16-B",
+      "phase_id": "P16",
+      "role": "builder",
+      "title": "Implement authenticated pipe and bounded loopback HTTP/SSE",
+      "objective": "Implement authenticated pipe and bounded loopback HTTP/SSE",
+      "dependencies": [
+        "P16-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P16 Manager process, startup, IPC, and dashboard Implement authenticated pipe and bounded loopback HTTP/SSE macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P16-C",
+      "phase_id": "P16",
+      "role": "builder",
+      "title": "Pass watchdog/startup/restart/port/security tests",
+      "objective": "Pass watchdog/startup/restart/port/security tests",
+      "dependencies": [
+        "P16-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P16 Manager process, startup, IPC, and dashboard Pass watchdog/startup/restart/port/security tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P16-V",
+      "phase_id": "P16",
+      "role": "validator",
+      "title": "Validate P16: Manager process, startup, IPC, and dashboard",
+      "objective": "Independently validate gate G16 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P16-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G16 acceptance adversarial validation Manager process, startup, IPC, and dashboard"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G16 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P17-A",
+      "phase_id": "P17",
+      "role": "builder",
+      "title": "Implement CPU/RAM/disk/GPU/process/power collectors",
+      "objective": "Implement CPU/RAM/disk/GPU/process/power collectors",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P06-V",
+        "P16-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P17 Windows telemetry collectors Implement CPU/RAM/disk/GPU/process/power collectors macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P17-B",
+      "phase_id": "P17",
+      "role": "builder",
+      "title": "Implement explicit unavailable/stale semantics",
+      "objective": "Implement explicit unavailable/stale semantics",
+      "dependencies": [
+        "P17-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P17 Windows telemetry collectors Implement explicit unavailable/stale semantics macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P17-C",
+      "phase_id": "P17",
+      "role": "builder",
+      "title": "Pass mapping/fixture/live capability tests",
+      "objective": "Pass mapping/fixture/live capability tests",
+      "dependencies": [
+        "P17-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P17 Windows telemetry collectors Pass mapping/fixture/live capability tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P17-V",
+      "phase_id": "P17",
+      "role": "validator",
+      "title": "Validate P17: Windows telemetry collectors",
+      "objective": "Independently validate gate G17 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P17-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G17 acceptance adversarial validation Windows telemetry collectors"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G17 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P18-A",
+      "phase_id": "P18",
+      "role": "builder",
+      "title": "Implement capacity-one latest mailbox",
+      "objective": "Implement capacity-one latest mailbox",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P17-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P18 Bounded telemetry delivery and histories Implement capacity-one latest mailbox macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P18-B",
+      "phase_id": "P18",
+      "role": "builder",
+      "title": "Implement fixed rings/downsampling/pressure tiers",
+      "objective": "Implement fixed rings/downsampling/pressure tiers",
+      "dependencies": [
+        "P18-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P18 Bounded telemetry delivery and histories Implement fixed rings/downsampling/pressure tiers macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P18-C",
+      "phase_id": "P18",
+      "role": "builder",
+      "title": "Pass UI stall/queue/shutdown stress",
+      "objective": "Pass UI stall/queue/shutdown stress",
+      "dependencies": [
+        "P18-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P18 Bounded telemetry delivery and histories Pass UI stall/queue/shutdown stress macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P18-V",
+      "phase_id": "P18",
+      "role": "validator",
+      "title": "Validate P18: Bounded telemetry delivery and histories",
+      "objective": "Independently validate gate G18 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P18-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G18 acceptance adversarial validation Bounded telemetry delivery and histories"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G18 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P19-A",
+      "phase_id": "P19",
+      "role": "builder",
+      "title": "Implement shared DirectX resource graph",
+      "objective": "Implement shared DirectX resource graph",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P18-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P19 Shared native gauge rendering Implement shared DirectX resource graph macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P19-B",
+      "phase_id": "P19",
+      "role": "builder",
+      "title": "Implement dirty/visibility-driven frame scheduling",
+      "objective": "Implement dirty/visibility-driven frame scheduling",
+      "dependencies": [
+        "P19-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P19 Shared native gauge rendering Implement dirty/visibility-driven frame scheduling macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P19-C",
+      "phase_id": "P19",
+      "role": "builder",
+      "title": "Pass device-loss/idle/GPU/resource lifecycle tests",
+      "objective": "Pass device-loss/idle/GPU/resource lifecycle tests",
+      "dependencies": [
+        "P19-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P19 Shared native gauge rendering Pass device-loss/idle/GPU/resource lifecycle tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P19-V",
+      "phase_id": "P19",
+      "role": "validator",
+      "title": "Validate P19: Shared native gauge rendering",
+      "objective": "Independently validate gate G19 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P19-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "evidence/audit/Forge-Conductor-Key-Evidence.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G19 acceptance adversarial validation Shared native gauge rendering"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G19 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P20-A",
+      "phase_id": "P20",
+      "role": "builder",
+      "title": "Build shell/navigation/view models",
+      "objective": "Build shell/navigation/view models",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P08-V",
+        "P10-V",
+        "P15-V",
+        "P16-V",
+        "P18-V",
+        "P19-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/WINDOWS_UI.md",
+        "architecture/TELEMETRY_RENDERING.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P20 WinUI 3 shell and seven feature surfaces Build shell/navigation/view models macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P20-B",
+      "phase_id": "P20",
+      "role": "builder",
+      "title": "Implement all seven surfaces/settings/reset/diagnostics",
+      "objective": "Implement all seven surfaces/settings/reset/diagnostics",
+      "dependencies": [
+        "P20-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/WINDOWS_UI.md",
+        "architecture/TELEMETRY_RENDERING.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P20 WinUI 3 shell and seven feature surfaces Implement all seven surfaces/settings/reset/diagnostics macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P20-C",
+      "phase_id": "P20",
+      "role": "builder",
+      "title": "Pass accessibility/DPI/theme/navigation automation",
+      "objective": "Pass accessibility/DPI/theme/navigation automation",
+      "dependencies": [
+        "P20-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/WINDOWS_UI.md",
+        "architecture/TELEMETRY_RENDERING.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P20 WinUI 3 shell and seven feature surfaces Pass accessibility/DPI/theme/navigation automation macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P20-V",
+      "phase_id": "P20",
+      "role": "validator",
+      "title": "Validate P20: WinUI 3 shell and seven feature surfaces",
+      "objective": "Independently validate gate G20 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P20-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/WINDOWS_UI.md",
+        "architecture/TELEMETRY_RENDERING.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G20 acceptance adversarial validation WinUI 3 shell and seven feature surfaces"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G20 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P21-A",
+      "phase_id": "P21",
+      "role": "builder",
+      "title": "Implement process modes and baseline commands",
+      "objective": "Implement process modes and baseline commands",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P12-V",
+        "P14-V",
+        "P15-V",
+        "P16-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P21 CLI and process entry parity Implement process modes and baseline commands macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P21-B",
+      "phase_id": "P21",
+      "role": "builder",
+      "title": "Implement project/continuity/import/installer commands",
+      "objective": "Implement project/continuity/import/installer commands",
+      "dependencies": [
+        "P21-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P21 CLI and process entry parity Implement project/continuity/import/installer commands macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P21-C",
+      "phase_id": "P21",
+      "role": "builder",
+      "title": "Pass exit-code/JSON/invocation tests",
+      "objective": "Pass exit-code/JSON/invocation tests",
+      "dependencies": [
+        "P21-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P21 CLI and process entry parity Pass exit-code/JSON/invocation tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P21-V",
+      "phase_id": "P21",
+      "role": "validator",
+      "title": "Validate P21: CLI and process entry parity",
+      "objective": "Independently validate gate G21 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P21-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G21 acceptance adversarial validation CLI and process entry parity"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G21 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P22-A",
+      "phase_id": "P22",
+      "role": "builder",
+      "title": "Harden path/IPC/process/import/secret boundaries",
+      "objective": "Harden path/IPC/process/import/secret boundaries",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P20-V",
+        "P21-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P22 Security hardening and fault containment Harden path/IPC/process/import/secret boundaries macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P22-B",
+      "phase_id": "P22",
+      "role": "builder",
+      "title": "Run negative/fuzz/fault tests and analyzers",
+      "objective": "Run negative/fuzz/fault tests and analyzers",
+      "dependencies": [
+        "P22-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P22 Security hardening and fault containment Run negative/fuzz/fault tests and analyzers macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P22-C",
+      "phase_id": "P22",
+      "role": "builder",
+      "title": "Complete threat model/endpoint review",
+      "objective": "Complete threat model/endpoint review",
+      "dependencies": [
+        "P22-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P22 Security hardening and fault containment Complete threat model/endpoint review macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P22-V",
+      "phase_id": "P22",
+      "role": "validator",
+      "title": "Validate P22: Security hardening and fault containment",
+      "objective": "Independently validate gate G22 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P22-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PROCESS_IPC_MANAGER.md",
+        "architecture/SECURITY.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G22 acceptance adversarial validation Security hardening and fault containment"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G22 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P23-A",
+      "phase_id": "P23",
+      "role": "builder",
+      "title": "Implement native dry-run/import/rollback",
+      "objective": "Implement native dry-run/import/rollback",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P08-V",
+        "P09-V",
+        "P11-V",
+        "P21-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PERSISTENCE_MIGRATION.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P23 macOS data import and upgrade compatibility Implement native dry-run/import/rollback macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P23-B",
+      "phase_id": "P23",
+      "role": "builder",
+      "title": "Translate config/path/schema/resources",
+      "objective": "Translate config/path/schema/resources",
+      "dependencies": [
+        "P23-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PERSISTENCE_MIGRATION.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P23 macOS data import and upgrade compatibility Translate config/path/schema/resources macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P23-C",
+      "phase_id": "P23",
+      "role": "builder",
+      "title": "Pass idempotency/corruption/migration tests",
+      "objective": "Pass idempotency/corruption/migration tests",
+      "dependencies": [
+        "P23-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PERSISTENCE_MIGRATION.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P23 macOS data import and upgrade compatibility Pass idempotency/corruption/migration tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P23-V",
+      "phase_id": "P23",
+      "role": "validator",
+      "title": "Validate P23: macOS data import and upgrade compatibility",
+      "objective": "Independently validate gate G23 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P23-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/PERSISTENCE_MIGRATION.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G23 acceptance adversarial validation macOS data import and upgrade compatibility"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G23 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P24-A",
+      "phase_id": "P24",
+      "role": "builder",
+      "title": "Build packaged app and native setup",
+      "objective": "Build packaged app and native setup",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P20-V",
+        "P21-V",
+        "P22-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P24 MSIX, setup bootstrapper, startup, and update Build packaged app and native setup macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P24-B",
+      "phase_id": "P24",
+      "role": "builder",
+      "title": "Implement development/release signing paths",
+      "objective": "Implement development/release signing paths",
+      "dependencies": [
+        "P24-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P24 MSIX, setup bootstrapper, startup, and update Implement development/release signing paths macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P24-C",
+      "phase_id": "P24",
+      "role": "builder",
+      "title": "Pass install/repair/update/uninstall/purge tests",
+      "objective": "Pass install/repair/update/uninstall/purge tests",
+      "dependencies": [
+        "P24-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P24 MSIX, setup bootstrapper, startup, and update Pass install/repair/update/uninstall/purge tests macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P24-V",
+      "phase_id": "P24",
+      "role": "validator",
+      "title": "Validate P24: MSIX, setup bootstrapper, startup, and update",
+      "objective": "Independently validate gate G24 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P24-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G24 acceptance adversarial validation MSIX, setup bootstrapper, startup, and update"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G24 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P25-A",
+      "phase_id": "P25",
+      "role": "builder",
+      "title": "Run Debug/Release/ASan/analyze builds",
+      "objective": "Run Debug/Release/ASan/analyze builds",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P23-V",
+        "P24-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P25 Full native test and analyzer pass Run Debug/Release/ASan/analyze builds macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P25-B",
+      "phase_id": "P25",
+      "role": "builder",
+      "title": "Run all native/unit/integration/protocol/UI/installer suites",
+      "objective": "Run all native/unit/integration/protocol/UI/installer suites",
+      "dependencies": [
+        "P25-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P25 Full native test and analyzer pass Run all native/unit/integration/protocol/UI/installer suites macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P25-C",
+      "phase_id": "P25",
+      "role": "builder",
+      "title": "Fix every deterministic failure",
+      "objective": "Fix every deterministic failure",
+      "dependencies": [
+        "P25-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P25 Full native test and analyzer pass Fix every deterministic failure macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P25-V",
+      "phase_id": "P25",
+      "role": "validator",
+      "title": "Validate P25: Full native test and analyzer pass",
+      "objective": "Independently validate gate G25 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P25-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G25 acceptance adversarial validation Full native test and analyzer pass"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G25 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P26-A",
+      "phase_id": "P26",
+      "role": "builder",
+      "title": "Run constrained/standard profile workloads",
+      "objective": "Run constrained/standard profile workloads",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P25-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P26 Resource, leak, performance, and endurance qualification Run constrained/standard profile workloads macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P26-B",
+      "phase_id": "P26",
+      "role": "builder",
+      "title": "Collect AppVerifier/PageHeap/WPR/WPA/ETW/DX evidence",
+      "objective": "Collect AppVerifier/PageHeap/WPR/WPA/ETW/DX evidence",
+      "dependencies": [
+        "P26-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P26 Resource, leak, performance, and endurance qualification Collect AppVerifier/PageHeap/WPR/WPA/ETW/DX evidence macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P26-C",
+      "phase_id": "P26",
+      "role": "builder",
+      "title": "Pass one-hour and repeated lifecycle budgets",
+      "objective": "Pass one-hour and repeated lifecycle budgets",
+      "dependencies": [
+        "P26-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P26 Resource, leak, performance, and endurance qualification Pass one-hour and repeated lifecycle budgets macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P26-V",
+      "phase_id": "P26",
+      "role": "validator",
+      "title": "Validate P26: Resource, leak, performance, and endurance qualification",
+      "objective": "Independently validate gate G26 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P26-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G26 acceptance adversarial validation Resource, leak, performance, and endurance qualification"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G26 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P27-A",
+      "phase_id": "P27",
+      "role": "builder",
+      "title": "Execute every parity flow",
+      "objective": "Execute every parity flow",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P26-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P27 End-to-end feature parity qualification Execute every parity flow macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P27-B",
+      "phase_id": "P27",
+      "role": "builder",
+      "title": "Verify all 53 tools and seven UI surfaces",
+      "objective": "Verify all 53 tools and seven UI surfaces",
+      "dependencies": [
+        "P27-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P27 End-to-end feature parity qualification Verify all 53 tools and seven UI surfaces macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P27-C",
+      "phase_id": "P27",
+      "role": "builder",
+      "title": "Close every parity row with evidence",
+      "objective": "Close every parity row with evidence",
+      "dependencies": [
+        "P27-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P27 End-to-end feature parity qualification Close every parity row with evidence macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P27-V",
+      "phase_id": "P27",
+      "role": "validator",
+      "title": "Validate P27: End-to-end feature parity qualification",
+      "objective": "Independently validate gate G27 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P27-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G27 acceptance adversarial validation End-to-end feature parity qualification"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G27 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P28-A",
+      "phase_id": "P28",
+      "role": "builder",
+      "title": "Run fresh Validator and Documentation Manager contexts",
+      "objective": "Run fresh Validator and Documentation Manager contexts",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P27-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P28 Independent validation and documentation synchronization Run fresh Validator and Documentation Manager contexts macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P28-B",
+      "phase_id": "P28",
+      "role": "builder",
+      "title": "Produce Forsetti compliance report",
+      "objective": "Produce Forsetti compliance report",
+      "dependencies": [
+        "P28-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P28 Independent validation and documentation synchronization Produce Forsetti compliance report macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P28-C",
+      "phase_id": "P28",
+      "role": "builder",
+      "title": "Synchronize user/admin/developer/migration/release docs",
+      "objective": "Synchronize user/admin/developer/migration/release docs",
+      "dependencies": [
+        "P28-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P28 Independent validation and documentation synchronization Synchronize user/admin/developer/migration/release docs macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P28-V",
+      "phase_id": "P28",
+      "role": "validator",
+      "title": "Validate P28: Independent validation and documentation synchronization",
+      "objective": "Independently validate gate G28 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P28-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G28 acceptance adversarial validation Independent validation and documentation synchronization"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G28 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P29-A",
+      "phase_id": "P29",
+      "role": "builder",
+      "title": "Produce signed artifacts/symbols/checksums/SBOM",
+      "objective": "Produce signed artifacts/symbols/checksums/SBOM",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P28-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P29 Release artifacts and installer qualification Produce signed artifacts/symbols/checksums/SBOM macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P29-B",
+      "phase_id": "P29",
+      "role": "builder",
+      "title": "Run clean-profile install lifecycle",
+      "objective": "Run clean-profile install lifecycle",
+      "dependencies": [
+        "P29-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P29 Release artifacts and installer qualification Run clean-profile install lifecycle macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P29-C",
+      "phase_id": "P29",
+      "role": "builder",
+      "title": "Record Release Manager decision",
+      "objective": "Record Release Manager decision",
+      "dependencies": [
+        "P29-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P29 Release artifacts and installer qualification Record Release Manager decision macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P29-V",
+      "phase_id": "P29",
+      "role": "validator",
+      "title": "Validate P29: Release artifacts and installer qualification",
+      "objective": "Independently validate gate G29 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P29-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "architecture/INSTALLER_RELEASE.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G29 acceptance adversarial validation Release artifacts and installer qualification"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G29 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "github",
+        "rag_v1",
+        "persistent_memory"
+      ]
+    },
+    {
+      "id": "P30-A",
+      "phase_id": "P30",
+      "role": "builder",
+      "title": "Revalidate manifest/gates/parity/scanners",
+      "objective": "Revalidate manifest/gates/parity/scanners",
+      "dependencies": [
+        "BOOT-TOOLS-001",
+        "P29-V"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P30 Final completion audit Revalidate manifest/gates/parity/scanners macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P30-B",
+      "phase_id": "P30",
+      "role": "builder",
+      "title": "Verify handoff/evidence/commit chain",
+      "objective": "Verify handoff/evidence/commit chain",
+      "dependencies": [
+        "P30-A"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P30 Final completion audit Verify handoff/evidence/commit chain macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P30-C",
+      "phase_id": "P30",
+      "role": "builder",
+      "title": "Issue truthful final completion report",
+      "objective": "Issue truthful final completion report",
+      "dependencies": [
+        "P30-B"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor P30 Final completion audit Issue truthful final completion report macOS source Forsetti Windows target audit evidence"
+      ],
+      "allowed_write_roots": [
+        "src/**",
+        "include/**",
+        "modules/**",
+        "products/**",
+        "tests/**",
+        "scripts/**",
+        "packaging/**",
+        "docs/**",
+        ".forsetti/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 5,
+      "max_lines_changed": 400,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "required source/governance evidence verified",
+        "implementation or declared source-only output complete",
+        "focused build/test/validation passes",
+        "evidence and handoff recorded"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    },
+    {
+      "id": "P30-V",
+      "phase_id": "P30",
+      "role": "validator",
+      "title": "Validate P30: Final completion audit",
+      "objective": "Independently validate gate G30 and phase outputs from a fresh context.",
+      "dependencies": [
+        "P30-C"
+      ],
+      "document_routes": [
+        "AGENTS.md",
+        "qwen/MICROTASK_PROTOCOL.md",
+        "qwen/TOOL_ROUTING.md",
+        "qwen/RAG_PLAYBOOK.md",
+        "docs/EVIDENCE_RULES.md",
+        "docs/DEFINITION_OF_DONE.md",
+        "architecture/RESOURCE_BUDGETS.md",
+        "plans/gates.json",
+        "docs/EVIDENCE_RULES.md"
+      ],
+      "rag_queries": [
+        "Forge Conductor G30 acceptance adversarial validation Final completion audit"
+      ],
+      "allowed_write_roots": [
+        "tests/**",
+        "docs/**",
+        ".forge-qwen/**"
+      ],
+      "max_files_changed": 4,
+      "max_lines_changed": 300,
+      "max_tool_calls": 18,
+      "max_attempts": 3,
+      "acceptance": [
+        "gate G30 evidence independently rerun",
+        "adversarial or failure-path case executed",
+        "decision pass request_changes or block recorded",
+        "builder did not self-approve"
+      ],
+      "status": "not_started",
+      "evidence": [],
+      "required_capabilities": [
+        "filesystem",
+        "shell",
+        "js_sandbox",
+        "github",
+        "rag_v1",
+        "persistent_memory",
+        "long_term_memory"
+      ]
+    }
+  ]
+}

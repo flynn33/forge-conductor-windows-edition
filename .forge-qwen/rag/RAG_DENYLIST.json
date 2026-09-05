@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "instructions": "Do not index or use these paths as active orchestration state. Curated audit documents remain available only through their explicit corpus entries.",
+  "deny_patterns": [
+    "**/remediation*/**",
+    "**/work/**",
+    "**/.forge-inputs/**",
+    "**/.forge-codex/**",
+    "**/.forsetti/remediation/**",
+    "**/.forsetti/remediation-v2/**",
+    "**/.forsetti/remediation-v3/**",
+    "**/.forge-qwen/state/**",
+    "**/.git/**"
+  ],
+  "allow_only_external_source_reads": [
+    "exact path or symbol routed by the active assignment",
+    "read-only source baselines named in WORKSPACE_LOCK.json"
+  ]
+}

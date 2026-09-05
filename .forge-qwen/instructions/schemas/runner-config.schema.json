@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "api_base",
+    "model_id",
+    "context_length",
+    "max_output_tokens",
+    "plugin_bindings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "api_base": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_length": {
+      "type": "integer",
+      "minimum": 4096
+    },
+    "max_output_tokens": {
+      "type": "integer",
+      "minimum": 512
+    },
+    "temperature": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 2
+    },
+    "top_p": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "top_k": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "repeat_penalty": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 2
+    },
+    "reasoning": {
+      "type": [
+        "string",
+        "object",
+        "null"
+      ]
+    },
+    "plugin_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "capability",
+          "id",
+          "allowed_tools"
+        ],
+        "properties": {
+          "capability": {
+            "enum": [
+              "shell",
+              "filesystem",
+              "github",
+              "rag_v1",
+              "js_sandbox",
+              "long_term_memory",
+              "persistent_memory"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^mcp/.+"
+          },
+          "allowed_tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "maximum_microtasks_per_run": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "maximum_continuations_per_microtask": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "request_timeout_seconds": {
+      "type": "integer",
+      "minimum": 30
+    }
+  },
+  "additionalProperties": false
+}

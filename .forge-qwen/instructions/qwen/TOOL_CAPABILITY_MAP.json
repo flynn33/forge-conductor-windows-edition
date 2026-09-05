@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "required_capabilities": [
+    {
+      "capability": "shell",
+      "owner_description": "shell access",
+      "use": "Build/test/Git/PowerShell/diagnostics. Explicit cwd, one command per call, inspect exit code.",
+      "binding": null,
+      "probe_status": "pending"
+    },
+    {
+      "capability": "filesystem",
+      "owner_description": "file system read/write",
+      "use": "Precise repository reads/writes. Read before write, atomic replace, reread after write.",
+      "binding": null,
+      "probe_status": "pending"
+    },
+    {
+      "capability": "github",
+      "owner_description": "GitHub repository tools",
+      "use": "Remote metadata/issues/branches/PR/review. No remote mutation before local gates.",
+      "binding": null,
+      "probe_status": "pending"
+    },
+    {
+      "capability": "rag_v1",
+      "owner_description": "rag-v1",
+      "use": "Recall governing/source evidence. Query with exact terms; verify retrieved claims in files.",
+      "binding": null,
+      "probe_status": "pending"
+    },
+    {
+      "capability": "js_sandbox",
+      "owner_description": "js-code-sandbox",
+      "use": "Pure JSON/schema/table/diff computation. Never a product runtime or Node dependency.",
+      "binding": null,
+      "probe_status": "pending"
+    },
+    {
+      "capability": "long_term_memory",
+      "owner_description": "long term memory between sessions",
+      "use": "After workspace lock only and only when assigned: compact run-scoped ADR/blocker index. Never selects workspace, task, or latest handoff.",
+      "binding": null,
+      "probe_status": "pending"
+    },
+    {
+      "capability": "persistent_memory",
+      "owner_description": "persistent memory",
+      "use": "After workspace lock only: replace the exact run-scoped cursor key with MEMORY_CURSOR.json. Never write global/latest keys.",
+      "binding": null,
+      "probe_status": "pending"
+    }
+  ]
+}

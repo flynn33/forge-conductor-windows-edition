@@ -1,0 +1,364 @@
+# Review conclusion
+
+Forge Conductor already contains much of the required foundation. A rewrite would be counterproductive. The correct approach is to **consolidate the existing project-memory, continuity, process, manager, and session-host primitives around a durable project-scoped control plane**.
+
+The central architectural defect is that **storage is project-aware, but orchestration is not consistently project-bound**.
+
+| Area | Current implementation | Required change |
+|---|---|---|
+| Project memory | Separate UUID project directories and SQLite databases already exist | Add durable client/session/run-to-project bindings |
+| Continuity | Canonical project-scoped state machine exists, but a global legacy system is still active | Make canonical continuity authoritative and remove global “latest” fallback |
+| Rollover | Coordinator supports asynchronous rollover and recovery | Wire the active tool path to it and create a real successor model session |
+| Session host | Adapter and idempotency mechanics exist | Replace the production synthetic transport with a real provider driver |
+| Shell | `shell_exec` and a capable `ProcessRunner` exist | Build asynchronous runtime jobs and separate process/shell/Bash/Python/PowerShell adapters |
+| Reset | No safe per-project lifecycle | Add a maintenance barrier, repository eviction, backup, reset receipts, and generation fencing |
+| Packages | Existing `.forge-codex` format is a strong precedent | Add immutable ingestion, manifest validation, queue records, leases, scheduling, and UI |
+| UI | Manager attachment and typed loopback client already exist | Add Projects, Work Queue, Runtimes, and Continuity surfaces |
+| Autonomy | Some continuity automation exists, but it blocks and instructs an operator to open another chat | Move execution into a manager-owned provider/tool loop that continues automatically |
+
+## The most important findings
+
+### 1. Project memory is physically multi-project, but the active context is not
+
+`ProjectMemoryService.swift` and `ProjectMemoryRepository.swift` already create separate `Projects/<uuid>/memory.sqlite3` databases. That is a good isolation boundary.
+
+What is missing is a persistent binding between a project and each active owner:
+
+- MCP client
+- agent session
+- provider/model session
+- instruction-package run
+- runtime job
+- GUI selection
+
+The router currently carries essentially a `clientID`, not an authoritative project UUID and project generation. This allows surrounding conversation, paths, or continuity state to influence project selection.
+
+The design introduces:
+
+```swift
+ProjectContextBinding
+ToolInvocationContext
+ProjectID
+ProjectGeneration
+```
+
+Every stateful call must either receive a project from an exact durable binding or fail with `project_context_required`. There will be **no global latest-project fallback**.
+
+### 2. The incorrect project assumption comes directly from legacy continuity
+
+The global continuity implementation contains fallbacks such as:
+
+- client-specific latest handoff, otherwise global latest handoff;
+- global `current-task.md`;
+- global `NEXT-CHAT.md`;
+- global `LATEST`;
+- global `continuity/latest` memory keys.
+
+That explains the reported behavior: whichever project most recently wrote continuity can appear to be the active project for another client.
+
+Those projections will become project-local:
+
+```text
+~/.forge-conductor/Projects/<project-uuid>/continuity/
+  CURRENT.md
+  LATEST
+  handoffs/<handoff-id>.json
+  operations/<operation-id>.json
+```
+
+A global dashboard may summarize projects, but it must never supply model bootstrap authority.
+
+### 3. `continuity.request_rollover` currently does not request rollover
+
+In `ContinuityLifecycleToolPack.swift`, all three tools below are routed to the same synchronous preparation function:
+
+```text
+continuity.checkpoint
+continuity.prepare_handoff
+continuity.request_rollover
+```
+
+The asynchronous `ContinuityCoordinator.requestRollover` implementation exists, but the active tool path does not call it.
+
+The corrected tool will enqueue a manager-owned rollover operation and immediately return an operation ID. The manager then drives the state machine asynchronously.
+
+### 4. The current native session host is a test scaffold
+
+The host adapter has useful mechanics—ledger persistence, idempotency lookup, retry handling, bootstrap, and acknowledgment validation—but the registered default uses `LocalLogicalSessionTransport`. It creates a synthetic `native-*` identifier and reports model `forge-logical-session`; it does not create a real model session.
+
+Current LM Studio APIs provide a supported path forward without GUI scripting. LM Studio’s native v1 API supports stateful chat and MCP, while its OpenAI-compatible Responses endpoint supports stateful response chains and custom tool calls. ([lmstudio.ai](https://lmstudio.ai/docs/developer/rest))
+
+The proposed production adapter is:
+
+```text
+LMStudioResponsesSessionDriver
+```
+
+implemented natively in Swift using `URLSession`, SSE parsing, authentication, bounded payloads, and cancellation.
+
+Forge should own the model/tool loop rather than relying exclusively on provider-side MCP dispatch. That gives Forge exact control of project identity, queue-run identity, authorization, context accounting, retries, and evidence.
+
+For rollover, Forge creates a **fresh root response** seeded with a compact handoff rather than continuing the predecessor’s `previous_response_id`. That is a design decision to reclaim the context window; LM Studio’s stateful continuation support remains available for normal within-session turns. ([lmstudio.ai](https://lmstudio.ai/docs/developer/rest/stateful-chats))
+
+# Target autonomous architecture
+
+```text
+SwiftUI GUI
+    │ typed manager API + event stream
+    ▼
+LaunchAgent Manager — sole autonomous owner
+    ├── ProjectRegistryService
+    ├── ProjectContextCoordinator
+    ├── ProjectResetService
+    ├── PackageQueueService
+    ├── ExecutionJobService
+    ├── AutonomySupervisor
+    │     └── ProjectRunCoordinator
+    │            ├── LMStudioResponsesSessionDriver
+    │            ├── ToolInvocationBroker
+    │            └── ContextBudgetSupervisor
+    ├── ContinuityCoordinator
+    └── Per-project memory repositories
+```
+
+The GUI may close completely while work continues. Reopening it reconnects to manager state and resumes its event cursor; it never launches a duplicate local scheduler.
+
+## Autonomous continuity
+
+I do **not** recommend adding a second language model as the primary context monitor. That would add nondeterminism, context use, latency, and another failure domain.
+
+Instead, add a native Swift actor:
+
+```text
+ContextBudgetSupervisor
+```
+
+It records an observation after each model response and tool result, using:
+
+1. provider-reported usage when available;
+2. the serialized provider request/history estimate;
+3. prior retained usage plus new model/tool content;
+4. emergency overflow/provider errors.
+
+Thresholds derive from the model context limit and reserved output/tool/recovery budgets rather than fixed tool counts.
+
+At rollover:
+
+1. Stop new predecessor continuations.
+2. Reconcile any in-flight tool call according to its idempotency class.
+3. Persist a canonical project/package handoff.
+4. Commit `successorRequested` before the provider side effect.
+5. Create a fresh real model root.
+6. Bind it to the same project generation and package run.
+7. Require a structured acknowledgment containing project, run, operation, handoff checksum, and nonce.
+8. Seal and fence the predecessor.
+9. Continue the package automatically under the successor.
+
+Recovery resumes from every nonterminal state. Where a provider cannot guarantee idempotent remote creation, Forge guarantees **at most one accepted successor**: duplicate provider roots are quarantined and never receive active bindings or tool authority.
+
+# Runtime and shell design
+
+All execution becomes a durable job. The tool call returns `job_id`; long work does not block MCP stdio.
+
+The proposed runtime tools are:
+
+```text
+runtime.capabilities
+process.run
+shell.run
+bash.run
+python.run
+powershell.run
+job.status
+job.read_output
+job.cancel
+job.list
+```
+
+### Direct process
+
+`process.run` uses an executable and argument array without shell parsing. This becomes the preferred primitive for compilers, Git, test runners, and native tools.
+
+### Native shell
+
+`shell.run` stages a script and invokes the configured native shell without login or profile loading, initially:
+
+```text
+/bin/zsh -f <script>
+```
+
+### Bash
+
+`bash.run` uses:
+
+```text
+/bin/bash --noprofile --norc <script>
+```
+
+The existing `shell_exec` becomes a deprecated compatibility wrapper around `bash.run`.
+
+### Python
+
+Forge remains native Swift. `python.run` invokes a configured external interpreter, initially using an isolated invocation such as:
+
+```text
+python3 -I -B <script.py>
+```
+
+Supported policies include:
+
+- configured base interpreter;
+- manager-created per-project virtual environment;
+- ephemeral per-job virtual environment;
+- experimental hardened XPC execution.
+
+Python dependency installation is a separate disabled-by-default capability. A normal Python job cannot silently install packages.
+
+### PowerShell
+
+PowerShell is also an optional external runtime. Microsoft currently supports PowerShell on macOS 26, 15, and 14 on both x64 and Arm64. Its official macOS package normally creates `/usr/local/bin/pwsh`, and PowerShell has user and default profiles, so Forge should invoke it explicitly with profile loading disabled. ([learn.microsoft.com](https://learn.microsoft.com/en-us/powershell/scripting/install/powershell-support-lifecycle?view=powershell-7.6))
+
+```text
+pwsh -NoLogo -NoProfile -NonInteractive -File <script.ps1>
+```
+
+Forge will detect or let the user select the executable. It will not silently install PowerShell.
+
+## Python sandbox terminology
+
+The design distinguishes two levels:
+
+- `workspaceIsolated`: sanitized environment, canonical workspace, staging, resource limits, and application-level path checks. This is **not** an OS security boundary.
+- `hardenedXPC`: a separately signed App Sandbox helper with tightly scoped selected-directory access and no network entitlement for the denied-network profile.
+
+Apple provides security-scoped bookmarks for persistent access to user-selected files and directories, and Apple’s sandbox guidance describes inherited restrictions for sandboxed child processes. ([developer.apple.com](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox))
+
+Nevertheless, Forge must not label hardened execution secure until signed macOS tests prove:
+
+- allowed project access succeeds;
+- other project and home-directory access fails;
+- network policy behaves as declared;
+- descendants remain constrained;
+- cancellation kills descendants;
+- stale bookmarks recover correctly;
+- Intel and Apple-silicon behavior is consistent.
+
+# Reset design
+
+Settings will provide project-specific reset actions for:
+
+- memory;
+- continuity;
+- combined memory and continuity;
+- advanced run-history cleanup.
+
+Reset is not implemented by deleting a live database. `ProjectResetService` will:
+
+1. validate the UI’s expected project generation;
+2. acquire an exclusive project maintenance lease;
+3. pause package reservations and reject new writes;
+4. stop or fence provider sessions and runtime jobs;
+5. close and evict the selected project repository;
+6. optionally create a hash-verifiable backup;
+7. reset the selected tables or rotate the database;
+8. increment the project generation;
+9. invalidate all old-generation bindings;
+10. rebuild clean projections;
+11. issue a reset receipt;
+12. resume the project.
+
+A delayed tool call or process result from before the reset will fail with `stale_project_generation` rather than recreating deleted state.
+
+# Instruction-package queue
+
+Packages may be selected through Finder as:
+
+- directories;
+- ZIP archives;
+- `.forgepackage` archives;
+- existing `.forge-codex` packages through a compatibility importer.
+
+Forge will never execute directly from the selected or watched source. The ingestion pipeline validates paths, sizes, symlinks, hashes, and manifest data, then copies accepted content into immutable managed storage:
+
+```text
+~/.forge-conductor/Packages/
+  Store/<sha256>/content/
+  Quarantine/<candidate-id>/
+  Artifacts/<package-run-id>/
+```
+
+The queue supports:
+
+```text
+discovered
+  -> validating
+  -> ready
+  -> reserved
+  -> running
+  -> checkpointing
+  -> validatingCompletion
+  -> completed
+```
+
+with branches for invalid, quarantined, paused, blocked, retry-waiting, failed, and cancelled states.
+
+The model receives an explicit immutable `QueueAssignment`; it does not scan a folder or decide what package comes next. Model-facing package tools are limited to:
+
+```text
+queue.current
+package.progress
+package.blocked
+package.complete_request
+package.artifact.register
+```
+
+A model completion claim only starts deterministic validators. Only passing gates can mark a run complete. The manager then reserves and starts the next eligible package automatically.
+
+# Native UI additions
+
+Four principal surfaces are planned:
+
+- **Projects** — registration, aliases, active bindings, memory/continuity health, generation, reset.
+- **Work Queue** — Finder import, watched sources, drag ordering, state, progress, attempts, gates, logs, artifacts, pause/retry/cancel.
+- **Runtimes** — executable availability, versions, paths, project grants, concurrency, timeout, network, isolation, Python and PowerShell settings.
+- **Continuity** — provider session, context gauge and confidence, thresholds, rollover state, predecessor/successor IDs, recovery events, administrative checkpoint/rollover controls.
+
+These use feature-specific `@MainActor` view models backed by typed manager clients. They do not turn `AppModel` into another execution engine.
+
+# Implementation sequence
+
+The work is divided into twelve dependency-ordered packages:
+
+1. `FC-CTX-001` — durable project context and bindings  
+2. `FC-CONT-001` — canonical continuity consolidation  
+3. `FC-RESET-001` — reset service and Settings UI  
+4. `FC-RUNTIME-001` — execution jobs and direct processes  
+5. `FC-RUNTIME-002` — shell and Bash  
+6. `FC-RUNTIME-003` — Python, PowerShell, and XPC scaffold  
+7. `FC-QUEUE-001` — package ingestion and catalog  
+8. `FC-QUEUE-002` — durable queue, leases, runs, and UI  
+9. `FC-HOST-001` — real LM Studio driver and tool broker  
+10. `FC-AUTO-001` — autonomous package supervisor  
+11. `FC-AUTO-002` — autonomous real-session rollover  
+12. `FC-HARDEN-001` — security, recovery, performance, migration cleanup, and release gates  
+
+The first production package must be **`FC-CTX-001`**. Adding more powerful execution tools before removing implicit project selection would magnify the current cross-project risk.
+
+# Delivered design package
+
+The consolidated document contains the complete review, architecture, schemas, runtime design, continuity flow, queue/UI design, implementation sequence, and acceptance matrix:
+
+[Download the consolidated architecture and implementation plan](sandbox:/mnt/data/Forge-Conductor-Autonomy-Expansion-Architecture.md)
+
+The modular package includes eight focused design documents, the proposed SQLite control-plane schema, instruction-package JSON Schema, model-facing tool contracts, machine-readable work packages, and a hash manifest:
+
+[Download the complete modular design package](sandbox:/mnt/data/Forge-Conductor-Autonomy-Expansion-Design.zip)
+
+Direct machine-readable artifacts:
+
+- [Implementation work packages](sandbox:/mnt/data/Forge-Conductor-Autonomy-Expansion-Design/schemas/work-packages.json)
+- [Instruction-package manifest schema](sandbox:/mnt/data/Forge-Conductor-Autonomy-Expansion-Design/schemas/forge-package.schema.json)
+- [Control-plane SQLite schema](sandbox:/mnt/data/Forge-Conductor-Autonomy-Expansion-Design/schemas/control-plane-v2.sql)
+- [Proposed tool contracts](sandbox:/mnt/data/Forge-Conductor-Autonomy-Expansion-Design/schemas/tool-contracts.json)
+
+The design package passed JSON parsing and schema validation, SQLite schema execution, work-package dependency-cycle checks, acceptance-gate reference checks, content-hash verification, and ZIP integrity testing. The repository’s bundled `.forge-codex` validator also completed with **374 checks and zero failures**. macOS/Xcode, signed XPC, LaunchAgent, SwiftUI, and real LM Studio end-to-end gates still need to be run on the target Mac during implementation

@@ -1,0 +1,522 @@
+{
+  "schema_version": 1,
+  "phases": [
+    {
+      "id": "P00",
+      "title": "Package integrity and governing intake",
+      "dependencies": [],
+      "required_gates": [
+        "G00"
+      ],
+      "required_work": [
+        "Validate package/source hashes and state",
+        "Read governing rules and task contract",
+        "Create first verified handoff and baseline"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P01",
+      "title": "Windows toolchain discovery and provisioning",
+      "dependencies": [
+        "P00"
+      ],
+      "required_gates": [
+        "G01"
+      ],
+      "required_work": [
+        "Discover actual Windows/VS/MSVC/SDK/CMake/vcpkg/WinUI tools",
+        "Provision missing first-party tools noninteractively",
+        "Record pinned versions and build environment"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P02",
+      "title": "Source archaeology and parity baseline",
+      "dependencies": [
+        "P00"
+      ],
+      "required_gates": [
+        "G02"
+      ],
+      "required_work": [
+        "Regenerate feature/MCP/CLI/schema/data/test inventories",
+        "Verify 53 tools and seven UI surfaces from source",
+        "Update parity matrices without deleting rows"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P03",
+      "title": "Forsetti contract and architecture decisions",
+      "dependencies": [
+        "P01",
+        "P02"
+      ],
+      "required_gates": [
+        "G03"
+      ],
+      "required_work": [
+        "Validate profile/task/module contracts",
+        "Inventory public Forsetti APIs and sealed boundaries",
+        "Create architecture/dependency/module ADRs"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P04",
+      "title": "Repository and build scaffold",
+      "dependencies": [
+        "P03"
+      ],
+      "required_gates": [
+        "G04"
+      ],
+      "required_work": [
+        "Create CMake/MSBuild/VS Code structure",
+        "Add manifests/composition roots/canonical scripts",
+        "Build minimal x64 Debug and Release"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P05",
+      "title": "Domain models and abstract contracts",
+      "dependencies": [
+        "P04"
+      ],
+      "required_gates": [
+        "G05"
+      ],
+      "required_work": [
+        "Port IDs/value objects/errors/policies",
+        "Create interface-first contracts and composition roots",
+        "Add deterministic native tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P06",
+      "title": "Windows infrastructure foundation",
+      "dependencies": [
+        "P05"
+      ],
+      "required_gates": [
+        "G06"
+      ],
+      "required_work": [
+        "Implement paths/config/atomic files/DPAPI/logging/ETW",
+        "Implement RAII handles/clock/filesystem/process primitives",
+        "Prove shutdown/failure/cancellation paths"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P07",
+      "title": "Winsqlite3 persistence and migrations",
+      "dependencies": [
+        "P06"
+      ],
+      "required_gates": [
+        "G07"
+      ],
+      "required_work": [
+        "Implement database RAII and migrations",
+        "Implement backup/integrity/busy/WAL policies",
+        "Pass schema fixture/concurrency/corruption tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P08",
+      "title": "Project identity and project memory",
+      "dependencies": [
+        "P07"
+      ],
+      "required_gates": [
+        "G08"
+      ],
+      "required_work": [
+        "Implement multi-project registry and bounded repository LRU",
+        "Implement twelve project_memory tools",
+        "Pass reset/export/import/redaction/isolation tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P09",
+      "title": "Legacy memory compatibility",
+      "dependencies": [
+        "P07"
+      ],
+      "required_gates": [
+        "G09"
+      ],
+      "required_work": [
+        "Port five memory tools",
+        "Preserve limits/errors/migration behavior",
+        "Pass compatibility tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P10",
+      "title": "Agent catalog and durable sessions",
+      "dependencies": [
+        "P07"
+      ],
+      "required_gates": [
+        "G10"
+      ],
+      "required_work": [
+        "Port embedded catalog/playbooks",
+        "Implement run start/status/complete",
+        "Pass crash/restart persistence tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P11",
+      "title": "Continuity repositories and state machine",
+      "dependencies": [
+        "P08",
+        "P10"
+      ],
+      "required_gates": [
+        "G11"
+      ],
+      "required_work": [
+        "Port legacy/lifecycle continuity tools",
+        "Implement CAS transitions/checksums/recovery",
+        "Pass multi-project crash/concurrency tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P12",
+      "title": "Native session host and autonomous rollover",
+      "dependencies": [
+        "P11"
+      ],
+      "required_gates": [
+        "G12"
+      ],
+      "required_work": [
+        "Implement session-host interfaces/providers",
+        "Build Forge-native logical session host/plugin",
+        "Prove successor/bootstrap/ack/seal/resume/recovery"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P13",
+      "title": "Filesystem, search, Git, shell, and PDF tools",
+      "dependencies": [
+        "P06"
+      ],
+      "required_gates": [
+        "G13"
+      ],
+      "required_work": [
+        "Port bounded tools with workspace authority",
+        "Use CreateProcessW/Job Objects and native search/PDF",
+        "Pass security/timeout/output/tree cleanup tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P14",
+      "title": "MCP transport, router, audit, and loop protection",
+      "dependencies": [
+        "P08",
+        "P09",
+        "P10",
+        "P11",
+        "P13"
+      ],
+      "required_gates": [
+        "G14"
+      ],
+      "required_work": [
+        "Implement newline JSON-RPC stdio",
+        "Expose exact 53 descriptors/schemas",
+        "Pass framing/error/EOF/concurrency/role tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P15",
+      "title": "Windows LM Studio environment and deployment",
+      "dependencies": [
+        "P14"
+      ],
+      "required_gates": [
+        "G15"
+      ],
+      "required_work": [
+        "Implement evidence-based discovery/capability adapters",
+        "Implement transactional primary/fallback deployment",
+        "Pass smoke/rollback/drift/live-host tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P16",
+      "title": "Manager process, startup, IPC, and dashboard",
+      "dependencies": [
+        "P06",
+        "P07"
+      ],
+      "required_gates": [
+        "G16"
+      ],
+      "required_work": [
+        "Implement single-instance manager/leases",
+        "Implement authenticated pipe and bounded loopback HTTP/SSE",
+        "Pass watchdog/startup/restart/port/security tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P17",
+      "title": "Windows telemetry collectors",
+      "dependencies": [
+        "P06",
+        "P16"
+      ],
+      "required_gates": [
+        "G17"
+      ],
+      "required_work": [
+        "Implement CPU/RAM/disk/GPU/process/power collectors",
+        "Implement explicit unavailable/stale semantics",
+        "Pass mapping/fixture/live capability tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P18",
+      "title": "Bounded telemetry delivery and histories",
+      "dependencies": [
+        "P17"
+      ],
+      "required_gates": [
+        "G18"
+      ],
+      "required_work": [
+        "Implement capacity-one latest mailbox",
+        "Implement fixed rings/downsampling/pressure tiers",
+        "Pass UI stall/queue/shutdown stress"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P19",
+      "title": "Shared native gauge rendering",
+      "dependencies": [
+        "P18"
+      ],
+      "required_gates": [
+        "G19"
+      ],
+      "required_work": [
+        "Implement shared DirectX resource graph",
+        "Implement dirty/visibility-driven frame scheduling",
+        "Pass device-loss/idle/GPU/resource lifecycle tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P20",
+      "title": "WinUI 3 shell and seven feature surfaces",
+      "dependencies": [
+        "P08",
+        "P10",
+        "P15",
+        "P16",
+        "P18",
+        "P19"
+      ],
+      "required_gates": [
+        "G20"
+      ],
+      "required_work": [
+        "Build shell/navigation/view models",
+        "Implement all seven surfaces/settings/reset/diagnostics",
+        "Pass accessibility/DPI/theme/navigation automation"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P21",
+      "title": "CLI and process entry parity",
+      "dependencies": [
+        "P12",
+        "P14",
+        "P15",
+        "P16"
+      ],
+      "required_gates": [
+        "G21"
+      ],
+      "required_work": [
+        "Implement process modes and baseline commands",
+        "Implement project/continuity/import/installer commands",
+        "Pass exit-code/JSON/invocation tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P22",
+      "title": "Security hardening and fault containment",
+      "dependencies": [
+        "P20",
+        "P21"
+      ],
+      "required_gates": [
+        "G22"
+      ],
+      "required_work": [
+        "Harden path/IPC/process/import/secret boundaries",
+        "Run negative/fuzz/fault tests and analyzers",
+        "Complete threat model/endpoint review"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P23",
+      "title": "macOS data import and upgrade compatibility",
+      "dependencies": [
+        "P08",
+        "P09",
+        "P11",
+        "P21"
+      ],
+      "required_gates": [
+        "G23"
+      ],
+      "required_work": [
+        "Implement native dry-run/import/rollback",
+        "Translate config/path/schema/resources",
+        "Pass idempotency/corruption/migration tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P24",
+      "title": "MSIX, setup bootstrapper, startup, and update",
+      "dependencies": [
+        "P20",
+        "P21",
+        "P22"
+      ],
+      "required_gates": [
+        "G24"
+      ],
+      "required_work": [
+        "Build packaged app and native setup",
+        "Implement development/release signing paths",
+        "Pass install/repair/update/uninstall/purge tests"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P25",
+      "title": "Full native test and analyzer pass",
+      "dependencies": [
+        "P23",
+        "P24"
+      ],
+      "required_gates": [
+        "G25"
+      ],
+      "required_work": [
+        "Run Debug/Release/ASan/analyze builds",
+        "Run all native/unit/integration/protocol/UI/installer suites",
+        "Fix every deterministic failure"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P26",
+      "title": "Resource, leak, performance, and endurance qualification",
+      "dependencies": [
+        "P25"
+      ],
+      "required_gates": [
+        "G26"
+      ],
+      "required_work": [
+        "Run constrained/standard profile workloads",
+        "Collect AppVerifier/PageHeap/WPR/WPA/ETW/DX evidence",
+        "Pass one-hour and repeated lifecycle budgets"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P27",
+      "title": "End-to-end feature parity qualification",
+      "dependencies": [
+        "P26"
+      ],
+      "required_gates": [
+        "G27"
+      ],
+      "required_work": [
+        "Execute every parity flow",
+        "Verify all 53 tools and seven UI surfaces",
+        "Close every parity row with evidence"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P28",
+      "title": "Independent validation and documentation synchronization",
+      "dependencies": [
+        "P27"
+      ],
+      "required_gates": [
+        "G28"
+      ],
+      "required_work": [
+        "Run fresh Validator and Documentation Manager contexts",
+        "Produce Forsetti compliance report",
+        "Synchronize user/admin/developer/migration/release docs"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P29",
+      "title": "Release artifacts and installer qualification",
+      "dependencies": [
+        "P28"
+      ],
+      "required_gates": [
+        "G29"
+      ],
+      "required_work": [
+        "Produce signed artifacts/symbols/checksums/SBOM",
+        "Run clean-profile install lifecycle",
+        "Record Release Manager decision"
+      ],
+      "status": "not_started"
+    },
+    {
+      "id": "P30",
+      "title": "Final completion audit",
+      "dependencies": [
+        "P29"
+      ],
+      "required_gates": [
+        "G30"
+      ],
+      "required_work": [
+        "Revalidate manifest/gates/parity/scanners",
+        "Verify handoff/evidence/commit chain",
+        "Issue truthful final completion report"
+      ],
+      "status": "not_started"
+    }
+  ]
+}

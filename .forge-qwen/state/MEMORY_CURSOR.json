@@ -1,0 +1,23 @@
+{
+    "schema_version":  1,
+    "key":  "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5::cursor",
+    "value":  {
+                  "schema_version":  1,
+                  "mission_id":  "forge-conductor-windows11-port-qwen-guided-v2",
+                  "run_id":  "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+                  "workspace_fingerprint":  "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+                  "target_repository":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+                  "expected_branch":  "forge-windows-port-1df367e1",
+                  "active_microtask":  "P00-V",
+                  "latest_handoff":  ".forge-qwen\\state\\handoffs\\handoff-P00-V-20260904T184927399Z.json",
+                  "latest_handoff_checksum":  "9bb1cf601e2499cf2e0504c1cb036521a8ec71609f975c0e8fef1c2238047d9d",
+                  "last_validated_commit":  null,
+                  "blocker_ids":  [
+
+                                  ],
+                  "next_action":  "Begin P01-A implementation after conductor review of this verification handoff.",
+                  "updated_utc":  "2026-09-04T18:49:27.5742256Z"
+              },
+    "value_sha256":  "3bba886dc48af2077ad16d9d72d8ddf7540275d55d83ee5d33992060051f3f45",
+    "replacement_mode":  "replace_exact_key_only"
+}

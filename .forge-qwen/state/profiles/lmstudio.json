@@ -1,0 +1,35 @@
+{
+    "utc":  "2026-09-03T23:04:35.0935547Z",
+    "mcp_json":  "C:\\Users\\james\\.lmstudio\\mcp.json",
+    "servers":  [
+                    {
+                        "label":  "comfy-control",
+                        "plugin_id":  "mcp/comfy-control",
+                        "capability_candidates":  [
+
+                                                  ]
+                    },
+                    {
+                        "label":  "forge-conductor",
+                        "plugin_id":  "mcp/forge-conductor",
+                        "capability_candidates":  [
+
+                                                  ]
+                    },
+                    {
+                        "label":  "forge-conductor-fallback",
+                        "plugin_id":  "mcp/forge-conductor-fallback",
+                        "capability_candidates":  [
+
+                                                  ]
+                    },
+                    {
+                        "label":  "long_term_memory",
+                        "plugin_id":  "mcp/long_term_memory",
+                        "capability_candidates":  [
+                                                      "long_term_memory"
+                                                  ]
+                    }
+                ],
+    "note":  "Candidates are unverified until harmless probes in BOOT-TOOLS-001."
+}

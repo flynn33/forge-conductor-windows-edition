@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "mission_id",
+    "run_id",
+    "target_os",
+    "target_language",
+    "target_repository",
+    "repository_fingerprint",
+    "expected_branch",
+    "memory_namespace",
+    "bootstrap_completed",
+    "package_root",
+    "package_manifest_sha256",
+    "source_hashes_sha256",
+    "source_roots",
+    "read_only_roots",
+    "writable_roots",
+    "forbidden_roots",
+    "forbidden_path_markers",
+    "created_utc"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "mission_id": {
+      "const": "forge-conductor-windows11-port-qwen-guided-v2"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "target_os": {
+      "const": "Windows 11"
+    },
+    "target_language": {
+      "const": "C++20"
+    },
+    "target_repository": {
+      "type": "string"
+    },
+    "repository_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "expected_branch": {
+      "type": "string"
+    },
+    "memory_namespace": {
+      "type": "string"
+    },
+    "bootstrap_completed": {
+      "const": true
+    },
+    "package_root": {
+      "type": "string"
+    },
+    "package_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_hashes_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_roots": {
+      "type": "object"
+    },
+    "read_only_roots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "writable_roots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_roots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbidden_path_markers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_utc": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

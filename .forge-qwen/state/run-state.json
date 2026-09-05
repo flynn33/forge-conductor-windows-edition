@@ -1,0 +1,32 @@
+{
+    "schema_version":  1,
+    "mission_id":  "forge-conductor-windows11-port-qwen-guided-v2",
+    "run_id":  "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+    "created_utc":  "2026-09-03T23:04:34.0396922Z",
+    "updated_utc":  "2026-09-05T18:34:04.5206185Z",
+    "status":  "running",
+    "active_microtask":  "P01-A",
+    "active_assignment":  ".forge-qwen\\state\\ACTIVE_ASSIGNMENT.json",
+    "completed_microtasks":  [
+                                 "BOOT-WORKSPACE-000",
+                                 "BOOT-TOOLS-001",
+                                 "P00-A",
+                                 "P00-B",
+                                 "P00-C",
+                                 "P00-V",
+                                 "P01-A"
+                             ],
+    "blocked_microtasks":  [
+
+                           ],
+    "latest_handoff":  ".forge-qwen\\state\\handoffs\\handoff-P00-V-20260904T184927399Z.json",
+    "tool_binding_revision":  0,
+    "last_validated_commit":  null,
+    "last_event_hash":  "7a1ad6a41e5ea50d05f76712935cfa33044397450742e99421c290ae107fd7c6",
+    "workspace_fingerprint":  "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+    "target_repository":  "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "expected_branch":  "forge-windows-port-1df367e1",
+    "memory_namespace":  "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+    "workspace_verified":  true,
+    "release_eligible":  false
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "mission_id": "forge-conductor-windows11-port-qwen-guided-v2",
+  "handoff_id": "handoff-P00-A-20260904T121711714Z",
+  "run_id": "1df367e1-3584-41e9-b2cb-8fbbe721addf",
+  "workspace_fingerprint": "98601f23820832b5542bc29ed245d0d9b984cc8435af37403ba1af8ac8eafdb7",
+  "target_repository": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+  "memory_namespace": "forge_windows_port::1df367e1-3584-41e9-b2cb-8fbbe721addf::98601f23820832b5",
+  "assignment_id": ".forge-qwen\\state\\ACTIVE_ASSIGNMENT.json",
+  "microtask_id": "P00-A",
+  "created_utc": "2026-09-04T12:17:11.7727431Z",
+  "status": "passed",
+  "objective": "Validate package/source hashes and state",
+  "verified_facts": [
+    "see .forge-qwen/state/evidence/P00-A/FACTS.md"
+  ],
+  "files_changed": [
+    ".forge-qwen/state/evidence/P00-A/FACTS.md"
+  ],
+  "commands": [
+    "Get-FileHash manifest+hashes exit 0; zip size+sha256 all match exit 0; state chain in_progress->assert->passed"
+  ],
+  "evidence": [
+    ".forge-qwen/state/evidence/P00-A/FACTS.md; .forge-inputs/archives/SOURCE-HASHES.json; .forge-qwen/state/WORKSPACE_LOCK.json"
+  ],
+  "decisions": [
+    "D1: SOURCE-HASHES.json is the source-hashes artifact per lock field source_hashes_sha256"
+  ],
+  "blockers": [
+    "none"
+  ],
+  "next_action": "Begin next assigned P00 microtask via its step card",
+  "git_state": {
+    "head": "HEAD",
+    "status": "## No commits yet on forge-windows-port-1df367e1\r\n?? .editorconfig\r\n?? .forge-qwen/\r\n?? .gitignore\r\n?? .vscode/\r\n?? AGENTS.md\r\n?? CMakeLists.txt\r\n?? CMakePresets.json\r\n?? Directory.Build.props\r\n?? QWEN_SYSTEM_PROMPT.txt\r\n?? READ-THIS-FIRST-QWEN.txt\r\n?? README.md\r\n?? RECOVER-QWEN-NOW.txt\r\n?? manifests/\r\n?? packaging/\r\n?? scripts/\r\n?? src/\r\n?? vcpkg.json",
+    "branch": "forge-windows-port-1df367e1"
+  },
+  "tool_binding_revision": 0,
+  "ledger_head": "2942ffb115c117b074ea4352c5ed19dc74fa2a8acf15caf9ee02a9dd6fa0227b",
+  "checksum": "6904c5f9766ccf511b850dbc71b1f928205ef8aa663bae2541e69b4be2b4eac0"
+}

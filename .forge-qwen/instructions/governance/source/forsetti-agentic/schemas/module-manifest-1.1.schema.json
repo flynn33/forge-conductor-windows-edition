@@ -1,0 +1,350 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forsetti.dev/schemas/agentic-edition/module-manifest-1.1.schema.json",
+  "title": "Forsetti Module Manifest 1.1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "manifestTemplateVersion",
+    "moduleID",
+    "displayName",
+    "moduleVersion",
+    "moduleType",
+    "supportedPlatforms",
+    "minForsettiVersion",
+    "capabilitiesRequested",
+    "entryPoint",
+    "runtimeRequirements"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.1"
+    },
+    "manifestTemplateVersion": {
+      "const": "1.1"
+    },
+    "moduleID": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9-]*)+$",
+      "not": {
+        "pattern": "^forsetti\\."
+      }
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "moduleVersion": {
+      "$ref": "#/$defs/semanticVersionObject"
+    },
+    "moduleType": {
+      "enum": [
+        "service",
+        "ui",
+        "app"
+      ]
+    },
+    "supportedPlatforms": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "iOS",
+          "macOS",
+          "Windows"
+        ]
+      }
+    },
+    "minForsettiVersion": {
+      "$ref": "#/$defs/semanticVersionObject"
+    },
+    "maxForsettiVersion": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/semanticVersionObject"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "capabilitiesRequested": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "iapProductID": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "entryPoint": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.]*$"
+    },
+    "defaultModuleRole": {
+      "enum": [
+        "ui",
+        "shared_database",
+        "authentication",
+        "diagnostics",
+        "api",
+        "security",
+        null
+      ]
+    },
+    "runtimeRequirements": {
+      "type": "object",
+      "required": [
+        "io",
+        "ui",
+        "dataIsolation"
+      ],
+      "properties": {
+        "io": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ioRequirement"
+          }
+        },
+        "ui": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/uiRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dataIsolation": {
+          "$ref": "#/$defs/dataIsolationRequirement"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "semanticVersionObject": {
+      "type": "object",
+      "required": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "properties": {
+        "major": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "patch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prerelease": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ioRequirement": {
+      "type": "object",
+      "required": [
+        "requirementID",
+        "kind",
+        "access",
+        "required"
+      ],
+      "properties": {
+        "requirementID": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "kind": {
+          "enum": [
+            "networking",
+            "storage",
+            "secure_storage",
+            "file_export",
+            "telemetry",
+            "shared_database",
+            "authentication",
+            "diagnostics",
+            "api",
+            "security"
+          ]
+        },
+        "access": {
+          "enum": [
+            "read",
+            "write",
+            "read_write",
+            "execute",
+            "emit",
+            "consume"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiRequirement": {
+      "type": "object",
+      "properties": {
+        "controlSchemeID": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "layoutID": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "themeIDs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "viewIDs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "slotIDs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "toolbarItemIDs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "routeIDs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "pointerIDs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataIsolationRequirement": {
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "private_to_module",
+            "framework_mediated_shared"
+          ]
+        },
+        "ownedStoreIDs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        },
+        "requiredDefaultRoles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ui",
+              "shared_database",
+              "authentication",
+              "diagnostics",
+              "api",
+              "security"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "moduleType": {
+            "const": "service"
+          }
+        },
+        "required": [
+          "moduleType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "runtimeRequirements": {
+            "properties": {
+              "ui": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

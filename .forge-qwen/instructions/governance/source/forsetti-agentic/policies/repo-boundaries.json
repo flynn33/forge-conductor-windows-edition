@@ -1,0 +1,381 @@
+{
+  "schema_version": "2.1",
+  "canonical_source": "core/policies/repo-boundaries.json",
+  "root_mirror": "policies/repo-boundaries.json",
+  "mirror_policy": {
+    "status": "byte_identical_compatibility_mirror",
+    "rule_id": "FAE-C011",
+    "failure_action": "block_merge"
+  },
+  "protected_paths": {
+    "description": "Files and directories that require elevated approval to modify. Governance-class protected assets require Governance Steward authorization.",
+    "paths": [
+      "FORSETTI_CONSTITUTION.md",
+      "AGENTS.md",
+      "COMPLIANCE_POLICY.md",
+      "CHANGE_CONTROL_POLICY.md",
+      "RELEASE_POLICY.md",
+      "DOCUMENTATION_POLICY.md",
+      "policies/agent-roles.json",
+      "policies/compliance-rules.json",
+      "policies/repo-boundaries.json",
+      "policies/versioning-rules.json",
+      "policies/changelog-rules.json",
+      "policies/docs-sync-rules.json",
+      "policies/labels.json",
+      "core/policies/**",
+      "core/validator/**",
+      "core/contracts/**",
+      "core/schemas/*.json",
+      "contracts/*-template.md",
+      "schemas/*.json",
+      "scripts/**",
+      "adapters/github-actions/workflows/**",
+      ".github/labels.json",
+      ".github/CODEOWNERS",
+      ".github/ISSUE_TEMPLATE/**",
+      ".github/workflows/*.yml"
+    ]
+  },
+  "governance_only_paths": {
+    "description": "Foundational governance assets. Modification requires governance-class approval and Governance Steward authorization.",
+    "paths": [
+      "FORSETTI_CONSTITUTION.md",
+      "AGENTS.md",
+      "COMPLIANCE_POLICY.md",
+      "CHANGE_CONTROL_POLICY.md",
+      "RELEASE_POLICY.md",
+      "DOCUMENTATION_POLICY.md",
+      "policies/agent-roles.json",
+      "policies/compliance-rules.json",
+      "policies/repo-boundaries.json",
+      "policies/versioning-rules.json",
+      "policies/changelog-rules.json",
+      "policies/docs-sync-rules.json",
+      "core/policies/**",
+      "core/validator/**",
+      "core/contracts/**",
+      "contracts/*-template.md"
+    ]
+  },
+  "role_limited_paths": {
+    "description": "Paths that may only be modified by specific roles as part of their authorized workflow.",
+    "mappings": [
+      {
+        "path_pattern": "policies/**",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-POLICY-MANIFESTS",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Policy manifests are governance assets or elevated operational configuration. Builders may execute contracted changes only with the required approval class and Governance Steward authorization."
+      },
+      {
+        "path_pattern": "core/policies/**",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-CORE-POLICIES",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Core policy manifests are portable governance assets. Builders may execute contracted changes only with governance-class approval and Governance Steward authorization."
+      },
+      {
+        "path_pattern": "core/validator/**",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-CORE-VALIDATOR",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Validator changes affect compliance enforcement and must be executed only under an authorized task contract."
+      },
+      {
+        "path_pattern": "core/schemas/**",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-CORE-SCHEMAS",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Core schemas define machine-readable governance contracts."
+      },
+      {
+        "path_pattern": "schemas/**",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-ROOT-SCHEMAS",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Root schemas are compatibility and release contract surfaces."
+      },
+      {
+        "path_pattern": "core/contracts/**",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-CORE-CONTRACTS",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Core contract templates affect task contract structure."
+      },
+      {
+        "path_pattern": "contracts/*-template.md",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-CONTRACT-TEMPLATES",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Contract templates define required delivery governance surfaces."
+      },
+      {
+        "path_pattern": "scripts/**",
+        "allowed_roles": ["builder", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-SCRIPTS",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Repository scripts can affect local validation and release evidence."
+      },
+      {
+        "path_pattern": "adapters/github-actions/workflows/**",
+        "allowed_roles": ["architect", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-GITHUB-ACTIONS-ADAPTER-WORKFLOWS",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "GitHub Actions adapter workflow scripts affect hosted enforcement execution and require planning or governance authority."
+      },
+      {
+        "path_pattern": "changelog/CHANGELOG.md",
+        "allowed_roles": ["builder", "release_manager"],
+        "policy_rule_id": "BOUNDARY-ROLE-CHANGELOG",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Changelog entries are produced by builders and reviewed for release integrity."
+      },
+      {
+        "path_pattern": ".github/workflows/**",
+        "allowed_roles": ["architect", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-WORKFLOWS",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Workflow definitions affect hosted enforcement and require planning or governance authority."
+      },
+      {
+        "path_pattern": ".github/ISSUE_TEMPLATE/**",
+        "allowed_roles": ["architect", "governance_steward"],
+        "policy_rule_id": "BOUNDARY-ROLE-ISSUE-TEMPLATES",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Issue templates shape governed intake and classification."
+      },
+      {
+        "path_pattern": "wiki/**",
+        "allowed_roles": ["builder", "documentation_manager"],
+        "policy_rule_id": "BOUNDARY-ROLE-WIKI",
+        "gate_id": "boundary-role-limited-paths",
+        "reason": "Wiki content is maintained by builders and audited by documentation managers."
+      }
+    ]
+  },
+  "approval_required_paths": {
+    "description": "Paths that require a minimum approval class before merge is permitted.",
+    "mappings": [
+      {
+        "path_pattern": "FORSETTI_CONSTITUTION.md",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CONSTITUTION",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Constitutional document requires full governance review."
+      },
+      {
+        "path_pattern": "AGENTS.md",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-AGENTS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Root agent operating rules are protected governance instructions."
+      },
+      {
+        "path_pattern": "*_POLICY.md",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-ROOT-POLICIES",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Root policy documents are protected governance assets."
+      },
+      {
+        "path_pattern": "policies/agent-roles.json",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-AGENT-ROLES",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Role policy encodes governance authority."
+      },
+      {
+        "path_pattern": "policies/compliance-rules.json",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-COMPLIANCE",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Compliance rule registry encodes governance policy."
+      },
+      {
+        "path_pattern": "policies/repo-boundaries.json",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-REPO-BOUNDARIES",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Repository boundary registry controls protected path handling."
+      },
+      {
+        "path_pattern": "policies/docs-sync-rules.json",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-DOCS-SYNC",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Documentation sync registry encodes documentation policy enforcement."
+      },
+      {
+        "path_pattern": "policies/versioning-rules.json",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-VERSIONING",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Versioning registry encodes release policy enforcement."
+      },
+      {
+        "path_pattern": "policies/changelog-rules.json",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CHANGELOG-RULES",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Changelog registry encodes release and changelog policy enforcement."
+      },
+      {
+        "path_pattern": "core/policies/**",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CORE-POLICIES",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Core policy registries are portable governance assets."
+      },
+      {
+        "path_pattern": "core/validator/**",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CORE-VALIDATOR",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Core validator changes alter local compliance enforcement."
+      },
+      {
+        "path_pattern": "core/contracts/**",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CORE-CONTRACTS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Core contract templates alter governed task structure."
+      },
+      {
+        "path_pattern": "contracts/*-template.md",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CONTRACT-TEMPLATES",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Contract templates alter required governance workflow."
+      },
+      {
+        "path_pattern": "core/schemas/*.json",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CORE-SCHEMAS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Core schemas define machine-readable validation and contract result surfaces."
+      },
+      {
+        "path_pattern": "schemas/*.json",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-ROOT-SCHEMAS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Root schemas affect downstream validation and release entry consumers."
+      },
+      {
+        "path_pattern": "scripts/**",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-SCRIPTS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Repository scripts affect local validation and release evidence collection."
+      },
+      {
+        "path_pattern": "adapters/github-actions/workflows/**",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-GITHUB-ACTIONS-ADAPTER-WORKFLOWS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "GitHub Actions adapter workflow scripts affect hosted enforcement execution and require elevated review."
+      },
+      {
+        "path_pattern": ".github/CODEOWNERS",
+        "minimum_approval_class": "governance-class",
+        "policy_rule_id": "BOUNDARY-APPROVAL-CODEOWNERS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "CODEOWNERS changes affect governance review routing."
+      },
+      {
+        "path_pattern": ".github/workflows/*.yml",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-WORKFLOWS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Workflow changes affect hosted enforcement execution and require elevated review."
+      },
+      {
+        "path_pattern": ".github/ISSUE_TEMPLATE/**",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-ISSUE-TEMPLATES",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Issue templates affect governed task intake and classification."
+      },
+      {
+        "path_pattern": "policies/labels.json",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-LABELS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Label registry changes affect workflow metadata and triage."
+      },
+      {
+        "path_pattern": ".github/labels.json",
+        "minimum_approval_class": "sensitive",
+        "policy_rule_id": "BOUNDARY-APPROVAL-GITHUB-LABELS",
+        "gate_id": "boundary-protected-paths",
+        "reason": "Label mirror changes affect workflow metadata and triage."
+      }
+    ]
+  },
+  "approval_labels": {
+    "description": "Pull request approval labels that correspond to approval classes. Hosted adapters may read this data, but the portable core does not depend on hosted workflow execution.",
+    "required_family": "approval",
+    "cardinality": "exactly_one",
+    "hierarchy": [
+      {"approval_class": "standard", "rank": 1, "label": "approval:standard"},
+      {"approval_class": "sensitive", "rank": 2, "label": "approval:sensitive"},
+      {"approval_class": "governance-class", "rank": 3, "label": "approval:governance-class"}
+    ],
+    "non_hierarchical": [
+      {"approval_class": "emergency", "label": "approval:emergency", "notes": "Does not override governance-class requirements."},
+      {"approval_class": "release-critical", "label": "approval:release-critical", "notes": "Used for release preparation authority only."}
+    ]
+  },
+  "pre_merge_gates": [
+    {
+      "gate_id": "boundary-protected-paths",
+      "compliance_rule_id": "FAE-C004",
+      "validator_mode": "contract",
+      "inputs": ["task_contract", "changed_files", "approval_required_paths"],
+      "evidence_required": ["task contract approval_class", "Governance Steward authorization when governance-class is required", "changed-file list"],
+      "rejection_condition": "protected_path_without_required_approval",
+      "failure_status": "block"
+    },
+    {
+      "gate_id": "boundary-role-limited-paths",
+      "compliance_rule_id": "FAE-C003",
+      "validator_mode": "contract",
+      "inputs": ["task_contract", "changed_files", "role_limited_paths"],
+      "evidence_required": ["acting role", "changed-file list", "matching role-limited path rule"],
+      "rejection_condition": "role_not_allowed_for_changed_path",
+      "failure_status": "block"
+    },
+    {
+      "gate_id": "boundary-governance-isolation",
+      "compliance_rule_id": "FAE-C010",
+      "validator_mode": "contract",
+      "inputs": ["task_contract", "changed_files", "governance_only_paths"],
+      "evidence_required": ["governance-class contract", "scope limited to authorized governance change"],
+      "rejection_condition": "governance_change_bundled_with_unrelated_work",
+      "failure_status": "block"
+    },
+    {
+      "gate_id": "boundary-mirror-integrity",
+      "compliance_rule_id": "FAE-C011",
+      "validator_mode": "policies",
+      "inputs": ["core policy manifest", "root policy mirror"],
+      "evidence_required": ["byte-identical SHA-256 comparison"],
+      "rejection_condition": "policy_mirror_drift",
+      "failure_status": "block"
+    }
+  ],
+  "compliance_rule_links": {
+    "protected_path_enforcement": "FAE-C004",
+    "role_limited_path_enforcement": "FAE-C003",
+    "governance_change_isolation": "FAE-C010",
+    "evidence_integrity": "FAE-C011"
+  },
+  "notes": [
+    "Path patterns use glob syntax. ** matches any depth of directories.",
+    "When a file matches multiple mappings, the most restrictive rule applies.",
+    "Emergency approval may override standard and sensitive approval requirements but never governance-class requirements.",
+    "Local validation must consume this registry rather than hidden fallback path arrays.",
+    "Hosted workflow wrappers may consume this registry through an adapter, but hosted workflow conversion is outside this manifest."
+  ]
+}

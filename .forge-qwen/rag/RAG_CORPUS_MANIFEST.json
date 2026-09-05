@@ -1,0 +1,136 @@
+{
+    "schema_version":  1,
+    "instructions":  "Workspace lock is mandatory before RAG. Index corpus only after lock verification. Never use RAG to choose a repository. Verify exact code in filesystem.",
+    "documents":  [
+                      {
+                          "id":  "governance-STEP_BY_STEP_EXECUTION.md",
+                          "path":  "corpus/governance/STEP_BY_STEP_EXECUTION.md",
+                          "source":  "qwen/STEP_BY_STEP_EXECUTION.md",
+                          "priority":  "critical"
+                      },
+                      {
+                          "id":  "governance-WRONG_WORKSPACE_RECOVERY.md",
+                          "path":  "corpus/governance/WRONG_WORKSPACE_RECOVERY.md",
+                          "source":  "qwen/WRONG_WORKSPACE_RECOVERY.md",
+                          "priority":  "critical"
+                      },
+                      {
+                          "id":  "governance-WORKSPACE_AUTHORITY.md",
+                          "path":  "corpus/governance/WORKSPACE_AUTHORITY.md",
+                          "source":  "qwen/WORKSPACE_AUTHORITY.md",
+                          "priority":  "critical"
+                      },
+                      {
+                          "id":  "governance-AGENTS.md",
+                          "path":  "corpus/governance/AGENTS.md",
+                          "source":  "AGENTS.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "governance-PORT_TASK_CONTRACT.json",
+                          "path":  "corpus/governance/PORT_TASK_CONTRACT.json",
+                          "source":  "governance/PORT_TASK_CONTRACT.json",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "governance-SOURCE_PRECEDENCE.md",
+                          "path":  "corpus/governance/SOURCE_PRECEDENCE.md",
+                          "source":  "governance/SOURCE_PRECEDENCE.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "governance-MICROTASK_PROTOCOL.md",
+                          "path":  "corpus/governance/MICROTASK_PROTOCOL.md",
+                          "source":  "qwen/MICROTASK_PROTOCOL.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "governance-TOOL_ROUTING.md",
+                          "path":  "corpus/governance/TOOL_ROUTING.md",
+                          "source":  "qwen/TOOL_ROUTING.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "governance-MEMORY_POLICY.md",
+                          "path":  "corpus/governance/MEMORY_POLICY.md",
+                          "source":  "qwen/MEMORY_POLICY.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-TARGET_ARCHITECTURE.md",
+                          "path":  "corpus/architecture/TARGET_ARCHITECTURE.md",
+                          "source":  "architecture/TARGET_ARCHITECTURE.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-FORSETTI_MODULES.md",
+                          "path":  "corpus/architecture/FORSETTI_MODULES.md",
+                          "source":  "architecture/FORSETTI_MODULES.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-PROJECT_MEMORY.md",
+                          "path":  "corpus/architecture/PROJECT_MEMORY.md",
+                          "source":  "architecture/PROJECT_MEMORY.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-CONTINUITY_SESSION_HOST.md",
+                          "path":  "corpus/architecture/CONTINUITY_SESSION_HOST.md",
+                          "source":  "architecture/CONTINUITY_SESSION_HOST.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-MCP_LM_STUDIO.md",
+                          "path":  "corpus/architecture/MCP_LM_STUDIO.md",
+                          "source":  "architecture/MCP_LM_STUDIO.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-TELEMETRY_RENDERING.md",
+                          "path":  "corpus/architecture/TELEMETRY_RENDERING.md",
+                          "source":  "architecture/TELEMETRY_RENDERING.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-SECURITY.md",
+                          "path":  "corpus/architecture/SECURITY.md",
+                          "source":  "architecture/SECURITY.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "architecture-INSTALLER_RELEASE.md",
+                          "path":  "corpus/architecture/INSTALLER_RELEASE.md",
+                          "source":  "architecture/INSTALLER_RELEASE.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "audit-Forge-Conductor-Key-Evidence.md",
+                          "path":  "corpus/audit/Forge-Conductor-Key-Evidence.md",
+                          "source":  "evidence/audit/Forge-Conductor-Key-Evidence.md",
+                          "priority":  "high"
+                      },
+                      {
+                          "id":  "audit-Forge-Conductor-Consolidated-Audit.md",
+                          "path":  "corpus/audit/Forge-Conductor-Consolidated-Audit.md",
+                          "source":  "evidence/audit/Forge-Conductor-Consolidated-Audit.md",
+                          "priority":  "high"
+                      }
+                  ],
+    "external_roots":  {
+                           "macos_source":  {
+                                                "path":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\macos\\Forge-Conductor-MacOS-main",
+                                                "index_by_default":  false
+                                            },
+                           "forsetti_framework":  {
+                                                      "path":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-framework\\Forsetti-Framework-Windows-main",
+                                                      "index_by_default":  false
+                                                  },
+                           "forsetti_agentic":  {
+                                                    "path":  "D:\\GitHub\\Forge-Conductor-Windows-Edition\\.forge-inputs\\forsetti-agentic\\forsetti-agentic-edition-main",
+                                                    "index_by_default":  false
+                                                }
+                       },
+    "denylist":  "RAG_DENYLIST.json",
+    "external_source_policy":  "Do not automatically index external source roots. Use direct, assignment-routed filesystem reads for exact source symbols."
+}
