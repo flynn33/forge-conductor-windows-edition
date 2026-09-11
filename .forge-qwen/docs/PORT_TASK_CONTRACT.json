@@ -17,21 +17,23 @@
   },
   "toolchain_pins_verified_this_session": {
     "visual_studio": {
-      "edition": "Community",
-      "version": "17.14.35.98 (VS 2022)",
-      "path": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community"
+      "edition": "Community 2026",
+      "version": "18.9.12105.275 (VS 18)",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community",
+      "fallback": "VS 2022 Community / Build Tools 17.14.27 also installed"
     },
-    "msvc_v143": {
-      "cl_version": "14.44.35208",
-      "_MSC_VER": 1944,
-      "source": "vcvarsall.bat x64 probe this session"
+    "msvc": {
+      "toolset": "14.51.36231",
+      "cl_version": "19.51.36256",
+      "cl_path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+      "source": "vswhere + cl banner 2026-09-11"
     },
     "windows_sdk": {
       "installed": ["10.0.26100.0 (project-required)"],
       "winsqlite3_h": "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.26100.0\\um\\winsqlite\\winsqlite3.h (P01-B verified)",
       "makeappx_signtool": "present under Windows Kits 10\\bin\\10.0.19041.0 (P01-B verified)"
     },
-    "cmake": "4.3.2",
+    "cmake": "4.4.2",
     "ninja": "1.13.2",
     "git": "2.53.0.windows.1",
     "node": "v24.13.1 (harness/runtime only - not a product dependency)",
@@ -49,12 +51,13 @@
       "package": "nlohmann-json:x64-windows@3.12.0#2",
       "installed_at": "D:\\GitHub\\Forge-Conductor-Windows-Edition\\vcpkg_installed\\x64-windows (verified on disk this session)"
     },
-    "roots_observed": {
-      "env_VCPKG_ROOT": "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg (harness-provisioned; scripts\\vcpkg.exe not confirmed)",
-      "D_vcpkg": "directory present at D:\\vcpkg; 'D:\\vcpkg\\scripts\\vcpkg.exe version' executed successfully this session -> 2026-07-09",
-      "C_vcpkg": "per P01-B FACTS.md: cloned + bootstrapped there, version string 2026-07-27-98d7cb0cf1f4686a3e43aa5672b6230c1d56bce8; scripts\\vcpkg.exe not confirmed by later probe"
-    },
-    "open_discrepancy": "Three candidate vcpkg roots with two different version strings (2026-07-09 vs 2026-07-27). Downstream build task MUST verify which root contains scripts\\buildsystems\\vcpkg.cmake and set VCPKG_ROOT to that path before cmake configure."
+    "canonical_root": "C:\\vcpkg",
+    "VCPKG_ROOT": "C:\\vcpkg",
+    "toolchain_file": "C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+    "exe_sha256": "13B8175E99A884C5AD34249218754B45541A1A63F216E92603AEE57A285AC741",
+    "version": "2026-07-27-98d7cb0cf1f4686a3e43aa5672b6230c1d56bce8",
+    "not_canonical": "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg is the Forge installer copy; same vcpkg.exe hash but not the P01-B baseline clone. Do not set VCPKG_ROOT there for this repo.",
+    "open_discrepancy": ""
   },
   "cross_check_with_P01_B": {
     "evidence_file": ".forge-qwen/state/evidence/P01-B/FACTS.md",
@@ -63,14 +66,11 @@
       "nlohmann-json resolved to 3.12.0#2 x64-windows (both records agree; artifact verified on disk this session)",
       "Windows SDK 10.0.26100.0 present with winsqlite3.h in um\\winsqlite (P01-B corrected P01-A's wrong ucrt subdir)"
     ],
-    "discrepancies": [
-      "vcpkg root: P01-B evidence says C:\\vcpkg; this session found D:\\vcpkg executable and VCPKG_ROOT pointing at AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg",
-      "P01-B vcpkg install log detected compiler 'C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231' - no such VS 18 installation found in registry this session (only VS 2022 Community, MSVC 14.44.35208). Flag for build task: confirm which cl.exe CMake actually selects."
-    ]
+    "discrepancies": []
   },
   "build_environment_requirements_for_downstream": [
-    "Configure/build from a VS 2022 x64 Native Tools environment (vcvarsall.bat x64) so MSVC v143 14.44.35208 + Windows SDK 10.0.26100.0 are on PATH",
-    "Resolve the vcpkg root discrepancy first: Test-Path <root>\\scripts\\buildsystems\\vcpkg.cmake for each candidate, then set VCPKG_ROOT to the valid one (CMakePresets.json consumes $env{VCPKG_ROOT})",
+    "Prefer VS 18 Community / MSVC 14.51.36231 (vswhere -latest). VS 2022 17.14 / 14.44.35207 remains installed as fallback.",
+    "Set VCPKG_ROOT=C:\\vcpkg before cmake configure (CMakePresets.json consumes $env{VCPKG_ROOT}; toolchain file is C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake)",
     "Manifest mode will auto-install pinned deps into .\\vcpkg_installed\\x64-windows; nlohmann-json 3.12.0#2 already present",
     "Record git branch + fingerprint at build start (BOOT-WORKSPACE-000 evidence is the reference)"
   ],

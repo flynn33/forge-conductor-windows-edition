@@ -1,0 +1,41 @@
+{
+  "schema": "forge-windows-toolchain-pins/v1",
+  "verified": "2026-09-11",
+  "cmake": {
+    "version": "4.4.2",
+    "path": "C:\\Program Files\\CMake\\bin\\cmake.exe",
+    "minimum": "3.28"
+  },
+  "visual_studio": {
+    "display": "Visual Studio Community 2026",
+    "version": "18.9.12105.275",
+    "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community",
+    "toolset": "14.51.36231",
+    "cl": "19.51.36256",
+    "cl_path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+    "fallback": {
+      "display": "Visual Studio Community 2022 / Build Tools 17.14.27",
+      "toolset": "14.44.35207"
+    }
+  },
+  "windows_sdk": {
+    "version": "10.0.26100.0",
+    "root": "C:\\Program Files (x86)\\Windows Kits\\10"
+  },
+  "git": {
+    "version": "2.53.0",
+    "path": "C:\\Program Files\\Git\\cmd\\git.exe"
+  },
+  "vcpkg": {
+    "canonical_root": "C:\\vcpkg",
+    "VCPKG_ROOT": "C:\\vcpkg",
+    "toolchain_file": "C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+    "version": "2026-07-27-98d7cb0cf1f4686a3e43aa5672b6230c1d56bce8",
+    "exe_sha256": "13B8175E99A884C5AD34249218754B45541A1A63F216E92603AEE57A285AC741",
+    "builtin_baseline": "00c5775211f45cd08b37fce0484b4cb940e422ab",
+    "not_canonical": "C:\\Users\\james\\AppData\\Local\\ForgeConductor\\Toolchain\\vcpkg"
+  },
+  "windows_app_sdk": {
+    "version": "2.4.0"
+  }
+}
