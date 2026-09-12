@@ -13,6 +13,7 @@
 - LM Studio was offline at `127.0.0.1:1234`; live provider acknowledgment and productive successor proof remains R6-G2.
 - R0 PR #11 and R1 PR #12 merged; local `main` and `origin/main` were synchronized at `325d0470b8924e5fd6c202abec2b948b8312eb3a` before the R2 branch was created.
 - R2.1 is verified at `53f5835`: 20 Windows CPU/RAM collector checks passed, including real-machine samples; the production Manager stayed alive with the native telemetry graph. DXGI publishes adapter/local-memory capability and explicitly leaves unavailable utilization unset.
+- Draft R2 PR #13 targets `main` from `alpha/r2-native-telemetry`: https://github.com/flynn33/forge-conductor-windows-edition/pull/13. Issue #5 records R2.1 as verified while R2.2-R2.5 and all incomplete gates remain open.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 
 ## Exact next actions

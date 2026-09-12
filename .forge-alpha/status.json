@@ -2,18 +2,18 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T17:00:45.3204372Z",
+  "updated_at_utc": "2026-09-12T17:47:08.4435132Z",
   "current_phase": "R2",
   "current_slice": "R2.2",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r2-native-telemetry",
-    "head": "53f5835",
+    "head": "dd02c07dfa9cebc47b16187bcd243aee96dc7f3a",
     "origin_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "github_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "dirty_summary": [
-      "In-scope R1 documentation and tracking changes on alpha/r1-managed-runs.",
+      "R2 branch matches origin/alpha/r2-native-telemetry at dd02c07 before the PR-reference update.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from phase staging.",
       "Ignored R1 attach/detach evidence under out/alpha-evidence/r1/."
     ]
@@ -90,12 +90,12 @@
     },
     "R2": {
       "implementation": "in_progress",
-      "delivery": "not_started",
+      "delivery": "draft_pr",
       "branch": "alpha/r2-native-telemetry",
       "issue_number": 5,
       "milestone_number": 3,
-      "pr_number": null,
-      "pr_url": null,
+      "pr_number": 13,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/13",
       "reviewed_head": null,
       "slices": {
         "R2.1": "verified",
@@ -320,7 +320,7 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R2.1 verified at 53f5835: production native telemetry replaces the unavailable adapter with real GetSystemTimes CPU, GlobalMemoryStatusEx RAM, Manager process metrics, bounded history, and DXGI adapter/memory discovery.",
+  "last_result": "R2.1 verified at 53f5835 and exposed in draft PR #13: production native telemetry replaces the unavailable adapter with real GetSystemTimes CPU, GlobalMemoryStatusEx RAM, Manager process metrics, bounded history, and DXGI adapter/memory discovery.",
   "next_action": "Implement R2.2 typed Manager telemetry snapshot transport that reuses the native service and R1 authoritative run/context fields, then bind it to native view models.",
   "acceptance": {
     "installed_workflow": "not_run",

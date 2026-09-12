@@ -1,7 +1,7 @@
 # Owner-authenticated phase PRs and exact source synchronization
 
 ## The required transaction
-Every R phase has one primary phase branch and one PR **targeting `main` in `flynn33/forge-conductor-windows-edition`**. Finish the phase's functional checks and documentation sweep, commit reviewed changes, push, open/update its PR, and record the real URL. A PR is not optional paperwork to postpone until the whole application is finished. Reuse an existing PR for the same phase; do not open duplicates on resume.
+Every R phase has one primary phase branch and one PR **targeting `main` in `flynn33/forge-conductor-windows-edition`**. Open that PR as a draft after the first verified slice so the active work is visible, then update the same PR through the phase boundary. Finish the phase's functional checks and documentation sweep before marking it ready, and record the real URL. Reuse an existing PR for the same phase; do not open duplicates on resume.
 
 **Merge authorization:** the owner explicitly requested phase PRs. Follow any already explicit owner authorization for Codex to merge passing PRs. Without such standing authorization, leave the PR ready for the owner's merge; do not infer permission to self-approve, bypass review or silently merge from the instruction to open a PR. A pending merge is a delivery dependency, not permission to stop independent implementation. When the owner or an authorized normal merge completes, fetch and synchronize local main immediately. Never enable auto-merge or change branch protection solely to avoid waiting. This package does not authorize public releases.
 
