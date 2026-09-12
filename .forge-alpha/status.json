@@ -2,7 +2,7 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T16:38:50.8020434Z",
+  "updated_at_utc": "2026-09-12T16:46:49.8068718Z",
   "current_phase": "R2",
   "current_slice": "R2.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
@@ -56,12 +56,12 @@
     },
     "R1": {
       "implementation": "verified",
-      "delivery": "not_started",
+      "delivery": "pr_open",
       "branch": "alpha/r1-managed-runs",
       "issue_number": 4,
       "milestone_number": 2,
-      "pr_number": null,
-      "pr_url": null,
+      "pr_number": 12,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/12",
       "reviewed_head": "759a86329fa67eca34d14cfba1131584d9761103",
       "slices": {
         "R1.1": "verified",
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R1 implementation verified at 759a86329fa67eca34d14cfba1131584d9761103; R1-G1/G2 passed, actual GUI/Manager attach-detach passed, and the unavailable native visual control walkthrough remains explicit in R1-G3.",
-  "next_action": "Push alpha/r1-managed-runs, open the R1 PR against main and record its URL; then begin R2.1 by composing the shared typed telemetry snapshot from existing Manager/runtime/provider/context/project/tool/store sources.",
+  "last_result": "R1 implementation verified and delivered through PR #12; R1-G1/G2 passed, actual GUI/Manager attach-detach passed, and the unavailable native visual control walkthrough remains explicit in R1-G3.",
+  "next_action": "Create dependent branch alpha/r2-native-telemetry from the reviewed R1 head and implement R2.1 shared typed telemetry snapshot from existing authoritative sources.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

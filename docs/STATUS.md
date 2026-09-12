@@ -1,6 +1,6 @@
 # Product status
 
-Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R1 implementation is on `alpha/r1-managed-runs`, based on the still-open R0 delivery branch. Implementation, pull-request delivery, merge, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
+Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R1 implementation is in [PR #12](https://github.com/flynn33/forge-conductor-windows-edition/pull/12), based on the still-open R0 delivery branch. Implementation, pull-request delivery, merge, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
 
 | Area | Current source/evidence | Remaining requirement |
 |---|---|---|

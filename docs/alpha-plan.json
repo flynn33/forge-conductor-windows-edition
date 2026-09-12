@@ -168,8 +168,8 @@
         "issue_number": 4,
         "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/4",
         "branch": "alpha/r1-managed-runs",
-        "pr_number": null,
-        "pr_url": null
+        "pr_number": 12,
+        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/12"
       }
     },
     {

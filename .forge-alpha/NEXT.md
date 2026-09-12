@@ -16,9 +16,9 @@
 
 ## Exact next actions
 
-1. Push `alpha/r1-managed-runs`, open the separate R1 PR against `main`, update issue #4, and record the actual PR URL in this branch.
-2. Continue on dependent branch `alpha/r2-native-telemetry` from the reviewed R1 head after reading the active R2 phase and telemetry/UI contract.
-3. Implement R2.1 by composing one shared typed telemetry snapshot from existing Manager/runtime, provider, context/continuity, project/run/tool, event, and store-health sources. Preserve authoritative R1 token values rather than recomputing them in the GUI.
+1. Continue on dependent branch `alpha/r2-native-telemetry` from the reviewed R1 head after reading the active R2 phase and telemetry/UI contract. R1 [PR #12](https://github.com/flynn33/forge-conductor-windows-edition/pull/12) targets `main` and issue #4 is synchronized.
+2. Implement R2.1 by composing one shared typed telemetry snapshot from existing Manager/runtime, provider, context/continuity, project/run/tool, event, and store-health sources. Preserve authoritative R1 token values rather than recomputing them in the GUI.
+3. Keep the open R1 native visual walkthrough explicit while progressing independent R2 work.
 
 ## Open dependencies
 
