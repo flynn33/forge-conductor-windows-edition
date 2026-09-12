@@ -1,112 +1,622 @@
 {
-  "schema_version": 1,
-  "audit_date": "2026-09-10",
-  "goal": "Working internal Windows x64 Alpha",
+  "schema_version": 2,
+  "plan_id": "windows-alpha-recovery-2026-09-12",
+  "created_on": "2026-09-12",
+  "repository": {
+    "full_name": "flynn33/forge-conductor-windows-edition",
+    "url": "https://github.com/flynn33/forge-conductor-windows-edition",
+    "local_root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "default_branch": "main",
+    "snapshot_commit": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+    "snapshot_tree": "bc0f281bb82b5acde57795e36371d98552191832"
+  },
+  "package_root": "A:\\Codex\\Projects\\Forge-Conductor-Windows-Edition\\Forge-Conductor-Windows-Alpha-Codex-Astra",
+  "target": {
+    "os": "Windows 11",
+    "architecture": "x64",
+    "application": "native C++20 / WinUI 3 / C++/WinRT",
+    "installer": "signed MSIX",
+    "visual_telemetry": "required",
+    "accessible_settings": "required"
+  },
+  "old_phase_ids_are_historical": true,
+  "tracking": {
+    "scope": "docs/alpha-plan.json",
+    "execution": ".forge-alpha/status.json",
+    "resume": ".forge-alpha/NEXT.md",
+    "phase_receipts": ".forge-alpha/phases/",
+    "documentation_index": "docs/DOCUMENTATION-INDEX.md",
+    "github_delivery_truth": "actual phase pull request state"
+  },
+  "phase_completion_rule": "Required phase gates passed, docs refreshed, reviewed commit pushed and phase PR opened; delivery is complete only after actual merge and successful sync. Final Alpha also requires R6 real-product acceptance.",
+  "last_reviewed_phase": "R0",
+  "last_reviewed_on": "2026-09-12",
   "phases": [
     {
-      "id": "P0",
-      "title": "Align scope and recover the native build",
-      "milestone": "A0 — Reproducible foundation",
+      "id": "R0",
+      "slug": "reconcile",
+      "title": "Reconcile the repository and establish the delivery workflow",
+      "milestone": "WA-R0 — Current baseline and accountable delivery",
       "depends": [],
-      "outcome": "One governing Alpha scope and reproducible x64 backend build.",
-      "issues": [
-        "A-01",
-        "A-02"
+      "refs": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07"
       ],
-      "status": "not_started",
-      "document": "docs/implementation/P0.md"
+      "outcome": "Preserved local work, current GitHub baseline, one governing roadmap, one execution ledger, and a functioning owner-authenticated phase PR workflow.",
+      "slices": [
+        {
+          "id": "R0.1",
+          "title": "Adopt without resetting",
+          "work": "Read the actual checkout, applicable AGENTS guidance, saved handoff and remote refs. Inventory dirty/untracked files and preserve unrelated work. Reconcile the already-merged native-desktop PR with the local branch before switching or pulling.",
+          "completion_evidence": "Local/remote branch and base facts are recorded; existing changes are retained and classified."
+        },
+        {
+          "id": "R0.2",
+          "title": "Replace competing instructions",
+          "work": "Adopt this package, migrate the existing Alpha plan and status without losing historical evidence, and retire conflicting historical selectors from active guidance. Keep working build/dependency helpers.",
+          "completion_evidence": "Root AGENTS and active links point to this roadmap; prior P0–P6 are a historical crosswalk, not another current assignment."
+        },
+        {
+          "id": "R0.3",
+          "title": "Create or reconcile GitHub tracking",
+          "work": "Discover actual milestones, phase issues, labels and PRs; reuse matching records by stable R identifiers. Establish one phase issue and milestone per R phase with slice checklists.",
+          "completion_evidence": "Real remote IDs/URLs are recorded and no duplicates or fabricated completed issues are introduced."
+        },
+        {
+          "id": "R0.4",
+          "title": "Close the stale-documentation gap",
+          "work": "Correct README, CHANGELOG, ROADMAP, STATUS, NEXT and all active documentation from verified source/receipts. Preserve implemented foundation; record runtime claims separately from current source facts.",
+          "completion_evidence": "Documentation sweep and R0 phase PR are complete; first implementation target is R1.1."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R0-G1",
+          "title": "Git preservation and plan integrity",
+          "passing_evidence": "Review Git diff/status and parse the migrated JSON; all phase/slice/gate references resolve. No native build for documentation-only changes."
+        },
+        {
+          "id": "R0-G2",
+          "title": "Delivery workflow",
+          "passing_evidence": "Authenticate as the owner, push the reviewed phase branch and open its PR against main; verify head identity and record the URL. Finish the normal merge/sync cycle where permitted."
+        }
+      ],
+      "github": {
+        "milestone_number": 1,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/1",
+        "issue_number": 3,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/3",
+        "branch": "alpha/r0-reconcile",
+        "pr_number": null,
+        "pr_url": null
+      }
     },
     {
-      "id": "P1",
-      "title": "Native GUI and early installer checkpoint",
-      "milestone": "A1 — Native desktop checkpoint",
+      "id": "R1",
+      "slug": "managed-runs",
+      "title": "Complete Manager-owned inference and context continuity wiring",
+      "milestone": "WA-R1 — Real managed execution path",
       "depends": [
-        "P0"
+        "R0"
       ],
-      "outcome": "A real WinUI app attaches to the manager and installs as an engineering MSIX.",
-      "issues": [
-        "A-03",
-        "A-04"
+      "refs": [
+        "S04",
+        "S05",
+        "S10",
+        "S13",
+        "S14",
+        "E01"
       ],
-      "status": "not_started",
-      "document": "docs/implementation/P1.md"
+      "outcome": "A native Manager-owned ordinary Responses/tool loop drives the existing continuity automation and can be controlled and observed from the GUI.",
+      "slices": [
+        {
+          "id": "R1.1",
+          "title": "Own an ordinary run",
+          "work": "Add or complete the smallest typed run service using existing project/session/transport contracts. Accept explicit project and task/run identity; compose its lifetime in the real Manager, not in the GUI or a fixture.",
+          "completion_evidence": "One authoritative run owner; start/status/cancel reach the real service and persist appropriate run identity."
+        },
+        {
+          "id": "R1.2",
+          "title": "Execute the normal tool loop",
+          "work": "Handle provider response IDs, function-call correlation and results through existing native tool dispatch with exact project/run/generation binding. Serialize authoritative run transitions and persist resumable state.",
+          "completion_evidence": "A controlled fixture exercises normal work and tool output; offline/protocol failure produces an actionable run state, not a fabricated success."
+        },
+        {
+          "id": "R1.3",
+          "title": "Feed actual context observations",
+          "work": "Call ContinuityAutomation::observe from the ordinary response/tool path. Deduplicate observations; separate lifetime token counters from retained context and publish the same authoritative values to telemetry.",
+          "completion_evidence": "Below-threshold work continues without count/time rollover; threshold observations enter one canonical continuity operation."
+        },
+        {
+          "id": "R1.4",
+          "title": "Complete productive successor ownership",
+          "work": "Reuse canonical handoff retrieval, real root creation, exact provider acknowledgment and predecessor fencing. Resume ordinary useful work under the successor, including safe pause/cancel and uncertain-side-effect handling.",
+          "completion_evidence": "Focused tests prove no double accepted successor and no predecessor mutation after fencing; real-provider acceptance stays separately required in R6."
+        },
+        {
+          "id": "R1.5",
+          "title": "Expose a minimal native control surface",
+          "work": "Wire Autonomy and Continuity to run start/pause/resume/stop, selected project/run, context state and errors. Closing/reopening the GUI must not own or duplicate execution.",
+          "completion_evidence": "The real Manager can be controlled from the native UI; the phase has a small actual attach/detach check."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R1-G1",
+          "title": "Affected build and focused regressions",
+          "passing_evidence": "Build affected native targets and run the existing Manager protocol, continuity automation and session-host fixture coverage that intersects the change; add only missing ordinary-run cases."
+        },
+        {
+          "id": "R1-G2",
+          "title": "Ordinary run functionality",
+          "passing_evidence": "Demonstrate a normal call/result chain, one bad/offline response and correct context deduplication/cancellation through the production service with a controlled transport fixture."
+        },
+        {
+          "id": "R1-G3",
+          "title": "Native control and ownership",
+          "passing_evidence": "Use the actual GUI/Manager in an isolated profile to exercise controls and reattachment without duplicate ownership; record live inference as not run when the provider is offline."
+        }
+      ],
+      "github": {
+        "milestone_number": 2,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/2",
+        "issue_number": 4,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/4",
+        "branch": "alpha/r1-managed-runs",
+        "pr_number": null,
+        "pr_url": null
+      }
     },
     {
-      "id": "P2",
-      "title": "Projects, MCP deployment and useful tools",
-      "milestone": "A2 — Usable local workflow",
+      "id": "R2",
+      "slug": "visual-telemetry",
+      "title": "Deliver real native telemetry and visual dashboards",
+      "milestone": "WA-R2 — Live visual operations",
       "depends": [
-        "P1"
+        "R0"
       ],
-      "outcome": "An operator can register a project, deploy MCP, use tools and retain memory.",
-      "issues": [
-        "A-05",
-        "A-06",
-        "A-07"
+      "refs": [
+        "S08",
+        "S09",
+        "S10",
+        "S11",
+        "S12",
+        "E02",
+        "E03",
+        "E04"
       ],
-      "status": "not_started",
-      "document": "docs/implementation/P2.md"
+      "outcome": "Real CPU/RAM/process collectors, supported GPU readings, operational measurements, and reusable native charts/gauges/timelines replace generic or unavailable placeholders.",
+      "slices": [
+        {
+          "id": "R2.1",
+          "title": "Implement the missing collectors",
+          "work": "Inspect existing ITelemetryService and telemetry/domain contracts. Replace the unconditional UnavailableTelemetryService production composition with native supported collectors; retain that adapter only for genuine unavailable capability fallback.",
+          "completion_evidence": "Machine CPU/RAM and Forge process readings are real; optional GPU capability discovery is attempted and failures are explicitly classified."
+        },
+        {
+          "id": "R2.2",
+          "title": "Publish typed operational snapshots",
+          "work": "Compose timestamped snapshots of resources, Manager/runtime, provider, context, continuity, projects/runs/tools and store health. Reuse existing events and typed Manager transport.",
+          "completion_evidence": "The GUI consumes the same authoritative identities and context values as execution; collection works independently of window lifetime."
+        },
+        {
+          "id": "R2.3",
+          "title": "Build reusable native visual controls",
+          "work": "Implement time-series resource/latency charts, context capacity/headroom bar or gauge, operational status cards and continuity/activity timeline with direct values, units and accessible text.",
+          "completion_evidence": "Visuals use actual data, bounded histories, sensible scales and unsupported/stale/error rendering without fabricated zeroes."
+        },
+        {
+          "id": "R2.4",
+          "title": "Complete Rig and detail presentation",
+          "work": "Compose a readable Rig dashboard with drill-down into Provider, Continuity, Runtimes, Projects and Events. Persist relevant view settings; keep global and selected-project metrics distinct.",
+          "completion_evidence": "The main operational questions can be answered without opening raw logs or hovering for essential values."
+        },
+        {
+          "id": "R2.5",
+          "title": "Verify freshness and UI lifetime",
+          "work": "Exercise connect/disconnect/reconnect, sample updates, window resize/scaling and keyboard access. Ensure no duplicate subscriptions or background UI callbacks after close.",
+          "completion_evidence": "Actual native visuals refresh without freezing the window; supported CPU/RAM integration cannot be waived as unavailable."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R2-G1",
+          "title": "Collector/mapping correctness",
+          "passing_evidence": "One focused test group covers valid deltas, unavailable/invalid measurements and stale/reset history. Reuse any existing collector and snapshot tests."
+        },
+        {
+          "id": "R2-G2",
+          "title": "Real sampling and rendering",
+          "passing_evidence": "Run the real app/Manager, compare scoped CPU/RAM/process values with a suitable Windows observation, show history changing, and exercise disconnected/stale rendering."
+        },
+        {
+          "id": "R2-G3",
+          "title": "Practical accessibility",
+          "passing_evidence": "Keyboard navigation and one enlarged/high-contrast layout pass; native visuals expose labels and equivalent values. No screenshot regression framework."
+        }
+      ],
+      "github": {
+        "milestone_number": 3,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/3",
+        "issue_number": 5,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/5",
+        "branch": "alpha/r2-native-telemetry",
+        "pr_number": null,
+        "pr_url": null
+      }
     },
     {
-      "id": "P3",
-      "title": "Real provider and context-only continuity",
-      "milestone": "A3 — Real autonomous continuity",
+      "id": "R3",
+      "slug": "native-workflows",
+      "title": "Finish the native operating pages and local workflows",
+      "milestone": "WA-R3 — Usable native workflows",
       "depends": [
-        "P2"
+        "R0"
       ],
-      "outcome": "Real LM Studio inference continues across a context-triggered fresh successor.",
-      "issues": [
-        "A-08",
-        "A-09",
-        "A-10"
+      "refs": [
+        "S08",
+        "S09",
+        "S15",
+        "S16",
+        "S17"
       ],
-      "status": "not_started",
-      "document": "docs/implementation/P3.md"
+      "outcome": "Every named Alpha destination performs its real workflow rather than displaying a generic Manager refresh panel.",
+      "slices": [
+        {
+          "id": "R3.1",
+          "title": "Projects and memory workflow",
+          "work": "Complete project registration/selection, authorized folders, active bindings, memory search/read/write and persistence status in native views. Reuse the working native services.",
+          "completion_evidence": "Two disposable projects remain isolated; selecting one cannot silently redirect a different run."
+        },
+        {
+          "id": "R3.2",
+          "title": "LM Studio MCP and native tools",
+          "work": "Provide primary/fallback deploy/inspect/repair actions, actual connection status and tool catalog/actions. Preserve foreign MCP entries and explicit shell preference.",
+          "completion_evidence": "A native UI-driven disposable file/search/Git/shell/memory workflow produces real effects."
+        },
+        {
+          "id": "R3.3",
+          "title": "Agents, Tools and Feed",
+          "work": "Display actual agent/session identities, effective tool availability, recent activity, outcomes and durations. Connect available actions; do not invent independent model workers from catalog entries.",
+          "completion_evidence": "Lists and details share selected project/run scope and show actual successes and errors."
+        },
+        {
+          "id": "R3.4",
+          "title": "Runtimes, Manager and diagnostics",
+          "work": "Finish runtime discovery/status and job controls that already belong to scope, Manager lifecycle, events/evidence navigation and concise diagnostics. Distinguish service stop from stopping a run.",
+          "completion_evidence": "All destinations have useful data/actions and missing optional runtimes have a specific availability state."
+        },
+        {
+          "id": "R3.5",
+          "title": "Remove generic page substitutions",
+          "work": "Replace GenericPanel navigation fallbacks for required capabilities with feature views/view models. Recheck selected run/project after navigation and reconnect.",
+          "completion_evidence": "The required page matrix is fully implemented, with no disabled required-action placeholders."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R3-G1",
+          "title": "Focused local workflow regression",
+          "passing_evidence": "Reuse the existing disposable P2 workflow smoke or equivalent affected service test; check foreign MCP entry and second-project preservation."
+        },
+        {
+          "id": "R3-G2",
+          "title": "Native page walkthrough",
+          "passing_evidence": "Visit every required destination once and execute each essential distinct workflow, including one recoverable failure; capture a compact page checklist."
+        },
+        {
+          "id": "R3-G3",
+          "title": "Reattachment and persistence",
+          "passing_evidence": "Restart the isolated Manager or reopen the GUI once as appropriate; retain selected identities and persisted memory without duplicate jobs."
+        }
+      ],
+      "github": {
+        "milestone_number": 4,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/4",
+        "issue_number": 6,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/6",
+        "branch": "alpha/r3-native-workflows",
+        "pr_number": null,
+        "pr_url": null
+      }
     },
     {
-      "id": "P4",
-      "title": "Complete native pages and maintenance settings",
-      "milestone": "A4 — Complete Alpha GUI",
+      "id": "R4",
+      "slug": "settings-reset",
+      "title": "Complete accessible settings and scoped maintenance",
+      "milestone": "WA-R4 — Accessible controls and safe reset",
       "depends": [
-        "P3"
+        "R0"
       ],
-      "outcome": "All required native surfaces and settings perform real actions.",
-      "issues": [
-        "A-11",
-        "A-12"
+      "refs": [
+        "S08",
+        "S09",
+        "S15",
+        "S16",
+        "E02"
       ],
-      "status": "not_started",
-      "document": "docs/implementation/P4.md"
+      "outcome": "Normal configuration and maintenance are accessible in the native GUI, persisted through the Manager and reflected by effective readback.",
+      "slices": [
+        {
+          "id": "R4.1",
+          "title": "Make settings discoverable",
+          "work": "Provide an obvious Settings destination and coherent links to Provider/Manager controls. Use labeled native controls and expose current effective configuration and pending edits.",
+          "completion_evidence": "Normal use does not require editing JSON or a developer shell."
+        },
+        {
+          "id": "R4.2",
+          "title": "Provider credentials and model selection",
+          "work": "Finish validated endpoint/model/credential handling, model discovery, connection testing, save/revert and restart readback using existing secure storage and typed settings.",
+          "completion_evidence": "Errors and unavailable models are visible; automatic selection is never serialized as an unintended JSON null."
+        },
+        {
+          "id": "R4.3",
+          "title": "Context and telemetry controls",
+          "work": "Expose context capacity and reserves/threshold explanation, paired sliders and exact numeric inputs, supported refresh/history/logging preferences, and shell/startup settings.",
+          "completion_evidence": "Controls update the effective Manager values; loaded model capacity and application threshold are distinguished; no tool-count quota is introduced."
+        },
+        {
+          "id": "R4.4",
+          "title": "Project-scoped and all-store reset",
+          "work": "Implement or complete project-memory, continuity, combined and separately confirmed all-store maintenance. Coordinate live writers/leases and generations through existing services.",
+          "completion_evidence": "The selected scope is explicit; reset cannot erase source repositories or another project accidentally; late old-generation work cannot recreate reset state."
+        },
+        {
+          "id": "R4.5",
+          "title": "Settings accessibility and failure handling",
+          "work": "Exercise keyboard/focus, scaling/high contrast, invalid input, cancelled confirmation and repeat save/restart. Keep ordinary settings edits independent of administrative certificate trust.",
+          "completion_evidence": "A practical GUI pass and concise readback/reset checks pass on disposable data."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R4-G1",
+          "title": "Settings persistence and validation",
+          "passing_evidence": "One focused group covers valid save/readback across restart plus invalid/cancelled input and the existing repeated-save regression."
+        },
+        {
+          "id": "R4-G2",
+          "title": "Reset scope and late writes",
+          "passing_evidence": "Reset disposable project A while preserving B; verify cancel changes nothing and old-generation work is rejected. Exercise all-stores only in an entirely disposable isolated environment."
+        },
+        {
+          "id": "R4-G3",
+          "title": "Native accessibility walkthrough",
+          "passing_evidence": "Operate Settings and a context slider/exact-value pair by keyboard; verify visible focus, accessible value labels and readable scaled/high-contrast layout."
+        }
+      ],
+      "github": {
+        "milestone_number": 5,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/5",
+        "issue_number": 7,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/7",
+        "branch": "alpha/r4-settings-reset",
+        "pr_number": null,
+        "pr_url": null
+      }
     },
     {
-      "id": "P5",
-      "title": "Finish installed product and operator documentation",
-      "milestone": "A5 — Installer and onboarding",
+      "id": "R5",
+      "slug": "installer-data",
+      "title": "Finish the Windows installer and existing-data behavior",
+      "milestone": "WA-R5 — Installable Windows candidate",
       "depends": [
-        "P4"
+        "R0"
       ],
-      "outcome": "A clean Windows installation works without the development checkout.",
-      "issues": [
-        "A-13",
-        "A-14"
+      "refs": [
+        "S18",
+        "S19",
+        "S20",
+        "S21",
+        "S22",
+        "E05",
+        "E06"
       ],
-      "status": "not_started",
-      "document": "docs/implementation/P5.md"
+      "outcome": "A signed Release MSIX candidate has complete payload, ordinary installation/onboarding, stable identity, truthful data-compatibility handling and no development-path dependency.",
+      "slices": [
+        {
+          "id": "R5.1",
+          "title": "Preserve and diagnose existing data",
+          "work": "Reconfirm any outstanding schema mismatch from real metadata and relevant fetched history. Reuse --alpha-root for development. Recover authentic migrations when available; never falsify schema acceptance.",
+          "completion_evidence": "A precise compatibility contract distinguishes supported upgrade, rejected newer store and explicitly selected isolated startup."
+        },
+        {
+          "id": "R5.2",
+          "title": "Complete package payload and provenance",
+          "work": "Reuse package.ps1 and existing assets. Include GUI, Manager, CLI, SessionHost, required resources/manifests and redistributable runtime dependencies. Validate every staged product belongs to one candidate.",
+          "completion_evidence": "Candidate metadata identifies source commit/tree, build configuration, package version, signature and hashes; source drive paths are not runtime dependencies."
+        },
+        {
+          "id": "R5.3",
+          "title": "Finish trust/install experience",
+          "work": "Keep signed MSIX as the installer technology. Provide double-click/standard Windows installation and clear trust/dependency guidance, using the existing helper for the explicit elevated trust action only.",
+          "completion_evidence": "Normal approved installation is usable; only public certificate material is distributed and private keys/passwords never enter Git or the ZIP."
+        },
+        {
+          "id": "R5.4",
+          "title": "First launch and profile recovery",
+          "work": "Make Start launch reach the installed Manager and MCP executables. Surface newer-store incompatibility in the GUI with a non-destructive explanation and explicit alternative path rather than a blank failure.",
+          "completion_evidence": "Installed start, folder/model configuration and subsequent launch do not require Visual Studio or the repository."
+        },
+        {
+          "id": "R5.5",
+          "title": "Update and uninstall preservation",
+          "work": "Maintain stable package identity/publisher and a genuinely incremented numeric version for upgrade testing. Stop only owned test processes and verify retained user data and foreign MCP entries on update/uninstall.",
+          "completion_evidence": "Package mechanism and data-lifetime behavior are implemented; actual installed acceptance remains a named R6 requirement when external approval is unavailable."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R5-G1",
+          "title": "Release payload/signature",
+          "passing_evidence": "Build x64 Release products; pack and verify the actual signed MSIX, expected runtime payload and source/build provenance."
+        },
+        {
+          "id": "R5-G2",
+          "title": "Data compatibility behavior",
+          "passing_evidence": "Focused native persistence check on supported disposable fixtures and rejection of a newer store without mutation; no schema number downgrade or fabricated C008/C009."
+        },
+        {
+          "id": "R5-G3",
+          "title": "Installer procedure and versioning",
+          "passing_evidence": "Inspect and, where permission allows, execute trust/install/update preparation; separate package creation/signing from clean installed execution. Actual installed lifecycle is mandatory at R6."
+        }
+      ],
+      "github": {
+        "milestone_number": 6,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/6",
+        "issue_number": 8,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/8",
+        "branch": "alpha/r5-installer-data",
+        "pr_number": null,
+        "pr_url": null
+      }
     },
     {
-      "id": "P6",
-      "title": "Run the small Alpha acceptance and hand off",
-      "milestone": "A6 — Working Alpha",
+      "id": "R6",
+      "slug": "acceptance",
+      "title": "Run the small real-product acceptance pass and fix blockers",
+      "milestone": "WA-R6 — Working Alpha proven",
       "depends": [
-        "P5"
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
       ],
-      "outcome": "Required acceptance is recorded and the installer distribution is delivered.",
-      "issues": [
-        "A-15",
-        "A-16"
+      "refs": [
+        "S15",
+        "S16",
+        "S17",
+        "S18",
+        "E01",
+        "E05"
       ],
-      "status": "not_started",
-      "document": "docs/implementation/P6.md"
+      "outcome": "Required native GUI, live managed continuity, installed workflow and data preservation are demonstrated on the candidate without fixture substitution.",
+      "slices": [
+        {
+          "id": "R6.1",
+          "title": "Real installed workflow",
+          "work": "Install the signed candidate on Windows 11 x64 without the source checkout or development tools. Launch through Start and execute project/MCP/native-tool/memory work.",
+          "completion_evidence": "Actual installed GUI/Manager/CLI/SessionHost paths and relevant persistence are recorded."
+        },
+        {
+          "id": "R6.2",
+          "title": "Real context-triggered continuation",
+          "work": "Use a loaded tool-capable LM Studio model and a disposable task. Observe actual context reaching an effective threshold, fresh-root handoff retrieval, provider acknowledgment, predecessor fencing and useful automatic successor work.",
+          "completion_evidence": "A single end-to-end record contains correlated project/run/handoff/response IDs and actual successor effects; a fixture cannot satisfy it."
+        },
+        {
+          "id": "R6.3",
+          "title": "GUI/telemetry/settings acceptance",
+          "work": "Complete the page matrix, verify live visual measurements and effective settings, and close/reopen the GUI during Manager-owned work.",
+          "completion_evidence": "All required native capabilities are exercised; unsupported hardware metrics are explained rather than fabricated."
+        },
+        {
+          "id": "R6.4",
+          "title": "Installed lifecycle and required defect repair",
+          "work": "Perform one actual higher-version upgrade and one uninstall/reinstall as needed on disposable data. Fix required bugs and rerun only affected acceptance paths.",
+          "completion_evidence": "No known required functional/data-loss blocker remains. Existing schema-9 compatibility is either demonstrated or remains explicitly unaccepted; no silent scope waiver."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R6-G1",
+          "title": "Installed lifecycle",
+          "passing_evidence": "Install/Start launch/local workflow/memory persistence/upgrade/uninstall preservation all pass in the supported clean environment."
+        },
+        {
+          "id": "R6-G2",
+          "title": "Live provider continuity",
+          "passing_evidence": "Actual provider-originated acknowledgment and productive successor work pass; Manager ownership survives GUI detach."
+        },
+        {
+          "id": "R6-G3",
+          "title": "GUI and settings",
+          "passing_evidence": "Native page, visual telemetry, accessible settings and scoped reset checklist passes; all required bugs are fixed and affected regressions pass."
+        }
+      ],
+      "github": {
+        "milestone_number": 7,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/7",
+        "issue_number": 9,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/9",
+        "branch": "alpha/r6-acceptance",
+        "pr_number": null,
+        "pr_url": null
+      }
+    },
+    {
+      "id": "R7",
+      "slug": "delivery",
+      "title": "Close documentation, merge the delivery PR and synchronize main",
+      "milestone": "WA-R7 — Documented and synchronized delivery",
+      "depends": [
+        "R6"
+      ],
+      "refs": [
+        "S01",
+        "S02",
+        "S03",
+        "S06",
+        "S07",
+        "E07",
+        "E08",
+        "E09",
+        "E10"
+      ],
+      "outcome": "The accepted candidate, current documentation, actual phase/PR evidence and local/main/remote identity agree; no public release is created by implication.",
+      "slices": [
+        {
+          "id": "R7.1",
+          "title": "Final documentation and traceability",
+          "work": "Reconcile every required capability with its phase/slice/test evidence; update README, CHANGELOG, ROADMAP and every active first-party document with final status, operator instructions and honest limitations.",
+          "completion_evidence": "All-doc review is complete, pending/verified/unsupported are not conflated and historic evidence remains unaltered."
+        },
+        {
+          "id": "R7.2",
+          "title": "Finalize candidate and provenance",
+          "work": "Retain the tested signed candidate when code/package bytes are unchanged; rebuild and rerun only invalidated checks after fixes. Record complete installer hash, version and source tree in the delivery record.",
+          "completion_evidence": "Installer files exist and are locatable; the accepted tested bytes are identified. No invented download URL or unapproved public release."
+        },
+        {
+          "id": "R7.3",
+          "title": "Deliver through the phase PR and prove synchronization",
+          "work": "Push under the owner account, open the R7 PR against main and follow normal merge rules. Fetch and fast-forward local main after actual merge; independently compare GitHub main, origin/main, local main and the clean tracked tree.",
+          "completion_evidence": "Every phase has its PR, required milestones are resolved, local main matches GitHub main and the final sync receipt is recorded without dirtying the tree."
+        }
+      ],
+      "gates": [
+        {
+          "id": "R7-G1",
+          "title": "Final functional delta",
+          "passing_evidence": "Reuse R6 results for unchanged product bytes; build/test only a functional or packaging delta. A docs-only final phase needs no full regression rerun."
+        },
+        {
+          "id": "R7-G2",
+          "title": "Documentation and artifact",
+          "passing_evidence": "All active docs reconciled; JSON references valid; final installer hash/version/source evidence real; no required bugs hidden as deferred."
+        },
+        {
+          "id": "R7-G3",
+          "title": "PR and exact tracked-source sync",
+          "passing_evidence": "Final PR is actually merged; GitHub main, origin/main and local main SHAs agree, no tracked diff or unexplained publishable untracked files remain."
+        }
+      ],
+      "github": {
+        "milestone_number": 8,
+        "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/8",
+        "issue_number": 10,
+        "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/10",
+        "branch": "alpha/r7-delivery",
+        "pr_number": null,
+        "pr_url": null
+      }
     }
   ]
 }

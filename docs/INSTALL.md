@@ -23,7 +23,7 @@ LM Studio and an available tool-capable model are external prerequisites for mod
 
 ## Packaging implementation
 `scripts/package.ps1` uses MakeAppx and SignTool; the engineering package contains the self-contained App SDK,
-redistributable release CRT, executable hashes and real native binaries. Complete workflow acceptance remains in P5/P6.
+redistributable release CRT, executable hashes and real native binaries. Complete installer behavior is R5; actual installed workflow acceptance remains R6.
 The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.exe`,
 `ForgeConductor.Manager.exe`, `ForgeConductor.SessionHost.exe`, the Forsetti manifest and agent/resources used at runtime.
 Verify actual target output names rather than blindly adopting this proposed staging list.
@@ -58,9 +58,14 @@ Defender, SmartScreen, firewall or UAC to make a build appear installable.
 4. For updates, stop only Forge-owned processes as needed, preserve data/configuration and install the higher version.
 5. Uninstall through Windows or the supplied helper. User project data is preserved unless explicitly purged separately.
 
-The final README should link to the real installer artifact or draft release asset after acceptance. Creating a public
+The final README should identify the accepted internal installer artifact after acceptance. Creating a public
 release is not required; internal delivery is enough. Do not claim repair/auto-update/Store readiness without implementing it.
 
 References checked September 10, 2026:
 https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained-deploy/deploy-self-contained-apps
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

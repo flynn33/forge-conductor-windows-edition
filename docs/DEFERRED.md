@@ -3,7 +3,7 @@ Deferred does not mean implemented, removed without notice, or an Alpha failure 
 
 **B1 — Remaining behavioral parity:** richer optional web dashboard, high-fidelity GPU/Metal visual equivalents,
 advanced connector/runtime breadth not required for the primary local workflow, portability/import between platforms,
-and any unverified per-tool schema/behavior deltas recorded during P2 inventory reconciliation.
+and any unverified per-tool schema/behavior deltas recorded during R3 workflow reconciliation.
 The optional tools already working should remain available. A required filesystem/shell/memory/provider capability
 cannot be moved here just because it needs integration. Mac-only unavailable/protected filesystem operations must
 be distinguished from working features rather than counted as port regressions.
@@ -15,3 +15,8 @@ extraordinary power-loss/exactly-once proofs, automatic update service and a bro
 Useful existing cancellation, project scoping, atomic writes, redaction, consent for destructive resets and installer trust
 remain in place. Deferring hardening does not mean making the application destroy data or disabling Windows protection.
 No recurring quota-based run controls are deferred: their removal is required now by the owner.
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

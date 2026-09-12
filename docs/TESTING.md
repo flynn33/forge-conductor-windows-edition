@@ -54,3 +54,8 @@ and one log/artifact path. A short Markdown acceptance record is sufficient. The
 or live model is `not run`, not `passed`. Fix required Alpha failures. Defer unrelated old release tests explicitly.
 Do not run historical Run-All-Gates, every architecture, lengthy stress tests, or independent validator-agent chains
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

@@ -40,3 +40,8 @@ then test the real endpoint and loaded model. For a continuity failure, inspect 
 starting a duplicate writer. For an installer failure, retain the deployment error and package/certificate identity.
 Use Events & Evidence to open relevant local logs/results. Report the app version, action, error and reproduction steps;
 never include an access token or signing private key in an issue.
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

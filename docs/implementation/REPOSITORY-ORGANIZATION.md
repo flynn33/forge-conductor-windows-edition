@@ -42,7 +42,7 @@ The script preserves existing issue bodies/status and prints matches; update an 
 Do not make GitHub Projects v2, org permissions, branch-protection edits or admin APIs prerequisites to implementing code.
 An optional board can simply show Backlog/In progress/Blocked/Done using these issues.
 
-Create one lightweight Windows CI workflow after P0 makes clean-clone restoration reproducible:
+Create a lightweight Windows CI workflow only when current repository delivery needs it and clean-clone restoration is reproducible:
 checkout -> verified dependency restore/cache -> build selected production targets -> selected existing fast tests ->
 upload failure logs. Use a documented Windows runner/toolchain, no success-on-skip filtering and no all-gates/ARM64 matrix.
 Add packaging as a manual or release workflow once signing is available. Live model/interactive GUI acceptance is a
@@ -57,3 +57,8 @@ Release notes: known limitations and actual version. Documentation must not labe
 
 GitHub write permission failure is an administration blocker, not permission to stop implementing the Alpha.
 Retain the local plan and list pending remote updates in status; do not invent a successful remote change.
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

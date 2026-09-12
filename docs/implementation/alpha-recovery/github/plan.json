@@ -1,0 +1,250 @@
+{
+  "plan_id": "windows-alpha-recovery-2026-09-12",
+  "repository": "flynn33/forge-conductor-windows-edition",
+  "base_branch": "main",
+  "authentication": "verified owner flynn33",
+  "remote_records_observed": false,
+  "policy": "Discover and reuse matching real milestones/phase issues/PRs; this file supplies desired definitions, never fake remote IDs. One primary PR per phase. No hundreds of slice issues.",
+  "labels": [
+    {
+      "name": "windows-alpha",
+      "description": "Current Windows native Alpha delivery"
+    },
+    {
+      "name": "phase",
+      "description": "Phase issue with coherent slice checklist"
+    },
+    {
+      "name": "bug",
+      "description": "Reproducible required functionality defect"
+    }
+  ],
+  "phases": [
+    {
+      "phase_id": "R0",
+      "marker": "windows-alpha-recovery-2026-09-12/R0",
+      "milestone": {
+        "title": "WA-R0 — Current baseline and accountable delivery",
+        "description": "Preserved local work, current GitHub baseline, one governing roadmap, one execution ledger, and a functioning owner-authenticated phase PR workflow.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R0 — Reconcile the repository and establish the delivery workflow",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R0\n\nPreserved local work, current GitHub baseline, one governing roadmap, one execution ledger, and a functioning owner-authenticated phase PR workflow.\n\n## Slices\n- [ ] R0.1 — Adopt without resetting\n- [ ] R0.2 — Replace competing instructions\n- [ ] R0.3 — Create or reconcile GitHub tracking\n- [ ] R0.4 — Close the stale-documentation gap\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r0-reconcile",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": []
+    },
+    {
+      "phase_id": "R1",
+      "marker": "windows-alpha-recovery-2026-09-12/R1",
+      "milestone": {
+        "title": "WA-R1 — Real managed execution path",
+        "description": "A native Manager-owned ordinary Responses/tool loop drives the existing continuity automation and can be controlled and observed from the GUI.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R1 — Complete Manager-owned inference and context continuity wiring",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R1\n\nA native Manager-owned ordinary Responses/tool loop drives the existing continuity automation and can be controlled and observed from the GUI.\n\n## Slices\n- [ ] R1.1 — Own an ordinary run\n- [ ] R1.2 — Execute the normal tool loop\n- [ ] R1.3 — Feed actual context observations\n- [ ] R1.4 — Complete productive successor ownership\n- [ ] R1.5 — Expose a minimal native control surface\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r1-managed-runs",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": [
+        "R0"
+      ]
+    },
+    {
+      "phase_id": "R2",
+      "marker": "windows-alpha-recovery-2026-09-12/R2",
+      "milestone": {
+        "title": "WA-R2 — Live visual operations",
+        "description": "Real CPU/RAM/process collectors, supported GPU readings, operational measurements, and reusable native charts/gauges/timelines replace generic or unavailable placeholders.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R2 — Deliver real native telemetry and visual dashboards",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R2\n\nReal CPU/RAM/process collectors, supported GPU readings, operational measurements, and reusable native charts/gauges/timelines replace generic or unavailable placeholders.\n\n## Slices\n- [ ] R2.1 — Implement the missing collectors\n- [ ] R2.2 — Publish typed operational snapshots\n- [ ] R2.3 — Build reusable native visual controls\n- [ ] R2.4 — Complete Rig and detail presentation\n- [ ] R2.5 — Verify freshness and UI lifetime\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r2-visual-telemetry",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": [
+        "R0"
+      ]
+    },
+    {
+      "phase_id": "R3",
+      "marker": "windows-alpha-recovery-2026-09-12/R3",
+      "milestone": {
+        "title": "WA-R3 — Usable native workflows",
+        "description": "Every named Alpha destination performs its real workflow rather than displaying a generic Manager refresh panel.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R3 — Finish the native operating pages and local workflows",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R3\n\nEvery named Alpha destination performs its real workflow rather than displaying a generic Manager refresh panel.\n\n## Slices\n- [ ] R3.1 — Projects and memory workflow\n- [ ] R3.2 — LM Studio MCP and native tools\n- [ ] R3.3 — Agents, Tools and Feed\n- [ ] R3.4 — Runtimes, Manager and diagnostics\n- [ ] R3.5 — Remove generic page substitutions\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r3-native-workflows",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": [
+        "R0"
+      ]
+    },
+    {
+      "phase_id": "R4",
+      "marker": "windows-alpha-recovery-2026-09-12/R4",
+      "milestone": {
+        "title": "WA-R4 — Accessible controls and safe reset",
+        "description": "Normal configuration and maintenance are accessible in the native GUI, persisted through the Manager and reflected by effective readback.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R4 — Complete accessible settings and scoped maintenance",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R4\n\nNormal configuration and maintenance are accessible in the native GUI, persisted through the Manager and reflected by effective readback.\n\n## Slices\n- [ ] R4.1 — Make settings discoverable\n- [ ] R4.2 — Provider credentials and model selection\n- [ ] R4.3 — Context and telemetry controls\n- [ ] R4.4 — Project-scoped and all-store reset\n- [ ] R4.5 — Settings accessibility and failure handling\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r4-settings-reset",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": [
+        "R0"
+      ]
+    },
+    {
+      "phase_id": "R5",
+      "marker": "windows-alpha-recovery-2026-09-12/R5",
+      "milestone": {
+        "title": "WA-R5 — Installable Windows candidate",
+        "description": "A signed Release MSIX candidate has complete payload, ordinary installation/onboarding, stable identity, truthful data-compatibility handling and no development-path dependency.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R5 — Finish the Windows installer and existing-data behavior",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R5\n\nA signed Release MSIX candidate has complete payload, ordinary installation/onboarding, stable identity, truthful data-compatibility handling and no development-path dependency.\n\n## Slices\n- [ ] R5.1 — Preserve and diagnose existing data\n- [ ] R5.2 — Complete package payload and provenance\n- [ ] R5.3 — Finish trust/install experience\n- [ ] R5.4 — First launch and profile recovery\n- [ ] R5.5 — Update and uninstall preservation\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r5-installer-data",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": [
+        "R0"
+      ]
+    },
+    {
+      "phase_id": "R6",
+      "marker": "windows-alpha-recovery-2026-09-12/R6",
+      "milestone": {
+        "title": "WA-R6 — Working Alpha proven",
+        "description": "Required native GUI, live managed continuity, installed workflow and data preservation are demonstrated on the candidate without fixture substitution.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R6 — Run the small real-product acceptance pass and fix blockers",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R6\n\nRequired native GUI, live managed continuity, installed workflow and data preservation are demonstrated on the candidate without fixture substitution.\n\n## Slices\n- [ ] R6.1 — Real installed workflow\n- [ ] R6.2 — Real context-triggered continuation\n- [ ] R6.3 — GUI/telemetry/settings acceptance\n- [ ] R6.4 — Installed lifecycle and required defect repair\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r6-acceptance",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": [
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5"
+      ]
+    },
+    {
+      "phase_id": "R7",
+      "marker": "windows-alpha-recovery-2026-09-12/R7",
+      "milestone": {
+        "title": "WA-R7 — Documented and synchronized delivery",
+        "description": "The accepted candidate, current documentation, actual phase/PR evidence and local/main/remote identity agree; no public release is created by implication.",
+        "number": null,
+        "due_on": null
+      },
+      "issue": {
+        "title": "R7 — Close documentation, merge the delivery PR and synchronize main",
+        "number": null,
+        "labels": [
+          "windows-alpha",
+          "phase"
+        ],
+        "body": "Plan marker: windows-alpha-recovery-2026-09-12/R7\n\nThe accepted candidate, current documentation, actual phase/PR evidence and local/main/remote identity agree; no public release is created by implication.\n\n## Slices\n- [ ] R7.1 — Final documentation and traceability\n- [ ] R7.2 — Finalize candidate and provenance\n- [ ] R7.3 — Deliver through the phase PR and prove synchronization\n\n## Required closeout\nMinimum phase gates; README/changelog/roadmap/all-doc review; owner push and primary PR to main; actual merged/sync delivery evidence. Required live/installed final acceptance is not inferred from fixture passes.\n"
+      },
+      "branch": "alpha/r7-delivery",
+      "pr": {
+        "base": "main",
+        "number": null,
+        "url": null
+      },
+      "dependency_phases": [
+        "R6"
+      ]
+    }
+  ]
+}

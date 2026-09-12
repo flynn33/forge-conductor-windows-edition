@@ -1,0 +1,163 @@
+{
+  "plan_id": "windows-alpha-recovery-2026-09-12",
+  "observed_on": "2026-09-12",
+  "repository": "flynn33/forge-conductor-windows-edition",
+  "default_branch": "main",
+  "commit": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+  "tree": "bc0f281bb82b5acde57795e36371d98552191832",
+  "merged_pr": {
+    "number": 2,
+    "title": "Add Windows Alpha native desktop foundation",
+    "url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/2",
+    "merged_at_utc": "2026-09-12T14:15:52Z",
+    "merge_commit": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+    "head": "554c8f67cbd8e257a1d5078e7542921ac30ab904",
+    "previous_main": "14660648599378c85c3cdade5bd44ffe1cded079"
+  },
+  "author_observed": {
+    "name": "Jim Daley",
+    "email": "94642455+flynn33@users.noreply.github.com",
+    "github_owner": "flynn33",
+    "source": "S23",
+    "local_identity_and_auth_verified": false
+  },
+  "provided_locations": {
+    "local_repository": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
+    "instruction_package": "A:\\Codex\\Projects\\Forge-Conductor-Windows-Edition\\Forge-Conductor-Windows-Alpha-Codex-Astra"
+  },
+  "review_scope": {
+    "method": "Selected pinned GitHub source/metadata review through the connected repository tools plus supplied package/clarifications and official external documentation.",
+    "full_repository_clone_completed": false,
+    "windows_builds_executed": false,
+    "native_gui_executed": false,
+    "local_drives_accessed": false,
+    "live_provider_checked": false,
+    "database_opened": false,
+    "remote_writes_performed": false,
+    "all_source_lines_audited": false
+  },
+  "reported_runtime_not_reexecuted": {
+    "debug_release_builds": "passed in repository receipts",
+    "isolated_gui_manager_attach": "reported passed",
+    "infrastructure_tests": "90/90 reported",
+    "provider_live_rollover": "not accepted in source records",
+    "installer": "engineering signing reported; trust/elevation and clean installed acceptance unresolved",
+    "schema9": "reported existing user store; authentic C008/C009 implementation not recovered"
+  },
+  "verified_source_gaps": [
+    {
+      "id": "B01",
+      "finding": "Current handoff/status/CHANGELOG retain stale base, uncommitted or planned claims after PR2 merge.",
+      "sources": [
+        "S03",
+        "S04",
+        "S05",
+        "S07",
+        "S14"
+      ],
+      "resolution": [
+        "R0",
+        "R7"
+      ]
+    },
+    {
+      "id": "B02",
+      "finding": "Required GUI destinations mostly route to generic/Rig panels; Provider is a real form but all operating pages are not complete.",
+      "sources": [
+        "S08",
+        "S09"
+      ],
+      "resolution": [
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    {
+      "id": "B03",
+      "finding": "Inspected production telemetry path uses UnavailableTelemetryService, which does not produce real measurements.",
+      "sources": [
+        "S10",
+        "S11"
+      ],
+      "resolution": [
+        "R2"
+      ]
+    },
+    {
+      "id": "B04",
+      "finding": "Ordinary Manager-owned run/usage feeding is explicitly identified as missing; non-streaming transport contract addresses bootstrap sessions rather than complete runs.",
+      "sources": [
+        "S04",
+        "S05",
+        "S13",
+        "S14"
+      ],
+      "resolution": [
+        "R1",
+        "R6"
+      ]
+    },
+    {
+      "id": "B05",
+      "finding": "Existing --alpha-root isolation and engineering package must be reused, not rebuilt as new subsystems.",
+      "sources": [
+        "S18",
+        "S19",
+        "S21",
+        "S22"
+      ],
+      "resolution": [
+        "R0",
+        "R5",
+        "R6"
+      ]
+    },
+    {
+      "id": "B06",
+      "finding": "Full functional native telemetry is underspecified/deferred in old roadmap wording, conflicting with owner clarification.",
+      "sources": [
+        "S12",
+        "U03",
+        "U04"
+      ],
+      "resolution": [
+        "R0",
+        "R2"
+      ]
+    },
+    {
+      "id": "B07",
+      "finding": "Final real-provider/installed acceptance and existing-data compatibility remain open in repository evidence.",
+      "sources": [
+        "S05",
+        "S14",
+        "S15",
+        "S19",
+        "S20"
+      ],
+      "resolution": [
+        "R5",
+        "R6"
+      ]
+    }
+  ],
+  "unknowns": [
+    "Current D: dirty state and branch",
+    "Current local gh/Git credential identity",
+    "Current LM Studio reachability/model/configuration",
+    "Current publisher trust and available Windows test environment",
+    "Authentic C008/C009 bodies and live database compatibility",
+    "Actual current milestones/issues IDs; connector milestone collection route was unavailable",
+    "Current required reviews/checks; queried .github/workflows directory returned404, not a successful CI run"
+  ],
+  "no_roll_back_to_snapshot": true,
+  "final_main_recheck": {
+    "commit": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+    "tree": "bc0f281bb82b5acde57795e36371d98552191832",
+    "source": "S25",
+    "protected_reported": false,
+    "required_contexts_reported": [],
+    "checked_on": "2026-09-12"
+  }
+}
