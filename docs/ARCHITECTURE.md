@@ -36,6 +36,6 @@ new governance engine, multi-agent validator pipeline, or generalized cross-plat
 The Mac Swift source is behavioral evidence only. No Swift binaries belong in the Windows build or installer.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

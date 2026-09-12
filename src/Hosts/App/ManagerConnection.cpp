@@ -76,6 +76,53 @@ connectManager(
     return W::WindowsManagerNamedPipeClient::create(
         clock, std::wstring{names.value().pipeName()}, *nonce.value());
 }
+
+[[nodiscard]] std::string_view managedStateName(
+    const Domain::ManagedRunState state) noexcept
+{
+    switch (state) {
+    case Domain::ManagedRunState::Running: return "running";
+    case Domain::ManagedRunState::Cancelling: return "stopping";
+    case Domain::ManagedRunState::Completed: return "completed";
+    case Domain::ManagedRunState::Failed: return "failed";
+    case Domain::ManagedRunState::Cancelled: return "stopped";
+    case Domain::ManagedRunState::Paused: return "paused";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] ManagedRunView managedView(
+    Domain::Result<Domain::ManagedRunSnapshot> result)
+{
+    if (!result) {
+        return {false, result.error().message, std::nullopt};
+    }
+    auto snapshot = std::move(result).value();
+    const auto& record = snapshot.record;
+    std::string message = "Run " + record.runId.value() +
+        "\nState: " + std::string{managedStateName(record.state)} +
+        (snapshot.pauseRequested ? " (pause requested)" : "") +
+        "\nProject: " + record.projectId.value() +
+        "\nAuthority generation: " +
+            std::to_string(record.authorityGeneration) +
+        "\nLifetime tokens: " + std::to_string(record.inputTokens) +
+            " input / " + std::to_string(record.outputTokens) + " output";
+    if (record.retainedContextTokens) {
+        message += "\nRetained context: " +
+            std::to_string(*record.retainedContextTokens) + " tokens";
+    }
+    if (!record.pendingFunctionCalls.empty()) {
+        message += "\nPending provider calls: " +
+            std::to_string(record.pendingFunctionCalls.size());
+    }
+    if (record.lastError) {
+        message += "\nError: " + record.lastError->message;
+    }
+    if (record.outputText && !record.outputText->empty()) {
+        message += "\n\nOutput\n" + *record.outputText;
+    }
+    return {true, std::move(message), std::move(snapshot)};
+}
 }
 ManagerConnection::ManagerConnection(
     std::optional<std::wstring> alphaRoot) noexcept
@@ -224,6 +271,96 @@ std::string ManagerConnection::testProvider(
         return "LM Studio connection failed: " + std::string{error.what()};
     } catch (...) {
         return "LM Studio connection failed safely.";
+    }
+}
+
+ManagedRunView ManagerConnection::startManagedRun(
+    std::string projectId,
+    std::string clientId,
+    const std::uint64_t authorityGeneration,
+    std::string task,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto project = Domain::ProjectId::parse(projectId);
+        auto clientIdValue = Domain::ClientId::parse(clientId);
+        if (!project) return {false, project.error().message, std::nullopt};
+        if (!clientIdValue) return {false, clientIdValue.error().message, std::nullopt};
+        if (authorityGeneration == 0U || task.empty()) {
+            return {false,
+                "Project authority generation and task are required.",
+                std::nullopt};
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation, std::chrono::seconds{15});
+        W::WindowsUuidGenerator ids;
+        auto generated = ids.next();
+        if (!generated) return {false, generated.error().message, std::nullopt};
+        auto runId = Domain::SessionId::parse(generated.value().value());
+        if (!runId) return {false, runId.error().message, std::nullopt};
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto manager = std::move(created).value();
+        auto result = manager->startManagedRun(
+            Domain::ManagedRunStartRequest{
+                std::move(runId).value(),
+                std::move(project).value(),
+                std::move(clientIdValue).value(),
+                context.operationId,
+                context.correlationId,
+                authorityGeneration,
+                std::move(task)},
+            context);
+        manager->shutdown();
+        return managedView(std::move(result));
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The managed run could not be started.", std::nullopt};
+    }
+}
+
+ManagedRunView ManagerConnection::controlManagedRun(
+    std::string runId,
+    const ManagedRunAction action,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsedRunId = Domain::SessionId::parse(runId);
+        if (!parsedRunId) {
+            return {false, parsedRunId.error().message, std::nullopt};
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation, std::chrono::seconds{15});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto manager = std::move(created).value();
+        Domain::Result<Domain::ManagedRunSnapshot> result =
+            Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                    "The managed run action is invalid."));
+        switch (action) {
+        case ManagedRunAction::Status:
+            result = manager->managedRunStatus(parsedRunId.value(), context);
+            break;
+        case ManagedRunAction::Pause:
+            result = manager->pauseManagedRun(parsedRunId.value(), context);
+            break;
+        case ManagedRunAction::Resume:
+            result = manager->resumeManagedRun(parsedRunId.value(), context);
+            break;
+        case ManagedRunAction::Cancel:
+            result = manager->cancelManagedRun(parsedRunId.value(), context);
+            break;
+        }
+        manager->shutdown();
+        return managedView(std::move(result));
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The managed run action failed safely.", std::nullopt};
     }
 }
 std::string ManagerConnection::start(std::stop_token cancellation) noexcept {

@@ -526,6 +526,14 @@ void requireExactFields(
     return static_cast<std::uint16_t>(number);
 }
 
+[[nodiscard]] std::uint64_t uint64Member(
+    const Json& value,
+    const std::string_view name)
+{
+    const auto number = nonnegativeIntegerMember(value, name);
+    return static_cast<std::uint64_t>(number);
+}
+
 template <typename Identifier>
 [[nodiscard]] Identifier identifierMember(
     const Json& value,
@@ -681,6 +689,36 @@ void validateVersion(const std::uint32_t version)
     reject(
         Domain::ErrorCodes::InvalidRequest,
         "Manager control request contains an unknown action.");
+}
+
+[[nodiscard]] std::string_view managedRunStateName(
+    const Domain::ManagedRunState state)
+{
+    switch (state) {
+    case Domain::ManagedRunState::Running: return "running";
+    case Domain::ManagedRunState::Cancelling: return "cancelling";
+    case Domain::ManagedRunState::Completed: return "completed";
+    case Domain::ManagedRunState::Failed: return "failed";
+    case Domain::ManagedRunState::Cancelled: return "cancelled";
+    case Domain::ManagedRunState::Paused: return "paused";
+    }
+    reject(
+        Domain::ErrorCodes::InvalidRequest,
+        "Managed run snapshot contains an invalid state.");
+}
+
+[[nodiscard]] Domain::ManagedRunState parseManagedRunState(
+    const std::string_view value)
+{
+    if (value == "running") return Domain::ManagedRunState::Running;
+    if (value == "cancelling") return Domain::ManagedRunState::Cancelling;
+    if (value == "completed") return Domain::ManagedRunState::Completed;
+    if (value == "failed") return Domain::ManagedRunState::Failed;
+    if (value == "cancelled") return Domain::ManagedRunState::Cancelled;
+    if (value == "paused") return Domain::ManagedRunState::Paused;
+    reject(
+        Domain::ErrorCodes::InvalidRequest,
+        "Managed run snapshot contains an unknown state.");
 }
 
 [[nodiscard]] std::string_view logLevelName(const Domain::LogLevel level)
@@ -1180,6 +1218,30 @@ void validateSettingsUpdateOutcome(
                 method = "manager.settings.update";
                 params["apply_immediately"] = payload.applyImmediately;
                 params["patch"] = patchJson(payload.patch);
+            } else if constexpr (
+                std::is_same_v<Payload, ManagedRunStartRequest>) {
+                method = "managed_run.start";
+                params["authority_generation"] = payload.authorityGeneration;
+                params["client_id"] = payload.clientId.value();
+                params["project_id"] = payload.projectId.value();
+                params["run_id"] = payload.runId.value();
+                params["task"] = payload.task;
+            } else if constexpr (
+                std::is_same_v<Payload, ManagedRunStatusRequest>) {
+                method = "managed_run.status";
+                params["run_id"] = payload.runId.value();
+            } else if constexpr (
+                std::is_same_v<Payload, ManagedRunCancelRequest>) {
+                method = "managed_run.cancel";
+                params["run_id"] = payload.runId.value();
+            } else if constexpr (
+                std::is_same_v<Payload, ManagedRunPauseRequest>) {
+                method = "managed_run.pause";
+                params["run_id"] = payload.runId.value();
+            } else if constexpr (
+                std::is_same_v<Payload, ManagedRunResumeRequest>) {
+                method = "managed_run.resume";
+                params["run_id"] = payload.runId.value();
             } else if constexpr (std::is_same_v<Payload, ManagerCancelRequest>) {
                 method = "manager.cancel";
                 params["operation_id"] = payload.operationId.value();
@@ -1242,6 +1304,33 @@ void validateSettingsUpdateOutcome(
         payload = ManagerSettingsUpdateRequest{
             parsePatch(member(params, "patch")),
             booleanMember(params, "apply_immediately")};
+    } else if (method == "managed_run.start") {
+        requireExactFields(
+            params,
+            {"authority_generation", "client_id", "project_id", "run_id", "task"},
+            "managed_run.start params");
+        payload = ManagedRunStartRequest{
+            identifierMember<Domain::SessionId>(params, "run_id"),
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            identifierMember<Domain::ClientId>(params, "client_id"),
+            uint64Member(params, "authority_generation"),
+            stringMember(params, "task")};
+    } else if (method == "managed_run.status") {
+        requireExactFields(params, {"run_id"}, "managed_run.status params");
+        payload = ManagedRunStatusRequest{
+            identifierMember<Domain::SessionId>(params, "run_id")};
+    } else if (method == "managed_run.cancel") {
+        requireExactFields(params, {"run_id"}, "managed_run.cancel params");
+        payload = ManagedRunCancelRequest{
+            identifierMember<Domain::SessionId>(params, "run_id")};
+    } else if (method == "managed_run.pause") {
+        requireExactFields(params, {"run_id"}, "managed_run.pause params");
+        payload = ManagedRunPauseRequest{
+            identifierMember<Domain::SessionId>(params, "run_id")};
+    } else if (method == "managed_run.resume") {
+        requireExactFields(params, {"run_id"}, "managed_run.resume params");
+        payload = ManagedRunResumeRequest{
+            identifierMember<Domain::SessionId>(params, "run_id")};
     } else if (method == "manager.cancel") {
         requireExactFields(
             params, {"operation_id"}, "manager.cancel params");
@@ -1308,6 +1397,125 @@ void validateSettingsUpdateOutcome(
         evidenceId};
 }
 
+[[nodiscard]] Json managedRunSnapshotJson(
+    const Domain::ManagedRunSnapshot& snapshot)
+{
+    const auto& record = snapshot.record;
+    Json value = Json::object();
+    value["authority_generation"] = record.authorityGeneration;
+    value["cancellation_requested"] = snapshot.cancellationRequested;
+    value["client_id"] = record.clientId.value();
+    value["created_at_utc_ms"] = epochMilliseconds(record.createdAt);
+    value["input_tokens"] = record.inputTokens;
+    if (record.lastError) {
+        value["last_error"] = errorJson(*record.lastError);
+    } else {
+        value["last_error"] = nullptr;
+    }
+    value["manager_owned"] = snapshot.managerOwned;
+    value["pause_requested"] = snapshot.pauseRequested;
+    value["output_text"] = optionalString(record.outputText);
+    value["output_tokens"] = record.outputTokens;
+    value["pending_function_calls"] = Json::array();
+    for (const auto& call : record.pendingFunctionCalls) {
+        value["pending_function_calls"].push_back(Json{
+            {"arguments", call.canonicalArguments},
+            {"call_id", call.callId},
+            {"name", call.name}});
+    }
+    value["project_id"] = record.projectId.value();
+    if (record.providerResponseId) {
+        value["provider_response_id"] = record.providerResponseId->value();
+    } else {
+        value["provider_response_id"] = nullptr;
+    }
+    if (record.retainedContextTokens) {
+        value["retained_context_tokens"] = *record.retainedContextTokens;
+    } else {
+        value["retained_context_tokens"] = nullptr;
+    }
+    value["run_id"] = record.runId.value();
+    value["state"] = managedRunStateName(record.state);
+    value["task"] = record.task;
+    value["updated_at_utc_ms"] = epochMilliseconds(record.updatedAt);
+    return value;
+}
+
+[[nodiscard]] Domain::ManagedRunSnapshot parseManagedRunSnapshot(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"authority_generation", "cancellation_requested", "client_id", "created_at_utc_ms",
+         "input_tokens", "last_error", "manager_owned", "output_text",
+         "output_tokens", "pause_requested", "pending_function_calls", "project_id", "provider_response_id",
+         "retained_context_tokens", "run_id", "state", "task",
+         "updated_at_utc_ms"},
+        "Managed run snapshot");
+    const auto providerResponseId = optionalField<Domain::ProviderSessionId>(
+        value,
+        "provider_response_id",
+        [](const Json& object, const std::string_view name) {
+            return identifierMember<Domain::ProviderSessionId>(object, name);
+        });
+    const auto retainedContextTokens = optionalField<std::uint64_t>(
+        value,
+        "retained_context_tokens",
+        [](const Json& object, const std::string_view name) {
+            return uint64Member(object, name);
+        });
+    const auto outputText = optionalField<std::string>(
+        value,
+        "output_text",
+        [](const Json& object, const std::string_view name) {
+            return stringMember(object, name);
+        });
+    const auto lastError = optionalField<Domain::Error>(
+        value,
+        "last_error",
+        [](const Json& object, const std::string_view name) {
+            return parseError(member(object, name));
+        });
+    const auto& pendingJson = member(value, "pending_function_calls");
+    if (!pendingJson.is_array()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            "Managed run pending_function_calls must be an array.");
+    }
+    std::vector<Domain::ManagedFunctionCall> pending;
+    for (const auto& call : pendingJson) {
+        requireExactFields(
+            call, {"arguments", "call_id", "name"},
+            "Managed function call");
+        pending.push_back({
+            stringMember(call, "call_id"),
+            stringMember(call, "name"),
+            stringMember(call, "arguments")});
+    }
+    return Domain::ManagedRunSnapshot{
+        Domain::ManagedRunRecord{
+            identifierMember<Domain::SessionId>(value, "run_id"),
+            identifierMember<Domain::ProjectId>(value, "project_id"),
+            identifierMember<Domain::ClientId>(value, "client_id"),
+            stringMember(value, "task"),
+            uint64Member(value, "authority_generation"),
+            parseManagedRunState(stringMember(value, "state")),
+            providerResponseId,
+            uint64Member(value, "input_tokens"),
+            uint64Member(value, "output_tokens"),
+            retainedContextTokens,
+            outputText,
+            lastError,
+            std::move(pending),
+            utcTimePointFromMilliseconds(
+                nonnegativeIntegerMember(value, "created_at_utc_ms")),
+            utcTimePointFromMilliseconds(
+                nonnegativeIntegerMember(value, "updated_at_utc_ms"))},
+        booleanMember(value, "manager_owned"),
+        booleanMember(value, "cancellation_requested"),
+        booleanMember(value, "pause_requested")};
+}
+
 [[nodiscard]] Json resultJson(const ManagerResult& result)
 {
     Json wrapper = Json::object();
@@ -1324,6 +1532,10 @@ void validateSettingsUpdateOutcome(
                 std::is_same_v<Value, Domain::ManagerSettingsUpdateOutcome>) {
                 wrapper["type"] = "settings_update";
                 wrapper["value"] = settingsUpdateOutcomeJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, Domain::ManagedRunSnapshot>) {
+                wrapper["type"] = "managed_run";
+                wrapper["value"] = managedRunSnapshotJson(value);
             } else if constexpr (std::is_same_v<Value, ManagerAcknowledgement>) {
                 wrapper["type"] = "acknowledgement";
                 Json acknowledgement = Json::object();
@@ -1348,6 +1560,9 @@ void validateSettingsUpdateOutcome(
     }
     if (type == "settings_update") {
         return ManagerResult{parseSettingsUpdateOutcome(value)};
+    }
+    if (type == "managed_run") {
+        return ManagerResult{parseManagedRunSnapshot(value)};
     }
     if (type == "acknowledgement") {
         requireExactFields(

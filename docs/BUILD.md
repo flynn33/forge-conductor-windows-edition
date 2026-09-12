@@ -96,12 +96,14 @@ Installation requires machine trust for the signing publisher; see the bundled i
 | GUI library/CRT mismatch | Build x64 and the same Debug/Release and dynamic CRT settings on both sides. |
 | XAML/MSBuild targets missing | Repair/install the C++ WinUI toolchain; avoid an improvised .NET application rewrite. |
 | Packaged process cannot find sibling CLI | Stage all real production executables and resolve install-relative paths; never point at out/build. |
-| Provider rejects ordinary run | The real Responses bootstrap transport is present; complete the typed Manager-owned ordinary-run path in R1 rather than changing `/v1/forge` ports. |
+| Provider rejects ordinary run | Inspect the managed-run error and LM Studio `/v1/responses` compatibility; the Manager owns the ordinary run and native tool loop. Do not change `/v1/forge` ports. |
+
+Fresh isolated profiles create the configuration, data, projects, logs, memory, and handoff directories before the Manager constructs workspace authorities. Use `--alpha-root` only with a disposable path under ignored output for development checks.
 
 The current Alpha build path must remain restorable from a fresh clone using the documented commands.
 Keep build outputs, local signing state, caches, tokens and machine paths out of tracked source.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

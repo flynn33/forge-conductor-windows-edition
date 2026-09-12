@@ -772,6 +772,117 @@ void lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId()
     server.requireHealthy();
 }
 
+void lmStudioResponsesCompletesAnOrdinaryManagedTurn()
+{
+    ResponseScript models{
+        "GET", "/v1/models", 200U,
+        R"({"object":"list","data":[{"id":"fixture-model"}]})"};
+    ResponseScript ordinary{
+        "POST", "/v1/responses", 200U,
+        R"({"id":"resp_ordinary","status":"completed","output_text":"ordinary result","usage":{"input_tokens":12,"output_tokens":4}})"};
+    LoopbackHttpServer server{{models, ordinary}};
+    InfrastructureWindows::LMStudioResponsesTransport transport{
+        responsesConfiguration(server.port())};
+
+    const auto result = take(transport.complete(
+        Domain::ManagedProviderTurnRequest{
+            parse<Domain::ProjectId>(ProjectIdText),
+            parse<Domain::SessionId>(SuccessorSessionIdText),
+            9U,
+            "Perform the selected project task.",
+            std::nullopt},
+        operationContext(
+            "64646464-6464-4464-8464-646464646464", 5s)));
+    REQUIRE(result.responseId.value() == "resp_ordinary");
+    REQUIRE(result.outputText == "ordinary result");
+    REQUIRE(result.inputTokens == 12U);
+    REQUIRE(result.outputTokens == 4U);
+    REQUIRE(result.retainedContextTokens == 16U);
+
+    REQUIRE(server.waitUntilHandled(2U, 5s));
+    const auto requests = server.requests();
+    REQUIRE(requests.size() == 2U);
+    const auto body = Json::parse(requests[1].body);
+    REQUIRE(body.at("model") == "fixture-model");
+    REQUIRE(body.at("input") == "Perform the selected project task.");
+    REQUIRE(body.at("store") == true);
+    REQUIRE(!body.contains("previous_response_id"));
+    server.requireHealthy();
+}
+
+void lmStudioResponsesCorrelatesManagedFunctionOutput()
+{
+    ResponseScript models{
+        "GET", "/v1/models", 200U,
+        R"({"object":"list","data":[{"id":"fixture-model"}]})"};
+    ResponseScript toolCall{
+        "POST", "/v1/responses", 200U,
+        R"({"id":"resp_tool_call","status":"completed","output":[{"type":"function_call","name":"fixture_read","call_id":"call_fixture_1","arguments":"{\"path\":\"README.md\"}"}],"usage":{"input_tokens":20,"output_tokens":3}})"};
+    ResponseScript terminal{
+        "POST", "/v1/responses", 200U,
+        R"({"id":"resp_tool_done","status":"completed","output_text":"tool result accepted","usage":{"input_tokens":28,"output_tokens":6}})"};
+    LoopbackHttpServer server{{models, toolCall, terminal}};
+    InfrastructureWindows::LMStudioResponsesTransport transport{
+        responsesConfiguration(server.port())};
+    const Domain::McpToolDescriptor descriptor{
+        Domain::ToolDescriptor{
+            "fixture_read",
+            "Read a fixture.",
+            "fixture",
+            Domain::ToolEffect::Read,
+            Domain::ToolAvailability::Available,
+            true,
+            false},
+        R"({"additionalProperties":false,"properties":{"path":{"type":"string"}},"required":["path"],"type":"object"})"};
+
+    const auto first = take(transport.complete(
+        Domain::ManagedProviderTurnRequest{
+            parse<Domain::ProjectId>(ProjectIdText),
+            parse<Domain::SessionId>(SuccessorSessionIdText),
+            9U,
+            "Read the project file.",
+            std::nullopt,
+            {descriptor},
+            {}},
+        operationContext(
+            "63636363-6363-4363-8363-636363636361", 5s)));
+    REQUIRE(first.responseId.value() == "resp_tool_call");
+    REQUIRE(first.outputText.empty());
+    REQUIRE(first.functionCalls.size() == 1U);
+    REQUIRE(first.functionCalls[0].callId == "call_fixture_1");
+    REQUIRE(first.functionCalls[0].name == "fixture_read");
+    REQUIRE(first.functionCalls[0].canonicalArguments ==
+            "{\"path\":\"README.md\"}");
+
+    const auto second = take(transport.complete(
+        Domain::ManagedProviderTurnRequest{
+            parse<Domain::ProjectId>(ProjectIdText),
+            parse<Domain::SessionId>(SuccessorSessionIdText),
+            9U,
+            {},
+            first.responseId,
+            {descriptor},
+            {{"call_fixture_1", "{\"ok\":true}"}}},
+        operationContext(
+            "63636363-6363-4363-8363-636363636362", 5s)));
+    REQUIRE(second.responseId.value() == "resp_tool_done");
+    REQUIRE(second.outputText == "tool result accepted");
+    REQUIRE(second.functionCalls.empty());
+
+    REQUIRE(server.waitUntilHandled(3U, 5s));
+    const auto requests = server.requests();
+    const auto firstBody = Json::parse(requests[1].body);
+    REQUIRE(firstBody.at("tools").at(0).at("name") == "fixture_read");
+    REQUIRE(firstBody.at("parallel_tool_calls") == false);
+    const auto secondBody = Json::parse(requests[2].body);
+    REQUIRE(secondBody.at("previous_response_id") == "resp_tool_call");
+    REQUIRE(secondBody.at("input").at(0).at("type") ==
+            "function_call_output");
+    REQUIRE(secondBody.at("input").at(0).at("call_id") == "call_fixture_1");
+    REQUIRE(secondBody.at("input").at(0).at("output") == "{\"ok\":true}");
+    server.requireHealthy();
+}
+
 void malformedAndOversizedResponsesFailClosed()
 {
     ResponseScript malformed{
@@ -1059,6 +1170,10 @@ int main()
         std::cout << "PASS winhttp_transport.create_bootstrap_query\n";
         lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId();
         std::cout << "PASS lmstudio_responses.fresh_root_tool_ack\n";
+        lmStudioResponsesCompletesAnOrdinaryManagedTurn();
+        std::cout << "PASS lmstudio_responses.ordinary_managed_turn\n";
+        lmStudioResponsesCorrelatesManagedFunctionOutput();
+        std::cout << "PASS lmstudio_responses.managed_function_output\n";
         malformedAndOversizedResponsesFailClosed();
         std::cout << "PASS winhttp_transport.response_validation_bounds\n";
         rateLimitUsageAndProviderCancellationAreExact();
@@ -1067,7 +1182,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=7 failed=0 assertions="
+        std::cout << "SUMMARY passed=9 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

@@ -400,6 +400,8 @@ ManagerProcessEnvironmentSnapshot::ManagerProcessEnvironmentSnapshot(
     Domain::PathText diagnosticsRoot,
     Domain::PathText exportRoot,
     Domain::PathText projectsRoot,
+    Domain::PathText memoryRoot,
+    Domain::PathText handoffsRoot,
     ManagerProcessExecutableIdentity managerExecutableIdentity,
     ManagerProcessExecutableIdentity cliExecutableIdentity,
     const std::uint64_t physicalMemoryBytes,
@@ -410,6 +412,8 @@ ManagerProcessEnvironmentSnapshot::ManagerProcessEnvironmentSnapshot(
       diagnosticsRoot_{std::move(diagnosticsRoot)},
       exportRoot_{std::move(exportRoot)},
       projectsRoot_{std::move(projectsRoot)},
+      memoryRoot_{std::move(memoryRoot)},
+      handoffsRoot_{std::move(handoffsRoot)},
       managerExecutableIdentity_{std::move(managerExecutableIdentity)},
       cliExecutableIdentity_{std::move(cliExecutableIdentity)},
       physicalMemoryBytes_{physicalMemoryBytes},
@@ -624,6 +628,16 @@ ManagerProcessEnvironment::inspect(
             return Domain::Result<ManagerProcessEnvironmentSnapshot>::failure(
                 std::move(projectsRoot).error());
         }
+        auto memoryRoot = resolveChildRoot(dataRoot.value(), L"memory");
+        if (!memoryRoot) {
+            return Domain::Result<ManagerProcessEnvironmentSnapshot>::failure(
+                std::move(memoryRoot).error());
+        }
+        auto handoffsRoot = resolveChildRoot(memoryRoot.value(), L"handoffs");
+        if (!handoffsRoot) {
+            return Domain::Result<ManagerProcessEnvironmentSnapshot>::failure(
+                std::move(handoffsRoot).error());
+        }
 
         auto platform = platformProbe_.inspect(context);
         if (!platform) {
@@ -681,6 +695,8 @@ ManagerProcessEnvironment::inspect(
                 std::move(diagnosticsRoot).value(),
                 std::move(exportRoot).value(),
                 std::move(projectsRoot).value(),
+                std::move(memoryRoot).value(),
+                std::move(handoffsRoot).value(),
                 std::move(platform).value().currentManagerImage,
                 std::move(cliIdentity).value(),
                 physicalMemoryBytes,
@@ -724,7 +740,9 @@ ManagerProcessEnvironment::prepareAfterLease(
                 &revalidated.value().configurationRoot(),
                 &revalidated.value().diagnosticsRoot(),
                 &revalidated.value().exportRoot(),
-                &revalidated.value().projectsRoot()};
+                &revalidated.value().projectsRoot(),
+                &revalidated.value().memoryRoot(),
+                &revalidated.value().handoffsRoot()};
         for (const Domain::PathText* const directory : directories) {
             auto active = validateContext(
                 context, "prepare the Manager process directory set");

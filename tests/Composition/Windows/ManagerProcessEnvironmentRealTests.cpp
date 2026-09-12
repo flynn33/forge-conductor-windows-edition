@@ -33,8 +33,8 @@ using namespace std::chrono_literals;
 
 constexpr std::size_t MaximumPathCharacters = 32U * 1024U;
 constexpr auto OperationTimeout = 30s;
-constexpr std::array<std::wstring_view, 4U> ExpectedChildLeaves{
-    L"config", L"exports", L"logs", L"projects"};
+constexpr std::array<std::wstring_view, 5U> ExpectedChildLeaves{
+    L"config", L"exports", L"logs", L"memory", L"projects"};
 
 void require(
     const bool condition,
@@ -394,6 +394,8 @@ public:
         directories_[2] = directories_[0] + L"\\logs";
         directories_[3] = directories_[0] + L"\\exports";
         directories_[4] = directories_[0] + L"\\projects";
+        directories_[5] = directories_[0] + L"\\memory";
+        directories_[6] = directories_[5] + L"\\handoffs";
     }
 
     ~TemporaryDataRoot() noexcept
@@ -411,7 +413,7 @@ public:
         return directories_[0];
     }
 
-    [[nodiscard]] const std::array<std::wstring, 5U>& directories() const
+    [[nodiscard]] const std::array<std::wstring, 7U>& directories() const
         noexcept
     {
         return directories_;
@@ -438,7 +440,7 @@ public:
     }
 
 private:
-    std::array<std::wstring, 5U> directories_{};
+    std::array<std::wstring, 7U> directories_{};
     bool cleaned_{};
 };
 
@@ -564,10 +566,11 @@ void inspectPrepareAndReleaseTheRealManagerEnvironment()
         "repeated native inspection returned unstable process evidence");
 
     const auto& expectedDirectories = temporaryRoot.directories();
-    const std::array<const Domain::PathText*, 5U> snapshotDirectories{
+    const std::array<const Domain::PathText*, 7U> snapshotDirectories{
         &inspected.dataRoot(), &inspected.configurationRoot(),
         &inspected.diagnosticsRoot(), &inspected.exportRoot(),
-        &inspected.projectsRoot()};
+        &inspected.projectsRoot(), &inspected.memoryRoot(),
+        &inspected.handoffsRoot()};
     for (std::size_t index = 0U; index < snapshotDirectories.size(); ++index) {
         require(
             equalWindowsPath(
@@ -666,9 +669,15 @@ void inspectPrepareAndReleaseTheRealManagerEnvironment()
         }
         require(
             directoryLeaves(expectedDirectories[0]) == expectedLeaves,
-            "preparation created a directory set other than the exact five required roots");
-        for (std::size_t index = 1U; index < expectedDirectories.size();
-             ++index) {
+            "preparation created a directory set other than the exact required roots");
+        for (std::size_t index = 1U; index < expectedDirectories.size(); ++index) {
+            if (index == 5U) {
+                require(
+                    directoryLeaves(expectedDirectories[index]) ==
+                        std::vector<std::wstring>{L"handoffs"},
+                    "the continuity memory root did not contain exactly the handoff directory");
+                continue;
+            }
             require(
                 directoryIsEmpty(expectedDirectories[index]),
                 "a prepared Manager process child directory was not empty");

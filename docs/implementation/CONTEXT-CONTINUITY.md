@@ -89,6 +89,12 @@ Ordinary LM Studio desktop chats that merely connect to the stdio MCP server are
 Do not reset tabs with GUI automation or undocumented endpoints. The Alpha guarantee applies to explicitly enrolled
 Forge-managed runs whose context and provider requests the manager owns.
 
+The R1 implementation now keeps ordinary run ownership in the Manager. It persists the current provider response ID,
+pending function-call correlations, lifetime usage, retained context, run state, and errors; it routes function calls
+through the authorized native MCP tool router and feeds retained usage to `ContinuityAutomation`. A completed handoff
+returns the activated successor response ID to the same work loop. Recovered pending external work fails for explicit
+reconciliation rather than being replayed blindly.
+
 ## Configuration migration
 Read old quota/count/time fields only long enough to ignore/drop them safely during migration.
 Do not emit them in saved config, user documentation, CLI help, runtime tool descriptions or prompts.
@@ -106,6 +112,6 @@ Official references: https://lmstudio.ai/docs/developer/openai-compat/responses 
 https://lmstudio.ai/docs/developer/openai-compat/tools (checked September 10, 2026).
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

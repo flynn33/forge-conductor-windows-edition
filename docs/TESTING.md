@@ -31,6 +31,10 @@ Never have the production transport default to these fixtures or a local fake-ac
 **Data/settings:** one disposable project reset preserves another project's data; restart retains settings and memory;
 MCP deployment preserves an unrelated server entry. Reuse existing repository tests where they already cover this.
 
+R1 controlled transport coverage proves ordinary response/tool correlation, offline and malformed responses,
+retained-context deduplication, continuity observation, pause/resume/cancel boundaries, and recovered uncertain-work
+failure. It does not replace the R6 live provider acknowledgment and productive successor check.
+
 ## One live provider/continuity smoke
 Use a disposable profile/project and a real locally loaded tool-capable model. Record actual model ID, LM Studio version,
 loaded context capacity, configured effective capacity and usage source. Select a smaller valid effective context target
@@ -56,6 +60,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

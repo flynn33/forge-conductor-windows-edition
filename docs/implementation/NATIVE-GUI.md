@@ -1,5 +1,5 @@
 # Native Windows GUI implementation map
-Use a standard WinUI 3 C++/WinRT MSBuild app project under `src/Hosts/App` (proposed new directory).
+Use the WinUI 3 C++/WinRT MSBuild app project under `src/Hosts/App`.
 CMake remains the backend build. Prefer one NavigationView shell, reusable list/detail/status controls,
 ordinary Windows typography/icons, and native settings dialogs. Do not spend Alpha effort reproducing Metal artwork.
 
@@ -28,6 +28,11 @@ Group related destinations using tabs if useful, but do not omit actions. All pa
 When an optional feature is unavailable, say which dependency is missing and give a real recovery action;
 required Alpha features cannot be deferred by showing an unavailable label.
 
+R1 adds a concrete Autonomy/Continuity control panel backed by typed Manager pipe commands. It accepts project,
+client, authority generation, run, and task identity; displays run state, lifetime and retained token values,
+pending calls, output, and errors; and exposes start, refresh, pause, resume, and stop. The GUI remains an attachable
+client: closing it does not cancel or duplicate Manager-owned work.
+
 ## Project and reset behavior
 A memory reset is not deletion of the source folder. Present the selected project and targeted stores before confirmation.
 Support project memory only, continuity only, and combined project reset; provide separately confirmed all-project
@@ -46,6 +51,6 @@ Use a real Windows interactive session. Check navigation, keyboard focus, window
 One focused native smoke is enough; do not add a large screenshot automation framework. Keep a short result record.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

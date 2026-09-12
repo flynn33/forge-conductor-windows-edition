@@ -249,6 +249,72 @@ struct FunctionCall final {
     }
 }
 
+[[nodiscard]] Domain::Result<std::vector<Domain::ManagedFunctionCall>>
+managedFunctionCalls(const Json& response)
+{
+    try {
+        if (!response.contains("output") && response.contains("output_text") &&
+            response.at("output_text").is_string()) {
+            return Domain::Result<
+                std::vector<Domain::ManagedFunctionCall>>::success({});
+        }
+        if (!response.contains("output") || !response.at("output").is_array()) {
+            return failure<std::vector<Domain::ManagedFunctionCall>>(
+                Domain::ErrorCodes::MalformedMessage,
+                "LM Studio did not return a Responses output array.");
+        }
+        std::vector<Domain::ManagedFunctionCall> calls;
+        for (const auto& item : response.at("output")) {
+            if (!item.is_object() || item.value("type", "") != "function_call") {
+                continue;
+            }
+            if (!item.contains("call_id") || !item.at("call_id").is_string() ||
+                !item.contains("name") || !item.at("name").is_string() ||
+                !item.contains("arguments")) {
+                return failure<std::vector<Domain::ManagedFunctionCall>>(
+                    Domain::ErrorCodes::MalformedMessage,
+                    "LM Studio returned an incomplete managed function call.");
+            }
+            const auto callId = item.at("call_id").get<std::string>();
+            const auto name = item.at("name").get<std::string>();
+            if (callId.empty() || callId.size() > 512U || name.empty() ||
+                name.size() > 128U || callId.find('\0') != std::string::npos ||
+                name.find('\0') != std::string::npos) {
+                return failure<std::vector<Domain::ManagedFunctionCall>>(
+                    Domain::ErrorCodes::MalformedMessage,
+                    "LM Studio returned an invalid managed function identity.");
+            }
+            Json arguments;
+            if (item.at("arguments").is_string()) {
+                arguments = Json::parse(item.at("arguments").get<std::string>());
+            } else {
+                arguments = item.at("arguments");
+            }
+            if (!arguments.is_object()) {
+                return failure<std::vector<Domain::ManagedFunctionCall>>(
+                    Domain::ErrorCodes::MalformedMessage,
+                    "LM Studio returned non-object managed function arguments.");
+            }
+            const auto duplicate = std::find_if(
+                calls.begin(),
+                calls.end(),
+                [&](const auto& call) { return call.callId == callId; });
+            if (duplicate != calls.end()) {
+                return failure<std::vector<Domain::ManagedFunctionCall>>(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "LM Studio repeated a managed function call id.");
+            }
+            calls.push_back({callId, name, arguments.dump()});
+        }
+        return Domain::Result<std::vector<Domain::ManagedFunctionCall>>::success(
+            std::move(calls));
+    } catch (const nlohmann::json::exception&) {
+        return failure<std::vector<Domain::ManagedFunctionCall>>(
+            Domain::ErrorCodes::MalformedMessage,
+            "LM Studio returned malformed managed function arguments.");
+    }
+}
+
 [[nodiscard]] Domain::Result<std::string> outputText(const Json& response)
 {
     try {
@@ -568,6 +634,134 @@ public:
             return failure<Domain::HostSessionStatus>(
                 Domain::ErrorCodes::InternalFailure,
                 "The LM Studio Responses status query failed safely.");
+        }
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ManagedProviderTurnResult> complete(
+        const Domain::ManagedProviderTurnRequest& request,
+        const Domain::OperationContext& context) noexcept
+    {
+        try {
+            if (request.authorityGeneration == 0U ||
+                (request.input.empty() == request.toolOutputs.empty()) ||
+                request.input.size() > Domain::MaximumManagedRunTaskBytes ||
+                request.input.find('\0') != std::string::npos ||
+                !Domain::isValidUtf8(request.input)) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The ordinary LM Studio request is invalid.");
+            }
+            auto selected = discoverModel(context);
+            if (!selected) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    selected.error().code,
+                    selected.error().message,
+                    selected.error().retryable);
+            }
+            Json body{{"model", selected.value()}, {"store", true}};
+            if (!request.input.empty()) {
+                body["input"] = request.input;
+            } else {
+                body["input"] = Json::array();
+                for (const auto& output : request.toolOutputs) {
+                    if (output.callId.empty() || output.callId.size() > 512U ||
+                        output.canonicalOutput.empty() ||
+                        output.canonicalOutput.size() > MaximumHttpBodyBytes ||
+                        !Domain::isValidUtf8(output.canonicalOutput)) {
+                        return failure<Domain::ManagedProviderTurnResult>(
+                            Domain::ErrorCodes::InvalidRequest,
+                            "The managed function output is invalid.");
+                    }
+                    body["input"].push_back(Json{
+                        {"type", "function_call_output"},
+                        {"call_id", output.callId},
+                        {"output", output.canonicalOutput}});
+                }
+            }
+            if (!request.tools.empty()) {
+                body["tools"] = Json::array();
+                for (const auto& descriptor : request.tools) {
+                    Json parameters = Json::parse(descriptor.inputSchema);
+                    if (!parameters.is_object()) {
+                        return failure<Domain::ManagedProviderTurnResult>(
+                            Domain::ErrorCodes::InvalidRequest,
+                            "A managed tool schema is not a JSON object.");
+                    }
+                    body["tools"].push_back(Json{
+                        {"type", "function"},
+                        {"name", descriptor.tool.name},
+                        {"description", descriptor.tool.description},
+                        {"parameters", std::move(parameters)}});
+                }
+                body["parallel_tool_calls"] = false;
+            }
+            if (request.previousResponseId) {
+                body["previous_response_id"] =
+                    request.previousResponseId->value();
+            }
+            auto response = postResponses(body, context);
+            if (!response) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    response.error().code,
+                    response.error().message,
+                    response.error().retryable);
+            }
+            auto id = responseId(response.value());
+            auto tokenUsage = usage(response.value());
+            auto calls = managedFunctionCalls(response.value());
+            if (!id || !tokenUsage || !calls) {
+                const auto& error = !id ? id.error()
+                    : !tokenUsage ? tokenUsage.error() : calls.error();
+                return failure<Domain::ManagedProviderTurnResult>(
+                    error.code, error.message, error.retryable);
+            }
+            auto text = outputText(response.value());
+            if (!text && calls.value().empty()) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    text.error().code, text.error().message,
+                    text.error().retryable);
+            }
+            std::string responseText = text
+                ? std::move(text).value()
+                : std::string{};
+            if (responseText.size() > Domain::MaximumManagedRunOutputBytes ||
+                responseText.find('\0') != std::string::npos ||
+                !Domain::isValidUtf8(responseText)) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    Domain::ErrorCodes::MalformedMessage,
+                    "The ordinary LM Studio response text is invalid.");
+            }
+            auto providerId = Domain::ProviderSessionId::parse(
+                id.value(), 512U);
+            if (!providerId) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    Domain::ErrorCodes::MalformedMessage,
+                    "The ordinary LM Studio response id is invalid.");
+            }
+            const auto input = static_cast<std::uint64_t>(
+                tokenUsage.value().first);
+            const auto output = static_cast<std::uint64_t>(
+                tokenUsage.value().second);
+            const auto maximum =
+                (std::numeric_limits<std::uint64_t>::max)();
+            const auto retained =
+                input > maximum - output ? maximum : input + output;
+            {
+                std::lock_guard lock{stateMutex_};
+                readyResponses_.insert(id.value());
+            }
+            return Domain::Result<
+                Domain::ManagedProviderTurnResult>::success(
+                {std::move(providerId).value(),
+                 std::move(responseText),
+                 input,
+                 output,
+                 retained,
+                 std::move(calls).value()});
+        } catch (...) {
+            return failure<Domain::ManagedProviderTurnResult>(
+                Domain::ErrorCodes::InternalFailure,
+                "The ordinary LM Studio request failed safely.");
         }
     }
 
@@ -985,6 +1179,14 @@ Domain::Result<Domain::HostSessionStatus> LMStudioResponsesTransport::query(
     const Domain::OperationContext& context) noexcept
 {
     return implementation_->query(sessionId, context);
+}
+
+Domain::Result<Domain::ManagedProviderTurnResult>
+LMStudioResponsesTransport::complete(
+    const Domain::ManagedProviderTurnRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    return implementation_->complete(request, context);
 }
 
 void LMStudioResponsesTransport::cancel(

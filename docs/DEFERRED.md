@@ -17,6 +17,6 @@ remain in place. Deferring hardening does not mean making the application destro
 No recurring quota-based run controls are deferred: their removal is required now by the owner.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T15:13:16.5731371Z",
-  "current_phase": "R1",
-  "current_slice": "R1.1",
+  "updated_at_utc": "2026-09-12T16:38:50.8020434Z",
+  "current_phase": "R2",
+  "current_slice": "R2.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r0-reconcile",
-    "head": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+    "branch": "alpha/r1-managed-runs",
+    "head": "759a86329fa67eca34d14cfba1131584d9761103",
     "origin_main": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
     "github_main": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
     "dirty_summary": [
-      "In-scope R0 documentation and tracking changes on alpha/r0-reconcile.",
+      "In-scope R1 documentation and tracking changes on alpha/r1-managed-runs.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from phase staging.",
-      "Ignored preservation receipt under out/alpha-evidence/r0-preservation-20260912T145845Z."
+      "Ignored R1 attach/detach evidence under out/alpha-evidence/r1/."
     ]
   },
   "baseline": {
@@ -55,37 +55,37 @@
       "last_known_merge": null
     },
     "R1": {
-      "implementation": "in_progress",
+      "implementation": "verified",
       "delivery": "not_started",
       "branch": "alpha/r1-managed-runs",
       "issue_number": 4,
       "milestone_number": 2,
       "pr_number": null,
       "pr_url": null,
-      "reviewed_head": null,
+      "reviewed_head": "759a86329fa67eca34d14cfba1131584d9761103",
       "slices": {
-        "R1.1": "not_started",
-        "R1.2": "not_started",
-        "R1.3": "not_started",
-        "R1.4": "not_started",
-        "R1.5": "not_started"
+        "R1.1": "verified",
+        "R1.2": "verified",
+        "R1.3": "verified",
+        "R1.4": "verified",
+        "R1.5": "verified"
       },
       "gates": {
         "R1-G1": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "x64 Debug Manager composition and native App builds passed; Manager protocol/dispatcher, managed-run, continuity automation, SessionHost transport, and process-environment focused suites passed."
         },
         "R1-G2": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "Controlled production-service fixtures passed normal response/tool/result correlation, offline/bad response, retained-context deduplication, continuity observation, pause/resume/cancel, and uncertain recovered-work behavior."
         },
         "R1-G3": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "Actual staged GUI attached, detached, and reattached to the same isolated Manager; receipt out/alpha-evidence/r1/gui-manager-attach-detach.json. Native UI control automation was unavailable, so the visual button walkthrough was not run; live inference was not run because LM Studio was offline."
         }
       },
-      "documentation_review": null,
-      "phase_receipt": null,
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "phase_receipt": ".forge-alpha/phases/R1.md",
       "last_known_merge": null
     },
     "R2": {
@@ -294,11 +294,20 @@
     {
       "id": "B-R1-LMSTUDIO-OFFLINE",
       "failure": "TCP connection to 127.0.0.1:1234 was refused.",
-      "affected": "R1.5 live smoke and R6-G2 final live continuity",
+      "affected": "R6-G2 final live continuity acceptance",
       "dependency_type": "external_service",
       "last_observed_utc": "2026-09-12T15:06:05.3117096Z",
       "necessary_external_action": "Start LM Studio local server with a tool-capable model when live verification is attempted.",
-      "next_independent_work": "Implement and fixture-test R1.1 through R1.4 Manager-owned ordinary run composition."
+      "next_independent_work": "Complete R2-R5 implementation and focused checks; retry live provider acceptance in R6."
+    },
+    {
+      "id": "B-R1-NATIVE-UI-CONTROL",
+      "failure": "The available computer-control surface exposed browser tabs only; native application UI control was unavailable.",
+      "affected": "R1-G3 visual control walkthrough and later native GUI walkthrough gates",
+      "dependency_type": "verification_environment",
+      "last_observed_utc": "2026-09-12T16:38:50.8020434Z",
+      "necessary_external_action": "Use a Windows interactive session with a native UI control surface to exercise the real Autonomy/Continuity buttons.",
+      "next_independent_work": "Proceed with R2 native telemetry implementation and focused nonvisual checks."
     },
     {
       "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
@@ -311,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R0 implementation verified and delivered through PR #11 at reviewed head fcdf78761603a9369b172d90425b86c4ddbfb30b; delivery awaits normal merge.",
-  "next_action": "Create alpha/r1-managed-runs from the reviewed R0 head, read R1 and required Manager/continuity/protocol source, then implement R1.1 typed Manager-owned ordinary run service.",
+  "last_result": "R1 implementation verified at 759a86329fa67eca34d14cfba1131584d9761103; R1-G1/G2 passed, actual GUI/Manager attach-detach passed, and the unavailable native visual control walkthrough remains explicit in R1-G3.",
+  "next_action": "Push alpha/r1-managed-runs, open the R1 PR against main and record its URL; then begin R2.1 by composing the shared typed telemetry snapshot from existing Manager/runtime/provider/context/project/tool/store sources.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

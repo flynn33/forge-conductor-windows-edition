@@ -186,6 +186,32 @@ void replaceOne(
         sampleSettings(), applied, bindingChanged, sampleStatus()};
 }
 
+[[nodiscard]] Domain::ManagedRunSnapshot sampleManagedRun()
+{
+    return Domain::ManagedRunSnapshot{
+        Domain::ManagedRunRecord{
+            identifier<Domain::SessionId>(
+                "20000000-0000-4000-8000-000000000001"),
+            identifier<Domain::ProjectId>(
+                "20000000-0000-4000-8000-000000000002"),
+            identifier<Domain::ClientId>(
+                "20000000-0000-4000-8000-000000000003"),
+            "Inspect the active project and report the result.",
+            9U,
+            Domain::ManagedRunState::Completed,
+            identifier<Domain::ProviderSessionId>("response-fixture-1"),
+            101U,
+            37U,
+            4096U,
+            std::string{"The managed result."},
+            std::nullopt,
+            {},
+            Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'600'123LL}},
+            Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'601'456LL}}},
+        true,
+        false};
+}
+
 [[nodiscard]] Manager::ManagerRequest request(
     Manager::ManagerRequestPayload payload)
 {
@@ -252,6 +278,27 @@ void testEveryRequestMethodRoundTripsDeterministically()
         Domain::ManagerControlAction::Repair});
     payloads.emplace_back(Manager::ManagerSettingsUpdateRequest{
         samplePatch(), true});
+    payloads.emplace_back(Manager::ManagedRunStartRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001"),
+        identifier<Domain::ProjectId>(
+            "20000000-0000-4000-8000-000000000002"),
+        identifier<Domain::ClientId>(
+            "20000000-0000-4000-8000-000000000003"),
+        9U,
+        "Run the ordinary managed turn."});
+    payloads.emplace_back(Manager::ManagedRunStatusRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001")});
+    payloads.emplace_back(Manager::ManagedRunCancelRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001")});
+    payloads.emplace_back(Manager::ManagedRunPauseRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001")});
+    payloads.emplace_back(Manager::ManagedRunResumeRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001")});
     payloads.emplace_back(Manager::ManagerCancelRequest{
         identifier<Domain::OperationId>(
             "10000000-0000-4000-8000-000000000016")});
@@ -262,6 +309,11 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "manager.settings",
         "manager.control",
         "manager.settings.update",
+        "managed_run.start",
+        "managed_run.status",
+        "managed_run.cancel",
+        "managed_run.pause",
+        "managed_run.resume",
         "manager.cancel",
         "manager.shutdown"};
 
@@ -308,6 +360,46 @@ void testEveryRequestMethodRoundTripsDeterministically()
     REQUIRE(updatePayload.patch.localModelSecure == true);
     REQUIRE(updatePayload.patch.localModelName == "fixture-model");
     REQUIRE(updatePayload.patch.effectiveContextCapacity == 65'536U);
+
+    const auto managedStart = take(Manager::ManagerProtocolCodec::decodeRequest(
+        take(Manager::ManagerProtocolCodec::encodeRequest(request(
+            Manager::ManagedRunStartRequest{
+                identifier<Domain::SessionId>(
+                    "20000000-0000-4000-8000-000000000001"),
+                identifier<Domain::ProjectId>(
+                    "20000000-0000-4000-8000-000000000002"),
+                identifier<Domain::ClientId>(
+                    "20000000-0000-4000-8000-000000000003"),
+                9U,
+                "Run the ordinary managed turn."})))));
+    const auto& managedPayload =
+        std::get<Manager::ManagedRunStartRequest>(managedStart.payload);
+    REQUIRE(managedPayload.authorityGeneration == 9U);
+    REQUIRE(managedPayload.task == "Run the ordinary managed turn.");
+}
+
+void testManagedRunResultRoundTrips()
+{
+    const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{sampleManagedRun()})));
+    const auto root = Json::parse(payloadText(frame));
+    REQUIRE(root.at("result").at("type") == "managed_run");
+    REQUIRE(root.at("result").at("value").size() == 18U);
+    const auto decoded = take(
+        Manager::ManagerProtocolCodec::decodeResponse(frame));
+    const auto& actual = std::get<Domain::ManagedRunSnapshot>(
+        std::get<Manager::ManagerResult>(decoded.body));
+    REQUIRE(actual.record.runId == sampleManagedRun().record.runId);
+    REQUIRE(actual.record.projectId == sampleManagedRun().record.projectId);
+    REQUIRE(actual.record.state == Domain::ManagedRunState::Completed);
+    REQUIRE(actual.record.providerResponseId ==
+            sampleManagedRun().record.providerResponseId);
+    REQUIRE(actual.record.retainedContextTokens == 4096U);
+    REQUIRE(actual.record.outputText == "The managed result.");
+    REQUIRE(actual.managerOwned);
+    REQUIRE(!actual.cancellationRequested);
+    REQUIRE(!actual.pauseRequested);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 
 void testResponseResultAndErrorRoundTrips()
@@ -1001,6 +1093,7 @@ int main()
         {"type-and-prefix", testTypeAndPrefixContract},
         {"request-round-trips", testEveryRequestMethodRoundTripsDeterministically},
         {"response-round-trips", testResponseResultAndErrorRoundTrips},
+        {"managed-run-round-trips", testManagedRunResultRoundTrips},
         {"settings-update-outcome-round-trips",
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},

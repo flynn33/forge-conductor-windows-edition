@@ -231,6 +231,22 @@ public:
             std::move(*outcome));
     }
 
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> managedRun(
+        Manager::ManagerRequestPayload payload,
+        const Domain::OperationContext& context) noexcept
+    {
+        auto result = exchange(std::move(payload), context);
+        if (!result) {
+            return failure<Domain::ManagedRunSnapshot>(std::move(result).error());
+        }
+        auto* snapshot = std::get_if<Domain::ManagedRunSnapshot>(&result.value());
+        if (snapshot == nullptr) {
+            return failure<Domain::ManagedRunSnapshot>(wrongResponseTypeError());
+        }
+        return Domain::Result<Domain::ManagedRunSnapshot>::success(
+            std::move(*snapshot));
+    }
+
     [[nodiscard]] Domain::Result<void> requestShutdown(
         const Domain::OperationContext& context) noexcept
     {
@@ -788,6 +804,79 @@ WindowsManagerNamedPipeClient::updateSettings(
             Domain::ErrorCodes::InternalFailure,
             "The manager settings update failed unexpectedly."));
     }
+}
+
+Domain::Result<Domain::ManagedRunSnapshot>
+WindowsManagerNamedPipeClient::startManagedRun(
+    const Domain::ManagedRunStartRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    if (!implementation) {
+        return failure<Domain::ManagedRunSnapshot>(clientError(
+            Domain::ErrorCodes::TransportClosed,
+            "The manager client transport is unavailable."));
+    }
+    return implementation->managedRun(
+        Manager::ManagedRunStartRequest{
+            request.runId,
+            request.projectId,
+            request.clientId,
+            request.authorityGeneration,
+            request.task},
+        context);
+}
+
+Domain::Result<Domain::ManagedRunSnapshot>
+WindowsManagerNamedPipeClient::managedRunStatus(
+    const Domain::SessionId& runId,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->managedRun(Manager::ManagedRunStatusRequest{runId}, context)
+        : failure<Domain::ManagedRunSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Domain::ManagedRunSnapshot>
+WindowsManagerNamedPipeClient::pauseManagedRun(
+    const Domain::SessionId& runId,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->managedRun(Manager::ManagedRunPauseRequest{runId}, context)
+        : failure<Domain::ManagedRunSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Domain::ManagedRunSnapshot>
+WindowsManagerNamedPipeClient::resumeManagedRun(
+    const Domain::SessionId& runId,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->managedRun(Manager::ManagedRunResumeRequest{runId}, context)
+        : failure<Domain::ManagedRunSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Domain::ManagedRunSnapshot>
+WindowsManagerNamedPipeClient::cancelManagedRun(
+    const Domain::SessionId& runId,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->managedRun(Manager::ManagedRunCancelRequest{runId}, context)
+        : failure<Domain::ManagedRunSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
 }
 
 Domain::Result<void> WindowsManagerNamedPipeClient::requestShutdown(

@@ -138,6 +138,7 @@ target_link_libraries(ForgeConductor.Telemetry.Windows PRIVATE
     psapi)
 
 set(FORGE_APPLICATION_SOURCES
+    src/Application/AgentRepositoryManagedRunStore.cpp
     src/Application/AgentCatalog.cpp
     src/Application/AgentSessionService.cpp
     src/Application/ClientPresenceLifecycle.cpp
@@ -150,6 +151,7 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/LegacyContextContinuityService.cpp
     src/Application/LegacyMemoryService.cpp
     src/Application/ManagerController.cpp
+    src/Application/ManagedRunService.cpp
     src/Application/ProjectMemoryRepositoryCache.cpp
     src/Application/ProjectMemoryService.cpp
 )
@@ -159,6 +161,8 @@ forge_add_layer(ForgeConductor.Application ForgeConductor::Application
 forge_configure_standard_target(ForgeConductor.Application)
 target_include_directories(ForgeConductor.Application PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(ForgeConductor.Application PRIVATE
+    nlohmann_json::nlohmann_json)
 
 add_library(ForgeConductor.Manager.Protocol STATIC
     src/Manager/ManagerDeadlineMapper.cpp
@@ -2923,6 +2927,24 @@ if(BUILD_TESTING)
     set_tests_properties(
         ForgeConductor.Continuity.AutomationTests PROPERTIES
         LABELS "T-UNIT;T-CONT;T-AUTO;G12"
+        TIMEOUT 120
+    )
+
+    add_executable(ForgeConductor.ManagedRun.ServiceTests
+        tests/Application/ManagedRunServiceTests.cpp)
+    forge_configure_standard_target(
+        ForgeConductor.ManagedRun.ServiceTests)
+    target_link_libraries(
+        ForgeConductor.ManagedRun.ServiceTests PRIVATE
+        ForgeConductor::Application)
+
+    add_test(
+        NAME ForgeConductor.ManagedRun.ServiceTests
+        COMMAND $<TARGET_FILE:ForgeConductor.ManagedRun.ServiceTests>
+    )
+    set_tests_properties(
+        ForgeConductor.ManagedRun.ServiceTests PROPERTIES
+        LABELS "T-UNIT;T-MANAGED-RUN;R1"
         TIMEOUT 120
     )
 
