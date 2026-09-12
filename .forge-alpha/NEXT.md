@@ -2,8 +2,8 @@
 
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Repository:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R2.1
-**Current branch:** `alpha/r1-managed-runs`
+**Current phase/slice:** R2.2
+**Current branch:** `alpha/r2-native-telemetry`
 
 ## Verified state
 
@@ -11,14 +11,15 @@
 - The staged Debug GUI attached, detached, and reattached to the same Manager in `out/alpha-profiles/r1-gui-smoke`; the receipt is `out/alpha-evidence/r1/gui-manager-attach-detach.json`.
 - R1-G3 remains blocked only for the native visual control walkthrough because the available computer-control surface exposed browser tabs and no native application controls.
 - LM Studio was offline at `127.0.0.1:1234`; live provider acknowledgment and productive successor proof remains R6-G2.
-- R0 [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11) is still awaiting normal merge.
+- R0 PR #11 and R1 PR #12 merged; local `main` and `origin/main` were synchronized at `325d0470b8924e5fd6c202abec2b948b8312eb3a` before the R2 branch was created.
+- R2.1 is verified at `53f5835`: 20 Windows CPU/RAM collector checks passed, including real-machine samples; the production Manager stayed alive with the native telemetry graph. DXGI publishes adapter/local-memory capability and explicitly leaves unavailable utilization unset.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 
 ## Exact next actions
 
-1. Continue on dependent branch `alpha/r2-native-telemetry` from the reviewed R1 head after reading the active R2 phase and telemetry/UI contract. R1 [PR #12](https://github.com/flynn33/forge-conductor-windows-edition/pull/12) targets `main` and issue #4 is synchronized.
-2. Implement R2.1 by composing one shared typed telemetry snapshot from existing Manager/runtime, provider, context/continuity, project/run/tool, event, and store-health sources. Preserve authoritative R1 token values rather than recomputing them in the GUI.
-3. Keep the open R1 native visual walkthrough explicit while progressing independent R2 work.
+1. Implement R2.2 by exposing the existing `ITelemetryService` snapshot through the typed Manager protocol and native client.
+2. Join the native CPU/RAM/process/GPU data with R1's authoritative run/context fields and existing operational events; do not recompute retained context in the GUI.
+3. Build reusable native status, context, and bounded-history controls for R2.3 after the shared snapshot contract is covered.
 
 ## Open dependencies
 
