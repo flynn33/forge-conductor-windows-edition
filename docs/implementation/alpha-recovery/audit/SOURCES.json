@@ -1,0 +1,360 @@
+{
+  "accessed_on": "2026-09-12",
+  "repository_snapshot": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+  "evidence_rule": "Source presence, reported Windows execution, current local execution and desired new design are separate evidence classes.",
+  "sources": [
+    {
+      "id": "S01",
+      "title": "Repository metadata",
+      "kind": "metadata",
+      "url": "https://api.github.com/repos/flynn33/forge-conductor-windows-edition",
+      "revision": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Repository identity/default branch/public visibility observed. Permissions here do not establish Codex local CLI authentication."
+    },
+    {
+      "id": "S02",
+      "title": "Branch snapshot",
+      "kind": "metadata",
+      "url": "https://api.github.com/repos/flynn33/forge-conductor-windows-edition/branches?per_page=100",
+      "revision": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Returned main at the audited commit. Refresh actual branches during adoption; this is not a rollback instruction."
+    },
+    {
+      "id": "S03",
+      "title": "Merged native desktop foundation PR #2",
+      "kind": "metadata_and_report",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/2",
+      "revision": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Merged at 2026-09-12T14:15:52Z into the audited main commit. PR test/build statements are author-reported, not rerun for this package."
+    },
+    {
+      "id": "S04",
+      "title": ".forge-alpha/NEXT.md",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/.forge-alpha/NEXT.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Recorded ordinary run/usage integration gap; contains stale old-branch/uncommitted/auth/PID statements."
+    },
+    {
+      "id": "S05",
+      "title": "docs/STATUS.md",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/docs/STATUS.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Historical Windows build/test/installer/provider/database results and explicitly incomplete capabilities. Runtime observations not independently repeated."
+    },
+    {
+      "id": "S06",
+      "title": "Root AGENTS.md",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/AGENTS.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Current native architecture, no quota policy, preserve-work and concise testing guidance; new owner workflow expands the documentation/PR requirements."
+    },
+    {
+      "id": "S07",
+      "title": "CHANGELOG.md",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/CHANGELOG.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Still describes work as planned, despite the foundation merge; needs factual reconciliation."
+    },
+    {
+      "id": "S08",
+      "title": "Native MainWindow XAML",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/src/Hosts/App/MainWindow.xaml",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Fourteen named destinations but only Rig, Provider and GenericPanel implementations in the inspected file."
+    },
+    {
+      "id": "S09",
+      "title": "Native MainWindow handlers",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/src/Hosts/App/MainWindow.xaml.cpp",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Routes several destinations to Rig and the others to generic status; real typed provider form actions exist."
+    },
+    {
+      "id": "S10",
+      "title": "Manager composition root",
+      "kind": "source_selected",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/src/Hosts/Manager/ManagerCompositionRoot.cpp",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Includes/members and selected search excerpts show native provider/continuity composition and UnavailableTelemetryService. Large full-file response was truncated; no claim that every line was audited."
+    },
+    {
+      "id": "S11",
+      "title": "Unavailable telemetry implementation",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/src/Composition/Windows/UnavailableTelemetryService.cpp",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "sample returns HostCapabilityUnavailable; health/latest do not provide real native measurements."
+    },
+    {
+      "id": "S12",
+      "title": "Current roadmap",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/ROADMAP.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Old P0–P6 plan; later-parity wording defers richer telemetry. This replacement brings functional native operational visuals explicitly into required Alpha scope."
+    },
+    {
+      "id": "S13",
+      "title": "Native Responses transport public contract",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/include/ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Non-streaming INativeSessionTransport bootstrap/session contract, real /v1 Responses configuration; not an ordinary run service interface."
+    },
+    {
+      "id": "S14",
+      "title": "Current Alpha status JSON",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/.forge-alpha/status.json",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Old P-phase state, prior base/branch and reported evidence; preserve provenance but refresh current facts."
+    },
+    {
+      "id": "S15",
+      "title": "Current Alpha scope",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/docs/ALPHA-SCOPE.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Windows 11 x64 native GUI, named capabilities, settings/reset, real tools/live continuity and signed installed acceptance."
+    },
+    {
+      "id": "S16",
+      "title": "Current product README",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/README.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Current documented build stack and engineering status. Does not claim accepted Alpha."
+    },
+    {
+      "id": "S17",
+      "title": "Current testing guidance",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/docs/TESTING.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Existing focused native tests, CTest no-empty-selection rule and separate fixture/live/installed acceptance."
+    },
+    {
+      "id": "S18",
+      "title": "Existing package script",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/scripts/package.ps1",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Signed MSIX/public CER/engineering ZIP, source staging checks, fixed identity, four-part version and alpha_accepted=false. No actual package was created in this review."
+    },
+    {
+      "id": "S19",
+      "title": "Historical P1 result",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/.forge-alpha/P1-result.md",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Reports real --alpha-root lease/pipe/DPAPI scoping, isolated GUI attach/detach, signing and trust/database limitations. Preserved as historical report, not freshly reverified runtime."
+    },
+    {
+      "id": "S20",
+      "title": "Central migrations implementation",
+      "kind": "source_selected",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/src/Persistence/Windows/Migrations/CentralMigrations.cpp",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Pinned search excerpts include C007 SQL/array entry, corroborating records that available migrations reach7. Complete migration history and live schema9 were not fetched/reconstructed."
+    },
+    {
+      "id": "S21",
+      "title": "Native build entry point",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/scripts/build.ps1",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Backend/App/All build flow, dependency restore, existing toolchain input, target/configuration and staging behavior."
+    },
+    {
+      "id": "S22",
+      "title": "Native WinUI build/staging helper",
+      "kind": "source_full",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/scripts/alpha/Build-App.ps1",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "MSBuild C++ project, actual executable names and output paths; preserves C++/WinRT native implementation."
+    },
+    {
+      "id": "S23",
+      "title": "Audited merge commit metadata",
+      "kind": "metadata",
+      "url": "https://api.github.com/repos/flynn33/forge-conductor-windows-edition/git/commits/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "revision": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Author Jim Daley with owner GitHub noreply email; GitHub committer is normal platform metadata. Exact tree and both merge parents observed."
+    },
+    {
+      "id": "S24",
+      "title": "Alpha helper directory inventory",
+      "kind": "directory_metadata",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/tree/68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b/scripts/alpha",
+      "revision": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
+      "accessed_on": "2026-09-12",
+      "scope": "Build-App, Install-Engineering, Invoke-P2WorkflowSmoke and Restore-Forsetti helpers listed. Inventory is not full code review of every helper."
+    },
+    {
+      "id": "E01",
+      "title": "LM Studio Responses endpoint",
+      "kind": "official_external_documentation",
+      "url": "https://lmstudio.ai/docs/developer/openai-compat/responses",
+      "accessed_on": "2026-09-12",
+      "scope": "Responses state/previous_response_id and supported API behavior. Verify installed server behavior and configured endpoint; documentation is not a live-provider test."
+    },
+    {
+      "id": "E02",
+      "title": "Windows app accessibility overview",
+      "kind": "official_external_documentation",
+      "url": "https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessibility-overview",
+      "accessed_on": "2026-09-12",
+      "scope": "Native labels, keyboard/focus and accessibility design; applied to practical Windows GUI checks."
+    },
+    {
+      "id": "E03",
+      "title": "Windows GetSystemTimes",
+      "kind": "official_external_documentation",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getsystemtimes",
+      "accessed_on": "2026-09-12",
+      "scope": "Native CPU accounting API and scope considerations; use valid counter deltas and supported topology behavior."
+    },
+    {
+      "id": "E04",
+      "title": "Windows GetProcessMemoryInfo",
+      "kind": "official_external_documentation",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/psapi/nf-psapi-getprocessmemoryinfo",
+      "accessed_on": "2026-09-12",
+      "scope": "Process memory query, not a substitute for global physical-memory or GPU metrics."
+    },
+    {
+      "id": "E05",
+      "title": "MSIX signing overview",
+      "kind": "official_external_documentation",
+      "url": "https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview",
+      "accessed_on": "2026-09-12",
+      "scope": "Package signing requirements and trust; actual installability must be tested on the target environment."
+    },
+    {
+      "id": "E06",
+      "title": "MSIX development signing certificate",
+      "kind": "official_external_documentation",
+      "url": "https://learn.microsoft.com/en-gb/windows/msix/package/create-certificate-package-signing",
+      "accessed_on": "2026-09-12",
+      "scope": "Certificate subject/publisher and legitimate development trust procedure; no bypass permission."
+    },
+    {
+      "id": "E07",
+      "title": "GitHub CLI pull request create",
+      "kind": "official_external_documentation",
+      "url": "https://cli.github.com/manual/gh_pr_create",
+      "accessed_on": "2026-09-12",
+      "scope": "Explicit head/base/body-file workflow."
+    },
+    {
+      "id": "E08",
+      "title": "GitHub CLI pull request merge",
+      "kind": "official_external_documentation",
+      "url": "https://cli.github.com/manual/gh_pr_merge",
+      "accessed_on": "2026-09-12",
+      "scope": "Normal merge methods/head-match guard; authorization and branch rules still govern execution."
+    },
+    {
+      "id": "E09",
+      "title": "Git pull documentation",
+      "kind": "official_external_documentation",
+      "url": "https://git-scm.com/docs/git-pull",
+      "accessed_on": "2026-09-12",
+      "scope": "Fetch/integration behavior; package chooses explicit fetch plus fast-forward-only integration to avoid destructive synchronization."
+    },
+    {
+      "id": "E10",
+      "title": "Git diff documentation",
+      "kind": "official_external_documentation",
+      "url": "https://git-scm.com/docs/git-diff",
+      "accessed_on": "2026-09-12",
+      "scope": "Tracked/index comparisons and exit-code evidence; untracked files also require separate inspection."
+    },
+    {
+      "id": "E11",
+      "title": "Codex AGENTS.md guidance",
+      "kind": "official_external_documentation",
+      "url": "https://developers.openai.com/codex/guides/agents-md/",
+      "accessed_on": "2026-09-12",
+      "scope": "Repository instruction discovery. Current redirect points into official learn.chatgpt.com agent configuration documentation. This package does not override higher-priority host rules."
+    },
+    {
+      "id": "E12",
+      "title": "Windows system information API reference",
+      "kind": "official_external_documentation",
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/",
+      "accessed_on": "2026-09-12",
+      "scope": "Supported system-memory/platform API discovery. Collector details must match the actual native toolchain."
+    },
+    {
+      "id": "U01",
+      "title": "Original attached Windows Alpha Codex instruction ZIP",
+      "kind": "owner_supplied_material",
+      "url": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Supplied Windows package basis, not a current repository snapshot or proof of runtime completion."
+    },
+    {
+      "id": "U02",
+      "title": "Continuation directive and Codex checkpoint reports",
+      "kind": "owner_supplied_material",
+      "url": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Owner conversation describes progress/obstacles and requests continued work. Source review supersedes stale local-status narration, without assuming access to D:."
+    },
+    {
+      "id": "U03",
+      "title": "Windows GUI/telemetry/settings/installer clarification",
+      "kind": "owner_supplied_material",
+      "url": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Owner requires Windows11 native GUI with full functional operational visuals, accessible settings and Windows installer; incorporated, not left optional."
+    },
+    {
+      "id": "U04",
+      "title": "September12 replacement-package request",
+      "kind": "owner_supplied_material",
+      "url": null,
+      "accessed_on": "2026-09-12",
+      "scope": "Exact owner paths; phase/slice/milestone tracking; all-doc updates each phase; phase PR to main; owner pushes/no attribution; local/GitHub sync; minimum useful tests."
+    },
+    {
+      "id": "S25",
+      "title": "Final main branch recheck",
+      "kind": "metadata",
+      "url": "https://api.github.com/repos/flynn33/forge-conductor-windows-edition/branches/main",
+      "accessed_on": "2026-09-12",
+      "revision": null,
+      "scope": "Rechecked before packaging: main remains at the audited commit/tree. Response reports protected=false and no branch-required status-check contexts at this observation; actual future review/check/merge authorization must still be read, not assumed."
+    }
+  ]
+}

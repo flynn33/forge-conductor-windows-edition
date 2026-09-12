@@ -1,22 +1,19 @@
 {
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
-  "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T15:13:16.5731371Z",
-  "current_phase": "R1",
-  "current_slice": "R1.1",
-  "adoption": "replacement_package_adopted_foundation_preserved",
+  "template_only": true,
+  "instructions": "Migrate actual state into the existing .forge-alpha/status.json; never overwrite current evidence with this template.",
+  "updated_at_utc": null,
+  "current_phase": "R0",
+  "current_slice": "R0.1",
+  "adoption": "pending_current_checkout_reconciliation",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r0-reconcile",
-    "head": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
-    "origin_main": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
-    "github_main": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
-    "dirty_summary": [
-      "In-scope R0 documentation and tracking changes on alpha/r0-reconcile.",
-      "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from phase staging.",
-      "Ignored preservation receipt under out/alpha-evidence/r0-preservation-20260912T145845Z."
-    ]
+    "branch": null,
+    "head": null,
+    "origin_main": null,
+    "github_main": null,
+    "dirty_summary": []
   },
   "baseline": {
     "audit_commit": "68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b",
@@ -26,40 +23,40 @@
   },
   "phase_status": {
     "R0": {
-      "implementation": "verified",
-      "delivery": "awaiting_merge",
-      "branch": "alpha/r0-reconcile",
-      "issue_number": 3,
-      "milestone_number": 1,
-      "pr_number": 11,
-      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/11",
-      "reviewed_head": "fcdf78761603a9369b172d90425b86c4ddbfb30b",
+      "implementation": "not_started",
+      "delivery": "not_started",
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
+      "pr_number": null,
+      "pr_url": null,
+      "reviewed_head": null,
       "slices": {
-        "R0.1": "verified",
-        "R0.2": "verified",
-        "R0.3": "verified",
-        "R0.4": "verified"
+        "R0.1": "not_started",
+        "R0.2": "not_started",
+        "R0.3": "not_started",
+        "R0.4": "not_started"
       },
       "gates": {
         "R0-G1": {
-          "status": "passed",
-          "evidence": "Package checksums verified (39 entries); current and origin/main trees both bc0f281bb82b5acde57795e36371d98552191832 before R0 edits; migrated JSON and link validation recorded in .forge-alpha/phases/R0.md."
+          "status": "not_run",
+          "evidence": null
         },
         "R0-G2": {
-          "status": "passed",
-          "evidence": "Authenticated owner flynn33 pushed alpha/r0-reconcile; PR #11 targets main; local, GitHub branch and PR head matched fcdf78761603a9369b172d90425b86c4ddbfb30b. Normal owner merge is pending."
+          "status": "not_run",
+          "evidence": null
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
-      "phase_receipt": ".forge-alpha/phases/R0.md",
+      "documentation_review": null,
+      "phase_receipt": null,
       "last_known_merge": null
     },
     "R1": {
-      "implementation": "in_progress",
+      "implementation": "not_started",
       "delivery": "not_started",
-      "branch": "alpha/r1-managed-runs",
-      "issue_number": 4,
-      "milestone_number": 2,
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
       "pr_number": null,
       "pr_url": null,
       "reviewed_head": null,
@@ -91,9 +88,9 @@
     "R2": {
       "implementation": "not_started",
       "delivery": "not_started",
-      "branch": "alpha/r2-native-telemetry",
-      "issue_number": 5,
-      "milestone_number": 3,
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
       "pr_number": null,
       "pr_url": null,
       "reviewed_head": null,
@@ -125,9 +122,9 @@
     "R3": {
       "implementation": "not_started",
       "delivery": "not_started",
-      "branch": "alpha/r3-native-workflows",
-      "issue_number": 6,
-      "milestone_number": 4,
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
       "pr_number": null,
       "pr_url": null,
       "reviewed_head": null,
@@ -159,9 +156,9 @@
     "R4": {
       "implementation": "not_started",
       "delivery": "not_started",
-      "branch": "alpha/r4-settings-reset",
-      "issue_number": 7,
-      "milestone_number": 5,
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
       "pr_number": null,
       "pr_url": null,
       "reviewed_head": null,
@@ -193,9 +190,9 @@
     "R5": {
       "implementation": "not_started",
       "delivery": "not_started",
-      "branch": "alpha/r5-installer-data",
-      "issue_number": 8,
-      "milestone_number": 6,
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
       "pr_number": null,
       "pr_url": null,
       "reviewed_head": null,
@@ -227,9 +224,9 @@
     "R6": {
       "implementation": "not_started",
       "delivery": "not_started",
-      "branch": "alpha/r6-acceptance",
-      "issue_number": 9,
-      "milestone_number": 7,
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
       "pr_number": null,
       "pr_url": null,
       "reviewed_head": null,
@@ -260,9 +257,9 @@
     "R7": {
       "implementation": "not_started",
       "delivery": "not_started",
-      "branch": "alpha/r7-delivery",
-      "issue_number": 10,
-      "milestone_number": 8,
+      "branch": null,
+      "issue_number": null,
+      "milestone_number": null,
       "pr_number": null,
       "pr_url": null,
       "reviewed_head": null,
@@ -290,29 +287,10 @@
       "last_known_merge": null
     }
   },
-  "blockers": [
-    {
-      "id": "B-R1-LMSTUDIO-OFFLINE",
-      "failure": "TCP connection to 127.0.0.1:1234 was refused.",
-      "affected": "R1.5 live smoke and R6-G2 final live continuity",
-      "dependency_type": "external_service",
-      "last_observed_utc": "2026-09-12T15:06:05.3117096Z",
-      "necessary_external_action": "Start LM Studio local server with a tool-capable model when live verification is attempted.",
-      "next_independent_work": "Implement and fixture-test R1.1 through R1.4 Manager-owned ordinary run composition."
-    },
-    {
-      "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
-      "failure": "Repository source contains central migrations C001-C007 while preserved prior evidence reports the owner store at schema 9; authentic C008/C009 history is unavailable.",
-      "affected": "R5.1 and R6.4/R6-G1 existing-data acceptance",
-      "dependency_type": "source_history",
-      "last_observed_utc": "2026-09-12T15:06:05.3117096Z",
-      "necessary_external_action": "Recover authentic migration history or maintain explicit newer-store rejection without mutation.",
-      "next_independent_work": "Use --alpha-root for all disposable implementation and checks; do not open or modify the live store."
-    }
-  ],
+  "blockers": [],
   "known_bugs": [],
-  "last_result": "R0 implementation verified and delivered through PR #11 at reviewed head fcdf78761603a9369b172d90425b86c4ddbfb30b; delivery awaits normal merge.",
-  "next_action": "Create alpha/r1-managed-runs from the reviewed R0 head, read R1 and required Manager/continuity/protocol source, then implement R1.1 typed Manager-owned ordinary run service.",
+  "last_result": null,
+  "next_action": "Inspect actual local Git state and active handoff; preserve work, adopt the replacement plan and continue R1 ordinary-run implementation.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",
@@ -321,13 +299,5 @@
     "owner_existing_data_compatibility": "not_run",
     "alpha_accepted": false
   },
-  "legacy_phase_summary": {
-    "P0": "Merged foundation/build recovery evidence preserved.",
-    "P1": "WinUI host, Manager attachment and engineering MSIX evidence preserved; installed acceptance open.",
-    "P2": "Disposable project/MCP/native-tool workflow evidence preserved; native GUI workflow remains R3.",
-    "P3": "Responses bootstrap, context-only policy and continuity fixtures preserved; ordinary run path remains R1.",
-    "P4": "Provider page/navigation foundation preserved; complete GUI remains R2-R4.",
-    "P5": "Engineering distribution evidence preserved; installer/data completion remains R5-R6.",
-    "P6": "No accepted Alpha; live/installed acceptance remains R6 and delivery R7."
-  }
+  "legacy_phase_summary": "Populate from actual current state during migration; do not discard old P0-P6 receipts."
 }

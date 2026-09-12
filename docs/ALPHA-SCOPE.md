@@ -40,3 +40,8 @@ benchmark/stress/leak campaigns, Store publication, public release signing infra
 ARM64, custom GPU art, full browser dashboard parity, and a new governance/completion-policy engine.
 Preserve useful existing implementations without expanding them into Alpha blockers.
 Full parity beyond the explicit Alpha subset is a later milestone; do not label deferred rows complete.
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

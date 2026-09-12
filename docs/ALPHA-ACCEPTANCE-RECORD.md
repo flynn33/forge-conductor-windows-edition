@@ -26,3 +26,8 @@ Known limitations and deferred B1/B2 issues:
 Operator launch instructions:
 
 Do not attach private credentials, signing keys or unrelated project data. Do not prefill pass statuses.
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

@@ -1,35 +1,31 @@
-# Windows roadmap
-**Immediate objective: working internal Windows 11 x64 Alpha, full native GUI and installer.**
-This roadmap replaces the old sequential port-gate program for this delivery. Existing useful work remains.
-The machine-readable sequence is [docs/alpha-plan.json](docs/alpha-plan.json).
-No calendar due dates are invented. Milestones close on delivered behavior, not an estimated percentage.
+# Windows Alpha delivery roadmap
 
-| Phase | Milestone | Deliverable |
-| [P0](docs/implementation/P0.md) | A0 — Reproducible foundation | One governing Alpha scope and reproducible x64 backend build. |
-| [P1](docs/implementation/P1.md) | A1 — Native desktop checkpoint | A real WinUI app attaches to the manager and installs as an engineering MSIX. |
-| [P2](docs/implementation/P2.md) | A2 — Usable local workflow | An operator can register a project, deploy MCP, use tools and retain memory. |
-| [P3](docs/implementation/P3.md) | A3 — Real autonomous continuity | Real LM Studio inference continues across a context-triggered fresh successor. |
-| [P4](docs/implementation/P4.md) | A4 — Complete Alpha GUI | All required native surfaces and settings perform real actions. |
-| [P5](docs/implementation/P5.md) | A5 — Installer and onboarding | A clean Windows installation works without the development checkout. |
-| [P6](docs/implementation/P6.md) | A6 — Working Alpha | Required acceptance is recorded and the installer distribution is delivered. |
+**Outcome:** an installed Windows 11 x64 native GUI with complete operational visuals, usable Settings, real local tools/project memory, and Manager-owned productive context continuity. Existing working C++/WinUI implementation is retained.
 
-## How to execute
-P0 documentation work is just enough to unblock development, not a publication project.
-Build and install a small real native application during P1 rather than postponing packaging until the end.
-The P1 package is clearly an engineering checkpoint; all Alpha functionality is still required before A6.
-P2 and P3 connect existing backends. P4 completes the operator surfaces. P5 finishes distribution and usability.
-P6 fixes defects exposed by the small acceptance pass; it does not launch a new audit program.
+The active plan is `windows-alpha-recovery-2026-09-12`; its machine-readable scope is [docs/alpha-plan.json](docs/alpha-plan.json). The audited main `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b` records merged PR #2 and is a reconciliation observation, not a rollback destination.
 
-Work on one coherent implementation slice at a time. When a dependency blocks one slice, record the exact failure
-and advance independent work; do not fabricate success or repeatedly rerun the same unsupported command.
-Use the sixteen prepared issues rather than creating hundreds of microtasks. More issues are justified only by a
-new concrete defect that cannot reasonably fit the current issue.
+| Phase | Milestone and issue | Deliverable | Delivery |
+|---|---|---|---|
+| [R0](docs/implementation/alpha-recovery/phases/R0.md) | [WA-R0](https://github.com/flynn33/forge-conductor-windows-edition/milestone/1) / [#3](https://github.com/flynn33/forge-conductor-windows-edition/issues/3) | Current baseline, adopted instructions, accountable delivery workflow | Implementation verified; [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11) awaiting normal merge |
+| [R1](docs/implementation/alpha-recovery/phases/R1.md) | [WA-R1](https://github.com/flynn33/forge-conductor-windows-edition/milestone/2) / [#4](https://github.com/flynn33/forge-conductor-windows-edition/issues/4) | Manager-owned ordinary inference and context continuity wiring | Next |
+| [R2](docs/implementation/alpha-recovery/phases/R2.md) | [WA-R2](https://github.com/flynn33/forge-conductor-windows-edition/milestone/3) / [#5](https://github.com/flynn33/forge-conductor-windows-edition/issues/5) | Real native telemetry and visual dashboards | Planned |
+| [R3](docs/implementation/alpha-recovery/phases/R3.md) | [WA-R3](https://github.com/flynn33/forge-conductor-windows-edition/milestone/4) / [#6](https://github.com/flynn33/forge-conductor-windows-edition/issues/6) | Native operating pages and local workflows | Planned |
+| [R4](docs/implementation/alpha-recovery/phases/R4.md) | [WA-R4](https://github.com/flynn33/forge-conductor-windows-edition/milestone/5) / [#7](https://github.com/flynn33/forge-conductor-windows-edition/issues/7) | Accessible settings and scoped maintenance | Planned |
+| [R5](docs/implementation/alpha-recovery/phases/R5.md) | [WA-R5](https://github.com/flynn33/forge-conductor-windows-edition/milestone/6) / [#8](https://github.com/flynn33/forge-conductor-windows-edition/issues/8) | Installable signed Windows candidate and data behavior | Planned |
+| [R6](docs/implementation/alpha-recovery/phases/R6.md) | [WA-R6](https://github.com/flynn33/forge-conductor-windows-edition/milestone/7) / [#9](https://github.com/flynn33/forge-conductor-windows-edition/issues/9) | Real installed and live-provider Alpha acceptance | Planned |
+| [R7](docs/implementation/alpha-recovery/phases/R7.md) | [WA-R7](https://github.com/flynn33/forge-conductor-windows-edition/milestone/8) / [#10](https://github.com/flynn33/forge-conductor-windows-edition/issues/10) | Documented delivery and exact main synchronization | Planned |
 
-## After Alpha
-**B1 — Remaining macOS behavioral parity:** advanced connectors/runtimes, richer telemetry, full optional-dashboard
-features, any remaining tool-contract deltas, and portability/import work proven necessary by real use.
+## Execution
 
-**B2 — Optional broader distribution and hardening:** security review/hardening, signed public distribution operations,
-ARM64 qualification, stress/performance programs and broader hardware support. These do not block internal Alpha.
+R0 preserves and reconciles the existing foundation. R1 adds the first missing functional link: ordinary inference enters a typed Manager-owned run service and feeds real usage/context signals into continuity. R2–R5 complete telemetry, native workflows, settings/reset, and installer/data behavior. R6 performs the small real installed/live acceptance pass; R7 closes documentation and source synchronization.
 
-See [Parity](docs/PARITY.md) for what is required now versus deliberately deferred.
+Independent R2–R5 slices can continue while a provider, installation permission, migration source, review, or merge dependency is unavailable. Each phase has one primary PR to `main`; implementation, PR delivery, actual merge, and final acceptance remain distinct states.
+
+The prior P0–P6 plan is retained under [historical implementation records](docs/implementation/) and mapped in the adopted [roadmap contract](docs/implementation/alpha-recovery/instructions/ROADMAP.md). It records useful foundation evidence but does not compete with R0–R7.
+
+Full native operational telemetry, all required page functions, context settings, and the Windows installer are part of this Alpha. Optional browser-dashboard parity, advanced analytics, broad connector expansion, additional architectures, public Store/release infrastructure, and unrelated security/stress campaigns remain outside this internal delivery.
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

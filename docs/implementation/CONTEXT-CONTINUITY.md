@@ -104,3 +104,8 @@ fixtures, counters, and an enqueued command do not satisfy this requirement.
 
 Official references: https://lmstudio.ai/docs/developer/openai-compat/responses and
 https://lmstudio.ai/docs/developer/openai-compat/tools (checked September 10, 2026).
+
+<!-- alpha-phase-review:start -->
+Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->

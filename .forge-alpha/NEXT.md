@@ -1,36 +1,31 @@
-# Resume here
+# Resume — current Windows Alpha assignment
 
-Working directory: `D:\GitHub\Forge-Conductor-Windows-Edition`. Branch `alpha/native-desktop`, base HEAD
-`14660648599378c85c3cdade5bd44ffe1cded079`; changes are intentionally uncommitted. Read root `AGENTS.md`,
-`docs/implementation/P3.md`, `docs/implementation/P4.md`, and this file. Never use `C:\Program Files\ForgeConductor`
-as the source workspace.
+**Plan:** `windows-alpha-recovery-2026-09-12`
+**Repository:** `D:\GitHub\Forge-Conductor-Windows-Edition`
+**Current phase/slice:** R1.1
+**Observed branch / HEAD / origin-main:** `alpha/r0-reconcile` / `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b` before R0 edits / `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b`, observed 2026-09-12
+**Primary phase issue / PR:** [R0 issue #3](https://github.com/flynn33/forge-conductor-windows-edition/issues/3) / [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11), awaiting normal merge
+**Preserved unrelated work:** modified `.forge-qwen/state/event-ledger.jsonl`, modified `.forge-qwen/state/microtasks.json`, and untracked `.forge-qwen/state/evidence/P01-V/` plus `.forge-qwen/state/scan_microtasks.py`. Ignored backup receipt: `out/alpha-evidence/r0-preservation-20260912T145845Z/`.
 
-P0/P1/P2 independent implementation is complete. P1 isolated GUI-to-Manager attach/detach passed without changing the
-production schema-9 database. P2 project/MCP/native-tool workflow passed with preservation of a second project and foreign MCP
-entries; evidence is `out/alpha-evidence/p2-workflow-smoke.log`.
+## Latest concrete result
 
-P3 implementation in this worktree now uses `LMStudioResponsesTransport` in Manager, CLI, and SessionHost production
-composition. It performs loopback `/v1/models` discovery and real `/v1/responses` fresh-root -> `context_get` function-call
-output -> actual `previous_response_id` chaining. The fixture proves real response IDs, tool correlation, exact acknowledgement,
-usage accounting, and benign extension-field tolerance. Count/time quota rollover was removed; 500 ordinary observations across
-simulated time remain on the same chain. The Manager composition now owns `ContinuityAutomation` beside its durable coordinator
-and shuts it down before its dependencies. Focused continuity/session/MCP and Manager composition suites pass.
+PR #2 is merged into GitHub main. R0 adopted the replacement instructions and R0–R7 plan, migrated the live ledger without discarding P0–P6 evidence, verified package checksums, verified owner `flynn33` authentication/push access and owner Git identity, and created milestones 1–8 with issues 3–10. The product source was unchanged in R0, so prior build, fixture and engineering package receipts remain historical evidence rather than newly executed tests.
 
-Provider config is persisted as `local_model` and round-trips through typed Manager settings. The native Provider page loads and
-saves endpoint/model/context capacity and reserves and probes `/v1/models`. An authenticated disposable-profile smoke completed
-two successive load/save/service-restart cycles after fixing restricted-directory anchors, inherited-DACL preservation, and the
-automatic-model JSON `null` round trip. The isolated Manager was rebuilt and restarted as PID 15872; the Alpha app is closed.
+LM Studio `127.0.0.1:1234` currently refuses TCP connections. The isolated Debug Manager process previously recorded as PID 32068 was rechecked and is still running from this repository's ignored build output. Do not treat that PID as stable state.
 
-P3 is not accepted: LM Studio at `127.0.0.1:1234` refused the live request, so no actual provider rollover/useful successor claim
-is made. The remaining design gap is a Manager-owned ordinary inference/run controller that feeds provider usage observations to
-`ContinuityAutomation`; the service currently has focused coverage but no production caller.
+## Next exact action
 
-Next exact edit: add a typed Manager-owned run service/command that owns ordinary Responses turns and calls
-`ContinuityAutomation::observe` from real usage/context signals, compose it in `src/Hosts/Manager/ManagerCompositionRoot.cpp`,
-and expose its status/action through the Manager protocol for Autonomy and Continuity pages. Then run:
-`cmake --build out/build/windows-msvc-x64 --config Debug --target ForgeConductor.Continuity.AutomationTests ForgeConductor.SessionHost.ContinuityEndToEndTests ForgeConductor.Manager.ProtocolTests -j 4`.
-If LM Studio remains unavailable, continue independent P4/P5 work and retain the live-provider blocker.
+R0 validation, owner push, PR creation and head verification are complete. Create the dependent `alpha/r1-managed-runs` branch from the reviewed R0 head and implement R1.1 in the existing Manager composition: a typed Manager-owned ordinary run service that owns Responses turns and reports real usage/context observations to `ContinuityAutomation`.
 
-Installer handoff remains unchanged: the signed engineering package exists at
-`out/dist/engineering-0.9.0.0-20260912-140140`, but installation needs machine publisher trust/elevation. The current-user
-schema-9 database still needs the missing C008/C009 migration source. GitHub CLI remains unauthenticated.
+Read only `docs/implementation/alpha-recovery/phases/R1.md`, the product contract sections it cites, and the existing Manager/continuity/protocol source needed for that edit.
+
+## Open blockers and independent work
+
+- `B-R1-LMSTUDIO-OFFLINE`: TCP connection to `127.0.0.1:1234` was refused on 2026-09-12. Live R1/R6 proof needs a running tool-capable LM Studio model; R1.1–R1.4 implementation and fixture checks remain actionable.
+- `B-R5-CENTRAL-SCHEMA-HISTORY`: source has central migrations C001–C007 while prior preserved evidence reports the owner's store at schema 9. Use `--alpha-root`; do not open/modify the live store or fabricate C008/C009.
+
+## Phase closeout obligations
+
+R0-G1 and R0-G2 passed and PR #11 awaits normal merge. R1 requires its focused implementation gates, README/changelog/roadmap/status/plan/cursor updates, a complete active-document review, owner push and its separate PR to main. Continue the dependent R1 branch now; reconcile refreshed main after R0 actually merges.
+
+No reset/reclone, no new profile subsystem, no quota policy, no fake live evidence. Refresh the minimal actual state and continue this slice.
