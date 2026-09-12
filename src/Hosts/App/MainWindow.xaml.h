@@ -4,17 +4,24 @@
 
 #include <memory>
 #include <optional>
+#include <string_view>
 
 namespace winrt::ForgeConductorApp::implementation {
 struct MainWindow : MainWindowT<MainWindow> {
     MainWindow();
     explicit MainWindow(std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection);
+    void WindowClosed(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::WindowEventArgs const&);
+    void WindowContentLoaded(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void StartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void StopClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void NavigationChanged(Microsoft::UI::Xaml::Controls::NavigationView const&,
         Microsoft::UI::Xaml::Controls::NavigationViewSelectionChangedEventArgs const&);
+    void TelemetryChartSizeChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::SizeChangedEventArgs const&);
     void ProviderLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderSaveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -33,10 +40,17 @@ private:
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
         ReadProviderForm(std::string& error);
     void ApplyProviderForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
+    void ApplyTelemetryPresentation(
+        const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot);
+    void ApplyDisconnectedTelemetry(std::string_view reason);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;
+    std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
+        telemetrySnapshot_;
     std::stop_source cancellation_;
+    Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
+    bool telemetryUiInitialized_{};
     bool busy_{};
 };
 }

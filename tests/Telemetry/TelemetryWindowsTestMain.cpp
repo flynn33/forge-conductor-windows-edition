@@ -6,6 +6,7 @@
 
 namespace ForgeConductor::Tests {
 
+void registerWindowsCpuMetricsCollectorContractTests(TestRegistry& tests);
 void registerWindowsRamMetricsCollectorTests(TestRegistry& tests);
 
 } // namespace ForgeConductor::Tests
@@ -13,6 +14,7 @@ void registerWindowsRamMetricsCollectorTests(TestRegistry& tests);
 int main()
 {
     ForgeConductor::Tests::TestRegistry tests;
+    ForgeConductor::Tests::registerWindowsCpuMetricsCollectorContractTests(tests);
     ForgeConductor::Tests::registerWindowsRamMetricsCollectorTests(tests);
 
     std::size_t passed = 0U;

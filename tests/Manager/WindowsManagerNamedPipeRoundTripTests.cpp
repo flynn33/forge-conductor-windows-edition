@@ -362,6 +362,79 @@ private:
     std::size_t closeCalls_{};
 };
 
+class RoundTripTelemetry final : public Contracts::ITelemetryService {
+public:
+    RoundTripTelemetry()
+    {
+        const auto time = Domain::UtcTimePoint{
+            std::chrono::seconds{1'700'000'000}};
+        Domain::SystemMetrics system;
+        system.timestamp = time;
+        system.host = "pipe-host";
+        system.platform = "Windows 11";
+        system.architecture = "x64";
+        system.cpu.percent = Domain::makeAvailableTelemetryMetric<double>(
+            21.5, time, "GetSystemTimes");
+        system.ram.percent = Domain::makeAvailableTelemetryMetric<double>(
+            55.0, time, "GlobalMemoryStatusEx");
+        system.ram.usedBytes = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+            55U, time, "GlobalMemoryStatusEx");
+        system.ram.totalBytes = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+            100U, time, "GlobalMemoryStatusEx");
+        system.ram.availableBytes =
+            Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+                45U, time, "GlobalMemoryStatusEx");
+        snapshot_ = std::make_shared<const Domain::TelemetrySnapshot>(
+            Domain::TelemetrySnapshot{
+                std::move(system),
+                Domain::ForgeSnapshot{
+                    time,
+                    take(Domain::PathText::create("C:\\ManagerPipeRoundTrip")),
+                    "windows-manager",
+                    0U,
+                    0U,
+                    {},
+                    {},
+                    0U,
+                    Domain::TelemetryHealth::Ok},
+                time,
+                {Domain::HistoryPoint{
+                    time, 21.5, 55.0, std::nullopt, 0.0, 0U,
+                    Domain::TelemetryHealth::Ok}},
+                "windows-native"});
+    }
+
+    [[nodiscard]] Domain::Result<void> start(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<void>::success();
+    }
+    [[nodiscard]] Domain::Result<Snapshot> sample(
+        bool,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Snapshot>::success(snapshot_);
+    }
+    [[nodiscard]] Domain::Result<Domain::TelemetryHealthReport> health(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Domain::TelemetryHealthReport>::success(
+            Domain::TelemetryHealthReport{
+                true, "telemetry", "windows-native", false, "continuous",
+                "fixture", "native", false});
+    }
+    [[nodiscard]] Domain::Result<void> setConsumer(Consumer) noexcept override
+    {
+        return Domain::Result<void>::success();
+    }
+    [[nodiscard]] Snapshot latest() const noexcept override { return snapshot_; }
+    [[nodiscard]] std::size_t pendingCount() const noexcept override { return 0U; }
+    void stop() noexcept override {}
+
+private:
+    Snapshot snapshot_;
+};
+
 class RunningServer final {
 public:
     explicit RunningServer(
@@ -440,13 +513,18 @@ void testAuthenticatedNamedPipeRoundTrip()
 {
     auto clock = std::make_shared<Infrastructure::SystemClock>();
     auto controller = std::make_shared<RoundTripController>();
+    RoundTripTelemetry telemetry;
     Manager::ManagerTransportLimits limits;
     limits.maximumRequestLifetime = 30s;
     limits.connectTimeout = 1s;
     limits.shutdownDrainTimeout = 2s;
 
     auto dispatcher = std::make_shared<Manager::ManagerRequestDispatcher>(
-        controller, clock, limits);
+        controller,
+        clock,
+        limits,
+        std::shared_ptr<Contracts::IManagedRunService>{},
+        Manager::ManagerTelemetrySources{&telemetry, nullptr, nullptr, nullptr});
     const auto pipeName = uniquePipeName();
     const auto validNonce = nonce('a');
 
@@ -479,6 +557,17 @@ void testAuthenticatedNamedPipeRoundTrip()
         settings.dashboardHost == "127.0.0.1" &&
             settings.dashboardPort == 7788U,
         "The manager settings did not complete a typed pipe round trip.");
+
+    const auto telemetrySnapshot = take(client->telemetry(
+        std::nullopt, context(11U)));
+    require(
+        telemetrySnapshot.resources.cpuPercent.value == 21.5 &&
+            telemetrySnapshot.resources.ramPercent.value == 55.0 &&
+            telemetrySnapshot.resources.history.size() == 1U &&
+            telemetrySnapshot.manager.processId == 4242U &&
+            !telemetrySnapshot.context.authoritative &&
+            telemetrySnapshot.runtime == "windows-native",
+        "The Manager telemetry snapshot did not complete a typed pipe round trip.");
 
     const auto controlled = take(client->control(
         Domain::ManagerControlRequest{Domain::ManagerControlAction::Restart},

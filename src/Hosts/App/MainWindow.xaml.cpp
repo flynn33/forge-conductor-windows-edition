@@ -1,14 +1,62 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
 #include "MainWindow.g.cpp"
+#include "TelemetryPresentation.h"
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
-#include <winrt/Microsoft.UI.Dispatching.h>
+#include <optional>
+#include <vector>
+#include <windows.h>
 
 namespace winrt::ForgeConductorApp::implementation {
 namespace {
 using Visibility = Microsoft::UI::Xaml::Visibility;
+constexpr wchar_t ViewSettingsKey[] =
+    L"Software\\Forge Conductor\\Windows Alpha";
+constexpr wchar_t SelectedPageValue[] = L"SelectedPage";
+
+struct RegistryKey final {
+    HKEY value{};
+    ~RegistryKey() { if (value) ::RegCloseKey(value); }
+};
+
+[[nodiscard]] std::optional<hstring> loadSavedPage() noexcept
+{
+    try {
+        DWORD bytes{};
+        if (::RegGetValueW(HKEY_CURRENT_USER, ViewSettingsKey,
+                SelectedPageValue, RRF_RT_REG_SZ, nullptr, nullptr,
+                &bytes) != ERROR_SUCCESS || bytes < sizeof(wchar_t)) {
+            return std::nullopt;
+        }
+        std::vector<wchar_t> value(bytes / sizeof(wchar_t));
+        if (::RegGetValueW(HKEY_CURRENT_USER, ViewSettingsKey,
+                SelectedPageValue, RRF_RT_REG_SZ, nullptr, value.data(),
+                &bytes) != ERROR_SUCCESS || value.empty()) {
+            return std::nullopt;
+        }
+        return hstring{value.data()};
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+void storeSavedPage(const hstring& page) noexcept
+{
+    RegistryKey key;
+    if (::RegCreateKeyExW(HKEY_CURRENT_USER, ViewSettingsKey, 0, nullptr,
+            REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &key.value,
+            nullptr) != ERROR_SUCCESS) {
+        return;
+    }
+    const auto bytes = static_cast<DWORD>(
+        (page.size() + 1U) * sizeof(wchar_t));
+    static_cast<void>(::RegSetValueExW(key.value, SelectedPageValue, 0,
+        REG_SZ, reinterpret_cast<const BYTE*>(page.c_str()), bytes));
+}
 
 [[nodiscard]] std::uint32_t numberValue(
     const Microsoft::UI::Xaml::Controls::NumberBox& control,
@@ -22,6 +70,40 @@ using Visibility = Microsoft::UI::Xaml::Visibility;
     }
     return static_cast<std::uint32_t>(value);
 }
+
+void applyMetric(
+    const Microsoft::UI::Xaml::Controls::TextBlock& value,
+    const Microsoft::UI::Xaml::Controls::TextBlock& state,
+    const Microsoft::UI::Xaml::Controls::ProgressBar& gauge,
+    const ::ForgeConductor::Hosts::App::MetricPresentation& presentation)
+{
+    value.Text(winrt::to_hstring(presentation.value));
+    state.Text(winrt::to_hstring(presentation.state));
+    gauge.IsIndeterminate(!presentation.gaugePercent.has_value());
+    if (presentation.gaugePercent) gauge.Value(*presentation.gaugePercent);
+}
+
+[[nodiscard]] Microsoft::UI::Xaml::Media::PointCollection chartPoints(
+    const std::vector<double>& values,
+    const double width,
+    const double height)
+{
+    Microsoft::UI::Xaml::Media::PointCollection points;
+    if (values.empty()) return points;
+    const auto denominator = values.size() > 1U
+        ? static_cast<double>(values.size() - 1U)
+        : 1.0;
+    for (std::size_t index{}; index < values.size(); ++index) {
+        const auto x = values.size() == 1U
+            ? width
+            : width * static_cast<double>(index) / denominator;
+        const auto y = height - height * std::clamp(values[index], 0.0, 100.0) /
+            100.0;
+        points.Append(Windows::Foundation::Point{
+            static_cast<float>(x), static_cast<float>(y)});
+    }
+    return points;
+}
 }
 
 MainWindow::MainWindow() {}
@@ -30,7 +112,40 @@ MainWindow::MainWindow(
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection)
     : connection_{std::move(connection)}
 {
-    Closed([this](auto const&, auto const&) { cancellation_.request_stop(); });
+}
+
+void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::WindowEventArgs const&)
+{
+    if (telemetryTimer_) telemetryTimer_.Stop();
+    cancellation_.request_stop();
+}
+
+void MainWindow::WindowContentLoaded(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (telemetryUiInitialized_) return;
+    telemetryUiInitialized_ = true;
+    if (const auto saved = loadSavedPage()) {
+        const auto items = RootNavigation().MenuItems();
+        for (std::uint32_t index{}; index < items.Size(); ++index) {
+            const auto item = items.GetAt(index).try_as<
+                Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+            if (item && unbox_value_or<hstring>(item.Tag(), L"") == *saved) {
+                RootNavigation().SelectedItem(item);
+                break;
+            }
+        }
+    }
+    const auto weak = get_weak();
+    telemetryTimer_ = Microsoft::UI::Xaml::DispatcherTimer{};
+    telemetryTimer_.Interval(std::chrono::seconds{2});
+    telemetryTimer_.Tick([weak](auto const&, auto const&) {
+        if (const auto self = weak.get()) self->RunAction(Action::Refresh);
+    });
+    RunAction(Action::Refresh);
+    telemetryTimer_.Start();
 }
 
 void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,
@@ -67,10 +182,10 @@ void MainWindow::NavigationChanged(
     if (!item) return;
     const auto tag = unbox_value_or<hstring>(item.Tag(), L"Rig");
     PageTitle().Text(tag);
+    storeSavedPage(tag);
     const bool provider = tag == L"Provider";
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
-    const bool rig = tag == L"Rig" || tag == L"Manager" ||
-        tag == L"Diagnostics" || tag == L"Runtimes";
+    const bool rig = tag == L"Rig";
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
@@ -82,9 +197,25 @@ void MainWindow::NavigationChanged(
         PageDescription().Text(L"Read and control the current native Manager runtime.");
     } else if (autonomy) {
         PageDescription().Text(L"Start, attach, pause, resume, and stop Manager-owned work while observing retained context.");
+    } else if (tag == L"Projects") {
+        PageDescription().Text(L"Inspect registered project identities and their current Manager session scope.");
+    } else if (tag == L"Tools" || tag == L"LM Studio MCP") {
+        PageDescription().Text(L"Inspect the Manager-owned native and MCP tool catalog.");
+    } else if (tag == L"Events & Evidence" || tag == L"Feed") {
+        PageDescription().Text(L"Inspect recent operational activity and measured tool durations.");
+    } else if (tag == L"Runtimes") {
+        PageDescription().Text(L"Inspect the native telemetry runtime, process resources, threads, repositories, and databases.");
     } else {
-        PageDescription().Text(L"Read the live Manager connection while this native surface is being completed.");
+        PageDescription().Text(L"Inspect the current typed Manager operational snapshot.");
     }
+    if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
+}
+
+void MainWindow::TelemetryChartSizeChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::SizeChangedEventArgs const&)
+{
+    if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
 }
 
 std::optional<::ForgeConductor::Domain::ManagerSettings>
@@ -127,6 +258,99 @@ void MainWindow::ApplyProviderForm(
     SafetyMargin().Value(settings.estimationSafetyMargin);
 }
 
+void MainWindow::ApplyTelemetryPresentation(
+    const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot)
+{
+    const auto presentation =
+        ::ForgeConductor::Hosts::App::makeTelemetryPresentation(snapshot);
+    applyMetric(CpuValue(), CpuState(), CpuGauge(), presentation.cpu);
+    applyMetric(RamValue(), RamState(), RamGauge(), presentation.ram);
+    applyMetric(GpuValue(), GpuState(), GpuGauge(), presentation.gpu);
+    applyMetric(
+        ContextValue(), ContextState(), ContextGauge(), presentation.context);
+    ManagerHealth().Text(winrt::to_hstring(presentation.managerStatus));
+    ProviderHealth().Text(winrt::to_hstring(presentation.providerStatus));
+    StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
+    ContinuityHealth().Text(winrt::to_hstring(presentation.continuityStatus));
+
+    const auto width = std::max(320.0, HistoryCanvas().ActualWidth());
+    constexpr double Height = 132.0;
+    CpuHistoryLine().Points(chartPoints(presentation.cpuHistory, width, Height));
+    RamHistoryLine().Points(chartPoints(presentation.ramHistory, width, Height));
+    if (presentation.cpuHistory.empty()) {
+        HistoryEquivalentText().Text(L"No measured CPU/RAM history samples.");
+    } else {
+        HistoryEquivalentText().Text(winrt::to_hstring(
+            std::to_string(presentation.cpuHistory.size()) +
+            " measured samples · latest CPU " + presentation.cpu.value +
+            " · latest RAM " + presentation.ram.value));
+    }
+
+    if (presentation.latencyHistoryMilliseconds.empty()) {
+        LatencyHistoryLine().Points(
+            Microsoft::UI::Xaml::Media::PointCollection{});
+        LatencyEquivalentText().Text(L"No measured activity latency observations.");
+    } else {
+        const auto maximum = *std::max_element(
+            presentation.latencyHistoryMilliseconds.begin(),
+            presentation.latencyHistoryMilliseconds.end());
+        std::vector<double> normalized;
+        normalized.reserve(presentation.latencyHistoryMilliseconds.size());
+        for (const auto value : presentation.latencyHistoryMilliseconds) {
+            normalized.push_back(maximum > 0.0 ? value * 100.0 / maximum : 0.0);
+        }
+        const auto latencyWidth = std::max(320.0, LatencyCanvas().ActualWidth());
+        LatencyHistoryLine().Points(chartPoints(normalized, latencyWidth, 72.0));
+        LatencyEquivalentText().Text(winrt::to_hstring(
+            std::to_string(normalized.size()) + " observations · latest " +
+            std::to_string(static_cast<std::uint64_t>(
+                presentation.latencyHistoryMilliseconds.back())) +
+            " ms · chart maximum " +
+            std::to_string(static_cast<std::uint64_t>(maximum)) + " ms"));
+    }
+
+    ActivityTimeline().Children().Clear();
+    for (const auto& item : presentation.timeline) {
+        Microsoft::UI::Xaml::Controls::TextBlock row;
+        row.Text(winrt::to_hstring(item));
+        row.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        row.IsTextSelectionEnabled(true);
+        ActivityTimeline().Children().Append(row);
+    }
+
+    const auto page = winrt::to_string(PageTitle().Text());
+    const auto detail = ::ForgeConductor::Hosts::App::telemetryDetailText(
+        snapshot, page);
+    if (page == "Provider") {
+        ProviderState().Text(winrt::to_hstring(detail));
+    } else if (page != "Rig" && page != "Autonomy" && page != "Continuity") {
+        GenericState().Text(winrt::to_hstring(detail));
+    }
+}
+
+void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
+{
+    const auto explanation = reason.empty()
+        ? std::string{"Manager telemetry is unavailable."}
+        : std::string{reason};
+    const auto unavailable = ::ForgeConductor::Hosts::App::MetricPresentation{
+        "Unavailable", explanation, std::nullopt};
+    applyMetric(CpuValue(), CpuState(), CpuGauge(), unavailable);
+    applyMetric(RamValue(), RamState(), RamGauge(), unavailable);
+    applyMetric(GpuValue(), GpuState(), GpuGauge(), unavailable);
+    applyMetric(ContextValue(), ContextState(), ContextGauge(), unavailable);
+    ManagerHealth().Text(winrt::to_hstring("Disconnected · " + explanation));
+    ProviderHealth().Text(L"Unavailable while Manager is disconnected");
+    StoreHealth().Text(L"Unavailable while Manager is disconnected");
+    ContinuityHealth().Text(L"Unavailable while Manager is disconnected");
+    if (telemetrySnapshot_) {
+        HistoryEquivalentText().Text(
+            L"Last measured CPU/RAM history is stale because the Manager is disconnected.");
+        LatencyEquivalentText().Text(
+            L"Last measured latency history is stale because the Manager is disconnected.");
+    }
+}
+
 winrt::fire_and_forget MainWindow::RunAction(const Action action)
 {
     auto lifetime = get_strong();
@@ -141,6 +365,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string runTask;
     std::string runId;
     std::uint64_t runGeneration{};
+    if (action == Action::Refresh) {
+        runId = winrt::to_string(RunId().Text());
+    }
     if (action == Action::ProviderSave || action == Action::ProviderTest) {
         std::string error;
         submitted = ReadProviderForm(error);
@@ -183,6 +410,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string message;
     ::ForgeConductor::Hosts::App::ProviderSettingsView loaded;
     ::ForgeConductor::Hosts::App::ManagedRunView runView;
+    ::ForgeConductor::Hosts::App::TelemetryView telemetryView;
     bool failed{};
     try {
         co_await winrt::resume_background();
@@ -191,7 +419,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             message = connection_->start(cancellation_.get_token());
             break;
         case Action::Refresh:
-            message = connection_->refresh(cancellation_.get_token());
+            telemetryView = connection_->telemetry(
+                std::move(runId), cancellation_.get_token());
+            message = telemetryView.message;
             break;
         case Action::Stop:
             message = connection_->control(
@@ -276,6 +506,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
             ProviderState().Text(winrt::to_hstring(message));
         } else {
+            if (action == Action::Refresh && telemetryView.snapshot) {
+                telemetrySnapshot_ = std::move(telemetryView.snapshot);
+                ApplyTelemetryPresentation(*telemetrySnapshot_);
+            } else if (action == Action::Refresh) {
+                ApplyDisconnectedTelemetry(message);
+            }
             ManagerState().Text(winrt::to_hstring(message));
             GenericState().Text(winrt::to_hstring(message));
         }

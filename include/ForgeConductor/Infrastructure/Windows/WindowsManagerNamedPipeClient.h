@@ -3,9 +3,11 @@
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/IManagerServices.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
+#include "ForgeConductor/Domain/ManagerTelemetryModels.h"
 #include "ForgeConductor/Manager/ManagerTransportLimits.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace ForgeConductor::Infrastructure::Windows {
@@ -70,6 +72,10 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> cancelManagedRun(
         const Domain::SessionId& runId,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Domain::ManagerTelemetrySnapshot> telemetry(
+        const std::optional<Domain::SessionId>& runId,
         const Domain::OperationContext& context) noexcept;
 
     void shutdown() noexcept override;

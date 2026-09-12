@@ -38,6 +38,6 @@ Manifest mode from repo root: `nlohmann-json:x64-windows@3.12.0#2`.
 `where cl` is not an inventory. Use `vswhere` (on PATH) or Microsoft’s locator under `Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe`. SDK headers live under **`(x86)\Windows Kits\10`**, not `C:\Program Files\Windows Kits\10`.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

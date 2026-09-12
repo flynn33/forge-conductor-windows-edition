@@ -2,6 +2,8 @@
 #include "Infrastructure/TestSupport.h"
 #include "Telemetry/Windows/Detail/ICpuMetricsPlatform.h"
 
+#include <Windows.h>
+
 // This contract scaffold remains out of the CMake test target until the native
 // Windows CPU collector implementation is added in the next P17 slice.
 
@@ -1020,6 +1022,31 @@ void failedRefreshesRetainFieldLevelValuesAndProvenance()
         "physical count refresh did not preserve its prior topology value");
 }
 
+void samplesTheQualifiedWindowsMachine()
+{
+    TestClock clock;
+    auto collector = TelemetryWindows::createWindowsCpuMetricsCollector(clock);
+    const auto first = take(collector->collect(activeContext(clock)));
+    requireAvailable(
+        first.logicalProcessorCount,
+        static_cast<std::uint32_t>(::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS)),
+        "the real Windows CPU probe did not publish the active logical count");
+    require(
+        first.physicalCoreCount.value && *first.physicalCoreCount.value > 0U,
+        "the real Windows CPU probe did not publish a physical core count");
+    require(
+        first.brand.value && !first.brand.value->empty(),
+        "the real Windows CPU probe did not publish the processor brand");
+
+    std::this_thread::sleep_for(125ms);
+    const auto measured = take(collector->collect(activeContext(clock)));
+    require(
+        measured.percent.value && *measured.percent.value >= 0.0 &&
+            *measured.percent.value <= 100.0,
+        "the second real GetSystemTimes sample did not publish bounded utilization");
+    collector->shutdown();
+}
+
 } // namespace
 
 void registerWindowsCpuMetricsCollectorContractTests(TestRegistry& tests)
@@ -1052,6 +1079,10 @@ void registerWindowsCpuMetricsCollectorContractTests(TestRegistry& tests)
         tests,
         "telemetry_windows.cpu.stale-contract",
         failedRefreshesRetainFieldLevelValuesAndProvenance);
+    addTest(
+        tests,
+        "telemetry_windows.cpu.machine-smoke",
+        samplesTheQualifiedWindowsMachine);
 }
 
 } // namespace ForgeConductor::Tests

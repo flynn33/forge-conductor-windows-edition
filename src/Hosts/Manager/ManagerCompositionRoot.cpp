@@ -16,7 +16,6 @@
 #include "ManagerLmStudioReadScopeResolver.h"
 #include "ManagerMaintenanceService.h"
 #include "UnavailableLmStudioDeploymentService.h"
-#include "UnavailableTelemetryService.h"
 
 #include "ForgeConductor/Application/AgentCatalog.h"
 #include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
@@ -87,6 +86,7 @@
 #include "ForgeConductor/Persistence/Windows/WindowsProjectRegistryRepository.h"
 #include "ForgeConductor/Persistence/Windows/PersistenceWindows.h"
 #include "ForgeConductor/SessionHost/ForgeNativeSessionHostAdapter.h"
+#include "ForgeConductor/Telemetry/Windows/WindowsTelemetryService.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -637,8 +637,7 @@ private:
     std::shared_ptr<CompositionWindows::ManagerMaintenanceService>
         maintenanceService_;
 
-    std::unique_ptr<CompositionWindows::UnavailableTelemetryService>
-        telemetryService_;
+    std::unique_ptr<Contracts::ITelemetryService> telemetryService_;
     std::unique_ptr<Application::DashboardTelemetrySource> telemetrySource_;
     std::unique_ptr<Dashboard::DashboardStaticAssetStore> dashboardAssets_;
     std::unique_ptr<CompositionWindows::WindowsManagerDoctorPlatformProbe>
@@ -1297,8 +1296,8 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
     const Domain::OperationContext& context)
 {
     const auto& process = snapshot();
-    telemetryService_ = std::make_unique<
-        CompositionWindows::UnavailableTelemetryService>(*clock_);
+    telemetryService_ = Telemetry::Windows::createWindowsTelemetryService(
+        *clock_, *uuidGenerator_, process.dataRoot(), process.resourceBudgets());
     requireSuccess(telemetryService_->start(context));
     telemetrySource_ = take(Application::DashboardTelemetrySource::create(
         *telemetryService_, *runtimeDiagnostics_, *clock_,
@@ -1362,7 +1361,12 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
         managerController_,
         clock_,
         ManagerProtocol::ManagerTransportLimits{},
-        managedRuns_);
+        managedRuns_,
+        ManagerProtocol::ManagerTelemetrySources{
+            telemetryService_.get(),
+            dashboardOperationalService_.get(),
+            projectRegistry_.get(),
+            toolCatalog_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

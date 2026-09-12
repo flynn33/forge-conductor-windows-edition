@@ -122,6 +122,8 @@ target_include_directories(ForgeConductor.Contracts INTERFACE
     "${PROJECT_SOURCE_DIR}/include")
 
 add_library(ForgeConductor.Telemetry.Windows STATIC
+    src/Telemetry/Windows/WindowsCpuMetricsCollector.cpp
+    src/Telemetry/Windows/WindowsTelemetryService.cpp
     src/Telemetry/Windows/WindowsRamMetricsCollector.cpp)
 forge_add_layer(
     ForgeConductor.Telemetry.Windows
@@ -135,6 +137,7 @@ target_compile_definitions(ForgeConductor.Telemetry.Windows PRIVATE
     WINVER=0x0A00
     _WIN32_WINNT=0x0A00)
 target_link_libraries(ForgeConductor.Telemetry.Windows PRIVATE
+    dxgi
     psapi)
 
 set(FORGE_APPLICATION_SOURCES
@@ -460,7 +463,8 @@ target_link_libraries(ForgeConductor.Manager.Composition.Windows PUBLIC
     ForgeConductor::Application
     ForgeConductor::Manager.Host
     ForgeConductor::Infrastructure.Windows
-    ForgeConductor::Persistence.Windows)
+    ForgeConductor::Persistence.Windows
+    ForgeConductor::Telemetry.Windows)
 
 set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/NativeFileOperations.cpp
@@ -657,6 +661,7 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 if(BUILD_TESTING)
     add_executable(ForgeConductor.Telemetry.WindowsTests
         tests/Telemetry/TelemetryWindowsTestMain.cpp
+        tests/Telemetry/WindowsCpuMetricsCollectorTests.cpp
         tests/Telemetry/WindowsRamMetricsCollectorTests.cpp)
     forge_configure_native_target(
         ForgeConductor.Telemetry.WindowsTests)
@@ -798,6 +803,20 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.Manager.ProtocolTests>)
     set_tests_properties(ForgeConductor.Manager.ProtocolTests PROPERTIES
         LABELS "G16;T-MGR;T-SEC;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.App.TelemetryPresentationTests
+        tests/App/TelemetryPresentationTests.cpp)
+    forge_configure_standard_target(ForgeConductor.App.TelemetryPresentationTests)
+    target_include_directories(ForgeConductor.App.TelemetryPresentationTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Hosts/App)
+    target_link_libraries(ForgeConductor.App.TelemetryPresentationTests PRIVATE
+        ForgeConductor::Domain)
+    add_test(
+        NAME ForgeConductor.App.TelemetryPresentationTests
+        COMMAND $<TARGET_FILE:ForgeConductor.App.TelemetryPresentationTests>)
+    set_tests_properties(ForgeConductor.App.TelemetryPresentationTests PROPERTIES
+        LABELS "R2;T-UI;T-UNIT"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Manager.ControllerTests

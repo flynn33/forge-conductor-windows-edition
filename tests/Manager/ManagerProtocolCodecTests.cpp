@@ -212,6 +212,83 @@ void replaceOne(
         false};
 }
 
+[[nodiscard]] Domain::ManagerTelemetrySnapshot sampleManagerTelemetry()
+{
+    const auto capturedAt = Domain::UtcTimePoint{
+        std::chrono::milliseconds{1'767'225'602'000LL}};
+    const auto previousCpu = Domain::makeAvailableTelemetryMetric<double>(
+        42.5, capturedAt - 1s, "GetSystemTimes");
+    auto cpu = Domain::makeStaleTelemetryMetric(
+        previousCpu,
+        Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+        capturedAt,
+        "The CPU counter rebased.");
+    const auto ramPercent = Domain::makeAvailableTelemetryMetric<double>(
+        61.25, capturedAt, "GlobalMemoryStatusEx");
+    const auto ramUsed = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+        10'000U, capturedAt, "GlobalMemoryStatusEx");
+    const auto ramTotal = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+        20'000U, capturedAt, "GlobalMemoryStatusEx");
+    const auto ramAvailable = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+        10'000U, capturedAt, "GlobalMemoryStatusEx");
+    Domain::ManagerResourceSnapshot resources{
+        capturedAt,
+        "fixture-host",
+        "Windows 11",
+        "x64",
+        std::move(cpu),
+        ramPercent,
+        ramUsed,
+        ramTotal,
+        ramAvailable,
+        {Domain::GpuMetrics{
+            "fixture-vendor", "fixture-gpu", std::nullopt,
+            2'000U, 8'000U, 1'000U, true}},
+        {Domain::ProcessMetrics{
+            42'424U, "ForgeConductor.Manager", 3.5, 5'000U, 4'000U,
+            12U, 88U, "GetProcessTimes"}},
+        {Domain::HistoryPoint{
+            capturedAt, 42.5, 61.25, std::nullopt, 0.0, 3U,
+            Domain::TelemetryHealth::Ok}}};
+    const auto run = sampleManagedRun();
+    return Domain::ManagerTelemetrySnapshot{
+        capturedAt,
+        std::move(resources),
+        sampleStatus(),
+        Domain::RuntimeDiagnosticSnapshot{
+            capturedAt, 2U, 1U, 4U, 3U, 0U,
+            Domain::ResourcePressureLevel::Nominal, 2U, 1U, 0U, 1U},
+        Domain::ManagerProviderSnapshot{
+            "127.0.0.1", 1234U, false, std::string{"fixture-model"},
+            run.record.providerResponseId},
+        Domain::ManagerContextSnapshot{
+            65'536U, 8'192U, 6'144U, 3'072U, 101U, 37U, 4'096U,
+            44'032U, true},
+        Domain::ManagerContinuitySnapshot{
+            true, true, run.record.runId, run.record.projectId,
+            run.record.state, run.record.providerResponseId},
+        run,
+        {run.record.projectId},
+        {"filesystem.read", "shell.execute"},
+        1U,
+        2U,
+        1U,
+        {Domain::AuditEvent{
+            capturedAt,
+            run.record.clientId,
+            "shell.execute",
+            identifier<Domain::Sha256Digest>(std::string(64U, 'b')),
+            "success",
+            25ms,
+            std::nullopt}},
+        Domain::makeUnavailableTelemetryMetric<bool>(
+            Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+            capturedAt,
+            "manager_operational_store",
+            "The store is busy."),
+        "windows-native"};
+}
+
 [[nodiscard]] Manager::ManagerRequest request(
     Manager::ManagerRequestPayload payload)
 {
@@ -274,6 +351,9 @@ void testEveryRequestMethodRoundTripsDeterministically()
     std::vector<Manager::ManagerRequestPayload> payloads;
     payloads.emplace_back(Manager::ManagerStatusRequest{});
     payloads.emplace_back(Manager::ManagerSettingsRequest{});
+    payloads.emplace_back(Manager::ManagerTelemetryRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001")});
     payloads.emplace_back(Domain::ManagerControlRequest{
         Domain::ManagerControlAction::Repair});
     payloads.emplace_back(Manager::ManagerSettingsUpdateRequest{
@@ -307,6 +387,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
     const std::vector<std::string> methods{
         "manager.status",
         "manager.settings",
+        "manager.telemetry",
         "manager.control",
         "manager.settings.update",
         "managed_run.start",
@@ -399,6 +480,44 @@ void testManagedRunResultRoundTrips()
     REQUIRE(actual.managerOwned);
     REQUIRE(!actual.cancellationRequested);
     REQUIRE(!actual.pauseRequested);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+}
+
+void testManagerTelemetryRoundTripsWithoutLosingAvailability()
+{
+    const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{sampleManagerTelemetry()})));
+    const auto root = Json::parse(payloadText(frame));
+    REQUIRE(root.at("result").at("type") == "telemetry");
+    REQUIRE(root.at("result").at("value").at("resources")
+                .at("cpu_percent").at("stale") == true);
+    REQUIRE(root.at("result").at("value").at("resources")
+                .at("gpus").at(0).at("utilization_percent").is_null());
+    REQUIRE(root.at("result").at("value").at("store_healthy")
+                .at("availability") == "temporarily_unavailable");
+
+    const auto decoded = take(
+        Manager::ManagerProtocolCodec::decodeResponse(frame));
+    const auto& actual = std::get<Domain::ManagerTelemetrySnapshot>(
+        std::get<Manager::ManagerResult>(decoded.body));
+    REQUIRE(actual.resources.cpuPercent.value == 42.5);
+    REQUIRE(actual.resources.cpuPercent.stale);
+    REQUIRE(actual.resources.cpuPercent.capturedAt ==
+            sampleManagerTelemetry().resources.cpuPercent.capturedAt);
+    REQUIRE(actual.resources.gpus.size() == 1U);
+    REQUIRE(!actual.resources.gpus.front().utilizationPercent);
+    REQUIRE(actual.context.retainedTokens == 4'096U);
+    REQUIRE(actual.context.headroomTokens == 44'032U);
+    REQUIRE(actual.context.authoritative);
+    REQUIRE(actual.continuity.canonicalResponseId ==
+            sampleManagedRun().record.providerResponseId);
+    REQUIRE(actual.selectedRun->record.retainedContextTokens == 4'096U);
+    REQUIRE(actual.projects.size() == 1U);
+    REQUIRE(actual.tools.size() == 2U);
+    REQUIRE(actual.recentEvents.size() == 1U);
+    REQUIRE(!actual.storeHealthy.value);
+    REQUIRE(actual.storeHealthy.availability ==
+            Domain::TelemetryMetricAvailability::TemporarilyUnavailable);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 
@@ -1094,6 +1213,8 @@ int main()
         {"request-round-trips", testEveryRequestMethodRoundTripsDeterministically},
         {"response-round-trips", testResponseResultAndErrorRoundTrips},
         {"managed-run-round-trips", testManagedRunResultRoundTrips},
+        {"manager-telemetry-round-trips",
+         testManagerTelemetryRoundTripsWithoutLosingAvailability},
         {"settings-update-outcome-round-trips",
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},
