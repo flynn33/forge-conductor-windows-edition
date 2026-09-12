@@ -790,6 +790,17 @@ public:
                     Domain::ErrorCodes::Cancelled,
                     "The native bootstrap was cancelled after provider acknowledgement."));
             }
+            if (response.value().providerResponseId) {
+                const Domain::NativeTransportSession providerResponse{
+                    *response.value().providerResponseId,
+                    record->session.model};
+                valid = validateProvider(providerResponse);
+                if (!valid) {
+                    return valid;
+                }
+                record->session.providerSessionId =
+                    *response.value().providerResponseId;
+            }
             record->session.status = Domain::HostSessionStatus::Ready;
             record->inputTokens =
                 static_cast<std::uint64_t>(response.value().inputTokens);

@@ -10,7 +10,7 @@
   <Identity
     Name="REPLACE_PACKAGE_IDENTITY"
     Publisher="REPLACE_CERTIFICATE_SUBJECT"
-    Version="0.1.0.0"
+    Version="REPLACE_PRODUCT_VERSION"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -33,7 +33,7 @@
   <Applications>
     <Application
       Id="ForgeConductor"
-      Executable="ForgeConductor.App.exe"
+      Executable="ForgeConductorApp.exe"
       EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Forge Conductor"
@@ -44,7 +44,7 @@
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
       </uap:VisualElements>
       <Extensions>
-        <uap5:Extension Category="windows.appExecutionAlias">
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="forge-conductor.exe" EntryPoint="Windows.FullTrustApplication">
           <uap5:AppExecutionAlias>
             <uap5:ExecutionAlias Alias="forge-conductor.exe" />
           </uap5:AppExecutionAlias>

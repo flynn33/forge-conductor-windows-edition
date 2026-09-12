@@ -51,7 +51,15 @@ namespace {
         config.manager.openBrowserOnStart,
         config.sessions.idleTimeToLive,
         config.shell.defaultTimeout,
-        config.logLevel};
+        config.logLevel,
+        config.localModel.host,
+        config.localModel.port,
+        config.localModel.secure,
+        config.localModel.model.value_or(""),
+        config.localModel.effectiveContextCapacity,
+        config.localModel.nextResponseReserve,
+        config.localModel.handoffReserve,
+        config.localModel.estimationSafetyMargin};
 }
 
 [[nodiscard]] Domain::AppConfigPatch configPatchFromManagerPatch(
@@ -67,6 +75,14 @@ namespace {
     mapped.managerWatchdogInterval = patch.watchdogInterval;
     mapped.managerOpenBrowserOnStart = patch.openBrowserOnStart;
     mapped.sessionIdleTimeToLive = patch.sessionIdleTtl;
+    mapped.localModelHost = patch.localModelHost;
+    mapped.localModelPort = patch.localModelPort;
+    mapped.localModelSecure = patch.localModelSecure;
+    mapped.localModelName = patch.localModelName;
+    mapped.effectiveContextCapacity = patch.effectiveContextCapacity;
+    mapped.nextResponseReserve = patch.nextResponseReserve;
+    mapped.handoffReserve = patch.handoffReserve;
+    mapped.estimationSafetyMargin = patch.estimationSafetyMargin;
     return mapped;
 }
 

@@ -14,10 +14,11 @@ namespace ForgeConductor::Hosts::Manager {
 // value is an equality assertion against the independently resolved production
 // root; it is never an input to root selection.
 struct ManagerProcessArguments final {
-    static constexpr std::size_t MaximumInspectedArgumentCount = 4U;
+    static constexpr std::size_t MaximumInspectedArgumentCount = 5U;
     static constexpr std::size_t MaximumHomeUtf16Units = 32'767U;
 
     std::optional<Domain::PathText> expectedHome;
+    std::optional<Domain::PathText> alphaDataRoot;
     bool openBrowser{};
 
     bool operator==(const ManagerProcessArguments&) const = default;

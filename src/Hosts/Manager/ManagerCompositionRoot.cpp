@@ -21,6 +21,7 @@
 #include "ForgeConductor/Application/AgentCatalog.h"
 #include "ForgeConductor/Application/AgentSessionService.h"
 #include "ForgeConductor/Application/ContinuityCoordinator.h"
+#include "ForgeConductor/Application/ContinuityAutomation.h"
 #include "ForgeConductor/Application/DashboardConnectionApplicationFactory.h"
 #include "ForgeConductor/Application/DashboardOperationalService.h"
 #include "ForgeConductor/Application/DashboardTelemetrySource.h"
@@ -30,6 +31,7 @@
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
+#include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsApplicationPaths.h"
@@ -67,9 +69,7 @@
 #include "ForgeConductor/Persistence/Windows/WindowsProjectMemoryRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsProjectMemoryRepositoryOpener.h"
 #include "ForgeConductor/Persistence/Windows/WindowsProjectRegistryRepository.h"
-#include "ForgeConductor/SessionHost/BoundedLogicalContinuationQueue.h"
 #include "ForgeConductor/SessionHost/ForgeNativeSessionHostAdapter.h"
-#include "ForgeConductor/SessionHost/LocalLogicalSessionTransport.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -461,13 +461,12 @@ private:
         continuityCodec_;
     std::unique_ptr<InfrastructureWindows::WindowsNativeSessionLedger>
         nativeSessionLedger_;
-    std::unique_ptr<NativeSessionHost::BoundedLogicalContinuationQueue>
-        logicalContinuationQueue_;
-    std::unique_ptr<NativeSessionHost::LocalLogicalSessionTransport>
+    std::unique_ptr<InfrastructureWindows::LMStudioResponsesTransport>
         nativeSessionTransport_;
     std::unique_ptr<NativeSessionHost::ForgeNativeSessionHostAdapter>
         nativeSessionAdapter_;
     std::unique_ptr<Application::ContinuityCoordinator> continuity_;
+    std::unique_ptr<Application::ContinuityAutomation> continuityAutomation_;
     std::unique_ptr<Mcp::McpToolCatalog> toolCatalog_;
     std::unique_ptr<Mcp::McpToolAuthorizer> toolAuthorizer_;
 
@@ -778,11 +777,15 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             *dataAuthority_, *dataScope_,
             childPath(process.dataRoot(), "native-session-ledger.json.bak"),
             process.dataRoot(), Domain::FileAccess::Read, context));
-    logicalContinuationQueue_ = std::make_unique<
-        NativeSessionHost::BoundedLogicalContinuationQueue>();
+    InfrastructureWindows::LMStudioResponsesTransportConfiguration
+        providerConfiguration;
+    providerConfiguration.loopbackHost = initialConfiguration_->localModel.host;
+    providerConfiguration.port = initialConfiguration_->localModel.port;
+    providerConfiguration.secure = initialConfiguration_->localModel.secure;
+    providerConfiguration.model = initialConfiguration_->localModel.model;
     nativeSessionTransport_ = std::make_unique<
-        NativeSessionHost::LocalLogicalSessionTransport>(
-        hasher_, *continuityCodec_, *logicalContinuationQueue_);
+        InfrastructureWindows::LMStudioResponsesTransport>(
+        std::move(providerConfiguration));
     nativeSessionAdapter_ = std::make_unique<
         NativeSessionHost::ForgeNativeSessionHostAdapter>(
         take(Domain::AdapterId::parse(
@@ -793,6 +796,8 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     continuity_ = std::make_unique<Application::ContinuityCoordinator>(
         *projectRegistry_, *projectRepositoryCache_,
         *nativeSessionAdapter_, *clock_);
+    continuityAutomation_ = std::make_unique<Application::ContinuityAutomation>(
+        *continuity_, *clock_);
 
     toolCatalog_ = take(Mcp::McpToolCatalog::create());
     toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_);
@@ -1286,6 +1291,9 @@ void ManagerCompositionRoot::Impl::shutdownServices(
             lmStudioDiscovery_->shutdown();
         }
 
+        if (continuityAutomation_) {
+            continuityAutomation_->shutdown();
+        }
         if (continuity_) {
             continuity_->shutdown();
         }
@@ -1300,9 +1308,6 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         }
         if (nativeSessionTransport_) {
             nativeSessionTransport_->shutdown();
-        }
-        if (logicalContinuationQueue_) {
-            logicalContinuationQueue_->shutdown();
         }
         if (nativeSessionLedger_) {
             nativeSessionLedger_->shutdown();

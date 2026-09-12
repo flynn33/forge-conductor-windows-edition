@@ -1,5 +1,6 @@
 #include "ForgeConductor/Domain/ConfigurationModels.h"
 #include "ForgeConductor/Domain/ManagerModels.h"
+#include "ForgeConductor/Domain/Utf8.h"
 
 #include <utility>
 
@@ -30,7 +31,7 @@ AppConfig defaultAppConfig()
     return AppConfig{
         LogLevel::Info,
         {},
-        ShellConfig{false, std::chrono::seconds{30}},
+        ShellConfig{true, std::chrono::seconds{30}},
         DashboardConfig{
             "127.0.0.1",
             DefaultManagerDashboardPort,
@@ -41,7 +42,8 @@ AppConfig defaultAppConfig()
         CoordinatorConfig{
             true,
             std::chrono::seconds{60},
-            std::chrono::seconds{30}}};
+            std::chrono::seconds{30}},
+        LocalModelConfig{}};
 }
 
 Result<void> validateAppConfig(const AppConfig& config)
@@ -60,6 +62,33 @@ Result<void> validateAppConfig(const AppConfig& config)
         return Result<void>::failure(makeError(
             ErrorCodes::InvalidRequest,
             "Dashboard port must be within 1 through 65535."));
+    }
+    if (!isLoopbackHost(config.localModel.host) ||
+        config.localModel.port == 0U) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Local model endpoint must use 127.0.0.1 or ::1 and a non-zero port."));
+    }
+    if (config.localModel.model &&
+        (config.localModel.model->empty() ||
+         config.localModel.model->size() > 256U ||
+         config.localModel.model->find('\0') != std::string::npos ||
+         !isValidUtf8(*config.localModel.model))) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Local model selection is invalid."));
+    }
+    const auto capacity = config.localModel.effectiveContextCapacity;
+    const auto responseReserve = config.localModel.nextResponseReserve;
+    const auto handoffReserve = config.localModel.handoffReserve;
+    const auto margin = config.localModel.estimationSafetyMargin;
+    if (capacity < 4'096U || capacity > 1'048'576U ||
+        responseReserve == 0U || handoffReserve == 0U || margin == 0U ||
+        static_cast<std::uint64_t>(responseReserve) + handoffReserve + margin >=
+            capacity) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Local model context capacity and reserves are inconsistent."));
     }
     if (config.shell.defaultTimeout.count() <= 0 ||
         config.shell.defaultTimeout > std::chrono::seconds{120}) {
@@ -111,6 +140,26 @@ Result<AppConfig> applyConfigPatch(const AppConfig& config, const AppConfigPatch
     }
     if (patch.coordinatorPresenceTimeToLive) {
         updated.coordinator.presenceTimeToLive = *patch.coordinatorPresenceTimeToLive;
+    }
+    if (patch.localModelHost) updated.localModel.host = *patch.localModelHost;
+    if (patch.localModelPort) updated.localModel.port = *patch.localModelPort;
+    if (patch.localModelSecure) updated.localModel.secure = *patch.localModelSecure;
+    if (patch.localModelName) {
+        updated.localModel.model = patch.localModelName->empty()
+            ? std::nullopt
+            : std::optional<std::string>{*patch.localModelName};
+    }
+    if (patch.effectiveContextCapacity) {
+        updated.localModel.effectiveContextCapacity = *patch.effectiveContextCapacity;
+    }
+    if (patch.nextResponseReserve) {
+        updated.localModel.nextResponseReserve = *patch.nextResponseReserve;
+    }
+    if (patch.handoffReserve) {
+        updated.localModel.handoffReserve = *patch.handoffReserve;
+    }
+    if (patch.estimationSafetyMargin) {
+        updated.localModel.estimationSafetyMargin = *patch.estimationSafetyMargin;
     }
 
     auto valid = validateAppConfig(updated);

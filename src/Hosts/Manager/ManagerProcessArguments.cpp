@@ -154,8 +154,9 @@ template <typename T>
         (value >= L'a' && value <= L'z');
 }
 
-[[nodiscard]] Domain::Result<void> validateAbsoluteLocalHome(
-    const std::wstring_view value) noexcept
+[[nodiscard]] Domain::Result<void> validateAbsoluteLocalPath(
+    const std::wstring_view value,
+    const std::string_view option) noexcept
 {
     if (value.size() < 3U || !isAsciiDriveLetter(value[0U]) ||
         value[1U] != L':' || value[2U] != L'\\' ||
@@ -163,7 +164,8 @@ template <typename T>
         (value.size() > 3U && value.back() == L'\\')) {
         return Domain::Result<void>::failure(Domain::makeError(
             Domain::ErrorCodes::InvalidRequest,
-            "--home must be an absolute local Windows drive path."));
+            std::string{option} +
+                " must be an absolute local Windows drive path."));
     }
 
     std::size_t start = 3U;
@@ -175,8 +177,9 @@ template <typename T>
         if (!isValidPathComponent(value.substr(start, end - start))) {
             return Domain::Result<void>::failure(Domain::makeError(
                 Domain::ErrorCodes::InvalidRequest,
-                "--home contains an empty, relative, reserved, or forbidden "
-                "Windows path component."));
+                std::string{option} +
+                    " contains an empty, relative, reserved, or forbidden "
+                    "Windows path component."));
         }
         if (separator == std::wstring_view::npos) {
             break;
@@ -186,15 +189,16 @@ template <typename T>
     return Domain::Result<void>::success();
 }
 
-[[nodiscard]] Domain::Result<Domain::PathText> parseHome(
-    const std::wstring_view value) noexcept
+[[nodiscard]] Domain::Result<Domain::PathText> parseLocalPath(
+    const std::wstring_view value,
+    const std::string_view option) noexcept
 {
     auto converted = strictUtf16ToUtf8(value);
     if (!converted) {
         return Domain::Result<Domain::PathText>::failure(
             std::move(converted).error());
     }
-    auto validated = validateAbsoluteLocalHome(value);
+    auto validated = validateAbsoluteLocalPath(value, option);
     if (!validated) {
         return Domain::Result<Domain::PathText>::failure(
             std::move(validated).error());
@@ -202,7 +206,7 @@ template <typename T>
     if (converted.value().size() > Domain::PathText::MaximumBytes) {
         return failure<Domain::PathText>(
             Domain::ErrorCodes::LimitExceeded,
-            "--home exceeds the UTF-8 path bound.");
+            std::string{option} + " exceeds the UTF-8 path bound.");
     }
     return Domain::PathText::create(converted.value());
 }
@@ -250,7 +254,7 @@ Domain::Result<ManagerProcessArguments> ManagerProcessArguments::parse(
                         Domain::ErrorCodes::InvalidRequest,
                         "--home requires one absolute Windows path value.");
                 }
-                auto home = parseHome(arguments[++index]);
+                auto home = parseLocalPath(arguments[++index], "--home");
                 if (!home) {
                     return Domain::Result<ManagerProcessArguments>::failure(
                         std::move(home).error());
@@ -259,9 +263,36 @@ Domain::Result<ManagerProcessArguments> ManagerProcessArguments::parse(
                 continue;
             }
 
+            if (argument == L"--alpha-root") {
+                if (parsed.alphaDataRoot.has_value()) {
+                    return failure<ManagerProcessArguments>(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "--alpha-root may be specified only once.");
+                }
+                if (index + 1U >= arguments.size() ||
+                    arguments[index + 1U].starts_with(L"--")) {
+                    return failure<ManagerProcessArguments>(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "--alpha-root requires one absolute Windows path value.");
+                }
+                auto root = parseLocalPath(
+                    arguments[++index], "--alpha-root");
+                if (!root) {
+                    return Domain::Result<ManagerProcessArguments>::failure(
+                        std::move(root).error());
+                }
+                parsed.alphaDataRoot = std::move(root).value();
+                continue;
+            }
+
             return failure<ManagerProcessArguments>(
                 Domain::ErrorCodes::InvalidRequest,
                 "Unknown Manager process argument.");
+        }
+        if (parsed.expectedHome && parsed.alphaDataRoot) {
+            return failure<ManagerProcessArguments>(
+                Domain::ErrorCodes::InvalidRequest,
+                "--home and --alpha-root cannot be used together.");
         }
         return Domain::Result<ManagerProcessArguments>::success(
             std::move(parsed));

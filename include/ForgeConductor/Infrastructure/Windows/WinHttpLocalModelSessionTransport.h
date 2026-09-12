@@ -19,7 +19,9 @@ struct WinHttpLocalModelSessionTransportConfiguration final {
     std::chrono::milliseconds receiveTimeout{std::chrono::seconds{10}};
 };
 
-// Synchronous, caller-owned transport for a loopback local-model provider.
+// Compatibility transport for the historical private /v1/forge/sessions
+// fixture protocol. Production LM Studio composition uses
+// LMStudioResponsesTransport and never routes this class to LM Studio.
 // WinHTTP calls are bounded by both the immutable transport configuration and
 // each supplied operation deadline. Cancellation closes the active request.
 class WinHttpLocalModelSessionTransport final

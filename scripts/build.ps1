@@ -8,6 +8,9 @@ param(
 
     [string[]]$Target = @(),
 
+    [ValidateSet('Backend','App','All')]
+    [string]$Product = 'All',
+
     [ValidateRange(1, 256)]
     [int]$Parallel = [Math]::Max(1, [Environment]::ProcessorCount),
 
@@ -20,6 +23,16 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 
 $workspaceRoot = Split-Path -Parent $PSScriptRoot
+$buildApp = $Product -ne 'Backend' -and ($Target.Count -eq 0 -or $PSBoundParameters.ContainsKey('Product'))
+if ($buildApp -and $Architecture -ne 'x64') { throw 'The Alpha native app currently supports x64 only. Use -Product Backend for other backend architectures.' }
+if ($buildApp) {
+    $productTargets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($name in @($Target) + @('ForgeConductor.Cli','ForgeConductor.Manager','ForgeConductor.SessionHost')) {
+        [void]$productTargets.Add($name)
+    }
+    $Target = @($productTargets)
+}
+& (Join-Path $PSScriptRoot 'alpha/Restore-Forsetti.ps1') -Repository $workspaceRoot -FetchKnownCandidate
 $toolchainStatePath = Join-Path $workspaceRoot '.forge-codex\state\toolchain.json'
 $triplet = if ($Architecture -ceq 'ARM64') { 'arm64-windows' } else { 'x64-windows' }
 $architectureToken = $Architecture.ToLowerInvariant()
@@ -127,6 +140,9 @@ try {
     & $cmake @buildArguments
     if ($LASTEXITCODE -ne 0) {
         throw "CMake build failed for $Architecture $Configuration (exit $LASTEXITCODE)."
+    }
+    if ($buildApp) {
+        & (Join-Path $PSScriptRoot 'alpha/Build-App.ps1') -Configuration $Configuration -Parallel $Parallel
     }
 }
 finally {

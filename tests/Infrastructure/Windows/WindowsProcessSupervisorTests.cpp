@@ -850,6 +850,11 @@ void testMalformedUtf8Replacement(const FixtureContext& fixture)
     require(result.stdoutUtf8 == "valid-\xef\xbf\xbdx",
             "malformed child output was not decoded with replacement");
 
+    const auto embeddedNul =
+        take(supervisor.run(fixture.request({"--nul"}), fixture.authority, context(71U)));
+    require(embeddedNul.stdoutUtf8 == "a\xef\xbf\xbd" "b",
+            "an embedded NUL in child output was not decoded with replacement");
+
     auto splitRequest = fixture.request({"--utf8-euro"});
     splitRequest.maximumStdoutBytes = 3U;
     const auto split = take(supervisor.run(splitRequest, fixture.authority, context(8U)));

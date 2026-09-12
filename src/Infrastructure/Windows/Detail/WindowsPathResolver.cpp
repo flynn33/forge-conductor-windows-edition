@@ -437,6 +437,21 @@ constexpr DWORD DirectoryAnchorOpenRetrySliceMilliseconds = 10U;
             }
             ::Sleep(DirectoryAnchorOpenRetrySliceMilliseconds);
         }
+        // User-owned roots can permit child creation and per-file deletion
+        // without granting FILE_DELETE_CHILD on the directory. Atomic replace
+        // opens concrete children with DELETE, so retry the retained parent
+        // anchor with only the directory capability needed for staging.
+        if (!handle && nativeError == ERROR_ACCESS_DENIED && allowChildFileCreation)
+        {
+            desiredAccess &= ~FILE_DELETE_CHILD;
+            handle.reset(::CreateFileW(
+                nativePath.c_str(), desiredAccess, shareAccess, nullptr, OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
+            if (!handle)
+            {
+                nativeError = ::GetLastError();
+            }
+        }
         if (!handle)
         {
             const bool transientContention =

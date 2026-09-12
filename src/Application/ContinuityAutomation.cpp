@@ -19,8 +19,6 @@ namespace ForgeConductor::Application {
 namespace {
 
 constexpr std::size_t MaximumTrackedProjects = 128U;
-constexpr std::uint32_t MaximumConfiguredProgressInterval = 1'000'000U;
-constexpr std::uint32_t MaximumConfiguredTimeIntervalSeconds = 604'800U;
 
 template <typename T, typename U>
 [[nodiscard]] Domain::Result<T> propagate(Domain::Result<U>&& source)
@@ -101,13 +99,7 @@ template <typename T>
 [[nodiscard]] Domain::Result<void> validatePolicy(
     const Domain::ContinuityAutomationPolicy& policy)
 {
-    if (policy.checkpointProgressInterval == 0U ||
-        policy.rolloverProgressInterval < policy.checkpointProgressInterval ||
-        policy.rolloverProgressInterval > MaximumConfiguredProgressInterval ||
-        policy.checkpointIntervalSeconds == 0U ||
-        policy.rolloverIntervalSeconds < policy.checkpointIntervalSeconds ||
-        policy.rolloverIntervalSeconds > MaximumConfiguredTimeIntervalSeconds ||
-        !std::isfinite(policy.checkpointReserveFraction) ||
+    if (!std::isfinite(policy.checkpointReserveFraction) ||
         !std::isfinite(policy.rolloverReserveFraction) ||
         policy.rolloverReserveFraction <= 0.0 ||
         policy.rolloverReserveFraction > policy.checkpointReserveFraction ||
@@ -273,13 +265,6 @@ public:
                 return propagate<Domain::ContinuityAutomationOutcome>(
                     std::move(valid));
             }
-            if (observation.completedProgressUnits >
-                Domain::MaximumProgressUnitsPerObservation) {
-                return failure<Domain::ContinuityAutomationOutcome>(
-                    Domain::ErrorCodes::LimitExceeded,
-                    "The continuity progress observation exceeds its bound.");
-            }
-
             Domain::ContinuityAutomationOutcome outcome{
                 observation.handoff.project.projectId,
                 observation.handoff.handoffId,
@@ -339,7 +324,6 @@ public:
             outcome.checkpointPersisted = true;
             if (decision.action ==
                 Domain::ContextBudgetAction::Checkpoint) {
-                recordCheckpoint(*slot, decision.observedAt);
                 return Domain::Result<
                     Domain::ContinuityAutomationOutcome>::success(
                         std::move(outcome));
@@ -392,7 +376,6 @@ public:
                     std::move(valid));
             }
             outcome.successorActivated = true;
-            recordRollover(*slot, decision.observedAt);
             return Domain::Result<
                 Domain::ContinuityAutomationOutcome>::success(
                     std::move(outcome));
@@ -468,12 +451,6 @@ private:
         std::atomic_bool executing{};
         std::mutex stateMutex;
         std::optional<Domain::OperationId> activeOperationId;
-        std::uint64_t progressCount{};
-        std::uint64_t lastCheckpointCount{};
-        std::uint64_t lastRolloverCount{};
-        std::optional<Domain::MonotonicTimePoint> firstObservedAt;
-        std::optional<Domain::MonotonicTimePoint> lastCheckpointAt;
-        std::optional<Domain::MonotonicTimePoint> lastRolloverAt;
     };
 
     class ProjectExecutionLease final {
@@ -507,7 +484,6 @@ private:
 
     struct TriggerDecision final {
         Domain::ContextBudgetAction action;
-        Domain::MonotonicTimePoint observedAt;
     };
 
     class ActiveCall final {
@@ -538,65 +514,18 @@ private:
     };
 
     [[nodiscard]] TriggerDecision triggerDecision(
-        ProjectSlot& slot,
+        ProjectSlot&,
         const Domain::ContinuityAutomationObservation& observation,
         const Domain::ContextBudgetAction budgetAction) const
     {
-        const auto now = clock_.monotonicNow();
-        if (!slot.firstObservedAt) {
-            slot.firstObservedAt = now;
-        }
-        const auto maximum = (std::numeric_limits<std::uint64_t>::max)();
-        const auto increment =
-            static_cast<std::uint64_t>(observation.completedProgressUnits);
-        slot.progressCount = increment > maximum - slot.progressCount
-            ? maximum
-            : slot.progressCount + increment;
-
         if (budgetAction !=
             Domain::ContextBudgetAction::Normal) {
-            return TriggerDecision{budgetAction, now};
+            return TriggerDecision{budgetAction};
         }
-
-        const auto rolloverAnchor = slot.lastRolloverAt.value_or(
-            *slot.firstObservedAt);
-        const auto checkpointAnchor = slot.lastCheckpointAt.value_or(
-            *slot.firstObservedAt);
-        const bool rolloverDue =
-            slot.progressCount - slot.lastRolloverCount >=
-                policy_.rolloverProgressInterval ||
-            now - rolloverAnchor >=
-                std::chrono::seconds{policy_.rolloverIntervalSeconds};
-        if (rolloverDue) {
-            return TriggerDecision{
-                Domain::ContextBudgetAction::Rollover, now};
-        }
-        const bool checkpointDue = observation.forceCheckpoint ||
-            slot.progressCount - slot.lastCheckpointCount >=
-                policy_.checkpointProgressInterval ||
-            now - checkpointAnchor >=
-                std::chrono::seconds{policy_.checkpointIntervalSeconds};
         return TriggerDecision{
-            checkpointDue ? Domain::ContextBudgetAction::Checkpoint
-                          : Domain::ContextBudgetAction::Normal,
-            now};
-    }
-
-    static void recordCheckpoint(
-        ProjectSlot& slot,
-        const Domain::MonotonicTimePoint observedAt) noexcept
-    {
-        slot.lastCheckpointCount = slot.progressCount;
-        slot.lastCheckpointAt = observedAt;
-    }
-
-    static void recordRollover(
-        ProjectSlot& slot,
-        const Domain::MonotonicTimePoint observedAt) noexcept
-    {
-        recordCheckpoint(slot, observedAt);
-        slot.lastRolloverCount = slot.progressCount;
-        slot.lastRolloverAt = observedAt;
+            observation.forceCheckpoint
+                ? Domain::ContextBudgetAction::Checkpoint
+                : Domain::ContextBudgetAction::Normal};
     }
 
     [[nodiscard]] Domain::Result<void> validateContext(

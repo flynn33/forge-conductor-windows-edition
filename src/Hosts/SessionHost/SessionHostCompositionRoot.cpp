@@ -2,15 +2,14 @@
 
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
+#include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsApplicationPaths.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsAtomicFileStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsContinuityDocumentCodec.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsNativeSessionLedger.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
-#include "ForgeConductor/SessionHost/BoundedLogicalContinuationQueue.h"
 #include "ForgeConductor/SessionHost/ForgeNativeSessionHostAdapter.h"
-#include "ForgeConductor/SessionHost/LocalLogicalSessionTransport.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -543,11 +542,8 @@ public:
             *atomicFileStore_, *hasher_, std::move(primaryRead),
             std::move(primaryWrite), std::move(primaryCreate),
             std::move(backupRead));
-        continuationQueue_ = std::make_unique<
-            NativeSessionHost::BoundedLogicalContinuationQueue>();
         transport_ = std::make_unique<
-            NativeSessionHost::LocalLogicalSessionTransport>(
-            hasher_, *codec_, *continuationQueue_);
+            InfrastructureWindows::LMStudioResponsesTransport>();
         auto adapterId = take(Domain::AdapterId::parse(
             NativeSessionHost::ForgeNativeSessionHostAdapter::
                 AdapterIdentifier));
@@ -622,10 +618,6 @@ public:
         }
         adapter_.reset();
         transport_.reset();
-        if (continuationQueue_) {
-            continuationQueue_->shutdown();
-        }
-        continuationQueue_.reset();
         ledger_.reset();
         codec_.reset();
         atomicFileStore_.reset();
@@ -708,7 +700,7 @@ private:
             {"ledger_records", result.value().records},
             {"maximum_ledger_records", result.value().maximumRecords},
             {"maximum_response_bytes", result.value().maximumResponseBytes},
-            {"pending_continuations", continuationQueue_->pendingCount()}});
+            {"provider_transport", "lmstudio-responses"}});
         return result.value().healthy ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
@@ -734,7 +726,7 @@ private:
             {"completed_without_failures", completedWithoutFailures},
             {"failed_records", report.failed},
             {"inspected_records", report.inspected},
-            {"pending_continuations", continuationQueue_->pendingCount()},
+            {"provider_transport", "lmstudio-responses"},
             {"recovered_records", report.recovered}});
         return completedWithoutFailures ? EXIT_SUCCESS : EXIT_FAILURE;
     }
@@ -773,7 +765,7 @@ private:
             {"ledger_records", hostHealth.value().records},
             {"manager_ipc_available", false},
             {"passed", passed},
-            {"pending_continuations", continuationQueue_->pendingCount()},
+            {"provider_transport", "lmstudio-responses"},
             {"process_bits", sizeof(void*) * 8U}});
         return passed ? EXIT_SUCCESS : EXIT_FAILURE;
     }
@@ -791,9 +783,7 @@ private:
     std::unique_ptr<ExactPathCapabilityIssuer> capabilityIssuer_;
     std::unique_ptr<InfrastructureWindows::WindowsNativeSessionLedger>
         ledger_;
-    std::unique_ptr<NativeSessionHost::BoundedLogicalContinuationQueue>
-        continuationQueue_;
-    std::unique_ptr<NativeSessionHost::LocalLogicalSessionTransport>
+    std::unique_ptr<InfrastructureWindows::LMStudioResponsesTransport>
         transport_;
     std::unique_ptr<NativeSessionHost::ForgeNativeSessionHostAdapter>
         adapter_;

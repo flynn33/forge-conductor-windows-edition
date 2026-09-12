@@ -148,10 +148,18 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityPersistOutcome>
     budgetHandoff(
-        const Domain::ClientId&,
-        std::string_view,
+        const Domain::ClientId& clientId,
+        const std::string_view reason,
         const Domain::OperationContext&) noexcept override
     {
+        ++budgetCalls_;
+        lastBudgetClientId_ = clientId;
+        lastBudgetReason_ = reason;
+        if (automaticOutcome_) {
+            return Domain::Result<
+                Domain::LegacyContinuityPersistOutcome>::success(
+                *automaticOutcome_);
+        }
         return unavailable<Domain::LegacyContinuityPersistOutcome>(message_);
     }
 
@@ -206,6 +214,16 @@ public:
         return automaticCalls_;
     }
 
+    [[nodiscard]] std::size_t budgetCalls() const noexcept
+    {
+        return budgetCalls_;
+    }
+
+    [[nodiscard]] const std::optional<std::string>& lastBudgetReason() const noexcept
+    {
+        return lastBudgetReason_;
+    }
+
     [[nodiscard]] const std::optional<Domain::LegacyContinuityAutomaticRequest>&
     lastAutomaticRequest() const noexcept
     {
@@ -228,6 +246,9 @@ private:
         lastAutomaticRequest_;
     std::optional<Domain::ClientId> lastAutomaticClientId_;
     std::size_t automaticCalls_{};
+    std::optional<Domain::ClientId> lastBudgetClientId_;
+    std::optional<std::string> lastBudgetReason_;
+    std::size_t budgetCalls_{};
 };
 
 class RecordingClientWorkspaceContext final
@@ -557,9 +578,6 @@ void testRuntimeDispatchAndSchemaPolicy()
     continuityAutomation.setSnapshot(
         Domain::ContinuityAutomationStatusSnapshot{
             true,
-            50U,
-            200U,
-            17U,
             true,
             std::optional<std::string>{"automatic-handoff"},
             {root, secondaryRoot}});
@@ -684,15 +702,10 @@ void testRuntimeDispatchAndSchemaPolicy()
          "New chat bootstrap: call context_get over stdio MCP (forge-conductor)."},
         {"auto",
          Json{
-             {"checkpoint_every_tools", 50U},
-             {"handoff_every_tools", 200U},
              {"note",
-              "Forge writes checkpoints and handoffs from tool progress; the model does not have to call session_*."}}}}));
+              "Forge checkpoints lifecycle changes and requests handoff only from measured context pressure."}}}}));
     REQUIRE((forgeStatusPayload.at("auto_continuity") == Json{
         {"enabled", true},
-        {"checkpoint_every_tools", 50U},
-        {"handoff_every_tools", 200U},
-        {"progress_count", 17U},
         {"blocked", true},
         {"handoff_id", "automatic-handoff"},
         {"implicit_roots",
@@ -1727,12 +1740,8 @@ void testRealRouterContinuityIntegration()
         hasher,
         clock,
         Mcp::McpInvocationGuardPolicy{
-            50U,
-            100U,
-            1U,
-            1U,
-            3'600U,
-            3'600U}));
+            2U,
+            3U}));
 
     auto catalog = take(Mcp::McpToolCatalog::create());
     Fakes::RecordingApplicationPathsFake applicationPaths;
@@ -1860,22 +1869,30 @@ void testRealRouterContinuityIntegration()
                 correlation});
     };
 
-    auto progress = invoke("fs_read", R"({"path":"notes.txt"})");
-    REQUIRE(progress);
-    REQUIRE(progress.value().receipt.ok);
-    const auto progressPayload = Json::parse(
-        progress.value().canonicalPayload);
-    REQUIRE(progressPayload.at("auto_continuity") == "handoff");
-    REQUIRE(progressPayload.at("handoff_id") == handoffId.value());
-    REQUIRE(progressPayload.at("handoff_required") == true);
-    REQUIRE(legacyContinuity.automaticCalls() == 1U);
-    REQUIRE(legacyContinuity.lastAutomaticClientId() ==
-            std::optional<Domain::ClientId>{clientId});
-    REQUIRE(legacyContinuity.lastAutomaticRequest().has_value());
-    REQUIRE(legacyContinuity.lastAutomaticRequest()->finalize);
-    REQUIRE(legacyContinuity.lastAutomaticRequest()->inferred.keyFiles ==
-            std::optional<std::vector<std::string>>{
-                {"D:/workspace\\notes.txt"}});
+    auto firstProgress = invoke("fs_read", R"({"path":"notes.txt"})");
+    REQUIRE(firstProgress);
+    REQUIRE(firstProgress.value().receipt.ok);
+    REQUIRE(!Json::parse(firstProgress.value().canonicalPayload).contains(
+        "handoff_required"));
+
+    auto repeatedProgress = invoke("fs_read", R"({"path":"notes.txt"})");
+    REQUIRE(repeatedProgress);
+    REQUIRE(repeatedProgress.value().receipt.ok);
+    const auto repeatedPayload = Json::parse(
+        repeatedProgress.value().canonicalPayload);
+    REQUIRE(repeatedPayload.at("handoff_id") == handoffId.value());
+    REQUIRE(repeatedPayload.at("handoff_required") == true);
+
+    auto blockedLoop = invoke("fs_read", R"({"path":"notes.txt"})");
+    REQUIRE(blockedLoop);
+    REQUIRE(!blockedLoop.value().receipt.ok);
+    REQUIRE(Json::parse(blockedLoop.value().canonicalPayload).at("code") ==
+            "identical_call_loop");
+    REQUIRE(legacyContinuity.automaticCalls() == 0U);
+    REQUIRE(legacyContinuity.budgetCalls() == 2U);
+    REQUIRE(legacyContinuity.lastBudgetReason().has_value());
+    REQUIRE(legacyContinuity.lastBudgetReason()->starts_with(
+        "identical_call_loop"));
 
     auto blockedForgeStatus = invoke("forge_status", "{}");
     REQUIRE(blockedForgeStatus);
@@ -1883,9 +1900,6 @@ void testRealRouterContinuityIntegration()
         blockedForgeStatus.value().canonicalPayload);
     const auto& blockedAutomatic = blockedPayload.at("auto_continuity");
     REQUIRE(blockedAutomatic.at("enabled") == true);
-    REQUIRE(blockedAutomatic.at("checkpoint_every_tools") == 1U);
-    REQUIRE(blockedAutomatic.at("handoff_every_tools") == 1U);
-    REQUIRE(blockedAutomatic.at("progress_count") == 1U);
     REQUIRE(blockedAutomatic.at("blocked") == true);
     REQUIRE(blockedAutomatic.at("handoff_id") == handoffId.value());
     REQUIRE(blockedAutomatic.at("implicit_roots") ==
@@ -1938,7 +1952,6 @@ void testRealRouterContinuityIntegration()
     const auto resumedPayload = Json::parse(
         resumedForgeStatus.value().canonicalPayload);
     const auto& resumedAutomatic = resumedPayload.at("auto_continuity");
-    REQUIRE(resumedAutomatic.at("progress_count") == 0U);
     REQUIRE(resumedAutomatic.at("blocked") == false);
     REQUIRE(resumedAutomatic.at("handoff_id") == handoffId.value());
     REQUIRE(resumedAutomatic.at("implicit_roots") == Json::array(
@@ -1953,7 +1966,7 @@ void testRealRouterContinuityIntegration()
     REQUIRE((finalSnapshot.implicitRoots ==
              std::vector<Domain::PathText>{
                  root, recoveredWorkingDirectory, recoveredKeyFileRoot}));
-    REQUIRE(audit.eventCount() == 5U);
+    REQUIRE(audit.eventCount() == 7U);
 }
 
 } // namespace

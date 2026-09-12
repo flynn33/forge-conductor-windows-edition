@@ -35,6 +35,10 @@ struct NativeBootstrapResponse final {
     std::vector<std::vector<std::byte>> chunks;
     std::int64_t inputTokens{};
     std::int64_t outputTokens{};
+    // The first provider request is a fresh Responses root. Once the tool
+    // bootstrap completes, this is the actual terminal response id used for
+    // later previous_response_id chaining and durable recovery.
+    std::optional<ProviderSessionId> providerResponseId;
 };
 
 // The native ledger intentionally retains only lifecycle identifiers and

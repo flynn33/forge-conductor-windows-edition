@@ -119,6 +119,14 @@ void replaceOne(
     settings.sessionIdleTtl = 23'456s;
     settings.shellTimeout = 119s;
     settings.logLevel = Domain::LogLevel::Critical;
+    settings.localModelHost = "::1";
+    settings.localModelPort = 12'345U;
+    settings.localModelSecure = true;
+    settings.localModelName = "fixture-model";
+    settings.effectiveContextCapacity = 65'536U;
+    settings.nextResponseReserve = 8'192U;
+    settings.handoffReserve = 6'144U;
+    settings.estimationSafetyMargin = 3'072U;
     return settings;
 }
 
@@ -134,6 +142,14 @@ void replaceOne(
     patch.sessionIdleTtl = 8'888s;
     patch.shellTimeout = 77s;
     patch.logLevel = Domain::LogLevel::Debug;
+    patch.localModelHost = "::1";
+    patch.localModelPort = static_cast<std::uint16_t>(12'345U);
+    patch.localModelSecure = true;
+    patch.localModelName = "fixture-model";
+    patch.effectiveContextCapacity = 65'536U;
+    patch.nextResponseReserve = 8'192U;
+    patch.handoffReserve = 6'144U;
+    patch.estimationSafetyMargin = 3'072U;
     return patch;
 }
 
@@ -287,6 +303,11 @@ void testEveryRequestMethodRoundTripsDeterministically()
     REQUIRE(updatePayload.patch.sessionIdleTtl == 8'888s);
     REQUIRE(updatePayload.patch.shellTimeout == 77s);
     REQUIRE(updatePayload.patch.logLevel == Domain::LogLevel::Debug);
+    REQUIRE(updatePayload.patch.localModelHost == "::1");
+    REQUIRE(updatePayload.patch.localModelPort == 12'345U);
+    REQUIRE(updatePayload.patch.localModelSecure == true);
+    REQUIRE(updatePayload.patch.localModelName == "fixture-model");
+    REQUIRE(updatePayload.patch.effectiveContextCapacity == 65'536U);
 }
 
 void testResponseResultAndErrorRoundTrips()
@@ -334,6 +355,14 @@ void testResponseResultAndErrorRoundTrips()
     REQUIRE(settings.sessionIdleTtl == 23'456s);
     REQUIRE(settings.shellTimeout == 119s);
     REQUIRE(settings.logLevel == Domain::LogLevel::Critical);
+    REQUIRE(settings.localModelHost == "::1");
+    REQUIRE(settings.localModelPort == 12'345U);
+    REQUIRE(settings.localModelSecure);
+    REQUIRE(settings.localModelName == "fixture-model");
+    REQUIRE(settings.effectiveContextCapacity == 65'536U);
+    REQUIRE(settings.nextResponseReserve == 8'192U);
+    REQUIRE(settings.handoffReserve == 6'144U);
+    REQUIRE(settings.estimationSafetyMargin == 3'072U);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedSettings)) ==
             settingsFrame);
 
@@ -427,7 +456,7 @@ void testNullOptionalFieldsAreLossless()
         request(Manager::ManagerSettingsUpdateRequest{emptyPatch, false})));
     const auto patchRoot = Json::parse(payloadText(patchFrame));
     const auto& patch = patchRoot.at("params").at("patch");
-    REQUIRE(patch.size() == 9U);
+    REQUIRE(patch.size() == 17U);
     for (const auto& field : patch) REQUIRE(field.is_null());
     const auto decodedPatch = take(
         Manager::ManagerProtocolCodec::decodeRequest(patchFrame));

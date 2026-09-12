@@ -1,0 +1,22 @@
+name: Alpha defect
+description: Report a reproducible Windows Alpha behavior that does not work.
+title: "[Alpha defect] "
+labels: ["alpha:required"]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include the app version, Windows version and the smallest reproduction. Do not include credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Error or evidence
+      description: Relevant error/action/log excerpt; no private tokens or signing keys.
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Primary area
+      options: [GUI, Installer, MCP or tools, Projects or memory, Provider or continuity, Build, Documentation]

@@ -916,108 +916,43 @@ void budgetSourcePrecedenceIsDeterministic()
         Domain::ErrorCodes::InvalidRequest);
 }
 
-void progressAndTimePoliciesTriggerWithoutCallerSelectedActions()
+void normalBudgetNeverTriggersCountOrTimeRollover()
 {
     const auto now = Domain::UtcTimePoint{1'800'000'000s};
-    {
-        Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
-        ScriptedCoordinator coordinator;
-        const Domain::ContinuityAutomationPolicy policy{
-            2U, 4U, 3'600U, 7'200U, 0.20, 0.10};
-        Application::ContinuityAutomation automation{
-            coordinator, clock, policy};
-        const auto handoff = handoffFor(50U, now);
-        auto observation = Domain::ContinuityAutomationObservation{
-            handoff,
-            signalsFor(Domain::ContextBudgetAction::Normal),
-            1U,
-            false};
+    Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
+    ScriptedCoordinator coordinator;
+    Application::ContinuityAutomation automation{coordinator, clock};
+    const auto handoff = handoffFor(50U, now);
+    const Domain::ContinuityAutomationObservation normal{
+        handoff, signalsFor(Domain::ContextBudgetAction::Normal), false};
 
-        const auto first = take(automation.observe(
-            observation,
-            operationContext(clock, 50U, "automation-progress-first")));
-        REQUIRE(first.action == Domain::ContextBudgetAction::Normal);
-        REQUIRE(coordinator.checkpointCalls() == 0U);
-
-        const auto second = take(automation.observe(
-            observation,
-            operationContext(clock, 51U, "automation-progress-checkpoint")));
-        REQUIRE(second.action == Domain::ContextBudgetAction::Checkpoint);
-        REQUIRE(second.checkpointPersisted);
-        REQUIRE(coordinator.checkpointCalls() == 1U);
-
-        observation.completedProgressUnits = 2U;
-        const auto fourth = take(automation.observe(
-            observation,
-            operationContext(clock, 52U, "automation-progress-rollover")));
-        REQUIRE(fourth.action == Domain::ContextBudgetAction::Rollover);
-        REQUIRE(fourth.rolloverRequested);
-        REQUIRE(fourth.successorActivated);
-        REQUIRE(coordinator.checkpointCalls() == 2U);
-        REQUIRE(coordinator.rolloverCalls() == 1U);
-        REQUIRE(coordinator.resumeCalls() == 1U);
+    for (std::uint32_t index = 0U; index < 500U; ++index) {
+        const auto outcome = take(automation.observe(
+            normal,
+            operationContext(clock, 50U + index, "automation-context-only")));
+        REQUIRE(outcome.action == Domain::ContextBudgetAction::Normal);
+        clock.advance(24h);
     }
+    REQUIRE(coordinator.checkpointCalls() == 0U);
+    REQUIRE(coordinator.rolloverCalls() == 0U);
+    REQUIRE(coordinator.resumeCalls() == 0U);
 
-    {
-        Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
-        ScriptedCoordinator coordinator;
-        const Domain::ContinuityAutomationPolicy policy{
-            1'000U, 2'000U, 10U, 20U, 0.20, 0.10};
-        Application::ContinuityAutomation automation{
-            coordinator, clock, policy};
-        const auto handoff = handoffFor(51U, now);
-        const Domain::ContinuityAutomationObservation observation{
-            handoff,
-            signalsFor(Domain::ContextBudgetAction::Normal),
-            0U,
-            false};
+    const Domain::ContinuityAutomationObservation forced{
+        handoff, signalsFor(Domain::ContextBudgetAction::Normal), true};
+    const auto checkpoint = take(automation.observe(
+        forced,
+        operationContext(clock, 600U, "automation-explicit-checkpoint")));
+    REQUIRE(checkpoint.action == Domain::ContextBudgetAction::Checkpoint);
+    REQUIRE(checkpoint.checkpointPersisted);
 
-        REQUIRE(take(automation.observe(
-                    observation,
-                    operationContext(clock, 53U, "automation-time-anchor")))
-                    .action == Domain::ContextBudgetAction::Normal);
-        clock.advance(10s);
-        REQUIRE(take(automation.observe(
-                    observation,
-                    operationContext(clock, 54U, "automation-time-checkpoint")))
-                    .action == Domain::ContextBudgetAction::Checkpoint);
-        clock.advance(10s);
-        const auto rollover = take(automation.observe(
-            observation,
-            operationContext(clock, 55U, "automation-time-rollover")));
-        REQUIRE(rollover.action == Domain::ContextBudgetAction::Rollover);
-        REQUIRE(rollover.successorActivated);
-    }
-
-    {
-        Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
-        ScriptedCoordinator coordinator;
-        const Domain::ContinuityAutomationPolicy invalid{
-            5U, 4U, 10U, 20U, 0.20, 0.10};
-        Application::ContinuityAutomation automation{
-            coordinator, clock, invalid};
-        requireError(
-            automation.observe(
-                Domain::ContinuityAutomationObservation{
-                    handoffFor(52U, now),
-                    signalsFor(Domain::ContextBudgetAction::Normal),
-                    1U,
-                    false},
-                operationContext(clock, 56U, "automation-invalid-policy")),
-            Domain::ErrorCodes::InvalidRequest);
-
-        auto oversized = Domain::ContinuityAutomationObservation{
-            handoffFor(53U, now),
-            signalsFor(Domain::ContextBudgetAction::Normal),
-            Domain::MaximumProgressUnitsPerObservation + 1U,
-            false};
-        Application::ContinuityAutomation bounded{coordinator, clock};
-        requireError(
-            bounded.observe(
-                oversized,
-                operationContext(clock, 57U, "automation-progress-bound")),
-            Domain::ErrorCodes::LimitExceeded);
-    }
+    const Domain::ContinuityAutomationPolicy invalid{0.05, 0.10};
+    Application::ContinuityAutomation invalidAutomation{
+        coordinator, clock, invalid};
+    requireError(
+        invalidAutomation.observe(
+            normal,
+            operationContext(clock, 601U, "automation-invalid-policy")),
+        Domain::ErrorCodes::InvalidRequest);
 }
 
 } // namespace
@@ -1039,8 +974,8 @@ int main()
         std::cout << "PASS continuity_automation.contention_cancellation\n";
         budgetSourcePrecedenceIsDeterministic();
         std::cout << "PASS continuity_automation.budget_source_precedence\n";
-        progressAndTimePoliciesTriggerWithoutCallerSelectedActions();
-        std::cout << "PASS continuity_automation.progress_time_policy\n";
+        normalBudgetNeverTriggersCountOrTimeRollover();
+        std::cout << "PASS continuity_automation.context_only_policy\n";
         std::cout << "SUMMARY passed=8 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;

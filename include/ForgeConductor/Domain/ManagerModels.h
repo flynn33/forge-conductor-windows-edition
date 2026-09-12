@@ -46,6 +46,15 @@ struct ManagerSettings final {
     std::chrono::seconds sessionIdleTtl{14'400};
     std::chrono::seconds shellTimeout{30};
     LogLevel logLevel{LogLevel::Info};
+    std::string localModelHost{"127.0.0.1"};
+    std::uint16_t localModelPort{1234U};
+    bool localModelSecure{};
+    // Empty selects the first loaded LM Studio model.
+    std::string localModelName;
+    std::uint32_t effectiveContextCapacity{32'768U};
+    std::uint32_t nextResponseReserve{4'096U};
+    std::uint32_t handoffReserve{4'096U};
+    std::uint32_t estimationSafetyMargin{2'048U};
 };
 
 struct ManagerSettingsPatch final {
@@ -58,6 +67,15 @@ struct ManagerSettingsPatch final {
     std::optional<std::chrono::seconds> sessionIdleTtl;
     std::optional<std::chrono::seconds> shellTimeout;
     std::optional<LogLevel> logLevel;
+    std::optional<std::string> localModelHost;
+    std::optional<std::uint16_t> localModelPort;
+    std::optional<bool> localModelSecure;
+    // Empty clears the pinned model and restores automatic selection.
+    std::optional<std::string> localModelName;
+    std::optional<std::uint32_t> effectiveContextCapacity;
+    std::optional<std::uint32_t> nextResponseReserve;
+    std::optional<std::uint32_t> handoffReserve;
+    std::optional<std::uint32_t> estimationSafetyMargin;
 };
 
 // One serialized manager settings mutation produces this complete outcome.

@@ -60,6 +60,7 @@ void emptyAndOpenArgumentsParse()
         Host::ManagerProcessArguments::parse({}),
         "parse empty arguments");
     require(!empty.expectedHome.has_value(), "empty input asserted a home");
+    require(!empty.alphaDataRoot.has_value(), "empty input selected an Alpha root");
     require(!empty.openBrowser, "empty input requested a browser");
 
     constexpr std::array<std::wstring_view, 1U> open{L"--open"};
@@ -70,6 +71,35 @@ void emptyAndOpenArgumentsParse()
         !parsedOpen.expectedHome.has_value(),
         "--open unexpectedly asserted a home");
     require(parsedOpen.openBrowser, "--open did not request a browser");
+}
+
+void alphaRootParsesAndConflictsWithHome()
+{
+    constexpr std::array<std::wstring_view, 3U> arguments{
+        L"--open", L"--alpha-root", L"D:\\Forge Alpha\\Disposable"};
+    const auto parsed = take(
+        Host::ManagerProcessArguments::parse(arguments),
+        "parse isolated Alpha root");
+    require(parsed.openBrowser, "Alpha arguments lost --open");
+    require(!parsed.expectedHome, "Alpha arguments asserted production home");
+    require(
+        parsed.alphaDataRoot &&
+            parsed.alphaDataRoot->value() == "D:\\Forge Alpha\\Disposable",
+        "Alpha root was not retained as strict UTF-8");
+
+    constexpr std::array<std::wstring_view, 4U> conflicting{
+        L"--home", L"C:\\Forge", L"--alpha-root", L"D:\\Alpha"};
+    requireError(
+        Host::ManagerProcessArguments::parse(conflicting),
+        Domain::ErrorCodes::InvalidRequest,
+        "production home combined with Alpha root");
+
+    constexpr std::array<std::wstring_view, 4U> duplicate{
+        L"--alpha-root", L"D:\\One", L"--alpha-root", L"D:\\Two"};
+    requireError(
+        Host::ManagerProcessArguments::parse(duplicate),
+        Domain::ErrorCodes::InvalidRequest,
+        "duplicate --alpha-root");
 }
 
 void homeAndOrderParse()
@@ -200,8 +230,8 @@ void malformedUtf16AndBoundsFail()
         Domain::ErrorCodes::LimitExceeded,
         "oversized UTF-8 home");
 
-    constexpr std::array<std::wstring_view, 5U> excessiveArguments{
-        L"--open", L"--open", L"--open", L"--open", L"--open"};
+    constexpr std::array<std::wstring_view, 6U> excessiveArguments{
+        L"--open", L"--open", L"--open", L"--open", L"--open", L"--open"};
     requireError(
         Host::ManagerProcessArguments::parse(excessiveArguments),
         Domain::ErrorCodes::LimitExceeded,
@@ -215,10 +245,11 @@ int main()
     try {
         emptyAndOpenArgumentsParse();
         homeAndOrderParse();
+        alphaRootParsesAndConflictsWithHome();
         unknownDuplicateAndMissingArgumentsFail();
         malformedAndRelativeHomesFail();
         malformedUtf16AndBoundsFail();
-        std::cout << "Manager process argument tests passed: 5 groups\n";
+        std::cout << "Manager process argument tests passed: 6 groups\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "Manager process argument tests failed: "

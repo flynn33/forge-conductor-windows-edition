@@ -201,6 +201,7 @@ void resourceAndConfigurationBoundaries()
 
     auto config = Domain::defaultAppConfig();
     REQUIRE(Domain::validateAppConfig(config));
+    REQUIRE(config.shell.enabled);
     static_assert(Domain::MaximumAppConfigAllowedRootCount == 32U);
     const auto allowedRoot = take(Domain::PathText::create(R"(C:\workspace)"));
     config.allowedRoots.assign(Domain::MaximumAppConfigAllowedRootCount, allowedRoot);
@@ -213,14 +214,34 @@ void resourceAndConfigurationBoundaries()
     REQUIRE(Domain::validateAppConfig(config));
 
     REQUIRE(config.dashboard.host == "127.0.0.1");
+    REQUIRE(config.localModel.host == "127.0.0.1");
+    REQUIRE(config.localModel.port == 1234U);
+    REQUIRE(config.localModel.effectiveContextCapacity == 32'768U);
     Domain::AppConfigPatch patch;
     patch.shellEnabled = false;
     patch.dashboardHost = "::1";
     patch.mcpRole = Domain::McpRole::Fallback;
+    patch.localModelName = "loaded-model";
+    patch.effectiveContextCapacity = 16'384U;
+    patch.nextResponseReserve = 2'048U;
+    patch.handoffReserve = 2'048U;
+    patch.estimationSafetyMargin = 1'024U;
     auto updated = Domain::applyConfigPatch(config, patch);
     REQUIRE(updated);
+    REQUIRE(!updated.value().shell.enabled);
     REQUIRE(updated.value().mcpRole == Domain::McpRole::Fallback);
+    REQUIRE(updated.value().localModel.model ==
+            std::optional<std::string>{"loaded-model"});
+    REQUIRE(updated.value().localModel.effectiveContextCapacity == 16'384U);
+    Domain::AppConfigPatch clearModel;
+    clearModel.localModelName = "";
+    const auto automatic = Domain::applyConfigPatch(updated.value(), clearModel);
+    REQUIRE(automatic);
+    REQUIRE(!automatic.value().localModel.model);
     patch.dashboardHost = "0.0.0.0";
+    REQUIRE(!Domain::applyConfigPatch(config, patch));
+    patch.dashboardHost = "127.0.0.1";
+    patch.effectiveContextCapacity = 4'096U;
     REQUIRE(!Domain::applyConfigPatch(config, patch));
     REQUIRE(Domain::wireName(Domain::LogLevel::Warning) == "warn");
 }
@@ -1446,12 +1467,28 @@ void processToolTelemetryAndManagerBounds()
     REQUIRE(Domain::validateManagerSettings(settings));
     settings.sessionIdleTtl = std::chrono::seconds{14'400};
 
+    settings.localModelHost = "localhost";
+    REQUIRE(!Domain::validateManagerSettings(settings));
+    settings.localModelHost = "::1";
+    settings.localModelPort = 12'345U;
+    settings.localModelName = "loaded-model";
+    settings.effectiveContextCapacity = 65'536U;
+    settings.nextResponseReserve = 8'192U;
+    settings.handoffReserve = 6'144U;
+    settings.estimationSafetyMargin = 3'072U;
+    REQUIRE(Domain::validateManagerSettings(settings));
+    settings.handoffReserve = 60'000U;
+    REQUIRE(!Domain::validateManagerSettings(settings));
+    settings.handoffReserve = 6'144U;
+
     Domain::ManagerSettingsPatch settingsPatch;
     settingsPatch.autoRestart = false;
     settingsPatch.dashboardHost = "::1";
+    settingsPatch.localModelName = "";
     auto patched = Domain::applyManagerSettingsPatch(settings, settingsPatch);
     REQUIRE(patched);
     REQUIRE(!patched.value().autoRestart);
+    REQUIRE(patched.value().localModelName.empty());
     settingsPatch.dashboardHost = "0.0.0.0";
     REQUIRE(!Domain::applyManagerSettingsPatch(settings, settingsPatch));
     settingsPatch.dashboardHost = "localhost";

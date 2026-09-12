@@ -176,6 +176,13 @@ int wmain(const int argumentCount, wchar_t** arguments)
                    ? 0
                    : 4;
     }
+    if (mode == L"--nul") {
+        constexpr char embeddedNul[] = {'a', '\0', 'b'};
+        return writeAll(::GetStdHandle(STD_OUTPUT_HANDLE),
+                        std::string_view{embeddedNul, sizeof(embeddedNul)})
+                   ? 0
+                   : 4;
+    }
     if (mode == L"--utf8-euro") {
         constexpr char value[] = {'A', static_cast<char>(0xe2), static_cast<char>(0x82),
                                   static_cast<char>(0xac)};

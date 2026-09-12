@@ -285,6 +285,49 @@ void rejectSecretFields(const Json& value)
             secondsValue(optionalInteger(*coordinator, "presence_ttl_sec"),
                          configuration.coordinator.presenceTimeToLive);
     }
+    if (const auto* localModel = optionalObject(document, "local_model")) {
+        if (const auto host = optionalString(*localModel, "host")) {
+            configuration.localModel.host = *host;
+        }
+        if (const auto port = optionalInteger(*localModel, "port")) {
+            if (*port <= 0 || *port > 65'535) {
+                reject(Domain::ErrorCodes::InvalidRequest,
+                       "Configuration local model port is outside 1 through 65535.");
+            }
+            configuration.localModel.port = static_cast<std::uint16_t>(*port);
+        }
+        if (const auto secure = optionalBoolean(*localModel, "secure")) {
+            configuration.localModel.secure = *secure;
+        }
+        if (const auto* model = optionalMember(*localModel, "model")) {
+            if (model->is_null()) {
+                configuration.localModel.model.reset();
+            } else if (model->is_string()) {
+                configuration.localModel.model = model->get<std::string>();
+            } else {
+                reject(Domain::ErrorCodes::InvalidRequest,
+                       "Configuration local_model.model must be a string or null.");
+            }
+        }
+        const auto boundedUnsigned = [&](const std::string_view name,
+                                         const std::uint32_t fallback) {
+            const auto value = optionalInteger(*localModel, name);
+            if (!value) return fallback;
+            if (*value <= 0 || *value > 1'048'576) {
+                reject(Domain::ErrorCodes::InvalidRequest,
+                       "Configuration local model context value is outside its bound.");
+            }
+            return static_cast<std::uint32_t>(*value);
+        };
+        configuration.localModel.effectiveContextCapacity = boundedUnsigned(
+            "effective_context_capacity", configuration.localModel.effectiveContextCapacity);
+        configuration.localModel.nextResponseReserve = boundedUnsigned(
+            "next_response_reserve", configuration.localModel.nextResponseReserve);
+        configuration.localModel.handoffReserve = boundedUnsigned(
+            "handoff_reserve", configuration.localModel.handoffReserve);
+        configuration.localModel.estimationSafetyMargin = boundedUnsigned(
+            "estimation_safety_margin", configuration.localModel.estimationSafetyMargin);
+    }
 
     auto valid = Domain::validateAppConfig(configuration);
     if (!valid) {
@@ -340,6 +383,22 @@ void writeKnownConfiguration(Json& document, const Domain::AppConfig& configurat
     coordinator["enabled"] = configuration.coordinator.enabled;
     coordinator["lease_ttl_sec"] = configuration.coordinator.leaseTimeToLive.count();
     coordinator["presence_ttl_sec"] = configuration.coordinator.presenceTimeToLive.count();
+
+    auto& localModel = document["local_model"];
+    if (!localModel.is_object())
+        localModel = Json::object();
+    localModel["host"] = configuration.localModel.host;
+    localModel["port"] = configuration.localModel.port;
+    localModel["secure"] = configuration.localModel.secure;
+    localModel["model"] = configuration.localModel.model
+        ? Json(*configuration.localModel.model) : Json(nullptr);
+    localModel["effective_context_capacity"] =
+        configuration.localModel.effectiveContextCapacity;
+    localModel["next_response_reserve"] =
+        configuration.localModel.nextResponseReserve;
+    localModel["handoff_reserve"] = configuration.localModel.handoffReserve;
+    localModel["estimation_safety_margin"] =
+        configuration.localModel.estimationSafetyMargin;
 }
 
 [[nodiscard]] Json defaultDocument()

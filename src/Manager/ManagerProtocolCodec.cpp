@@ -763,6 +763,14 @@ template <typename Duration>
     value["dashboard_refresh_interval_seconds"] =
         settings.dashboardRefreshInterval.count();
     value["log_level"] = logLevelName(settings.logLevel);
+    value["local_model_host"] = settings.localModelHost;
+    value["local_model_port"] = settings.localModelPort;
+    value["local_model_secure"] = settings.localModelSecure;
+    value["local_model_name"] = settings.localModelName;
+    value["effective_context_capacity"] = settings.effectiveContextCapacity;
+    value["next_response_reserve"] = settings.nextResponseReserve;
+    value["handoff_reserve"] = settings.handoffReserve;
+    value["estimation_safety_margin"] = settings.estimationSafetyMargin;
     value["open_browser_on_start"] = settings.openBrowserOnStart;
     value["session_idle_ttl_seconds"] = settings.sessionIdleTtl.count();
     value["shell_timeout_seconds"] = settings.shellTimeout.count();
@@ -778,7 +786,15 @@ template <typename Duration>
          "dashboard_host",
          "dashboard_port",
          "dashboard_refresh_interval_seconds",
+         "effective_context_capacity",
+         "estimation_safety_margin",
+         "handoff_reserve",
          "log_level",
+         "local_model_host",
+         "local_model_name",
+         "local_model_port",
+         "local_model_secure",
+         "next_response_reserve",
          "open_browser_on_start",
          "session_idle_ttl_seconds",
          "shell_timeout_seconds",
@@ -804,6 +820,16 @@ template <typename Duration>
         positiveIntegerMember(value, "shell_timeout_seconds"),
         "shell_timeout_seconds");
     settings.logLevel = parseLogLevel(stringMember(value, "log_level"));
+    settings.localModelHost = stringMember(value, "local_model_host");
+    settings.localModelPort = uint16Member(value, "local_model_port");
+    settings.localModelSecure = booleanMember(value, "local_model_secure");
+    settings.localModelName = stringMember(value, "local_model_name");
+    settings.effectiveContextCapacity =
+        uint32Member(value, "effective_context_capacity");
+    settings.nextResponseReserve = uint32Member(value, "next_response_reserve");
+    settings.handoffReserve = uint32Member(value, "handoff_reserve");
+    settings.estimationSafetyMargin =
+        uint32Member(value, "estimation_safety_margin");
     validateSettings(settings);
     return settings;
 }
@@ -821,6 +847,26 @@ template <typename Duration>
         optionalDuration(patch.dashboardRefreshInterval);
     value["log_level"] = nullptr;
     if (patch.logLevel) value["log_level"] = logLevelName(*patch.logLevel);
+    value["local_model_host"] = optionalString(patch.localModelHost);
+    value["local_model_name"] = optionalString(patch.localModelName);
+    value["local_model_port"] = nullptr;
+    if (patch.localModelPort) value["local_model_port"] = *patch.localModelPort;
+    value["local_model_secure"] = nullptr;
+    if (patch.localModelSecure) value["local_model_secure"] = *patch.localModelSecure;
+    value["effective_context_capacity"] = nullptr;
+    if (patch.effectiveContextCapacity) {
+        value["effective_context_capacity"] = *patch.effectiveContextCapacity;
+    }
+    value["next_response_reserve"] = nullptr;
+    if (patch.nextResponseReserve) {
+        value["next_response_reserve"] = *patch.nextResponseReserve;
+    }
+    value["handoff_reserve"] = nullptr;
+    if (patch.handoffReserve) value["handoff_reserve"] = *patch.handoffReserve;
+    value["estimation_safety_margin"] = nullptr;
+    if (patch.estimationSafetyMargin) {
+        value["estimation_safety_margin"] = *patch.estimationSafetyMargin;
+    }
     value["open_browser_on_start"] = nullptr;
     if (patch.openBrowserOnStart) {
         value["open_browser_on_start"] = *patch.openBrowserOnStart;
@@ -850,7 +896,15 @@ template <typename Value, typename Parser>
          "dashboard_host",
          "dashboard_port",
          "dashboard_refresh_interval_seconds",
+         "effective_context_capacity",
+         "estimation_safety_margin",
+         "handoff_reserve",
          "log_level",
+         "local_model_host",
+         "local_model_name",
+         "local_model_port",
+         "local_model_secure",
+         "next_response_reserve",
          "open_browser_on_start",
          "session_idle_ttl_seconds",
          "shell_timeout_seconds",
@@ -900,6 +954,28 @@ template <typename Value, typename Parser>
         [](const Json& object, const std::string_view name) {
             return parseLogLevel(stringMember(object, name));
         });
+    patch.localModelHost = optionalField<std::string>(
+        value, "local_model_host",
+        [](const Json& object, const std::string_view name) {
+            return std::string{stringMember(object, name)};
+        });
+    patch.localModelName = optionalField<std::string>(
+        value, "local_model_name",
+        [](const Json& object, const std::string_view name) {
+            return std::string{stringMember(object, name)};
+        });
+    patch.localModelPort = optionalField<std::uint16_t>(
+        value, "local_model_port", uint16Member);
+    patch.localModelSecure = optionalField<bool>(
+        value, "local_model_secure", booleanMember);
+    patch.effectiveContextCapacity = optionalField<std::uint32_t>(
+        value, "effective_context_capacity", uint32Member);
+    patch.nextResponseReserve = optionalField<std::uint32_t>(
+        value, "next_response_reserve", uint32Member);
+    patch.handoffReserve = optionalField<std::uint32_t>(
+        value, "handoff_reserve", uint32Member);
+    patch.estimationSafetyMargin = optionalField<std::uint32_t>(
+        value, "estimation_safety_margin", uint32Member);
     validatePatch(patch);
     return patch;
 }

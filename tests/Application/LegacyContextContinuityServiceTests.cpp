@@ -858,10 +858,8 @@ void statusSummaryMatchesLegacyObservableFields()
     REQUIRE(empty.tools == expectedTools);
     REQUIRE(empty.note ==
             "New chat bootstrap: call context_get over stdio MCP (forge-conductor).");
-    REQUIRE(empty.automatic.checkpointEveryTools == 50U);
-    REQUIRE(empty.automatic.handoffEveryTools == 200U);
     REQUIRE(empty.automatic.note ==
-            "Forge writes checkpoints and handoffs from tool progress; the model does not have to call session_*.");
+            "Forge checkpoints lifecycle changes and requests handoff only from measured context pressure.");
 
     const auto owner = clientId("status-owner");
     fixture.sessions.setSnapshots(

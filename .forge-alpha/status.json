@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "audit_windows_revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+  "current_phase": "P3",
+  "current_issue": "A-08/A-09/A-10 with P4 provider surface started",
+  "branch": "alpha/native-desktop",
+  "base_commit": "14660648599378c85c3cdade5bd44ffe1cded079",
+  "phases": {
+    "P0": "local_foundation_verified_remote_plan_pending",
+    "P1": "runtime_passed_install_acceptance_blocked",
+    "P2": "passed_disposable_workflow",
+    "P3": "implementation_in_progress_live_provider_blocked",
+    "P4": "in_progress_provider_and_navigation",
+    "P5": "engineering_distribution_exists_install_blocked",
+    "P6": "not_started"
+  },
+  "last_build": {
+    "configuration": "Release",
+    "architecture": "x64",
+    "product": "All plus signed engineering distribution",
+    "exit_code": 0,
+    "artifact": "out/dist/engineering-0.9.0.0-20260912-140140/ForgeConductor-0.9.0.0-x64-engineering.msix",
+    "sha256": "8909b08760f5a04d4dfaee087da622060754cc19c253cda3c393ebcb4e19cad2"
+  },
+  "last_test": {
+    "name": "repeated provider settings save/restart smoke plus infrastructure/domain/protocol/controller/continuity/session suites",
+    "configuration": "Debug",
+    "exit_code": 0,
+    "log": "out/alpha-evidence/p3-provider-settings-smoke.log"
+  },
+  "distribution": "out/dist/engineering-0.9.0.0-20260912-140140",
+  "alpha_accepted": false,
+  "blockers": [
+    "LM Studio local server at 127.0.0.1:1234 is not listening, so the required live provider context-forced smoke cannot run.",
+    "Manager-owned ordinary inference/run control is not yet composed to feed real usage observations into ContinuityAutomation.",
+    "Existing current-user central database is schema 9, but available source only defines C001-C007; C008/C009 migration source is required for compatibility.",
+    "MSIX installation requires machine publisher trust; current session lacks elevation (0x80070005), deployment returned 0x800B0109.",
+    "GitHub CLI is not authenticated; remote plan synchronization has not run."
+  ],
+  "next_action": "Compose a Manager-owned Responses run service that feeds real usage to ContinuityAutomation and expose it through typed Manager commands; continue independent P4/P5 if the provider remains offline."
+}

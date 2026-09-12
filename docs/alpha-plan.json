@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-09-10",
+  "goal": "Working internal Windows x64 Alpha",
+  "phases": [
+    {
+      "id": "P0",
+      "title": "Align scope and recover the native build",
+      "milestone": "A0 — Reproducible foundation",
+      "depends": [],
+      "outcome": "One governing Alpha scope and reproducible x64 backend build.",
+      "issues": [
+        "A-01",
+        "A-02"
+      ],
+      "status": "not_started",
+      "document": "docs/implementation/P0.md"
+    },
+    {
+      "id": "P1",
+      "title": "Native GUI and early installer checkpoint",
+      "milestone": "A1 — Native desktop checkpoint",
+      "depends": [
+        "P0"
+      ],
+      "outcome": "A real WinUI app attaches to the manager and installs as an engineering MSIX.",
+      "issues": [
+        "A-03",
+        "A-04"
+      ],
+      "status": "not_started",
+      "document": "docs/implementation/P1.md"
+    },
+    {
+      "id": "P2",
+      "title": "Projects, MCP deployment and useful tools",
+      "milestone": "A2 — Usable local workflow",
+      "depends": [
+        "P1"
+      ],
+      "outcome": "An operator can register a project, deploy MCP, use tools and retain memory.",
+      "issues": [
+        "A-05",
+        "A-06",
+        "A-07"
+      ],
+      "status": "not_started",
+      "document": "docs/implementation/P2.md"
+    },
+    {
+      "id": "P3",
+      "title": "Real provider and context-only continuity",
+      "milestone": "A3 — Real autonomous continuity",
+      "depends": [
+        "P2"
+      ],
+      "outcome": "Real LM Studio inference continues across a context-triggered fresh successor.",
+      "issues": [
+        "A-08",
+        "A-09",
+        "A-10"
+      ],
+      "status": "not_started",
+      "document": "docs/implementation/P3.md"
+    },
+    {
+      "id": "P4",
+      "title": "Complete native pages and maintenance settings",
+      "milestone": "A4 — Complete Alpha GUI",
+      "depends": [
+        "P3"
+      ],
+      "outcome": "All required native surfaces and settings perform real actions.",
+      "issues": [
+        "A-11",
+        "A-12"
+      ],
+      "status": "not_started",
+      "document": "docs/implementation/P4.md"
+    },
+    {
+      "id": "P5",
+      "title": "Finish installed product and operator documentation",
+      "milestone": "A5 — Installer and onboarding",
+      "depends": [
+        "P4"
+      ],
+      "outcome": "A clean Windows installation works without the development checkout.",
+      "issues": [
+        "A-13",
+        "A-14"
+      ],
+      "status": "not_started",
+      "document": "docs/implementation/P5.md"
+    },
+    {
+      "id": "P6",
+      "title": "Run the small Alpha acceptance and hand off",
+      "milestone": "A6 — Working Alpha",
+      "depends": [
+        "P5"
+      ],
+      "outcome": "Required acceptance is recorded and the installer distribution is delivered.",
+      "issues": [
+        "A-15",
+        "A-16"
+      ],
+      "status": "not_started",
+      "document": "docs/implementation/P6.md"
+    }
+  ]
+}
