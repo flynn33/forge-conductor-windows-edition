@@ -2,16 +2,16 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
-  "updated_at_utc": "2026-09-12T21:57:15.641046Z",
+  "updated_at_utc": "2026-09-12T21:58:17.189227Z",
   "current_phase": "R4",
   "current_slice": "R4.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r3-native-workflows",
-    "head": "working R3.2 changes after 63e02740f0c4b4ace3338041e8a856d84d6794f1",
-    "origin_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
-    "github_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
+    "head": "36ef28c4c5e9e67a20c57116f305b63b2412cca3",
+    "origin_main": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4",
+    "github_main": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4",
     "dirty_summary": [
       "R3.1 is committed and pushed to draft PR #14; R3.2 continues on the same phase branch.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
@@ -124,13 +124,13 @@
     },
     "R3": {
       "implementation": "implemented_gates_pending",
-      "delivery": "pr_open",
+      "delivery": "followup_pr_open_after_primary_merge",
       "branch": "alpha/r3-native-workflows",
       "issue_number": 6,
       "milestone_number": 4,
-      "pr_number": 14,
-      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/14",
-      "reviewed_head": null,
+      "pr_number": 15,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/15",
+      "reviewed_head": "36ef28c4c5e9e67a20c57116f305b63b2412cca3",
       "slices": {
         "R3.1": "verified",
         "R3.2": "implemented_native_walkthrough_pending",
@@ -154,7 +154,7 @@
       },
       "documentation_review": null,
       "phase_receipt": ".forge-alpha/phases/R3.md",
-      "last_known_merge": null
+      "last_known_merge": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4"
     },
     "R4": {
       "implementation": "not_started",
