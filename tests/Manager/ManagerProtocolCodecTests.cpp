@@ -127,6 +127,7 @@ void replaceOne(
     settings.nextResponseReserve = 8'192U;
     settings.handoffReserve = 6'144U;
     settings.estimationSafetyMargin = 3'072U;
+    settings.shellEnabled = false;
     return settings;
 }
 
@@ -150,6 +151,7 @@ void replaceOne(
     patch.nextResponseReserve = 8'192U;
     patch.handoffReserve = 6'144U;
     patch.estimationSafetyMargin = 3'072U;
+    patch.shellEnabled = false;
     return patch;
 }
 
@@ -464,6 +466,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
     REQUIRE(updatePayload.patch.localModelSecure == true);
     REQUIRE(updatePayload.patch.localModelName == "fixture-model");
     REQUIRE(updatePayload.patch.effectiveContextCapacity == 65'536U);
+    REQUIRE(updatePayload.patch.shellEnabled == false);
 
     const auto managedStart = take(Manager::ManagerProtocolCodec::decodeRequest(
         take(Manager::ManagerProtocolCodec::encodeRequest(request(
@@ -778,7 +781,7 @@ void testNullOptionalFieldsAreLossless()
         request(Manager::ManagerSettingsUpdateRequest{emptyPatch, false})));
     const auto patchRoot = Json::parse(payloadText(patchFrame));
     const auto& patch = patchRoot.at("params").at("patch");
-    REQUIRE(patch.size() == 17U);
+    REQUIRE(patch.size() == 18U);
     for (const auto& field : patch) REQUIRE(field.is_null());
     const auto decodedPatch = take(
         Manager::ManagerProtocolCodec::decodeRequest(patchFrame));

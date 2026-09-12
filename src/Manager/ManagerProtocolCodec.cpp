@@ -836,6 +836,7 @@ template <typename Duration>
     value["open_browser_on_start"] = settings.openBrowserOnStart;
     value["session_idle_ttl_seconds"] = settings.sessionIdleTtl.count();
     value["shell_timeout_seconds"] = settings.shellTimeout.count();
+    value["shell_enabled"] = settings.shellEnabled;
     value["watchdog_interval_seconds"] = settings.watchdogInterval.count();
     return value;
 }
@@ -859,6 +860,7 @@ template <typename Duration>
          "next_response_reserve",
          "open_browser_on_start",
          "session_idle_ttl_seconds",
+         "shell_enabled",
          "shell_timeout_seconds",
          "watchdog_interval_seconds"},
         "Manager settings");
@@ -881,6 +883,7 @@ template <typename Duration>
     settings.shellTimeout = secondsFrom(
         positiveIntegerMember(value, "shell_timeout_seconds"),
         "shell_timeout_seconds");
+    settings.shellEnabled = booleanMember(value, "shell_enabled");
     settings.logLevel = parseLogLevel(stringMember(value, "log_level"));
     settings.localModelHost = stringMember(value, "local_model_host");
     settings.localModelPort = uint16Member(value, "local_model_port");
@@ -935,6 +938,8 @@ template <typename Duration>
     }
     value["session_idle_ttl_seconds"] = optionalDuration(patch.sessionIdleTtl);
     value["shell_timeout_seconds"] = optionalDuration(patch.shellTimeout);
+    value["shell_enabled"] = nullptr;
+    if (patch.shellEnabled) value["shell_enabled"] = *patch.shellEnabled;
     value["watchdog_interval_seconds"] =
         optionalDuration(patch.watchdogInterval);
     return value;
@@ -969,6 +974,7 @@ template <typename Value, typename Parser>
          "next_response_reserve",
          "open_browser_on_start",
          "session_idle_ttl_seconds",
+         "shell_enabled",
          "shell_timeout_seconds",
          "watchdog_interval_seconds"},
         "Manager settings patch");
@@ -1010,6 +1016,8 @@ template <typename Value, typename Parser>
         [](const Json& object, const std::string_view name) {
             return secondsFrom(positiveIntegerMember(object, name), name);
         });
+    patch.shellEnabled = optionalField<bool>(
+        value, "shell_enabled", booleanMember);
     patch.logLevel = optionalField<Domain::LogLevel>(
         value,
         "log_level",

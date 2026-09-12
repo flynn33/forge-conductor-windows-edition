@@ -210,6 +210,22 @@ void MainWindow::SettingsRestartClicked(Windows::Foundation::IInspectable const&
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsRestart); }
 void MainWindow::MaintenanceResetClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::MaintenanceReset); }
+void MainWindow::OpenProviderClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Provider"); }
+void MainWindow::OpenManagerClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Manager"); }
+
+void MainWindow::SelectPage(const winrt::hstring& tag)
+{
+    for (const auto& value : RootNavigation().MenuItems()) {
+        const auto item = value.try_as<
+            Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+        if (item && unbox_value_or<hstring>(item.Tag(), L"") == tag) {
+            RootNavigation().SelectedItem(item);
+            return;
+        }
+    }
+}
 void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStart); }
 void MainWindow::RunStatusClicked(Windows::Foundation::IInspectable const&,
@@ -410,6 +426,7 @@ MainWindow::ReadSettingsForm(std::string& error)
             numberValue(SettingsSessionTtl(), "Session retention")};
         settings.shellTimeout = std::chrono::seconds{
             numberValue(SettingsShellTimeout(), "Shell timeout")};
+        settings.shellEnabled = SettingsShellEnabled().IsOn();
         const auto logIndex = SettingsLogLevel().SelectedIndex();
         if (logIndex < 0 || logIndex > 5) {
             throw std::invalid_argument{"Select a log detail level."};
@@ -449,6 +466,7 @@ void MainWindow::ApplySettingsForm(
     SettingsOpenBrowser().IsOn(settings.openBrowserOnStart);
     SettingsSessionTtl().Value(static_cast<double>(settings.sessionIdleTtl.count()));
     SettingsShellTimeout().Value(static_cast<double>(settings.shellTimeout.count()));
+    SettingsShellEnabled().IsOn(settings.shellEnabled);
     SettingsLogLevel().SelectedIndex(static_cast<std::int32_t>(settings.logLevel));
     SettingsProviderHost().Text(winrt::to_hstring(settings.localModelHost));
     SettingsProviderPort().Value(settings.localModelPort);
@@ -926,6 +944,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             patch.openBrowserOnStart = submitted->openBrowserOnStart;
             patch.sessionIdleTtl = submitted->sessionIdleTtl;
             patch.shellTimeout = submitted->shellTimeout;
+            patch.shellEnabled = submitted->shellEnabled;
             patch.logLevel = submitted->logLevel;
             patch.localModelHost = submitted->localModelHost;
             patch.localModelPort = submitted->localModelPort;

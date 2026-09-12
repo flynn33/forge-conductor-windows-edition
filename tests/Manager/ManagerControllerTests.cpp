@@ -636,6 +636,7 @@ void lifecycleAndSourceCompatibleStopAreDeterministic()
                 managerSettings.openBrowserOnStart &&
                 managerSettings.sessionIdleTtl == 500s &&
                 managerSettings.shellTimeout == 45s &&
+                managerSettings.shellEnabled &&
                 managerSettings.logLevel == Domain::LogLevel::Warning,
             "Manager settings did not map AppConfig exactly.");
 
@@ -679,6 +680,7 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
     nonbinding.openBrowserOnStart = true;
     nonbinding.sessionIdleTtl = 600s;
     nonbinding.shellTimeout = 50s;
+    nonbinding.shellEnabled = false;
     nonbinding.logLevel = Domain::LogLevel::Debug;
     nonbinding.localModelHost = "::1";
     nonbinding.localModelPort = static_cast<std::uint16_t>(12'345U);
@@ -696,6 +698,7 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
                 nonbindingOutcome.settings.openBrowserOnStart &&
                 nonbindingOutcome.settings.sessionIdleTtl == 600s &&
                 nonbindingOutcome.settings.shellTimeout == 50s &&
+                !nonbindingOutcome.settings.shellEnabled &&
                 nonbindingOutcome.settings.logLevel == Domain::LogLevel::Debug &&
                 nonbindingOutcome.settings.localModelHost == "::1" &&
                 nonbindingOutcome.settings.localModelPort == 12'345U &&
@@ -719,7 +722,8 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
             "Nonbinding settings incorrectly rebound the listener.");
 
     const auto mapped = fixture.store->lastPatch();
-    require(mapped.has_value() && !mapped->allowedRoots && !mapped->shellEnabled &&
+    require(mapped.has_value() && !mapped->allowedRoots &&
+                mapped->shellEnabled == false &&
                 !mapped->mcpRole && !mapped->coordinatorEnabled &&
                 mapped->dashboardRefreshInterval == 13s &&
                 mapped->managerAutoRestart == false &&

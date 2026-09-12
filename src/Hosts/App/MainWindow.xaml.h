@@ -32,6 +32,8 @@ struct MainWindow : MainWindowT<MainWindow> {
     void SettingsTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void MaintenanceResetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OpenProviderClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OpenManagerClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -77,6 +79,7 @@ private:
         const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
     void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
+    void SelectPage(const winrt::hstring& tag);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;

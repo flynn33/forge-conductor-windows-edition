@@ -81,6 +81,7 @@ Result<ManagerSettings> applyManagerSettingsPatch(
     if (patch.estimationSafetyMargin) {
         settings.estimationSafetyMargin = *patch.estimationSafetyMargin;
     }
+    if (patch.shellEnabled) settings.shellEnabled = *patch.shellEnabled;
     auto validated = validateManagerSettings(settings);
     if (!validated) {
         return Result<ManagerSettings>::failure(std::move(validated).error());
