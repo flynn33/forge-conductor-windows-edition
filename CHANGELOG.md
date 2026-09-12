@@ -37,12 +37,19 @@
 - Replaced the Projects placeholder with native registration and stable selection, authorized-folder and storage-health views, full memory records, and persisted exact-ID binding into ordinary runs.
 - Added project-scope fencing for Manager memory responses and focused two-project isolation coverage; a fresh isolated native workflow retained memory after restart without leaking it to the second project.
 - Incorporated `continuous-delivery-repair-2026-09-12` into the adopted execution, Git, closeout, and handoff guidance so phase checkpoints and unavailable inspections do not stop independent R0–R7 work.
+- Added native LM Studio MCP repair/activation, exact tool catalog/invocation, agent/session actions, audit feed, runtime, diagnostics, and Manager pages backed by typed Manager operations.
+
+### R4 — Accessible settings and scoped maintenance
+
+- Replaced the Settings placeholder with labeled native controls for dashboard, Manager lifecycle, LM Studio model discovery, logging, shell policy, session retention, and context rollover thresholds.
+- Added paired context sliders and exact token values, pending-edit revert, provider testing, effective readback after save/restart, and direct links to focused Provider and Manager pages.
+- Added typed Manager maintenance for exact-project memory, continuity, combined project data, and separately confirmed all-project data. Resets reuse transactional repositories, close old project generations, preserve source folders, and report affected counts.
 
 ### Remaining Alpha work
 
-- Complete the remaining R3 operating pages, persistent accessible Settings and scoped reset, installer/data behavior, native visual walkthroughs, and real installed/live acceptance in R3–R7.
+- Complete installer/data behavior, native visual walkthroughs, and real installed/live acceptance in R5–R7.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

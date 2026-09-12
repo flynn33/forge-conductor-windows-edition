@@ -24,6 +24,8 @@ MCP deployment or process execution. A disconnected page offers reconnect, not f
 | Manager | Attach/start/stop/reconnect; persistence/startup preference | Existing manager lifecycle and IPC |
 | Settings | Context capacity/reserve explanation, shell preference, logging, project/global reset | Native configuration/reset services |
 
+R3 replaces required generic destinations with typed project, LM Studio, tool, agent/feed/runtime/diagnostic/Manager surfaces. R4 provides a dedicated Settings panel with effective readback, pending-edit revert, model discovery, explicit shell/startup/logging/session controls, paired context sliders/numeric inputs, and exact-scope maintenance confirmations. Standard WinUI controls carry keyboard focus and accessible names; a real scaled/high-contrast walkthrough remains required before acceptance.
+
 Group related destinations using tabs if useful, but do not omit actions. All pages must use real data through R2–R4.
 When an optional feature is unavailable, say which dependency is missing and give a real recovery action;
 required Alpha features cannot be deferred by showing an unavailable label.
@@ -57,6 +59,6 @@ Use a real Windows interactive session. Check navigation, keyboard focus, window
 One focused native smoke is enough; do not add a large screenshot automation framework. Keep a short result record.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -37,10 +37,18 @@ from starting. Diagnostics identifies them and the appropriate recovery. Do not 
 as identical to macOS bash; document differing command syntax and exit/output behavior.
 
 ## Memory maintenance
-In Settings choose the project and the store to clear. Review the scope before confirmation.
-Project reset clears selected stored memory/continuity state, fences the old session bindings and refreshes the app.
-All-project store clearing is a separate explicit operation. It does not delete your source repositories or silently
-remove provider credentials/foreign MCP servers. Run these actions on disposable projects during acceptance.
+Select the exact project on Projects, then open Settings and choose memory, continuity, or combined project data.
+Type the confirmation text shown for that project ID and choose **Run confirmed reset**. The Manager reports affected
+projects, records, links, and events and closes the old repository generation. **All registered project data** uses the
+separate `RESET ALL PROJECT DATA` confirmation. These operations do not delete source repositories or silently remove
+provider settings or foreign MCP servers. Run them on disposable projects during acceptance.
+
+## Settings
+Use **Load effective settings** before editing. **Save and read back** validates and persists through the Manager,
+then reloads the effective values. **Revert pending edits** restores the last readback. Provider model text may stay
+blank for automatic selection of the first loaded LM Studio model; **Test LM Studio** reports the discovered model.
+Shell-backed tools, logging, telemetry refresh, Manager watchdog/restart/startup behavior, session retention, and the
+context threshold/reserves are all available here. Each context slider has an adjacent exact token input.
 
 ## Troubleshooting
 For a disconnected manager, use reconnect/start and inspect Diagnostics. For a provider failure, save settings first,
@@ -50,6 +58,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

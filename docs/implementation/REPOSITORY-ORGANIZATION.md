@@ -59,6 +59,6 @@ GitHub write permission failure is an administration blocker, not permission to 
 Retain the local plan and list pending remote updates in status; do not invent a successful remote change.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
