@@ -2,9 +2,9 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T15:06:05.3117096Z",
-  "current_phase": "R0",
-  "current_slice": "R0.4",
+  "updated_at_utc": "2026-09-12T15:13:16.5731371Z",
+  "current_phase": "R1",
+  "current_slice": "R1.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
@@ -27,13 +27,13 @@
   "phase_status": {
     "R0": {
       "implementation": "verified",
-      "delivery": "not_started",
+      "delivery": "awaiting_merge",
       "branch": "alpha/r0-reconcile",
       "issue_number": 3,
       "milestone_number": 1,
-      "pr_number": null,
-      "pr_url": null,
-      "reviewed_head": null,
+      "pr_number": 11,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/11",
+      "reviewed_head": "fcdf78761603a9369b172d90425b86c4ddbfb30b",
       "slices": {
         "R0.1": "verified",
         "R0.2": "verified",
@@ -46,8 +46,8 @@
           "evidence": "Package checksums verified (39 entries); current and origin/main trees both bc0f281bb82b5acde57795e36371d98552191832 before R0 edits; migrated JSON and link validation recorded in .forge-alpha/phases/R0.md."
         },
         "R0-G2": {
-          "status": "not_run",
-          "evidence": "Owner flynn33 and push permission verified; branch push and PR creation remain the next delivery transaction."
+          "status": "passed",
+          "evidence": "Authenticated owner flynn33 pushed alpha/r0-reconcile; PR #11 targets main; local, GitHub branch and PR head matched fcdf78761603a9369b172d90425b86c4ddbfb30b. Normal owner merge is pending."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
@@ -55,7 +55,7 @@
       "last_known_merge": null
     },
     "R1": {
-      "implementation": "not_started",
+      "implementation": "in_progress",
       "delivery": "not_started",
       "branch": "alpha/r1-managed-runs",
       "issue_number": 4,
@@ -311,8 +311,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R0 reconciled merged PR #2/main, adopted the replacement package, preserved dirty Forge Qwen runtime evidence, verified owner access, and created milestones 1-8 plus issues 3-10.",
-  "next_action": "Finish the R0 documentation/index validation, push alpha/r0-reconcile, open the R0 PR against main, record its URL, then branch R1.1 and implement the typed Manager-owned ordinary run service.",
+  "last_result": "R0 implementation verified and delivered through PR #11 at reviewed head fcdf78761603a9369b172d90425b86c4ddbfb30b; delivery awaits normal merge.",
+  "next_action": "Create alpha/r1-managed-runs from the reviewed R0 head, read R1 and required Manager/continuity/protocol source, then implement R1.1 typed Manager-owned ordinary run service.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

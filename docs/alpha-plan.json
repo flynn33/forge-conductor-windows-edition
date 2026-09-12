@@ -92,8 +92,8 @@
         "issue_number": 3,
         "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/3",
         "branch": "alpha/r0-reconcile",
-        "pr_number": null,
-        "pr_url": null
+        "pr_number": 11,
+        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/11"
       }
     },
     {

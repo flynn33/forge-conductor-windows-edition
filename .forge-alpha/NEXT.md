@@ -2,9 +2,9 @@
 
 **Plan:** `windows-alpha-recovery-2026-09-12`
 **Repository:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R0.4 closeout; then R1.1
+**Current phase/slice:** R1.1
 **Observed branch / HEAD / origin-main:** `alpha/r0-reconcile` / `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b` before R0 edits / `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b`, observed 2026-09-12
-**Primary phase issue / PR:** [R0 issue #3](https://github.com/flynn33/forge-conductor-windows-edition/issues/3); PR pending the reviewed R0 commit
+**Primary phase issue / PR:** [R0 issue #3](https://github.com/flynn33/forge-conductor-windows-edition/issues/3) / [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11), awaiting normal merge
 **Preserved unrelated work:** modified `.forge-qwen/state/event-ledger.jsonl`, modified `.forge-qwen/state/microtasks.json`, and untracked `.forge-qwen/state/evidence/P01-V/` plus `.forge-qwen/state/scan_microtasks.py`. Ignored backup receipt: `out/alpha-evidence/r0-preservation-20260912T145845Z/`.
 
 ## Latest concrete result
@@ -15,7 +15,7 @@ LM Studio `127.0.0.1:1234` currently refuses TCP connections. The isolated Debug
 
 ## Next exact action
 
-Validate R0 JSON/link/document inventory, stage only R0 paths, commit and push `alpha/r0-reconcile`, open the R0 PR against main, then record the PR URL in the same branch. Immediately create the dependent `alpha/r1-managed-runs` branch from the reviewed R0 head and implement R1.1 in the existing Manager composition: a typed Manager-owned ordinary run service that owns Responses turns and reports real usage/context observations to `ContinuityAutomation`.
+R0 validation, owner push, PR creation and head verification are complete. Create the dependent `alpha/r1-managed-runs` branch from the reviewed R0 head and implement R1.1 in the existing Manager composition: a typed Manager-owned ordinary run service that owns Responses turns and reports real usage/context observations to `ContinuityAutomation`.
 
 Read only `docs/implementation/alpha-recovery/phases/R1.md`, the product contract sections it cites, and the existing Manager/continuity/protocol source needed for that edit.
 
@@ -26,6 +26,6 @@ Read only `docs/implementation/alpha-recovery/phases/R1.md`, the product contrac
 
 ## Phase closeout obligations
 
-R0-G1 must record parsed JSON, resolved phase/slice/gate references, reviewed diff and preservation state. R0-G2 requires owner push, one PR against main and verified remote head. No merge authority is inferred; if the PR awaits owner review, continue R1 on the dependent branch and reconcile it after the actual R0 merge.
+R0-G1 and R0-G2 passed and PR #11 awaits normal merge. R1 requires its focused implementation gates, README/changelog/roadmap/status/plan/cursor updates, a complete active-document review, owner push and its separate PR to main. Continue the dependent R1 branch now; reconcile refreshed main after R0 actually merges.
 
 No reset/reclone, no new profile subsystem, no quota policy, no fake live evidence. Refresh the minimal actual state and continue this slice.
