@@ -221,6 +221,37 @@
      </Border>
     </StackPanel>
 
+    <StackPanel x:Name="LmStudioMcpPanel" Spacing="14" Visibility="Collapsed">
+     <InfoBar IsOpen="True" Severity="Informational" Title="Manager-owned LM Studio integration"
+      Message="Inspection is read-only. Repair writes both Forge registrations while preserving unrelated MCP entries. Activate verifies the registered connectors." />
+     <StackPanel Orientation="Horizontal" Spacing="8">
+      <Button Content="Inspect registration" Click="LmStudioInspectClicked" />
+      <Button Content="Repair registration" Click="LmStudioRepairClicked" />
+      <Button Content="Activate and verify" Click="LmStudioActivateClicked" />
+     </StackPanel>
+     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+      <StackPanel Spacing="8">
+       <TextBlock x:Name="LmStudioRegistrationState" Text="Inspect to read installed registration." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+       <TextBlock x:Name="LmStudioConnectionState" Text="Connected client has not been observed." TextWrapping="Wrap" />
+       <TextBlock x:Name="LmStudioContinuityState" Text="Managed continuity state has not been read." TextWrapping="Wrap" />
+       <TextBlock x:Name="LmStudioPaths" Text="No registration paths loaded." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+      </StackPanel>
+     </Border>
+    </StackPanel>
+
+    <StackPanel x:Name="ToolsPanel" Spacing="14" Visibility="Collapsed">
+     <InfoBar IsOpen="True" Severity="Informational" Title="Native tool workbench"
+      Message="Calls run through the Manager's project authority, canonical catalog, invocation guard and persisted shell preference." />
+     <TextBlock x:Name="ToolsState" Text="Load the catalog to begin." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+     <Button Content="Load tool catalog" HorizontalAlignment="Left" Click="ToolsRefreshClicked" />
+     <TextBlock x:Name="ToolsCatalog" Text="No tools loaded." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+     <TextBox x:Name="ToolProjectId" Header="Project ID" PlaceholderText="Uses the selected Projects identity" />
+     <TextBox x:Name="ToolName" Header="Tool name" PlaceholderText="For example fs_list or git_status" />
+     <TextBox x:Name="ToolArguments" Header="JSON arguments" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" />
+     <Button Content="Run selected tool" HorizontalAlignment="Left" Click="ToolInvokeClicked" />
+     <TextBlock x:Name="ToolOutcome" Text="No tool result." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+    </StackPanel>
+
     <StackPanel x:Name="GenericPanel" Spacing="14" Visibility="Collapsed">
      <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
       <StackPanel Spacing="10">

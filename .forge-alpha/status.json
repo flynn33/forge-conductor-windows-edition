@@ -2,14 +2,14 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
-  "updated_at_utc": "2026-09-12T20:24:23.880348Z",
+  "updated_at_utc": "2026-09-12T20:38:42.834995Z",
   "current_phase": "R3",
-  "current_slice": "R3.2",
+  "current_slice": "R3.3",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r3-native-workflows",
-    "head": "da199521176a338774a5e12bcd58fddddb9cbdce",
+    "head": "working R3.2 changes after 63e02740f0c4b4ace3338041e8a856d84d6794f1",
     "origin_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
     "github_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
     "dirty_summary": [
@@ -133,7 +133,7 @@
       "reviewed_head": null,
       "slices": {
         "R3.1": "verified",
-        "R3.2": "not_started",
+        "R3.2": "implemented_native_walkthrough_pending",
         "R3.3": "not_started",
         "R3.4": "not_started",
         "R3.5": "not_started"
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R3.1 implemented in the native App and Manager: stable project registration/selection, authorized-folder and exact-ID display, persistent memory search/read/write/status, selected-project run binding, and cross-project response fencing. Debug Manager/App builds passed; Manager protocol passed 625 assertions; dispatcher passed 10 groups; a fresh isolated two-project P2 workflow proved distinct identities, no memory leakage, and restart persistence.",
-  "next_action": "Implement R3.2 by extending typed Manager operations and the native LM Studio MCP/Tools pages for real registration status, primary/fallback deploy-inspect-repair actions, tool catalog actions, foreign-entry preservation, and explicit shell preference.",
+  "last_result": "R3.2 source is implemented: typed Manager LM Studio inspect/repair/activate operations preserve foreign MCP entries, expose exact registration and connector verification state, and a native Tools workbench lists the canonical catalog, shows the persisted shell preference, and invokes project-scoped tools through Manager authority.",
+  "next_action": "Implement R3.3 native agent session and attachment workflows using the existing Manager-owned session services, while retaining the consolidated R3 native walkthrough under R3-G2.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

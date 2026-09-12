@@ -44,6 +44,26 @@ struct ProjectWorkspaceView final {
     std::optional<Manager::ManagerProjectWorkspaceSnapshot> snapshot;
 };
 
+enum class LmStudioAction { Inspect, Repair, Activate };
+
+struct LmStudioView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerLmStudioSnapshot> snapshot;
+};
+
+struct ToolsView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerToolsSnapshot> snapshot;
+};
+
+struct ToolOutcomeView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerToolOutcomeSnapshot> snapshot;
+};
+
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
@@ -89,6 +109,15 @@ public:
         std::string summary,
         std::string body,
         std::vector<std::string> tags,
+        std::stop_token cancellation) noexcept = 0;
+    virtual LmStudioView lmStudio(
+        LmStudioAction action,
+        std::stop_token cancellation) noexcept = 0;
+    virtual ToolsView tools(std::stop_token cancellation) noexcept = 0;
+    virtual ToolOutcomeView invokeTool(
+        std::string projectId,
+        std::string toolName,
+        std::string canonicalArguments,
         std::stop_token cancellation) noexcept = 0;
 };
 class ManagerConnection final : public IManagerConnection {
@@ -137,6 +166,15 @@ public:
         std::string summary,
         std::string body,
         std::vector<std::string> tags,
+        std::stop_token cancellation) noexcept override;
+    LmStudioView lmStudio(
+        LmStudioAction action,
+        std::stop_token cancellation) noexcept override;
+    ToolsView tools(std::stop_token cancellation) noexcept override;
+    ToolOutcomeView invokeTool(
+        std::string projectId,
+        std::string toolName,
+        std::string canonicalArguments,
         std::stop_token cancellation) noexcept override;
 private:
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>

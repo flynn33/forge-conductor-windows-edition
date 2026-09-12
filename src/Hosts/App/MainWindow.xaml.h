@@ -37,12 +37,18 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProjectRememberClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void LmStudioInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void LmStudioRepairClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void LmStudioActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ToolsRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ToolInvokeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
-        ProjectList, ProjectRegister, ProjectLoad, ProjectRemember
+        ProjectList, ProjectRegister, ProjectLoad, ProjectRemember,
+        LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke
     };
     winrt::fire_and_forget RunAction(Action action);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
@@ -55,6 +61,8 @@ private:
         const ::ForgeConductor::Manager::ManagerProjectsSnapshot& snapshot);
     void ApplyProjectWorkspace(
         const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
+    void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
+    void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;

@@ -98,6 +98,22 @@ public:
         const Manager::ManagerProjectRememberRequest& request,
         const Domain::OperationContext& context) noexcept;
 
+    [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> lmStudioStatus(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> repairLmStudio(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> activateLmStudio(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerToolsSnapshot> tools(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerToolOutcomeSnapshot> invokeTool(
+        const Manager::ManagerToolInvokeRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
     void shutdown() noexcept override;
 
 private:

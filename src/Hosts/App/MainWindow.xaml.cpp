@@ -208,6 +208,16 @@ void MainWindow::ProjectSearchClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectLoad); }
 void MainWindow::ProjectRememberClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectRemember); }
+void MainWindow::LmStudioInspectClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::LmStudioInspect); }
+void MainWindow::LmStudioRepairClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::LmStudioRepair); }
+void MainWindow::LmStudioActivateClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::LmStudioActivate); }
+void MainWindow::ToolsRefreshClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ToolsList); }
+void MainWindow::ToolInvokeClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ToolInvoke); }
 
 void MainWindow::ProjectSelectionChanged(
     Windows::Foundation::IInspectable const&,
@@ -220,6 +230,7 @@ void MainWindow::ProjectSelectionChanged(
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(SelectedProjectValue, selected);
     RunProjectId().Text(selected);
+    ToolProjectId().Text(selected);
     RunAction(Action::ProjectLoad);
 }
 
@@ -237,12 +248,16 @@ void MainWindow::NavigationChanged(
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
     const bool rig = tag == L"Rig";
     const bool projects = tag == L"Projects";
+    const bool lmStudioMcp = tag == L"LM Studio MCP";
+    const bool tools = tag == L"Tools";
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
     ProjectsPanel().Visibility(projects ? Visibility::Visible : Visibility::Collapsed);
+    LmStudioMcpPanel().Visibility(lmStudioMcp ? Visibility::Visible : Visibility::Collapsed);
+    ToolsPanel().Visibility(tools ? Visibility::Visible : Visibility::Collapsed);
     GenericPanel().Visibility(
-        !provider && !rig && !autonomy && !projects
+        !provider && !rig && !autonomy && !projects && !lmStudioMcp && !tools
             ? Visibility::Visible : Visibility::Collapsed);
     if (provider) {
         PageDescription().Text(L"Configure and test the Manager-owned LM Studio Responses endpoint.");
@@ -254,8 +269,15 @@ void MainWindow::NavigationChanged(
     } else if (tag == L"Projects") {
         PageDescription().Text(L"Register authorized folders, select exact project identities, and read or write persistent project memory.");
         RunAction(Action::ProjectList);
-    } else if (tag == L"Tools" || tag == L"LM Studio MCP") {
-        PageDescription().Text(L"Inspect the Manager-owned native and MCP tool catalog.");
+    } else if (lmStudioMcp) {
+        PageDescription().Text(L"Inspect, repair, activate, and verify the LM Studio MCP registration.");
+        RunAction(Action::LmStudioInspect);
+    } else if (tools) {
+        PageDescription().Text(L"Inspect and run the Manager-owned native tool catalog.");
+        if (!selectedProjectId_.empty()) {
+            ToolProjectId().Text(winrt::to_hstring(selectedProjectId_));
+        }
+        RunAction(Action::ToolsList);
     } else if (tag == L"Events & Evidence" || tag == L"Feed") {
         PageDescription().Text(L"Inspect recent operational activity and measured tool durations.");
     } else if (tag == L"Runtimes") {
@@ -497,6 +519,48 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
     }
 }
 
+void MainWindow::ApplyLmStudio(
+    const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot)
+{
+    const auto installed = snapshot.primaryPluginInstalled &&
+        snapshot.fallbackPluginInstalled && snapshot.mcpConfigurationRegistered &&
+        snapshot.binaryExecutable;
+    LmStudioRegistrationState().Text(winrt::to_hstring(
+        std::string{"Installed registration: "} + (installed ? "complete" : "incomplete") +
+        "\nPrimary: " + (snapshot.primaryPluginInstalled ? "installed" : "missing") +
+        " · Fallback: " + (snapshot.fallbackPluginInstalled ? "installed" : "missing") +
+        " · MCP config: " + (snapshot.mcpConfigurationRegistered ? "registered" : "missing") +
+        "\n" + snapshot.detail + "\n" + snapshot.actionDetail));
+    LmStudioConnectionState().Text(winrt::to_hstring(
+        snapshot.connectionCheckPerformed
+            ? std::string{"Connector verification: primary "} +
+                (snapshot.primaryConnectorReady ? "ready" : "not ready") +
+                ", fallback " + (snapshot.fallbackConnectorReady ? "ready" : "not ready") +
+                ". Connected LM Studio client observed: " +
+                (snapshot.connectedClientObserved ? "yes" : "no") + "."
+            : "Connector verification: not run. Connected LM Studio client observed: no."));
+    LmStudioContinuityState().Text(winrt::to_hstring(
+        "Manager continuity projects active: " +
+        std::to_string(snapshot.managedContinuityProjects)));
+    LmStudioPaths().Text(winrt::to_hstring(
+        "Binary: " + snapshot.binaryPath + "\nPrimary: " + snapshot.primaryPluginPath +
+        "\nFallback: " + snapshot.fallbackPluginPath +
+        "\nConfiguration: " + snapshot.mcpConfigurationPath));
+}
+
+void MainWindow::ApplyTools(
+    const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot)
+{
+    std::string text = "Shell preference: ";
+    text += snapshot.shellEnabled ? "enabled" : "disabled";
+    for (const auto& tool : snapshot.tools) {
+        text += "\n\n" + tool.name + " [" + tool.pack + "]";
+        if (tool.requiresShell) text += " · shell required";
+        text += "\n" + tool.description + "\nSchema: " + tool.inputSchema;
+    }
+    ToolsCatalog().Text(winrt::to_hstring(text));
+}
+
 winrt::fire_and_forget MainWindow::RunAction(const Action action)
 {
     auto lifetime = get_strong();
@@ -509,6 +573,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool projectAction = action == Action::ProjectList ||
         action == Action::ProjectRegister || action == Action::ProjectLoad ||
         action == Action::ProjectRemember;
+    const bool lmStudioAction = action == Action::LmStudioInspect ||
+        action == Action::LmStudioRepair || action == Action::LmStudioActivate;
+    const bool toolsAction = action == Action::ToolsList || action == Action::ToolInvoke;
     std::string runProject;
     std::string runClient;
     std::string runTask;
@@ -521,6 +588,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string memorySummary;
     std::string memoryBody;
     std::vector<std::string> memoryTags;
+    std::string toolProject;
+    std::string toolName;
+    std::string toolArguments;
     if (action == Action::Refresh) {
         runId = winrt::to_string(RunId().Text());
     }
@@ -578,6 +648,15 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
         }
     }
+    if (action == Action::ToolInvoke) {
+        toolProject = winrt::to_string(ToolProjectId().Text());
+        toolName = winrt::to_string(ToolName().Text());
+        toolArguments = winrt::to_string(ToolArguments().Text());
+        if (toolProject.empty() || toolName.empty() || toolArguments.empty()) {
+            ToolsState().Text(L"Project ID, tool name, and JSON arguments are required.");
+            co_return;
+        }
+    }
 
     busy_ = true;
     winrt::apartment_context ui;
@@ -585,6 +664,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         RunState().Text(L"Contacting the Manager…");
     } else if (projectAction) {
         ProjectState().Text(L"Contacting the Manager…");
+    } else if (lmStudioAction) {
+        LmStudioRegistrationState().Text(L"Contacting the Manager…");
+    } else if (toolsAction) {
+        ToolsState().Text(L"Contacting the Manager…");
     } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
         action == Action::ProviderTest) {
         ProviderState().Text(L"Working…");
@@ -599,6 +682,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     ::ForgeConductor::Hosts::App::TelemetryView telemetryView;
     ::ForgeConductor::Hosts::App::ProjectsView projectsView;
     ::ForgeConductor::Hosts::App::ProjectWorkspaceView projectView;
+    ::ForgeConductor::Hosts::App::LmStudioView lmStudioView;
+    ::ForgeConductor::Hosts::App::ToolsView toolsView;
+    ::ForgeConductor::Hosts::App::ToolOutcomeView toolOutcomeView;
     bool failed{};
     try {
         co_await winrt::resume_background();
@@ -686,6 +772,26 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 std::move(memoryTags), cancellation_.get_token());
             message = projectView.message;
             break;
+        case Action::LmStudioInspect:
+        case Action::LmStudioRepair:
+        case Action::LmStudioActivate: {
+            using LmAction = ::ForgeConductor::Hosts::App::LmStudioAction;
+            const auto lmAction = action == Action::LmStudioRepair ? LmAction::Repair :
+                action == Action::LmStudioActivate ? LmAction::Activate : LmAction::Inspect;
+            lmStudioView = connection_->lmStudio(lmAction, cancellation_.get_token());
+            message = lmStudioView.message;
+            break;
+        }
+        case Action::ToolsList:
+            toolsView = connection_->tools(cancellation_.get_token());
+            message = toolsView.message;
+            break;
+        case Action::ToolInvoke:
+            toolOutcomeView = connection_->invokeTool(
+                std::move(toolProject), std::move(toolName), std::move(toolArguments),
+                cancellation_.get_token());
+            message = toolOutcomeView.message;
+            break;
         }
     } catch (const std::exception& exception) {
         message = exception.what();
@@ -725,6 +831,20 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 }
             }
             ProjectState().Text(winrt::to_hstring(message));
+        } else if (lmStudioAction) {
+            if (lmStudioView.snapshot) ApplyLmStudio(*lmStudioView.snapshot);
+            if (!lmStudioView.loaded) {
+                LmStudioRegistrationState().Text(winrt::to_hstring(message));
+            }
+        } else if (toolsAction) {
+            if (toolsView.snapshot) ApplyTools(*toolsView.snapshot);
+            ToolsState().Text(winrt::to_hstring(message));
+            if (toolOutcomeView.snapshot) {
+                ToolOutcome().Text(winrt::to_hstring(
+                    message + "\n" + toolOutcomeView.snapshot->canonicalPayload));
+            } else if (action == Action::ToolInvoke) {
+                ToolOutcome().Text(winrt::to_hstring(message));
+            }
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
             action == Action::ProviderTest) {
             if (action == Action::ProviderLoad && loaded.loaded) {

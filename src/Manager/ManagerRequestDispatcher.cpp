@@ -681,6 +681,221 @@ private:
                 std::move(writtenRecordId)});
     }
 
+    [[nodiscard]] Domain::Result<ManagerLmStudioSnapshot> lmStudioWorkflow(
+        const ManagerRequest& managerRequest,
+        const bool repair,
+        const bool activate,
+        const Domain::OperationContext& context)
+    {
+        const auto& sources = telemetrySources_;
+        if (sources.lmStudioDeployment == nullptr ||
+            sources.lmStudioReadAuthority == nullptr ||
+            sources.lmStudioWriteAuthority == nullptr ||
+            sources.toolAuthorizer == nullptr) {
+            return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "LM Studio workflows are unavailable in this Manager composition."));
+        }
+
+        const Domain::LMStudioDeploymentRequest deploymentRequest{
+            sources.preferredForgeBinary, true};
+        auto inspected = sources.lmStudioDeployment->status(
+            deploymentRequest, *sources.lmStudioReadAuthority, context);
+        if (!inspected) {
+            return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                std::move(inspected).error());
+        }
+
+        std::string actionDetail{"Registration inspected without changing LM Studio."};
+        if (repair) {
+            const auto& authority = *sources.lmStudioWriteAuthority;
+            Domain::ToolCallRequest call{
+                Domain::McpRequestMetadata{
+                    managerRequest.requestId,
+                    context.correlationId,
+                    authority.callerId(),
+                    authority.projectId(),
+                    "2025-11-25"},
+                "install-lmstudio-plugin",
+                "{\"preserve_foreign_entries\":true}"};
+            auto authorized = sources.toolAuthorizer->authorize(
+                Domain::ToolAuthorizationRequest{
+                    call,
+                    Domain::ToolEffect::Write,
+                    Domain::AuthorityReference{
+                        authority.authorityId(), authority.generation()}},
+                authority,
+                context);
+            if (!authorized) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                    std::move(authorized).error());
+            }
+            auto deployed = sources.lmStudioDeployment->deploy(
+                deploymentRequest, authority, authorized.value(), context);
+            if (!deployed) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                    std::move(deployed).error());
+            }
+            actionDetail = deployed.value().message;
+            inspected = sources.lmStudioDeployment->status(
+                deploymentRequest, *sources.lmStudioReadAuthority, context);
+            if (!inspected) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                    std::move(inspected).error());
+            }
+        }
+
+        bool connectionCheckPerformed{};
+        bool primaryReady{};
+        bool fallbackReady{};
+        if (activate) {
+            if (!inspected.value().deploymentId) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
+                    Domain::ErrorCodes::Conflict,
+                    "LM Studio must have a complete Forge Conductor deployment before connector activation."));
+            }
+            const auto& authority = *sources.lmStudioWriteAuthority;
+            const auto deploymentId = *inspected.value().deploymentId;
+            Domain::ToolCallRequest call{
+                Domain::McpRequestMetadata{
+                    managerRequest.requestId,
+                    context.correlationId,
+                    authority.callerId(),
+                    authority.projectId(),
+                    "2025-11-25"},
+                "activate-lmstudio-connectors",
+                "{\"deployment_id\":\"" + deploymentId.value() + "\"}"};
+            auto authorized = sources.toolAuthorizer->authorize(
+                Domain::ToolAuthorizationRequest{
+                    call,
+                    Domain::ToolEffect::Execute,
+                    Domain::AuthorityReference{
+                        authority.authorityId(), authority.generation()}},
+                authority,
+                context);
+            if (!authorized) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                    std::move(authorized).error());
+            }
+            auto activated = sources.lmStudioDeployment->activate(
+                Domain::LMStudioHostActivationRequest{
+                    deploymentId, std::chrono::seconds{20}},
+                authority,
+                authorized.value(),
+                context);
+            if (!activated) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                    std::move(activated).error());
+            }
+            connectionCheckPerformed = true;
+            primaryReady = std::find(
+                activated.value().readyRoles.begin(),
+                activated.value().readyRoles.end(),
+                Domain::LMStudioConnectorRole::Primary) !=
+                activated.value().readyRoles.end();
+            fallbackReady = std::find(
+                activated.value().readyRoles.begin(),
+                activated.value().readyRoles.end(),
+                Domain::LMStudioConnectorRole::Fallback) !=
+                activated.value().readyRoles.end();
+            actionDetail = activated.value().detail;
+        }
+
+        const auto& status = inspected.value();
+        return Domain::Result<ManagerLmStudioSnapshot>::success(
+            ManagerLmStudioSnapshot{
+                status.lmStudioPresent,
+                status.primaryPluginInstalled,
+                status.fallbackPluginInstalled,
+                status.mcpConfigurationRegistered,
+                status.binaryExecutable,
+                status.binaryPath.value(),
+                status.primaryPluginPath.value(),
+                status.fallbackPluginPath.value(),
+                status.mcpConfigurationPath.value(),
+                status.deploymentId,
+                connectionCheckPerformed,
+                primaryReady,
+                fallbackReady,
+                false,
+                sources.continuityAutomation == nullptr
+                    ? 0U
+                    : sources.continuityAutomation->trackedProjectCount(),
+                status.detail,
+                std::move(actionDetail)});
+    }
+
+    [[nodiscard]] Domain::Result<ManagerToolsSnapshot> toolsSnapshot() const
+    {
+        if (telemetrySources_.tools == nullptr) {
+            return Domain::Result<ManagerToolsSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "The native tool catalog is unavailable in this Manager composition."));
+        }
+        const auto catalog = telemetrySources_.tools->tools();
+        if (catalog.size() > 64U) {
+            return Domain::Result<ManagerToolsSnapshot>::failure(error(
+                Domain::ErrorCodes::LimitExceeded,
+                "The native tool catalog exceeds the Manager projection bound."));
+        }
+        ManagerToolsSnapshot snapshot;
+        snapshot.shellEnabled = telemetrySources_.shellEnabled;
+        snapshot.tools.reserve(catalog.size());
+        for (const auto& item : catalog) {
+            snapshot.tools.push_back(ManagerToolDescriptor{
+                item.tool.name,
+                item.tool.description,
+                item.tool.pack,
+                item.tool.effect,
+                item.tool.availability,
+                item.tool.requiresProject,
+                item.tool.requiresShell,
+                item.inputSchema});
+        }
+        return Domain::Result<ManagerToolsSnapshot>::success(std::move(snapshot));
+    }
+
+    [[nodiscard]] Domain::Result<ManagerToolOutcomeSnapshot> invokeTool(
+        const ManagerRequest& managerRequest,
+        const ManagerToolInvokeRequest& request,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.projectWorkspaceAuthority == nullptr ||
+            telemetrySources_.toolRouter == nullptr) {
+            return Domain::Result<ManagerToolOutcomeSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Native tool execution is unavailable in this Manager composition."));
+        }
+        auto authority = telemetrySources_.projectWorkspaceAuthority->authorityFor(
+            request.projectId, context);
+        if (!authority) {
+            return Domain::Result<ManagerToolOutcomeSnapshot>::failure(
+                std::move(authority).error());
+        }
+        Domain::ToolCallRequest call{
+            Domain::McpRequestMetadata{
+                managerRequest.requestId,
+                context.correlationId,
+                authority.value().callerId(),
+                request.projectId,
+                "2025-11-25"},
+            request.toolName,
+            request.canonicalArguments};
+        auto outcome = telemetrySources_.toolRouter->invoke(
+            call, authority.value(), context);
+        if (!outcome) {
+            return Domain::Result<ManagerToolOutcomeSnapshot>::failure(
+                std::move(outcome).error());
+        }
+        return Domain::Result<ManagerToolOutcomeSnapshot>::success(
+            ManagerToolOutcomeSnapshot{
+                request.projectId,
+                request.toolName,
+                outcome.value().receipt.ok,
+                std::move(outcome.value().canonicalPayload),
+                std::move(outcome.value().receipt.error)});
+    }
+
     [[nodiscard]] ManagerResponse dispatchRegular(
         const ManagerRequest& request,
         const Domain::OperationContext& context)
@@ -785,6 +1000,25 @@ private:
                         projectWorkspace(
                             payload.projectId, {}, 20U,
                             remembered.value().recordId, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
+                    return controllerResponse(
+                        request, lmStudioWorkflow(request, false, false, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerLmStudioRepairRequest>) {
+                    return controllerResponse(
+                        request, lmStudioWorkflow(request, true, false, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerLmStudioActivateRequest>) {
+                    return controllerResponse(
+                        request, lmStudioWorkflow(request, false, true, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerToolsRequest>) {
+                    return controllerResponse(request, toolsSnapshot());
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerToolInvokeRequest>) {
+                    return controllerResponse(
+                        request, invokeTool(request, payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                     return controllerResponse(

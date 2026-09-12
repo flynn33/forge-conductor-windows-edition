@@ -391,6 +391,98 @@ ProjectWorkspaceView ManagerConnection::rememberProjectMemory(
     }
 }
 
+LmStudioView ManagerConnection::lmStudio(
+    const LmStudioAction action,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{30});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        Domain::Result<Manager::ManagerLmStudioSnapshot> result =
+            action == LmStudioAction::Repair
+                ? client->repairLmStudio(context)
+                : action == LmStudioAction::Activate
+                    ? client->activateLmStudio(context)
+                    : client->lmStudioStatus(context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        return {true, snapshot.actionDetail, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The LM Studio workflow failed safely.", std::nullopt};
+    }
+}
+
+ToolsView ManagerConnection::tools(
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->tools(context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        auto message = "Loaded " + std::to_string(snapshot.tools.size()) +
+            " Manager-owned tools. Shell preference is " +
+            (snapshot.shellEnabled ? "enabled." : "disabled.");
+        return {true, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The native tool catalog could not be loaded.", std::nullopt};
+    }
+}
+
+ToolOutcomeView ManagerConnection::invokeTool(
+    std::string projectId,
+    std::string toolName,
+    std::string canonicalArguments,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsed = Domain::ProjectId::parse(projectId);
+        if (!parsed) return {false, parsed.error().message, std::nullopt};
+        if (toolName.empty() || canonicalArguments.empty()) {
+            return {false, "Select a tool and provide its JSON arguments.", std::nullopt};
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{30});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->invokeTool(
+            Manager::ManagerToolInvokeRequest{
+                std::move(parsed).value(),
+                std::move(toolName),
+                std::move(canonicalArguments)},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        std::string message = snapshot.ok ? "Tool completed." : "Tool reported failure.";
+        if (snapshot.error) message += " " + snapshot.error->message;
+        return {snapshot.ok, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The native tool invocation failed safely.", std::nullopt};
+    }
+}
+
 ProviderSettingsView ManagerConnection::providerSettings(
     const std::stop_token cancellation) noexcept
 {
