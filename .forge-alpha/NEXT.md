@@ -2,7 +2,7 @@
 
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Repository:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R2.2
+**Current phase/slice:** R2.3
 **Current branch:** `alpha/r2-native-telemetry`
 
 ## Verified state
@@ -14,13 +14,14 @@
 - R0 PR #11 and R1 PR #12 merged; local `main` and `origin/main` were synchronized at `325d0470b8924e5fd6c202abec2b948b8312eb3a` before the R2 branch was created.
 - R2.1 is verified at `53f5835`: 20 Windows CPU/RAM collector checks passed, including real-machine samples; the production Manager stayed alive with the native telemetry graph. DXGI publishes adapter/local-memory capability and explicitly leaves unavailable utilization unset.
 - Draft R2 PR #13 targets `main` from `alpha/r2-native-telemetry`: https://github.com/flynn33/forge-conductor-windows-edition/pull/13. Issue #5 records R2.1 as verified while R2.2-R2.5 and all incomplete gates remain open.
+- R2.2 is verified at `320e006`: the typed Manager protocol and native named-pipe client transport one timestamped operational snapshot, with native resources joined to Manager status/settings, the selected run's authoritative tokens and response ID, context headroom, continuity identity, runtime diagnostics, projects, tools, events and store-read health. The WinUI Rig refresh consumes this typed projection.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 
 ## Exact next actions
 
-1. Implement R2.2 by exposing the existing `ITelemetryService` snapshot through the typed Manager protocol and native client.
-2. Join the native CPU/RAM/process/GPU data with R1's authoritative run/context fields and existing operational events; do not recompute retained context in the GUI.
-3. Build reusable native status, context, and bounded-history controls for R2.3 after the shared snapshot contract is covered.
+1. Implement R2.3 reusable native CPU/RAM history charts, context capacity gauge, operational status cards and continuity/activity timeline from `ManagerTelemetrySnapshot`.
+2. Preserve direct values, units and accessible text for unavailable, stale and error states; leave DXGI utilization absent when unsupported.
+3. Continue directly into the R2.4 Rig dashboard and detail presentation after the reusable controls build and pass focused presentation checks.
 
 ## Open dependencies
 

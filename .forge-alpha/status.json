@@ -2,14 +2,14 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T17:47:08.4435132Z",
+  "updated_at_utc": "2026-09-12T18:07:45.8887810Z",
   "current_phase": "R2",
-  "current_slice": "R2.2",
+  "current_slice": "R2.3",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r2-native-telemetry",
-    "head": "dd02c07dfa9cebc47b16187bcd243aee96dc7f3a",
+    "head": "320e006",
     "origin_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "github_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "dirty_summary": [
@@ -99,7 +99,7 @@
       "reviewed_head": null,
       "slices": {
         "R2.1": "verified",
-        "R2.2": "not_started",
+        "R2.2": "verified",
         "R2.3": "not_started",
         "R2.4": "not_started",
         "R2.5": "not_started"
@@ -107,7 +107,7 @@
       "gates": {
         "R2-G1": {
           "status": "not_run",
-          "evidence": "Partial: 20/20 Windows CPU/RAM mapping, delta, stale, lifecycle and real-machine collector checks passed; production Manager started for four seconds with the native telemetry graph. Snapshot/history tests remain with R2.2/R2.5."
+          "evidence": "Partial: 20/20 Windows CPU/RAM mapping, delta, stale, lifecycle and real-machine collector checks passed; production Manager started with the native telemetry graph. R2.2 added 569 protocol assertions, 9 dispatcher groups, and an authenticated named-pipe snapshot round trip covering stale/unavailable values and authoritative run/context mapping. UI freshness/reset remains R2.5."
         },
         "R2-G2": {
           "status": "not_run",
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R2.1 verified at 53f5835 and exposed in draft PR #13: production native telemetry replaces the unavailable adapter with real GetSystemTimes CPU, GlobalMemoryStatusEx RAM, Manager process metrics, bounded history, and DXGI adapter/memory discovery.",
-  "next_action": "Implement R2.2 typed Manager telemetry snapshot transport that reuses the native service and R1 authoritative run/context fields, then bind it to native view models.",
+  "last_result": "R2.2 verified at 320e006: one typed ManagerTelemetrySnapshot crosses the authenticated native pipe and the WinUI Rig consumes the same resource, run, context, continuity, project, tool, event and store-health values owned by the Manager.",
+  "next_action": "Implement R2.3 reusable native history charts, resource/context gauges, operational status cards and activity timeline from ManagerTelemetrySnapshot.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",
