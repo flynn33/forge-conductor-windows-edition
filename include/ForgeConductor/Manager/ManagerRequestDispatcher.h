@@ -2,6 +2,7 @@
 
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
+#include "ForgeConductor/Contracts/IManagedRunServices.h"
 #include "ForgeConductor/Manager/ManagerProtocolCodec.h"
 #include "ForgeConductor/Manager/ManagerTransportLimits.h"
 
@@ -16,7 +17,8 @@ public:
     ManagerRequestDispatcher(
         std::shared_ptr<Contracts::IManagerController> controller,
         std::shared_ptr<Contracts::IClock> clock,
-        ManagerTransportLimits limits = {});
+        ManagerTransportLimits limits = {},
+        std::shared_ptr<Contracts::IManagedRunService> managedRuns = {});
     ~ManagerRequestDispatcher() noexcept;
 
     ManagerRequestDispatcher(const ManagerRequestDispatcher&) = delete;

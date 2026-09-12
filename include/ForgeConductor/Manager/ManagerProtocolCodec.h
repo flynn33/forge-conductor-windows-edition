@@ -1,10 +1,12 @@
 #pragma once
 
 #include "ForgeConductor/Domain/ManagerModels.h"
+#include "ForgeConductor/Domain/ManagedRunModels.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -33,11 +35,30 @@ struct ManagerShutdownRequest final {
     bool operator==(const ManagerShutdownRequest&) const = default;
 };
 
+struct ManagedRunStartRequest final {
+    Domain::SessionId runId;
+    Domain::ProjectId projectId;
+    Domain::ClientId clientId;
+    std::uint64_t authorityGeneration{};
+    std::string task;
+};
+
+struct ManagedRunStatusRequest final {
+    Domain::SessionId runId;
+};
+
+struct ManagedRunCancelRequest final {
+    Domain::SessionId runId;
+};
+
 using ManagerRequestPayload = std::variant<
     ManagerStatusRequest,
     ManagerSettingsRequest,
     Domain::ManagerControlRequest,
     ManagerSettingsUpdateRequest,
+    ManagedRunStartRequest,
+    ManagedRunStatusRequest,
+    ManagedRunCancelRequest,
     ManagerCancelRequest,
     ManagerShutdownRequest>;
 
@@ -60,6 +81,7 @@ using ManagerResult = std::variant<
     Domain::ManagerStatus,
     Domain::ManagerSettings,
     Domain::ManagerSettingsUpdateOutcome,
+    Domain::ManagedRunSnapshot,
     ManagerAcknowledgement>;
 
 using ManagerResponseBody = std::variant<ManagerResult, Domain::Error>;

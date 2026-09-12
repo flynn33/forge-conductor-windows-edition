@@ -772,6 +772,44 @@ void lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId()
     server.requireHealthy();
 }
 
+void lmStudioResponsesCompletesAnOrdinaryManagedTurn()
+{
+    ResponseScript models{
+        "GET", "/v1/models", 200U,
+        R"({"object":"list","data":[{"id":"fixture-model"}]})"};
+    ResponseScript ordinary{
+        "POST", "/v1/responses", 200U,
+        R"({"id":"resp_ordinary","status":"completed","output_text":"ordinary result","usage":{"input_tokens":12,"output_tokens":4}})"};
+    LoopbackHttpServer server{{models, ordinary}};
+    InfrastructureWindows::LMStudioResponsesTransport transport{
+        responsesConfiguration(server.port())};
+
+    const auto result = take(transport.complete(
+        Domain::ManagedProviderTurnRequest{
+            parse<Domain::ProjectId>(ProjectIdText),
+            parse<Domain::SessionId>(SuccessorSessionIdText),
+            9U,
+            "Perform the selected project task.",
+            std::nullopt},
+        operationContext(
+            "64646464-6464-4464-8464-646464646464", 5s)));
+    REQUIRE(result.responseId.value() == "resp_ordinary");
+    REQUIRE(result.outputText == "ordinary result");
+    REQUIRE(result.inputTokens == 12U);
+    REQUIRE(result.outputTokens == 4U);
+    REQUIRE(result.retainedContextTokens == 16U);
+
+    REQUIRE(server.waitUntilHandled(2U, 5s));
+    const auto requests = server.requests();
+    REQUIRE(requests.size() == 2U);
+    const auto body = Json::parse(requests[1].body);
+    REQUIRE(body.at("model") == "fixture-model");
+    REQUIRE(body.at("input") == "Perform the selected project task.");
+    REQUIRE(body.at("store") == true);
+    REQUIRE(!body.contains("previous_response_id"));
+    server.requireHealthy();
+}
+
 void malformedAndOversizedResponsesFailClosed()
 {
     ResponseScript malformed{
@@ -1059,6 +1097,8 @@ int main()
         std::cout << "PASS winhttp_transport.create_bootstrap_query\n";
         lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId();
         std::cout << "PASS lmstudio_responses.fresh_root_tool_ack\n";
+        lmStudioResponsesCompletesAnOrdinaryManagedTurn();
+        std::cout << "PASS lmstudio_responses.ordinary_managed_turn\n";
         malformedAndOversizedResponsesFailClosed();
         std::cout << "PASS winhttp_transport.response_validation_bounds\n";
         rateLimitUsageAndProviderCancellationAreExact();
@@ -1067,7 +1107,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=7 failed=0 assertions="
+        std::cout << "SUMMARY passed=8 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

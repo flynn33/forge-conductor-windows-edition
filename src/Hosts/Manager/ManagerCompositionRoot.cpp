@@ -19,6 +19,7 @@
 #include "UnavailableTelemetryService.h"
 
 #include "ForgeConductor/Application/AgentCatalog.h"
+#include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
 #include "ForgeConductor/Application/AgentSessionService.h"
 #include "ForgeConductor/Application/ContinuityCoordinator.h"
 #include "ForgeConductor/Application/ContinuityAutomation.h"
@@ -26,6 +27,7 @@
 #include "ForgeConductor/Application/DashboardOperationalService.h"
 #include "ForgeConductor/Application/DashboardTelemetrySource.h"
 #include "ForgeConductor/Application/ManagerController.h"
+#include "ForgeConductor/Application/ManagedRunService.h"
 #include "ForgeConductor/Application/ProjectMemoryRepositoryCache.h"
 #include "ForgeConductor/Dashboard/DashboardStaticAssetStore.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
@@ -463,6 +465,9 @@ private:
         nativeSessionLedger_;
     std::unique_ptr<InfrastructureWindows::LMStudioResponsesTransport>
         nativeSessionTransport_;
+    std::unique_ptr<Application::AgentRepositoryManagedRunStore>
+        managedRunStore_;
+    std::shared_ptr<Application::ManagedRunService> managedRuns_;
     std::unique_ptr<NativeSessionHost::ForgeNativeSessionHostAdapter>
         nativeSessionAdapter_;
     std::unique_ptr<Application::ContinuityCoordinator> continuity_;
@@ -786,6 +791,12 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     nativeSessionTransport_ = std::make_unique<
         InfrastructureWindows::LMStudioResponsesTransport>(
         std::move(providerConfiguration));
+    managedRunStore_ = std::make_unique<
+        Application::AgentRepositoryManagedRunStore>(
+        *agentSessionRepository_,
+        take(Domain::AgentId::parse("forge-managed-run")));
+    managedRuns_ = std::make_shared<Application::ManagedRunService>(
+        *nativeSessionTransport_, *managedRunStore_, *clock_);
     nativeSessionAdapter_ = std::make_unique<
         NativeSessionHost::ForgeNativeSessionHostAdapter>(
         take(Domain::AdapterId::parse(
@@ -1100,7 +1111,10 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
     requireSuccess(managerControllerClient_->bind(managerController_));
     dispatcher_ = std::make_shared<
         ManagerProtocol::ManagerRequestDispatcher>(
-        managerController_, clock_);
+        managerController_,
+        clock_,
+        ManagerProtocol::ManagerTransportLimits{},
+        managedRuns_);
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(
@@ -1293,6 +1307,9 @@ void ManagerCompositionRoot::Impl::shutdownServices(
 
         if (continuityAutomation_) {
             continuityAutomation_->shutdown();
+        }
+        if (managedRuns_) {
+            managedRuns_->shutdown();
         }
         if (continuity_) {
             continuity_->shutdown();

@@ -571,6 +571,91 @@ public:
         }
     }
 
+    [[nodiscard]] Domain::Result<Domain::ManagedProviderTurnResult> complete(
+        const Domain::ManagedProviderTurnRequest& request,
+        const Domain::OperationContext& context) noexcept
+    {
+        try {
+            if (request.authorityGeneration == 0U ||
+                request.input.empty() ||
+                request.input.size() > Domain::MaximumManagedRunTaskBytes ||
+                request.input.find('\0') != std::string::npos ||
+                !Domain::isValidUtf8(request.input)) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The ordinary LM Studio request is invalid.");
+            }
+            auto selected = discoverModel(context);
+            if (!selected) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    selected.error().code,
+                    selected.error().message,
+                    selected.error().retryable);
+            }
+            Json body{
+                {"model", selected.value()},
+                {"input", request.input},
+                {"store", true}};
+            if (request.previousResponseId) {
+                body["previous_response_id"] =
+                    request.previousResponseId->value();
+            }
+            auto response = postResponses(body, context);
+            if (!response) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    response.error().code,
+                    response.error().message,
+                    response.error().retryable);
+            }
+            auto id = responseId(response.value());
+            auto text = outputText(response.value());
+            auto tokenUsage = usage(response.value());
+            if (!id || !text || !tokenUsage) {
+                const auto& error = !id ? id.error()
+                    : !text ? text.error() : tokenUsage.error();
+                return failure<Domain::ManagedProviderTurnResult>(
+                    error.code, error.message, error.retryable);
+            }
+            if (text.value().size() > Domain::MaximumManagedRunOutputBytes ||
+                text.value().find('\0') != std::string::npos ||
+                !Domain::isValidUtf8(text.value())) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    Domain::ErrorCodes::MalformedMessage,
+                    "The ordinary LM Studio response text is invalid.");
+            }
+            auto providerId = Domain::ProviderSessionId::parse(
+                id.value(), 512U);
+            if (!providerId) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    Domain::ErrorCodes::MalformedMessage,
+                    "The ordinary LM Studio response id is invalid.");
+            }
+            const auto input = static_cast<std::uint64_t>(
+                tokenUsage.value().first);
+            const auto output = static_cast<std::uint64_t>(
+                tokenUsage.value().second);
+            const auto maximum =
+                (std::numeric_limits<std::uint64_t>::max)();
+            const auto retained =
+                input > maximum - output ? maximum : input + output;
+            {
+                std::lock_guard lock{stateMutex_};
+                readyResponses_.insert(id.value());
+            }
+            return Domain::Result<
+                Domain::ManagedProviderTurnResult>::success(
+                {std::move(providerId).value(),
+                 std::move(text).value(),
+                 input,
+                 output,
+                 retained});
+        } catch (...) {
+            return failure<Domain::ManagedProviderTurnResult>(
+                Domain::ErrorCodes::InternalFailure,
+                "The ordinary LM Studio request failed safely.");
+        }
+    }
+
     void cancel(
         const Domain::OperationId& operationId,
         const std::optional<Domain::ProviderSessionId>& providerId) noexcept
@@ -985,6 +1070,14 @@ Domain::Result<Domain::HostSessionStatus> LMStudioResponsesTransport::query(
     const Domain::OperationContext& context) noexcept
 {
     return implementation_->query(sessionId, context);
+}
+
+Domain::Result<Domain::ManagedProviderTurnResult>
+LMStudioResponsesTransport::complete(
+    const Domain::ManagedProviderTurnRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    return implementation_->complete(request, context);
 }
 
 void LMStudioResponsesTransport::cancel(

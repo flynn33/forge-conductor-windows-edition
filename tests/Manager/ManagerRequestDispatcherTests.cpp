@@ -349,6 +349,145 @@ private:
     std::vector<std::string> events_;
 };
 
+class FakeManagedRuns final : public Contracts::IManagedRunService {
+public:
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> start(
+        const Domain::ManagedRunStartRequest& requestValue,
+        const Domain::OperationContext& context) noexcept override
+    {
+        ++startCalls;
+        lastStart = requestValue;
+        lastContextOperation = context.operationId;
+        return Domain::Result<Domain::ManagedRunSnapshot>::success(
+            snapshot(requestValue, Domain::ManagedRunState::Running));
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> status(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++statusCalls;
+        return Domain::Result<Domain::ManagedRunSnapshot>::success(
+            snapshotFor(runId, Domain::ManagedRunState::Completed));
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> cancel(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++cancelCalls;
+        auto value = snapshotFor(runId, Domain::ManagedRunState::Cancelling);
+        value.cancellationRequested = true;
+        return Domain::Result<Domain::ManagedRunSnapshot>::success(
+            std::move(value));
+    }
+
+    void shutdown() noexcept override { ++shutdownCalls; }
+
+    std::optional<Domain::ManagedRunStartRequest> lastStart;
+    std::optional<Domain::OperationId> lastContextOperation;
+    std::atomic_size_t startCalls{};
+    std::atomic_size_t statusCalls{};
+    std::atomic_size_t cancelCalls{};
+    std::atomic_size_t shutdownCalls{};
+
+private:
+    [[nodiscard]] static Domain::ManagedRunSnapshot snapshot(
+        const Domain::ManagedRunStartRequest& requestValue,
+        const Domain::ManagedRunState state)
+    {
+        const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
+        return Domain::ManagedRunSnapshot{
+            Domain::ManagedRunRecord{
+                requestValue.runId,
+                requestValue.projectId,
+                requestValue.clientId,
+                requestValue.task,
+                state,
+                std::nullopt,
+                0U,
+                0U,
+                std::nullopt,
+                std::nullopt,
+                std::nullopt,
+                time,
+                time},
+            true,
+            false};
+    }
+
+    [[nodiscard]] static Domain::ManagedRunSnapshot snapshotFor(
+        const Domain::SessionId& runId,
+        const Domain::ManagedRunState state)
+    {
+        return snapshot(
+            Domain::ManagedRunStartRequest{
+                runId,
+                Domain::ProjectId::parse(uuidText(701U)).value(),
+                Domain::ClientId::parse(uuidText(702U)).value(),
+                operationId(703U),
+                correlationId(703U),
+                1U,
+                "fixture managed task"},
+            state);
+    }
+};
+
+void testManagedRunDispatchAndIdentity()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    auto managedRuns = std::make_shared<FakeManagedRuns>();
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller,
+        clock,
+        Manager::ManagerTransportLimits{},
+        managedRuns};
+
+    const auto runId = Domain::SessionId::parse(uuidText(700U)).value();
+    const auto projectId = Domain::ProjectId::parse(uuidText(701U)).value();
+    const auto clientId = Domain::ClientId::parse(uuidText(702U)).value();
+    const auto started = dispatcher.dispatch(request(
+        *clock,
+        70U,
+        Manager::ManagedRunStartRequest{
+            runId, projectId, clientId, 12U, "Inspect this project."}));
+    const auto* startedRun = responseValue<Domain::ManagedRunSnapshot>(started);
+    require(startedRun != nullptr, "managed run start result");
+    require(startedRun->record.runId == runId, "managed run start identity");
+    require(managedRuns->lastStart.has_value(), "managed start forwarding");
+    require(managedRuns->lastStart->projectId == projectId, "managed project forwarding");
+    require(managedRuns->lastStart->clientId == clientId, "managed client forwarding");
+    require(managedRuns->lastStart->authorityGeneration == 12U,
+            "managed authority generation forwarding");
+    require(managedRuns->lastStart->operationId == operationId(70U),
+            "managed operation derives from request id");
+    require(managedRuns->lastStart->correlationId == correlationId(70U),
+            "managed correlation forwarding");
+    require(managedRuns->lastContextOperation == operationId(70U),
+            "managed context operation forwarding");
+
+    const auto status = dispatcher.dispatch(request(
+        *clock, 71U, Manager::ManagedRunStatusRequest{runId}));
+    require(responseValue<Domain::ManagedRunSnapshot>(status) != nullptr,
+            "managed run status result");
+    const auto cancelled = dispatcher.dispatch(request(
+        *clock, 72U, Manager::ManagedRunCancelRequest{runId}));
+    const auto* cancelledRun = responseValue<Domain::ManagedRunSnapshot>(cancelled);
+    require(cancelledRun != nullptr && cancelledRun->cancellationRequested,
+            "managed run cancellation result");
+    require(managedRuns->startCalls == 1U && managedRuns->statusCalls == 1U &&
+            managedRuns->cancelCalls == 1U,
+            "managed run method routing");
+
+    Manager::ManagerRequestDispatcher unavailable{controller, clock};
+    requireError(
+        unavailable.dispatch(request(
+            *clock, 73U, Manager::ManagedRunStatusRequest{runId})),
+        Domain::ErrorCodes::InvalidRequest,
+        "managed run unavailable composition");
+}
+
 void testPayloadMappingAndControllerFailures()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -668,13 +807,14 @@ int main()
 {
     try {
         testPayloadMappingAndControllerFailures();
+        testManagedRunDispatchAndIdentity();
         testDuplicateCapacityAndCancellationBypass();
         testShutdownOrderingAndClosedAdmission();
         testShutdownFailureAndEnvelopeValidation();
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 7 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 8 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

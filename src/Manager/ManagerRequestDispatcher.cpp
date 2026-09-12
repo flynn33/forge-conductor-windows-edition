@@ -79,10 +79,12 @@ public:
     Implementation(
         std::shared_ptr<Contracts::IManagerController> controller,
         std::shared_ptr<Contracts::IClock> clock,
-        ManagerTransportLimits limits)
+        ManagerTransportLimits limits,
+        std::shared_ptr<Contracts::IManagedRunService> managedRuns)
         : controller_{std::move(controller)},
           clock_{std::move(clock)},
-          limits_{std::move(limits)}
+          limits_{std::move(limits)},
+          managedRuns_{std::move(managedRuns)}
     {
         limits_.maximumActiveRegularOperations = (std::min)(
             limits_.maximumActiveRegularOperations,
@@ -232,6 +234,9 @@ public:
     void shutdown() noexcept
     {
         beginShutdown();
+        if (managedRuns_) {
+            managedRuns_->shutdown();
+        }
         static_cast<void>(waitUntilIdle(limits_.shutdownDrainTimeout));
         bool closeController{};
         {
@@ -406,6 +411,51 @@ private:
                     return controllerResponse(
                         request,
                         std::move(outcome));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagedRunStartRequest>) {
+                    if (!managedRuns_) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Managed runs are unavailable in this Manager composition."));
+                    }
+                    return controllerResponse(
+                        request,
+                        managedRuns_->start(
+                            Domain::ManagedRunStartRequest{
+                                payload.runId,
+                                payload.projectId,
+                                payload.clientId,
+                                context.operationId,
+                                context.correlationId,
+                                payload.authorityGeneration,
+                                payload.task},
+                            context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagedRunStatusRequest>) {
+                    if (!managedRuns_) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Managed runs are unavailable in this Manager composition."));
+                    }
+                    return controllerResponse(
+                        request,
+                        managedRuns_->status(payload.runId, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagedRunCancelRequest>) {
+                    if (!managedRuns_) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Managed runs are unavailable in this Manager composition."));
+                    }
+                    return controllerResponse(
+                        request,
+                        managedRuns_->cancel(payload.runId, context));
                 } else {
                     return responseWithError(
                         request,
@@ -450,6 +500,7 @@ private:
     std::shared_ptr<Contracts::IManagerController> controller_;
     std::shared_ptr<Contracts::IClock> clock_;
     ManagerTransportLimits limits_;
+    std::shared_ptr<Contracts::IManagedRunService> managedRuns_;
 
     mutable std::mutex stateMutex_;
     std::condition_variable stateChanged_;
@@ -463,7 +514,8 @@ private:
 ManagerRequestDispatcher::ManagerRequestDispatcher(
     std::shared_ptr<Contracts::IManagerController> controller,
     std::shared_ptr<Contracts::IClock> clock,
-    ManagerTransportLimits limits)
+    ManagerTransportLimits limits,
+    std::shared_ptr<Contracts::IManagedRunService> managedRuns)
 {
     if (!controller) {
         throw std::invalid_argument{
@@ -474,7 +526,10 @@ ManagerRequestDispatcher::ManagerRequestDispatcher(
             "The manager request dispatcher requires a clock."};
     }
     implementation_ = std::make_shared<Implementation>(
-        std::move(controller), std::move(clock), std::move(limits));
+        std::move(controller),
+        std::move(clock),
+        std::move(limits),
+        std::move(managedRuns));
 }
 
 ManagerRequestDispatcher::~ManagerRequestDispatcher() noexcept

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ForgeConductor/Contracts/IManagedRunServices.h"
 #include "ForgeConductor/Contracts/INativeSessionHostServices.h"
 
 #include <chrono>
@@ -27,7 +28,8 @@ struct LMStudioResponsesTransportConfiguration final {
 // services its context_get function call, and returns the actual terminal
 // response id for durable previous_response_id chaining.
 class LMStudioResponsesTransport final
-    : public Contracts::INativeSessionTransport {
+    : public Contracts::INativeSessionTransport,
+      public Contracts::IManagedResponsesTransport {
 public:
     explicit LMStudioResponsesTransport(
         LMStudioResponsesTransportConfiguration configuration = {});
@@ -50,6 +52,10 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::HostSessionStatus> query(
         const Domain::ProviderSessionId& sessionId,
+        const Domain::OperationContext& context) noexcept override;
+
+    [[nodiscard]] Domain::Result<Domain::ManagedProviderTurnResult> complete(
+        const Domain::ManagedProviderTurnRequest& request,
         const Domain::OperationContext& context) noexcept override;
 
     void cancel(
