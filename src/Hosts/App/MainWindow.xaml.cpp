@@ -141,6 +141,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string runTask;
     std::string runId;
     std::uint64_t runGeneration{};
+    if (action == Action::Refresh) {
+        runId = winrt::to_string(RunId().Text());
+    }
     if (action == Action::ProviderSave || action == Action::ProviderTest) {
         std::string error;
         submitted = ReadProviderForm(error);
@@ -183,6 +186,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string message;
     ::ForgeConductor::Hosts::App::ProviderSettingsView loaded;
     ::ForgeConductor::Hosts::App::ManagedRunView runView;
+    ::ForgeConductor::Hosts::App::TelemetryView telemetryView;
     bool failed{};
     try {
         co_await winrt::resume_background();
@@ -191,7 +195,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             message = connection_->start(cancellation_.get_token());
             break;
         case Action::Refresh:
-            message = connection_->refresh(cancellation_.get_token());
+            telemetryView = connection_->telemetry(
+                std::move(runId), cancellation_.get_token());
+            message = telemetryView.message;
             break;
         case Action::Stop:
             message = connection_->control(
@@ -276,6 +282,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
             ProviderState().Text(winrt::to_hstring(message));
         } else {
+            if (action == Action::Refresh && telemetryView.snapshot) {
+                telemetrySnapshot_ = std::move(telemetryView.snapshot);
+            }
             ManagerState().Text(winrt::to_hstring(message));
             GenericState().Text(winrt::to_hstring(message));
         }

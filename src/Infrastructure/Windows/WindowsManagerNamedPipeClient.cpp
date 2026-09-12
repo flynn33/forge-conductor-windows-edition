@@ -193,6 +193,25 @@ public:
             std::move(*settings));
     }
 
+    [[nodiscard]] Domain::Result<Domain::ManagerTelemetrySnapshot> telemetry(
+        const std::optional<Domain::SessionId>& runId,
+        const Domain::OperationContext& context) noexcept
+    {
+        auto result = exchange(Manager::ManagerTelemetryRequest{runId}, context);
+        if (!result) {
+            return failure<Domain::ManagerTelemetrySnapshot>(
+                std::move(result).error());
+        }
+        auto* snapshot =
+            std::get_if<Domain::ManagerTelemetrySnapshot>(&result.value());
+        if (snapshot == nullptr) {
+            return failure<Domain::ManagerTelemetrySnapshot>(
+                wrongResponseTypeError());
+        }
+        return Domain::Result<Domain::ManagerTelemetrySnapshot>::success(
+            std::move(*snapshot));
+    }
+
     [[nodiscard]] Domain::Result<Domain::ManagerStatus> control(
         const Domain::ManagerControlRequest& request,
         const Domain::OperationContext& context) noexcept
@@ -875,6 +894,19 @@ WindowsManagerNamedPipeClient::cancelManagedRun(
     return implementation
         ? implementation->managedRun(Manager::ManagedRunCancelRequest{runId}, context)
         : failure<Domain::ManagedRunSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Domain::ManagerTelemetrySnapshot>
+WindowsManagerNamedPipeClient::telemetry(
+    const std::optional<Domain::SessionId>& runId,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->telemetry(runId, context)
+        : failure<Domain::ManagerTelemetrySnapshot>(clientError(
               Domain::ErrorCodes::TransportClosed,
               "The manager client transport is unavailable."));
 }

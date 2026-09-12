@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <cmath>
 #include <cstring>
 #include <initializer_list>
 #include <limits>
@@ -1209,6 +1211,12 @@ void validateSettingsUpdateOutcome(
                 method = "manager.status";
             } else if constexpr (std::is_same_v<Payload, ManagerSettingsRequest>) {
                 method = "manager.settings";
+            } else if constexpr (std::is_same_v<Payload, ManagerTelemetryRequest>) {
+                method = "manager.telemetry";
+                params["run_id"] = nullptr;
+                if (payload.runId) {
+                    params["run_id"] = payload.runId->value();
+                }
             } else if constexpr (
                 std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                 method = "manager.control";
@@ -1292,6 +1300,15 @@ void validateSettingsUpdateOutcome(
     } else if (method == "manager.settings") {
         requireExactFields(params, {}, "manager.settings params");
         payload = ManagerSettingsRequest{};
+    } else if (method == "manager.telemetry") {
+        requireExactFields(params, {"run_id"}, "manager.telemetry params");
+        payload = ManagerTelemetryRequest{
+            optionalField<Domain::SessionId>(
+                params,
+                "run_id",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::SessionId>(object, name);
+                })};
     } else if (method == "manager.control") {
         requireExactFields(params, {"action"}, "manager.control params");
         payload = Domain::ManagerControlRequest{
@@ -1516,6 +1533,636 @@ void validateSettingsUpdateOutcome(
         booleanMember(value, "pause_requested")};
 }
 
+[[nodiscard]] double doubleMember(
+    const Json& value,
+    const std::string_view name)
+{
+    const auto& field = member(value, name);
+    if (!field.is_number()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            std::string{name} + " must be a number.");
+    }
+    const auto number = field.get<double>();
+    if (!std::isfinite(number)) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            std::string{name} + " must be finite.");
+    }
+    return number;
+}
+
+[[nodiscard]] std::size_t sizeMember(
+    const Json& value,
+    const std::string_view name)
+{
+    const auto number = uint64Member(value, name);
+    if (number > (std::numeric_limits<std::size_t>::max)()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            std::string{name} + " exceeds the platform size range.");
+    }
+    return static_cast<std::size_t>(number);
+}
+
+[[nodiscard]] Domain::TelemetryMetricAvailability parseMetricAvailability(
+    const std::string_view value)
+{
+    if (value == "available") {
+        return Domain::TelemetryMetricAvailability::Available;
+    }
+    if (value == "warming_up") {
+        return Domain::TelemetryMetricAvailability::WarmingUp;
+    }
+    if (value == "unsupported") {
+        return Domain::TelemetryMetricAvailability::Unsupported;
+    }
+    if (value == "temporarily_unavailable") {
+        return Domain::TelemetryMetricAvailability::TemporarilyUnavailable;
+    }
+    if (value == "access_denied") {
+        return Domain::TelemetryMetricAvailability::AccessDenied;
+    }
+    reject(
+        Domain::ErrorCodes::InvalidRequest,
+        "Telemetry metric availability is unknown.");
+}
+
+template <typename T>
+[[nodiscard]] Json telemetryMetricJson(const Domain::TelemetryMetric<T>& metric)
+{
+    const auto valid = Domain::validateTelemetryMetric(metric);
+    if (!valid) {
+        reject(valid.error().code, valid.error().message);
+    }
+    Json value = Json::object();
+    value["availability"] = Domain::telemetryMetricAvailabilityName(
+        metric.availability);
+    value["captured_at_utc_ms"] = metric.capturedAt
+        ? Json(epochMilliseconds(*metric.capturedAt))
+        : Json(nullptr);
+    value["observed_at_utc_ms"] = metric.observedAt
+        ? Json(epochMilliseconds(*metric.observedAt))
+        : Json(nullptr);
+    value["source"] = metric.source;
+    value["stale"] = metric.stale;
+    value["unavailable_reason"] = optionalString(metric.unavailableReason);
+    value["value"] = metric.value ? Json(*metric.value) : Json(nullptr);
+    return value;
+}
+
+template <typename T, typename Parser>
+[[nodiscard]] Domain::TelemetryMetric<T> parseTelemetryMetric(
+    const Json& value,
+    const std::string_view schema,
+    Parser&& parser)
+{
+    requireExactFields(
+        value,
+        {"availability", "captured_at_utc_ms", "observed_at_utc_ms", "source",
+         "stale", "unavailable_reason", "value"},
+        schema);
+    std::optional<T> parsedValue;
+    if (!member(value, "value").is_null()) {
+        parsedValue = parser(value, "value");
+    }
+    const auto capturedAt = optionalField<Domain::UtcTimePoint>(
+        value,
+        "captured_at_utc_ms",
+        [](const Json& object, const std::string_view name) {
+            return utcTimePointFromMilliseconds(
+                nonnegativeIntegerMember(object, name));
+        });
+    const auto observedAt = optionalField<Domain::UtcTimePoint>(
+        value,
+        "observed_at_utc_ms",
+        [](const Json& object, const std::string_view name) {
+            return utcTimePointFromMilliseconds(
+                nonnegativeIntegerMember(object, name));
+        });
+    const auto reason = optionalField<std::string>(
+        value,
+        "unavailable_reason",
+        [](const Json& object, const std::string_view name) {
+            return stringMember(object, name);
+        });
+    Domain::TelemetryMetric<T> metric{
+        std::move(parsedValue),
+        parseMetricAvailability(stringMember(value, "availability")),
+        booleanMember(value, "stale"),
+        capturedAt,
+        observedAt,
+        stringMember(value, "source"),
+        reason};
+    const auto valid = Domain::validateTelemetryMetric(metric);
+    if (!valid) {
+        reject(valid.error().code, valid.error().message);
+    }
+    return metric;
+}
+
+[[nodiscard]] std::string_view telemetryHealthName(
+    const Domain::TelemetryHealth health)
+{
+    switch (health) {
+    case Domain::TelemetryHealth::Ok: return "ok";
+    case Domain::TelemetryHealth::Warn: return "warn";
+    case Domain::TelemetryHealth::Error: return "error";
+    case Domain::TelemetryHealth::Down: return "down";
+    case Domain::TelemetryHealth::Config: return "config";
+    }
+    reject(Domain::ErrorCodes::InvalidRequest, "Telemetry health is unknown.");
+}
+
+[[nodiscard]] Domain::TelemetryHealth parseTelemetryHealth(
+    const std::string_view value)
+{
+    if (value == "ok") return Domain::TelemetryHealth::Ok;
+    if (value == "warn") return Domain::TelemetryHealth::Warn;
+    if (value == "error") return Domain::TelemetryHealth::Error;
+    if (value == "down") return Domain::TelemetryHealth::Down;
+    if (value == "config") return Domain::TelemetryHealth::Config;
+    reject(Domain::ErrorCodes::InvalidRequest, "Telemetry health is unknown.");
+}
+
+[[nodiscard]] std::string_view pressureName(
+    const Domain::ResourcePressureLevel pressure)
+{
+    switch (pressure) {
+    case Domain::ResourcePressureLevel::Nominal: return "nominal";
+    case Domain::ResourcePressureLevel::Warning: return "warning";
+    case Domain::ResourcePressureLevel::Critical: return "critical";
+    }
+    reject(Domain::ErrorCodes::InvalidRequest, "Resource pressure is unknown.");
+}
+
+[[nodiscard]] Domain::ResourcePressureLevel parsePressure(
+    const std::string_view value)
+{
+    if (value == "nominal") return Domain::ResourcePressureLevel::Nominal;
+    if (value == "warning") return Domain::ResourcePressureLevel::Warning;
+    if (value == "critical") return Domain::ResourcePressureLevel::Critical;
+    reject(Domain::ErrorCodes::InvalidRequest, "Resource pressure is unknown.");
+}
+
+[[nodiscard]] Json gpuJson(const Domain::GpuMetrics& gpu)
+{
+    return Json{
+        {"dedicated_bytes_total", gpu.dedicatedBytesTotal},
+        {"dedicated_bytes_used", gpu.dedicatedBytesUsed},
+        {"direct3d_available", gpu.direct3dAvailable},
+        {"name", gpu.name},
+        {"shared_bytes_used", gpu.sharedBytesUsed},
+        {"utilization_percent", gpu.utilizationPercent},
+        {"vendor", gpu.vendor}};
+}
+
+[[nodiscard]] Domain::GpuMetrics parseGpu(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"dedicated_bytes_total", "dedicated_bytes_used", "direct3d_available",
+         "name", "shared_bytes_used", "utilization_percent", "vendor"},
+        "Manager GPU telemetry");
+    return Domain::GpuMetrics{
+        stringMember(value, "vendor"),
+        stringMember(value, "name"),
+        optionalField<double>(value, "utilization_percent", doubleMember),
+        optionalField<std::uint64_t>(value, "dedicated_bytes_used", uint64Member),
+        optionalField<std::uint64_t>(value, "dedicated_bytes_total", uint64Member),
+        optionalField<std::uint64_t>(value, "shared_bytes_used", uint64Member),
+        booleanMember(value, "direct3d_available")};
+}
+
+[[nodiscard]] Json processJson(const Domain::ProcessMetrics& process)
+{
+    return Json{
+        {"cpu_percent", process.cpuPercent},
+        {"handle_count", process.handleCount},
+        {"name", process.name},
+        {"private_bytes", process.privateBytes},
+        {"process_id", process.processId},
+        {"source", process.source},
+        {"thread_count", process.threadCount},
+        {"working_set_bytes", process.workingSetBytes}};
+}
+
+[[nodiscard]] Domain::ProcessMetrics parseProcess(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"cpu_percent", "handle_count", "name", "private_bytes", "process_id",
+         "source", "thread_count", "working_set_bytes"},
+        "Manager process telemetry");
+    return Domain::ProcessMetrics{
+        uint32Member(value, "process_id"),
+        stringMember(value, "name"),
+        doubleMember(value, "cpu_percent"),
+        uint64Member(value, "working_set_bytes"),
+        uint64Member(value, "private_bytes"),
+        uint32Member(value, "thread_count"),
+        uint32Member(value, "handle_count"),
+        stringMember(value, "source")};
+}
+
+[[nodiscard]] Json historyJson(const Domain::HistoryPoint& point)
+{
+    return Json{
+        {"cpu_percent", point.cpuPercent},
+        {"disk_bytes_per_second", point.diskBytesPerSecond},
+        {"gpu_percent", point.gpuPercent},
+        {"mcp_events", point.mcpEvents},
+        {"orchestration_health", telemetryHealthName(point.orchestrationHealth)},
+        {"ram_percent", point.ramPercent},
+        {"timestamp_utc_ms", epochMilliseconds(point.timestamp)}};
+}
+
+[[nodiscard]] Domain::HistoryPoint parseHistory(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"cpu_percent", "disk_bytes_per_second", "gpu_percent", "mcp_events",
+         "orchestration_health", "ram_percent", "timestamp_utc_ms"},
+        "Manager telemetry history point");
+    return Domain::HistoryPoint{
+        utcTimePointFromMilliseconds(
+            nonnegativeIntegerMember(value, "timestamp_utc_ms")),
+        doubleMember(value, "cpu_percent"),
+        doubleMember(value, "ram_percent"),
+        optionalField<double>(value, "gpu_percent", doubleMember),
+        doubleMember(value, "disk_bytes_per_second"),
+        sizeMember(value, "mcp_events"),
+        parseTelemetryHealth(stringMember(value, "orchestration_health"))};
+}
+
+[[nodiscard]] Json resourceSnapshotJson(
+    const Domain::ManagerResourceSnapshot& snapshot)
+{
+    Json gpus = Json::array();
+    for (const auto& gpu : snapshot.gpus) gpus.push_back(gpuJson(gpu));
+    Json processes = Json::array();
+    for (const auto& process : snapshot.processes) {
+        processes.push_back(processJson(process));
+    }
+    Json history = Json::array();
+    for (const auto& point : snapshot.history) {
+        history.push_back(historyJson(point));
+    }
+    return Json{
+        {"architecture", snapshot.architecture},
+        {"captured_at_utc_ms", epochMilliseconds(snapshot.capturedAt)},
+        {"cpu_percent", telemetryMetricJson(snapshot.cpuPercent)},
+        {"gpus", std::move(gpus)},
+        {"history", std::move(history)},
+        {"host", snapshot.host},
+        {"platform", snapshot.platform},
+        {"processes", std::move(processes)},
+        {"ram_available_bytes", telemetryMetricJson(snapshot.ramAvailableBytes)},
+        {"ram_percent", telemetryMetricJson(snapshot.ramPercent)},
+        {"ram_total_bytes", telemetryMetricJson(snapshot.ramTotalBytes)},
+        {"ram_used_bytes", telemetryMetricJson(snapshot.ramUsedBytes)}};
+}
+
+[[nodiscard]] Domain::ManagerResourceSnapshot parseResourceSnapshot(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"architecture", "captured_at_utc_ms", "cpu_percent", "gpus", "history",
+         "host", "platform", "processes", "ram_available_bytes", "ram_percent",
+         "ram_total_bytes", "ram_used_bytes"},
+        "Manager resource telemetry");
+    const auto parseDoubleMetric = [](const Json& metric, const std::string_view schema) {
+        return parseTelemetryMetric<double>(metric, schema, doubleMember);
+    };
+    const auto parseUnsignedMetric = [](const Json& metric, const std::string_view schema) {
+        return parseTelemetryMetric<std::uint64_t>(metric, schema, uint64Member);
+    };
+    const auto& gpuValues = member(value, "gpus");
+    const auto& processValues = member(value, "processes");
+    const auto& historyValues = member(value, "history");
+    if (!gpuValues.is_array() || !processValues.is_array() ||
+        !historyValues.is_array()) {
+        reject(Domain::ErrorCodes::InvalidRequest,
+               "Manager resource telemetry collections must be arrays.");
+    }
+    if (gpuValues.size() > 64U || processValues.size() > 4'096U ||
+        historyValues.size() > 7'200U) {
+        reject(Domain::ErrorCodes::LimitExceeded,
+               "Manager resource telemetry collection exceeds its bound.");
+    }
+    std::vector<Domain::GpuMetrics> gpus;
+    for (const auto& item : gpuValues) gpus.push_back(parseGpu(item));
+    std::vector<Domain::ProcessMetrics> processes;
+    for (const auto& item : processValues) processes.push_back(parseProcess(item));
+    std::vector<Domain::HistoryPoint> history;
+    for (const auto& item : historyValues) history.push_back(parseHistory(item));
+    return Domain::ManagerResourceSnapshot{
+        utcTimePointFromMilliseconds(
+            nonnegativeIntegerMember(value, "captured_at_utc_ms")),
+        stringMember(value, "host"),
+        stringMember(value, "platform"),
+        stringMember(value, "architecture"),
+        parseDoubleMetric(member(value, "cpu_percent"), "Manager CPU metric"),
+        parseDoubleMetric(member(value, "ram_percent"), "Manager RAM percent metric"),
+        parseUnsignedMetric(member(value, "ram_used_bytes"), "Manager RAM used metric"),
+        parseUnsignedMetric(member(value, "ram_total_bytes"), "Manager RAM total metric"),
+        parseUnsignedMetric(member(value, "ram_available_bytes"), "Manager RAM available metric"),
+        std::move(gpus),
+        std::move(processes),
+        std::move(history)};
+}
+
+[[nodiscard]] Json runtimeDiagnosticsJson(
+    const Domain::RuntimeDiagnosticSnapshot& runtime)
+{
+    return Json{
+        {"active_timers", runtime.activeTimers},
+        {"background_threads", runtime.backgroundThreads},
+        {"child_processes", runtime.childProcesses},
+        {"open_databases", runtime.openDatabases},
+        {"open_repositories", runtime.openRepositories},
+        {"owned_operations", runtime.ownedOperations},
+        {"pending_callbacks", runtime.pendingCallbacks},
+        {"pressure", pressureName(runtime.pressure)},
+        {"process_readers", runtime.processReaders},
+        {"telemetry_pending_snapshots", runtime.telemetryPendingSnapshots},
+        {"timestamp_utc_ms", epochMilliseconds(runtime.timestamp)}};
+}
+
+[[nodiscard]] Domain::RuntimeDiagnosticSnapshot parseRuntimeDiagnostics(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"active_timers", "background_threads", "child_processes", "open_databases",
+         "open_repositories", "owned_operations", "pending_callbacks", "pressure",
+         "process_readers", "telemetry_pending_snapshots", "timestamp_utc_ms"},
+        "Manager runtime diagnostics");
+    return Domain::RuntimeDiagnosticSnapshot{
+        utcTimePointFromMilliseconds(
+            nonnegativeIntegerMember(value, "timestamp_utc_ms")),
+        sizeMember(value, "owned_operations"),
+        sizeMember(value, "pending_callbacks"),
+        sizeMember(value, "background_threads"),
+        sizeMember(value, "open_repositories"),
+        sizeMember(value, "telemetry_pending_snapshots"),
+        parsePressure(stringMember(value, "pressure")),
+        sizeMember(value, "active_timers"),
+        sizeMember(value, "child_processes"),
+        sizeMember(value, "process_readers"),
+        sizeMember(value, "open_databases")};
+}
+
+[[nodiscard]] Json auditEventJson(const Domain::AuditEvent& event)
+{
+    return Json{
+        {"arguments_digest", event.argumentsDigest
+             ? Json(event.argumentsDigest->value()) : Json(nullptr)},
+        {"client_id", event.clientId
+             ? Json(event.clientId->value()) : Json(nullptr)},
+        {"duration_ms", event.duration
+             ? Json(event.duration->count()) : Json(nullptr)},
+        {"error", optionalString(event.error)},
+        {"status", event.status},
+        {"timestamp_utc_ms", epochMilliseconds(event.timestamp)},
+        {"tool", event.tool}};
+}
+
+[[nodiscard]] Domain::AuditEvent parseAuditEvent(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"arguments_digest", "client_id", "duration_ms", "error", "status",
+         "timestamp_utc_ms", "tool"},
+        "Manager telemetry audit event");
+    return Domain::AuditEvent{
+        utcTimePointFromMilliseconds(
+            nonnegativeIntegerMember(value, "timestamp_utc_ms")),
+        optionalField<Domain::ClientId>(value, "client_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::ClientId>(object, name);
+            }),
+        stringMember(value, "tool"),
+        optionalField<Domain::Sha256Digest>(value, "arguments_digest",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::Sha256Digest>(object, name);
+            }),
+        stringMember(value, "status"),
+        optionalField<std::chrono::milliseconds>(value, "duration_ms",
+            [](const Json& object, const std::string_view name) {
+                return std::chrono::milliseconds{
+                    nonnegativeIntegerMember(object, name)};
+            }),
+        optionalField<std::string>(value, "error", stringMember)};
+}
+
+[[nodiscard]] Json managerTelemetrySnapshotJson(
+    const Domain::ManagerTelemetrySnapshot& snapshot)
+{
+    if (snapshot.projects.size() > Domain::MaximumManagerTelemetryProjects ||
+        snapshot.tools.size() > Domain::MaximumManagerTelemetryTools ||
+        snapshot.recentEvents.size() > Domain::MaximumManagerTelemetryEvents) {
+        reject(Domain::ErrorCodes::LimitExceeded,
+               "Manager operational telemetry exceeds its collection bound.");
+    }
+    Json projects = Json::array();
+    for (const auto& project : snapshot.projects) {
+        projects.push_back(project.value());
+    }
+    Json tools = snapshot.tools;
+    Json events = Json::array();
+    for (const auto& event : snapshot.recentEvents) {
+        events.push_back(auditEventJson(event));
+    }
+    Json provider = Json{
+        {"host", snapshot.provider.host},
+        {"model", optionalString(snapshot.provider.model)},
+        {"port", snapshot.provider.port},
+        {"response_id", snapshot.provider.responseId
+             ? Json(snapshot.provider.responseId->value()) : Json(nullptr)},
+        {"secure", snapshot.provider.secure}};
+    Json context = Json{
+        {"authoritative", snapshot.context.authoritative},
+        {"capacity_tokens", snapshot.context.capacityTokens},
+        {"estimation_safety_margin_tokens", snapshot.context.estimationSafetyMarginTokens},
+        {"handoff_reserve_tokens", snapshot.context.handoffReserveTokens},
+        {"headroom_tokens", snapshot.context.headroomTokens},
+        {"input_tokens", snapshot.context.inputTokens},
+        {"next_response_reserve_tokens", snapshot.context.nextResponseReserveTokens},
+        {"output_tokens", snapshot.context.outputTokens},
+        {"retained_tokens", snapshot.context.retainedTokens}};
+    Json continuity = Json{
+        {"canonical_response_id", snapshot.continuity.canonicalResponseId
+             ? Json(snapshot.continuity.canonicalResponseId->value()) : Json(nullptr)},
+        {"context_only", snapshot.continuity.contextOnly},
+        {"manager_owned", snapshot.continuity.managerOwned},
+        {"project_id", snapshot.continuity.projectId
+             ? Json(snapshot.continuity.projectId->value()) : Json(nullptr)},
+        {"run_id", snapshot.continuity.runId
+             ? Json(snapshot.continuity.runId->value()) : Json(nullptr)},
+        {"run_state", snapshot.continuity.runState
+             ? Json(std::string{managedRunStateName(*snapshot.continuity.runState)})
+             : Json(nullptr)}};
+    return Json{
+        {"captured_at_utc_ms", epochMilliseconds(snapshot.capturedAt)},
+        {"context", std::move(context)},
+        {"continuity", std::move(continuity)},
+        {"manager", statusJson(snapshot.manager)},
+        {"open_session_count", snapshot.openSessionCount},
+        {"presence_count", snapshot.presenceCount},
+        {"projects", std::move(projects)},
+        {"provider", std::move(provider)},
+        {"recent_events", std::move(events)},
+        {"recent_session_count", snapshot.recentSessionCount},
+        {"resources", resourceSnapshotJson(snapshot.resources)},
+        {"runtime", snapshot.runtime},
+        {"runtime_diagnostics", snapshot.runtimeDiagnostics
+             ? runtimeDiagnosticsJson(*snapshot.runtimeDiagnostics) : Json(nullptr)},
+        {"selected_run", snapshot.selectedRun
+             ? managedRunSnapshotJson(*snapshot.selectedRun) : Json(nullptr)},
+        {"store_healthy", telemetryMetricJson(snapshot.storeHealthy)},
+        {"tools", std::move(tools)}};
+}
+
+[[nodiscard]] Domain::ManagerTelemetrySnapshot parseManagerTelemetrySnapshot(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"captured_at_utc_ms", "context", "continuity", "manager",
+         "open_session_count", "presence_count", "projects", "provider",
+         "recent_events", "recent_session_count", "resources", "runtime",
+         "runtime_diagnostics", "selected_run", "store_healthy", "tools"},
+        "Manager operational telemetry");
+
+    const auto& providerValue = member(value, "provider");
+    requireExactFields(
+        providerValue, {"host", "model", "port", "response_id", "secure"},
+        "Manager telemetry provider");
+    Domain::ManagerProviderSnapshot provider{
+        stringMember(providerValue, "host"),
+        uint16Member(providerValue, "port"),
+        booleanMember(providerValue, "secure"),
+        optionalField<std::string>(providerValue, "model", stringMember),
+        optionalField<Domain::ProviderSessionId>(providerValue, "response_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::ProviderSessionId>(object, name);
+            })};
+
+    const auto& contextValue = member(value, "context");
+    requireExactFields(
+        contextValue,
+        {"authoritative", "capacity_tokens", "estimation_safety_margin_tokens",
+         "handoff_reserve_tokens", "headroom_tokens", "input_tokens",
+         "next_response_reserve_tokens", "output_tokens", "retained_tokens"},
+        "Manager telemetry context");
+    Domain::ManagerContextSnapshot context{
+        uint64Member(contextValue, "capacity_tokens"),
+        uint64Member(contextValue, "next_response_reserve_tokens"),
+        uint64Member(contextValue, "handoff_reserve_tokens"),
+        uint64Member(contextValue, "estimation_safety_margin_tokens"),
+        optionalField<std::uint64_t>(contextValue, "input_tokens", uint64Member),
+        optionalField<std::uint64_t>(contextValue, "output_tokens", uint64Member),
+        optionalField<std::uint64_t>(contextValue, "retained_tokens", uint64Member),
+        optionalField<std::uint64_t>(contextValue, "headroom_tokens", uint64Member),
+        booleanMember(contextValue, "authoritative")};
+
+    const auto& continuityValue = member(value, "continuity");
+    requireExactFields(
+        continuityValue,
+        {"canonical_response_id", "context_only", "manager_owned", "project_id",
+         "run_id", "run_state"},
+        "Manager telemetry continuity");
+    Domain::ManagerContinuitySnapshot continuity{
+        booleanMember(continuityValue, "context_only"),
+        booleanMember(continuityValue, "manager_owned"),
+        optionalField<Domain::SessionId>(continuityValue, "run_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::SessionId>(object, name);
+            }),
+        optionalField<Domain::ProjectId>(continuityValue, "project_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::ProjectId>(object, name);
+            }),
+        optionalField<Domain::ManagedRunState>(continuityValue, "run_state",
+            [](const Json& object, const std::string_view name) {
+                return parseManagedRunState(stringMember(object, name));
+            }),
+        optionalField<Domain::ProviderSessionId>(continuityValue,
+            "canonical_response_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::ProviderSessionId>(object, name);
+            })};
+
+    const auto& projectValues = member(value, "projects");
+    const auto& toolValues = member(value, "tools");
+    const auto& eventValues = member(value, "recent_events");
+    if (!projectValues.is_array() || !toolValues.is_array() ||
+        !eventValues.is_array()) {
+        reject(Domain::ErrorCodes::InvalidRequest,
+               "Manager operational telemetry collections must be arrays.");
+    }
+    if (projectValues.size() > Domain::MaximumManagerTelemetryProjects ||
+        toolValues.size() > Domain::MaximumManagerTelemetryTools ||
+        eventValues.size() > Domain::MaximumManagerTelemetryEvents) {
+        reject(Domain::ErrorCodes::LimitExceeded,
+               "Manager operational telemetry collection exceeds its bound.");
+    }
+    std::vector<Domain::ProjectId> projects;
+    for (const auto& item : projectValues) {
+        if (!item.is_string()) {
+            reject(Domain::ErrorCodes::InvalidRequest,
+                   "Manager telemetry project identifiers must be strings.");
+        }
+        auto project = Domain::ProjectId::parse(item.get<std::string>());
+        if (!project) reject(project.error().code, project.error().message);
+        projects.push_back(std::move(project).value());
+    }
+    std::vector<std::string> tools;
+    for (const auto& item : toolValues) {
+        if (!item.is_string()) {
+            reject(Domain::ErrorCodes::InvalidRequest,
+                   "Manager telemetry tool names must be strings.");
+        }
+        tools.push_back(item.get<std::string>());
+    }
+    std::vector<Domain::AuditEvent> events;
+    for (const auto& item : eventValues) events.push_back(parseAuditEvent(item));
+
+    auto runtimeDiagnostics = optionalField<Domain::RuntimeDiagnosticSnapshot>(
+        value, "runtime_diagnostics",
+        [](const Json& object, const std::string_view name) {
+            return parseRuntimeDiagnostics(member(object, name));
+        });
+    auto selectedRun = optionalField<Domain::ManagedRunSnapshot>(
+        value, "selected_run",
+        [](const Json& object, const std::string_view name) {
+            return parseManagedRunSnapshot(member(object, name));
+        });
+    return Domain::ManagerTelemetrySnapshot{
+        utcTimePointFromMilliseconds(
+            nonnegativeIntegerMember(value, "captured_at_utc_ms")),
+        parseResourceSnapshot(member(value, "resources")),
+        parseStatus(member(value, "manager")),
+        std::move(runtimeDiagnostics),
+        std::move(provider),
+        std::move(context),
+        std::move(continuity),
+        std::move(selectedRun),
+        std::move(projects),
+        std::move(tools),
+        sizeMember(value, "open_session_count"),
+        sizeMember(value, "recent_session_count"),
+        sizeMember(value, "presence_count"),
+        std::move(events),
+        parseTelemetryMetric<bool>(
+            member(value, "store_healthy"),
+            "Manager store health metric",
+            booleanMember),
+        stringMember(value, "runtime")};
+}
+
 [[nodiscard]] Json resultJson(const ManagerResult& result)
 {
     Json wrapper = Json::object();
@@ -1536,6 +2183,10 @@ void validateSettingsUpdateOutcome(
                 std::is_same_v<Value, Domain::ManagedRunSnapshot>) {
                 wrapper["type"] = "managed_run";
                 wrapper["value"] = managedRunSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, Domain::ManagerTelemetrySnapshot>) {
+                wrapper["type"] = "telemetry";
+                wrapper["value"] = managerTelemetrySnapshotJson(value);
             } else if constexpr (std::is_same_v<Value, ManagerAcknowledgement>) {
                 wrapper["type"] = "acknowledgement";
                 Json acknowledgement = Json::object();
@@ -1563,6 +2214,9 @@ void validateSettingsUpdateOutcome(
     }
     if (type == "managed_run") {
         return ManagerResult{parseManagedRunSnapshot(value)};
+    }
+    if (type == "telemetry") {
+        return ManagerResult{parseManagerTelemetrySnapshot(value)};
     }
     if (type == "acknowledgement") {
         requireExactFields(

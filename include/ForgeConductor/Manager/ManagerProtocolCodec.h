@@ -1,10 +1,12 @@
 #pragma once
 
 #include "ForgeConductor/Domain/ManagerModels.h"
+#include "ForgeConductor/Domain/ManagerTelemetryModels.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <variant>
@@ -20,6 +22,10 @@ struct ManagerStatusRequest final {
 
 struct ManagerSettingsRequest final {
     bool operator==(const ManagerSettingsRequest&) const = default;
+};
+
+struct ManagerTelemetryRequest final {
+    std::optional<Domain::SessionId> runId;
 };
 
 struct ManagerSettingsUpdateRequest final {
@@ -62,6 +68,7 @@ struct ManagedRunResumeRequest final {
 using ManagerRequestPayload = std::variant<
     ManagerStatusRequest,
     ManagerSettingsRequest,
+    ManagerTelemetryRequest,
     Domain::ManagerControlRequest,
     ManagerSettingsUpdateRequest,
     ManagedRunStartRequest,
@@ -92,6 +99,7 @@ using ManagerResult = std::variant<
     Domain::ManagerSettings,
     Domain::ManagerSettingsUpdateOutcome,
     Domain::ManagedRunSnapshot,
+    Domain::ManagerTelemetrySnapshot,
     ManagerAcknowledgement>;
 
 using ManagerResponseBody = std::variant<ManagerResult, Domain::Error>;

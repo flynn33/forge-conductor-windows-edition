@@ -15,6 +15,7 @@
 #include "ForgeConductor/Domain/Identifiers.h"
 #include "ForgeConductor/Domain/LegacyMemoryModels.h"
 #include "ForgeConductor/Domain/ManagerModels.h"
+#include "ForgeConductor/Domain/ManagerTelemetryModels.h"
 #include "ForgeConductor/Domain/ManagerRuntimeModels.h"
 #include "ForgeConductor/Domain/ManagerStartupModels.h"
 #include "ForgeConductor/Domain/OperationContext.h"

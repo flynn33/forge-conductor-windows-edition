@@ -2,6 +2,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 #include "ForgeConductor/Domain/ManagerModels.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
+#include "ForgeConductor/Domain/ManagerTelemetryModels.h"
 
 #include <cstdint>
 #include <optional>
@@ -23,10 +24,19 @@ struct ManagedRunView final {
     std::optional<Domain::ManagedRunSnapshot> snapshot;
 };
 
+struct TelemetryView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Domain::ManagerTelemetrySnapshot> snapshot;
+};
+
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
     virtual std::string refresh(std::stop_token cancellation) noexcept = 0;
+    virtual TelemetryView telemetry(
+        std::string selectedRunId,
+        std::stop_token cancellation) noexcept = 0;
     virtual std::string start(std::stop_token cancellation) noexcept = 0;
     virtual std::string control(
         Domain::ManagerControlAction action,
@@ -56,6 +66,9 @@ public:
         std::optional<std::wstring> alphaRoot = std::nullopt) noexcept;
 
     std::string refresh(std::stop_token cancellation) noexcept override;
+    TelemetryView telemetry(
+        std::string selectedRunId,
+        std::stop_token cancellation) noexcept override;
     std::string start(std::stop_token cancellation) noexcept override;
     std::string control(
         Domain::ManagerControlAction action,

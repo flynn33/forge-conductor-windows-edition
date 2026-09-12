@@ -367,8 +367,14 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         ++statusCalls;
+        auto value = snapshotFor(runId, Domain::ManagedRunState::Completed);
+        value.record.providerResponseId =
+            Domain::ProviderSessionId::parse("response-authoritative-1").value();
+        value.record.inputTokens = 101U;
+        value.record.outputTokens = 37U;
+        value.record.retainedContextTokens = 4'096U;
         return Domain::Result<Domain::ManagedRunSnapshot>::success(
-            snapshotFor(runId, Domain::ManagedRunState::Completed));
+            std::move(value));
     }
 
     [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> cancel(
@@ -456,6 +462,147 @@ private:
             state);
     }
 };
+
+class FakeTelemetryService final : public Contracts::ITelemetryService {
+public:
+    FakeTelemetryService()
+    {
+        const auto time = Domain::UtcTimePoint{
+            std::chrono::seconds{1'700'000'000}};
+        Domain::SystemMetrics system;
+        system.timestamp = time;
+        system.host = "dispatcher-host";
+        system.platform = "Windows 11";
+        system.architecture = "x64";
+        system.cpu.percent = Domain::makeAvailableTelemetryMetric<double>(
+            33.5, time, "GetSystemTimes");
+        system.ram.percent = Domain::makeAvailableTelemetryMetric<double>(
+            62.0, time, "GlobalMemoryStatusEx");
+        system.ram.usedBytes = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+            62U, time, "GlobalMemoryStatusEx");
+        system.ram.totalBytes = Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+            100U, time, "GlobalMemoryStatusEx");
+        system.ram.availableBytes =
+            Domain::makeAvailableTelemetryMetric<std::uint64_t>(
+                38U, time, "GlobalMemoryStatusEx");
+        system.processes.push_back(Domain::ProcessMetrics{
+            42U, "Manager", 2.5, 1'024U, 768U, 4U, 16U,
+            "GetProcessTimes"});
+        snapshot_ = std::make_shared<const Domain::TelemetrySnapshot>(
+            Domain::TelemetrySnapshot{
+                std::move(system),
+                Domain::ForgeSnapshot{
+                    time,
+                    Domain::PathText::create("C:\\TelemetryTest").value(),
+                    "windows-manager",
+                    0U,
+                    0U,
+                    {},
+                    {},
+                    0U,
+                    Domain::TelemetryHealth::Ok},
+                time,
+                {Domain::HistoryPoint{
+                    time, 33.5, 62.0, std::nullopt, 0.0, 0U,
+                    Domain::TelemetryHealth::Ok}},
+                "windows-native"});
+    }
+
+    [[nodiscard]] Domain::Result<void> start(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<void>::success();
+    }
+
+    [[nodiscard]] Domain::Result<Snapshot> sample(
+        bool,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++sampleCalls;
+        return Domain::Result<Snapshot>::success(snapshot_);
+    }
+
+    [[nodiscard]] Domain::Result<Domain::TelemetryHealthReport> health(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Domain::TelemetryHealthReport>::success(
+            Domain::TelemetryHealthReport{
+                true, "telemetry", "windows-native", false, "continuous",
+                "fixture", "native", false});
+    }
+
+    [[nodiscard]] Domain::Result<void> setConsumer(Consumer consumer) noexcept override
+    {
+        consumer_ = std::move(consumer);
+        return Domain::Result<void>::success();
+    }
+
+    [[nodiscard]] Snapshot latest() const noexcept override { return snapshot_; }
+    [[nodiscard]] std::size_t pendingCount() const noexcept override { return 0U; }
+    void stop() noexcept override {}
+
+    std::atomic_size_t sampleCalls{};
+
+private:
+    Snapshot snapshot_;
+    Consumer consumer_;
+};
+
+void testTelemetrySnapshotUsesManagerOwnedRunValues()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    auto managedRuns = std::make_shared<FakeManagedRuns>();
+    FakeTelemetryService telemetry;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller,
+        clock,
+        Manager::ManagerTransportLimits{},
+        managedRuns,
+        Manager::ManagerTelemetrySources{&telemetry, nullptr, nullptr, nullptr}};
+
+    const auto runId = Domain::SessionId::parse(uuidText(700U)).value();
+    const auto response = dispatcher.dispatch(request(
+        *clock, 76U, Manager::ManagerTelemetryRequest{runId}));
+    const auto* snapshot = responseValue<Domain::ManagerTelemetrySnapshot>(response);
+    require(snapshot != nullptr, "manager telemetry result");
+    require(snapshot->resources.cpuPercent.value == 33.5,
+            "manager telemetry reuses native CPU sample");
+    require(snapshot->resources.history.size() == 1U,
+            "manager telemetry reuses bounded resource history");
+    require(snapshot->selectedRun.has_value(),
+            "manager telemetry includes selected run");
+    require(snapshot->selectedRun->record.runId == runId,
+            "manager telemetry preserves run identity");
+    require(snapshot->context.retainedTokens == 4'096U,
+            "manager telemetry preserves authoritative retained tokens");
+    require(snapshot->context.inputTokens == 101U &&
+                snapshot->context.outputTokens == 37U,
+            "manager telemetry preserves provider token counts");
+    require(snapshot->context.headroomTokens == 18'432U,
+            "manager computes context headroom once");
+    require(snapshot->context.authoritative,
+            "retained context is marked authoritative");
+    require(snapshot->provider.responseId ==
+                snapshot->selectedRun->record.providerResponseId,
+            "provider response identity comes from selected run");
+    require(snapshot->continuity.canonicalResponseId ==
+                snapshot->selectedRun->record.providerResponseId,
+            "continuity uses the canonical response identity");
+    require(!snapshot->storeHealthy.value &&
+                snapshot->storeHealthy.availability ==
+                    Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+            "missing optional store source stays explicitly unavailable");
+    require(telemetry.sampleCalls == 1U && managedRuns->statusCalls == 1U,
+            "telemetry and selected run are sampled once");
+
+    Manager::ManagerRequestDispatcher unavailable{controller, clock};
+    requireError(
+        unavailable.dispatch(request(
+            *clock, 77U, Manager::ManagerTelemetryRequest{std::nullopt})),
+        Domain::ErrorCodes::InvalidRequest,
+        "manager telemetry unavailable composition");
+}
 
 void testManagedRunDispatchAndIdentity()
 {
@@ -844,13 +991,14 @@ int main()
     try {
         testPayloadMappingAndControllerFailures();
         testManagedRunDispatchAndIdentity();
+        testTelemetrySnapshotUsesManagerOwnedRunValues();
         testDuplicateCapacityAndCancellationBypass();
         testShutdownOrderingAndClosedAdmission();
         testShutdownFailureAndEnvelopeValidation();
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 8 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 9 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

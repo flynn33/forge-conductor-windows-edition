@@ -1361,7 +1361,12 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
         managerController_,
         clock_,
         ManagerProtocol::ManagerTransportLimits{},
-        managedRuns_);
+        managedRuns_,
+        ManagerProtocol::ManagerTelemetrySources{
+            telemetryService_.get(),
+            dashboardOperationalService_.get(),
+            projectRegistry_.get(),
+            toolCatalog_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

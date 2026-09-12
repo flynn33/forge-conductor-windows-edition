@@ -36,6 +36,8 @@ private:
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;
+    std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
+        telemetrySnapshot_;
     std::stop_source cancellation_;
     bool busy_{};
 };

@@ -80,11 +80,13 @@ public:
         std::shared_ptr<Contracts::IManagerController> controller,
         std::shared_ptr<Contracts::IClock> clock,
         ManagerTransportLimits limits,
-        std::shared_ptr<Contracts::IManagedRunService> managedRuns)
+        std::shared_ptr<Contracts::IManagedRunService> managedRuns,
+        ManagerTelemetrySources telemetrySources)
         : controller_{std::move(controller)},
           clock_{std::move(clock)},
           limits_{std::move(limits)},
-          managedRuns_{std::move(managedRuns)}
+          managedRuns_{std::move(managedRuns)},
+          telemetrySources_{telemetrySources}
     {
         limits_.maximumActiveRegularOperations = (std::min)(
             limits_.maximumActiveRegularOperations,
@@ -384,6 +386,201 @@ private:
         return responseWithResult(request, std::move(result).value());
     }
 
+    [[nodiscard]] Domain::Result<Domain::ManagerTelemetrySnapshot>
+    telemetrySnapshot(
+        const ManagerTelemetryRequest& request,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.telemetry == nullptr) {
+            return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "Manager telemetry is unavailable in this composition."));
+        }
+
+        auto sampled = telemetrySources_.telemetry->sample(false, context);
+        if (!sampled) {
+            return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                std::move(sampled).error());
+        }
+        auto telemetry = std::move(sampled).value();
+        if (!telemetry) {
+            return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The Manager telemetry service returned no snapshot."));
+        }
+
+        auto status = controller_->status(context);
+        if (!status) {
+            return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                std::move(status).error());
+        }
+        auto settings = controller_->settings(context);
+        if (!settings) {
+            return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                std::move(settings).error());
+        }
+
+        std::optional<Domain::ManagedRunSnapshot> selectedRun;
+        if (request.runId) {
+            if (!managedRuns_) {
+                return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                    error(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "Managed runs are unavailable in this Manager composition."));
+            }
+            auto run = managedRuns_->status(*request.runId, context);
+            if (!run) {
+                return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                    std::move(run).error());
+            }
+            selectedRun = std::move(run).value();
+        }
+
+        std::optional<Domain::RuntimeDiagnosticSnapshot> runtimeDiagnostics;
+        std::vector<std::string> tools;
+        std::size_t openSessionCount{};
+        std::size_t recentSessionCount{};
+        std::size_t presenceCount{};
+        std::vector<Domain::AuditEvent> recentEvents;
+        std::optional<std::string> storeFailure;
+
+        if (telemetrySources_.operational != nullptr) {
+            auto operational = telemetrySources_.operational->status(context);
+            if (operational) {
+                runtimeDiagnostics = operational.value().runtimeDiagnostics;
+                tools = operational.value().toolNames;
+                openSessionCount = operational.value().openSessions.size();
+                presenceCount = operational.value().presence.size();
+                recentEvents = operational.value().recentAudit;
+            } else {
+                storeFailure = operational.error().message;
+            }
+
+            auto sessions = telemetrySources_.operational->sessions(context);
+            if (sessions) {
+                openSessionCount = sessions.value().open.size();
+                recentSessionCount = sessions.value().recent.size();
+            } else if (!storeFailure) {
+                storeFailure = sessions.error().message;
+            }
+        } else {
+            storeFailure = "The operational store source is unavailable.";
+        }
+
+        if (tools.empty() && telemetrySources_.tools != nullptr) {
+            const auto catalog = telemetrySources_.tools->tools();
+            tools.reserve(catalog.size());
+            for (const auto& tool : catalog) {
+                tools.push_back(tool.tool.name);
+            }
+        }
+        if (tools.size() > Domain::MaximumManagerTelemetryTools) {
+            return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The Manager telemetry tool projection exceeds its bound."));
+        }
+
+        std::vector<Domain::ProjectId> projects;
+        if (telemetrySources_.projects != nullptr) {
+            auto listed = telemetrySources_.projects->list(
+                Domain::MaximumManagerTelemetryProjects, context);
+            if (listed) {
+                projects.reserve(listed.value().size());
+                for (const auto& project : listed.value()) {
+                    projects.push_back(project.id);
+                }
+            } else if (!storeFailure) {
+                storeFailure = listed.error().message;
+            }
+        }
+
+        const auto capturedAt = telemetry->updatedAt;
+        auto storeHealthy = storeFailure
+            ? Domain::makeUnavailableTelemetryMetric<bool>(
+                  Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
+                  capturedAt,
+                  "manager_operational_store",
+                  *storeFailure)
+            : Domain::makeAvailableTelemetryMetric<bool>(
+                  true, capturedAt, "manager_operational_store");
+
+        const auto& managerSettings = settings.value();
+        Domain::ManagerProviderSnapshot provider{
+            managerSettings.localModelHost,
+            managerSettings.localModelPort,
+            managerSettings.localModelSecure,
+            managerSettings.localModelName.empty()
+                ? std::optional<std::string>{}
+                : std::optional<std::string>{managerSettings.localModelName},
+            selectedRun ? selectedRun->record.providerResponseId : std::nullopt};
+
+        Domain::ManagerContextSnapshot contextSnapshot{
+            managerSettings.effectiveContextCapacity,
+            managerSettings.nextResponseReserve,
+            managerSettings.handoffReserve,
+            managerSettings.estimationSafetyMargin};
+        Domain::ManagerContinuitySnapshot continuity;
+        if (selectedRun) {
+            const auto& record = selectedRun->record;
+            contextSnapshot.inputTokens = record.inputTokens;
+            contextSnapshot.outputTokens = record.outputTokens;
+            contextSnapshot.retainedTokens = record.retainedContextTokens;
+            contextSnapshot.authoritative = record.retainedContextTokens.has_value();
+            if (record.retainedContextTokens) {
+                const auto reserved =
+                    static_cast<std::uint64_t>(managerSettings.nextResponseReserve) +
+                    managerSettings.handoffReserve +
+                    managerSettings.estimationSafetyMargin;
+                const auto occupied = *record.retainedContextTokens + reserved;
+                contextSnapshot.headroomTokens = occupied <
+                        managerSettings.effectiveContextCapacity
+                    ? managerSettings.effectiveContextCapacity - occupied
+                    : 0U;
+            }
+            continuity.managerOwned = selectedRun->managerOwned;
+            continuity.runId = record.runId;
+            continuity.projectId = record.projectId;
+            continuity.runState = record.state;
+            continuity.canonicalResponseId = record.providerResponseId;
+        }
+
+        Domain::ManagerResourceSnapshot resources{
+            telemetry->system.timestamp,
+            telemetry->system.host,
+            telemetry->system.platform,
+            telemetry->system.architecture,
+            telemetry->system.cpu.percent,
+            telemetry->system.ram.percent,
+            telemetry->system.ram.usedBytes,
+            telemetry->system.ram.totalBytes,
+            telemetry->system.ram.availableBytes,
+            telemetry->system.gpus,
+            telemetry->system.processes,
+            telemetry->history};
+
+        return Domain::Result<Domain::ManagerTelemetrySnapshot>::success(
+            Domain::ManagerTelemetrySnapshot{
+                capturedAt,
+                std::move(resources),
+                std::move(status).value(),
+                std::move(runtimeDiagnostics),
+                std::move(provider),
+                std::move(contextSnapshot),
+                std::move(continuity),
+                std::move(selectedRun),
+                std::move(projects),
+                std::move(tools),
+                openSessionCount,
+                recentSessionCount,
+                presenceCount,
+                std::move(recentEvents),
+                std::move(storeHealthy),
+                telemetry->runtime});
+    }
+
     [[nodiscard]] ManagerResponse dispatchRegular(
         const ManagerRequest& request,
         const Domain::OperationContext& context)
@@ -398,6 +595,10 @@ private:
                     std::is_same_v<Payload, ManagerSettingsRequest>) {
                     return controllerResponse(
                         request, controller_->settings(context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerTelemetryRequest>) {
+                    return controllerResponse(
+                        request, telemetrySnapshot(payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                     return controllerResponse(
@@ -525,6 +726,7 @@ private:
     std::shared_ptr<Contracts::IClock> clock_;
     ManagerTransportLimits limits_;
     std::shared_ptr<Contracts::IManagedRunService> managedRuns_;
+    ManagerTelemetrySources telemetrySources_;
 
     mutable std::mutex stateMutex_;
     std::condition_variable stateChanged_;
@@ -539,7 +741,8 @@ ManagerRequestDispatcher::ManagerRequestDispatcher(
     std::shared_ptr<Contracts::IManagerController> controller,
     std::shared_ptr<Contracts::IClock> clock,
     ManagerTransportLimits limits,
-    std::shared_ptr<Contracts::IManagedRunService> managedRuns)
+    std::shared_ptr<Contracts::IManagedRunService> managedRuns,
+    ManagerTelemetrySources telemetrySources)
 {
     if (!controller) {
         throw std::invalid_argument{
@@ -553,7 +756,8 @@ ManagerRequestDispatcher::ManagerRequestDispatcher(
         std::move(controller),
         std::move(clock),
         std::move(limits),
-        std::move(managedRuns));
+        std::move(managedRuns),
+        telemetrySources);
 }
 
 ManagerRequestDispatcher::~ManagerRequestDispatcher() noexcept

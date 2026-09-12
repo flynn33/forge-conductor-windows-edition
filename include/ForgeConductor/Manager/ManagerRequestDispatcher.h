@@ -3,6 +3,10 @@
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
+#include "ForgeConductor/Contracts/IProjectMemoryService.h"
+#include "ForgeConductor/Contracts/ITelemetryService.h"
+#include "ForgeConductor/Contracts/IToolServices.h"
+#include "ForgeConductor/Dashboard/IDashboardOperationalService.h"
 #include "ForgeConductor/Manager/ManagerProtocolCodec.h"
 #include "ForgeConductor/Manager/ManagerTransportLimits.h"
 
@@ -12,13 +16,21 @@
 
 namespace ForgeConductor::Manager {
 
+struct ManagerTelemetrySources final {
+    Contracts::ITelemetryService* telemetry{};
+    Dashboard::IDashboardOperationalService* operational{};
+    Contracts::IProjectRegistryRepository* projects{};
+    Contracts::IToolCatalog* tools{};
+};
+
 class ManagerRequestDispatcher final {
 public:
     ManagerRequestDispatcher(
         std::shared_ptr<Contracts::IManagerController> controller,
         std::shared_ptr<Contracts::IClock> clock,
         ManagerTransportLimits limits = {},
-        std::shared_ptr<Contracts::IManagedRunService> managedRuns = {});
+        std::shared_ptr<Contracts::IManagedRunService> managedRuns = {},
+        ManagerTelemetrySources telemetrySources = {});
     ~ManagerRequestDispatcher() noexcept;
 
     ManagerRequestDispatcher(const ManagerRequestDispatcher&) = delete;

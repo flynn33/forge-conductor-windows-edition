@@ -11,7 +11,9 @@
 #include <array>
 #include <chrono>
 #include <filesystem>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <thread>
 
 namespace ForgeConductor::Hosts::App {
@@ -123,6 +125,63 @@ connectManager(
     }
     return {true, std::move(message), std::move(snapshot)};
 }
+
+[[nodiscard]] std::string percentText(
+    const Domain::TelemetryMetric<double>& metric)
+{
+    if (metric.value) {
+        std::ostringstream text;
+        text << std::fixed << std::setprecision(1) << *metric.value << '%';
+        if (metric.stale) text << " (stale)";
+        return text.str();
+    }
+    std::string text{Domain::telemetryMetricAvailabilityName(metric.availability)};
+    if (metric.unavailableReason) text += ": " + *metric.unavailableReason;
+    return text;
+}
+
+[[nodiscard]] std::string telemetryMessage(
+    const Domain::ManagerTelemetrySnapshot& snapshot)
+{
+    std::string message =
+        "Connected to Manager PID " + std::to_string(snapshot.manager.processId) +
+        "\nCPU: " + percentText(snapshot.resources.cpuPercent) +
+        "\nRAM: " + percentText(snapshot.resources.ramPercent) +
+        "\nManager processes: " +
+            std::to_string(snapshot.resources.processes.size()) +
+        "\nProvider: " + (snapshot.provider.secure ? "https://" : "http://") +
+            snapshot.provider.host + ':' + std::to_string(snapshot.provider.port) +
+        "\nProjects: " + std::to_string(snapshot.projects.size()) +
+        " · Tools: " + std::to_string(snapshot.tools.size()) +
+        " · Recent events: " + std::to_string(snapshot.recentEvents.size());
+    if (snapshot.provider.model) {
+        message += "\nModel: " + *snapshot.provider.model;
+    }
+    if (snapshot.context.authoritative && snapshot.context.retainedTokens) {
+        message += "\nRetained context: " +
+            std::to_string(*snapshot.context.retainedTokens) + " / " +
+            std::to_string(snapshot.context.capacityTokens) + " tokens";
+        if (snapshot.context.headroomTokens) {
+            message += " · Headroom: " +
+                std::to_string(*snapshot.context.headroomTokens);
+        }
+    } else {
+        message += "\nRetained context: no authoritative run sample selected";
+    }
+    if (snapshot.storeHealthy.value) {
+        message += *snapshot.storeHealthy.value
+            ? "\nStore: healthy"
+            : "\nStore: unhealthy";
+    } else {
+        message += "\nStore: " + std::string{
+            Domain::telemetryMetricAvailabilityName(
+                snapshot.storeHealthy.availability)};
+        if (snapshot.storeHealthy.unavailableReason) {
+            message += " · " + *snapshot.storeHealthy.unavailableReason;
+        }
+    }
+    return message;
+}
 }
 ManagerConnection::ManagerConnection(
     std::optional<std::wstring> alphaRoot) noexcept
@@ -159,6 +218,43 @@ std::string ManagerConnection::refresh(std::stop_token cancellation) noexcept {
             (status.lastError ? "\nLast error: " + *status.lastError : "");
     } catch (const std::exception& error) { return error.what(); }
       catch (...) { return "Could not read manager status."; }
+}
+
+TelemetryView ManagerConnection::telemetry(
+    std::string selectedRunId,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) {
+            return {false, profileError_, std::nullopt};
+        }
+        std::optional<Domain::SessionId> runId;
+        if (!selectedRunId.empty()) {
+            auto parsed = Domain::SessionId::parse(selectedRunId);
+            if (!parsed) return {false, parsed.error().message, std::nullopt};
+            runId = std::move(parsed).value();
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) {
+            return {false, "Disconnected: " + created.error().message, std::nullopt};
+        }
+        auto client = std::move(created).value();
+        auto result = client->telemetry(runId, context);
+        client->shutdown();
+        if (!result) {
+            return {false, "Telemetry unavailable: " + result.error().message,
+                std::nullopt};
+        }
+        auto snapshot = std::move(result).value();
+        auto message = telemetryMessage(snapshot);
+        return {true, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not read Manager telemetry.", std::nullopt};
+    }
 }
 
 ProviderSettingsView ManagerConnection::providerSettings(
