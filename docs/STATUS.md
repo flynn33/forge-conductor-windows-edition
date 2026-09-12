@@ -1,6 +1,6 @@
 # Product status
 
-Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0 and R1 are merged. R2 implementation is pushed in draft [PR #13](https://github.com/flynn33/forge-conductor-windows-edition/pull/13). Implementation, pull-request delivery, merge, gate blockers, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
+Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0 and R1 are merged. R2 implementation is pushed in ready [PR #13](https://github.com/flynn33/forge-conductor-windows-edition/pull/13). Implementation, pull-request delivery, merge, gate blockers, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
 
 | Area | Current source/evidence | Remaining requirement |
 |---|---|---|

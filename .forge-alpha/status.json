@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T18:49:44.7873603Z",
+  "updated_at_utc": "2026-09-12T18:56:18.9869476Z",
   "current_phase": "R2",
   "current_slice": "R2.5",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r2-native-telemetry",
-    "head": "abda1e6",
+    "head": "a5ea891",
     "origin_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "github_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "dirty_summary": [
-      "R2 implementation is pushed through abda1e6; this documentation closeout is the only in-scope uncommitted delta.",
+      "R2 implementation and phase documentation are pushed through a5ea891; PR #13 is ready for normal review.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from phase staging.",
-      "Ignored R2 runtime evidence remains under out/alpha-evidence/r2 and disposable profiles under out/alpha-profiles."
+      "Ignored R2 lifecycle evidence remains under out/alpha-evidence/r2; no build output or disposable profile is published."
     ]
   },
   "baseline": {
@@ -90,7 +90,7 @@
     },
     "R2": {
       "implementation": "verified",
-      "delivery": "pr_open",
+      "delivery": "awaiting_merge",
       "branch": "alpha/r2-native-telemetry",
       "issue_number": 5,
       "milestone_number": 3,
@@ -321,7 +321,7 @@
   ],
   "known_bugs": [],
   "last_result": "R2 implementation verified through abda1e6: native Windows collectors feed one typed Manager snapshot rendered as WinUI gauges, histories, status cards, timelines, and detail summaries with bounded refresh and safe window lifetime. R2-G2/G3 native visual walkthroughs remain blocked by the control surface.",
-  "next_action": "Push the R2 closeout, synchronize issue #5 and PR #13, mark the PR ready for normal review, then synchronize main after an actual merge before creating the separate R3 phase branch.",
+  "next_action": "Await normal review/merge of ready PR #13 without bypassing protection. After an actual merge, fetch and fast-forward local main, prove tracked-source equality, create the separate R3 branch, open its draft PR early, and begin R3.1.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",
