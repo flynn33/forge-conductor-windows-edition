@@ -20,6 +20,7 @@ struct ManagerTelemetrySources final {
     Contracts::ITelemetryService* telemetry{};
     Dashboard::IDashboardOperationalService* operational{};
     Contracts::IProjectRegistryRepository* projects{};
+    Contracts::IProjectMemoryService* projectMemory{};
     Contracts::IToolCatalog* tools{};
 };
 

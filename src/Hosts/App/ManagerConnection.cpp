@@ -257,6 +257,140 @@ TelemetryView ManagerConnection::telemetry(
     }
 }
 
+ProjectsView ManagerConnection::projects(
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->projects(1'024U, context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        auto message = "Loaded " + std::to_string(snapshot.projects.size()) +
+            " registered project" +
+            (snapshot.projects.size() == 1U ? "." : "s.");
+        return {true, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not load registered projects.", std::nullopt};
+    }
+}
+
+ProjectWorkspaceView ManagerConnection::initializeProject(
+    std::string projectPath,
+    std::string displayName,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto path = Domain::PathText::create(projectPath);
+        if (!path) return {false, path.error().message, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{15});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->initializeProject(
+            Manager::ManagerProjectInitializeRequest{
+                std::move(path).value(),
+                displayName.empty()
+                    ? std::nullopt
+                    : std::optional<std::string>{std::move(displayName)},
+                std::nullopt},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        const auto message = "Registered " + snapshot.project.displayName +
+            " with exact project ID " + snapshot.project.id.value() + ".";
+        return {true, message, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not register the project.", std::nullopt};
+    }
+}
+
+ProjectWorkspaceView ManagerConnection::projectMemory(
+    std::string projectId,
+    std::string query,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsed = Domain::ProjectId::parse(projectId);
+        if (!parsed) return {false, parsed.error().message, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->projectMemory(
+            Manager::ManagerProjectMemoryRequest{
+                std::move(parsed).value(), std::move(query), 20U},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        const auto message = "Loaded " + std::to_string(snapshot.records.size()) +
+            " memory record" + (snapshot.records.size() == 1U ? "." : "s.");
+        return {true, message, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not read project memory.", std::nullopt};
+    }
+}
+
+ProjectWorkspaceView ManagerConnection::rememberProjectMemory(
+    std::string projectId,
+    std::string title,
+    std::string summary,
+    std::string body,
+    std::vector<std::string> tags,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsed = Domain::ProjectId::parse(projectId);
+        if (!parsed) return {false, parsed.error().message, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{15});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->rememberProjectMemory(
+            Manager::ManagerProjectRememberRequest{
+                std::move(parsed).value(),
+                std::move(title),
+                std::move(summary),
+                body.empty()
+                    ? std::nullopt
+                    : std::optional<std::string>{std::move(body)},
+                std::move(tags)},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        const auto message = snapshot.writtenRecordId
+            ? "Memory saved as " + snapshot.writtenRecordId->value() + "."
+            : "Memory saved.";
+        return {true, message, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not save project memory.", std::nullopt};
+    }
+}
+
 ProviderSettingsView ManagerConnection::providerSettings(
     const std::stop_token cancellation) noexcept
 {

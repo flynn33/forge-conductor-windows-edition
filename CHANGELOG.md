@@ -31,9 +31,16 @@
 - Added WinUI status cards, CPU/RAM/GPU/context gauges, bounded resource and latency histories, accessible equivalent values, an activity timeline, and telemetry-backed Provider, Continuity, Runtimes, Projects, Tools, Feed, Events, Diagnostics, Manager, and Settings summaries.
 - Added two-second coalesced refresh, disconnected/stale rendering, resize redraw, persisted page selection, and window-close cancellation. Real isolated process probes confirmed repeated refresh and Manager survival after GUI close; native keyboard/high-contrast and visual rendering inspection remain blocked by the available control surface.
 
+### R3 — Native operating pages and local workflows
+
+- Added typed Manager project-list, folder-registration, memory-search/read/write, and persistence-status operations over the authenticated named pipe.
+- Replaced the Projects placeholder with native registration and stable selection, authorized-folder and storage-health views, full memory records, and persisted exact-ID binding into ordinary runs.
+- Added project-scope fencing for Manager memory responses and focused two-project isolation coverage; a fresh isolated native workflow retained memory after restart without leaking it to the second project.
+- Incorporated `continuous-delivery-repair-2026-09-12` into the adopted execution, Git, closeout, and handoff guidance so phase checkpoints and unavailable inspections do not stop independent R0–R7 work.
+
 ### Remaining Alpha work
 
-- Complete operational actions, persistent accessible Settings and scoped reset, installer/data behavior, native visual walkthroughs, and real installed/live acceptance in R3–R7.
+- Complete the remaining R3 operating pages, persistent accessible Settings and scoped reset, installer/data behavior, native visual walkthroughs, and real installed/live acceptance in R3–R7.
 
 <!-- alpha-phase-review:start -->
 Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).

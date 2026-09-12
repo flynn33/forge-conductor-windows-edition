@@ -3,11 +3,13 @@
 #include "ForgeConductor/Domain/ManagerModels.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
 #include "ForgeConductor/Domain/ManagerTelemetryModels.h"
+#include "ForgeConductor/Manager/ManagerProtocolCodec.h"
 
 #include <cstdint>
 #include <optional>
 #include <stop_token>
 #include <string>
+#include <vector>
 
 namespace ForgeConductor::Hosts::App {
 struct ProviderSettingsView final {
@@ -28,6 +30,18 @@ struct TelemetryView final {
     bool loaded{};
     std::string message;
     std::optional<Domain::ManagerTelemetrySnapshot> snapshot;
+};
+
+struct ProjectsView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerProjectsSnapshot> snapshot;
+};
+
+struct ProjectWorkspaceView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerProjectWorkspaceSnapshot> snapshot;
 };
 
 class IManagerConnection {
@@ -58,6 +72,23 @@ public:
     virtual ManagedRunView controlManagedRun(
         std::string runId,
         ManagedRunAction action,
+        std::stop_token cancellation) noexcept = 0;
+    virtual ProjectsView projects(
+        std::stop_token cancellation) noexcept = 0;
+    virtual ProjectWorkspaceView initializeProject(
+        std::string projectPath,
+        std::string displayName,
+        std::stop_token cancellation) noexcept = 0;
+    virtual ProjectWorkspaceView projectMemory(
+        std::string projectId,
+        std::string query,
+        std::stop_token cancellation) noexcept = 0;
+    virtual ProjectWorkspaceView rememberProjectMemory(
+        std::string projectId,
+        std::string title,
+        std::string summary,
+        std::string body,
+        std::vector<std::string> tags,
         std::stop_token cancellation) noexcept = 0;
 };
 class ManagerConnection final : public IManagerConnection {
@@ -90,6 +121,22 @@ public:
     ManagedRunView controlManagedRun(
         std::string runId,
         ManagedRunAction action,
+        std::stop_token cancellation) noexcept override;
+    ProjectsView projects(std::stop_token cancellation) noexcept override;
+    ProjectWorkspaceView initializeProject(
+        std::string projectPath,
+        std::string displayName,
+        std::stop_token cancellation) noexcept override;
+    ProjectWorkspaceView projectMemory(
+        std::string projectId,
+        std::string query,
+        std::stop_token cancellation) noexcept override;
+    ProjectWorkspaceView rememberProjectMemory(
+        std::string projectId,
+        std::string title,
+        std::string summary,
+        std::string body,
+        std::vector<std::string> tags,
         std::stop_token cancellation) noexcept override;
 private:
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>

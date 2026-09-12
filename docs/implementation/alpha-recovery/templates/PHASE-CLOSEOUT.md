@@ -1,10 +1,10 @@
 # Phase closeout — [R phase]
 
 ## Scope and source
-Phase/milestone: [actual]  
-Branch and reviewed product source commit/tree: [actual]  
-Primary phase issue / PR: [actual links; PR may be recorded in a follow-up commit to this same PR]  
-Implementation status: [in progress / verified]  
+Phase/milestone: [actual]
+Branch and reviewed product source commit/tree: [actual]
+Primary phase issue / PR: [actual links; PR may be recorded in a follow-up commit to this same PR]
+Implementation status: [in progress / verified]
 Delivery status at this committed record: [not submitted / PR open / awaiting merge; don't predict a merge]
 
 ## Completed slices
@@ -34,16 +34,20 @@ README.md, CHANGELOG.md, ROADMAP.md and current status/plan/cursor must contain 
 Immutable historical receipts, third-party notices/licenses and generated material: [exact classified exclusions, preserved unchanged]. No rewriting historical test claims to pretend a current run.
 
 ## Remaining work
-Required bugs: [fixed / actual unresolved items and gate implications]  
-External final-acceptance conditions: [precise, only where later gate ownership allows]  
-Next independent implementation slice: [actual]  
+Required bugs: [fixed / actual unresolved items and gate implications]
+External final-acceptance conditions: [precise, only where later gate ownership allows]
+Next independent implementation slice: [actual]
+Immediately executable next action: [specific edit, test or branch action under current conditions]
+Pending-parent alternative: [independent branch from main / dependent branch from exact reviewed head / not applicable]
 Scope changes: [none, or explicit owner decision reference; never self-approved waivers]
 
 ## Git delivery
-Verified owner account/author: [actual, without credentials]  
-Reviewed staged paths and pushed head: [actual]  
-PR base: main  
-Actual check/review result: [observed]  
+Verified owner account/author: [actual, without credentials]
+Reviewed staged paths and pushed head: [actual]
+PR base: main
+Actual check/review result: [observed]
 Merge authority/state: [actual]
 
 Post-merge receipt is a PR comment plus ignored local evidence, not a new tracked edit just to include this record's own commit SHA. The next ordinary phase update can incorporate previous merge facts. Final delivery requires actual GitHub/local equality, never an anticipated merge.
+
+After recording this checkpoint, execute the immediately available next action. Phase closeout, PR readiness and a saved handoff do not end the full R0–R7 assignment.

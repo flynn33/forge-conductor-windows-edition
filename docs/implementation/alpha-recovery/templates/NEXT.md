@@ -15,6 +15,8 @@ Template only. Update the existing repository handoff from observations; don't r
 ## Next exact action
 [One immediately executable edit or verification command using the existing source and provided paths. Name the dependent service/interface and files only as currently verified.]
 
+If a parent PR is pending, record the executable route: independent work branches from current main; dependent work branches from the exact reviewed parent head and identifies that PR/head. Waiting for review cannot be the only action while useful work remains.
+
 ## Open blockers and independent work
 [Specific unavailable prerequisite, most recent evidence, required external action, dependent acceptance, and independent slice to continue. Don't treat an old PID, endpoint or auth failure as current.]
 

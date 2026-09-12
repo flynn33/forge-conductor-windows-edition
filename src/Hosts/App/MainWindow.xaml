@@ -178,6 +178,49 @@
      </Border>
     </StackPanel>
 
+    <StackPanel x:Name="ProjectsPanel" Spacing="14" Visibility="Collapsed">
+     <InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
+       Title="Manager-owned project identity" Message="Registration binds an authorized folder to a stable project ID. Memory reads and writes always use the selected ID." />
+     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+      <StackPanel Spacing="10">
+       <TextBlock Text="Register or select a project" Style="{ThemeResource SubtitleTextBlockStyle}" />
+       <Grid ColumnSpacing="12" RowSpacing="10">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBox x:Name="ProjectPath" Header="Authorized project folder" PlaceholderText="D:\Projects\Example" />
+        <TextBox x:Name="ProjectDisplayName" Grid.Column="1" Header="Display name (optional)" />
+        <ComboBox x:Name="ProjectSelector" Grid.Row="1" Grid.ColumnSpan="2" Header="Active project" HorizontalAlignment="Stretch" SelectionChanged="ProjectSelectionChanged" />
+       </Grid>
+       <StackPanel Orientation="Horizontal" Spacing="12">
+        <Button Content="Register folder" Click="ProjectRegisterClicked" />
+        <Button Content="Refresh projects" Click="ProjectRefreshClicked" />
+       </StackPanel>
+       <TextBlock x:Name="ProjectState" Text="Refresh to load registered projects." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+       <TextBlock x:Name="ProjectIdentity" Text="No active project" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+       <TextBlock x:Name="ProjectFolders" Text="No authorized folders" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+       <TextBlock x:Name="ProjectPersistence" Text="Memory persistence has not been read." TextWrapping="Wrap" />
+      </StackPanel>
+     </Border>
+     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+      <StackPanel Spacing="10">
+       <TextBlock Text="Search and read memory" Style="{ThemeResource SubtitleTextBlockStyle}" />
+       <TextBox x:Name="ProjectMemoryQuery" Header="Search" PlaceholderText="Leave empty for recent memory" />
+       <Button Content="Search memory" HorizontalAlignment="Left" Click="ProjectSearchClicked" />
+       <StackPanel x:Name="ProjectMemoryRecords" Spacing="8" AutomationProperties.Name="Project memory results" />
+      </StackPanel>
+     </Border>
+     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+      <StackPanel Spacing="10">
+       <TextBlock Text="Remember" Style="{ThemeResource SubtitleTextBlockStyle}" />
+       <TextBox x:Name="ProjectMemoryTitle" Header="Title" />
+       <TextBox x:Name="ProjectMemorySummary" Header="Summary" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" />
+       <TextBox x:Name="ProjectMemoryBody" Header="Details (optional)" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
+       <TextBox x:Name="ProjectMemoryTags" Header="Tags (comma separated)" />
+       <Button Content="Save memory" HorizontalAlignment="Left" Click="ProjectRememberClicked" />
+      </StackPanel>
+     </Border>
+    </StackPanel>
+
     <StackPanel x:Name="GenericPanel" Spacing="14" Visibility="Collapsed">
      <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
       <StackPanel Spacing="10">

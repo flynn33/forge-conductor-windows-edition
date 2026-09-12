@@ -3,6 +3,7 @@
 #include "ForgeConductor/Domain/ManagerModels.h"
 #include "ForgeConductor/Domain/ManagerTelemetryModels.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
+#include "ForgeConductor/Domain/ProjectMemoryModels.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +27,60 @@ struct ManagerSettingsRequest final {
 
 struct ManagerTelemetryRequest final {
     std::optional<Domain::SessionId> runId;
+};
+
+struct ManagerProjectsListRequest final {
+    std::size_t maximumCount{100U};
+};
+
+struct ManagerProjectInitializeRequest final {
+    Domain::PathText projectPath;
+    std::optional<std::string> displayName;
+    std::optional<std::string> repositoryIdentity;
+};
+
+struct ManagerProjectMemoryRequest final {
+    Domain::ProjectId projectId;
+    std::string query;
+    std::size_t maximumCount{20U};
+};
+
+struct ManagerProjectRememberRequest final {
+    Domain::ProjectId projectId;
+    std::string title;
+    std::string summary;
+    std::optional<std::string> body;
+    std::vector<std::string> tags;
+};
+
+struct ManagerProjectMemoryRecord final {
+    Domain::MemoryRecordId id;
+    std::uint32_t version{};
+    std::string kind;
+    std::string title;
+    std::string summary;
+    std::optional<std::string> body;
+    std::vector<std::string> tags;
+    Domain::UtcTimePoint updatedAt;
+};
+
+struct ManagerProjectsSnapshot final {
+    std::vector<Domain::ProjectMemoryDescriptor> projects;
+};
+
+struct ManagerProjectWorkspaceSnapshot final {
+    Domain::ProjectMemoryDescriptor project;
+    std::size_t recordCount{};
+    std::size_t tombstoneCount{};
+    std::size_t eventCount{};
+    std::uint64_t databaseBytes{};
+    std::uint64_t writeAheadLogBytes{};
+    bool fullTextSearchAvailable{};
+    bool integrityOk{};
+    std::vector<ManagerProjectMemoryRecord> records;
+    std::optional<std::string> nextCursor;
+    bool truncated{};
+    std::optional<Domain::MemoryRecordId> writtenRecordId;
 };
 
 struct ManagerSettingsUpdateRequest final {
@@ -69,6 +124,10 @@ using ManagerRequestPayload = std::variant<
     ManagerStatusRequest,
     ManagerSettingsRequest,
     ManagerTelemetryRequest,
+    ManagerProjectsListRequest,
+    ManagerProjectInitializeRequest,
+    ManagerProjectMemoryRequest,
+    ManagerProjectRememberRequest,
     Domain::ManagerControlRequest,
     ManagerSettingsUpdateRequest,
     ManagedRunStartRequest,
@@ -100,6 +159,8 @@ using ManagerResult = std::variant<
     Domain::ManagerSettingsUpdateOutcome,
     Domain::ManagedRunSnapshot,
     Domain::ManagerTelemetrySnapshot,
+    ManagerProjectsSnapshot,
+    ManagerProjectWorkspaceSnapshot,
     ManagerAcknowledgement>;
 
 using ManagerResponseBody = std::variant<ManagerResult, Domain::Error>;

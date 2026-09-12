@@ -1366,6 +1366,7 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             telemetryService_.get(),
             dashboardOperationalService_.get(),
             projectRegistry_.get(),
+            projectMemory_.get(),
             toolCatalog_.get()});
 }
 

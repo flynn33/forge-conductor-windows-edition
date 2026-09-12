@@ -578,7 +578,107 @@ private:
                 presenceCount,
                 std::move(recentEvents),
                 std::move(storeHealthy),
-                telemetry->runtime});
+            telemetry->runtime});
+    }
+
+    [[nodiscard]] Domain::Result<ManagerProjectWorkspaceSnapshot>
+    projectWorkspace(
+        const Domain::ProjectId& projectId,
+        const std::string& query,
+        const std::size_t maximumCount,
+        std::optional<Domain::MemoryRecordId> writtenRecordId,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.projects == nullptr ||
+            telemetrySources_.projectMemory == nullptr) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "Project workflows are unavailable in this Manager composition."));
+        }
+        if (maximumCount == 0U || maximumCount > 100U) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "Project memory result count must be within 1 through 100."));
+        }
+
+        auto descriptor = telemetrySources_.projects->descriptor(projectId, context);
+        if (!descriptor) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                std::move(descriptor).error());
+        }
+        auto status = telemetrySources_.projectMemory->status(
+            Domain::ProjectMemoryStatusRequest{projectId}, context);
+        if (!status) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                std::move(status).error());
+        }
+        if (status.value().projectId != projectId) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::ProjectScopeMismatch,
+                    "Project memory status returned a different project identity."));
+        }
+
+        Domain::Result<Domain::MemoryPage> page = query.empty()
+            ? telemetrySources_.projectMemory->listRecent(
+                  Domain::ListRecentProjectMemoryRequest{
+                      projectId, {}, std::nullopt, maximumCount, std::nullopt,
+                      true, 256U * 1024U},
+                  context)
+            : telemetrySources_.projectMemory->search(
+                  Domain::SearchProjectMemoryRequest{
+                      projectId, query, {}, {}, std::nullopt, maximumCount,
+                      std::nullopt, true, 256U * 1024U},
+                  context);
+        if (!page) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                std::move(page).error());
+        }
+        if (page.value().projectId != projectId ||
+            std::any_of(
+                page.value().records.begin(),
+                page.value().records.end(),
+                [&](const Domain::MemorySearchHit& hit) {
+                    return hit.record.projectId != projectId;
+                })) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::ProjectScopeMismatch,
+                    "Project memory returned records from a different project identity."));
+        }
+
+        std::vector<ManagerProjectMemoryRecord> records;
+        records.reserve(page.value().records.size());
+        for (auto& hit : page.value().records) {
+            auto& record = hit.record;
+            records.push_back(ManagerProjectMemoryRecord{
+                record.id,
+                record.version,
+                std::move(record.kind),
+                std::move(record.title),
+                std::move(record.summary),
+                std::move(record.body),
+                std::move(record.tags),
+                record.updatedAt});
+        }
+
+        const auto& memoryStatus = status.value();
+        return Domain::Result<ManagerProjectWorkspaceSnapshot>::success(
+            ManagerProjectWorkspaceSnapshot{
+                std::move(descriptor).value(),
+                memoryStatus.recordCount,
+                memoryStatus.tombstoneCount,
+                memoryStatus.eventCount,
+                memoryStatus.databaseBytes,
+                memoryStatus.writeAheadLogBytes,
+                memoryStatus.fullTextSearchAvailable,
+                memoryStatus.integrityOk,
+                std::move(records),
+                std::move(page.value().nextCursor),
+                page.value().truncated,
+                std::move(writtenRecordId)});
     }
 
     [[nodiscard]] ManagerResponse dispatchRegular(
@@ -599,6 +699,92 @@ private:
                     std::is_same_v<Payload, ManagerTelemetryRequest>) {
                     return controllerResponse(
                         request, telemetrySnapshot(payload, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerProjectsListRequest>) {
+                    if (telemetrySources_.projects == nullptr) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Project registration is unavailable in this Manager composition."));
+                    }
+                    if (payload.maximumCount == 0U || payload.maximumCount > 1'024U) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Project result count must be within 1 through 1024."));
+                    }
+                    auto projects = telemetrySources_.projects->list(
+                        payload.maximumCount, context);
+                    if (!projects) {
+                        return responseWithError(request, std::move(projects).error());
+                    }
+                    return responseWithResult(
+                        request,
+                        ManagerProjectsSnapshot{std::move(projects).value()});
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerProjectInitializeRequest>) {
+                    if (telemetrySources_.projectMemory == nullptr) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Project registration is unavailable in this Manager composition."));
+                    }
+                    auto initialized = telemetrySources_.projectMemory->initialize(
+                        Domain::InitializeProjectRequest{
+                            payload.projectPath,
+                            std::nullopt,
+                            payload.displayName,
+                            payload.repositoryIdentity,
+                            std::nullopt},
+                        context);
+                    if (!initialized) {
+                        return responseWithError(
+                            request, std::move(initialized).error());
+                    }
+                    return controllerResponse(
+                        request,
+                        projectWorkspace(
+                            initialized.value().project.id, {}, 20U,
+                            std::nullopt, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerProjectMemoryRequest>) {
+                    return controllerResponse(
+                        request,
+                        projectWorkspace(
+                            payload.projectId, payload.query,
+                            payload.maximumCount, std::nullopt, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerProjectRememberRequest>) {
+                    if (telemetrySources_.projectMemory == nullptr) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Project memory is unavailable in this Manager composition."));
+                    }
+                    Domain::ProjectMemoryWrite write;
+                    write.kind = "note";
+                    write.title = payload.title;
+                    write.summary = payload.summary;
+                    write.body = payload.body;
+                    write.tags = payload.tags;
+                    write.sourceKind = "native_gui";
+                    auto remembered = telemetrySources_.projectMemory->remember(
+                        Domain::RememberProjectMemoryRequest{
+                            payload.projectId, std::move(write)},
+                        context);
+                    if (!remembered) {
+                        return responseWithError(
+                            request, std::move(remembered).error());
+                    }
+                    return controllerResponse(
+                        request,
+                        projectWorkspace(
+                            payload.projectId, {}, 20U,
+                            remembered.value().recordId, context));
                 } else if constexpr (
                     std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                     return controllerResponse(

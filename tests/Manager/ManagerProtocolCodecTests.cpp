@@ -354,6 +354,19 @@ void testEveryRequestMethodRoundTripsDeterministically()
     payloads.emplace_back(Manager::ManagerTelemetryRequest{
         identifier<Domain::SessionId>(
             "20000000-0000-4000-8000-000000000001")});
+    payloads.emplace_back(Manager::ManagerProjectsListRequest{32U});
+    payloads.emplace_back(Manager::ManagerProjectInitializeRequest{
+        path("D:\\Projects\\Alpha"), std::string{"Alpha"}, std::nullopt});
+    payloads.emplace_back(Manager::ManagerProjectMemoryRequest{
+        identifier<Domain::ProjectId>(
+            "20000000-0000-4000-8000-000000000002"),
+        "decision", 20U});
+    payloads.emplace_back(Manager::ManagerProjectRememberRequest{
+        identifier<Domain::ProjectId>(
+            "20000000-0000-4000-8000-000000000002"),
+        "Decision", "Keep project identity stable.",
+        std::string{"Runs bind to the selected exact project ID."},
+        {"architecture", "identity"}});
     payloads.emplace_back(Domain::ManagerControlRequest{
         Domain::ManagerControlAction::Repair});
     payloads.emplace_back(Manager::ManagerSettingsUpdateRequest{
@@ -388,6 +401,10 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "manager.status",
         "manager.settings",
         "manager.telemetry",
+        "projects.list",
+        "projects.initialize",
+        "projects.memory",
+        "projects.remember",
         "manager.control",
         "manager.settings.update",
         "managed_run.start",
@@ -519,6 +536,71 @@ void testManagerTelemetryRoundTripsWithoutLosingAvailability()
     REQUIRE(actual.storeHealthy.availability ==
             Domain::TelemetryMetricAvailability::TemporarilyUnavailable);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+}
+
+void testProjectWorkflowRoundTrips()
+{
+    const Domain::ProjectMemoryDescriptor descriptor{
+        identifier<Domain::ProjectId>(
+            "30000000-0000-4000-8000-000000000001"),
+        "Alpha project",
+        std::string{"https://github.com/example/alpha"},
+        {path("D:\\Projects\\Alpha"), path("D:\\Worktrees\\Alpha")}};
+    const auto projectsFrame = take(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{
+                Manager::ManagerProjectsSnapshot{{descriptor}}})));
+    const auto decodedProjects = take(
+        Manager::ManagerProtocolCodec::decodeResponse(projectsFrame));
+    const auto& projects = std::get<Manager::ManagerProjectsSnapshot>(
+        std::get<Manager::ManagerResult>(decodedProjects.body));
+    REQUIRE(projects.projects.size() == 1U);
+    REQUIRE(projects.projects.front().id == descriptor.id);
+    REQUIRE(projects.projects.front().aliases.size() == 2U);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedProjects)) ==
+            projectsFrame);
+
+    const auto recordId = identifier<Domain::MemoryRecordId>(
+        "30000000-0000-4000-8000-000000000002");
+    const Manager::ManagerProjectWorkspaceSnapshot workspace{
+        descriptor,
+        7U,
+        1U,
+        11U,
+        4'096U,
+        512U,
+        true,
+        true,
+        {Manager::ManagerProjectMemoryRecord{
+            recordId,
+            3U,
+            "decision",
+            "Keep exact identity",
+            "Runs remain bound to the selected project.",
+            std::string{"The authorized folder is not used as a substitute ID."},
+            {"identity", "runs"},
+            Domain::UtcTimePoint{
+                std::chrono::milliseconds{1'767'225'602'321LL}}}},
+        std::string{"next-page"},
+        true,
+        recordId};
+    const auto workspaceFrame = take(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{workspace})));
+    const auto decodedWorkspace = take(
+        Manager::ManagerProtocolCodec::decodeResponse(workspaceFrame));
+    const auto& actual = std::get<Manager::ManagerProjectWorkspaceSnapshot>(
+        std::get<Manager::ManagerResult>(decodedWorkspace.body));
+    REQUIRE(actual.project.id == descriptor.id);
+    REQUIRE(actual.recordCount == 7U);
+    REQUIRE(actual.integrityOk);
+    REQUIRE(actual.records.size() == 1U);
+    REQUIRE(actual.records.front().id == recordId);
+    REQUIRE(actual.records.front().body ==
+            "The authorized folder is not used as a substitute ID.");
+    REQUIRE(actual.writtenRecordId == recordId);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedWorkspace)) ==
+            workspaceFrame);
 }
 
 void testResponseResultAndErrorRoundTrips()
@@ -1215,6 +1297,7 @@ int main()
         {"managed-run-round-trips", testManagedRunResultRoundTrips},
         {"manager-telemetry-round-trips",
          testManagerTelemetryRoundTripsWithoutLosingAvailability},
+        {"project-workflow-round-trips", testProjectWorkflowRoundTrips},
         {"settings-update-outcome-round-trips",
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},
