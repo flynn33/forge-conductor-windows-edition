@@ -1,9 +1,12 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
 #include "MainWindow.g.cpp"
+#include "TelemetryPresentation.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <vector>
 #include <winrt/Microsoft.UI.Dispatching.h>
 
 namespace winrt::ForgeConductorApp::implementation {
@@ -21,6 +24,40 @@ using Visibility = Microsoft::UI::Xaml::Visibility;
         throw std::invalid_argument{std::string{name} + " must be a whole number."};
     }
     return static_cast<std::uint32_t>(value);
+}
+
+void applyMetric(
+    const Microsoft::UI::Xaml::Controls::TextBlock& value,
+    const Microsoft::UI::Xaml::Controls::TextBlock& state,
+    const Microsoft::UI::Xaml::Controls::ProgressBar& gauge,
+    const ::ForgeConductor::Hosts::App::MetricPresentation& presentation)
+{
+    value.Text(winrt::to_hstring(presentation.value));
+    state.Text(winrt::to_hstring(presentation.state));
+    gauge.IsIndeterminate(!presentation.gaugePercent.has_value());
+    if (presentation.gaugePercent) gauge.Value(*presentation.gaugePercent);
+}
+
+[[nodiscard]] Microsoft::UI::Xaml::Media::PointCollection chartPoints(
+    const std::vector<double>& values,
+    const double width,
+    const double height)
+{
+    Microsoft::UI::Xaml::Media::PointCollection points;
+    if (values.empty()) return points;
+    const auto denominator = values.size() > 1U
+        ? static_cast<double>(values.size() - 1U)
+        : 1.0;
+    for (std::size_t index{}; index < values.size(); ++index) {
+        const auto x = values.size() == 1U
+            ? width
+            : width * static_cast<double>(index) / denominator;
+        const auto y = height - height * std::clamp(values[index], 0.0, 100.0) /
+            100.0;
+        points.Append(Windows::Foundation::Point{
+            static_cast<float>(x), static_cast<float>(y)});
+    }
+    return points;
 }
 }
 
@@ -125,6 +162,67 @@ void MainWindow::ApplyProviderForm(
     ResponseReserve().Value(settings.nextResponseReserve);
     HandoffReserve().Value(settings.handoffReserve);
     SafetyMargin().Value(settings.estimationSafetyMargin);
+}
+
+void MainWindow::ApplyTelemetryPresentation(
+    const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot)
+{
+    const auto presentation =
+        ::ForgeConductor::Hosts::App::makeTelemetryPresentation(snapshot);
+    applyMetric(CpuValue(), CpuState(), CpuGauge(), presentation.cpu);
+    applyMetric(RamValue(), RamState(), RamGauge(), presentation.ram);
+    applyMetric(GpuValue(), GpuState(), GpuGauge(), presentation.gpu);
+    applyMetric(
+        ContextValue(), ContextState(), ContextGauge(), presentation.context);
+    ManagerHealth().Text(winrt::to_hstring(presentation.managerStatus));
+    ProviderHealth().Text(winrt::to_hstring(presentation.providerStatus));
+    StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
+    ContinuityHealth().Text(winrt::to_hstring(presentation.continuityStatus));
+
+    const auto width = std::max(320.0, HistoryCanvas().ActualWidth());
+    constexpr double Height = 132.0;
+    CpuHistoryLine().Points(chartPoints(presentation.cpuHistory, width, Height));
+    RamHistoryLine().Points(chartPoints(presentation.ramHistory, width, Height));
+    if (presentation.cpuHistory.empty()) {
+        HistoryEquivalentText().Text(L"No measured CPU/RAM history samples.");
+    } else {
+        HistoryEquivalentText().Text(winrt::to_hstring(
+            std::to_string(presentation.cpuHistory.size()) +
+            " measured samples · latest CPU " + presentation.cpu.value +
+            " · latest RAM " + presentation.ram.value));
+    }
+
+    if (presentation.latencyHistoryMilliseconds.empty()) {
+        LatencyHistoryLine().Points(
+            Microsoft::UI::Xaml::Media::PointCollection{});
+        LatencyEquivalentText().Text(L"No measured activity latency observations.");
+    } else {
+        const auto maximum = *std::max_element(
+            presentation.latencyHistoryMilliseconds.begin(),
+            presentation.latencyHistoryMilliseconds.end());
+        std::vector<double> normalized;
+        normalized.reserve(presentation.latencyHistoryMilliseconds.size());
+        for (const auto value : presentation.latencyHistoryMilliseconds) {
+            normalized.push_back(maximum > 0.0 ? value * 100.0 / maximum : 0.0);
+        }
+        const auto latencyWidth = std::max(320.0, LatencyCanvas().ActualWidth());
+        LatencyHistoryLine().Points(chartPoints(normalized, latencyWidth, 72.0));
+        LatencyEquivalentText().Text(winrt::to_hstring(
+            std::to_string(normalized.size()) + " observations · latest " +
+            std::to_string(static_cast<std::uint64_t>(
+                presentation.latencyHistoryMilliseconds.back())) +
+            " ms · chart maximum " +
+            std::to_string(static_cast<std::uint64_t>(maximum)) + " ms"));
+    }
+
+    ActivityTimeline().Children().Clear();
+    for (const auto& item : presentation.timeline) {
+        Microsoft::UI::Xaml::Controls::TextBlock row;
+        row.Text(winrt::to_hstring(item));
+        row.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        row.IsTextSelectionEnabled(true);
+        ActivityTimeline().Children().Append(row);
+    }
 }
 
 winrt::fire_and_forget MainWindow::RunAction(const Action action)
@@ -284,6 +382,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         } else {
             if (action == Action::Refresh && telemetryView.snapshot) {
                 telemetrySnapshot_ = std::move(telemetryView.snapshot);
+                ApplyTelemetryPresentation(*telemetrySnapshot_);
             }
             ManagerState().Text(winrt::to_hstring(message));
             GenericState().Text(winrt::to_hstring(message));

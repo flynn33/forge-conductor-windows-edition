@@ -33,6 +33,8 @@ private:
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
         ReadProviderForm(std::string& error);
     void ApplyProviderForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
+    void ApplyTelemetryPresentation(
+        const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;

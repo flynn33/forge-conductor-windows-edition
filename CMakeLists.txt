@@ -805,6 +805,20 @@ if(BUILD_TESTING)
         LABELS "G16;T-MGR;T-SEC;T-UNIT"
         TIMEOUT 60)
 
+    add_executable(ForgeConductor.App.TelemetryPresentationTests
+        tests/App/TelemetryPresentationTests.cpp)
+    forge_configure_standard_target(ForgeConductor.App.TelemetryPresentationTests)
+    target_include_directories(ForgeConductor.App.TelemetryPresentationTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Hosts/App)
+    target_link_libraries(ForgeConductor.App.TelemetryPresentationTests PRIVATE
+        ForgeConductor::Domain)
+    add_test(
+        NAME ForgeConductor.App.TelemetryPresentationTests
+        COMMAND $<TARGET_FILE:ForgeConductor.App.TelemetryPresentationTests>)
+    set_tests_properties(ForgeConductor.App.TelemetryPresentationTests PROPERTIES
+        LABELS "R2;T-UI;T-UNIT"
+        TIMEOUT 60)
+
     add_executable(ForgeConductor.Manager.ControllerTests
         tests/Manager/ManagerControllerTests.cpp)
     forge_configure_standard_target(ForgeConductor.Manager.ControllerTests)
