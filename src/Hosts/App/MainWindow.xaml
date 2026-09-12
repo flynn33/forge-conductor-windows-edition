@@ -1,8 +1,8 @@
 <Window x:Class="ForgeConductorApp.MainWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Forge Conductor">
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Forge Conductor" Closed="WindowClosed">
  <NavigationView x:Name="RootNavigation" IsBackButtonVisible="Collapsed"
-   IsSettingsVisible="False" PaneDisplayMode="Left" SelectionChanged="NavigationChanged">
+   IsSettingsVisible="False" PaneDisplayMode="Left" SelectionChanged="NavigationChanged" Loaded="WindowContentLoaded">
   <NavigationView.MenuItems>
    <NavigationViewItem Content="Rig" Tag="Rig" Icon="Home" IsSelected="True" />
    <NavigationViewItem Content="LM Studio MCP" Tag="LM Studio MCP" />
@@ -92,14 +92,14 @@
       <StackPanel Spacing="8">
        <TextBlock Text="Resource history" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <TextBlock x:Name="HistoryEquivalentText" Text="No history samples" TextWrapping="Wrap" AutomationProperties.Name="Resource history values" />
-       <Canvas x:Name="HistoryCanvas" Height="132" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="CPU and RAM history chart">
+       <Canvas x:Name="HistoryCanvas" Height="132" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="CPU and RAM history chart" SizeChanged="TelemetryChartSizeChanged">
         <Polyline x:Name="CpuHistoryLine" Stroke="{ThemeResource AccentFillColorDefaultBrush}" StrokeThickness="3" />
         <Polyline x:Name="RamHistoryLine" Stroke="{ThemeResource SystemFillColorSuccessBrush}" StrokeThickness="3" />
        </Canvas>
        <TextBlock Text="CPU (accent) · RAM (success) · 0–100 percent" Style="{ThemeResource CaptionTextBlockStyle}" />
        <TextBlock Text="Tool and provider latency" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,8,0,0" />
        <TextBlock x:Name="LatencyEquivalentText" Text="No latency observations" TextWrapping="Wrap" AutomationProperties.Name="Activity latency values" />
-       <Canvas x:Name="LatencyCanvas" Height="72" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="Recent activity latency chart">
+       <Canvas x:Name="LatencyCanvas" Height="72" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="Recent activity latency chart" SizeChanged="TelemetryChartSizeChanged">
         <Polyline x:Name="LatencyHistoryLine" Stroke="{ThemeResource SystemFillColorCautionBrush}" StrokeThickness="3" />
        </Canvas>
       </StackPanel>

@@ -4,15 +4,59 @@
 #include "TelemetryPresentation.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <vector>
-#include <winrt/Microsoft.UI.Dispatching.h>
-#include <winrt/Windows.Storage.h>
+#include <windows.h>
 
 namespace winrt::ForgeConductorApp::implementation {
 namespace {
 using Visibility = Microsoft::UI::Xaml::Visibility;
+constexpr wchar_t ViewSettingsKey[] =
+    L"Software\\Forge Conductor\\Windows Alpha";
+constexpr wchar_t SelectedPageValue[] = L"SelectedPage";
+
+struct RegistryKey final {
+    HKEY value{};
+    ~RegistryKey() { if (value) ::RegCloseKey(value); }
+};
+
+[[nodiscard]] std::optional<hstring> loadSavedPage() noexcept
+{
+    try {
+        DWORD bytes{};
+        if (::RegGetValueW(HKEY_CURRENT_USER, ViewSettingsKey,
+                SelectedPageValue, RRF_RT_REG_SZ, nullptr, nullptr,
+                &bytes) != ERROR_SUCCESS || bytes < sizeof(wchar_t)) {
+            return std::nullopt;
+        }
+        std::vector<wchar_t> value(bytes / sizeof(wchar_t));
+        if (::RegGetValueW(HKEY_CURRENT_USER, ViewSettingsKey,
+                SelectedPageValue, RRF_RT_REG_SZ, nullptr, value.data(),
+                &bytes) != ERROR_SUCCESS || value.empty()) {
+            return std::nullopt;
+        }
+        return hstring{value.data()};
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+void storeSavedPage(const hstring& page) noexcept
+{
+    RegistryKey key;
+    if (::RegCreateKeyExW(HKEY_CURRENT_USER, ViewSettingsKey, 0, nullptr,
+            REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &key.value,
+            nullptr) != ERROR_SUCCESS) {
+        return;
+    }
+    const auto bytes = static_cast<DWORD>(
+        (page.size() + 1U) * sizeof(wchar_t));
+    static_cast<void>(::RegSetValueExW(key.value, SelectedPageValue, 0,
+        REG_SZ, reinterpret_cast<const BYTE*>(page.c_str()), bytes));
+}
 
 [[nodiscard]] std::uint32_t numberValue(
     const Microsoft::UI::Xaml::Controls::NumberBox& control,
@@ -68,26 +112,40 @@ MainWindow::MainWindow(
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection)
     : connection_{std::move(connection)}
 {
-    Closed([this](auto const&, auto const&) { cancellation_.request_stop(); });
-    RootNavigation().Loaded([this](auto const&, auto const&) {
-        try {
-            const auto saved = Windows::Storage::ApplicationData::Current()
-                .LocalSettings().Values().TryLookup(L"selected_page");
-            const auto selected = saved.try_as<Windows::Foundation::IPropertyValue>();
-            if (!selected || selected.Type() !=
-                    Windows::Foundation::PropertyType::String) return;
-            const auto tag = selected.GetString();
-            for (const auto& candidate : RootNavigation().MenuItems()) {
-                const auto item = candidate.try_as<
-                    Microsoft::UI::Xaml::Controls::NavigationViewItem>();
-                if (item && unbox_value_or<hstring>(item.Tag(), L"") == tag) {
-                    RootNavigation().SelectedItem(item);
-                    break;
-                }
+}
+
+void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::WindowEventArgs const&)
+{
+    if (telemetryTimer_) telemetryTimer_.Stop();
+    cancellation_.request_stop();
+}
+
+void MainWindow::WindowContentLoaded(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (telemetryUiInitialized_) return;
+    telemetryUiInitialized_ = true;
+    if (const auto saved = loadSavedPage()) {
+        const auto items = RootNavigation().MenuItems();
+        for (std::uint32_t index{}; index < items.Size(); ++index) {
+            const auto item = items.GetAt(index).try_as<
+                Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+            if (item && unbox_value_or<hstring>(item.Tag(), L"") == *saved) {
+                RootNavigation().SelectedItem(item);
+                break;
             }
-        } catch (...) {
         }
+    }
+    const auto weak = get_weak();
+    telemetryTimer_ = Microsoft::UI::Xaml::DispatcherTimer{};
+    telemetryTimer_.Interval(std::chrono::seconds{2});
+    telemetryTimer_.Tick([weak](auto const&, auto const&) {
+        if (const auto self = weak.get()) self->RunAction(Action::Refresh);
     });
+    RunAction(Action::Refresh);
+    telemetryTimer_.Start();
 }
 
 void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,
@@ -124,11 +182,7 @@ void MainWindow::NavigationChanged(
     if (!item) return;
     const auto tag = unbox_value_or<hstring>(item.Tag(), L"Rig");
     PageTitle().Text(tag);
-    try {
-        Windows::Storage::ApplicationData::Current().LocalSettings()
-            .Values().Insert(L"selected_page", box_value(tag));
-    } catch (...) {
-    }
+    storeSavedPage(tag);
     const bool provider = tag == L"Provider";
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
     const bool rig = tag == L"Rig";
@@ -154,6 +208,13 @@ void MainWindow::NavigationChanged(
     } else {
         PageDescription().Text(L"Inspect the current typed Manager operational snapshot.");
     }
+    if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
+}
+
+void MainWindow::TelemetryChartSizeChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::SizeChangedEventArgs const&)
+{
     if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
 }
 
@@ -264,6 +325,29 @@ void MainWindow::ApplyTelemetryPresentation(
         ProviderState().Text(winrt::to_hstring(detail));
     } else if (page != "Rig" && page != "Autonomy" && page != "Continuity") {
         GenericState().Text(winrt::to_hstring(detail));
+    }
+}
+
+void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
+{
+    const auto explanation = reason.empty()
+        ? std::string{"Manager telemetry is unavailable."}
+        : std::string{reason};
+    const auto unavailable = ::ForgeConductor::Hosts::App::MetricPresentation{
+        "Unavailable", explanation, std::nullopt};
+    applyMetric(CpuValue(), CpuState(), CpuGauge(), unavailable);
+    applyMetric(RamValue(), RamState(), RamGauge(), unavailable);
+    applyMetric(GpuValue(), GpuState(), GpuGauge(), unavailable);
+    applyMetric(ContextValue(), ContextState(), ContextGauge(), unavailable);
+    ManagerHealth().Text(winrt::to_hstring("Disconnected · " + explanation));
+    ProviderHealth().Text(L"Unavailable while Manager is disconnected");
+    StoreHealth().Text(L"Unavailable while Manager is disconnected");
+    ContinuityHealth().Text(L"Unavailable while Manager is disconnected");
+    if (telemetrySnapshot_) {
+        HistoryEquivalentText().Text(
+            L"Last measured CPU/RAM history is stale because the Manager is disconnected.");
+        LatencyEquivalentText().Text(
+            L"Last measured latency history is stale because the Manager is disconnected.");
     }
 }
 
@@ -425,6 +509,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (action == Action::Refresh && telemetryView.snapshot) {
                 telemetrySnapshot_ = std::move(telemetryView.snapshot);
                 ApplyTelemetryPresentation(*telemetrySnapshot_);
+            } else if (action == Action::Refresh) {
+                ApplyDisconnectedTelemetry(message);
             }
             ManagerState().Text(winrt::to_hstring(message));
             GenericState().Text(winrt::to_hstring(message));
