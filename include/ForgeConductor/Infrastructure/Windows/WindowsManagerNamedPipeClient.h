@@ -2,6 +2,7 @@
 
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/IManagerServices.h"
+#include "ForgeConductor/Domain/ManagedRunModels.h"
 #include "ForgeConductor/Manager/ManagerTransportLimits.h"
 
 #include <memory>
@@ -50,6 +51,26 @@ public:
 
     [[nodiscard]] Domain::Result<void> requestShutdown(
         const Domain::OperationContext& context) noexcept override;
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> startManagedRun(
+        const Domain::ManagedRunStartRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> managedRunStatus(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> pauseManagedRun(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> resumeManagedRun(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> cancelManagedRun(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext& context) noexcept;
 
     void shutdown() noexcept override;
 

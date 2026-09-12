@@ -700,6 +700,7 @@ void validateVersion(const std::uint32_t version)
     case Domain::ManagedRunState::Completed: return "completed";
     case Domain::ManagedRunState::Failed: return "failed";
     case Domain::ManagedRunState::Cancelled: return "cancelled";
+    case Domain::ManagedRunState::Paused: return "paused";
     }
     reject(
         Domain::ErrorCodes::InvalidRequest,
@@ -714,6 +715,7 @@ void validateVersion(const std::uint32_t version)
     if (value == "completed") return Domain::ManagedRunState::Completed;
     if (value == "failed") return Domain::ManagedRunState::Failed;
     if (value == "cancelled") return Domain::ManagedRunState::Cancelled;
+    if (value == "paused") return Domain::ManagedRunState::Paused;
     reject(
         Domain::ErrorCodes::InvalidRequest,
         "Managed run snapshot contains an unknown state.");
@@ -1232,6 +1234,14 @@ void validateSettingsUpdateOutcome(
                 std::is_same_v<Payload, ManagedRunCancelRequest>) {
                 method = "managed_run.cancel";
                 params["run_id"] = payload.runId.value();
+            } else if constexpr (
+                std::is_same_v<Payload, ManagedRunPauseRequest>) {
+                method = "managed_run.pause";
+                params["run_id"] = payload.runId.value();
+            } else if constexpr (
+                std::is_same_v<Payload, ManagedRunResumeRequest>) {
+                method = "managed_run.resume";
+                params["run_id"] = payload.runId.value();
             } else if constexpr (std::is_same_v<Payload, ManagerCancelRequest>) {
                 method = "manager.cancel";
                 params["operation_id"] = payload.operationId.value();
@@ -1313,6 +1323,14 @@ void validateSettingsUpdateOutcome(
         requireExactFields(params, {"run_id"}, "managed_run.cancel params");
         payload = ManagedRunCancelRequest{
             identifierMember<Domain::SessionId>(params, "run_id")};
+    } else if (method == "managed_run.pause") {
+        requireExactFields(params, {"run_id"}, "managed_run.pause params");
+        payload = ManagedRunPauseRequest{
+            identifierMember<Domain::SessionId>(params, "run_id")};
+    } else if (method == "managed_run.resume") {
+        requireExactFields(params, {"run_id"}, "managed_run.resume params");
+        payload = ManagedRunResumeRequest{
+            identifierMember<Domain::SessionId>(params, "run_id")};
     } else if (method == "manager.cancel") {
         requireExactFields(
             params, {"operation_id"}, "manager.cancel params");
@@ -1384,6 +1402,7 @@ void validateSettingsUpdateOutcome(
 {
     const auto& record = snapshot.record;
     Json value = Json::object();
+    value["authority_generation"] = record.authorityGeneration;
     value["cancellation_requested"] = snapshot.cancellationRequested;
     value["client_id"] = record.clientId.value();
     value["created_at_utc_ms"] = epochMilliseconds(record.createdAt);
@@ -1394,8 +1413,16 @@ void validateSettingsUpdateOutcome(
         value["last_error"] = nullptr;
     }
     value["manager_owned"] = snapshot.managerOwned;
+    value["pause_requested"] = snapshot.pauseRequested;
     value["output_text"] = optionalString(record.outputText);
     value["output_tokens"] = record.outputTokens;
+    value["pending_function_calls"] = Json::array();
+    for (const auto& call : record.pendingFunctionCalls) {
+        value["pending_function_calls"].push_back(Json{
+            {"arguments", call.canonicalArguments},
+            {"call_id", call.callId},
+            {"name", call.name}});
+    }
     value["project_id"] = record.projectId.value();
     if (record.providerResponseId) {
         value["provider_response_id"] = record.providerResponseId->value();
@@ -1419,9 +1446,9 @@ void validateSettingsUpdateOutcome(
 {
     requireExactFields(
         value,
-        {"cancellation_requested", "client_id", "created_at_utc_ms",
+        {"authority_generation", "cancellation_requested", "client_id", "created_at_utc_ms",
          "input_tokens", "last_error", "manager_owned", "output_text",
-         "output_tokens", "project_id", "provider_response_id",
+         "output_tokens", "pause_requested", "pending_function_calls", "project_id", "provider_response_id",
          "retained_context_tokens", "run_id", "state", "task",
          "updated_at_utc_ms"},
         "Managed run snapshot");
@@ -1449,12 +1476,29 @@ void validateSettingsUpdateOutcome(
         [](const Json& object, const std::string_view name) {
             return parseError(member(object, name));
         });
+    const auto& pendingJson = member(value, "pending_function_calls");
+    if (!pendingJson.is_array()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            "Managed run pending_function_calls must be an array.");
+    }
+    std::vector<Domain::ManagedFunctionCall> pending;
+    for (const auto& call : pendingJson) {
+        requireExactFields(
+            call, {"arguments", "call_id", "name"},
+            "Managed function call");
+        pending.push_back({
+            stringMember(call, "call_id"),
+            stringMember(call, "name"),
+            stringMember(call, "arguments")});
+    }
     return Domain::ManagedRunSnapshot{
         Domain::ManagedRunRecord{
             identifierMember<Domain::SessionId>(value, "run_id"),
             identifierMember<Domain::ProjectId>(value, "project_id"),
             identifierMember<Domain::ClientId>(value, "client_id"),
             stringMember(value, "task"),
+            uint64Member(value, "authority_generation"),
             parseManagedRunState(stringMember(value, "state")),
             providerResponseId,
             uint64Member(value, "input_tokens"),
@@ -1462,12 +1506,14 @@ void validateSettingsUpdateOutcome(
             retainedContextTokens,
             outputText,
             lastError,
+            std::move(pending),
             utcTimePointFromMilliseconds(
                 nonnegativeIntegerMember(value, "created_at_utc_ms")),
             utcTimePointFromMilliseconds(
                 nonnegativeIntegerMember(value, "updated_at_utc_ms"))},
         booleanMember(value, "manager_owned"),
-        booleanMember(value, "cancellation_requested")};
+        booleanMember(value, "cancellation_requested"),
+        booleanMember(value, "pause_requested")};
 }
 
 [[nodiscard]] Json resultJson(const ManagerResult& result)

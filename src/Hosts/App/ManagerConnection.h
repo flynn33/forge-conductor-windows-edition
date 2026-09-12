@@ -1,7 +1,9 @@
 #pragma once
 #include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 #include "ForgeConductor/Domain/ManagerModels.h"
+#include "ForgeConductor/Domain/ManagedRunModels.h"
 
+#include <cstdint>
 #include <optional>
 #include <stop_token>
 #include <string>
@@ -11,6 +13,14 @@ struct ProviderSettingsView final {
     bool loaded{};
     std::string message;
     Domain::ManagerSettings settings;
+};
+
+enum class ManagedRunAction { Status, Pause, Resume, Cancel };
+
+struct ManagedRunView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Domain::ManagedRunSnapshot> snapshot;
 };
 
 class IManagerConnection {
@@ -28,6 +38,16 @@ public:
         std::stop_token cancellation) noexcept = 0;
     virtual std::string testProvider(
         const Domain::ManagerSettings& settings,
+        std::stop_token cancellation) noexcept = 0;
+    virtual ManagedRunView startManagedRun(
+        std::string projectId,
+        std::string clientId,
+        std::uint64_t authorityGeneration,
+        std::string task,
+        std::stop_token cancellation) noexcept = 0;
+    virtual ManagedRunView controlManagedRun(
+        std::string runId,
+        ManagedRunAction action,
         std::stop_token cancellation) noexcept = 0;
 };
 class ManagerConnection final : public IManagerConnection {
@@ -48,7 +68,16 @@ public:
     std::string testProvider(
         const Domain::ManagerSettings& settings,
         std::stop_token cancellation) noexcept override;
-
+    ManagedRunView startManagedRun(
+        std::string projectId,
+        std::string clientId,
+        std::uint64_t authorityGeneration,
+        std::string task,
+        std::stop_token cancellation) noexcept override;
+    ManagedRunView controlManagedRun(
+        std::string runId,
+        ManagedRunAction action,
+        std::stop_token cancellation) noexcept override;
 private:
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>
         alphaProfile_;

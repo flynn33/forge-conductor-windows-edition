@@ -1,5 +1,7 @@
 #include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
 
+#include <nlohmann/json.hpp>
+
 #include <utility>
 
 namespace ForgeConductor::Application {
@@ -11,6 +13,7 @@ namespace {
     switch (state) {
     case Domain::ManagedRunState::Running:
     case Domain::ManagedRunState::Cancelling:
+    case Domain::ManagedRunState::Paused:
         return Domain::SessionStatus::Running;
     case Domain::ManagedRunState::Completed:
         return Domain::SessionStatus::Completed;
@@ -40,13 +43,103 @@ namespace {
 [[nodiscard]] std::optional<std::string> summary(
     const Domain::ManagedRunRecord& record)
 {
-    if (record.lastError) {
-        return Domain::truncateAgentSummaryUtf8(record.lastError->message);
+    nlohmann::json value{
+        {"authority_generation", record.authorityGeneration},
+        {"input_tokens", record.inputTokens},
+        {"kind", "forge_managed_run"},
+        {"output_tokens", record.outputTokens},
+        {"pending_count", record.pendingFunctionCalls.size()},
+        {"state", static_cast<std::uint32_t>(record.state)},
+        {"version", 1U}};
+    if (record.providerResponseId) {
+        value["provider_response_id"] = record.providerResponseId->value();
+    } else {
+        value["provider_response_id"] = nullptr;
+    }
+    if (record.retainedContextTokens) {
+        value["retained_context_tokens"] = *record.retainedContextTokens;
+    } else {
+        value["retained_context_tokens"] = nullptr;
     }
     if (record.outputText) {
-        return Domain::truncateAgentSummaryUtf8(*record.outputText);
+        value["output_text"] =
+            Domain::truncateAgentSummaryUtf8(*record.outputText, 1'500U);
+    } else {
+        value["output_text"] = nullptr;
     }
-    return std::nullopt;
+    if (record.lastError) {
+        value["error"] = {
+            {"code", record.lastError->code},
+            {"message", Domain::truncateAgentSummaryUtf8(
+                record.lastError->message, 768U)},
+            {"retryable", record.lastError->retryable}};
+    } else {
+        value["error"] = nullptr;
+    }
+    return value.dump();
+}
+
+void applySummary(
+    const std::optional<std::string>& encoded,
+    Domain::ManagedRunRecord& record)
+{
+    if (!encoded || !encoded->starts_with('{')) return;
+    try {
+        const auto value = nlohmann::json::parse(*encoded);
+        if (!value.is_object() || value.value("kind", "") !=
+                "forge_managed_run" || value.value("version", 0U) != 1U) {
+            return;
+        }
+        record.authorityGeneration =
+            value.value("authority_generation", 0ULL);
+        record.inputTokens = value.value("input_tokens", 0ULL);
+        record.outputTokens = value.value("output_tokens", 0ULL);
+        if (value.contains("retained_context_tokens") &&
+            value["retained_context_tokens"].is_number_unsigned()) {
+            record.retainedContextTokens =
+                value["retained_context_tokens"].get<std::uint64_t>();
+        }
+        if (value.contains("provider_response_id") &&
+            value["provider_response_id"].is_string()) {
+            auto id = Domain::ProviderSessionId::parse(
+                value["provider_response_id"].get<std::string>(), 512U);
+            if (id) record.providerResponseId = std::move(id).value();
+        }
+        if (value.contains("output_text") && value["output_text"].is_string()) {
+            record.outputText = value["output_text"].get<std::string>();
+        }
+        if (value.contains("error") && value["error"].is_object()) {
+            record.lastError = Domain::makeError(
+                value["error"].value("code", std::string{
+                    Domain::ErrorCodes::InternalFailure}),
+                value["error"].value("message", std::string{
+                    "The managed run failed."}),
+                value["error"].value("retryable", false));
+        }
+        const auto state = value.value("state", 0U);
+        if (state <= static_cast<std::uint32_t>(
+                Domain::ManagedRunState::Paused)) {
+            record.state = static_cast<Domain::ManagedRunState>(state);
+        }
+        const auto pendingCount = value.value("pending_count", 0U);
+        if (pendingCount > 0U ||
+            record.state == Domain::ManagedRunState::Running ||
+            record.state == Domain::ManagedRunState::Cancelling ||
+            record.state == Domain::ManagedRunState::Paused) {
+            record.state = Domain::ManagedRunState::Failed;
+            record.lastError = Domain::makeError(
+                Domain::ErrorCodes::Conflict,
+                pendingCount > 0U
+                    ? "The recovered managed run has pending tool effects and requires review before retry."
+                    : "The recovered managed run stopped before a terminal provider result.",
+                true);
+        }
+    } catch (...) {
+        record.state = Domain::ManagedRunState::Failed;
+        record.lastError = Domain::makeError(
+            Domain::ErrorCodes::IntegrityFailure,
+            "The durable managed-run summary is malformed.");
+    }
 }
 
 } // namespace
@@ -88,20 +181,18 @@ public:
             *run.projectId,
             *run.session.clientId,
             *run.goal,
+            0U,
             managedState(run.session.status),
             std::nullopt,
             0U,
             0U,
             std::nullopt,
-            run.session.summary,
-            run.session.status == Domain::SessionStatus::Failed &&
-                    run.session.summary
-                ? std::optional<Domain::Error>{Domain::makeError(
-                      Domain::ErrorCodes::InternalFailure,
-                      *run.session.summary)}
-                : std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            {},
             run.session.createdAt,
             run.session.updatedAt};
+        applySummary(run.session.summary, record);
         return Domain::Result<
             std::optional<Domain::ManagedRunRecord>>::success(
             std::move(record));

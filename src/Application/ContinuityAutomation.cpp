@@ -376,6 +376,8 @@ public:
                     std::move(valid));
             }
             outcome.successorActivated = true;
+            outcome.successorProviderResponseId =
+                resumed.session.providerSessionId;
             return Domain::Result<
                 Domain::ContinuityAutomationOutcome>::success(
                     std::move(outcome));

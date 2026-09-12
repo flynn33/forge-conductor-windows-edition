@@ -51,6 +51,14 @@ struct ManagedRunCancelRequest final {
     Domain::SessionId runId;
 };
 
+struct ManagedRunPauseRequest final {
+    Domain::SessionId runId;
+};
+
+struct ManagedRunResumeRequest final {
+    Domain::SessionId runId;
+};
+
 using ManagerRequestPayload = std::variant<
     ManagerStatusRequest,
     ManagerSettingsRequest,
@@ -59,6 +67,8 @@ using ManagerRequestPayload = std::variant<
     ManagedRunStartRequest,
     ManagedRunStatusRequest,
     ManagedRunCancelRequest,
+    ManagedRunPauseRequest,
+    ManagedRunResumeRequest,
     ManagerCancelRequest,
     ManagerShutdownRequest>;
 

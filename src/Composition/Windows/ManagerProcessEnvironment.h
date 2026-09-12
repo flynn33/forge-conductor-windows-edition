@@ -115,6 +115,16 @@ public:
         return projectsRoot_;
     }
 
+    [[nodiscard]] const Domain::PathText& memoryRoot() const noexcept
+    {
+        return memoryRoot_;
+    }
+
+    [[nodiscard]] const Domain::PathText& handoffsRoot() const noexcept
+    {
+        return handoffsRoot_;
+    }
+
     [[nodiscard]] const Domain::PathText& managerExecutable() const noexcept
     {
         return managerExecutableIdentity_.canonicalPath;
@@ -163,6 +173,8 @@ private:
         Domain::PathText diagnosticsRoot,
         Domain::PathText exportRoot,
         Domain::PathText projectsRoot,
+        Domain::PathText memoryRoot,
+        Domain::PathText handoffsRoot,
         ManagerProcessExecutableIdentity managerExecutableIdentity,
         ManagerProcessExecutableIdentity cliExecutableIdentity,
         std::uint64_t physicalMemoryBytes,
@@ -174,6 +186,8 @@ private:
     Domain::PathText diagnosticsRoot_;
     Domain::PathText exportRoot_;
     Domain::PathText projectsRoot_;
+    Domain::PathText memoryRoot_;
+    Domain::PathText handoffsRoot_;
     ManagerProcessExecutableIdentity managerExecutableIdentity_;
     ManagerProcessExecutableIdentity cliExecutableIdentity_;
     std::uint64_t physicalMemoryBytes_{};
@@ -222,7 +236,7 @@ private:
 
 class ManagerProcessEnvironment final {
 public:
-    static constexpr std::size_t RequiredDirectoryCount = 5U;
+    static constexpr std::size_t RequiredDirectoryCount = 7U;
 
     ManagerProcessEnvironment(
         ManagerProcessEnvironmentOptions options,

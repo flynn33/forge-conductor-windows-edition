@@ -23,12 +23,15 @@
 #include "ForgeConductor/Application/AgentSessionService.h"
 #include "ForgeConductor/Application/ContinuityCoordinator.h"
 #include "ForgeConductor/Application/ContinuityAutomation.h"
+#include "ForgeConductor/Application/LegacyContextContinuityService.h"
+#include "ForgeConductor/Application/LegacyMemoryService.h"
 #include "ForgeConductor/Application/DashboardConnectionApplicationFactory.h"
 #include "ForgeConductor/Application/DashboardOperationalService.h"
 #include "ForgeConductor/Application/DashboardTelemetrySource.h"
 #include "ForgeConductor/Application/ManagerController.h"
 #include "ForgeConductor/Application/ManagedRunService.h"
 #include "ForgeConductor/Application/ProjectMemoryRepositoryCache.h"
+#include "ForgeConductor/Application/ProjectMemoryService.h"
 #include "ForgeConductor/Dashboard/DashboardStaticAssetStore.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
@@ -51,18 +54,29 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioEnvironment.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioHostActivator.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioServeVerifier.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerAuthentication.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeServer.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsNativeSessionLedger.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsUnicodeCanonicalizer.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include "ForgeConductor/Manager/ManagerRequestDispatcher.h"
 #include "ForgeConductor/Mcp/McpExecutionServices.h"
+#include "ForgeConductor/Mcp/McpClientWorkspaceContext.h"
+#include "ForgeConductor/Mcp/McpInvocationGuard.h"
 #include "ForgeConductor/Mcp/McpToolCatalog.h"
+#include "ForgeConductor/Mcp/McpToolPackAdapter.h"
+#include "ForgeConductor/Mcp/McpToolRouter.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsFileSystem.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsGitService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsPathGlobService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsPdfService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsTextSearchService.h"
 #include "ForgeConductor/Persistence/Windows/WindowsAgentSessionRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsAuditRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsCentralDatabase.h"
@@ -71,6 +85,7 @@
 #include "ForgeConductor/Persistence/Windows/WindowsProjectMemoryRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsProjectMemoryRepositoryOpener.h"
 #include "ForgeConductor/Persistence/Windows/WindowsProjectRegistryRepository.h"
+#include "ForgeConductor/Persistence/Windows/PersistenceWindows.h"
 #include "ForgeConductor/SessionHost/ForgeNativeSessionHostAdapter.h"
 
 #ifndef NOMINMAX
@@ -85,6 +100,7 @@
 #include <cstdint>
 #include <condition_variable>
 #include <exception>
+#include <filesystem>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -121,6 +137,7 @@ constexpr std::string_view ProductVersion{"0.9.0"};
 constexpr std::string_view RuntimeName{"windows-manager"};
 constexpr std::size_t MaximumLmStudioSelectionRoots =
     InfrastructureWindows::WindowsWorkspaceAuthority::MaximumTrustedRootsPerPolicy;
+constexpr std::size_t MaximumEnvironmentValueCharacters = 32U * 1024U;
 
 class CompositionFailure final : public std::exception {
 public:
@@ -240,6 +257,100 @@ void requireSuccess(Domain::Result<void> result)
             Domain::ErrorCodes::InternalFailure,
             "A Manager path conversion failed safely."));
     }
+}
+
+[[nodiscard]] Domain::Result<std::string> strictWideToUtf8(
+    const std::wstring_view value) noexcept
+{
+    try {
+        if (value.empty() || value.size() >
+                static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
+            return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "A Manager path could not be converted to UTF-8."));
+        }
+        const auto inputLength = static_cast<int>(value.size());
+        const int required = ::WideCharToMultiByte(
+            CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), inputLength,
+            nullptr, 0, nullptr, nullptr);
+        if (required <= 0) {
+            return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "A Manager path is not valid Unicode."));
+        }
+        std::string converted(static_cast<std::size_t>(required), '\0');
+        if (::WideCharToMultiByte(
+                CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), inputLength,
+                converted.data(), required, nullptr, nullptr) != required) {
+            return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "A Manager path conversion was incomplete."));
+        }
+        return Domain::Result<std::string>::success(std::move(converted));
+    } catch (...) {
+        return Domain::Result<std::string>::failure(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "A Manager path conversion failed safely."));
+    }
+}
+
+[[nodiscard]] Domain::PathText discoverExecutable(const wchar_t* const name)
+{
+    const DWORD required = ::SearchPathW(nullptr, name, nullptr, 0U, nullptr, nullptr);
+    if (required == 0U || required > MaximumEnvironmentValueCharacters) {
+        throw CompositionFailure{Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable,
+            "A required native executable was not found.")};
+    }
+    std::wstring buffer(static_cast<std::size_t>(required) + 1U, L'\0');
+    const DWORD written = ::SearchPathW(
+        nullptr, name, nullptr, static_cast<DWORD>(buffer.size()),
+        buffer.data(), nullptr);
+    if (written == 0U || written >= buffer.size()) {
+        throw CompositionFailure{Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable,
+            "A required native executable path could not be resolved.")};
+    }
+    buffer.resize(static_cast<std::size_t>(written));
+    return pathText(take(strictWideToUtf8(buffer)));
+}
+
+[[nodiscard]] bool isSingleLinkRegularExecutable(
+    const std::filesystem::path& candidate) noexcept
+{
+    const HANDLE file = ::CreateFileW(
+        candidate.c_str(), FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return false;
+    FILE_ATTRIBUTE_TAG_INFO attributes{};
+    FILE_STANDARD_INFO standard{};
+    const bool valid = ::GetFileInformationByHandleEx(
+            file, FileAttributeTagInfo, &attributes, sizeof(attributes)) != FALSE &&
+        ::GetFileInformationByHandleEx(
+            file, FileStandardInfo, &standard, sizeof(standard)) != FALSE &&
+        (attributes.FileAttributes &
+            (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) == 0U &&
+        standard.DeletePending == FALSE && standard.NumberOfLinks == 1U;
+    ::CloseHandle(file);
+    return valid;
+}
+
+[[nodiscard]] Domain::PathText discoverGitExecutable()
+{
+    const auto searched = discoverExecutable(L"git.exe");
+    const std::filesystem::path searchedPath{
+        take(strictUtf8ToWide(searched.value()))};
+    if (isSingleLinkRegularExecutable(searchedPath)) return searched;
+    if (_wcsicmp(searchedPath.parent_path().filename().c_str(), L"cmd") == 0) {
+        const auto candidate = searchedPath.parent_path().parent_path() /
+            L"bin" / L"git.exe";
+        if (isSingleLinkRegularExecutable(candidate)) {
+            return pathText(take(strictWideToUtf8(candidate.wstring())));
+        }
+    }
+    return searched;
 }
 
 [[nodiscard]] bool equalWindowsPath(
@@ -403,6 +514,8 @@ private:
     std::shared_ptr<InfrastructureWindows::WindowsUuidGenerator> uuidGenerator_;
     std::shared_ptr<InfrastructureWindows::BCryptSha256Hasher> hasher_;
     std::shared_ptr<InfrastructureWindows::SecretRedactor> redactor_;
+    std::shared_ptr<InfrastructureWindows::WindowsUnicodeCanonicalizer>
+        unicodeCanonicalizer_;
     std::shared_ptr<InfrastructureWindows::WindowsAtomicFileStore>
         atomicFileStore_;
     std::shared_ptr<InfrastructureWindows::WindowsApplicationPaths>
@@ -440,6 +553,12 @@ private:
     std::shared_ptr<PersistenceWindows::WindowsCentralDatabase> centralDatabase_;
     std::shared_ptr<PersistenceWindows::WindowsAgentSessionRepository>
         agentSessionRepository_;
+    std::shared_ptr<PersistenceWindows::WindowsLegacyMemoryRepository>
+        legacyMemoryRepository_;
+    std::shared_ptr<PersistenceWindows::WindowsLegacyContinuityRepository>
+        legacyContinuityRepository_;
+    std::shared_ptr<PersistenceWindows::WindowsForgeStatusRepository>
+        forgeStatusRepository_;
     std::shared_ptr<PersistenceWindows::WindowsAuditRepository> auditRepository_;
     std::shared_ptr<
         PersistenceWindows::WindowsDashboardOperationalRepository>
@@ -449,6 +568,11 @@ private:
     std::unique_ptr<InfrastructureWindows::WindowsProjectWorkspaceAuthority>
         projectWorkspaceAuthority_;
     std::shared_ptr<NativeToolsWindows::WindowsFileSystem> fileSystem_;
+    std::unique_ptr<NativeToolsWindows::WindowsPathGlobService> pathGlob_;
+    std::unique_ptr<NativeToolsWindows::WindowsTextSearchService> textSearch_;
+    std::unique_ptr<NativeToolsWindows::WindowsPdfService> pdf_;
+    std::unique_ptr<NativeToolsWindows::WindowsGitService> git_;
+    std::unique_ptr<NativeToolsWindows::WindowsShellService> shell_;
     std::shared_ptr<PersistenceWindows::WindowsProjectMemoryArtifactStore>
         projectArtifactStore_;
     std::shared_ptr<
@@ -456,9 +580,18 @@ private:
         projectRepositoryOpener_;
     std::unique_ptr<Application::ProjectMemoryRepositoryCache>
         projectRepositoryCache_;
+    std::unique_ptr<Application::ProjectMemoryService> projectMemory_;
     std::unique_ptr<Application::AgentCatalog> agentCatalog_;
     std::unique_ptr<Contracts::IAgentCompletionReportInspector> reportInspector_;
     std::unique_ptr<Application::AgentSessionService> agentSessions_;
+    std::unique_ptr<Application::LegacyMemoryService> legacyMemory_;
+    std::shared_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
+        projectionAuthority_;
+    std::shared_ptr<
+        InfrastructureWindows::WindowsLegacyContinuityProjectionStore>
+        legacyProjectionStore_;
+    std::unique_ptr<Application::LegacyContextContinuityService>
+        legacyContinuity_;
     std::unique_ptr<InfrastructureWindows::WindowsContinuityDocumentCodec>
         continuityCodec_;
     std::unique_ptr<InfrastructureWindows::WindowsNativeSessionLedger>
@@ -473,7 +606,11 @@ private:
     std::unique_ptr<Application::ContinuityCoordinator> continuity_;
     std::unique_ptr<Application::ContinuityAutomation> continuityAutomation_;
     std::unique_ptr<Mcp::McpToolCatalog> toolCatalog_;
+    std::unique_ptr<Mcp::McpClientWorkspaceContext> clientWorkspaceContext_;
+    std::unique_ptr<Mcp::McpInvocationGuard> invocationGuard_;
+    std::unique_ptr<Mcp::McpToolPackAdapter> toolPack_;
     std::unique_ptr<Mcp::McpToolAuthorizer> toolAuthorizer_;
+    std::unique_ptr<Mcp::McpToolRouter> toolRouter_;
 
     std::unique_ptr<InfrastructureWindows::WindowsLMStudioDiscoverySource>
         lmStudioDiscovery_;
@@ -613,7 +750,7 @@ void ManagerCompositionRoot::Impl::initializeFoundation(
         InfrastructureWindows::WindowsProcessSupervisor>(
         process.resourceBudgets(), runtimeDiagnostics_);
     managerClientId_.emplace(take(Domain::ClientId::parse(
-        nextUuid(*uuidGenerator_).value())));
+        "forge-conductor-manager")));
 
     const Domain::AuthorityId dataAuthorityId{nextUuid(*uuidGenerator_)};
     const Domain::ProjectId dataProjectId{nextUuid(*uuidGenerator_)};
@@ -695,13 +832,24 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     centralDatabase_ = std::shared_ptr<
         PersistenceWindows::WindowsCentralDatabase>{
         std::move(centralDatabase)};
+    unicodeCanonicalizer_ = std::make_shared<
+        InfrastructureWindows::WindowsUnicodeCanonicalizer>();
     agentSessionRepository_ = take(
         PersistenceWindows::WindowsAgentSessionRepository::attach(
             centralDatabase_, clock_));
+    legacyMemoryRepository_ = take(
+        PersistenceWindows::WindowsLegacyMemoryRepository::attach(
+            centralDatabase_, clock_, unicodeCanonicalizer_));
+    legacyContinuityRepository_ = take(
+        PersistenceWindows::WindowsLegacyContinuityRepository::attach(
+            centralDatabase_, clock_, hasher_));
     auditRepository_ = take(
         PersistenceWindows::WindowsAuditRepository::attach(centralDatabase_));
     dashboardOperationalRepository_ = take(
         PersistenceWindows::WindowsDashboardOperationalRepository::attach(
+            centralDatabase_));
+    forgeStatusRepository_ = take(
+        PersistenceWindows::WindowsForgeStatusRepository::attach(
             centralDatabase_));
 
     const auto registryPath =
@@ -726,11 +874,22 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         uuidGenerator_, hasher_, clock_, projectMemoryLimits);
     projectWorkspaceAuthority_ = std::make_unique<
         InfrastructureWindows::WindowsProjectWorkspaceAuthority>(
-        *projectRegistry_, *uuidGenerator_, *managerClientId_, false);
+        *projectRegistry_, *uuidGenerator_, *managerClientId_,
+        initialConfiguration_->shell.enabled);
 
     fileSystem_ =
         std::make_shared<NativeToolsWindows::WindowsFileSystem>(
             atomicFileStore_);
+    pathGlob_ = std::make_unique<
+        NativeToolsWindows::WindowsPathGlobService>();
+    textSearch_ = std::make_unique<
+        NativeToolsWindows::WindowsTextSearchService>();
+    pdf_ = std::make_unique<NativeToolsWindows::WindowsPdfService>(
+        *atomicFileStore_);
+    git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
+        discoverGitExecutable(), processSupervisor_);
+    shell_ = std::make_unique<NativeToolsWindows::WindowsShellService>(
+        discoverExecutable(L"powershell.exe"), processSupervisor_);
     projectArtifactStore_ = std::make_shared<
         PersistenceWindows::WindowsProjectMemoryArtifactStore>(
         applicationPaths_, uuidGenerator_);
@@ -744,6 +903,9 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         Application::ProjectMemoryRepositoryCache>(
         projectRepositoryOpener_,
         process.resourceBudgets().openProjectRepositoriesMaximum);
+    projectMemory_ = std::make_unique<Application::ProjectMemoryService>(
+        *projectRegistry_, *projectRepositoryCache_, *redactor_,
+        projectMemoryLimits);
 
     agentCatalog_ = take(Application::AgentCatalog::create(
         clock_, std::span<const Application::AgentDefinitionDocument>{},
@@ -760,6 +922,33 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *agentCatalog_, *agentSessionRepository_, *reportInspector_,
         *projectWorkspaceAuthority_, *clock_, *uuidGenerator_,
         initialConfiguration_->sessions.idleTimeToLive);
+    legacyMemory_ = std::make_unique<Application::LegacyMemoryService>(
+        *legacyMemoryRepository_, unicodeCanonicalizer_);
+    const auto& memoryRoot = process.memoryRoot();
+    const auto& handoffsRoot = process.handoffsRoot();
+    const auto projectionAuthorityId = Domain::AuthorityId{
+        nextUuid(*uuidGenerator_)};
+    const auto projectionProjectId = Domain::ProjectId{
+        nextUuid(*uuidGenerator_)};
+    projectionAuthority_ = std::make_shared<
+        InfrastructureWindows::WindowsWorkspaceAuthority>(
+        std::vector<InfrastructureWindows::WindowsWorkspaceAuthorityPolicy>{
+            authorityPolicy(
+                projectionAuthorityId, projectionProjectId, *managerClientId_,
+                {memoryRoot}, Domain::FileAccess::Write,
+                {Domain::FileAccess::Read, Domain::FileAccess::Write,
+                 Domain::FileAccess::Create, Domain::FileAccess::Delete},
+                {Domain::FileAccess::Execute}, false)});
+    const auto projectionScope = take(projectionAuthority_->authorityFor(
+        projectionProjectId, context));
+    legacyProjectionStore_ = take(
+        InfrastructureWindows::WindowsLegacyContinuityProjectionStore::create(
+            memoryRoot, handoffsRoot, projectionScope,
+            projectionAuthority_, atomicFileStore_, fileSystem_, clock_));
+    legacyContinuity_ = std::make_unique<
+        Application::LegacyContextContinuityService>(
+        *legacyContinuityRepository_, *legacyProjectionStore_,
+        *agentSessionRepository_, *clock_, *uuidGenerator_);
 
     continuityCodec_ = std::make_unique<
         InfrastructureWindows::WindowsContinuityDocumentCodec>(
@@ -795,8 +984,6 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         Application::AgentRepositoryManagedRunStore>(
         *agentSessionRepository_,
         take(Domain::AgentId::parse("forge-managed-run")));
-    managedRuns_ = std::make_shared<Application::ManagedRunService>(
-        *nativeSessionTransport_, *managedRunStore_, *clock_);
     nativeSessionAdapter_ = std::make_unique<
         NativeSessionHost::ForgeNativeSessionHostAdapter>(
         take(Domain::AdapterId::parse(
@@ -811,7 +998,68 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *continuity_, *clock_);
 
     toolCatalog_ = take(Mcp::McpToolCatalog::create());
+    clientWorkspaceContext_ = std::make_unique<
+        Mcp::McpClientWorkspaceContext>(
+        *projectRegistry_, *projectWorkspaceAuthority_, *clock_);
+    invocationGuard_ = take(Mcp::McpInvocationGuard::create(
+        *legacyContinuity_, *hasher_, *clock_));
+    toolPack_ = take(Mcp::McpToolPackAdapter::create(
+        Mcp::McpToolPackDependencies{
+            *toolCatalog_,
+            *applicationPaths_,
+            *agentCatalog_,
+            *agentSessions_,
+            *reportInspector_,
+            *legacyContinuity_,
+            *clientWorkspaceContext_,
+            *projectWorkspaceAuthority_,
+            *fileSystem_,
+            *fileSystem_,
+            *pathGlob_,
+            *git_,
+            *legacyMemory_,
+            *pdf_,
+            *textSearch_,
+            *shell_,
+            *projectRegistry_,
+            *projectMemory_,
+            *continuity_,
+            *continuityCodec_,
+            *invocationGuard_,
+            *forgeStatusRepository_,
+            *clock_,
+            *uuidGenerator_,
+            projectMemoryLimits,
+            initialConfiguration_->shell.defaultTimeout,
+            discoverExecutable(L"powershell.exe"),
+            std::string{ProductVersion},
+            std::string{RuntimeName},
+            static_cast<std::uint32_t>(::GetCurrentProcessId())}));
     toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_);
+    const std::array<Contracts::IToolHandler*, 1U> handlers{toolPack_.get()};
+    toolRouter_ = take(Mcp::McpToolRouter::create(
+        *toolCatalog_, handlers, *toolAuthorizer_, *invocationGuard_,
+        *auditRepository_, *hasher_, *clock_));
+    managedRuns_ = std::make_shared<Application::ManagedRunService>(
+        *nativeSessionTransport_,
+        *managedRunStore_,
+        *clock_,
+        Application::ManagedRunToolDependencies{
+            toolCatalog_.get(),
+            toolRouter_.get(),
+            projectWorkspaceAuthority_.get()},
+        Application::ManagedRunContinuityDependencies{
+            continuityAutomation_.get(),
+            continuityCodec_.get(),
+            projectRegistry_.get(),
+            nativeSessionAdapter_->identifier(),
+            initialConfiguration_->localModel.effectiveContextCapacity,
+            static_cast<std::uint64_t>(
+                initialConfiguration_->localModel.nextResponseReserve) +
+                initialConfiguration_->localModel.handoffReserve +
+                initialConfiguration_->localModel.estimationSafetyMargin,
+            initialConfiguration_->localModel.model,
+            std::optional<std::string>{"lm-studio"}});
 }
 
 void ManagerCompositionRoot::Impl::initializeUnavailableLmStudio(
@@ -1311,8 +1559,29 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         if (managedRuns_) {
             managedRuns_->shutdown();
         }
+        if (toolRouter_) {
+            toolRouter_->shutdown();
+        }
+        if (invocationGuard_) {
+            invocationGuard_->shutdown();
+        }
+        if (clientWorkspaceContext_) {
+            clientWorkspaceContext_->shutdown();
+        }
         if (continuity_) {
             continuity_->shutdown();
+        }
+        if (legacyContinuity_) {
+            legacyContinuity_->shutdown();
+        }
+        if (legacyProjectionStore_) {
+            legacyProjectionStore_->close();
+        }
+        if (legacyMemory_) {
+            legacyMemory_->shutdown();
+        }
+        if (projectMemory_) {
+            projectMemory_->shutdown();
         }
         if (projectRepositoryCache_) {
             projectRepositoryCache_->shutdown();
@@ -1338,6 +1607,15 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         }
         if (auditRepository_) {
             auditRepository_->close();
+        }
+        if (forgeStatusRepository_) {
+            forgeStatusRepository_->close();
+        }
+        if (legacyContinuityRepository_) {
+            legacyContinuityRepository_->close();
+        }
+        if (legacyMemoryRepository_) {
+            legacyMemoryRepository_->close();
         }
         if (agentSessionRepository_) {
             agentSessionRepository_->close();

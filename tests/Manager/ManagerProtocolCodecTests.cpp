@@ -197,6 +197,7 @@ void replaceOne(
             identifier<Domain::ClientId>(
                 "20000000-0000-4000-8000-000000000003"),
             "Inspect the active project and report the result.",
+            9U,
             Domain::ManagedRunState::Completed,
             identifier<Domain::ProviderSessionId>("response-fixture-1"),
             101U,
@@ -204,6 +205,7 @@ void replaceOne(
             4096U,
             std::string{"The managed result."},
             std::nullopt,
+            {},
             Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'600'123LL}},
             Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'601'456LL}}},
         true,
@@ -291,6 +293,12 @@ void testEveryRequestMethodRoundTripsDeterministically()
     payloads.emplace_back(Manager::ManagedRunCancelRequest{
         identifier<Domain::SessionId>(
             "20000000-0000-4000-8000-000000000001")});
+    payloads.emplace_back(Manager::ManagedRunPauseRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001")});
+    payloads.emplace_back(Manager::ManagedRunResumeRequest{
+        identifier<Domain::SessionId>(
+            "20000000-0000-4000-8000-000000000001")});
     payloads.emplace_back(Manager::ManagerCancelRequest{
         identifier<Domain::OperationId>(
             "10000000-0000-4000-8000-000000000016")});
@@ -304,6 +312,8 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "managed_run.start",
         "managed_run.status",
         "managed_run.cancel",
+        "managed_run.pause",
+        "managed_run.resume",
         "manager.cancel",
         "manager.shutdown"};
 
@@ -374,7 +384,7 @@ void testManagedRunResultRoundTrips()
         response(Manager::ManagerResult{sampleManagedRun()})));
     const auto root = Json::parse(payloadText(frame));
     REQUIRE(root.at("result").at("type") == "managed_run");
-    REQUIRE(root.at("result").at("value").size() == 15U);
+    REQUIRE(root.at("result").at("value").size() == 18U);
     const auto decoded = take(
         Manager::ManagerProtocolCodec::decodeResponse(frame));
     const auto& actual = std::get<Domain::ManagedRunSnapshot>(
@@ -388,6 +398,7 @@ void testManagedRunResultRoundTrips()
     REQUIRE(actual.record.outputText == "The managed result.");
     REQUIRE(actual.managerOwned);
     REQUIRE(!actual.cancellationRequested);
+    REQUIRE(!actual.pauseRequested);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 

@@ -36,6 +36,7 @@ struct ContinuityAutomationOutcome final {
     bool checkpointPersisted{};
     bool rolloverRequested{};
     bool successorActivated{};
+    std::optional<ProviderSessionId> successorProviderResponseId;
 };
 
 // Compact context-only continuity status. Count and time rollover controls are

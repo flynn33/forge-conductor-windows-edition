@@ -456,6 +456,30 @@ private:
                     return controllerResponse(
                         request,
                         managedRuns_->cancel(payload.runId, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagedRunPauseRequest>) {
+                    if (!managedRuns_) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Managed runs are unavailable in this Manager composition."));
+                    }
+                    return controllerResponse(
+                        request,
+                        managedRuns_->pause(payload.runId, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagedRunResumeRequest>) {
+                    if (!managedRuns_) {
+                        return responseWithError(
+                            request,
+                            error(
+                                Domain::ErrorCodes::InvalidRequest,
+                                "Managed runs are unavailable in this Manager composition."));
+                    }
+                    return controllerResponse(
+                        request,
+                        managedRuns_->resume(payload.runId, context));
                 } else {
                     return responseWithError(
                         request,

@@ -382,12 +382,14 @@ void preparationRequiresAndRetainsTheLiveLease()
             probe.inspectCalls == 2U && probe.executableIdentityCalls == 2U,
             "preparation did not re-resolve roots and executable identities");
 
-        const std::array<std::string, 5U> expectedDirectories{
+        const std::array<std::string, 7U> expectedDirectories{
             snapshot.dataRoot().value(),
             snapshot.configurationRoot().value(),
             snapshot.diagnosticsRoot().value(),
             snapshot.exportRoot().value(),
-            snapshot.projectsRoot().value()};
+            snapshot.projectsRoot().value(),
+            snapshot.memoryRoot().value(),
+            snapshot.handoffsRoot().value()};
         require(
             probe.preparedDirectories.size() == expectedDirectories.size(),
             "preparation did not create the exact required directory count");

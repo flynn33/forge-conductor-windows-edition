@@ -51,6 +51,14 @@ public:
         const Domain::SessionId& runId,
         const Domain::OperationContext& context) noexcept = 0;
 
+    [[nodiscard]] virtual Domain::Result<Domain::ManagedRunSnapshot> pause(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<Domain::ManagedRunSnapshot> resume(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext& context) noexcept = 0;
+
     virtual void shutdown() noexcept = 0;
 };
 

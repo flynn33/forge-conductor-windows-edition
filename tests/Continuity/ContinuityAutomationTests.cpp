@@ -314,7 +314,8 @@ public:
                         handoff.operationId,
                         handoff.predecessorSession.sessionId,
                         operation.idempotencyKey,
-                        std::nullopt,
+                        parse<Domain::ProviderSessionId>(
+                            "automation-successor-response"),
                         std::optional<std::string>{"test-model"},
                         Domain::HostSessionStatus::Ready}});
         } catch (...) {
@@ -656,6 +657,10 @@ void rolloverAndEmergencyActivateWithoutOperatorAction()
         REQUIRE(first.successorSessionId ==
                 std::optional<Domain::SessionId>{
                     parse<Domain::SessionId>(handoff.operationId.value())});
+        REQUIRE(first.successorProviderResponseId ==
+                std::optional<Domain::ProviderSessionId>{
+                    parse<Domain::ProviderSessionId>(
+                        "automation-successor-response")});
 
         const auto second = take(automation.observe(
             observation,

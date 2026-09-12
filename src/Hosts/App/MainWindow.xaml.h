@@ -18,9 +18,17 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProviderLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderSaveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void RunPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void RunResumeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void RunCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
-    enum class Action { Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest };
+    enum class Action {
+        Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
+        RunStart, RunStatus, RunPause, RunResume, RunCancel
+    };
     winrt::fire_and_forget RunAction(Action action);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
         ReadProviderForm(std::string& error);

@@ -47,6 +47,16 @@ void MainWindow::ProviderSaveClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderSave); }
 void MainWindow::ProviderTestClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderTest); }
+void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStart); }
+void MainWindow::RunStatusClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStatus); }
+void MainWindow::RunPauseClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunPause); }
+void MainWindow::RunResumeClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunResume); }
+void MainWindow::RunCancelClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunCancel); }
 
 void MainWindow::NavigationChanged(
     Microsoft::UI::Xaml::Controls::NavigationView const&,
@@ -58,16 +68,20 @@ void MainWindow::NavigationChanged(
     const auto tag = unbox_value_or<hstring>(item.Tag(), L"Rig");
     PageTitle().Text(tag);
     const bool provider = tag == L"Provider";
+    const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
     const bool rig = tag == L"Rig" || tag == L"Manager" ||
         tag == L"Diagnostics" || tag == L"Runtimes";
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
+    AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
-    GenericPanel().Visibility(!provider && !rig ? Visibility::Visible : Visibility::Collapsed);
+    GenericPanel().Visibility(!provider && !rig && !autonomy ? Visibility::Visible : Visibility::Collapsed);
     if (provider) {
         PageDescription().Text(L"Configure and test the Manager-owned LM Studio Responses endpoint.");
         if (!providerSettings_) RunAction(Action::ProviderLoad);
     } else if (rig) {
         PageDescription().Text(L"Read and control the current native Manager runtime.");
+    } else if (autonomy) {
+        PageDescription().Text(L"Start, attach, pause, resume, and stop Manager-owned work while observing retained context.");
     } else {
         PageDescription().Text(L"Read the live Manager connection while this native surface is being completed.");
     }
@@ -119,6 +133,14 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (busy_ || !connection_) co_return;
 
     std::optional<::ForgeConductor::Domain::ManagerSettings> submitted;
+    const bool runAction = action == Action::RunStart ||
+        action == Action::RunStatus || action == Action::RunPause ||
+        action == Action::RunResume || action == Action::RunCancel;
+    std::string runProject;
+    std::string runClient;
+    std::string runTask;
+    std::string runId;
+    std::uint64_t runGeneration{};
     if (action == Action::ProviderSave || action == Action::ProviderTest) {
         std::string error;
         submitted = ReadProviderForm(error);
@@ -127,10 +149,30 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             co_return;
         }
     }
+    if (runAction) {
+        runId = winrt::to_string(RunId().Text());
+        if (action == Action::RunStart) {
+            runProject = winrt::to_string(RunProjectId().Text());
+            runClient = winrt::to_string(RunClientId().Text());
+            runTask = winrt::to_string(RunTask().Text());
+            try {
+                runGeneration = numberValue(
+                    RunAuthorityGeneration(), "Authority generation");
+            } catch (const std::exception& exception) {
+                RunState().Text(winrt::to_hstring(exception.what()));
+                co_return;
+            }
+        } else if (runId.empty()) {
+            RunState().Text(L"Enter a run ID to attach or control a Manager-owned run.");
+            co_return;
+        }
+    }
 
     busy_ = true;
     winrt::apartment_context ui;
-    if (action == Action::ProviderLoad || action == Action::ProviderSave ||
+    if (runAction) {
+        RunState().Text(L"Contacting the Manager…");
+    } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
         action == Action::ProviderTest) {
         ProviderState().Text(L"Working…");
     } else {
@@ -140,6 +182,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
 
     std::string message;
     ::ForgeConductor::Hosts::App::ProviderSettingsView loaded;
+    ::ForgeConductor::Hosts::App::ManagedRunView runView;
     bool failed{};
     try {
         co_await winrt::resume_background();
@@ -182,6 +225,26 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             message = connection_->testProvider(
                 *submitted, cancellation_.get_token());
             break;
+        case Action::RunStart:
+            runView = connection_->startManagedRun(
+                std::move(runProject), std::move(runClient), runGeneration,
+                std::move(runTask), cancellation_.get_token());
+            message = runView.message;
+            break;
+        case Action::RunStatus:
+        case Action::RunPause:
+        case Action::RunResume:
+        case Action::RunCancel: {
+            using RunAction = ::ForgeConductor::Hosts::App::ManagedRunAction;
+            const auto control = action == Action::RunPause ? RunAction::Pause :
+                action == Action::RunResume ? RunAction::Resume :
+                action == Action::RunCancel ? RunAction::Cancel :
+                RunAction::Status;
+            runView = connection_->controlManagedRun(
+                std::move(runId), control, cancellation_.get_token());
+            message = runView.message;
+            break;
+        }
         }
     } catch (const std::exception& exception) {
         message = exception.what();
@@ -197,7 +260,13 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         co_return;
     }
     if (!cancellation_.stop_requested()) {
-        if (action == Action::ProviderLoad || action == Action::ProviderSave ||
+        if (runAction) {
+            if (runView.snapshot) {
+                RunId().Text(winrt::to_hstring(
+                    runView.snapshot->record.runId.value()));
+            }
+            RunState().Text(winrt::to_hstring(message));
+        } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
             action == Action::ProviderTest) {
             if (action == Action::ProviderLoad && loaded.loaded) {
                 providerSettings_ = loaded.settings;

@@ -382,6 +382,26 @@ public:
             std::move(value));
     }
 
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> pause(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++pauseCalls;
+        auto value = snapshotFor(runId, Domain::ManagedRunState::Paused);
+        value.pauseRequested = true;
+        return Domain::Result<Domain::ManagedRunSnapshot>::success(
+            std::move(value));
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> resume(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++resumeCalls;
+        return Domain::Result<Domain::ManagedRunSnapshot>::success(
+            snapshotFor(runId, Domain::ManagedRunState::Running));
+    }
+
     void shutdown() noexcept override { ++shutdownCalls; }
 
     std::optional<Domain::ManagedRunStartRequest> lastStart;
@@ -389,6 +409,8 @@ public:
     std::atomic_size_t startCalls{};
     std::atomic_size_t statusCalls{};
     std::atomic_size_t cancelCalls{};
+    std::atomic_size_t pauseCalls{};
+    std::atomic_size_t resumeCalls{};
     std::atomic_size_t shutdownCalls{};
 
 private:
@@ -403,6 +425,7 @@ private:
                 requestValue.projectId,
                 requestValue.clientId,
                 requestValue.task,
+                requestValue.authorityGeneration,
                 state,
                 std::nullopt,
                 0U,
@@ -410,6 +433,7 @@ private:
                 std::nullopt,
                 std::nullopt,
                 std::nullopt,
+                {},
                 time,
                 time},
             true,
@@ -471,19 +495,31 @@ void testManagedRunDispatchAndIdentity()
         *clock, 71U, Manager::ManagedRunStatusRequest{runId}));
     require(responseValue<Domain::ManagedRunSnapshot>(status) != nullptr,
             "managed run status result");
+    const auto paused = dispatcher.dispatch(request(
+        *clock, 72U, Manager::ManagedRunPauseRequest{runId}));
+    const auto* pausedRun = responseValue<Domain::ManagedRunSnapshot>(paused);
+    require(pausedRun != nullptr && pausedRun->pauseRequested,
+            "managed run pause result");
+    const auto resumed = dispatcher.dispatch(request(
+        *clock, 73U, Manager::ManagedRunResumeRequest{runId}));
+    const auto* resumedRun = responseValue<Domain::ManagedRunSnapshot>(resumed);
+    require(resumedRun != nullptr &&
+            resumedRun->record.state == Domain::ManagedRunState::Running,
+            "managed run resume result");
     const auto cancelled = dispatcher.dispatch(request(
-        *clock, 72U, Manager::ManagedRunCancelRequest{runId}));
+        *clock, 74U, Manager::ManagedRunCancelRequest{runId}));
     const auto* cancelledRun = responseValue<Domain::ManagedRunSnapshot>(cancelled);
     require(cancelledRun != nullptr && cancelledRun->cancellationRequested,
             "managed run cancellation result");
     require(managedRuns->startCalls == 1U && managedRuns->statusCalls == 1U &&
+            managedRuns->pauseCalls == 1U && managedRuns->resumeCalls == 1U &&
             managedRuns->cancelCalls == 1U,
             "managed run method routing");
 
     Manager::ManagerRequestDispatcher unavailable{controller, clock};
     requireError(
         unavailable.dispatch(request(
-            *clock, 73U, Manager::ManagedRunStatusRequest{runId})),
+            *clock, 75U, Manager::ManagedRunStatusRequest{runId})),
         Domain::ErrorCodes::InvalidRequest,
         "managed run unavailable composition");
 }

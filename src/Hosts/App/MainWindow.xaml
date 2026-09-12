@@ -66,6 +66,33 @@
      <TextBlock x:Name="ProviderState" Text="Load saved settings to begin." TextWrapping="Wrap" />
     </StackPanel>
 
+    <StackPanel x:Name="AutonomyPanel" Spacing="14" Visibility="Collapsed">
+     <InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
+       Title="Manager-owned execution" Message="The Manager keeps running when this window closes. Reopen the app and use the run ID to attach again." />
+     <Grid ColumnSpacing="16" RowSpacing="12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <TextBox x:Name="RunProjectId" Header="Project ID" PlaceholderText="Project UUID" />
+      <TextBox x:Name="RunClientId" Grid.Column="1" Header="Client ID" Text="forge-conductor-manager" />
+      <NumberBox x:Name="RunAuthorityGeneration" Grid.Row="1" Header="Authority generation" Minimum="1" Maximum="4294967295" Value="1" SpinButtonPlacementMode="Compact" />
+      <TextBox x:Name="RunId" Grid.Row="1" Grid.Column="1" Header="Run ID" PlaceholderText="Filled after Start; paste to reattach" />
+      <TextBox x:Name="RunTask" Grid.Row="2" Grid.ColumnSpan="2" Header="Task" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
+     </Grid>
+     <StackPanel Orientation="Horizontal" Spacing="12">
+      <Button Content="Start" Click="RunStartClicked" />
+      <Button Content="Refresh" Click="RunStatusClicked" />
+      <Button Content="Pause" Click="RunPauseClicked" />
+      <Button Content="Resume" Click="RunResumeClicked" />
+      <Button Content="Stop" Click="RunCancelClicked" />
+     </StackPanel>
+     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+      <StackPanel Spacing="8">
+       <TextBlock Text="Run and continuity state" Style="{ThemeResource SubtitleTextBlockStyle}" />
+       <TextBlock x:Name="RunState" Text="Enter a project and task, or paste a run ID to attach." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+      </StackPanel>
+     </Border>
+    </StackPanel>
+
     <StackPanel x:Name="GenericPanel" Spacing="14" Visibility="Collapsed">
      <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
       <StackPanel Spacing="10">

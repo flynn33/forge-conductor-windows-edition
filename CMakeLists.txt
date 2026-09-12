@@ -161,6 +161,8 @@ forge_add_layer(ForgeConductor.Application ForgeConductor::Application
 forge_configure_standard_target(ForgeConductor.Application)
 target_include_directories(ForgeConductor.Application PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
+target_link_libraries(ForgeConductor.Application PRIVATE
+    nlohmann_json::nlohmann_json)
 
 add_library(ForgeConductor.Manager.Protocol STATIC
     src/Manager/ManagerDeadlineMapper.cpp
