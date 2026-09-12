@@ -257,6 +257,232 @@ TelemetryView ManagerConnection::telemetry(
     }
 }
 
+ProjectsView ManagerConnection::projects(
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->projects(1'024U, context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        auto message = "Loaded " + std::to_string(snapshot.projects.size()) +
+            " registered project" +
+            (snapshot.projects.size() == 1U ? "." : "s.");
+        return {true, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not load registered projects.", std::nullopt};
+    }
+}
+
+ProjectWorkspaceView ManagerConnection::initializeProject(
+    std::string projectPath,
+    std::string displayName,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto path = Domain::PathText::create(projectPath);
+        if (!path) return {false, path.error().message, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{15});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->initializeProject(
+            Manager::ManagerProjectInitializeRequest{
+                std::move(path).value(),
+                displayName.empty()
+                    ? std::nullopt
+                    : std::optional<std::string>{std::move(displayName)},
+                std::nullopt},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        const auto message = "Registered " + snapshot.project.displayName +
+            " with exact project ID " + snapshot.project.id.value() + ".";
+        return {true, message, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not register the project.", std::nullopt};
+    }
+}
+
+ProjectWorkspaceView ManagerConnection::projectMemory(
+    std::string projectId,
+    std::string query,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsed = Domain::ProjectId::parse(projectId);
+        if (!parsed) return {false, parsed.error().message, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->projectMemory(
+            Manager::ManagerProjectMemoryRequest{
+                std::move(parsed).value(), std::move(query), 20U},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        const auto message = "Loaded " + std::to_string(snapshot.records.size()) +
+            " memory record" + (snapshot.records.size() == 1U ? "." : "s.");
+        return {true, message, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not read project memory.", std::nullopt};
+    }
+}
+
+ProjectWorkspaceView ManagerConnection::rememberProjectMemory(
+    std::string projectId,
+    std::string title,
+    std::string summary,
+    std::string body,
+    std::vector<std::string> tags,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsed = Domain::ProjectId::parse(projectId);
+        if (!parsed) return {false, parsed.error().message, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{15});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->rememberProjectMemory(
+            Manager::ManagerProjectRememberRequest{
+                std::move(parsed).value(),
+                std::move(title),
+                std::move(summary),
+                body.empty()
+                    ? std::nullopt
+                    : std::optional<std::string>{std::move(body)},
+                std::move(tags)},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        const auto message = snapshot.writtenRecordId
+            ? "Memory saved as " + snapshot.writtenRecordId->value() + "."
+            : "Memory saved.";
+        return {true, message, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not save project memory.", std::nullopt};
+    }
+}
+
+LmStudioView ManagerConnection::lmStudio(
+    const LmStudioAction action,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{30});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        Domain::Result<Manager::ManagerLmStudioSnapshot> result =
+            action == LmStudioAction::Repair
+                ? client->repairLmStudio(context)
+                : action == LmStudioAction::Activate
+                    ? client->activateLmStudio(context)
+                    : client->lmStudioStatus(context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        return {true, snapshot.actionDetail, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The LM Studio workflow failed safely.", std::nullopt};
+    }
+}
+
+ToolsView ManagerConnection::tools(
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->tools(context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        auto message = "Loaded " + std::to_string(snapshot.tools.size()) +
+            " Manager-owned tools. Shell preference is " +
+            (snapshot.shellEnabled ? "enabled." : "disabled.");
+        return {true, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The native tool catalog could not be loaded.", std::nullopt};
+    }
+}
+
+ToolOutcomeView ManagerConnection::invokeTool(
+    std::string projectId,
+    std::string toolName,
+    std::string canonicalArguments,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsed = Domain::ProjectId::parse(projectId);
+        if (!parsed) return {false, parsed.error().message, std::nullopt};
+        if (toolName.empty() || canonicalArguments.empty()) {
+            return {false, "Select a tool and provide its JSON arguments.", std::nullopt};
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{30});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->invokeTool(
+            Manager::ManagerToolInvokeRequest{
+                std::move(parsed).value(),
+                std::move(toolName),
+                std::move(canonicalArguments)},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        std::string message = snapshot.ok ? "Tool completed." : "Tool reported failure.";
+        if (snapshot.error) message += " " + snapshot.error->message;
+        return {snapshot.ok, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The native tool invocation failed safely.", std::nullopt};
+    }
+}
+
 ProviderSettingsView ManagerConnection::providerSettings(
     const std::stop_token cancellation) noexcept
 {

@@ -49,6 +49,14 @@ When a PR is pending, work on an independent phase from current main. For genuin
 
 Keep shared plan/status/document updates coherent when switching phase branches. Merge the latest accepted ledger rather than overwriting another phase's progress with a stale copy.
 
+At every phase boundary, choose from the observed state rather than waiting by default:
+
+- Merged parent: fetch, preserve local edits, fast-forward main where possible, verify the integrated source, and begin the next slice from it.
+- Pending parent with independent next work: branch from current main and implement.
+- Pending parent with dependent next work: branch from the exact reviewed parent head, record its PR and head, keep the successor PR based on main with a cumulative-diff warning, and implement without merging it ahead of the parent.
+
+After a parent lands, merge refreshed main into a dependent branch without force-pushing and verify the remaining phase diff. A pending PR is a delivery state, not an unconditional engineering stop.
+
 ## 4. Phase closeout before the PR
 Run only the phase's required functional checks. Inspect the actual diff. Update the mandatory root docs and all active docs as specified in [Tracking](TRACKING-AND-DOCS.md). Record concise gate evidence with source/configuration and actual outcomes. Review exactly what will be staged, including deletion and rename effects.
 

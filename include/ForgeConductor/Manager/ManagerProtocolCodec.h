@@ -3,6 +3,9 @@
 #include "ForgeConductor/Domain/ManagerModels.h"
 #include "ForgeConductor/Domain/ManagerTelemetryModels.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
+#include "ForgeConductor/Domain/EnvironmentModels.h"
+#include "ForgeConductor/Domain/ProjectMemoryModels.h"
+#include "ForgeConductor/Domain/ToolModels.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -26,6 +29,126 @@ struct ManagerSettingsRequest final {
 
 struct ManagerTelemetryRequest final {
     std::optional<Domain::SessionId> runId;
+};
+
+struct ManagerProjectsListRequest final {
+    std::size_t maximumCount{100U};
+};
+
+struct ManagerProjectInitializeRequest final {
+    Domain::PathText projectPath;
+    std::optional<std::string> displayName;
+    std::optional<std::string> repositoryIdentity;
+};
+
+struct ManagerProjectMemoryRequest final {
+    Domain::ProjectId projectId;
+    std::string query;
+    std::size_t maximumCount{20U};
+};
+
+struct ManagerProjectRememberRequest final {
+    Domain::ProjectId projectId;
+    std::string title;
+    std::string summary;
+    std::optional<std::string> body;
+    std::vector<std::string> tags;
+};
+
+struct ManagerLmStudioStatusRequest final {
+    bool operator==(const ManagerLmStudioStatusRequest&) const = default;
+};
+
+struct ManagerLmStudioRepairRequest final {
+    bool operator==(const ManagerLmStudioRepairRequest&) const = default;
+};
+
+struct ManagerLmStudioActivateRequest final {
+    bool operator==(const ManagerLmStudioActivateRequest&) const = default;
+};
+
+struct ManagerToolsRequest final {
+    bool operator==(const ManagerToolsRequest&) const = default;
+};
+
+struct ManagerToolInvokeRequest final {
+    Domain::ProjectId projectId;
+    std::string toolName;
+    std::string canonicalArguments;
+};
+
+struct ManagerProjectMemoryRecord final {
+    Domain::MemoryRecordId id;
+    std::uint32_t version{};
+    std::string kind;
+    std::string title;
+    std::string summary;
+    std::optional<std::string> body;
+    std::vector<std::string> tags;
+    Domain::UtcTimePoint updatedAt;
+};
+
+struct ManagerProjectsSnapshot final {
+    std::vector<Domain::ProjectMemoryDescriptor> projects;
+};
+
+struct ManagerProjectWorkspaceSnapshot final {
+    Domain::ProjectMemoryDescriptor project;
+    std::size_t recordCount{};
+    std::size_t tombstoneCount{};
+    std::size_t eventCount{};
+    std::uint64_t databaseBytes{};
+    std::uint64_t writeAheadLogBytes{};
+    bool fullTextSearchAvailable{};
+    bool integrityOk{};
+    std::vector<ManagerProjectMemoryRecord> records;
+    std::optional<std::string> nextCursor;
+    bool truncated{};
+    std::optional<Domain::MemoryRecordId> writtenRecordId;
+};
+
+struct ManagerLmStudioSnapshot final {
+    bool lmStudioPresent{};
+    bool primaryPluginInstalled{};
+    bool fallbackPluginInstalled{};
+    bool mcpConfigurationRegistered{};
+    bool binaryExecutable{};
+    std::string binaryPath;
+    std::string primaryPluginPath;
+    std::string fallbackPluginPath;
+    std::string mcpConfigurationPath;
+    std::optional<Domain::DeploymentId> deploymentId;
+    bool connectionCheckPerformed{};
+    bool primaryConnectorReady{};
+    bool fallbackConnectorReady{};
+    bool connectedClientObserved{};
+    std::size_t managedContinuityProjects{};
+    std::string detail;
+    std::string actionDetail;
+};
+
+struct ManagerToolDescriptor final {
+    std::string name;
+    std::string description;
+    std::string pack;
+    Domain::ToolEffect effect{Domain::ToolEffect::Read};
+    Domain::ToolAvailability availability{Domain::ToolAvailability::Available};
+    bool requiresProject{};
+    bool requiresShell{};
+    std::string inputSchema;
+};
+
+struct ManagerToolsSnapshot final {
+    bool shellEnabled{};
+    std::vector<ManagerToolDescriptor> tools;
+};
+
+struct ManagerToolOutcomeSnapshot final {
+    Domain::ProjectId projectId;
+    std::string toolName;
+    bool ok{};
+    std::string canonicalPayload;
+    std::optional<Domain::Error> error;
 };
 
 struct ManagerSettingsUpdateRequest final {
@@ -69,6 +192,15 @@ using ManagerRequestPayload = std::variant<
     ManagerStatusRequest,
     ManagerSettingsRequest,
     ManagerTelemetryRequest,
+    ManagerProjectsListRequest,
+    ManagerProjectInitializeRequest,
+    ManagerProjectMemoryRequest,
+    ManagerProjectRememberRequest,
+    ManagerLmStudioStatusRequest,
+    ManagerLmStudioRepairRequest,
+    ManagerLmStudioActivateRequest,
+    ManagerToolsRequest,
+    ManagerToolInvokeRequest,
     Domain::ManagerControlRequest,
     ManagerSettingsUpdateRequest,
     ManagedRunStartRequest,
@@ -100,6 +232,11 @@ using ManagerResult = std::variant<
     Domain::ManagerSettingsUpdateOutcome,
     Domain::ManagedRunSnapshot,
     Domain::ManagerTelemetrySnapshot,
+    ManagerProjectsSnapshot,
+    ManagerProjectWorkspaceSnapshot,
+    ManagerLmStudioSnapshot,
+    ManagerToolsSnapshot,
+    ManagerToolOutcomeSnapshot,
     ManagerAcknowledgement>;
 
 using ManagerResponseBody = std::variant<ManagerResult, Domain::Error>;

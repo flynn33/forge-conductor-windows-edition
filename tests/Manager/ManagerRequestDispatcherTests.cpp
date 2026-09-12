@@ -1,4 +1,6 @@
 #include "ForgeConductor/Manager/ManagerRequestDispatcher.h"
+#include "../Fakes/ProjectRepositoryFakes.h"
+#include "../Fakes/RecordingProjectMemoryService.h"
 
 #include <algorithm>
 #include <atomic>
@@ -24,6 +26,7 @@ namespace {
 namespace Contracts = ForgeConductor::Contracts;
 namespace Domain = ForgeConductor::Domain;
 namespace Manager = ForgeConductor::Manager;
+namespace TestFakes = ForgeConductor::Tests::Fakes;
 
 using namespace std::chrono_literals;
 
@@ -559,7 +562,8 @@ void testTelemetrySnapshotUsesManagerOwnedRunValues()
         clock,
         Manager::ManagerTransportLimits{},
         managedRuns,
-        Manager::ManagerTelemetrySources{&telemetry, nullptr, nullptr, nullptr}};
+        Manager::ManagerTelemetrySources{
+            &telemetry, nullptr, nullptr, nullptr, nullptr}};
 
     const auto runId = Domain::SessionId::parse(uuidText(700U)).value();
     const auto response = dispatcher.dispatch(request(
@@ -669,6 +673,86 @@ void testManagedRunDispatchAndIdentity()
             *clock, 75U, Manager::ManagedRunStatusRequest{runId})),
         Domain::ErrorCodes::InvalidRequest,
         "managed run unavailable composition");
+}
+
+void testProjectWorkflowKeepsExactProjectIdentity()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    const auto projectA = Domain::ProjectId::parse(uuidText(801U)).value();
+    const auto projectB = Domain::ProjectId::parse(uuidText(802U)).value();
+    const Domain::ProjectMemoryDescriptor descriptorA{
+        projectA, "Project A", std::nullopt,
+        {Domain::PathText::create("D:\\Projects\\A").value()}};
+    const Domain::ProjectMemoryDescriptor descriptorB{
+        projectB, "Project B", std::nullopt,
+        {Domain::PathText::create("D:\\Projects\\B").value()}};
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(descriptorA)), "seed project A");
+    require(static_cast<bool>(registry.seedDescriptor(descriptorB)), "seed project B");
+    TestFakes::RecordingProjectMemoryService memory;
+
+    const auto statusFor = [](const Domain::ProjectId& projectId) {
+        return Domain::ProjectMemoryStatus{
+            projectId, 1U, 1U, 2U, 0U, 3U, 4'096U, 128U,
+            false, true, 1U, {}};
+    };
+    const auto pageFor = [](const Domain::ProjectId& projectId) {
+        return Domain::MemoryPage{
+            projectId, {}, std::nullopt, false, 0U, 256U * 1024U, 1U, 1U};
+    };
+
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller,
+        clock,
+        Manager::ManagerTransportLimits{},
+        {},
+        Manager::ManagerTelemetrySources{
+            nullptr, nullptr, &registry, &memory, nullptr}};
+
+    const auto listed = dispatcher.dispatch(request(
+        *clock, 80U, Manager::ManagerProjectsListRequest{10U}));
+    const auto* projects = responseValue<Manager::ManagerProjectsSnapshot>(listed);
+    require(projects != nullptr && projects->projects.size() == 2U,
+            "project list retains both identities");
+
+    memory.statusResult.set(
+        Domain::Result<Domain::ProjectMemoryStatus>::success(statusFor(projectB)));
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(pageFor(projectB)));
+    const auto selectedB = dispatcher.dispatch(request(
+        *clock,
+        81U,
+        Manager::ManagerProjectMemoryRequest{projectB, "decision", 20U}));
+    const auto* workspaceB =
+        responseValue<Manager::ManagerProjectWorkspaceSnapshot>(selectedB);
+    require(workspaceB != nullptr && workspaceB->project.id == projectB,
+            "project B selection returns project B");
+    require(memory.lastProjectId() == projectB,
+            "project B memory is routed with project B identity");
+
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
+    requireError(
+        dispatcher.dispatch(request(
+            *clock,
+            82U,
+            Manager::ManagerProjectMemoryRequest{projectB, "decision", 20U})),
+        Domain::ErrorCodes::ProjectScopeMismatch,
+        "cross-project memory response");
+
+    memory.statusResult.set(
+        Domain::Result<Domain::ProjectMemoryStatus>::success(statusFor(projectA)));
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
+    const auto selectedA = dispatcher.dispatch(request(
+        *clock,
+        83U,
+        Manager::ManagerProjectMemoryRequest{projectA, "decision", 20U}));
+    const auto* workspaceA =
+        responseValue<Manager::ManagerProjectWorkspaceSnapshot>(selectedA);
+    require(workspaceA != nullptr && workspaceA->project.id == projectA,
+            "project A selection remains isolated from project B");
 }
 
 void testPayloadMappingAndControllerFailures()
@@ -991,6 +1075,7 @@ int main()
     try {
         testPayloadMappingAndControllerFailures();
         testManagedRunDispatchAndIdentity();
+        testProjectWorkflowKeepsExactProjectIdentity();
         testTelemetrySnapshotUsesManagerOwnedRunValues();
         testDuplicateCapacityAndCancellationBypass();
         testShutdownOrderingAndClosedAdmission();
@@ -998,7 +1083,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 9 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 10 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

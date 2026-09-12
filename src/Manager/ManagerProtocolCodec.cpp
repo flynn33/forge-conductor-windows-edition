@@ -548,6 +548,28 @@ template <typename Identifier>
     return std::move(parsed).value();
 }
 
+[[nodiscard]] std::vector<std::string> stringArray(
+    const Json& value,
+    const std::string_view schema)
+{
+    if (!value.is_array()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            std::string{schema} + " must be a JSON array.");
+    }
+    std::vector<std::string> result;
+    result.reserve(value.size());
+    for (const auto& item : value) {
+        if (!item.is_string()) {
+            reject(
+                Domain::ErrorCodes::InvalidRequest,
+                std::string{schema} + " entries must be JSON strings.");
+        }
+        result.push_back(item.get<std::string>());
+    }
+    return result;
+}
+
 void validateVersion(const std::uint32_t version)
 {
     if (version != ManagerProtocolVersion) {
@@ -1193,6 +1215,10 @@ void validateSettingsUpdateOutcome(
     return outcome;
 }
 
+[[nodiscard]] std::size_t sizeMember(
+    const Json& value,
+    std::string_view name);
+
 [[nodiscard]] Json requestDocument(const ManagerRequest& request)
 {
     validateVersion(request.version);
@@ -1217,6 +1243,50 @@ void validateSettingsUpdateOutcome(
                 if (payload.runId) {
                     params["run_id"] = payload.runId->value();
                 }
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerProjectsListRequest>) {
+                method = "projects.list";
+                params["maximum_count"] = payload.maximumCount;
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerProjectInitializeRequest>) {
+                method = "projects.initialize";
+                params["project_path"] = payload.projectPath.value();
+                params["display_name"] = payload.displayName
+                    ? Json(*payload.displayName) : Json(nullptr);
+                params["repository_identity"] = payload.repositoryIdentity
+                    ? Json(*payload.repositoryIdentity) : Json(nullptr);
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerProjectMemoryRequest>) {
+                method = "projects.memory";
+                params["project_id"] = payload.projectId.value();
+                params["query"] = payload.query;
+                params["maximum_count"] = payload.maximumCount;
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerProjectRememberRequest>) {
+                method = "projects.remember";
+                params["project_id"] = payload.projectId.value();
+                params["title"] = payload.title;
+                params["summary"] = payload.summary;
+                params["body"] = payload.body ? Json(*payload.body) : Json(nullptr);
+                params["tags"] = payload.tags;
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
+                method = "lmstudio.status";
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerLmStudioRepairRequest>) {
+                method = "lmstudio.repair";
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerLmStudioActivateRequest>) {
+                method = "lmstudio.activate";
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerToolsRequest>) {
+                method = "tools.list";
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerToolInvokeRequest>) {
+                method = "tools.invoke";
+                params["project_id"] = payload.projectId.value();
+                params["tool_name"] = payload.toolName;
+                params["arguments"] = payload.canonicalArguments;
             } else if constexpr (
                 std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                 method = "manager.control";
@@ -1309,6 +1379,63 @@ void validateSettingsUpdateOutcome(
                 [](const Json& object, const std::string_view name) {
                     return identifierMember<Domain::SessionId>(object, name);
                 })};
+    } else if (method == "projects.list") {
+        requireExactFields(params, {"maximum_count"}, "projects.list params");
+        payload = ManagerProjectsListRequest{
+            sizeMember(params, "maximum_count")};
+    } else if (method == "projects.initialize") {
+        requireExactFields(
+            params,
+            {"display_name", "project_path", "repository_identity"},
+            "projects.initialize params");
+        auto path = Domain::PathText::create(stringMember(params, "project_path"));
+        if (!path) reject(path.error().code, path.error().message);
+        payload = ManagerProjectInitializeRequest{
+            std::move(path).value(),
+            optionalField<std::string>(params, "display_name", stringMember),
+            optionalField<std::string>(
+                params, "repository_identity", stringMember)};
+    } else if (method == "projects.memory") {
+        requireExactFields(
+            params,
+            {"maximum_count", "project_id", "query"},
+            "projects.memory params");
+        payload = ManagerProjectMemoryRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            stringMember(params, "query"),
+            sizeMember(params, "maximum_count")};
+    } else if (method == "projects.remember") {
+        requireExactFields(
+            params,
+            {"body", "project_id", "summary", "tags", "title"},
+            "projects.remember params");
+        payload = ManagerProjectRememberRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            stringMember(params, "title"),
+            stringMember(params, "summary"),
+            optionalField<std::string>(params, "body", stringMember),
+            stringArray(member(params, "tags"), "projects.remember tags")};
+    } else if (method == "lmstudio.status") {
+        requireExactFields(params, {}, "lmstudio.status params");
+        payload = ManagerLmStudioStatusRequest{};
+    } else if (method == "lmstudio.repair") {
+        requireExactFields(params, {}, "lmstudio.repair params");
+        payload = ManagerLmStudioRepairRequest{};
+    } else if (method == "lmstudio.activate") {
+        requireExactFields(params, {}, "lmstudio.activate params");
+        payload = ManagerLmStudioActivateRequest{};
+    } else if (method == "tools.list") {
+        requireExactFields(params, {}, "tools.list params");
+        payload = ManagerToolsRequest{};
+    } else if (method == "tools.invoke") {
+        requireExactFields(
+            params,
+            {"arguments", "project_id", "tool_name"},
+            "tools.invoke params");
+        payload = ManagerToolInvokeRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            stringMember(params, "tool_name"),
+            stringMember(params, "arguments")};
     } else if (method == "manager.control") {
         requireExactFields(params, {"action"}, "manager.control params");
         payload = Domain::ManagerControlRequest{
@@ -2163,6 +2290,367 @@ template <typename T, typename Parser>
         stringMember(value, "runtime")};
 }
 
+[[nodiscard]] Json projectDescriptorJson(
+    const Domain::ProjectMemoryDescriptor& project)
+{
+    Json aliases = Json::array();
+    for (const auto& alias : project.aliases) aliases.push_back(alias.value());
+    return Json{
+        {"id", project.id.value()},
+        {"display_name", project.displayName},
+        {"repository_identity", project.repositoryIdentity
+            ? Json(*project.repositoryIdentity) : Json(nullptr)},
+        {"authorized_folders", std::move(aliases)}};
+}
+
+[[nodiscard]] Domain::ProjectMemoryDescriptor parseProjectDescriptor(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"authorized_folders", "display_name", "id", "repository_identity"},
+        "Manager project descriptor");
+    std::vector<Domain::PathText> aliases;
+    const auto& aliasValues = member(value, "authorized_folders");
+    if (!aliasValues.is_array()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            "Manager project authorized_folders must be a JSON array.");
+    }
+    aliases.reserve(aliasValues.size());
+    for (const auto& item : aliasValues) {
+        if (!item.is_string()) {
+            reject(
+                Domain::ErrorCodes::InvalidRequest,
+                "Manager project authorized folders must be strings.");
+        }
+        auto path = Domain::PathText::create(item.get<std::string>());
+        if (!path) reject(path.error().code, path.error().message);
+        aliases.push_back(std::move(path).value());
+    }
+    return Domain::ProjectMemoryDescriptor{
+        identifierMember<Domain::ProjectId>(value, "id"),
+        stringMember(value, "display_name"),
+        optionalField<std::string>(
+            value, "repository_identity", stringMember),
+        std::move(aliases)};
+}
+
+[[nodiscard]] Json projectMemoryRecordJson(
+    const ManagerProjectMemoryRecord& record)
+{
+    return Json{
+        {"id", record.id.value()},
+        {"version", record.version},
+        {"kind", record.kind},
+        {"title", record.title},
+        {"summary", record.summary},
+        {"body", record.body ? Json(*record.body) : Json(nullptr)},
+        {"tags", record.tags},
+        {"updated_at_utc_ms", epochMilliseconds(record.updatedAt)}};
+}
+
+[[nodiscard]] ManagerProjectMemoryRecord parseProjectMemoryRecord(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"body", "id", "kind", "summary", "tags", "title",
+         "updated_at_utc_ms", "version"},
+        "Manager project memory record");
+    return ManagerProjectMemoryRecord{
+        identifierMember<Domain::MemoryRecordId>(value, "id"),
+        uint32Member(value, "version"),
+        stringMember(value, "kind"),
+        stringMember(value, "title"),
+        stringMember(value, "summary"),
+        optionalField<std::string>(value, "body", stringMember),
+        stringArray(member(value, "tags"), "Manager project memory tags"),
+        utcTimePointFromMilliseconds(
+            nonnegativeIntegerMember(value, "updated_at_utc_ms"))};
+}
+
+[[nodiscard]] Json projectsSnapshotJson(
+    const ManagerProjectsSnapshot& snapshot)
+{
+    Json projects = Json::array();
+    for (const auto& project : snapshot.projects) {
+        projects.push_back(projectDescriptorJson(project));
+    }
+    return Json{{"projects", std::move(projects)}};
+}
+
+[[nodiscard]] ManagerProjectsSnapshot parseProjectsSnapshot(const Json& value)
+{
+    requireExactFields(value, {"projects"}, "Manager projects snapshot");
+    const auto& projectValues = member(value, "projects");
+    if (!projectValues.is_array()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            "Manager projects must be a JSON array.");
+    }
+    ManagerProjectsSnapshot snapshot;
+    snapshot.projects.reserve(projectValues.size());
+    for (const auto& project : projectValues) {
+        snapshot.projects.push_back(parseProjectDescriptor(project));
+    }
+    return snapshot;
+}
+
+[[nodiscard]] Json projectWorkspaceSnapshotJson(
+    const ManagerProjectWorkspaceSnapshot& snapshot)
+{
+    Json records = Json::array();
+    for (const auto& record : snapshot.records) {
+        records.push_back(projectMemoryRecordJson(record));
+    }
+    return Json{
+        {"project", projectDescriptorJson(snapshot.project)},
+        {"record_count", snapshot.recordCount},
+        {"tombstone_count", snapshot.tombstoneCount},
+        {"event_count", snapshot.eventCount},
+        {"database_bytes", snapshot.databaseBytes},
+        {"write_ahead_log_bytes", snapshot.writeAheadLogBytes},
+        {"full_text_search_available", snapshot.fullTextSearchAvailable},
+        {"integrity_ok", snapshot.integrityOk},
+        {"records", std::move(records)},
+        {"next_cursor", snapshot.nextCursor
+            ? Json(*snapshot.nextCursor) : Json(nullptr)},
+        {"truncated", snapshot.truncated},
+        {"written_record_id", snapshot.writtenRecordId
+            ? Json(snapshot.writtenRecordId->value()) : Json(nullptr)}};
+}
+
+[[nodiscard]] ManagerProjectWorkspaceSnapshot parseProjectWorkspaceSnapshot(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"database_bytes", "event_count", "full_text_search_available",
+         "integrity_ok", "next_cursor", "project", "record_count", "records",
+         "tombstone_count", "truncated", "write_ahead_log_bytes",
+         "written_record_id"},
+        "Manager project workspace snapshot");
+    const auto& recordValues = member(value, "records");
+    if (!recordValues.is_array()) {
+        reject(
+            Domain::ErrorCodes::InvalidRequest,
+            "Manager project memory records must be a JSON array.");
+    }
+    std::vector<ManagerProjectMemoryRecord> records;
+    records.reserve(recordValues.size());
+    for (const auto& record : recordValues) {
+        records.push_back(parseProjectMemoryRecord(record));
+    }
+    return ManagerProjectWorkspaceSnapshot{
+        parseProjectDescriptor(member(value, "project")),
+        sizeMember(value, "record_count"),
+        sizeMember(value, "tombstone_count"),
+        sizeMember(value, "event_count"),
+        uint64Member(value, "database_bytes"),
+        uint64Member(value, "write_ahead_log_bytes"),
+        booleanMember(value, "full_text_search_available"),
+        booleanMember(value, "integrity_ok"),
+        std::move(records),
+        optionalField<std::string>(value, "next_cursor", stringMember),
+        booleanMember(value, "truncated"),
+        optionalField<Domain::MemoryRecordId>(
+            value, "written_record_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::MemoryRecordId>(object, name);
+            })};
+}
+
+[[nodiscard]] std::string_view toolEffectName(
+    const Domain::ToolEffect effect) noexcept
+{
+    switch (effect) {
+    case Domain::ToolEffect::Read: return "read";
+    case Domain::ToolEffect::Write: return "write";
+    case Domain::ToolEffect::Execute: return "execute";
+    case Domain::ToolEffect::Destructive: return "destructive";
+    }
+    return "read";
+}
+
+[[nodiscard]] Domain::ToolEffect parseToolEffect(const std::string_view value)
+{
+    if (value == "read") return Domain::ToolEffect::Read;
+    if (value == "write") return Domain::ToolEffect::Write;
+    if (value == "execute") return Domain::ToolEffect::Execute;
+    if (value == "destructive") return Domain::ToolEffect::Destructive;
+    reject(Domain::ErrorCodes::InvalidRequest, "Manager tool effect is unknown.");
+}
+
+[[nodiscard]] std::string_view toolAvailabilityName(
+    const Domain::ToolAvailability availability) noexcept
+{
+    switch (availability) {
+    case Domain::ToolAvailability::Available: return "available";
+    case Domain::ToolAvailability::Disabled: return "disabled";
+    case Domain::ToolAvailability::MissingDependency: return "missing_dependency";
+    case Domain::ToolAvailability::Unhealthy: return "unhealthy";
+    }
+    return "unhealthy";
+}
+
+[[nodiscard]] Domain::ToolAvailability parseToolAvailability(
+    const std::string_view value)
+{
+    if (value == "available") return Domain::ToolAvailability::Available;
+    if (value == "disabled") return Domain::ToolAvailability::Disabled;
+    if (value == "missing_dependency") {
+        return Domain::ToolAvailability::MissingDependency;
+    }
+    if (value == "unhealthy") return Domain::ToolAvailability::Unhealthy;
+    reject(
+        Domain::ErrorCodes::InvalidRequest,
+        "Manager tool availability is unknown.");
+}
+
+[[nodiscard]] Json lmStudioSnapshotJson(
+    const ManagerLmStudioSnapshot& snapshot)
+{
+    return Json{
+        {"lmstudio_present", snapshot.lmStudioPresent},
+        {"primary_plugin_installed", snapshot.primaryPluginInstalled},
+        {"fallback_plugin_installed", snapshot.fallbackPluginInstalled},
+        {"mcp_configuration_registered", snapshot.mcpConfigurationRegistered},
+        {"binary_executable", snapshot.binaryExecutable},
+        {"binary_path", snapshot.binaryPath},
+        {"primary_plugin_path", snapshot.primaryPluginPath},
+        {"fallback_plugin_path", snapshot.fallbackPluginPath},
+        {"mcp_configuration_path", snapshot.mcpConfigurationPath},
+        {"deployment_id", snapshot.deploymentId
+            ? Json(snapshot.deploymentId->value()) : Json(nullptr)},
+        {"connection_check_performed", snapshot.connectionCheckPerformed},
+        {"primary_connector_ready", snapshot.primaryConnectorReady},
+        {"fallback_connector_ready", snapshot.fallbackConnectorReady},
+        {"connected_client_observed", snapshot.connectedClientObserved},
+        {"managed_continuity_projects", snapshot.managedContinuityProjects},
+        {"detail", snapshot.detail},
+        {"action_detail", snapshot.actionDetail}};
+}
+
+[[nodiscard]] ManagerLmStudioSnapshot parseLmStudioSnapshot(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"action_detail", "binary_executable", "binary_path",
+         "connected_client_observed", "connection_check_performed", "deployment_id",
+         "detail", "fallback_connector_ready", "fallback_plugin_installed",
+         "fallback_plugin_path", "lmstudio_present", "managed_continuity_projects",
+         "mcp_configuration_path", "mcp_configuration_registered",
+         "primary_connector_ready", "primary_plugin_installed",
+         "primary_plugin_path"},
+        "Manager LM Studio snapshot");
+    return ManagerLmStudioSnapshot{
+        booleanMember(value, "lmstudio_present"),
+        booleanMember(value, "primary_plugin_installed"),
+        booleanMember(value, "fallback_plugin_installed"),
+        booleanMember(value, "mcp_configuration_registered"),
+        booleanMember(value, "binary_executable"),
+        stringMember(value, "binary_path"),
+        stringMember(value, "primary_plugin_path"),
+        stringMember(value, "fallback_plugin_path"),
+        stringMember(value, "mcp_configuration_path"),
+        optionalField<Domain::DeploymentId>(
+            value, "deployment_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::DeploymentId>(object, name);
+            }),
+        booleanMember(value, "connection_check_performed"),
+        booleanMember(value, "primary_connector_ready"),
+        booleanMember(value, "fallback_connector_ready"),
+        booleanMember(value, "connected_client_observed"),
+        sizeMember(value, "managed_continuity_projects"),
+        stringMember(value, "detail"),
+        stringMember(value, "action_detail")};
+}
+
+[[nodiscard]] Json toolDescriptorJson(const ManagerToolDescriptor& descriptor)
+{
+    return Json{
+        {"name", descriptor.name},
+        {"description", descriptor.description},
+        {"pack", descriptor.pack},
+        {"effect", toolEffectName(descriptor.effect)},
+        {"availability", toolAvailabilityName(descriptor.availability)},
+        {"requires_project", descriptor.requiresProject},
+        {"requires_shell", descriptor.requiresShell},
+        {"input_schema", descriptor.inputSchema}};
+}
+
+[[nodiscard]] ManagerToolDescriptor parseToolDescriptor(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"availability", "description", "effect", "input_schema", "name", "pack",
+         "requires_project", "requires_shell"},
+        "Manager tool descriptor");
+    return ManagerToolDescriptor{
+        stringMember(value, "name"),
+        stringMember(value, "description"),
+        stringMember(value, "pack"),
+        parseToolEffect(stringMember(value, "effect")),
+        parseToolAvailability(stringMember(value, "availability")),
+        booleanMember(value, "requires_project"),
+        booleanMember(value, "requires_shell"),
+        stringMember(value, "input_schema")};
+}
+
+[[nodiscard]] Json toolsSnapshotJson(const ManagerToolsSnapshot& snapshot)
+{
+    Json tools = Json::array();
+    for (const auto& descriptor : snapshot.tools) {
+        tools.push_back(toolDescriptorJson(descriptor));
+    }
+    return Json{{"shell_enabled", snapshot.shellEnabled}, {"tools", std::move(tools)}};
+}
+
+[[nodiscard]] ManagerToolsSnapshot parseToolsSnapshot(const Json& value)
+{
+    requireExactFields(value, {"shell_enabled", "tools"}, "Manager tools snapshot");
+    const auto& items = member(value, "tools");
+    if (!items.is_array()) {
+        reject(Domain::ErrorCodes::InvalidRequest, "Manager tools must be an array.");
+    }
+    ManagerToolsSnapshot snapshot;
+    snapshot.shellEnabled = booleanMember(value, "shell_enabled");
+    snapshot.tools.reserve(items.size());
+    for (const auto& item : items) snapshot.tools.push_back(parseToolDescriptor(item));
+    return snapshot;
+}
+
+[[nodiscard]] Json toolOutcomeSnapshotJson(
+    const ManagerToolOutcomeSnapshot& snapshot)
+{
+    return Json{
+        {"project_id", snapshot.projectId.value()},
+        {"tool_name", snapshot.toolName},
+        {"ok", snapshot.ok},
+        {"canonical_payload", snapshot.canonicalPayload},
+        {"error", snapshot.error ? errorJson(*snapshot.error) : Json(nullptr)}};
+}
+
+[[nodiscard]] ManagerToolOutcomeSnapshot parseToolOutcomeSnapshot(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"canonical_payload", "error", "ok", "project_id", "tool_name"},
+        "Manager tool outcome");
+    return ManagerToolOutcomeSnapshot{
+        identifierMember<Domain::ProjectId>(value, "project_id"),
+        stringMember(value, "tool_name"),
+        booleanMember(value, "ok"),
+        stringMember(value, "canonical_payload"),
+        optionalField<Domain::Error>(
+            value, "error",
+            [](const Json& object, const std::string_view name) {
+                return parseError(member(object, name));
+            })};
+}
+
 [[nodiscard]] Json resultJson(const ManagerResult& result)
 {
     Json wrapper = Json::object();
@@ -2187,6 +2675,26 @@ template <typename T, typename Parser>
                 std::is_same_v<Value, Domain::ManagerTelemetrySnapshot>) {
                 wrapper["type"] = "telemetry";
                 wrapper["value"] = managerTelemetrySnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerProjectsSnapshot>) {
+                wrapper["type"] = "projects";
+                wrapper["value"] = projectsSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerProjectWorkspaceSnapshot>) {
+                wrapper["type"] = "project_workspace";
+                wrapper["value"] = projectWorkspaceSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerLmStudioSnapshot>) {
+                wrapper["type"] = "lmstudio";
+                wrapper["value"] = lmStudioSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerToolsSnapshot>) {
+                wrapper["type"] = "tools";
+                wrapper["value"] = toolsSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerToolOutcomeSnapshot>) {
+                wrapper["type"] = "tool_outcome";
+                wrapper["value"] = toolOutcomeSnapshotJson(value);
             } else if constexpr (std::is_same_v<Value, ManagerAcknowledgement>) {
                 wrapper["type"] = "acknowledgement";
                 Json acknowledgement = Json::object();
@@ -2217,6 +2725,21 @@ template <typename T, typename Parser>
     }
     if (type == "telemetry") {
         return ManagerResult{parseManagerTelemetrySnapshot(value)};
+    }
+    if (type == "projects") {
+        return ManagerResult{parseProjectsSnapshot(value)};
+    }
+    if (type == "project_workspace") {
+        return ManagerResult{parseProjectWorkspaceSnapshot(value)};
+    }
+    if (type == "lmstudio") {
+        return ManagerResult{parseLmStudioSnapshot(value)};
+    }
+    if (type == "tools") {
+        return ManagerResult{parseToolsSnapshot(value)};
+    }
+    if (type == "tool_outcome") {
+        return ManagerResult{parseToolOutcomeSnapshot(value)};
     }
     if (type == "acknowledgement") {
         requireExactFields(

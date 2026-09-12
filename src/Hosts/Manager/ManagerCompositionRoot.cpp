@@ -1366,7 +1366,17 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             telemetryService_.get(),
             dashboardOperationalService_.get(),
             projectRegistry_.get(),
-            toolCatalog_.get()});
+            projectMemory_.get(),
+            toolCatalog_.get(),
+            lmStudioDeployment_.get(),
+            lmStudioReadAuthority_ ? &*lmStudioReadAuthority_ : nullptr,
+            lmStudioWriteAuthority_ ? &*lmStudioWriteAuthority_ : nullptr,
+            toolAuthorizer_.get(),
+            projectWorkspaceAuthority_.get(),
+            toolRouter_.get(),
+            continuityAutomation_.get(),
+            process.cliExecutable(),
+            initialConfiguration_->shell.enabled});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

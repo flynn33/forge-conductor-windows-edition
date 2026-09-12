@@ -10,6 +10,8 @@ The pinned current main includes the native-desktop foundation, isolated profile
 ## One work loop
 Read actual state -> select the next dependency-ready slice -> change native code -> build affected targets when needed -> run the smallest meaningful check -> record evidence and the next action -> continue. Perform implementation in the first active session after adoption; do not spend the session building another plan framework.
 
+The unit of assignment is the complete R0–R7 product and delivery, while phases divide review history. A build, passing test, saved cursor, ready PR or phase boundary never ends the active assignment by itself. At every boundary, take the path supported by current facts: synchronize and branch from integrated main after a merge; branch independent work from current main while review is pending; or branch dependent work from the exact reviewed parent head, record that dependency, and keep its PR targeting main until the parent lands. Never merge a child ahead of its dependency. If a check cannot run, retain its original gate and exact missing resource, then execute the next independent slice.
+
 R0 is a one-time reconciliation, not a recurring audit. The later phase files identify existing code to inspect and behavior to deliver. When a slice is already present, inspect it, reuse applicable evidence, fill the remaining gap and record that it was inherited. Never erase existing implementation to match this package's proposed class names. Suggested service/view-model names are role descriptions, not mandatory replacement interfaces.
 
 ## Practical gates
@@ -31,6 +33,8 @@ No interpreted application runtime, Swift, Electron, Qt, Java, Node or new .NET 
 Never end merely because a build, installer, saved NEXT, phase boundary or fixture suite succeeded. Do not ask “shall I continue?” Resolve ordinary engineering choices inside this scope. A required external approval, unavailable model, inaccessible migration source or required review is recorded with its exact blocked operation and next independent action. Use supported approval/authentication flows; no silent bypass or fake success.
 
 At a real context transition, update the repository cursor with plan ID, current phase/slice, observed branch/base, dirty-file summary, actual evidence and next exact edit/command. Do not claim an automatic new session unless the host actually supplies it. On resume refresh Git/process/provider facts once and continue the recorded slice; stale memory does not outrank the current owner assignment.
+
+The cursor must always include one immediately executable action and, when a parent PR is pending, the applicable independent or exact-parent-head branch path. Waiting for review cannot be its only instruction while source, tests, packaging or documentation work remains feasible.
 
 Normal completion means the application and required acceptance are finished and delivery synchronization is verified. Otherwise report a genuine forced interruption or that all remaining useful actions are externally blocked. Describe unfinished work accurately; do not label an incomplete application complete.
 

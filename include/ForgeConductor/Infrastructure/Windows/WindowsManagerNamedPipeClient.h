@@ -4,6 +4,7 @@
 #include "ForgeConductor/Contracts/IManagerServices.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
 #include "ForgeConductor/Domain/ManagerTelemetryModels.h"
+#include "ForgeConductor/Manager/ManagerProtocolCodec.h"
 #include "ForgeConductor/Manager/ManagerTransportLimits.h"
 
 #include <memory>
@@ -76,6 +77,41 @@ public:
 
     [[nodiscard]] Domain::Result<Domain::ManagerTelemetrySnapshot> telemetry(
         const std::optional<Domain::SessionId>& runId,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerProjectsSnapshot> projects(
+        std::size_t maximumCount,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>
+    initializeProject(
+        const Manager::ManagerProjectInitializeRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>
+    projectMemory(
+        const Manager::ManagerProjectMemoryRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>
+    rememberProjectMemory(
+        const Manager::ManagerProjectRememberRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> lmStudioStatus(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> repairLmStudio(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> activateLmStudio(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerToolsSnapshot> tools(
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerToolOutcomeSnapshot> invokeTool(
+        const Manager::ManagerToolInvokeRequest& request,
         const Domain::OperationContext& context) noexcept;
 
     void shutdown() noexcept override;

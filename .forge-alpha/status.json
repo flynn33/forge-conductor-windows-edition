@@ -1,21 +1,21 @@
 {
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
-  "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T18:56:18.9869476Z",
-  "current_phase": "R2",
-  "current_slice": "R2.5",
+  "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
+  "updated_at_utc": "2026-09-12T20:38:42.834995Z",
+  "current_phase": "R3",
+  "current_slice": "R3.3",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r2-native-telemetry",
-    "head": "a5ea891",
-    "origin_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
-    "github_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
+    "branch": "alpha/r3-native-workflows",
+    "head": "working R3.2 changes after 63e02740f0c4b4ace3338041e8a856d84d6794f1",
+    "origin_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
+    "github_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
     "dirty_summary": [
-      "R2 implementation and phase documentation are pushed through a5ea891; PR #13 is ready for normal review.",
-      "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from phase staging.",
-      "Ignored R2 lifecycle evidence remains under out/alpha-evidence/r2; no build output or disposable profile is published."
+      "R3.1 is committed and pushed to draft PR #14; R3.2 continues on the same phase branch.",
+      "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
+      "Disposable R3 workflow evidence remains under out/alpha-profiles and is not published."
     ]
   },
   "baseline": {
@@ -50,7 +50,7 @@
           "evidence": "Authenticated owner flynn33 pushed alpha/r0-reconcile; PR #11 targets main; local, GitHub branch and PR head matched fcdf78761603a9369b172d90425b86c4ddbfb30b. Normal owner merge is pending."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R0.md",
       "last_known_merge": "0c52530"
     },
@@ -84,19 +84,19 @@
           "evidence": "Actual staged GUI attached, detached, and reattached to the same isolated Manager; receipt out/alpha-evidence/r1/gui-manager-attach-detach.json. Native UI control automation was unavailable, so the visual button walkthrough was not run; live inference was not run because LM Studio was offline."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R1.md",
       "last_known_merge": "325d0470b8924e5fd6c202abec2b948b8312eb3a"
     },
     "R2": {
       "implementation": "verified",
-      "delivery": "awaiting_merge",
+      "delivery": "synced",
       "branch": "alpha/r2-native-telemetry",
       "issue_number": 5,
       "milestone_number": 3,
       "pr_number": 13,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/13",
-      "reviewed_head": "abda1e6",
+      "reviewed_head": "e67bdf05b4e219252228377afd6c03cdc9361685",
       "slices": {
         "R2.1": "verified",
         "R2.2": "verified",
@@ -118,22 +118,22 @@
           "evidence": "Native visuals expose AutomationProperties names plus direct text equivalents and redraw on SizeChanged. The available control surface exposed browser tabs only, so keyboard navigation and enlarged/high-contrast native walkthroughs were not performed."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R2 review of every active first-party document; affected telemetry/UI/operator/test content updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R2 review of every active first-party document; affected telemetry/UI/operator/test content updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R2.md",
-      "last_known_merge": null
+      "last_known_merge": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5"
     },
     "R3": {
-      "implementation": "not_started",
-      "delivery": "not_started",
+      "implementation": "in_progress",
+      "delivery": "pr_open",
       "branch": "alpha/r3-native-workflows",
       "issue_number": 6,
       "milestone_number": 4,
-      "pr_number": null,
-      "pr_url": null,
+      "pr_number": 14,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/14",
       "reviewed_head": null,
       "slices": {
-        "R3.1": "not_started",
-        "R3.2": "not_started",
+        "R3.1": "verified",
+        "R3.2": "implemented_native_walkthrough_pending",
         "R3.3": "not_started",
         "R3.4": "not_started",
         "R3.5": "not_started"
@@ -153,7 +153,7 @@
         }
       },
       "documentation_review": null,
-      "phase_receipt": null,
+      "phase_receipt": ".forge-alpha/phases/R3.md",
       "last_known_merge": null
     },
     "R4": {
@@ -307,7 +307,7 @@
       "dependency_type": "verification_environment",
       "last_observed_utc": "2026-09-12T18:49:44.7873603Z",
       "necessary_external_action": "Use a Windows interactive session with a native UI control surface to exercise the real controls, rendered telemetry, keyboard navigation, scaling, and high contrast.",
-      "next_independent_work": "Complete R2 delivery and proceed with R3 source work after the phase branch can be based on synchronized main."
+      "next_independent_work": "Continue R3.2-R5 source, focused checks, and packaging; execute the consolidated native walkthrough when an interactive native control surface is available."
     },
     {
       "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R2 implementation verified through abda1e6: native Windows collectors feed one typed Manager snapshot rendered as WinUI gauges, histories, status cards, timelines, and detail summaries with bounded refresh and safe window lifetime. R2-G2/G3 native visual walkthroughs remain blocked by the control surface.",
-  "next_action": "Await normal review/merge of ready PR #13 without bypassing protection. After an actual merge, fetch and fast-forward local main, prove tracked-source equality, create the separate R3 branch, open its draft PR early, and begin R3.1.",
+  "last_result": "R3.2 source is implemented: typed Manager LM Studio inspect/repair/activate operations preserve foreign MCP entries, expose exact registration and connector verification state, and a native Tools workbench lists the canonical catalog, shows the persisted shell preference, and invokes project-scoped tools through Manager authority.",
+  "next_action": "Implement R3.3 native agent session and attachment workflows using the existing Manager-owned session services, while retaining the consolidated R3 native walkthrough under R3-G2.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

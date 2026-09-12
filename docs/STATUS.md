@@ -1,6 +1,6 @@
 # Product status
 
-Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0 and R1 are merged. R2 implementation is pushed in ready [PR #13](https://github.com/flynn33/forge-conductor-windows-edition/pull/13). Implementation, pull-request delivery, merge, gate blockers, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
+Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R2 are merged; PR #13 merged as `bdd6e05fd1843a353116628b1ef33c2e6a948fc5` and local main was synchronized before R3 began. R3.1 Projects and memory is implemented on `alpha/r3-native-workflows`. Implementation, pull-request delivery, merge, gate blockers, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
 
 | Area | Current source/evidence | Remaining requirement |
 |---|---|---|
@@ -9,7 +9,7 @@ Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0 and 
 | Native telemetry | The Manager owns real Windows CPU/RAM/process collection and DXGI adapter/memory capability reporting; one typed pipe snapshot includes runtime, provider, authoritative context/continuity, projects, tools, events, and store health | GPU utilization remains unavailable on unsupported adapters by design; compare rendered visuals and accessibility with a native interactive surface |
 | Managed provider path | The Manager owns durable ordinary runs, `/v1/responses` turns, authorized native tool routing, retained-context observations, canonical handoff activation, successor response identity, and safe pause/resume/cancel | Prove live provider-originated handoff acknowledgment and useful successor work in R6 |
 | Context policy | Count/time rollover fields and behavior are removed; prior focused regression kept 500 ordinary observations on one chain | Prove actual context-triggered rollover with a live tool-capable model in R6 |
-| Projects, MCP and native tools | Prior disposable service workflow covered two-project isolation, MCP deployment, file/search/Git/shell/memory effects and foreign-entry preservation | Expose and verify the real workflows through native pages in R3 and from the installed candidate in R6 |
+| Projects, MCP and native tools | The Projects page now registers authorized folders through typed Manager operations, persists exact project selection, displays aliases and memory-store health, searches/reads/writes persistent memory, and binds the selected ID to ordinary runs. Protocol scope fencing and a fresh disposable two-project workflow passed. | Complete the native LM Studio MCP, Tools, Agents, Feed, Runtimes, Events, Diagnostics and Manager workflows in R3; verify all pages through the installed candidate in R6 |
 | Installer | Signed x64 engineering MSIX/ZIP creation succeeded with public certificate material and native products | Finish payload/provenance/onboarding/data behavior in R5, then install/update/uninstall and Start-launch acceptance in R6 |
 | Data compatibility | Source currently contains central migrations C001–C007; the prior isolated evidence reported the owner's live central store at schema 9 and preserved it | Obtain authentic C008/C009 history or keep the newer store rejected without mutation; use `--alpha-root` for disposable work |
 

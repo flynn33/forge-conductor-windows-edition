@@ -3,6 +3,9 @@
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
+#include "ForgeConductor/Contracts/IContinuityAutomation.h"
+#include "ForgeConductor/Contracts/IFileSystemServices.h"
+#include "ForgeConductor/Contracts/ILMStudioDeploymentService.h"
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
 #include "ForgeConductor/Contracts/ITelemetryService.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
@@ -20,7 +23,17 @@ struct ManagerTelemetrySources final {
     Contracts::ITelemetryService* telemetry{};
     Dashboard::IDashboardOperationalService* operational{};
     Contracts::IProjectRegistryRepository* projects{};
+    Contracts::IProjectMemoryService* projectMemory{};
     Contracts::IToolCatalog* tools{};
+    Contracts::ILMStudioDeploymentService* lmStudioDeployment{};
+    const Contracts::WorkspaceAuthority* lmStudioReadAuthority{};
+    const Contracts::WorkspaceAuthority* lmStudioWriteAuthority{};
+    Contracts::IToolAuthorizer* toolAuthorizer{};
+    Contracts::IWorkspaceAuthority* projectWorkspaceAuthority{};
+    Contracts::IToolRouter* toolRouter{};
+    Contracts::IContinuityAutomation* continuityAutomation{};
+    std::optional<Domain::PathText> preferredForgeBinary;
+    bool shellEnabled{};
 };
 
 class ManagerRequestDispatcher final {

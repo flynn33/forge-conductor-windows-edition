@@ -266,6 +266,58 @@ public:
             std::move(*snapshot));
     }
 
+    [[nodiscard]] Domain::Result<Manager::ManagerProjectsSnapshot> projects(
+        const std::size_t maximumCount,
+        const Domain::OperationContext& context) noexcept
+    {
+        auto result = exchange(
+            Manager::ManagerProjectsListRequest{maximumCount}, context);
+        if (!result) {
+            return failure<Manager::ManagerProjectsSnapshot>(
+                std::move(result).error());
+        }
+        auto* snapshot =
+            std::get_if<Manager::ManagerProjectsSnapshot>(&result.value());
+        if (snapshot == nullptr) {
+            return failure<Manager::ManagerProjectsSnapshot>(
+                wrongResponseTypeError());
+        }
+        return Domain::Result<Manager::ManagerProjectsSnapshot>::success(
+            std::move(*snapshot));
+    }
+
+    [[nodiscard]] Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>
+    projectWorkspace(
+        Manager::ManagerRequestPayload payload,
+        const Domain::OperationContext& context) noexcept
+    {
+        auto result = exchange(std::move(payload), context);
+        if (!result) {
+            return failure<Manager::ManagerProjectWorkspaceSnapshot>(
+                std::move(result).error());
+        }
+        auto* snapshot = std::get_if<Manager::ManagerProjectWorkspaceSnapshot>(
+            &result.value());
+        if (snapshot == nullptr) {
+            return failure<Manager::ManagerProjectWorkspaceSnapshot>(
+                wrongResponseTypeError());
+        }
+        return Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>::success(
+            std::move(*snapshot));
+    }
+
+    template <typename Result>
+    [[nodiscard]] Domain::Result<Result> typedWorkflow(
+        Manager::ManagerRequestPayload payload,
+        const Domain::OperationContext& context) noexcept
+    {
+        auto result = exchange(std::move(payload), context);
+        if (!result) return failure<Result>(std::move(result).error());
+        auto* value = std::get_if<Result>(&result.value());
+        if (value == nullptr) return failure<Result>(wrongResponseTypeError());
+        return Domain::Result<Result>::success(std::move(*value));
+    }
+
     [[nodiscard]] Domain::Result<void> requestShutdown(
         const Domain::OperationContext& context) noexcept
     {
@@ -907,6 +959,124 @@ WindowsManagerNamedPipeClient::telemetry(
     return implementation
         ? implementation->telemetry(runId, context)
         : failure<Domain::ManagerTelemetrySnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerProjectsSnapshot>
+WindowsManagerNamedPipeClient::projects(
+    const std::size_t maximumCount,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->projects(maximumCount, context)
+        : failure<Manager::ManagerProjectsSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>
+WindowsManagerNamedPipeClient::initializeProject(
+    const Manager::ManagerProjectInitializeRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->projectWorkspace(request, context)
+        : failure<Manager::ManagerProjectWorkspaceSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>
+WindowsManagerNamedPipeClient::projectMemory(
+    const Manager::ManagerProjectMemoryRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->projectWorkspace(request, context)
+        : failure<Manager::ManagerProjectWorkspaceSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerProjectWorkspaceSnapshot>
+WindowsManagerNamedPipeClient::rememberProjectMemory(
+    const Manager::ManagerProjectRememberRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->projectWorkspace(request, context)
+        : failure<Manager::ManagerProjectWorkspaceSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerLmStudioSnapshot>
+WindowsManagerNamedPipeClient::lmStudioStatus(
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerLmStudioSnapshot>(
+              Manager::ManagerLmStudioStatusRequest{}, context)
+        : failure<Manager::ManagerLmStudioSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerLmStudioSnapshot>
+WindowsManagerNamedPipeClient::repairLmStudio(
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerLmStudioSnapshot>(
+              Manager::ManagerLmStudioRepairRequest{}, context)
+        : failure<Manager::ManagerLmStudioSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerLmStudioSnapshot>
+WindowsManagerNamedPipeClient::activateLmStudio(
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerLmStudioSnapshot>(
+              Manager::ManagerLmStudioActivateRequest{}, context)
+        : failure<Manager::ManagerLmStudioSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerToolsSnapshot>
+WindowsManagerNamedPipeClient::tools(
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerToolsSnapshot>(
+              Manager::ManagerToolsRequest{}, context)
+        : failure<Manager::ManagerToolsSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerToolOutcomeSnapshot>
+WindowsManagerNamedPipeClient::invokeTool(
+    const Manager::ManagerToolInvokeRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerToolOutcomeSnapshot>(
+              request, context)
+        : failure<Manager::ManagerToolOutcomeSnapshot>(clientError(
               Domain::ErrorCodes::TransportClosed,
               "The manager client transport is unavailable."));
 }

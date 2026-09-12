@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 namespace winrt::ForgeConductorApp::implementation {
 struct MainWindow : MainWindowT<MainWindow> {
@@ -30,11 +31,24 @@ struct MainWindow : MainWindowT<MainWindow> {
     void RunPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunResumeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectRegisterClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectSearchClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectRememberClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectSelectionChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void LmStudioInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void LmStudioRepairClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void LmStudioActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ToolsRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ToolInvokeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
-        RunStart, RunStatus, RunPause, RunResume, RunCancel
+        RunStart, RunStatus, RunPause, RunResume, RunCancel,
+        ProjectList, ProjectRegister, ProjectLoad, ProjectRemember,
+        LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke
     };
     winrt::fire_and_forget RunAction(Action action);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
@@ -43,14 +57,23 @@ private:
     void ApplyTelemetryPresentation(
         const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot);
     void ApplyDisconnectedTelemetry(std::string_view reason);
+    void ApplyProjectList(
+        const ::ForgeConductor::Manager::ManagerProjectsSnapshot& snapshot);
+    void ApplyProjectWorkspace(
+        const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
+    void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
+    void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;
     std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
         telemetrySnapshot_;
+    std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
+    std::string selectedProjectId_;
     std::stop_source cancellation_;
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};
+    bool rebuildingProjects_{};
     bool busy_{};
 };
 }

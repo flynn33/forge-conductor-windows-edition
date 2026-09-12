@@ -524,7 +524,8 @@ void testAuthenticatedNamedPipeRoundTrip()
         clock,
         limits,
         std::shared_ptr<Contracts::IManagedRunService>{},
-        Manager::ManagerTelemetrySources{&telemetry, nullptr, nullptr, nullptr});
+        Manager::ManagerTelemetrySources{
+            &telemetry, nullptr, nullptr, nullptr, nullptr});
     const auto pipeName = uniquePipeName();
     const auto validNonce = nonce('a');
 
