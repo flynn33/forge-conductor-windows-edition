@@ -114,6 +114,10 @@ public:
         const Manager::ManagerToolInvokeRequest& request,
         const Domain::OperationContext& context) noexcept;
 
+    [[nodiscard]] Domain::Result<Manager::ManagerOperationalSnapshot> operational(
+        const Manager::ManagerOperationalRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
     void shutdown() noexcept override;
 
 private:

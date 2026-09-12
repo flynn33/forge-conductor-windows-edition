@@ -483,6 +483,40 @@ ToolOutcomeView ManagerConnection::invokeTool(
     }
 }
 
+OperationalView ManagerConnection::operational(
+    const Manager::ManagerOperationalArea area,
+    const Manager::ManagerOperationalAction action,
+    std::string sessionId,
+    std::string summary,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        std::optional<Domain::SessionId> parsed;
+        if (!sessionId.empty()) {
+            auto value = Domain::SessionId::parse(sessionId);
+            if (!value) return {false, value.error().message, std::nullopt};
+            parsed = std::move(value).value();
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation, std::chrono::seconds{15});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->operational(
+            Manager::ManagerOperationalRequest{
+                area, action, std::move(parsed), std::move(summary)}, context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        return {true, snapshot.title, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The operational page could not be loaded.", std::nullopt};
+    }
+}
+
 ProviderSettingsView ManagerConnection::providerSettings(
     const std::stop_token cancellation) noexcept
 {

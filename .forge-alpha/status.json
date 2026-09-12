@@ -2,9 +2,9 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
-  "updated_at_utc": "2026-09-12T20:38:42.834995Z",
-  "current_phase": "R3",
-  "current_slice": "R3.3",
+  "updated_at_utc": "2026-09-12T21:57:15.641046Z",
+  "current_phase": "R4",
+  "current_slice": "R4.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
@@ -123,7 +123,7 @@
       "last_known_merge": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5"
     },
     "R3": {
-      "implementation": "in_progress",
+      "implementation": "implemented_gates_pending",
       "delivery": "pr_open",
       "branch": "alpha/r3-native-workflows",
       "issue_number": 6,
@@ -134,9 +134,9 @@
       "slices": {
         "R3.1": "verified",
         "R3.2": "implemented_native_walkthrough_pending",
-        "R3.3": "not_started",
-        "R3.4": "not_started",
-        "R3.5": "not_started"
+        "R3.3": "implemented_native_walkthrough_pending",
+        "R3.4": "implemented_native_walkthrough_pending",
+        "R3.5": "implemented_native_walkthrough_pending"
       },
       "gates": {
         "R3-G1": {
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R3.2 source is implemented: typed Manager LM Studio inspect/repair/activate operations preserve foreign MCP entries, expose exact registration and connector verification state, and a native Tools workbench lists the canonical catalog, shows the persisted shell preference, and invokes project-scoped tools through Manager authority.",
-  "next_action": "Implement R3.3 native agent session and attachment workflows using the existing Manager-owned session services, while retaining the consolidated R3 native walkthrough under R3-G2.",
+  "last_result": "R3.3-R3.5 source implementation completed: Agents and Feed show actual agent/session IDs, tool outcomes, errors and durations; session close and stale-prune actions are connected; Runtimes, Diagnostics and Manager show authoritative service data; required R3 destinations no longer use GenericPanel. Manager/App builds and focused tests pass; R3-G2/G3 remain open for native interaction and reattachment.",
+  "next_action": "Create alpha/r4-settings-reset from the exact pushed R3 head and implement R4.1 persistent accessible Settings while PR #14 awaits native walkthrough/review.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",
