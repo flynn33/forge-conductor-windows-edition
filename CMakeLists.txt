@@ -122,6 +122,8 @@ target_include_directories(ForgeConductor.Contracts INTERFACE
     "${PROJECT_SOURCE_DIR}/include")
 
 add_library(ForgeConductor.Telemetry.Windows STATIC
+    src/Telemetry/Windows/WindowsCpuMetricsCollector.cpp
+    src/Telemetry/Windows/WindowsTelemetryService.cpp
     src/Telemetry/Windows/WindowsRamMetricsCollector.cpp)
 forge_add_layer(
     ForgeConductor.Telemetry.Windows
@@ -135,6 +137,7 @@ target_compile_definitions(ForgeConductor.Telemetry.Windows PRIVATE
     WINVER=0x0A00
     _WIN32_WINNT=0x0A00)
 target_link_libraries(ForgeConductor.Telemetry.Windows PRIVATE
+    dxgi
     psapi)
 
 set(FORGE_APPLICATION_SOURCES
@@ -460,7 +463,8 @@ target_link_libraries(ForgeConductor.Manager.Composition.Windows PUBLIC
     ForgeConductor::Application
     ForgeConductor::Manager.Host
     ForgeConductor::Infrastructure.Windows
-    ForgeConductor::Persistence.Windows)
+    ForgeConductor::Persistence.Windows
+    ForgeConductor::Telemetry.Windows)
 
 set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/NativeFileOperations.cpp
@@ -657,6 +661,7 @@ add_custom_command(TARGET ForgeConductor.ForsettiHostSmoke POST_BUILD
 if(BUILD_TESTING)
     add_executable(ForgeConductor.Telemetry.WindowsTests
         tests/Telemetry/TelemetryWindowsTestMain.cpp
+        tests/Telemetry/WindowsCpuMetricsCollectorTests.cpp
         tests/Telemetry/WindowsRamMetricsCollectorTests.cpp)
     forge_configure_native_target(
         ForgeConductor.Telemetry.WindowsTests)
