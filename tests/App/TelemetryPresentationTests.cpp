@@ -73,6 +73,16 @@ void testPresentationPreservesTelemetryMeaning()
     snapshot.recentEvents.push_back(Domain::AuditEvent{
         time, std::nullopt, "filesystem.read", std::nullopt, "success",
         std::chrono::milliseconds{42}, std::nullopt});
+    snapshot.projects.push_back(Domain::ProjectId::parse(
+        "11111111-1111-4111-8111-111111111111").value());
+    snapshot.tools.push_back("filesystem.read");
+    snapshot.runtimeDiagnostics = Domain::RuntimeDiagnosticSnapshot{
+        time, 0U, 0U, 3U, 2U, 0U, Domain::ResourcePressureLevel::Nominal,
+        0U, 4U, 0U, 1U};
+    snapshot.resources.host = "workstation";
+    snapshot.resources.platform = "Windows";
+    snapshot.resources.architecture = "x64";
+    snapshot.provider.model = "local-model";
 
     const auto presentation = App::makeTelemetryPresentation(snapshot);
     require(presentation.cpu.value == "48.5%", "CPU direct value");
@@ -95,6 +105,24 @@ void testPresentationPreservesTelemetryMeaning()
             "event latency projection");
     require(presentation.storeStatus.find("Store busy") != std::string::npos,
             "store unavailable explanation");
+
+    require(App::telemetryDetailText(snapshot, "Projects").find(
+                "11111111-1111-4111-8111-111111111111") !=
+                std::string::npos,
+            "project drill-down");
+    require(App::telemetryDetailText(snapshot, "Tools").find(
+                "filesystem.read") != std::string::npos,
+            "tool drill-down");
+    require(App::telemetryDetailText(snapshot, "Events & Evidence").find(
+                "42 ms") != std::string::npos,
+            "event drill-down");
+    const auto runtimes = App::telemetryDetailText(snapshot, "Runtimes");
+    require(runtimes.find("workstation · Windows · x64") != std::string::npos &&
+                runtimes.find("Background threads: 3") != std::string::npos,
+            "runtime drill-down");
+    require(App::telemetryDetailText(snapshot, "Provider").find(
+                "local-model") != std::string::npos,
+            "provider drill-down");
 }
 
 } // namespace

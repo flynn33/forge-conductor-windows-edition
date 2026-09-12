@@ -8,6 +8,7 @@
 #include <limits>
 #include <vector>
 #include <winrt/Microsoft.UI.Dispatching.h>
+#include <winrt/Windows.Storage.h>
 
 namespace winrt::ForgeConductorApp::implementation {
 namespace {
@@ -68,6 +69,25 @@ MainWindow::MainWindow(
     : connection_{std::move(connection)}
 {
     Closed([this](auto const&, auto const&) { cancellation_.request_stop(); });
+    RootNavigation().Loaded([this](auto const&, auto const&) {
+        try {
+            const auto saved = Windows::Storage::ApplicationData::Current()
+                .LocalSettings().Values().TryLookup(L"selected_page");
+            const auto selected = saved.try_as<Windows::Foundation::IPropertyValue>();
+            if (!selected || selected.Type() !=
+                    Windows::Foundation::PropertyType::String) return;
+            const auto tag = selected.GetString();
+            for (const auto& candidate : RootNavigation().MenuItems()) {
+                const auto item = candidate.try_as<
+                    Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+                if (item && unbox_value_or<hstring>(item.Tag(), L"") == tag) {
+                    RootNavigation().SelectedItem(item);
+                    break;
+                }
+            }
+        } catch (...) {
+        }
+    });
 }
 
 void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,
@@ -104,10 +124,14 @@ void MainWindow::NavigationChanged(
     if (!item) return;
     const auto tag = unbox_value_or<hstring>(item.Tag(), L"Rig");
     PageTitle().Text(tag);
+    try {
+        Windows::Storage::ApplicationData::Current().LocalSettings()
+            .Values().Insert(L"selected_page", box_value(tag));
+    } catch (...) {
+    }
     const bool provider = tag == L"Provider";
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
-    const bool rig = tag == L"Rig" || tag == L"Manager" ||
-        tag == L"Diagnostics" || tag == L"Runtimes";
+    const bool rig = tag == L"Rig";
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
@@ -119,9 +143,18 @@ void MainWindow::NavigationChanged(
         PageDescription().Text(L"Read and control the current native Manager runtime.");
     } else if (autonomy) {
         PageDescription().Text(L"Start, attach, pause, resume, and stop Manager-owned work while observing retained context.");
+    } else if (tag == L"Projects") {
+        PageDescription().Text(L"Inspect registered project identities and their current Manager session scope.");
+    } else if (tag == L"Tools" || tag == L"LM Studio MCP") {
+        PageDescription().Text(L"Inspect the Manager-owned native and MCP tool catalog.");
+    } else if (tag == L"Events & Evidence" || tag == L"Feed") {
+        PageDescription().Text(L"Inspect recent operational activity and measured tool durations.");
+    } else if (tag == L"Runtimes") {
+        PageDescription().Text(L"Inspect the native telemetry runtime, process resources, threads, repositories, and databases.");
     } else {
-        PageDescription().Text(L"Read the live Manager connection while this native surface is being completed.");
+        PageDescription().Text(L"Inspect the current typed Manager operational snapshot.");
     }
+    if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
 }
 
 std::optional<::ForgeConductor::Domain::ManagerSettings>
@@ -222,6 +255,15 @@ void MainWindow::ApplyTelemetryPresentation(
         row.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
         row.IsTextSelectionEnabled(true);
         ActivityTimeline().Children().Append(row);
+    }
+
+    const auto page = winrt::to_string(PageTitle().Text());
+    const auto detail = ::ForgeConductor::Hosts::App::telemetryDetailText(
+        snapshot, page);
+    if (page == "Provider") {
+        ProviderState().Text(winrt::to_hstring(detail));
+    } else if (page != "Rig" && page != "Autonomy" && page != "Continuity") {
+        GenericState().Text(winrt::to_hstring(detail));
     }
 }
 

@@ -7,6 +7,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace ForgeConductor::Hosts::App {
@@ -158,6 +159,88 @@ struct TelemetryPresentation final {
         presentation.timeline.push_back("No recent Manager activity.");
     }
     return presentation;
+}
+
+[[nodiscard]] inline std::string telemetryDetailText(
+    const Domain::ManagerTelemetrySnapshot& snapshot,
+    const std::string_view page)
+{
+    if (page == "Projects") {
+        std::string text = "Registered projects: " +
+            std::to_string(snapshot.projects.size()) +
+            "\nOpen sessions: " + std::to_string(snapshot.openSessionCount) +
+            " · Recent sessions: " + std::to_string(snapshot.recentSessionCount);
+        for (const auto& project : snapshot.projects) {
+            text += "\n• " + project.value();
+        }
+        if (snapshot.selectedRun) {
+            text += "\n\nSelected run project: " +
+                snapshot.selectedRun->record.projectId.value();
+        }
+        return text;
+    }
+    if (page == "Tools" || page == "LM Studio MCP") {
+        std::string text = "Available Manager tools: " +
+            std::to_string(snapshot.tools.size());
+        for (const auto& tool : snapshot.tools) text += "\n• " + tool;
+        return text;
+    }
+    if (page == "Events & Evidence" || page == "Feed") {
+        const auto presentation = makeTelemetryPresentation(snapshot);
+        std::string text = "Recent operational events: " +
+            std::to_string(snapshot.recentEvents.size());
+        for (const auto& event : presentation.timeline) text += "\n• " + event;
+        return text;
+    }
+    if (page == "Runtimes") {
+        std::string text = "Telemetry runtime: " + snapshot.runtime +
+            "\nHost: " + snapshot.resources.host + " · " +
+            snapshot.resources.platform + " · " + snapshot.resources.architecture +
+            "\nObserved Manager processes: " +
+            std::to_string(snapshot.resources.processes.size());
+        if (snapshot.runtimeDiagnostics) {
+            const auto& runtime = *snapshot.runtimeDiagnostics;
+            text += "\nBackground threads: " +
+                std::to_string(runtime.backgroundThreads) +
+                " · Open repositories: " +
+                std::to_string(runtime.openRepositories) +
+                " · Open databases: " + std::to_string(runtime.openDatabases) +
+                " · Child processes: " + std::to_string(runtime.childProcesses);
+        }
+        for (const auto& process : snapshot.resources.processes) {
+            text += "\n• " + process.name + " · PID " +
+                std::to_string(process.processId) + " · " +
+                std::to_string(process.workingSetBytes) + " bytes working set";
+        }
+        return text;
+    }
+    if (page == "Provider") {
+        std::string text = "Endpoint: " +
+            std::string{snapshot.provider.secure ? "https://" : "http://"} +
+            snapshot.provider.host + ':' + std::to_string(snapshot.provider.port);
+        text += "\nModel: " + snapshot.provider.model.value_or("automatic");
+        text += "\nCanonical response: " +
+            (snapshot.provider.responseId
+                ? snapshot.provider.responseId->value()
+                : std::string{"no selected run response"});
+        return text;
+    }
+    if (page == "Manager" || page == "Diagnostics" || page == "Settings") {
+        const auto presentation = makeTelemetryPresentation(snapshot);
+        return presentation.managerStatus +
+            "\nStore: " + presentation.storeStatus +
+            "\nCPU: " + presentation.cpu.value + " · RAM: " +
+            presentation.ram.value + " · GPU: " + presentation.gpu.value +
+            "\nContext capacity: " +
+            std::to_string(snapshot.context.capacityTokens) +
+            " · Next response reserve: " +
+            std::to_string(snapshot.context.nextResponseReserveTokens) +
+            " · Handoff reserve: " +
+            std::to_string(snapshot.context.handoffReserveTokens);
+    }
+    return "Agents: " + std::to_string(snapshot.openSessionCount) +
+        " open sessions · Presence: " + std::to_string(snapshot.presenceCount) +
+        " · Tools: " + std::to_string(snapshot.tools.size());
 }
 
 } // namespace ForgeConductor::Hosts::App
