@@ -33,6 +33,12 @@ client, authority generation, run, and task identity; displays run state, lifeti
 pending calls, output, and errors; and exposes start, refresh, pause, resume, and stop. The GUI remains an attachable
 client: closing it does not cancel or duplicate Manager-owned work.
 
+R2 adds the live Rig presentation backed by `ManagerTelemetrySnapshot`: four operational health cards, direct
+CPU/RAM/GPU/context values and gauges, bounded resource and activity-latency histories, accessible text equivalents,
+and a recent activity timeline. Provider, Runtimes, Projects, Tools, Feed, Events, Diagnostics, Manager, and Settings
+destinations project the same snapshot into readable detail text. Page selection persists for the Windows user,
+refresh is coalesced at two seconds, chart points are recomputed after resize, and disconnected reads keep prior history explicitly stale.
+
 ## Project and reset behavior
 A memory reset is not deletion of the source folder. Present the selected project and targeted stores before confirmation.
 Support project memory only, continuity only, and combined project reset; provide separately confirmed all-project
@@ -51,6 +57,6 @@ Use a real Windows interactive session. Check navigation, keyboard focus, window
 One focused native smoke is enough; do not add a large screenshot automation framework. Keep a short result record.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

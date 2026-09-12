@@ -81,6 +81,6 @@ Record the action/command, source commit or tested source tree plus dirty proven
 No repeated broad benchmarking, stress/leak campaigns, all-architecture build matrix, multi-agent validators, Mac-specific gates or user-data-destructive tests. Serious reproducible functional/data-loss bugs affecting required scope must be fixed; do not defer them for cosmetic completeness.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

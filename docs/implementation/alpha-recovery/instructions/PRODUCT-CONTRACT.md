@@ -42,6 +42,6 @@ A failing required workflow or existing-data compatibility issue stays explicit 
 Do not add a new application language/runtime, a new broad security/governance engine, Mac filesystem qualification, all-hardware/ARM64 testing, a browser dashboard replacement, enterprise distribution service, Store submission, new auto-update infrastructure, elaborate GPU artwork or another installer technology. Preserve useful existing capabilities without expanding them into unrelated completion gates. Support the named Alpha behaviors and the prior telemetry/settings clarification in full.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

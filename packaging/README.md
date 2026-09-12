@@ -5,6 +5,6 @@ These files are placeholders. Codex must generate the final WinUI/MSIX project f
 Do not retain guessed package identity, publisher, update URI, version, or asset names.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

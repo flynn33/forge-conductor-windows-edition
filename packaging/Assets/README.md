@@ -7,6 +7,6 @@ These are sufficient Alpha packaging assets; replacing them with existing approv
 They do not prove that the missing native app or MSIX has been implemented.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../../docs/STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../../docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

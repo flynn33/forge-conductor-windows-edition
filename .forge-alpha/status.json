@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger; update actual implementation, delivery, evidence and blockers without discarding inherited receipts.",
-  "updated_at_utc": "2026-09-12T18:07:45.8887810Z",
+  "updated_at_utc": "2026-09-12T18:49:44.7873603Z",
   "current_phase": "R2",
-  "current_slice": "R2.3",
+  "current_slice": "R2.5",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r2-native-telemetry",
-    "head": "320e006",
+    "head": "abda1e6",
     "origin_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "github_main": "325d0470b8924e5fd6c202abec2b948b8312eb3a",
     "dirty_summary": [
-      "R2 branch matches origin/alpha/r2-native-telemetry at dd02c07 before the PR-reference update.",
+      "R2 implementation is pushed through abda1e6; this documentation closeout is the only in-scope uncommitted delta.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from phase staging.",
-      "Ignored R1 attach/detach evidence under out/alpha-evidence/r1/."
+      "Ignored R2 runtime evidence remains under out/alpha-evidence/r2 and disposable profiles under out/alpha-profiles."
     ]
   },
   "baseline": {
@@ -89,37 +89,37 @@
       "last_known_merge": "325d0470b8924e5fd6c202abec2b948b8312eb3a"
     },
     "R2": {
-      "implementation": "in_progress",
-      "delivery": "draft_pr",
+      "implementation": "verified",
+      "delivery": "pr_open",
       "branch": "alpha/r2-native-telemetry",
       "issue_number": 5,
       "milestone_number": 3,
       "pr_number": 13,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/13",
-      "reviewed_head": null,
+      "reviewed_head": "abda1e6",
       "slices": {
         "R2.1": "verified",
         "R2.2": "verified",
-        "R2.3": "not_started",
-        "R2.4": "not_started",
-        "R2.5": "not_started"
+        "R2.3": "verified",
+        "R2.4": "verified",
+        "R2.5": "verified"
       },
       "gates": {
         "R2-G1": {
-          "status": "not_run",
-          "evidence": "Partial: 20/20 Windows CPU/RAM mapping, delta, stale, lifecycle and real-machine collector checks passed; production Manager started with the native telemetry graph. R2.2 added 569 protocol assertions, 9 dispatcher groups, and an authenticated named-pipe snapshot round trip covering stale/unavailable values and authoritative run/context mapping. UI freshness/reset remains R2.5."
+          "status": "passed",
+          "evidence": "20/20 Windows CPU/RAM collector checks passed, including invalid/stale/reset and real-machine cases; 569 protocol assertions, 9 dispatcher groups, an authenticated named-pipe round trip, and the telemetry presentation group passed on x64 Debug source through abda1e6."
         },
         "R2-G2": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "Partial real execution: out/alpha-evidence/r2/freshness-lifetime.json records three changing Manager/Windows observations, nine seconds of repeated GUI refresh, Manager survival after GUI close, and a 7.188-second stable disconnected refresh probe. Native visual control was unavailable, so rendered chart/value comparison and visual stale inspection were not performed."
         },
         "R2-G3": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "Native visuals expose AutomationProperties names plus direct text equivalents and redraw on SizeChanged. The available control surface exposed browser tabs only, so keyboard navigation and enlarged/high-contrast native walkthroughs were not performed."
         }
       },
-      "documentation_review": null,
-      "phase_receipt": null,
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R2 review of every active first-party document; affected telemetry/UI/operator/test content updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "phase_receipt": ".forge-alpha/phases/R2.md",
       "last_known_merge": null
     },
     "R3": {
@@ -303,11 +303,11 @@
     {
       "id": "B-R1-NATIVE-UI-CONTROL",
       "failure": "The available computer-control surface exposed browser tabs only; native application UI control was unavailable.",
-      "affected": "R1-G3 visual control walkthrough and later native GUI walkthrough gates",
+      "affected": "R1-G3 visual control walkthrough, R2-G2 rendered telemetry comparison, and R2-G3 keyboard/scaling/high-contrast walkthrough",
       "dependency_type": "verification_environment",
-      "last_observed_utc": "2026-09-12T16:38:50.8020434Z",
-      "necessary_external_action": "Use a Windows interactive session with a native UI control surface to exercise the real Autonomy/Continuity buttons.",
-      "next_independent_work": "Proceed with R2 native telemetry implementation and focused nonvisual checks."
+      "last_observed_utc": "2026-09-12T18:49:44.7873603Z",
+      "necessary_external_action": "Use a Windows interactive session with a native UI control surface to exercise the real controls, rendered telemetry, keyboard navigation, scaling, and high contrast.",
+      "next_independent_work": "Complete R2 delivery and proceed with R3 source work after the phase branch can be based on synchronized main."
     },
     {
       "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R2.2 verified at 320e006: one typed ManagerTelemetrySnapshot crosses the authenticated native pipe and the WinUI Rig consumes the same resource, run, context, continuity, project, tool, event and store-health values owned by the Manager.",
-  "next_action": "Implement R2.3 reusable native history charts, resource/context gauges, operational status cards and activity timeline from ManagerTelemetrySnapshot.",
+  "last_result": "R2 implementation verified through abda1e6: native Windows collectors feed one typed Manager snapshot rendered as WinUI gauges, histories, status cards, timelines, and detail summaries with bounded refresh and safe window lifetime. R2-G2/G3 native visual walkthroughs remain blocked by the control surface.",
+  "next_action": "Push the R2 closeout, synchronize issue #5 and PR #13, mark the PR ready for normal review, then synchronize main after an actual merge before creating the separate R3 phase branch.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

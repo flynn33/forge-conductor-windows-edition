@@ -24,11 +24,18 @@
 - Fixed isolated first-start Manager initialization by preparing the memory and handoff roots before workspace authority validation.
 - Verified the affected Manager, continuity, transport, environment, and native app builds; live LM Studio continuity remains an R6 acceptance requirement.
 
+### R2 — Native operational telemetry and dashboards
+
+- Replaced the production unavailable telemetry adapter with native Windows CPU, RAM, Forge process, and DXGI capability collectors while preserving explicit warmup, stale, unavailable, and unsupported states.
+- Added one typed Manager telemetry snapshot across the authenticated named pipe for resources, runtime diagnostics, provider, authoritative run/context/continuity state, projects, tools, events, and store health.
+- Added WinUI status cards, CPU/RAM/GPU/context gauges, bounded resource and latency histories, accessible equivalent values, an activity timeline, and telemetry-backed Provider, Continuity, Runtimes, Projects, Tools, Feed, Events, Diagnostics, Manager, and Settings summaries.
+- Added two-second coalesced refresh, disconnected/stale rendering, resize redraw, persisted page selection, and window-close cancellation. Real isolated process probes confirmed repeated refresh and Manager survival after GUI close; native keyboard/high-contrast and visual rendering inspection remain blocked by the available control surface.
+
 ### Remaining Alpha work
 
-- Complete native telemetry, operational pages, persistent accessible Settings and scoped reset, installer/data behavior, and real installed/live acceptance in R2–R7.
+- Complete operational actions, persistent accessible Settings and scoped reset, installer/data behavior, native visual walkthroughs, and real installed/live acceptance in R3–R7.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

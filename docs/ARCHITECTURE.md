@@ -30,12 +30,18 @@ persistent configuration, not constants copied into separate pages. Manager IPC 
 Add support for an explicitly configured LAN model endpoint only through the same provider configuration/transport;
 network placement does not change project identity, cancellation or data-safety behavior.
 
+R2 implements that snapshot as `ManagerTelemetrySnapshot`. The Manager joins its existing telemetry service with
+status, settings, selected-run context, continuity identity, runtime diagnostics, project/tool catalogs, audit events,
+and store-read health before encoding one authenticated pipe response. The WinUI process renders the typed values and
+never opens telemetry collectors or recomputes retained-context headroom. One window-owned timer requests fresh
+snapshots; closing the window stops the timer and cancels in-flight UI work without stopping the Manager.
+
 ## Changes deliberately avoided
 No new general plugin bus, migration to a web GUI, remote orchestration server, replacement database,
 new governance engine, multi-agent validator pipeline, or generalized cross-platform source rewrite.
 The Mac Swift source is behavioral evidence only. No Swift binaries belong in the Windows build or installer.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -22,6 +22,14 @@ reserved space for completion/handoff. Automatic handoff starts before physical 
 time or how many tools were used. A transition is complete only when the successor has read/acknowledged the saved
 handoff and resumed useful work. Errors show the retained handoff and a retry/reconcile action.
 
+## Rig and operational telemetry
+
+Rig refreshes from the Manager every two seconds. It shows Manager, provider, continuity, and store health; current
+CPU, RAM, GPU capability, and retained context; recent CPU/RAM and activity-latency history; and a readable activity
+timeline. The text next to each visual is the accessible authoritative value. Unavailable or stale measurements show
+a reason rather than zero. Projects, Tools, Feed, Runtimes, Provider, Events & Evidence, Diagnostics, Manager, and
+Settings reuse the same snapshot for their current detail summary. The last selected page is restored on next launch.
+
 ## Tools and shell
 Tools shows actual availability. Clean installs allow the native shell tool; an explicit opt-out is preserved.
 PowerShell is the native Windows shell route. Missing optional command-line tools should not prevent the whole app
@@ -42,6 +50,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

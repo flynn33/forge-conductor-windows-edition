@@ -35,6 +35,12 @@ R1 controlled transport coverage proves ordinary response/tool correlation, offl
 retained-context deduplication, continuity observation, pause/resume/cancel boundaries, and recovered uncertain-work
 failure. It does not replace the R6 live provider acknowledgment and productive successor check.
 
+R2 focused coverage uses the Windows CPU/RAM collector tests, Manager protocol/dispatcher and authenticated named-pipe
+tests, and `ForgeConductor.App.TelemetryPresentationTests`. The presentation check preserves stale CPU, unsupported GPU,
+Manager-derived context headroom, bounded histories, measured latency, store failures, and page detail projections.
+The ignored receipt `out/alpha-evidence/r2/freshness-lifetime.json` records a real isolated Debug Manager/app lifetime
+probe and matching Windows process/RAM observations. It does not replace native pixel, keyboard, scaling, or high-contrast inspection.
+
 ## One live provider/continuity smoke
 Use a disposable profile/project and a real locally loaded tool-capable model. Record actual model ID, LM Studio version,
 loaded context capacity, configured effective capacity and usage source. Select a smaller valid effective context target
@@ -60,6 +66,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
