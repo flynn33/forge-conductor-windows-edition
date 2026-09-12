@@ -3,6 +3,9 @@
 #include "ForgeConductor/Domain/ManagerTelemetryModels.h"
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
+#include <cwchar>
 #include <iomanip>
 #include <optional>
 #include <sstream>
@@ -32,6 +35,40 @@ struct TelemetryPresentation final {
     std::vector<double> latencyHistoryMilliseconds;
     std::vector<std::string> timeline;
 };
+
+[[nodiscard]] inline std::wstring scopedViewStateValueName(
+    const std::wstring_view base,
+    const std::optional<std::string>& scope)
+{
+    if (!scope) return std::wstring{base};
+    constexpr std::uint64_t Offset = 14695981039346656037ULL;
+    constexpr std::uint64_t Prime = 1099511628211ULL;
+    std::uint64_t hash = Offset;
+    for (auto byte : *scope) {
+        if (byte == '\\') byte = '/';
+        if (byte >= 'A' && byte <= 'Z') {
+            byte = static_cast<char>(byte - 'A' + 'a');
+        }
+        hash ^= static_cast<unsigned char>(byte);
+        hash *= Prime;
+    }
+    std::array<wchar_t, 18> suffix{};
+    static_cast<void>(swprintf_s(
+        suffix.data(), suffix.size(), L".%016llx",
+        static_cast<unsigned long long>(hash)));
+    return std::wstring{base} + suffix.data();
+}
+
+[[nodiscard]] inline bool containsProjectId(
+    const std::vector<Domain::ProjectId>& projects,
+    const std::string_view selectedProjectId)
+{
+    return !selectedProjectId.empty() && std::ranges::any_of(
+        projects,
+        [selectedProjectId](const Domain::ProjectId& project) {
+            return project.value() == selectedProjectId;
+        });
+}
 
 [[nodiscard]] inline std::string availabilityText(
     const Domain::TelemetryMetricAvailability availability)

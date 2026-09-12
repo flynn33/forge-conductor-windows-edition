@@ -125,13 +125,44 @@ void testPresentationPreservesTelemetryMeaning()
             "provider drill-down");
 }
 
+void testProjectSelectionRequiresAnAuthoritativeMatch()
+{
+    const auto projectA = Domain::ProjectId::parse(
+        "11111111-1111-4111-8111-111111111111").value();
+    const auto projectB = Domain::ProjectId::parse(
+        "22222222-2222-4222-8222-222222222222").value();
+    const std::vector<Domain::ProjectId> projects{projectA};
+
+    require(App::containsProjectId(projects, projectA.value()),
+            "authoritative project selection");
+    require(!App::containsProjectId(projects, projectB.value()),
+            "stale selection from another profile");
+    require(!App::containsProjectId(projects, ""),
+            "empty project selection");
+
+    require(App::scopedViewStateValueName(
+                L"SelectedProjectId", std::nullopt) == L"SelectedProjectId",
+            "production view-state compatibility");
+    const auto scopeA = App::scopedViewStateValueName(
+        L"SelectedProjectId", std::string{"D:\\Alpha\\A"});
+    const auto scopeAEquivalent = App::scopedViewStateValueName(
+        L"SelectedProjectId", std::string{"d:/alpha/a"});
+    const auto scopeB = App::scopedViewStateValueName(
+        L"SelectedProjectId", std::string{"D:\\Alpha\\B"});
+    require(scopeA == scopeAEquivalent,
+            "case-insensitive normalized Windows profile scope");
+    require(scopeA != scopeB,
+            "independent Alpha profile view-state scope");
+}
+
 } // namespace
 
 int main()
 {
     try {
         testPresentationPreservesTelemetryMeaning();
-        std::cout << "Telemetry presentation tests passed: 1 group\n";
+        testProjectSelectionRequiresAnAuthoritativeMatch();
+        std::cout << "Telemetry presentation tests passed: 2 groups\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "Telemetry presentation tests failed: " << error.what()

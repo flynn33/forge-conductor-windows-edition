@@ -17,8 +17,6 @@ namespace {
 using Visibility = Microsoft::UI::Xaml::Visibility;
 constexpr wchar_t ViewSettingsKey[] =
     L"Software\\Forge Conductor\\Windows Alpha";
-constexpr wchar_t SelectedPageValue[] = L"SelectedPage";
-constexpr wchar_t SelectedProjectValue[] = L"SelectedProjectId";
 
 struct RegistryKey final {
     HKEY value{};
@@ -61,6 +59,16 @@ void storeSavedText(
         (value.size() + 1U) * sizeof(wchar_t));
     static_cast<void>(::RegSetValueExW(key.value, valueName, 0,
         REG_SZ, reinterpret_cast<const BYTE*>(value.c_str()), bytes));
+}
+
+void clearSavedText(const wchar_t* const valueName) noexcept
+{
+    RegistryKey key;
+    if (::RegOpenKeyExW(HKEY_CURRENT_USER, ViewSettingsKey, 0,
+            KEY_SET_VALUE, &key.value) != ERROR_SUCCESS) {
+        return;
+    }
+    static_cast<void>(::RegDeleteValueW(key.value, valueName));
 }
 
 [[nodiscard]] std::uint32_t numberValue(
@@ -136,6 +144,13 @@ MainWindow::MainWindow(
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection)
     : connection_{std::move(connection)}
 {
+    const auto scope = connection_ ? connection_->viewStateScope() : std::nullopt;
+    selectedPageValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"SelectedPage", scope);
+    selectedProjectValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"SelectedProjectId", scope);
 }
 
 void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
@@ -151,11 +166,12 @@ void MainWindow::WindowContentLoaded(
 {
     if (telemetryUiInitialized_) return;
     telemetryUiInitialized_ = true;
-    if (const auto savedProject = loadSavedText(SelectedProjectValue)) {
+    if (const auto savedProject = loadSavedText(
+            selectedProjectValueName_.c_str())) {
         selectedProjectId_ = winrt::to_string(*savedProject);
         RunProjectId().Text(*savedProject);
     }
-    if (const auto saved = loadSavedText(SelectedPageValue)) {
+    if (const auto saved = loadSavedText(selectedPageValueName_.c_str())) {
         const auto items = RootNavigation().MenuItems();
         for (std::uint32_t index{}; index < items.Size(); ++index) {
             const auto item = items.GetAt(index).try_as<
@@ -270,7 +286,7 @@ void MainWindow::ProjectSelectionChanged(
     if (index < 0 || static_cast<std::size_t>(index) >= projects_.size()) return;
     selectedProjectId_ = projects_[static_cast<std::size_t>(index)].id.value();
     const auto selected = winrt::to_hstring(selectedProjectId_);
-    storeSavedText(SelectedProjectValue, selected);
+    storeSavedText(selectedProjectValueName_.c_str(), selected);
     RunProjectId().Text(selected);
     ToolProjectId().Text(selected);
     RunAction(Action::ProjectLoad);
@@ -285,7 +301,9 @@ void MainWindow::NavigationChanged(
     if (!item) return;
     const auto tag = unbox_value_or<hstring>(item.Tag(), L"Rig");
     PageTitle().Text(tag);
-    storeSavedText(SelectedPageValue, tag);
+    if (telemetryUiInitialized_) {
+        storeSavedText(selectedPageValueName_.c_str(), tag);
+    }
     const bool provider = tag == L"Provider";
     const bool settings = tag == L"Settings";
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
@@ -481,6 +499,14 @@ void MainWindow::ApplySettingsForm(
 void MainWindow::ApplyTelemetryPresentation(
     const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot)
 {
+    if (!selectedProjectId_.empty() &&
+        !::ForgeConductor::Hosts::App::containsProjectId(
+            snapshot.projects, selectedProjectId_)) {
+        rebuildingProjects_ = true;
+        ProjectSelector().SelectedIndex(-1);
+        rebuildingProjects_ = false;
+        ClearSelectedProject();
+    }
     const auto presentation =
         ::ForgeConductor::Hosts::App::makeTelemetryPresentation(snapshot);
     applyMetric(CpuValue(), CpuState(), CpuGauge(), presentation.cpu);
@@ -563,17 +589,16 @@ void MainWindow::ApplyProjectList(
             selectedIndex = static_cast<std::int32_t>(index);
         }
     }
-    if (selectedIndex < 0 && !projects_.empty()) selectedIndex = 0;
     ProjectSelector().SelectedIndex(selectedIndex);
     rebuildingProjects_ = false;
 
     if (selectedIndex >= 0) {
         selectedProjectId_ = projects_[static_cast<std::size_t>(selectedIndex)].id.value();
         const auto selected = winrt::to_hstring(selectedProjectId_);
-        storeSavedText(SelectedProjectValue, selected);
+        storeSavedText(selectedProjectValueName_.c_str(), selected);
         RunProjectId().Text(selected);
     } else {
-        selectedProjectId_.clear();
+        ClearSelectedProject();
         ProjectIdentity().Text(L"No registered project is selected.");
         ProjectFolders().Text(L"Register an authorized folder to begin.");
         ProjectPersistence().Text(L"No project memory store is active.");
@@ -581,12 +606,23 @@ void MainWindow::ApplyProjectList(
     }
 }
 
+void MainWindow::ClearSelectedProject()
+{
+    selectedProjectId_.clear();
+    clearSavedText(selectedProjectValueName_.c_str());
+    RunProjectId().Text(L"");
+    ToolProjectId().Text(L"");
+    MaintenanceState().Text(
+        L"Select the exact project on the Projects page first.\n"
+        L"All registered project data: RESET ALL PROJECT DATA");
+}
+
 void MainWindow::ApplyProjectWorkspace(
     const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot)
 {
     selectedProjectId_ = snapshot.project.id.value();
     const auto selected = winrt::to_hstring(selectedProjectId_);
-    storeSavedText(SelectedProjectValue, selected);
+    storeSavedText(selectedProjectValueName_.c_str(), selected);
     RunProjectId().Text(selected);
 
     std::string identity = "Active project: " + snapshot.project.displayName +
