@@ -658,7 +658,7 @@ void shellUsesFixedPowerShellAndClampedBudgets()
     request.maximumStdoutBytes = 100'000U;
     request.maximumStderrBytes = 30'000U;
     request.environment.push_back({"FORGE_TEST", "one"});
-    request.inheritEnvironment = true;
+    request.inheritEnvironment = false;
     const auto response = take(shell.execute(
         request, callerAuthority, context(40U)));
 
@@ -679,7 +679,8 @@ void shellUsesFixedPowerShellAndClampedBudgets()
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
-                "Write-Output 'ok'"},
+                "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);"
+                "$OutputEncoding=[Console]::OutputEncoding;Write-Output 'ok'"},
         "Shell did not own the exact PowerShell argv");
     require(
         normalized.workingDirectory == fixture.workspaceRoot &&
@@ -690,7 +691,7 @@ void shellUsesFixedPowerShellAndClampedBudgets()
             normalized.environment.front().name == "FORGE_TEST" &&
             normalized.environment.front().value == "one" &&
             normalized.inheritEnvironment,
-        "Shell did not preserve the authorized envelope and clamp its budgets");
+        "Shell did not preserve its authorized envelope, safe host environment, and budgets");
     require(
         supervisor->authorityIds().front() == fixture.authority.authorityId() &&
             supervisor->projectIds().front() == fixture.projectId,

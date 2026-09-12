@@ -313,6 +313,9 @@ void exerciseGitAndShell(
     require(shellResult.exitCode == 0 &&
                 shellResult.stdoutUtf8.find("p13-shell-ok") != std::string::npos,
             "PowerShell adapter did not return expected output");
+    require(shellResult.stdoutUtf8.find('\0') == std::string::npos &&
+                shellResult.stderrUtf8.find('\0') == std::string::npos,
+            "PowerShell adapter returned embedded NUL bytes");
 
     shellRequest.arguments = {"Start-Sleep -Seconds 2"};
     shellRequest.timeout = 100ms;

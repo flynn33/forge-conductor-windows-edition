@@ -607,29 +607,23 @@ void identicalCallsSoftHandoffHardBlockAndResume()
     REQUIRE(guard->pendingCallCount() == 0U);
 }
 
-void successfulProgressCheckpointsThenHandsOff()
+void ordinaryProgressNeverCreatesCountOrTimeHandoffs()
 {
     LegacyContinuityFake continuity;
     FixedHasher hasher;
     FixedClock clock;
-    Mcp::McpInvocationGuardPolicy policy;
-    policy.checkpointProgressCount = 2U;
-    policy.handoffProgressCount = 4U;
     auto guard = take(Mcp::McpInvocationGuard::create(
-        continuity, hasher, clock, policy));
+        continuity, hasher, clock));
     const auto caller = client("progress-client");
     const auto root = take(Domain::PathText::create("D:/workspace/progress"));
 
     const auto initialStatus = guard->snapshot(caller);
     REQUIRE(initialStatus.enabled);
-    REQUIRE(initialStatus.checkpointEveryTools == 2U);
-    REQUIRE(initialStatus.handoffEveryTools == 4U);
-    REQUIRE(initialStatus.progressCount == 0U);
     REQUIRE(!initialStatus.blocked);
     REQUIRE(!initialStatus.handoffId);
     REQUIRE(initialStatus.implicitRoots.empty());
 
-    for (std::uint64_t index = 1U; index <= 4U; ++index) {
+    for (std::uint64_t index = 1U; index <= 500U; ++index) {
         const auto call = request(
             caller,
             "fs_read",
@@ -644,91 +638,20 @@ void successfulProgressCheckpointsThenHandsOff()
             observedPath(
                 "D:/workspace/progress/file-" +
                 std::to_string(index) + ".txt")));
-        if (index == 2U) {
-            REQUIRE(payload(result).at("auto_continuity") == "checkpoint");
-        }
-        if (index == 4U) {
-            REQUIRE(payload(result).at("auto_continuity") == "handoff");
-            REQUIRE(payload(result).at("handoff_required") == true);
-        }
+        REQUIRE(!payload(result).contains("auto_continuity"));
     }
-    REQUIRE(continuity.automaticCalls() == 2U);
+    REQUIRE(continuity.automaticCalls() == 0U);
+
+    const auto lifecycle = request(
+        caller, "agent_run_start", R"json({"agent_id":"review"})json", 700U);
+    const auto lifecycleResult = take(execute(
+        *guard, lifecycle, context(lifecycle, 700U)));
+    REQUIRE(payload(lifecycleResult).at("auto_continuity") == "checkpoint");
+    REQUIRE(continuity.automaticCalls() == 1U);
     REQUIRE(!continuity.automaticRequests().front().finalize);
-    REQUIRE(continuity.automaticRequests().back().finalize);
     REQUIRE(continuity.automaticRequests().front().inferred.keyFiles.has_value());
-    REQUIRE(continuity.automaticRequests().front().inferred.narrative.has_value());
-
-    const auto blockedStatus = guard->snapshot(caller);
-    REQUIRE(blockedStatus.enabled);
-    REQUIRE(blockedStatus.checkpointEveryTools == 2U);
-    REQUIRE(blockedStatus.handoffEveryTools == 4U);
-    REQUIRE(blockedStatus.progressCount == 4U);
-    REQUIRE(blockedStatus.blocked);
-    REQUIRE(blockedStatus.handoffId == std::optional<std::string>{"handoff-2"});
-    REQUIRE(blockedStatus.implicitRoots == std::vector<Domain::PathText>{root});
-
-    const auto blocked = request(
-        caller, "git_status", R"json({})json", 105U);
-    const auto admission = take(guard->beforeInvoke(
-        blocked, descriptor(blocked), context(blocked, 105U)));
-    REQUIRE(admission.immediateOutcome.has_value());
-    REQUIRE(payload(*admission.immediateOutcome).at("code") ==
-            "context_budget_exceeded");
-
-    const auto allowedResumeTool = request(
-        caller, "memory_get", R"json({"key":"continuity/latest"})json", 106U);
-    REQUIRE(take(execute(
-        *guard,
-        allowedResumeTool,
-        context(allowedResumeTool, 106U))).receipt.ok);
-
-    const auto resume = request(
-        caller, "context_get", R"json({})json", 107U);
-    const auto resumeOutcome = take(execute(
-        *guard,
-        resume,
-        context(resume, 107U),
-        Domain::ContextRecoveryReceipt{
-            caller,
-            id<Domain::LegacyHandoffId>("handoff-2"),
-            take(Domain::PathText::create("D:/recovered/project")),
-            {take(Domain::PathText::create(
-                "D:/recovered/project/src/main.cpp"))}}));
-    REQUIRE(payload(resumeOutcome).at("context_budget_cleared") == true);
-
-    const auto resumedStatus = guard->snapshot(caller);
-    REQUIRE(resumedStatus.progressCount == 0U);
-    REQUIRE(!resumedStatus.blocked);
-    REQUIRE(resumedStatus.handoffId == std::optional<std::string>{"handoff-2"});
-    const std::vector<Domain::PathText> recoveredRoots{
-        root,
-        take(Domain::PathText::create("D:/recovered/project")),
-        take(Domain::PathText::create("D:/recovered/project/src"))};
-    REQUIRE(resumedStatus.implicitRoots == recoveredRoots);
-
-    for (std::uint64_t index = 1U; index <= 2U; ++index) {
-        const auto memory = request(
-            caller,
-            "memory_set",
-            "{\"key\":\"resumed-" + std::to_string(index) +
-                "\",\"value\":\"ready\"}",
-            107U + index);
-        REQUIRE(take(execute(
-            *guard,
-            memory,
-            context(memory, 107U + index))).receipt.ok);
-    }
-    REQUIRE(continuity.automaticCalls() == 3U);
-    REQUIRE(continuity.automaticRequests().back().inferred.workingDirectory ==
-            std::optional<std::string>{"D:/recovered/project"});
-    const auto& recoveredKeyFiles =
-        continuity.automaticRequests().back().inferred.keyFiles;
-    REQUIRE(recoveredKeyFiles.has_value());
-    REQUIRE(std::find(
-                recoveredKeyFiles->begin(),
-                recoveredKeyFiles->end(),
-                "D:/recovered/project/src/main.cpp") !=
-            recoveredKeyFiles->end());
+    REQUIRE(guard->snapshot(caller).implicitRoots ==
+            std::vector<Domain::PathText>{root});
 }
 
 void failuresCancellationBoundsAndShutdownAreSafe()
@@ -740,8 +663,6 @@ void failuresCancellationBoundsAndShutdownAreSafe()
     Mcp::McpInvocationGuardPolicy policy;
     policy.softIdenticalCallCount = 2U;
     policy.hardIdenticalCallCount = 3U;
-    policy.checkpointProgressCount = 1U;
-    policy.handoffProgressCount = 2U;
     auto guard = take(Mcp::McpInvocationGuard::create(
         continuity, hasher, clock, policy));
     const auto caller = client("failure-client");
@@ -794,7 +715,6 @@ void failuresCancellationBoundsAndShutdownAreSafe()
     REQUIRE(!rejectedMismatch);
     REQUIRE(rejectedMismatch.error().code ==
             Domain::ErrorCodes::IntegrityFailure);
-    REQUIRE(guard->snapshot(caller).progressCount == 0U);
     REQUIRE(guard->snapshot(caller).implicitRoots.empty());
 
     std::stop_source cancelled;
@@ -826,8 +746,6 @@ void concurrentThresholdCrossingCoalescesPersistence()
     FixedHasher hasher;
     FixedClock clock;
     Mcp::McpInvocationGuardPolicy policy;
-    policy.checkpointProgressCount = 2U;
-    policy.handoffProgressCount = 100U;
     auto guard = take(Mcp::McpInvocationGuard::create(
         continuity, hasher, clock, policy));
     const auto caller = client("concurrent-progress-client");
@@ -840,7 +758,7 @@ void concurrentThresholdCrossingCoalescesPersistence()
 
     continuity.blockAutomaticPersistence();
     const auto threshold = request(
-        caller, "fs_read", R"json({"path":"threshold.txt"})json", 301U);
+        caller, "agent_run_start", R"json({"agent_id":"review"})json", 301U);
     const auto overlapping = request(
         caller, "fs_read", R"json({"path":"overlapping.txt"})json", 302U);
     std::optional<Domain::Result<Domain::ToolCallOutcome>> thresholdResult;
@@ -879,8 +797,6 @@ void implicitRootsAreAuthorizedAndBounded()
     Mcp::McpInvocationGuardPolicy policy;
     policy.softIdenticalCallCount = 999'999U;
     policy.hardIdenticalCallCount = 1'000'000U;
-    policy.checkpointProgressCount = 1'000U;
-    policy.handoffProgressCount = 1'000U;
     auto guard = take(Mcp::McpInvocationGuard::create(
         continuity, hasher, clock, policy));
     const auto caller = client("implicit-root-client");
@@ -903,7 +819,6 @@ void implicitRootsAreAuthorizedAndBounded()
     }
 
     auto status = guard->snapshot(caller);
-    REQUIRE(status.progressCount == 18U);
     REQUIRE(status.implicitRoots.size() ==
             Domain::MaximumContinuityAutomationImplicitRoots);
     REQUIRE(status.implicitRoots.front() ==
@@ -924,7 +839,6 @@ void implicitRootsAreAuthorizedAndBounded()
         observedPath(
             "D:/bounded/root-18/another.txt"))).receipt.ok);
     status = guard->snapshot(caller);
-    REQUIRE(status.progressCount == 19U);
     REQUIRE(status.implicitRoots.size() ==
             Domain::MaximumContinuityAutomationImplicitRoots);
     REQUIRE(status.implicitRoots.front() ==
@@ -956,7 +870,6 @@ void implicitRootsAreAuthorizedAndBounded()
     REQUIRE(!failedOutcome.value().receipt.ok);
 
     status = guard->snapshot(caller);
-    REQUIRE(status.progressCount == 19U);
     REQUIRE(status.implicitRoots.size() ==
             Domain::MaximumContinuityAutomationImplicitRoots);
     REQUIRE(status.implicitRoots.front() ==
@@ -987,8 +900,6 @@ void continuityCapacityRejectsSaturationAndRetainsBlockedStates()
     Mcp::McpInvocationGuardPolicy policy;
     policy.softIdenticalCallCount = 999'999U;
     policy.hardIdenticalCallCount = 1'000'000U;
-    policy.checkpointProgressCount = 1U;
-    policy.handoffProgressCount = 1U;
     auto guard = take(Mcp::McpInvocationGuard::create(
         continuity, hasher, clock, policy));
 
@@ -1006,9 +917,9 @@ void continuityCapacityRejectsSaturationAndRetainsBlockedStates()
             "saturation-client-" + std::to_string(index + 1U)));
         const auto call = request(
             clients.back(),
-            "fs_read",
-            "{\"path\":\"D:/saturation/file-" +
-                std::to_string(index + 1U) + ".txt\"}",
+            "agent_run_start",
+            "{\"agent_id\":\"saturation-" +
+                std::to_string(index + 1U) + "\"}",
             2'000U + index);
         workers.emplace_back([&, index, call] {
             results[index].emplace(execute(
@@ -1027,8 +938,8 @@ void continuityCapacityRejectsSaturationAndRetainsBlockedStates()
     const auto overflowClient = client("saturation-client-129");
     const auto overflowCall = request(
         overflowClient,
-        "fs_read",
-        R"json({"path":"D:/saturation/overflow.txt"})json",
+        "agent_run_start",
+        R"json({"agent_id":"overflow"})json",
         2'200U);
     const auto overflow = execute(
         *guard,
@@ -1053,45 +964,10 @@ void continuityCapacityRejectsSaturationAndRetainsBlockedStates()
     }
     REQUIRE(guard->trackedContinuityClientCount() == capacity);
 
-    const auto firstStatus = guard->snapshot(clients.front());
-    REQUIRE(firstStatus.blocked);
-    REQUIRE(firstStatus.handoffId.has_value());
-    const auto blockedCall = request(
-        clients.front(), "git_status", R"json({})json", 2'201U);
-    const auto blockedAdmission = take(guard->beforeInvoke(
-        blockedCall,
-        descriptor(blockedCall),
-        context(blockedCall, 2'201U)));
-    REQUIRE(blockedAdmission.immediateOutcome.has_value());
-    REQUIRE(payload(*blockedAdmission.immediateOutcome).at("code") ==
-            "context_budget_exceeded");
-
-    const auto stillFull = execute(
-        *guard,
-        overflowCall,
-        context(overflowCall, 2'202U),
-        std::nullopt,
-        observedPath("D:/saturation/overflow.txt"));
-    REQUIRE(!stillFull);
-    REQUIRE(stillFull.error().code == Domain::ErrorCodes::LimitExceeded);
-    REQUIRE(guard->trackedContinuityClientCount() == capacity);
-
-    const auto recovery = request(
-        clients.front(), "context_get", R"json({})json", 2'203U);
-    const auto recoveryOutcome = take(execute(
-        *guard,
-        recovery,
-        context(recovery, 2'203U),
-        Domain::ContextRecoveryReceipt{
-            clients.front(),
-            id<Domain::LegacyHandoffId>(*firstStatus.handoffId)}));
-    REQUIRE(payload(recoveryOutcome).at("context_budget_cleared") == true);
-    REQUIRE(!guard->snapshot(clients.front()).blocked);
-
     const auto admitted = take(execute(
         *guard,
         overflowCall,
-        context(overflowCall, 2'204U),
+        context(overflowCall, 2'202U),
         std::nullopt,
         observedPath("D:/saturation/overflow.txt")));
     REQUIRE(admitted.receipt.ok);
@@ -1104,8 +980,6 @@ void clientStateIsDeterministicallyBounded()
     FixedHasher hasher;
     FixedClock clock;
     Mcp::McpInvocationGuardPolicy policy;
-    policy.checkpointProgressCount = 1U;
-    policy.handoffProgressCount = 1'000U;
     auto guard = take(Mcp::McpInvocationGuard::create(
         continuity, hasher, clock, policy));
 
@@ -1113,8 +987,8 @@ void clientStateIsDeterministicallyBounded()
         const auto caller = client("bounded-client-" + std::to_string(index));
         const auto call = request(
             caller,
-            "fs_read",
-            "{\"path\":\"file-" + std::to_string(index) + ".txt\"}",
+            "agent_run_start",
+            "{\"agent_id\":\"bounded-" + std::to_string(index) + "\"}",
             1'000U + index);
         REQUIRE(take(execute(
             *guard, call, context(call, 1'000U + index))).receipt.ok);
@@ -1136,7 +1010,7 @@ int main()
                       Contracts::IContinuityAutomationStatusSource,
                       Mcp::McpInvocationGuard>);
         identicalCallsSoftHandoffHardBlockAndResume();
-        successfulProgressCheckpointsThenHandsOff();
+        ordinaryProgressNeverCreatesCountOrTimeHandoffs();
         failuresCancellationBoundsAndShutdownAreSafe();
         concurrentThresholdCrossingCoalescesPersistence();
         implicitRootsAreAuthorizedAndBounded();

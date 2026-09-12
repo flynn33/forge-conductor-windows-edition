@@ -1,7 +1,10 @@
 #include "ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h"
+#include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <array>
@@ -31,6 +34,7 @@ namespace {
 using namespace std::chrono_literals;
 namespace Domain = ForgeConductor::Domain;
 namespace InfrastructureWindows = ForgeConductor::Infrastructure::Windows;
+using Json = nlohmann::json;
 
 std::atomic_size_t assertionCount{};
 
@@ -568,6 +572,17 @@ configuration(const std::uint16_t port)
     return value;
 }
 
+[[nodiscard]] InfrastructureWindows::LMStudioResponsesTransportConfiguration
+responsesConfiguration(const std::uint16_t port)
+{
+    InfrastructureWindows::LMStudioResponsesTransportConfiguration value;
+    value.port = port;
+    value.connectTimeout = 2s;
+    value.sendTimeout = 2s;
+    value.receiveTimeout = 2s;
+    return value;
+}
+
 [[nodiscard]] std::string acknowledgementBody(
     const std::string_view usage = {})
 {
@@ -688,6 +703,72 @@ void createBootstrapAndQueryUseExactRoutes()
     REQUIRE(requests[1].body.find(std::string(64U, 'a')) !=
             std::string::npos);
     REQUIRE(requests[2].body.empty());
+    server.requireHealthy();
+}
+
+void lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId()
+{
+    const std::string expectedAcknowledgement =
+        "{\"handoff_id\":\"" + std::string{HandoffIdText} +
+        "\",\"successor_session_id\":\"" +
+        std::string{SuccessorSessionIdText} + "\"}";
+    ResponseScript models{
+        "GET", "/v1/models", 200U,
+        R"({"object":"list","data":[{"id":"fixture-model","owned_by":"local"}]})"};
+    ResponseScript toolCall{
+        "POST", "/v1/responses", 200U,
+        "{\"id\":\"resp_fresh_root\",\"status\":\"completed\","
+        "\"output\":[{\"type\":\"function_call\",\"name\":\"context_get\","
+        "\"call_id\":\"call_context\",\"arguments\":\"{\\\"handoff_id\\\":\\\"" +
+            std::string{HandoffIdText} + "\\\"}\"}],"
+        "\"usage\":{\"input_tokens\":31,\"output_tokens\":7},"
+        "\"benign_extra\":true}"};
+    ResponseScript acknowledgement{
+        "POST", "/v1/responses", 200U,
+        Json{
+            {"id", "resp_successor_ack"},
+            {"status", "completed"},
+            {"output_text", expectedAcknowledgement},
+            {"usage", Json{{"input_tokens", 47U}, {"output_tokens", 11U}}},
+            {"provider_extension", Json{{"loaded", true}}}}
+            .dump()};
+    LoopbackHttpServer server{{models, toolCall, acknowledgement}};
+    InfrastructureWindows::LMStudioResponsesTransport transport{
+        responsesConfiguration(server.port())};
+
+    const auto created = take(transport.createSession(
+        creationRequest(),
+        operationContext("65656565-6565-4565-8565-656565656561", 5s)));
+    REQUIRE(created.providerSessionId.value().starts_with("forge-pending-"));
+    REQUIRE(created.model == std::optional<std::string>{"fixture-model"});
+
+    const auto bootstrapped = take(transport.bootstrap(
+        bootstrapRequest(),
+        operationContext("65656565-6565-4565-8565-656565656562", 5s)));
+    REQUIRE(bootstrapped.providerResponseId.has_value());
+    REQUIRE(bootstrapped.providerResponseId->value() == "resp_successor_ack");
+    REQUIRE(bootstrapped.inputTokens == 78);
+    REQUIRE(bootstrapped.outputTokens == 18);
+    REQUIRE(responseText(bootstrapped) == expectedAcknowledgement);
+    REQUIRE(take(transport.query(
+                *bootstrapped.providerResponseId,
+                operationContext(
+                    "65656565-6565-4565-8565-656565656563", 5s))) ==
+            Domain::HostSessionStatus::Ready);
+
+    REQUIRE(server.waitUntilHandled(3U, 5s));
+    const auto requests = server.requests();
+    REQUIRE(requests.size() == 3U);
+    const auto first = Json::parse(requests[1].body);
+    REQUIRE(!first.contains("previous_response_id"));
+    REQUIRE(first.at("model") == "fixture-model");
+    REQUIRE(first.at("tools").at(0).at("name") == "context_get");
+    const auto second = Json::parse(requests[2].body);
+    REQUIRE(second.at("previous_response_id") == "resp_fresh_root");
+    REQUIRE(second.at("input").at(0).at("type") == "function_call_output");
+    REQUIRE(second.at("input").at(0).at("call_id") == "call_context");
+    REQUIRE(second.at("input").at(0).at("output") ==
+            bootstrapRequest().canonicalHandoffUtf8);
     server.requireHealthy();
 }
 
@@ -976,6 +1057,8 @@ int main()
         std::cout << "PASS winhttp_transport.loopback_configuration\n";
         createBootstrapAndQueryUseExactRoutes();
         std::cout << "PASS winhttp_transport.create_bootstrap_query\n";
+        lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId();
+        std::cout << "PASS lmstudio_responses.fresh_root_tool_ack\n";
         malformedAndOversizedResponsesFailClosed();
         std::cout << "PASS winhttp_transport.response_validation_bounds\n";
         rateLimitUsageAndProviderCancellationAreExact();
@@ -984,7 +1067,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=6 failed=0 assertions="
+        std::cout << "SUMMARY passed=7 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

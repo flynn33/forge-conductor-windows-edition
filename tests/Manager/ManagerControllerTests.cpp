@@ -680,6 +680,14 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
     nonbinding.sessionIdleTtl = 600s;
     nonbinding.shellTimeout = 50s;
     nonbinding.logLevel = Domain::LogLevel::Debug;
+    nonbinding.localModelHost = "::1";
+    nonbinding.localModelPort = static_cast<std::uint16_t>(12'345U);
+    nonbinding.localModelSecure = true;
+    nonbinding.localModelName = "loaded-model";
+    nonbinding.effectiveContextCapacity = 65'536U;
+    nonbinding.nextResponseReserve = 8'192U;
+    nonbinding.handoffReserve = 6'144U;
+    nonbinding.estimationSafetyMargin = 3'072U;
     const auto nonbindingOutcome = take(fixture.controller.updateSettings(
         nonbinding, true, fixture.context()));
     require(nonbindingOutcome.settings.dashboardRefreshInterval == 13s &&
@@ -688,7 +696,12 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
                 nonbindingOutcome.settings.openBrowserOnStart &&
                 nonbindingOutcome.settings.sessionIdleTtl == 600s &&
                 nonbindingOutcome.settings.shellTimeout == 50s &&
-                nonbindingOutcome.settings.logLevel == Domain::LogLevel::Debug,
+                nonbindingOutcome.settings.logLevel == Domain::LogLevel::Debug &&
+                nonbindingOutcome.settings.localModelHost == "::1" &&
+                nonbindingOutcome.settings.localModelPort == 12'345U &&
+                nonbindingOutcome.settings.localModelSecure &&
+                nonbindingOutcome.settings.localModelName == "loaded-model" &&
+                nonbindingOutcome.settings.effectiveContextCapacity == 65'536U,
             "Nonbinding settings were not returned from persisted AppConfig.");
     require(nonbindingOutcome.applied &&
                 !nonbindingOutcome.bindingChanged &&
@@ -714,7 +727,12 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
                 mapped->managerOpenBrowserOnStart == true &&
                 mapped->sessionIdleTimeToLive == 600s &&
                 mapped->shellTimeout == 50s &&
-                mapped->logLevel == Domain::LogLevel::Debug,
+                mapped->logLevel == Domain::LogLevel::Debug &&
+                mapped->localModelHost == "::1" &&
+                mapped->localModelPort == 12'345U &&
+                mapped->localModelSecure == true &&
+                mapped->localModelName == "loaded-model" &&
+                mapped->effectiveContextCapacity == 65'536U,
             "ManagerSettingsPatch was not mapped narrowly to AppConfigPatch.");
 
     Domain::ManagerSettingsPatch binding;

@@ -18,8 +18,8 @@ struct ManagerCompositionRootOptions final {
     std::optional<Domain::PathText> expectedHome;
 
     // Production uses the default empty values. Purpose-scoped native process
-    // fixtures may inject an isolated data root, instance suffix, and DPAPI
-    // registry subkey without changing the production argument contract.
+    // fixtures and an explicitly selected disposable Alpha profile may inject
+    // an isolated data root, instance suffix, and DPAPI registry subkey.
     Composition::Windows::ManagerProcessEnvironmentOptions environment;
     Infrastructure::Windows::WindowsManagerInstanceLeaseOptions instanceLease;
     std::optional<std::wstring> secureStorageRegistrySubkey;

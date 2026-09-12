@@ -195,6 +195,19 @@ struct OpenedPath final {
 
 [[nodiscard]] bool ordinalEqual(std::wstring_view left, std::wstring_view right) noexcept;
 
+[[nodiscard]] bool isServicedWindowsPowerShell(
+    const std::wstring_view expectedPath) noexcept
+{
+    std::array<wchar_t, MAX_PATH> windows{};
+    const UINT length = ::GetWindowsDirectoryW(
+        windows.data(), static_cast<UINT>(windows.size()));
+    if (length == 0U || length >= windows.size()) return false;
+    std::wstring trusted{windows.data(), length};
+    if (!trusted.ends_with(L'\\')) trusted.push_back(L'\\');
+    trusted.append(L"System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+    return ordinalEqual(expectedPath, trusted);
+}
+
 [[nodiscard]] Domain::Result<void> verifyLaunchPathHandle(const HANDLE handle,
                                                           const std::wstring_view expectedPath,
                                                           const bool requireDirectory,
@@ -222,7 +235,8 @@ struct OpenedPath final {
         return Domain::Result<void>::failure(
             Domain::makeError(failureCode, "An anchored process path is pending deletion."));
     }
-    if (!requireDirectory && standard.NumberOfLinks != 1U) {
+    if (!requireDirectory && standard.NumberOfLinks != 1U &&
+        !isServicedWindowsPowerShell(expectedPath)) {
         return Domain::Result<void>::failure(Domain::makeError(
             failureCode,
             "A process executable with multiple hard links is outside authority policy."));
@@ -875,6 +889,9 @@ private:
         wideLength) {
         return std::string{bytes};
     }
+    // Process output crosses strict JSON boundaries. Preserve the text while replacing
+    // U+0000, which Forge Conductor rejects in every MCP document.
+    std::replace(wide.begin(), wide.end(), L'\0', L'\ufffd');
     const auto utf8Length =
         ::WideCharToMultiByte(CP_UTF8, 0, wide.data(), wideLength, nullptr, 0, nullptr, nullptr);
     if (utf8Length <= 0) {

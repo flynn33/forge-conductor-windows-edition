@@ -14,14 +14,6 @@ namespace ForgeConductor::Mcp {
 struct McpInvocationGuardPolicy final {
     std::uint32_t softIdenticalCallCount{4U};
     std::uint32_t hardIdenticalCallCount{9U};
-    std::uint32_t checkpointProgressCount{
-        Domain::DefaultCheckpointProgressInterval};
-    std::uint32_t handoffProgressCount{
-        Domain::DefaultRolloverProgressInterval};
-    std::uint32_t checkpointIntervalSeconds{
-        Domain::DefaultCheckpointIntervalSeconds};
-    std::uint32_t handoffIntervalSeconds{
-        Domain::DefaultRolloverIntervalSeconds};
 };
 
 // Owns bounded per-client loop and legacy runtime-continuity state. It has no

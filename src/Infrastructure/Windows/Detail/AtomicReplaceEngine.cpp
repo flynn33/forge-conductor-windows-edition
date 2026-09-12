@@ -362,6 +362,17 @@ struct AtomicMetadata final
         return nullDacl ? nullptr : reinterpret_cast<PACL>(daclStorage.data());
     }
 
+    [[nodiscard]] bool daclEquivalentTo(const AtomicMetadata &other) const noexcept
+    {
+        if (nullDacl != other.nullDacl || daclControl != other.daclControl ||
+            daclBytes != other.daclBytes)
+        {
+            return false;
+        }
+        return nullDacl ||
+               std::memcmp(daclStorage.data(), other.daclStorage.data(), daclBytes) == 0;
+    }
+
     [[nodiscard]] bool equivalentTo(const AtomicMetadata &other) const noexcept
     {
         if (creationTime != other.creationTime || nullDacl != other.nullDacl ||
@@ -708,17 +719,6 @@ struct AtomicMetadata final
 [[nodiscard]] Domain::Result<void> applyAndVerifyMetadata(HANDLE file,
                                                           AtomicMetadata &metadata) noexcept
 {
-    SECURITY_INFORMATION information = DACL_SECURITY_INFORMATION;
-    information |= (metadata.daclControl & SE_DACL_PROTECTED) != 0U
-                       ? PROTECTED_DACL_SECURITY_INFORMATION
-                       : UNPROTECTED_DACL_SECURITY_INFORMATION;
-    const DWORD securityError = ::SetSecurityInfo(file, SE_FILE_OBJECT, information, nullptr,
-                                                  nullptr, metadata.dacl(), nullptr);
-    if (securityError != ERROR_SUCCESS)
-    {
-        return Domain::Result<void>::failure(fileError("Apply atomic file DACL", securityError));
-    }
-
     FILE_BASIC_INFO basic{};
     basic.CreationTime.QuadPart = metadata.creationTime;
     basic.FileAttributes = metadata.durableAttributes;
@@ -726,6 +726,32 @@ struct AtomicMetadata final
     {
         return Domain::Result<void>::failure(
             fileError("Apply atomic file creation time and attributes", ::GetLastError()));
+    }
+
+    auto staged = captureSupportedMetadata(file);
+    if (!staged)
+    {
+        return Domain::Result<void>::failure(std::move(staged).error());
+    }
+
+    // A new sibling commonly inherits the exact target DACL. Reapplying that
+    // inherited ACL can cause Windows to add SE_DACL_AUTO_INHERITED even when
+    // the source control word did not contain it, making an otherwise exact
+    // replacement fail its post-apply verification. Preserve the already
+    // equivalent descriptor byte-for-byte and only set a differing DACL.
+    if (!metadata.daclEquivalentTo(staged.value()))
+    {
+        SECURITY_INFORMATION information = DACL_SECURITY_INFORMATION;
+        information |= (metadata.daclControl & SE_DACL_PROTECTED) != 0U
+                           ? PROTECTED_DACL_SECURITY_INFORMATION
+                           : UNPROTECTED_DACL_SECURITY_INFORMATION;
+        const DWORD securityError = ::SetSecurityInfo(file, SE_FILE_OBJECT, information, nullptr,
+                                                      nullptr, metadata.dacl(), nullptr);
+        if (securityError != ERROR_SUCCESS)
+        {
+            return Domain::Result<void>::failure(
+                fileError("Apply atomic file DACL", securityError));
+        }
     }
 
     auto applied = captureSupportedMetadata(file);

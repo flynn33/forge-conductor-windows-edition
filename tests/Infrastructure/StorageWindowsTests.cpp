@@ -2750,6 +2750,8 @@ void configurationPreservesUnknownFieldsAndUsesBackup()
 
     Domain::AppConfigPatch patch;
     patch.dashboardPort = static_cast<std::uint16_t>(8123);
+    patch.localModelName = "fixture-loaded-model";
+    patch.effectiveContextCapacity = 65'536U;
     const auto updated = take(store.update(patch, liveContext()));
     require(updated.dashboard.port == 8123, "configuration update must publish its typed value");
     require(files.lastAccess == Domain::FileAccess::Write,
@@ -2762,6 +2764,10 @@ void configurationPreservesUnknownFieldsAndUsesBackup()
             "configuration update must preserve unknown nested fields");
     require(document.at("dashboard").at("port") == 8123,
             "configuration update must replace the patched known field");
+    require(document.at("local_model").at("model") == "fixture-loaded-model" &&
+                document.at("local_model").at("effective_context_capacity") ==
+                    65'536U,
+            "configuration update must persist offline provider settings");
 }
 
 void configurationRecoversOnlyFromValidBackup()
@@ -2884,6 +2890,13 @@ void configurationBoundsMissingDefaultsAndShutdown()
             "second configuration update must commit");
     require(missingFiles.lastAccess == Domain::FileAccess::Write,
             "second configuration update must use write authority");
+    const auto automaticModelDocument = nlohmann::json::parse(text(missingFiles.content));
+    require(automaticModelDocument.at("local_model").at("model").is_null(),
+            "automatic model selection must persist as an explicit null");
+    WindowsConfigurationStore reopened{missingFiles, fixture.readPath, fixture.writePath,
+                                       fixture.createPath, fixture.backupReadPath};
+    require(!take(reopened.load(liveContext())).localModel.model.has_value(),
+            "automatic model selection must survive a configuration-store restart");
 
     MemoryAtomicFileStore oversizedFiles;
     oversizedFiles.exists = true;

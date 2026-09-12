@@ -30,7 +30,6 @@ constexpr std::size_t MaximumInferredKeyFiles = 12U;
 constexpr std::size_t MaximumNarrativeTools = 8U;
 constexpr std::size_t MaximumCanonicalPayloadBytes = 1'048'576U;
 constexpr std::uint32_t MaximumConfiguredCount = 1'000'000U;
-constexpr std::uint32_t MaximumConfiguredIntervalSeconds = 604'800U;
 
 template <typename T>
 [[nodiscard]] Domain::Result<T> failure(
@@ -47,13 +46,7 @@ template <typename T>
 {
     if (policy.softIdenticalCallCount < 2U ||
         policy.hardIdenticalCallCount <= policy.softIdenticalCallCount ||
-        policy.hardIdenticalCallCount > MaximumConfiguredCount ||
-        policy.checkpointProgressCount == 0U ||
-        policy.handoffProgressCount < policy.checkpointProgressCount ||
-        policy.handoffProgressCount > MaximumConfiguredCount ||
-        policy.checkpointIntervalSeconds == 0U ||
-        policy.handoffIntervalSeconds < policy.checkpointIntervalSeconds ||
-        policy.handoffIntervalSeconds > MaximumConfiguredIntervalSeconds) {
+        policy.hardIdenticalCallCount > MaximumConfiguredCount) {
         return failure<void>(
             Domain::ErrorCodes::InvalidRequest,
             "The MCP invocation-guard policy is invalid.");
@@ -707,10 +700,8 @@ public:
                             "Call context_get if this is a new chat",
                             "Continue from the workspace in this packet"};
                         const std::string reason = progress.finalize
-                            ? "auto_handoff progress=" +
-                                std::to_string(progress.progressCount)
-                            : "auto_checkpoint progress=" +
-                                std::to_string(progress.progressCount);
+                            ? "context_handoff"
+                            : "lifecycle_checkpoint";
                         auto persisted = continuity_.automaticPersist(
                             Domain::LegacyContinuityAutomaticRequest{
                                 std::move(patch), reason, progress.finalize},
@@ -813,20 +804,16 @@ public:
         const Domain::ClientId& clientId) const noexcept
     {
         Domain::ContinuityAutomationStatusSnapshot result;
-        result.checkpointEveryTools = policy_.checkpointProgressCount;
-        result.handoffEveryTools = policy_.handoffProgressCount;
         try {
             std::lock_guard lock{mutex_};
             const auto found = continuityStates_.find(clientId.value());
             if (found == continuityStates_.end()) {
                 return result;
             }
-            result.progressCount = found->second.progressCount;
             result.blocked = found->second.blocked;
             result.handoffId = found->second.handoffId;
             result.implicitRoots = found->second.implicitRoots;
         } catch (...) {
-            result.progressCount = 0U;
             result.blocked = false;
             result.handoffId.reset();
             result.implicitRoots.clear();
@@ -863,11 +850,6 @@ private:
     struct ClientContinuityState final {
         std::uint64_t stateGeneration{};
         std::size_t activeUseCount{};
-        std::uint64_t progressCount{};
-        std::uint64_t lastCheckpointCount{};
-        std::uint64_t lastHandoffCount{};
-        std::optional<Domain::MonotonicTimePoint> lastCheckpointAt;
-        std::optional<Domain::MonotonicTimePoint> lastHandoffAt;
         std::vector<std::string> recentTools;
         std::vector<std::string> recentPaths;
         std::optional<std::string> workingDirectory;
@@ -903,8 +885,6 @@ private:
     struct ProgressDecision final {
         bool persist{};
         bool finalize{};
-        std::uint64_t progressCount{};
-        Domain::MonotonicTimePoint observedAt;
         std::vector<std::string> recentTools;
         std::vector<std::string> recentPaths;
         std::optional<std::string> workingDirectory;
@@ -1135,10 +1115,6 @@ private:
         if (state == nullptr) {
             return ProgressDecision{};
         }
-        if (state->progressCount !=
-            (std::numeric_limits<std::uint64_t>::max)()) {
-            ++state->progressCount;
-        }
         state->recentTools.push_back(pending.toolName);
         if (state->recentTools.size() > MaximumRecentTools) {
             state->recentTools.erase(
@@ -1171,33 +1147,15 @@ private:
                 observation->workingDirectory->value();
         }
 
-        const auto now = clock_.monotonicNow();
-        const auto sinceCheckpoint =
-            state->progressCount - state->lastCheckpointCount;
-        const auto sinceHandoff =
-            state->progressCount - state->lastHandoffCount;
-        const bool checkpointTimeDue = state->lastCheckpointAt &&
-            now - *state->lastCheckpointAt >=
-                std::chrono::seconds{policy_.checkpointIntervalSeconds};
-        const bool handoffTimeDue = state->lastHandoffAt &&
-            now - *state->lastHandoffAt >=
-                std::chrono::seconds{policy_.handoffIntervalSeconds};
-        const bool handoffDue =
-            sinceHandoff >= policy_.handoffProgressCount || handoffTimeDue;
-        const bool checkpointDue = pending.forcePersist ||
-            sinceCheckpoint >= policy_.checkpointProgressCount ||
-            checkpointTimeDue;
         ProgressDecision decision{
             false,
-            handoffDue,
-            state->progressCount,
-            now,
+            false,
             state->recentTools,
             state->recentPaths,
             state->workingDirectory,
             0U};
         if (!state->blocked && !state->persistenceInFlight &&
-            (checkpointDue || handoffDue)) {
+            pending.forcePersist) {
             if (nextPersistenceGeneration_ ==
                 (std::numeric_limits<std::uint64_t>::max)()) {
                 nextPersistenceGeneration_ = 1U;
@@ -1334,11 +1292,6 @@ private:
         }
         if (cleared) {
             state->blocked = false;
-            state->progressCount = 0U;
-            state->lastCheckpointCount = 0U;
-            state->lastHandoffCount = 0U;
-            state->lastCheckpointAt.reset();
-            state->lastHandoffAt.reset();
         }
         return RecoveryDecision{true, cleared};
     }
@@ -1361,19 +1314,7 @@ private:
             return;
         }
         state->persistenceInFlight = false;
-        state->lastCheckpointCount = (std::max)(
-            state->lastCheckpointCount, progress.progressCount);
-        if (!state->lastCheckpointAt ||
-            *state->lastCheckpointAt < progress.observedAt) {
-            state->lastCheckpointAt = progress.observedAt;
-        }
         if (progress.finalize) {
-            state->lastHandoffCount = (std::max)(
-                state->lastHandoffCount, progress.progressCount);
-            if (!state->lastHandoffAt ||
-                *state->lastHandoffAt < progress.observedAt) {
-                state->lastHandoffAt = progress.observedAt;
-            }
             state->blocked = true;
             state->handoffId = receipt.id;
             state->resumeSeed = receipt.resumeSeed;

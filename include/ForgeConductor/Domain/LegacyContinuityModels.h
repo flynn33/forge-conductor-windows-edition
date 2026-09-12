@@ -188,10 +188,8 @@ struct LegacyContinuityListOutcome final {
 };
 
 struct LegacyContinuityAutomaticStatus final {
-    std::uint32_t checkpointEveryTools{50U};
-    std::uint32_t handoffEveryTools{200U};
     std::string note{
-        "Forge writes checkpoints and handoffs from tool progress; the model does not have to call session_*."};
+        "Forge checkpoints lifecycle changes and requests handoff only from measured context pressure."};
 
     bool operator==(const LegacyContinuityAutomaticStatus&) const = default;
 };

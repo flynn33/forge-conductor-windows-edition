@@ -308,6 +308,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/DpapiSecureStorage.cpp
     src/Infrastructure/Windows/SecretRedactor.cpp
     src/Infrastructure/Windows/SystemClock.cpp
+    src/Infrastructure/Windows/WindowsAlphaManagerProfile.cpp
     src/Infrastructure/Windows/WindowsApplicationPaths.cpp
     src/Infrastructure/Windows/WindowsAtomicFileStore.cpp
     src/Infrastructure/Windows/WindowsAgentCompletionReportInspector.cpp
@@ -338,6 +339,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsUuidGenerator.cpp
     src/Infrastructure/Windows/WindowsWorkspaceAuthority.cpp
     src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp
+    src/Infrastructure/Windows/LMStudioResponsesTransport.cpp
     src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp
     src/Infrastructure/Windows/Detail/BoundedSerialExecutor.cpp
     src/Infrastructure/Windows/Detail/CommandLineBuilder.cpp
@@ -2979,6 +2981,7 @@ if(BUILD_TESTING)
     target_link_libraries(
         ForgeConductor.SessionHost.WinHttpTransportTests PRIVATE
         ForgeConductor::Infrastructure.Windows
+        nlohmann_json::nlohmann_json
         ws2_32)
 
     add_test(

@@ -20,3 +20,10 @@ CMakeUserPresets.json
 .forge-codex/state/commands/
 .forge-codex/state/profiles/
 .forge-codex/state/installer/
+
+# Generated root configure and scratch output
+/CMakeCache.txt
+/CMakeFiles/
+/.tmp-*
+/src/Hosts/App/obj/
+/src/Hosts/App/Generated Files/

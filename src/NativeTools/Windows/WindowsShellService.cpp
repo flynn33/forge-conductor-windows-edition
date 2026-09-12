@@ -15,6 +15,10 @@
 namespace ForgeConductor::NativeTools::Windows {
 namespace {
 
+constexpr std::string_view Utf8OutputPrefix =
+    "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);"
+    "$OutputEncoding=[Console]::OutputEncoding;";
+
 [[nodiscard]] Domain::Result<void> validateCommandEnvelope(
     const Domain::ProcessRequest& request,
     const Domain::PathText& exactPowerShellExecutable) noexcept
@@ -312,15 +316,20 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
 
         Domain::ProcessRequest normalized{
             implementation->powerShellExecutable};
+        std::string encodedCommand{Utf8OutputPrefix};
+        encodedCommand.append(request.arguments.front());
         normalized.arguments = {
             "-NoLogo",
             "-NoProfile",
             "-NonInteractive",
             "-Command",
-            request.arguments.front()};
+            std::move(encodedCommand)};
         normalized.workingDirectory = request.workingDirectory;
         normalized.environment = request.environment;
-        normalized.inheritEnvironment = request.inheritEnvironment;
+        // Windows PowerShell cannot initialize from an entirely empty environment
+        // (it fails with 0x8009001D in packaged desktop processes). The supervisor
+        // inherits only its fixed safe allowlist: SystemRoot, WINDIR, TEMP, and TMP.
+        normalized.inheritEnvironment = true;
         normalized.timeout = (std::min)(request.timeout, MaximumTimeout);
         normalized.maximumStdoutBytes =
             (std::min)(request.maximumStdoutBytes, MaximumOutputBytes);

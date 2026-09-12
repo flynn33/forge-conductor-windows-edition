@@ -1920,10 +1920,6 @@ private:
                     {"note", summary.note},
                     {"auto",
                      Json{
-                         {"checkpoint_every_tools",
-                          summary.automatic.checkpointEveryTools},
-                         {"handoff_every_tools",
-                          summary.automatic.handoffEveryTools},
                          {"note", summary.automatic.note}}}};
             }
 
@@ -1936,9 +1932,6 @@ private:
             }
             Json automaticStatus{
                 {"enabled", automatic.enabled},
-                {"checkpoint_every_tools", automatic.checkpointEveryTools},
-                {"handoff_every_tools", automatic.handoffEveryTools},
-                {"progress_count", automatic.progressCount},
                 {"blocked", automatic.blocked},
                 {"handoff_id",
                  automatic.handoffId

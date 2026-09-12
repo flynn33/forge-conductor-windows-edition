@@ -2,6 +2,7 @@
 #include "ManagerProcessArguments.h"
 
 #include "ForgeConductor/Domain/Error.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 
 #include <array>
 #include <cstdlib>
@@ -83,6 +84,24 @@ int wmain(const int argc, wchar_t** const argv)
         Host::ManagerCompositionRootOptions options;
         options.expectedHome = std::move(processArguments.expectedHome);
         options.openBrowserOverride = processArguments.openBrowser;
+        if (processArguments.alphaDataRoot) {
+            auto alphaProfile =
+                ForgeConductor::Infrastructure::Windows::
+                    WindowsAlphaManagerProfile::create(
+                        *processArguments.alphaDataRoot);
+            if (!alphaProfile) {
+                writeError(
+                    "Forge Conductor Manager Alpha profile error",
+                    alphaProfile.error());
+                return InvalidArgumentsExitCode;
+            }
+            options.environment.explicitDataRoot =
+                alphaProfile.value().dataRoot();
+            options.instanceLease.purposeSuffix =
+                alphaProfile.value().purposeSuffix();
+            options.secureStorageRegistrySubkey = std::wstring{
+                alphaProfile.value().secureStorageRegistrySubkey()};
+        }
 
         auto created = Host::ManagerCompositionRoot::create(
             std::move(options));

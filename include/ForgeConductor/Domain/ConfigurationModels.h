@@ -65,6 +65,19 @@ struct CoordinatorConfig final {
     bool operator==(const CoordinatorConfig&) const = default;
 };
 
+struct LocalModelConfig final {
+    std::string host{"127.0.0.1"};
+    std::uint16_t port{1234U};
+    bool secure{};
+    std::optional<std::string> model;
+    std::uint32_t effectiveContextCapacity{32'768U};
+    std::uint32_t nextResponseReserve{4'096U};
+    std::uint32_t handoffReserve{4'096U};
+    std::uint32_t estimationSafetyMargin{2'048U};
+
+    bool operator==(const LocalModelConfig&) const = default;
+};
+
 struct AppConfig final {
     LogLevel logLevel{LogLevel::Info};
     std::vector<PathText> allowedRoots;
@@ -74,6 +87,7 @@ struct AppConfig final {
     McpRole mcpRole{McpRole::Primary};
     SessionConfig sessions;
     CoordinatorConfig coordinator;
+    LocalModelConfig localModel;
 
     bool operator==(const AppConfig&) const = default;
 };
@@ -94,6 +108,14 @@ struct AppConfigPatch final {
     std::optional<bool> coordinatorEnabled;
     std::optional<std::chrono::seconds> coordinatorLeaseTimeToLive;
     std::optional<std::chrono::seconds> coordinatorPresenceTimeToLive;
+    std::optional<std::string> localModelHost;
+    std::optional<std::uint16_t> localModelPort;
+    std::optional<bool> localModelSecure;
+    std::optional<std::string> localModelName;
+    std::optional<std::uint32_t> effectiveContextCapacity;
+    std::optional<std::uint32_t> nextResponseReserve;
+    std::optional<std::uint32_t> handoffReserve;
+    std::optional<std::uint32_t> estimationSafetyMargin;
 };
 
 [[nodiscard]] AppConfig defaultAppConfig();

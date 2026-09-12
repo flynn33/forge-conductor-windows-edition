@@ -39,9 +39,7 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsTextSearchService.h"
 #include "ForgeConductor/Persistence/Windows/PersistenceWindows.h"
-#include "ForgeConductor/SessionHost/BoundedLogicalContinuationQueue.h"
 #include "ForgeConductor/SessionHost/ForgeNativeSessionHostAdapter.h"
-#include "ForgeConductor/SessionHost/LocalLogicalSessionTransport.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -253,6 +251,50 @@ void requireSuccess(Domain::Result<void> result)
     }
     buffer.resize(static_cast<std::size_t>(written));
     return pathText(take(strictWideToUtf8(buffer)));
+}
+
+[[nodiscard]] bool isSingleLinkRegularExecutable(
+    const std::filesystem::path& candidate) noexcept
+{
+    const HANDLE file = ::CreateFileW(
+        candidate.c_str(), FILE_READ_ATTRIBUTES,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return false;
+    FILE_ATTRIBUTE_TAG_INFO attributes{};
+    FILE_STANDARD_INFO standard{};
+    const bool valid =
+        ::GetFileInformationByHandleEx(
+            file, FileAttributeTagInfo, &attributes, sizeof(attributes)) != FALSE &&
+        ::GetFileInformationByHandleEx(
+            file, FileStandardInfo, &standard, sizeof(standard)) != FALSE &&
+        (attributes.FileAttributes &
+            (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) == 0U &&
+        standard.DeletePending == FALSE && standard.NumberOfLinks == 1U;
+    ::CloseHandle(file);
+    return valid;
+}
+
+[[nodiscard]] Domain::PathText discoverGitExecutable()
+{
+    const auto searched = discoverExecutable(L"git.exe");
+    const auto searchedWide = take(strictUtf8ToWide(searched.value()));
+    const std::filesystem::path searchedPath{searchedWide};
+    if (isSingleLinkRegularExecutable(searchedPath)) return searched;
+
+    // Git for Windows may hard-link cmd\git.exe to git-lfs.exe. Its adjacent
+    // bin\git.exe is the supported command entry point with a unique file
+    // identity, which satisfies the process supervisor's launch invariant.
+    if (_wcsicmp(
+            searchedPath.parent_path().filename().c_str(), L"cmd") == 0) {
+        const auto candidate = searchedPath.parent_path().parent_path() /
+            L"bin" / L"git.exe";
+        if (isSingleLinkRegularExecutable(candidate)) {
+            return pathText(take(strictWideToUtf8(candidate.wstring())));
+        }
+    }
+    return searched;
 }
 
 [[nodiscard]] Domain::PathText childPath(
@@ -529,7 +571,7 @@ private:
             *projectRegistry_, *uuidGenerator_, clientId_,
             configuration_.shell.enabled);
 
-        const auto gitExecutable = discoverExecutable(L"git.exe");
+        const auto gitExecutable = discoverGitExecutable();
         const auto powerShellExecutable = discoverExecutable(L"powershell.exe");
 
         auto centralDatabase = take(PersistenceWindows::WindowsCentralDatabase::open(
@@ -646,11 +688,15 @@ private:
                 *dataAuthority_, dataScope,
                 pathText(ledgerPath.value() + ".bak"), dataRoot,
                 Domain::FileAccess::Read, startupContext));
-        logicalContinuationQueue_ = std::make_unique<
-            NativeSessionHost::BoundedLogicalContinuationQueue>();
+        InfrastructureWindows::LMStudioResponsesTransportConfiguration
+            providerConfiguration;
+        providerConfiguration.loopbackHost = configuration_.localModel.host;
+        providerConfiguration.port = configuration_.localModel.port;
+        providerConfiguration.secure = configuration_.localModel.secure;
+        providerConfiguration.model = configuration_.localModel.model;
         nativeSessionTransport_ = std::make_unique<
-            NativeSessionHost::LocalLogicalSessionTransport>(
-            hasher_, *continuityCodec_, *logicalContinuationQueue_);
+            InfrastructureWindows::LMStudioResponsesTransport>(
+            std::move(providerConfiguration));
         nativeSessionAdapter_ = std::make_unique<
             NativeSessionHost::ForgeNativeSessionHostAdapter>(
             take(Domain::AdapterId::parse(
@@ -783,10 +829,6 @@ private:
             nativeSessionTransport_->shutdown();
         }
         nativeSessionTransport_.reset();
-        if (logicalContinuationQueue_) {
-            logicalContinuationQueue_->shutdown();
-        }
-        logicalContinuationQueue_.reset();
         if (nativeSessionLedger_) {
             nativeSessionLedger_->shutdown();
         }
@@ -969,9 +1011,7 @@ private:
         continuityCodec_;
     std::unique_ptr<InfrastructureWindows::WindowsNativeSessionLedger>
         nativeSessionLedger_;
-    std::unique_ptr<NativeSessionHost::BoundedLogicalContinuationQueue>
-        logicalContinuationQueue_;
-    std::unique_ptr<NativeSessionHost::LocalLogicalSessionTransport>
+    std::unique_ptr<InfrastructureWindows::LMStudioResponsesTransport>
         nativeSessionTransport_;
     std::unique_ptr<NativeSessionHost::ForgeNativeSessionHostAdapter>
         nativeSessionAdapter_;

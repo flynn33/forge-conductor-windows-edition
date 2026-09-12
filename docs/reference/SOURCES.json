@@ -1,0 +1,260 @@
+{
+  "audit_date": "2026-09-10",
+  "windows_revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+  "macos_revision": "6c9c91da74d44a57812887dc71f5c1de7abeddf7",
+  "sources": [
+    {
+      "id": "W01",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "README.md",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/README.md",
+      "supports": "Bootstrap-era public instructions; all-gates entry point."
+    },
+    {
+      "id": "W02",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "AGENTS.md",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/AGENTS.md",
+      "supports": "Old mission, WinUI/C++20 rules, shell-default conflict, all-hard-gates completion."
+    },
+    {
+      "id": "W03",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "CMakeLists.txt",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/CMakeLists.txt",
+      "supports": "Existing native libraries, CLI/manager/session-host targets, test targets; no WinUI target found."
+    },
+    {
+      "id": "W04",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "CMakePresets.json",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/CMakePresets.json",
+      "supports": "VS 2022/v143, SDK 26100, C++20, configure/build/test preset names."
+    },
+    {
+      "id": "W05",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "cmake/ForgeForsettiExternal.cmake",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/cmake/ForgeForsettiExternal.cmake",
+      "supports": "Missing clean-clone dependency; hashes; no download; BUILD_ALWAYS."
+    },
+    {
+      "id": "W06",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": ".forge-codex/state/baseline/p03-forsetti-source-lock.json",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/.forge-codex/state/baseline/p03-forsetti-source-lock.json",
+      "supports": "Original dependency archive and tree digests, source inventory."
+    },
+    {
+      "id": "W07",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "scripts/build.ps1",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/scripts/build.ps1",
+      "supports": "Existing Target, Parallel, Fresh, Analyze and vcpkg behavior."
+    },
+    {
+      "id": "W08",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "scripts/test.ps1",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/scripts/test.ps1",
+      "supports": "Existing label-filtered CTest entry point."
+    },
+    {
+      "id": "W09",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "scripts/package.ps1",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/scripts/package.ps1",
+      "supports": "Unconditional packaging-not-implemented exception."
+    },
+    {
+      "id": "W10",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "packaging/Package.appxmanifest.template",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/packaging/Package.appxmanifest.template",
+      "supports": "Identity placeholders, version mismatch, GUI executable and CLI alias."
+    },
+    {
+      "id": "W11",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "src/Bootstrap/main.cpp",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/src/Bootstrap/main.cpp",
+      "supports": "Temporary output and trivial self-test; not proof the production CLI is this bootstrap."
+    },
+    {
+      "id": "W12",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "src/Application/ContinuityAutomation.cpp",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/src/Application/ContinuityAutomation.cpp",
+      "supports": "Context resolver plus independent progress/time rollover; coordinator actions."
+    },
+    {
+      "id": "W13",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "include/ForgeConductor/Domain/ContinuityModels.h",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/include/ForgeConductor/Domain/ContinuityModels.h",
+      "supports": "Durable state machine, handoff and context signals."
+    },
+    {
+      "id": "W14",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "include/ForgeConductor/Domain/ConfigurationModels.h",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/include/ForgeConductor/Domain/ConfigurationModels.h",
+      "supports": "Shell default false in ShellConfig; configuration surface."
+    },
+    {
+      "id": "W15",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp",
+      "supports": "Custom session/create/bootstrap/query HTTP contract."
+    },
+    {
+      "id": "W16",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "include/ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/include/ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h",
+      "supports": "Default /v1/forge base path."
+    },
+    {
+      "id": "W17",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "src/Hosts/SessionHost/SessionHostCompositionRoot.cpp",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/src/Hosts/SessionHost/SessionHostCompositionRoot.cpp",
+      "supports": "Production composition uses LocalLogicalSessionTransport."
+    },
+    {
+      "id": "W18",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "src/SessionHost/LocalLogicalSessionTransport.cpp",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/src/SessionHost/LocalLogicalSessionTransport.cpp",
+      "supports": "Synthetic logical IDs, local acknowledgment and continuation scheduling."
+    },
+    {
+      "id": "W19",
+      "kind": "repository_source",
+      "repository": "flynn33/forge-conductor-windows-edition",
+      "revision": "3e67a03b6c64d9a105b677dfe41e413bddd7762c",
+      "path": "src/Hosts/Cli/McpServeCompositionRoot.cpp",
+      "url": "https://github.com/flynn33/forge-conductor-windows-edition/blob/3e67a03b6c64d9a105b677dfe41e413bddd7762c/src/Hosts/Cli/McpServeCompositionRoot.cpp",
+      "supports": "Native tool/persistence/MCP composition and local logical session transport."
+    },
+    {
+      "id": "M01",
+      "kind": "repository_source",
+      "repository": "flynn33/Forge-Conductor-MacOS",
+      "revision": "6c9c91da74d44a57812887dc71f5c1de7abeddf7",
+      "path": "README.md",
+      "url": "https://github.com/flynn33/Forge-Conductor-MacOS/blob/6c9c91da74d44a57812887dc71f5c1de7abeddf7/README.md",
+      "supports": "Implemented UI/tool/runtime features and explicit open live-provider/release qualification."
+    },
+    {
+      "id": "M02",
+      "kind": "repository_source",
+      "repository": "flynn33/Forge-Conductor-MacOS",
+      "revision": "6c9c91da74d44a57812887dc71f5c1de7abeddf7",
+      "path": "Package.swift",
+      "url": "https://github.com/flynn33/Forge-Conductor-MacOS/blob/6c9c91da74d44a57812887dc71f5c1de7abeddf7/Package.swift",
+      "supports": "Native module/product layout."
+    },
+    {
+      "id": "M03",
+      "kind": "repository_source",
+      "repository": "flynn33/Forge-Conductor-MacOS",
+      "revision": "6c9c91da74d44a57812887dc71f5c1de7abeddf7",
+      "path": "Sources/ForgeConductorApp/OperatorConsole/ViewModels/ProviderViewModel.swift",
+      "url": "https://github.com/flynn33/Forge-Conductor-MacOS/blob/6c9c91da74d44a57812887dc71f5c1de7abeddf7/Sources/ForgeConductorApp/OperatorConsole/ViewModels/ProviderViewModel.swift",
+      "supports": "Offline save vs discovery/connection probe; endpoint/model/credential settings."
+    },
+    {
+      "id": "M04",
+      "kind": "repository_source",
+      "repository": "flynn33/Forge-Conductor-MacOS",
+      "revision": "6c9c91da74d44a57812887dc71f5c1de7abeddf7",
+      "path": "Sources/ForgeConductorApp/OperatorConsole/ViewModels/ProjectsViewModel.swift",
+      "url": "https://github.com/flynn33/Forge-Conductor-MacOS/blob/6c9c91da74d44a57812887dc71f5c1de7abeddf7/Sources/ForgeConductorApp/OperatorConsole/ViewModels/ProjectsViewModel.swift",
+      "supports": "Register/select/reset/relink, durable identity/generation and reconciliation."
+    },
+    {
+      "id": "M05",
+      "kind": "repository_source",
+      "repository": "flynn33/Forge-Conductor-MacOS",
+      "revision": "6c9c91da74d44a57812887dc71f5c1de7abeddf7",
+      "path": "Sources/ForgeNativeSessionHostPlugin/ForgeNativeSessionHostPlugin.swift",
+      "url": "https://github.com/flynn33/Forge-Conductor-MacOS/blob/6c9c91da74d44a57812887dc71f5c1de7abeddf7/Sources/ForgeNativeSessionHostPlugin/ForgeNativeSessionHostPlugin.swift",
+      "supports": "Real /v1/responses provider adapter, context_get and provider-originated acknowledgment."
+    },
+    {
+      "id": "E01",
+      "kind": "official_documentation",
+      "url": "https://lmstudio.ai/docs/developer/openai-compat/responses",
+      "accessed": "2026-09-10",
+      "supports": "LM Studio Responses endpoint, actual response IDs, stateful follow-up and streaming."
+    },
+    {
+      "id": "E02",
+      "kind": "official_documentation",
+      "url": "https://lmstudio.ai/docs/developer/openai-compat/tools",
+      "accessed": "2026-09-10",
+      "supports": "Function-tool request/execute/return loop; model-dependent support."
+    },
+    {
+      "id": "E03",
+      "kind": "official_documentation",
+      "url": "https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained-deploy/deploy-self-contained-apps",
+      "accessed": "2026-09-10",
+      "supports": "Windows App SDK self-contained deployment."
+    },
+    {
+      "id": "E04",
+      "kind": "official_documentation",
+      "url": "https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview",
+      "accessed": "2026-09-10",
+      "supports": "MSIX signing and trusted certificate requirement."
+    },
+    {
+      "id": "D01",
+      "kind": "repository_source",
+      "repository": "flynn33/Forsetti-Framework-Windows",
+      "revision": "63b9db87c575b2c72bfb6b3c988fcd7abd7fabe5",
+      "path": "CMakeLists.txt",
+      "url": "https://github.com/flynn33/Forsetti-Framework-Windows/blob/63b9db87c575b2c72bfb6b3c988fcd7abd7fabe5/CMakeLists.txt",
+      "supports": "Public fixed upstream recovery candidate. Retrieved CMakeLists.txt Git blob and SHA-256 match the required source file; complete candidate source tree still requires verification."
+    }
+  ]
+}

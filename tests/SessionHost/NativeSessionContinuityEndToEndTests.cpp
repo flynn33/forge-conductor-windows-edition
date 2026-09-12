@@ -599,7 +599,7 @@ void autonomousNativeRolloverSurvivesRestartWithoutDuplication()
             *clock, 10U, "g12-autonomous-rollover");
         const auto outcome = take(automation.observe(
             Domain::ContinuityAutomationObservation{
-                handoff, rolloverSignals(), 0U, false},
+                handoff, rolloverSignals(), false},
             context));
 
         REQUIRE(outcome.action == Domain::ContextBudgetAction::Rollover);
@@ -694,7 +694,7 @@ void autonomousNativeRolloverSurvivesRestartWithoutDuplication()
 
         const auto replay = take(automation.observe(
             Domain::ContinuityAutomationObservation{
-                handoff, rolloverSignals(), 0U, false},
+                handoff, rolloverSignals(), false},
             context));
         REQUIRE(replay.action == Domain::ContextBudgetAction::Rollover);
         REQUIRE(replay.operationId == handoff.operationId);

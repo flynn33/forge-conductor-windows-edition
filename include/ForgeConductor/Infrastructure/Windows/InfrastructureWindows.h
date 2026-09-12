@@ -34,6 +34,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h"
+#include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 
 #include <memory>
 
