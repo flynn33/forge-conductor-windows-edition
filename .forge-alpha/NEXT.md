@@ -3,16 +3,17 @@
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Execution revision:** `continuous-delivery-repair-2026-09-12`
 **Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R3.3 — agent sessions and attachment
+**Current phase/slice:** R4.1 — persistent accessible Settings
 **Current branch:** `alpha/r3-native-workflows`
 
 ## Verified state
 
 - PR #13 merged at `bdd6e05fd1843a353116628b1ef33c2e6a948fc5`; local `main`, `origin/main`, and a fresh GitHub ref observation were synchronized before the R3 branch was created.
 - R2-G2/G3 remain blocked under their original IDs for native rendered-value, keyboard, scaling, and high-contrast inspection. The merge did not close those acceptance checks.
-- Draft [PR #14](https://github.com/flynn33/forge-conductor-windows-edition/pull/14) is open from commit da199521176a338774a5e12bcd58fddddb9cbdce; R3.1 is implemented in the current branch: typed Manager requests expose project listing/registration and persistent memory search/read/write/status; the native Projects page shows exact identity, authorized folders, persistence health and records, persists selection, and binds that exact ID into Autonomy.
+- PR #14 merged at 6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4; completion [PR #15](https://github.com/flynn33/forge-conductor-windows-edition/pull/15) carries the remaining R3 pages from reviewed head 36ef28c4c5e9e67a20c57116f305b63b2412cca3; R3.1 is implemented in the current branch: typed Manager requests expose project listing/registration and persistent memory search/read/write/status; the native Projects page shows exact identity, authorized folders, persistence health and records, persists selection, and binds that exact ID into Autonomy.
 - Focused evidence: x64 Debug Manager and App builds passed; Manager protocol passed 625 assertions; dispatcher passed 10 groups including rejection of a cross-project memory response; the real native P2 workflow smoke passed on a fresh isolated profile with two distinct projects, no memory leakage and memory persistence after process restart.
 - R3.2 source is implemented: the native LM Studio MCP page performs Manager-owned inspect/repair/activate operations with foreign-entry preservation, while the Tools workbench displays the exact catalog and persisted shell preference and invokes tools under the selected project authority. Manager and WinUI builds pass; the consolidated native walkthrough remains open under R3-G2.
+- R3.3-R3.5 source is complete: Agents, Feed, Runtimes, Diagnostics, and Manager use typed operational Manager data; agent/session IDs, audit outcomes/errors/durations, close/prune actions, runtime counts, and doctor results are visible. Required R3 destinations no longer route through GenericPanel.
 - The corrected continuous-delivery rule is incorporated into root execution/Git guidance and the handoff/closeout templates as part of this R3 change.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 

@@ -1288,6 +1288,24 @@ void validateSettingsUpdateOutcome(
                 params["tool_name"] = payload.toolName;
                 params["arguments"] = payload.canonicalArguments;
             } else if constexpr (
+                std::is_same_v<Payload, ManagerOperationalRequest>) {
+                method = "operations.page";
+                switch (payload.area) {
+                case ManagerOperationalArea::Agents: params["area"] = "agents"; break;
+                case ManagerOperationalArea::Feed: params["area"] = "feed"; break;
+                case ManagerOperationalArea::Runtimes: params["area"] = "runtimes"; break;
+                case ManagerOperationalArea::Diagnostics: params["area"] = "diagnostics"; break;
+                case ManagerOperationalArea::Manager: params["area"] = "manager"; break;
+                }
+                switch (payload.action) {
+                case ManagerOperationalAction::Inspect: params["action"] = "inspect"; break;
+                case ManagerOperationalAction::PruneSessions: params["action"] = "prune_sessions"; break;
+                case ManagerOperationalAction::CloseSession: params["action"] = "close_session"; break;
+                }
+                params["session_id"] = payload.sessionId
+                    ? Json(payload.sessionId->value()) : Json(nullptr);
+                params["summary"] = payload.summary;
+            } else if constexpr (
                 std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                 method = "manager.control";
                 params["action"] = controlActionName(payload.action);
@@ -1436,6 +1454,33 @@ void validateSettingsUpdateOutcome(
             identifierMember<Domain::ProjectId>(params, "project_id"),
             stringMember(params, "tool_name"),
             stringMember(params, "arguments")};
+    } else if (method == "operations.page") {
+        requireExactFields(
+            params, {"action", "area", "session_id", "summary"},
+            "operations.page params");
+        const auto& areaText = stringMember(params, "area");
+        ManagerOperationalArea area;
+        if (areaText == "agents") area = ManagerOperationalArea::Agents;
+        else if (areaText == "feed") area = ManagerOperationalArea::Feed;
+        else if (areaText == "runtimes") area = ManagerOperationalArea::Runtimes;
+        else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
+        else if (areaText == "manager") area = ManagerOperationalArea::Manager;
+        else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
+        const auto& actionText = stringMember(params, "action");
+        ManagerOperationalAction action;
+        if (actionText == "inspect") action = ManagerOperationalAction::Inspect;
+        else if (actionText == "prune_sessions") action = ManagerOperationalAction::PruneSessions;
+        else if (actionText == "close_session") action = ManagerOperationalAction::CloseSession;
+        else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational action is unknown.");
+        payload = ManagerOperationalRequest{
+            area,
+            action,
+            optionalField<Domain::SessionId>(
+                params, "session_id",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::SessionId>(object, name);
+                }),
+            stringMember(params, "summary")};
     } else if (method == "manager.control") {
         requireExactFields(params, {"action"}, "manager.control params");
         payload = Domain::ManagerControlRequest{
@@ -2651,6 +2696,43 @@ template <typename T, typename Parser>
             })};
 }
 
+[[nodiscard]] std::string_view operationalAreaName(
+    const ManagerOperationalArea area) noexcept
+{
+    switch (area) {
+    case ManagerOperationalArea::Agents: return "agents";
+    case ManagerOperationalArea::Feed: return "feed";
+    case ManagerOperationalArea::Runtimes: return "runtimes";
+    case ManagerOperationalArea::Diagnostics: return "diagnostics";
+    case ManagerOperationalArea::Manager: return "manager";
+    }
+    return "manager";
+}
+
+[[nodiscard]] Json operationalSnapshotJson(
+    const ManagerOperationalSnapshot& snapshot)
+{
+    return Json{{"area", operationalAreaName(snapshot.area)},
+                {"title", snapshot.title}, {"lines", snapshot.lines}};
+}
+
+[[nodiscard]] ManagerOperationalSnapshot parseOperationalSnapshot(const Json& value)
+{
+    requireExactFields(value, {"area", "lines", "title"}, "Manager operational snapshot");
+    const auto& areaText = stringMember(value, "area");
+    ManagerOperationalArea area;
+    if (areaText == "agents") area = ManagerOperationalArea::Agents;
+    else if (areaText == "feed") area = ManagerOperationalArea::Feed;
+    else if (areaText == "runtimes") area = ManagerOperationalArea::Runtimes;
+    else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
+    else if (areaText == "manager") area = ManagerOperationalArea::Manager;
+    else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
+    return ManagerOperationalSnapshot{
+        area,
+        stringMember(value, "title"),
+        stringArray(member(value, "lines"), "Manager operational lines")};
+}
+
 [[nodiscard]] Json resultJson(const ManagerResult& result)
 {
     Json wrapper = Json::object();
@@ -2695,6 +2777,10 @@ template <typename T, typename Parser>
                 std::is_same_v<Value, ManagerToolOutcomeSnapshot>) {
                 wrapper["type"] = "tool_outcome";
                 wrapper["value"] = toolOutcomeSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerOperationalSnapshot>) {
+                wrapper["type"] = "operational";
+                wrapper["value"] = operationalSnapshotJson(value);
             } else if constexpr (std::is_same_v<Value, ManagerAcknowledgement>) {
                 wrapper["type"] = "acknowledgement";
                 Json acknowledgement = Json::object();
@@ -2740,6 +2826,9 @@ template <typename T, typename Parser>
     }
     if (type == "tool_outcome") {
         return ManagerResult{parseToolOutcomeSnapshot(value)};
+    }
+    if (type == "operational") {
+        return ManagerResult{parseOperationalSnapshot(value)};
     }
     if (type == "acknowledgement") {
         requireExactFields(

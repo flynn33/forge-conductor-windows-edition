@@ -1081,6 +1081,20 @@ WindowsManagerNamedPipeClient::invokeTool(
               "The manager client transport is unavailable."));
 }
 
+Domain::Result<Manager::ManagerOperationalSnapshot>
+WindowsManagerNamedPipeClient::operational(
+    const Manager::ManagerOperationalRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerOperationalSnapshot>(
+              request, context)
+        : failure<Manager::ManagerOperationalSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
 Domain::Result<void> WindowsManagerNamedPipeClient::requestShutdown(
     const Domain::OperationContext& context) noexcept
 {

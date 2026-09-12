@@ -1,6 +1,7 @@
 #include "ForgeConductor/Manager/ManagerRequestDispatcher.h"
 
 #include "ForgeConductor/Manager/ManagerDeadlineMapper.h"
+#include "ForgeConductor/Dashboard/DashboardSessionCloseRequest.h"
 
 #include <algorithm>
 #include <condition_variable>
@@ -896,6 +897,114 @@ private:
                 std::move(outcome.value().receipt.error)});
     }
 
+    [[nodiscard]] Domain::Result<ManagerOperationalSnapshot> operationalSnapshot(
+        const ManagerOperationalRequest& request,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.operational == nullptr) {
+            return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Operational pages are unavailable in this Manager composition."));
+        }
+        auto& service = *telemetrySources_.operational;
+        std::vector<std::string> lines;
+        if (request.action == ManagerOperationalAction::PruneSessions) {
+            auto pruned = service.pruneSessions(context);
+            if (!pruned) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(pruned).error());
+            lines.push_back("Closed stale sessions: " + std::to_string(pruned.value()));
+        } else if (request.action == ManagerOperationalAction::CloseSession) {
+            if (!request.sessionId) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "A session ID is required to close a session."));
+            }
+            auto closed = service.closeSession(
+                Dashboard::DashboardSessionCloseRequest{
+                    *request.sessionId,
+                    request.summary.empty() ? "Closed from native app" : request.summary},
+                context);
+            if (!closed) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(closed).error());
+            lines.push_back("Closed session " + closed.value().id.value() + ".");
+        }
+
+        if (request.area == ManagerOperationalArea::Agents) {
+            auto agents = service.agents(context);
+            auto sessions = service.sessions(context);
+            if (!agents) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(agents).error());
+            if (!sessions) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(sessions).error());
+            lines.push_back("Agent definitions: " + std::to_string(agents.value().size()));
+            for (const auto& agent : agents.value()) {
+                lines.push_back(agent.id.value() + " — " + agent.displayName +
+                    "\n" + agent.description + "\nTools: " +
+                    std::to_string(agent.tools.size()));
+            }
+            lines.push_back("Open sessions: " + std::to_string(sessions.value().open.size()));
+            for (const auto& session : sessions.value().open) {
+                lines.push_back(session.id.value() + " · " + session.agentId.value() +
+                    " · " + std::string{Domain::wireName(session.status)} +
+                    (session.clientId ? " · client " + session.clientId->value() : "") +
+                    (session.summary ? "\n" + *session.summary : ""));
+            }
+            lines.push_back("Recent sessions: " + std::to_string(sessions.value().recent.size()));
+            return Domain::Result<ManagerOperationalSnapshot>::success(
+                {request.area, "Agents and sessions", std::move(lines)});
+        }
+        if (request.area == ManagerOperationalArea::Feed) {
+            auto audit = service.audit(context);
+            if (!audit) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(audit).error());
+            for (const auto& event : audit.value()) {
+                lines.push_back(event.tool + " · " + event.status +
+                    (event.clientId ? " · " + event.clientId->value() : "") +
+                    (event.duration ? " · " + std::to_string(event.duration->count()) + " ms" : "") +
+                    (event.error ? "\n" + *event.error : ""));
+            }
+            if (lines.empty()) lines.push_back("No recent audit activity.");
+            return Domain::Result<ManagerOperationalSnapshot>::success(
+                {request.area, "Recent activity", std::move(lines)});
+        }
+        if (request.area == ManagerOperationalArea::Diagnostics) {
+            auto doctor = service.doctor(context);
+            auto diagnosticLines = service.diagnosticLines(context);
+            if (!doctor) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(doctor).error());
+            lines.push_back(std::string{"Overall health: "} + (doctor.value().ok ? "healthy" : "attention required"));
+            for (const auto& check : doctor.value().checks) {
+                lines.push_back(std::string{check.ok ? "PASS " : "FAIL "} + check.name + " — " + check.detail);
+            }
+            if (diagnosticLines) {
+                for (const auto& line : diagnosticLines.value()) lines.push_back(line);
+            }
+            return Domain::Result<ManagerOperationalSnapshot>::success(
+                {request.area, "Diagnostics", std::move(lines)});
+        }
+        auto status = service.status(context);
+        if (!status) return Domain::Result<ManagerOperationalSnapshot>::failure(
+            std::move(status).error());
+        const auto& runtime = status.value().runtimeDiagnostics;
+        lines.push_back("Owned operations: " + std::to_string(runtime.ownedOperations));
+        lines.push_back("Background threads: " + std::to_string(runtime.backgroundThreads));
+        lines.push_back("Child processes: " + std::to_string(runtime.childProcesses));
+        lines.push_back("Open repositories/databases: " +
+            std::to_string(runtime.openRepositories) + "/" +
+            std::to_string(runtime.openDatabases));
+        if (request.area == ManagerOperationalArea::Manager) {
+            auto manager = controller_->status(context);
+            if (!manager) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(manager).error());
+            lines.insert(lines.begin(), "Manager PID " + std::to_string(manager.value().processId) +
+                " · service " + (manager.value().serviceActive ? "active" : "inactive"));
+        }
+        return Domain::Result<ManagerOperationalSnapshot>::success(
+            {request.area,
+             request.area == ManagerOperationalArea::Runtimes ? "Runtimes" : "Manager",
+             std::move(lines)});
+    }
+
     [[nodiscard]] ManagerResponse dispatchRegular(
         const ManagerRequest& request,
         const Domain::OperationContext& context)
@@ -1019,6 +1128,10 @@ private:
                     std::is_same_v<Payload, ManagerToolInvokeRequest>) {
                     return controllerResponse(
                         request, invokeTool(request, payload, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerOperationalRequest>) {
+                    return controllerResponse(
+                        request, operationalSnapshot(payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                     return controllerResponse(

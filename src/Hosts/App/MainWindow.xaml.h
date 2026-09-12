@@ -42,13 +42,17 @@ struct MainWindow : MainWindowT<MainWindow> {
     void LmStudioActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ToolsRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ToolInvokeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OperationalRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OperationalPruneClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OperationalCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember,
-        LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke
+        LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
+        OperationalInspect, OperationalPrune, OperationalClose
     };
     winrt::fire_and_forget RunAction(Action action);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
@@ -74,6 +78,8 @@ private:
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};
     bool rebuildingProjects_{};
+    ::ForgeConductor::Manager::ManagerOperationalArea operationalArea_{
+        ::ForgeConductor::Manager::ManagerOperationalArea::Agents};
     bool busy_{};
 };
 }

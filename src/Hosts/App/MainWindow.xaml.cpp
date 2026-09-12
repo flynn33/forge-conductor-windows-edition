@@ -218,6 +218,12 @@ void MainWindow::ToolsRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ToolsList); }
 void MainWindow::ToolInvokeClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ToolInvoke); }
+void MainWindow::OperationalRefreshClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalInspect); }
+void MainWindow::OperationalPruneClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalPrune); }
+void MainWindow::OperationalCloseClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalClose); }
 
 void MainWindow::ProjectSelectionChanged(
     Windows::Foundation::IInspectable const&,
@@ -250,14 +256,23 @@ void MainWindow::NavigationChanged(
     const bool projects = tag == L"Projects";
     const bool lmStudioMcp = tag == L"LM Studio MCP";
     const bool tools = tag == L"Tools";
+    const bool operational = tag == L"Agents" || tag == L"Feed" ||
+        tag == L"Events & Evidence" || tag == L"Runtimes" ||
+        tag == L"Diagnostics" || tag == L"Manager";
+    if (tag == L"Agents") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Agents;
+    else if (tag == L"Feed" || tag == L"Events & Evidence") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Feed;
+    else if (tag == L"Runtimes") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes;
+    else if (tag == L"Diagnostics") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Diagnostics;
+    else if (tag == L"Manager") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Manager;
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
     ProjectsPanel().Visibility(projects ? Visibility::Visible : Visibility::Collapsed);
     LmStudioMcpPanel().Visibility(lmStudioMcp ? Visibility::Visible : Visibility::Collapsed);
     ToolsPanel().Visibility(tools ? Visibility::Visible : Visibility::Collapsed);
+    OperationalPanel().Visibility(operational ? Visibility::Visible : Visibility::Collapsed);
     GenericPanel().Visibility(
-        !provider && !rig && !autonomy && !projects && !lmStudioMcp && !tools
+        !provider && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
             ? Visibility::Visible : Visibility::Collapsed);
     if (provider) {
         PageDescription().Text(L"Configure and test the Manager-owned LM Studio Responses endpoint.");
@@ -278,6 +293,9 @@ void MainWindow::NavigationChanged(
             ToolProjectId().Text(winrt::to_hstring(selectedProjectId_));
         }
         RunAction(Action::ToolsList);
+    } else if (operational) {
+        PageDescription().Text(L"Inspect authoritative Manager-owned operational data and available session actions.");
+        RunAction(Action::OperationalInspect);
     } else if (tag == L"Events & Evidence" || tag == L"Feed") {
         PageDescription().Text(L"Inspect recent operational activity and measured tool durations.");
     } else if (tag == L"Runtimes") {
@@ -576,6 +594,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool lmStudioAction = action == Action::LmStudioInspect ||
         action == Action::LmStudioRepair || action == Action::LmStudioActivate;
     const bool toolsAction = action == Action::ToolsList || action == Action::ToolInvoke;
+    const bool operationalAction = action == Action::OperationalInspect ||
+        action == Action::OperationalPrune || action == Action::OperationalClose;
     std::string runProject;
     std::string runClient;
     std::string runTask;
@@ -591,6 +611,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string toolProject;
     std::string toolName;
     std::string toolArguments;
+    std::string operationalSessionId;
+    std::string operationalSummary;
     if (action == Action::Refresh) {
         runId = winrt::to_string(RunId().Text());
     }
@@ -657,6 +679,14 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             co_return;
         }
     }
+    if (action == Action::OperationalClose) {
+        operationalSessionId = winrt::to_string(OperationalSessionId().Text());
+        operationalSummary = winrt::to_string(OperationalSummary().Text());
+        if (operationalSessionId.empty()) {
+            OperationalState().Text(L"Enter the exact session ID to close.");
+            co_return;
+        }
+    }
 
     busy_ = true;
     winrt::apartment_context ui;
@@ -668,6 +698,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         LmStudioRegistrationState().Text(L"Contacting the Manager…");
     } else if (toolsAction) {
         ToolsState().Text(L"Contacting the Manager…");
+    } else if (operationalAction) {
+        OperationalState().Text(L"Contacting the Manager…");
     } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
         action == Action::ProviderTest) {
         ProviderState().Text(L"Working…");
@@ -685,6 +717,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     ::ForgeConductor::Hosts::App::LmStudioView lmStudioView;
     ::ForgeConductor::Hosts::App::ToolsView toolsView;
     ::ForgeConductor::Hosts::App::ToolOutcomeView toolOutcomeView;
+    ::ForgeConductor::Hosts::App::OperationalView operationalView;
     bool failed{};
     try {
         co_await winrt::resume_background();
@@ -792,6 +825,18 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 cancellation_.get_token());
             message = toolOutcomeView.message;
             break;
+        case Action::OperationalInspect:
+        case Action::OperationalPrune:
+        case Action::OperationalClose: {
+            using OpAction = ::ForgeConductor::Manager::ManagerOperationalAction;
+            const auto op = action == Action::OperationalPrune ? OpAction::PruneSessions :
+                action == Action::OperationalClose ? OpAction::CloseSession : OpAction::Inspect;
+            operationalView = connection_->operational(
+                operationalArea_, op, std::move(operationalSessionId),
+                std::move(operationalSummary), cancellation_.get_token());
+            message = operationalView.message;
+            break;
+        }
         }
     } catch (const std::exception& exception) {
         message = exception.what();
@@ -844,6 +889,16 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     message + "\n" + toolOutcomeView.snapshot->canonicalPayload));
             } else if (action == Action::ToolInvoke) {
                 ToolOutcome().Text(winrt::to_hstring(message));
+            }
+        } else if (operationalAction) {
+            if (operationalView.snapshot) {
+                std::string text = operationalView.snapshot->title;
+                for (const auto& line : operationalView.snapshot->lines) {
+                    text += "\n\n" + line;
+                }
+                OperationalState().Text(winrt::to_hstring(text));
+            } else {
+                OperationalState().Text(winrt::to_hstring(message));
             }
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
             action == Action::ProviderTest) {

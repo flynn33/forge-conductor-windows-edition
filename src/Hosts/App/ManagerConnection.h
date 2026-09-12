@@ -64,6 +64,12 @@ struct ToolOutcomeView final {
     std::optional<Manager::ManagerToolOutcomeSnapshot> snapshot;
 };
 
+struct OperationalView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerOperationalSnapshot> snapshot;
+};
+
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
@@ -118,6 +124,12 @@ public:
         std::string projectId,
         std::string toolName,
         std::string canonicalArguments,
+        std::stop_token cancellation) noexcept = 0;
+    virtual OperationalView operational(
+        Manager::ManagerOperationalArea area,
+        Manager::ManagerOperationalAction action,
+        std::string sessionId,
+        std::string summary,
         std::stop_token cancellation) noexcept = 0;
 };
 class ManagerConnection final : public IManagerConnection {
@@ -175,6 +187,12 @@ public:
         std::string projectId,
         std::string toolName,
         std::string canonicalArguments,
+        std::stop_token cancellation) noexcept override;
+    OperationalView operational(
+        Manager::ManagerOperationalArea area,
+        Manager::ManagerOperationalAction action,
+        std::string sessionId,
+        std::string summary,
         std::stop_token cancellation) noexcept override;
 private:
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>

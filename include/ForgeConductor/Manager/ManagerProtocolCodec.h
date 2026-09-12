@@ -77,6 +77,16 @@ struct ManagerToolInvokeRequest final {
     std::string canonicalArguments;
 };
 
+enum class ManagerOperationalArea { Agents, Feed, Runtimes, Diagnostics, Manager };
+enum class ManagerOperationalAction { Inspect, PruneSessions, CloseSession };
+
+struct ManagerOperationalRequest final {
+    ManagerOperationalArea area{ManagerOperationalArea::Agents};
+    ManagerOperationalAction action{ManagerOperationalAction::Inspect};
+    std::optional<Domain::SessionId> sessionId;
+    std::string summary;
+};
+
 struct ManagerProjectMemoryRecord final {
     Domain::MemoryRecordId id;
     std::uint32_t version{};
@@ -151,6 +161,12 @@ struct ManagerToolOutcomeSnapshot final {
     std::optional<Domain::Error> error;
 };
 
+struct ManagerOperationalSnapshot final {
+    ManagerOperationalArea area{ManagerOperationalArea::Agents};
+    std::string title;
+    std::vector<std::string> lines;
+};
+
 struct ManagerSettingsUpdateRequest final {
     Domain::ManagerSettingsPatch patch;
     bool applyImmediately{};
@@ -201,6 +217,7 @@ using ManagerRequestPayload = std::variant<
     ManagerLmStudioActivateRequest,
     ManagerToolsRequest,
     ManagerToolInvokeRequest,
+    ManagerOperationalRequest,
     Domain::ManagerControlRequest,
     ManagerSettingsUpdateRequest,
     ManagedRunStartRequest,
@@ -237,6 +254,7 @@ using ManagerResult = std::variant<
     ManagerLmStudioSnapshot,
     ManagerToolsSnapshot,
     ManagerToolOutcomeSnapshot,
+    ManagerOperationalSnapshot,
     ManagerAcknowledgement>;
 
 using ManagerResponseBody = std::variant<ManagerResult, Domain::Error>;

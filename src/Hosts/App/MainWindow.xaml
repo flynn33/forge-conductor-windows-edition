@@ -252,6 +252,17 @@
      <TextBlock x:Name="ToolOutcome" Text="No tool result." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </StackPanel>
 
+    <StackPanel x:Name="OperationalPanel" Spacing="14" Visibility="Collapsed">
+     <StackPanel Orientation="Horizontal" Spacing="8">
+      <Button Content="Refresh" Click="OperationalRefreshClicked" />
+      <Button Content="Prune stale sessions" Click="OperationalPruneClicked" />
+     </StackPanel>
+     <TextBox x:Name="OperationalSessionId" Header="Session ID to close" />
+     <TextBox x:Name="OperationalSummary" Header="Close reason" Text="Closed from native app" />
+     <Button Content="Close session" HorizontalAlignment="Left" Click="OperationalCloseClicked" />
+     <TextBlock x:Name="OperationalState" Text="Refresh to load Manager-owned data." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
+    </StackPanel>
+
     <StackPanel x:Name="GenericPanel" Spacing="14" Visibility="Collapsed">
      <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
       <StackPanel Spacing="10">
