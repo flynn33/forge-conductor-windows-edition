@@ -3,8 +3,7 @@ The supplied PNGs use the exact pixel dimensions in their names; the ICO has mul
 They are a simple geometric FC monogram, with no font files or third-party image downloads bundled.
 Copy the four manifest-named PNGs to the implemented packaging Assets directory and reference the actual paths.
 Use the ICO for the native executable resource as appropriate to the WinUI project.
-These are sufficient Alpha packaging assets; replacing them with existing approved project branding is optional.
-They do not prove that the missing native app or MSIX has been implemented.
+These assets are copied into the signed Alpha MSIX and referenced by its generated manifest. Their presence is verified as part of package creation.
 
 <!-- alpha-phase-review:start -->
 Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](../../docs/STATUS.md).

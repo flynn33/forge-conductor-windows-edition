@@ -7,6 +7,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
+#include "ForgeConductor/Manager/ManagerProcessExitCodes.h"
 #include <windows.h>
 #include <array>
 #include <chrono>
@@ -778,6 +779,27 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
                 CREATE_NO_WINDOW, nullptr, executable.parent_path().c_str(), &startup, &process.value)) {
             return "Manager could not start. Windows error " + std::to_string(GetLastError()) +
                 ". Verify the manager executable is installed beside the app.";
+        }
+        const DWORD startupState = WaitForSingleObject(process.value.hProcess, 2'000U);
+        if (startupState == WAIT_OBJECT_0) {
+            DWORD exitCode{};
+            if (!GetExitCodeProcess(process.value.hProcess, &exitCode)) {
+                return "Manager exited during startup and Windows could not read its exit code.";
+            }
+            if (exitCode == static_cast<DWORD>(
+                    Manager::ManagerUnsupportedDataStoreExitCode)) {
+                return "The default Forge Conductor data store is newer than this build "
+                    "supports and was left unchanged. Install a build that supports that "
+                    "store, or launch ForgeConductorApp.exe with --alpha-root followed by "
+                    "an absolute empty folder to use an explicitly isolated profile.";
+            }
+            return "Manager exited during startup with code " +
+                std::to_string(exitCode) +
+                ". Open Diagnostics for recovery details.";
+        }
+        if (startupState == WAIT_FAILED) {
+            return "Manager started, but Windows could not observe its startup state (error " +
+                std::to_string(GetLastError()) + "). Select Refresh to attach.";
         }
         // The manager is independently owned. Closing this connection never terminates it.
         return alphaProfile_

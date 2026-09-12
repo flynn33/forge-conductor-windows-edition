@@ -1,5 +1,6 @@
 #include "ForgeConductor/Mcp/McpServer.h"
 
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Mcp/McpJsonCodec.h"
 #include "ForgeConductor/Mcp/McpProtocol.h"
 
@@ -26,7 +27,7 @@ namespace {
 
 using Json = nlohmann::json;
 
-constexpr std::string_view ProductVersion = "0.9.0";
+constexpr auto ProductVersion = Domain::ProductVersion;
 constexpr std::string_view PrimaryServerName = "forge-conductor";
 constexpr std::string_view FallbackServerName = "forge-conductor-fallback";
 

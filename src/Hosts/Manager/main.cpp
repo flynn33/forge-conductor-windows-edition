@@ -3,6 +3,7 @@
 
 #include "ForgeConductor/Domain/Error.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
+#include "ForgeConductor/Manager/ManagerProcessExitCodes.h"
 
 #include <array>
 #include <cstdlib>
@@ -16,8 +17,6 @@ namespace {
 
 namespace Domain = ForgeConductor::Domain;
 namespace Host = ForgeConductor::Hosts::Manager;
-
-constexpr int InvalidArgumentsExitCode = 2;
 
 void writeError(
     const std::string_view prefix,
@@ -77,7 +76,7 @@ int wmain(const int argc, wchar_t** const argv)
         auto parsed = parseArguments(argc, argv);
         if (!parsed) {
             writeError("Forge Conductor Manager argument error", parsed.error());
-            return InvalidArgumentsExitCode;
+            return ForgeConductor::Manager::ManagerInvalidArgumentsExitCode;
         }
 
         auto processArguments = std::move(parsed).value();
@@ -93,7 +92,7 @@ int wmain(const int argc, wchar_t** const argv)
                 writeError(
                     "Forge Conductor Manager Alpha profile error",
                     alphaProfile.error());
-                return InvalidArgumentsExitCode;
+                return ForgeConductor::Manager::ManagerInvalidArgumentsExitCode;
             }
             options.environment.explicitDataRoot =
                 alphaProfile.value().dataRoot();
@@ -108,6 +107,10 @@ int wmain(const int argc, wchar_t** const argv)
         if (!created) {
             writeError(
                 "Forge Conductor Manager startup failed", created.error());
+            if (created.error().code == Domain::ErrorCodes::UnsupportedVersion) {
+                return ForgeConductor::Manager::
+                    ManagerUnsupportedDataStoreExitCode;
+            }
             return EXIT_FAILURE;
         }
 
