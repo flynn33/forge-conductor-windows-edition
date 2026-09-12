@@ -3,8 +3,8 @@
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Execution revision:** `continuous-delivery-repair-2026-09-12`
 **Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R4.1 — persistent accessible Settings
-**Current branch:** `alpha/r3-native-workflows`
+**Current phase/slice:** R4.4 — scoped maintenance
+**Current branch:** `alpha/r4-settings-reset`
 
 ## Verified state
 
@@ -19,9 +19,7 @@
 
 ## Next exact action
 
-Extend the typed Manager surface and native `LM Studio MCP` / `Tools` pages for R3.2. Reuse the existing deployment service, tool catalog, workspace authority and MCP registration logic to expose installed-registration, connected-client and managed-continuity states; add primary/fallback deploy, inspect and repair actions while preserving foreign entries and the explicit shell preference.
-
-If the R3 PR is pending when a later phase becomes actionable, continue independent work from refreshed main or dependent work from the exact reviewed R3 head on its separate phase branch. Keep the successor PR targeting main and do not merge it ahead of R3.
+Expose the existing transactional project-memory and continuity reset services through one typed Manager maintenance request. Add explicit selected-project memory, continuity, combined, and separately confirmed all-project controls to the native Settings page; verify only against disposable --alpha-root stores.
 
 ## Open dependencies
 

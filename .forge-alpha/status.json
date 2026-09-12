@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
-  "updated_at_utc": "2026-09-12T21:58:17.189227Z",
+  "updated_at_utc": "2026-09-12T22:06:35.931342Z",
   "current_phase": "R4",
-  "current_slice": "R4.1",
+  "current_slice": "R4.4",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r3-native-workflows",
-    "head": "36ef28c4c5e9e67a20c57116f305b63b2412cca3",
+    "branch": "alpha/r4-settings-reset",
+    "head": "86e41980b60c2121f43ec4940b49f673247a0503",
     "origin_main": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4",
     "github_main": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4",
     "dirty_summary": [
-      "R3.1 is committed and pushed to draft PR #14; R3.2 continues on the same phase branch.",
+      "R4.1-R4.3 native Settings implementation is ready to commit on the exact pushed R3 completion head.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Disposable R3 workflow evidence remains under out/alpha-profiles and is not published."
+      "R3 completion PR #15 remains the reviewed dependency for this R4 branch."
     ]
   },
   "baseline": {
@@ -157,7 +157,7 @@
       "last_known_merge": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4"
     },
     "R4": {
-      "implementation": "not_started",
+      "implementation": "in_progress",
       "delivery": "not_started",
       "branch": "alpha/r4-settings-reset",
       "issue_number": 7,
@@ -166,9 +166,9 @@
       "pr_url": null,
       "reviewed_head": null,
       "slices": {
-        "R4.1": "not_started",
-        "R4.2": "not_started",
-        "R4.3": "not_started",
+        "R4.1": "implemented_focused_verification_pending",
+        "R4.2": "implemented_focused_verification_pending",
+        "R4.3": "implemented_focused_verification_pending",
         "R4.4": "not_started",
         "R4.5": "not_started"
       },
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R3.3-R3.5 source implementation completed: Agents and Feed show actual agent/session IDs, tool outcomes, errors and durations; session close and stale-prune actions are connected; Runtimes, Diagnostics and Manager show authoritative service data; required R3 destinations no longer use GenericPanel. Manager/App builds and focused tests pass; R3-G2/G3 remain open for native interaction and reattachment.",
-  "next_action": "Create alpha/r4-settings-reset from the exact pushed R3 head and implement R4.1 persistent accessible Settings while PR #14 awaits native walkthrough/review.",
+  "last_result": "R4.1-R4.3 source implemented: Settings is a dedicated native page for Manager/dashboard, LM Studio discovery, runtime/logging, and paired context controls. It validates through the domain model, reverts pending edits, persists through the Manager, and reads effective values back after save/restart. The x64 Debug native app build passed.",
+  "next_action": "Expose the existing transactional project-memory and continuity reset services through one typed Manager maintenance request, then add explicit project/combined/all-project confirmation controls to Settings and run disposable scope/cancellation/late-writer checks.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

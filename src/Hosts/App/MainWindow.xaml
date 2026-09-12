@@ -263,6 +263,61 @@
      <TextBlock x:Name="OperationalState" Text="Refresh to load Manager-owned data." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
     </StackPanel>
 
+    <StackPanel x:Name="SettingsPanel" Spacing="18" Visibility="Collapsed">
+     <InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
+      Title="Manager-owned settings"
+      Message="Values on this page are loaded from and saved by the Manager. Save performs an effective readback; Revert discards pending edits." />
+     <TextBlock Text="Manager and dashboard" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     <Grid ColumnSpacing="16" RowSpacing="12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <TextBox x:Name="SettingsDashboardHost" Header="Dashboard loopback host" AutomationProperties.Name="Dashboard loopback host" />
+      <NumberBox x:Name="SettingsDashboardPort" Grid.Column="1" Header="Dashboard port" Minimum="1" Maximum="65535" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Dashboard port" />
+      <NumberBox x:Name="SettingsRefreshSeconds" Grid.Row="1" Header="Telemetry refresh interval (seconds)" Minimum="1" Maximum="3600" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Telemetry refresh interval in seconds" />
+      <NumberBox x:Name="SettingsWatchdogSeconds" Grid.Row="1" Grid.Column="1" Header="Manager watchdog interval (seconds)" Minimum="1" Maximum="3600" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Manager watchdog interval in seconds" />
+      <ToggleSwitch x:Name="SettingsAutoRestart" Grid.Row="2" Header="Restart Manager after an unexpected exit" OffContent="Disabled" OnContent="Enabled" />
+      <ToggleSwitch x:Name="SettingsOpenBrowser" Grid.Row="2" Grid.Column="1" Header="Open dashboard when Manager starts" OffContent="Disabled" OnContent="Enabled" />
+      <NumberBox x:Name="SettingsSessionTtl" Grid.Row="3" Header="Inactive session retention (seconds)" Minimum="60" Maximum="31536000" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Inactive session retention in seconds" />
+      <NumberBox x:Name="SettingsShellTimeout" Grid.Row="3" Grid.Column="1" Header="Shell timeout (seconds)" Minimum="1" Maximum="3600" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Shell timeout in seconds" />
+     </Grid>
+     <ComboBox x:Name="SettingsLogLevel" Header="Log detail" Width="260" HorizontalAlignment="Left" AutomationProperties.Name="Log detail">
+      <ComboBoxItem Content="Trace"/><ComboBoxItem Content="Debug"/><ComboBoxItem Content="Information"/>
+      <ComboBoxItem Content="Warning"/><ComboBoxItem Content="Error"/><ComboBoxItem Content="Critical"/>
+     </ComboBox>
+     <TextBlock Text="LM Studio provider" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     <Grid ColumnSpacing="16" RowSpacing="12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <TextBox x:Name="SettingsProviderHost" Header="Loopback host" AutomationProperties.Name="LM Studio loopback host" />
+      <NumberBox x:Name="SettingsProviderPort" Grid.Column="1" Header="Port" Minimum="1" Maximum="65535" SpinButtonPlacementMode="Compact" AutomationProperties.Name="LM Studio port" />
+      <TextBox x:Name="SettingsProviderModel" Grid.Row="1" Grid.ColumnSpan="2" Header="Loaded model name" PlaceholderText="Leave blank to select the first loaded model automatically" />
+      <ToggleSwitch x:Name="SettingsProviderSecure" Grid.Row="2" Header="Use HTTPS" OffContent="HTTP" OnContent="HTTPS" />
+     </Grid>
+     <TextBlock Text="LM Studio is a loopback provider and does not require a stored credential. Test connection discovers the currently loaded model without starting a response." TextWrapping="Wrap" Opacity="0.72" />
+     <TextBlock Text="Context rollover" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     <TextBlock Text="The effective capacity is Forge Conductor's operating threshold. It may be lower than the model's loaded capacity. Rollover begins when observed context plus all three reserves reaches this threshold." TextWrapping="Wrap" Opacity="0.72" />
+     <Grid ColumnSpacing="16" RowSpacing="12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/></Grid.ColumnDefinitions>
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Slider x:Name="SettingsContextCapacitySlider" Header="Effective context capacity" Minimum="4096" Maximum="1048576" StepFrequency="1024" Value="{Binding Value, ElementName=SettingsContextCapacity, Mode=TwoWay}" AutomationProperties.Name="Effective context capacity slider" />
+      <NumberBox x:Name="SettingsContextCapacity" Grid.Column="1" Header="Exact tokens" Minimum="4096" Maximum="1048576" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact effective context capacity in tokens" />
+      <Slider x:Name="SettingsResponseReserveSlider" Grid.Row="1" Header="Next response reserve" Minimum="1" Maximum="65536" StepFrequency="256" Value="{Binding Value, ElementName=SettingsResponseReserve, Mode=TwoWay}" AutomationProperties.Name="Next response reserve slider" />
+      <NumberBox x:Name="SettingsResponseReserve" Grid.Row="1" Grid.Column="1" Header="Exact tokens" Minimum="1" Maximum="1048575" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact next response reserve in tokens" />
+      <Slider x:Name="SettingsHandoffReserveSlider" Grid.Row="2" Header="Handoff reserve" Minimum="1" Maximum="65536" StepFrequency="256" Value="{Binding Value, ElementName=SettingsHandoffReserve, Mode=TwoWay}" AutomationProperties.Name="Handoff reserve slider" />
+      <NumberBox x:Name="SettingsHandoffReserve" Grid.Row="2" Grid.Column="1" Header="Exact tokens" Minimum="1" Maximum="1048575" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact handoff reserve in tokens" />
+      <Slider x:Name="SettingsSafetyMarginSlider" Grid.Row="3" Header="Estimation safety margin" Minimum="1" Maximum="65536" StepFrequency="256" Value="{Binding Value, ElementName=SettingsSafetyMargin, Mode=TwoWay}" AutomationProperties.Name="Estimation safety margin slider" />
+      <NumberBox x:Name="SettingsSafetyMargin" Grid.Row="3" Grid.Column="1" Header="Exact tokens" Minimum="1" Maximum="1048575" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact estimation safety margin in tokens" />
+     </Grid>
+     <StackPanel Orientation="Horizontal" Spacing="12">
+      <Button Content="Load effective settings" Click="SettingsLoadClicked" />
+      <Button Content="Save and read back" Click="SettingsSaveClicked" />
+      <Button Content="Revert pending edits" Click="SettingsRevertClicked" />
+      <Button Content="Test LM Studio" Click="SettingsTestClicked" />
+      <Button Content="Restart Manager" Click="SettingsRestartClicked" />
+     </StackPanel>
+     <TextBlock x:Name="SettingsState" Text="Load effective settings to begin." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
+    </StackPanel>
+
     <StackPanel x:Name="GenericPanel" Spacing="14" Visibility="Collapsed">
      <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
       <StackPanel Spacing="10">

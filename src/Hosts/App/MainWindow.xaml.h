@@ -26,6 +26,11 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProviderLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderSaveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SettingsLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SettingsSaveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SettingsRevertClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SettingsTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SettingsRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -49,6 +54,7 @@ struct MainWindow : MainWindowT<MainWindow> {
 private:
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
+        SettingsLoad, SettingsSave, SettingsTest, SettingsRestart,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember,
         LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
@@ -57,7 +63,10 @@ private:
     winrt::fire_and_forget RunAction(Action action);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
         ReadProviderForm(std::string& error);
+    [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
+        ReadSettingsForm(std::string& error);
     void ApplyProviderForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
+    void ApplySettingsForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
     void ApplyTelemetryPresentation(
         const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot);
     void ApplyDisconnectedTelemetry(std::string_view reason);
