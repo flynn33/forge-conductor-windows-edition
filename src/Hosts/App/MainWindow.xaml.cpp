@@ -190,6 +190,24 @@ void MainWindow::ProviderSaveClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderSave); }
 void MainWindow::ProviderTestClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderTest); }
+void MainWindow::SettingsLoadClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsLoad); }
+void MainWindow::SettingsSaveClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsSave); }
+void MainWindow::SettingsRevertClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (providerSettings_) {
+        ApplySettingsForm(*providerSettings_);
+        SettingsState().Text(L"Pending edits were reverted to the last effective readback.");
+    } else {
+        RunAction(Action::SettingsLoad);
+    }
+}
+void MainWindow::SettingsTestClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsTest); }
+void MainWindow::SettingsRestartClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsRestart); }
 void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStart); }
 void MainWindow::RunStatusClicked(Windows::Foundation::IInspectable const&,
@@ -251,6 +269,7 @@ void MainWindow::NavigationChanged(
     PageTitle().Text(tag);
     storeSavedText(SelectedPageValue, tag);
     const bool provider = tag == L"Provider";
+    const bool settings = tag == L"Settings";
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
     const bool rig = tag == L"Rig";
     const bool projects = tag == L"Projects";
@@ -271,8 +290,9 @@ void MainWindow::NavigationChanged(
     LmStudioMcpPanel().Visibility(lmStudioMcp ? Visibility::Visible : Visibility::Collapsed);
     ToolsPanel().Visibility(tools ? Visibility::Visible : Visibility::Collapsed);
     OperationalPanel().Visibility(operational ? Visibility::Visible : Visibility::Collapsed);
+    SettingsPanel().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
     GenericPanel().Visibility(
-        !provider && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
+        !provider && !settings && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
             ? Visibility::Visible : Visibility::Collapsed);
     if (provider) {
         PageDescription().Text(L"Configure and test the Manager-owned LM Studio Responses endpoint.");
@@ -293,6 +313,9 @@ void MainWindow::NavigationChanged(
             ToolProjectId().Text(winrt::to_hstring(selectedProjectId_));
         }
         RunAction(Action::ToolsList);
+    } else if (settings) {
+        PageDescription().Text(L"Edit effective Manager, dashboard, provider, context, logging, and runtime preferences without editing configuration files.");
+        RunAction(Action::SettingsLoad);
     } else if (operational) {
         PageDescription().Text(L"Inspect authoritative Manager-owned operational data and available session actions.");
         RunAction(Action::OperationalInspect);
@@ -351,6 +374,80 @@ void MainWindow::ApplyProviderForm(
     ResponseReserve().Value(settings.nextResponseReserve);
     HandoffReserve().Value(settings.handoffReserve);
     SafetyMargin().Value(settings.estimationSafetyMargin);
+}
+
+std::optional<::ForgeConductor::Domain::ManagerSettings>
+MainWindow::ReadSettingsForm(std::string& error)
+{
+    try {
+        auto settings = providerSettings_.value_or(
+            ::ForgeConductor::Domain::ManagerSettings{});
+        settings.dashboardHost = winrt::to_string(SettingsDashboardHost().Text());
+        const auto dashboardPort = numberValue(SettingsDashboardPort(), "Dashboard port");
+        const auto providerPort = numberValue(SettingsProviderPort(), "Provider port");
+        if (dashboardPort == 0U || dashboardPort > 65'535U ||
+            providerPort == 0U || providerPort > 65'535U) {
+            throw std::invalid_argument{"Ports must be within 1 through 65535."};
+        }
+        settings.dashboardPort = static_cast<std::uint16_t>(dashboardPort);
+        settings.dashboardRefreshInterval = std::chrono::seconds{
+            numberValue(SettingsRefreshSeconds(), "Refresh interval")};
+        settings.watchdogInterval = std::chrono::seconds{
+            numberValue(SettingsWatchdogSeconds(), "Watchdog interval")};
+        settings.autoRestart = SettingsAutoRestart().IsOn();
+        settings.openBrowserOnStart = SettingsOpenBrowser().IsOn();
+        settings.sessionIdleTtl = std::chrono::seconds{
+            numberValue(SettingsSessionTtl(), "Session retention")};
+        settings.shellTimeout = std::chrono::seconds{
+            numberValue(SettingsShellTimeout(), "Shell timeout")};
+        const auto logIndex = SettingsLogLevel().SelectedIndex();
+        if (logIndex < 0 || logIndex > 5) {
+            throw std::invalid_argument{"Select a log detail level."};
+        }
+        settings.logLevel = static_cast<::ForgeConductor::Domain::LogLevel>(logIndex);
+        settings.localModelHost = winrt::to_string(SettingsProviderHost().Text());
+        settings.localModelPort = static_cast<std::uint16_t>(providerPort);
+        settings.localModelSecure = SettingsProviderSecure().IsOn();
+        settings.localModelName = winrt::to_string(SettingsProviderModel().Text());
+        settings.effectiveContextCapacity = numberValue(
+            SettingsContextCapacity(), "Effective context capacity");
+        settings.nextResponseReserve = numberValue(
+            SettingsResponseReserve(), "Next response reserve");
+        settings.handoffReserve = numberValue(
+            SettingsHandoffReserve(), "Handoff reserve");
+        settings.estimationSafetyMargin = numberValue(
+            SettingsSafetyMargin(), "Estimation safety margin");
+        auto valid = ::ForgeConductor::Domain::validateManagerSettings(settings);
+        if (!valid) throw std::invalid_argument{valid.error().message};
+        return settings;
+    } catch (const std::exception& exception) {
+        error = exception.what();
+        return std::nullopt;
+    }
+}
+
+void MainWindow::ApplySettingsForm(
+    const ::ForgeConductor::Domain::ManagerSettings& settings)
+{
+    SettingsDashboardHost().Text(winrt::to_hstring(settings.dashboardHost));
+    SettingsDashboardPort().Value(settings.dashboardPort);
+    SettingsRefreshSeconds().Value(static_cast<double>(
+        settings.dashboardRefreshInterval.count()));
+    SettingsWatchdogSeconds().Value(static_cast<double>(
+        settings.watchdogInterval.count()));
+    SettingsAutoRestart().IsOn(settings.autoRestart);
+    SettingsOpenBrowser().IsOn(settings.openBrowserOnStart);
+    SettingsSessionTtl().Value(static_cast<double>(settings.sessionIdleTtl.count()));
+    SettingsShellTimeout().Value(static_cast<double>(settings.shellTimeout.count()));
+    SettingsLogLevel().SelectedIndex(static_cast<std::int32_t>(settings.logLevel));
+    SettingsProviderHost().Text(winrt::to_hstring(settings.localModelHost));
+    SettingsProviderPort().Value(settings.localModelPort);
+    SettingsProviderSecure().IsOn(settings.localModelSecure);
+    SettingsProviderModel().Text(winrt::to_hstring(settings.localModelName));
+    SettingsContextCapacity().Value(settings.effectiveContextCapacity);
+    SettingsResponseReserve().Value(settings.nextResponseReserve);
+    SettingsHandoffReserve().Value(settings.handoffReserve);
+    SettingsSafetyMargin().Value(settings.estimationSafetyMargin);
 }
 
 void MainWindow::ApplyTelemetryPresentation(
@@ -596,6 +693,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool toolsAction = action == Action::ToolsList || action == Action::ToolInvoke;
     const bool operationalAction = action == Action::OperationalInspect ||
         action == Action::OperationalPrune || action == Action::OperationalClose;
+    const bool settingsAction = action == Action::SettingsLoad ||
+        action == Action::SettingsSave || action == Action::SettingsTest ||
+        action == Action::SettingsRestart;
     std::string runProject;
     std::string runClient;
     std::string runTask;
@@ -639,6 +739,14 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
         } else if (runId.empty()) {
             RunState().Text(L"Enter a run ID to attach or control a Manager-owned run.");
+            co_return;
+        }
+    }
+    if (action == Action::SettingsSave || action == Action::SettingsTest) {
+        std::string error;
+        submitted = ReadSettingsForm(error);
+        if (!submitted) {
+            SettingsState().Text(winrt::to_hstring("Check pending settings: " + error));
             co_return;
         }
     }
@@ -700,6 +808,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         ToolsState().Text(L"Contacting the Manager…");
     } else if (operationalAction) {
         OperationalState().Text(L"Contacting the Manager…");
+    } else if (settingsAction) {
+        SettingsState().Text(L"Contacting the Manager…");
     } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
         action == Action::ProviderTest) {
         ProviderState().Text(L"Working…");
@@ -761,6 +871,42 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         case Action::ProviderTest:
             message = connection_->testProvider(
                 *submitted, cancellation_.get_token());
+            break;
+        case Action::SettingsLoad:
+            loaded = connection_->providerSettings(cancellation_.get_token());
+            message = loaded.message;
+            break;
+        case Action::SettingsSave: {
+            ::ForgeConductor::Domain::ManagerSettingsPatch patch;
+            patch.dashboardHost = submitted->dashboardHost;
+            patch.dashboardPort = submitted->dashboardPort;
+            patch.dashboardRefreshInterval = submitted->dashboardRefreshInterval;
+            patch.autoRestart = submitted->autoRestart;
+            patch.watchdogInterval = submitted->watchdogInterval;
+            patch.openBrowserOnStart = submitted->openBrowserOnStart;
+            patch.sessionIdleTtl = submitted->sessionIdleTtl;
+            patch.shellTimeout = submitted->shellTimeout;
+            patch.logLevel = submitted->logLevel;
+            patch.localModelHost = submitted->localModelHost;
+            patch.localModelPort = submitted->localModelPort;
+            patch.localModelSecure = submitted->localModelSecure;
+            patch.localModelName = submitted->localModelName;
+            patch.effectiveContextCapacity = submitted->effectiveContextCapacity;
+            patch.nextResponseReserve = submitted->nextResponseReserve;
+            patch.handoffReserve = submitted->handoffReserve;
+            patch.estimationSafetyMargin = submitted->estimationSafetyMargin;
+            message = connection_->saveProviderSettings(
+                patch, cancellation_.get_token());
+            break;
+        }
+        case Action::SettingsTest:
+            message = connection_->testProvider(
+                *submitted, cancellation_.get_token());
+            break;
+        case Action::SettingsRestart:
+            message = connection_->control(
+                ::ForgeConductor::Domain::ManagerControlAction::Restart,
+                cancellation_.get_token());
             break;
         case Action::RunStart:
             runView = connection_->startManagedRun(
@@ -900,6 +1046,27 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             } else {
                 OperationalState().Text(winrt::to_hstring(message));
             }
+        } else if (settingsAction) {
+            if (action == Action::SettingsLoad && loaded.loaded) {
+                providerSettings_ = loaded.settings;
+                ApplyProviderForm(*providerSettings_);
+                ApplySettingsForm(*providerSettings_);
+                SettingsState().Text(winrt::to_hstring(
+                    "Effective settings read back from the Manager. Dashboard " +
+                    loaded.settings.dashboardHost + ":" +
+                    std::to_string(loaded.settings.dashboardPort) +
+                    "; LM Studio " + loaded.settings.localModelHost + ":" +
+                    std::to_string(loaded.settings.localModelPort) +
+                    "; model " + (loaded.settings.localModelName.empty()
+                        ? std::string{"automatic (first loaded model)"}
+                        : loaded.settings.localModelName) + "."));
+            } else {
+                SettingsState().Text(winrt::to_hstring(message));
+                if (action == Action::SettingsSave ||
+                    action == Action::SettingsRestart) {
+                    followUp = Action::SettingsLoad;
+                }
+            }
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
             action == Action::ProviderTest) {
             if (action == Action::ProviderLoad && loaded.loaded) {
@@ -909,6 +1076,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 providerSettings_ = submitted;
             }
             ProviderState().Text(winrt::to_hstring(message));
+            if (action == Action::ProviderSave) followUp = Action::ProviderLoad;
         } else {
             if (action == Action::Refresh && telemetryView.snapshot) {
                 telemetrySnapshot_ = std::move(telemetryView.snapshot);
