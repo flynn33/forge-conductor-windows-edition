@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows control application and MCP tool server for project work with local models in LM Studio.
 
-**Status: Windows Alpha implementation is active; a complete signed candidate exists and installed acceptance remains open.** R1–R4 source is implemented and merged through PR #17. R5 draft [PR #18](https://github.com/flynn33/forge-conductor-windows-edition/pull/18) carries stable 0.9.1 identity, complete package provenance, installer validation, and non-destructive newer-store handling. Windows rejected the first install with `0x800B0109` until the development publisher is trusted at machine scope. Native visual/accessibility and live productive rollover acceptance remain open under their original R6 gates.
+**Status: Windows Alpha implementation is active; a complete signed candidate exists and installed acceptance remains open.** R1–R5 source is merged through [PR #18](https://github.com/flynn33/forge-conductor-windows-edition/pull/18) at `f83fe4c81c261545d70bdf8c786997ded4043dd2`; narrow draft [PR #19](https://github.com/flynn33/forge-conductor-windows-edition/pull/19) records the R5 closeout and later native evidence. Windows rejected the first install with `0x800B0109` until the development publisher is trusted at machine scope. Scaled/high-contrast and live productive rollover acceptance remain open under their original R6 gates.
 
 Use [Product status](docs/STATUS.md) for verified behavior and blockers, [Roadmap](ROADMAP.md) for the current phase sequence, and [Documentation index](docs/DOCUMENTATION-INDEX.md) for active and historical guidance. The adopted execution contract is under [Alpha recovery](docs/implementation/alpha-recovery/instructions/EXECUTION.md).
 

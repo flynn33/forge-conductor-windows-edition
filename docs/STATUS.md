@@ -1,6 +1,6 @@
 # Product status
 
-Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R4 are merged through R4 completion PR #17 at `b54525ac4aadb4847ad7685f4b9dd92c8546abc1`. R5 implementation is in draft PR #18. Implementation, individual checks, review readiness, merge, gate blockers, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
+Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R5 are merged through PR #18 at `f83fe4c81c261545d70bdf8c786997ded4043dd2`, and local main was fast-forwarded to that exact ref. Narrow draft PR #19 carries the R5 documentation closeout and later native evidence. Implementation, individual checks, review readiness, merge, gate blockers, and final acceptance remain separate in [the execution ledger](../.forge-alpha/status.json).
 
 | Area | Current source/evidence | Remaining requirement |
 |---|---|---|

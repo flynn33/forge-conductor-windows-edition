@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-12T23:15:00Z",
+  "updated_at_utc": "2026-09-12T23:28:00Z",
   "current_phase": "R6",
   "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r5-installer-data",
-    "head": "3bcaeb3481022b38d6d6c9783510ace910957cf8",
-    "origin_main": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1",
-    "github_main": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1",
+    "head": "fbad840c83258785135363cb768bec67276c7c46",
+    "origin_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
+    "github_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
     "dirty_summary": [
-      "In-scope R5 closeout documentation and native walkthrough receipts are pending the next R5 PR commit.",
+      "Narrow R5 documentation closeout PR #19 is open as a draft after primary PR #18 merged early; R6 begins from this exact reviewed continuation head.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ref equality remains a separate observation: local main, origin/main, and authenticated GitHub main were b54525ac4aadb4847ad7685f4b9dd92c8546abc1 before returning to R5; the feature branch intentionally differs."
+      "Ref equality is separate from cleanliness: local main, origin/main, and authenticated GitHub main equal f83fe4c81c261545d70bdf8c786997ded4043dd2; the continuation branch intentionally differs."
     ]
   },
   "baseline": {
@@ -192,7 +192,7 @@
     },
     "R5": {
       "implementation": "verified",
-      "delivery": "pr_open",
+      "delivery": "synced",
       "branch": "alpha/r5-installer-data",
       "issue_number": 8,
       "milestone_number": 6,
@@ -220,9 +220,9 @@
           "evidence": "Signer/public-certificate hashes, stable identity, increasing version, helper inputs and post-registration checks were inspected. A normal install attempt returned 0x800B0109 before registration because Local Machine publisher trust was unavailable; actual installed lifecycle stays open under R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full active first-party document review; installer/data behavior and continuation correction updated, stamps refreshed, historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in narrow draft PR #19.",
       "phase_receipt": ".forge-alpha/phases/R5.md",
-      "last_known_merge": null
+      "last_known_merge": "f83fe4c81c261545d70bdf8c786997ded4043dd2"
     },
     "R6": {
       "implementation": "not_started",
@@ -329,7 +329,7 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R5 implementation and its signed 0.9.1.0 candidate are verified in draft PR #18. Native Release walkthrough now passes the R1 ownership, R2 rendered sampling, and R3 page/reattachment gates on a disposable profile. Machine-trusted installation, scaled/high-contrast accessibility, live provider continuity, and authentic schema-9 compatibility remain open under their existing acceptance ownership.",
+  "last_result": "R5 implementation merged in PR #18 at f83fe4c81c261545d70bdf8c786997ded4043dd2 and local main was synchronized. Narrow draft PR #19 preserves the R5 documentation closeout and later native evidence. Machine-trusted installation, scaled/high-contrast accessibility, live provider continuity, and authentic schema-9 compatibility remain open under their existing acceptance ownership.",
   "next_action": "Unpack the exact signed MSIX into an ignored isolated directory and run its GUI/Manager/CLI without repository build paths, then recheck LM Studio availability. Preserve R6-G1/G2/G3 as blocked wherever machine trust, provider, or scaled/high-contrast prerequisites remain.",
   "acceptance": {
     "installed_workflow": "not_run",
