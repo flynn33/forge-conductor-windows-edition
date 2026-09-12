@@ -8,6 +8,7 @@
 #include "ForgeConductor/Application/LegacyMemoryService.h"
 #include "ForgeConductor/Application/ProjectMemoryRepositoryCache.h"
 #include "ForgeConductor/Application/ProjectMemoryService.h"
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
@@ -76,7 +77,7 @@ namespace NativeSessionHost = ForgeConductor::SessionHost;
 
 constexpr std::chrono::seconds StartupTimeout{30};
 constexpr std::chrono::seconds ShutdownTimeout{10};
-constexpr std::string_view ProductVersion{"0.9.0"};
+constexpr auto ProductVersion = Domain::ProductVersion;
 constexpr std::string_view RuntimeName{"forge-conductor-windows-stdio"};
 constexpr std::size_t MaximumEnvironmentValueCharacters = 32U * 1024U;
 

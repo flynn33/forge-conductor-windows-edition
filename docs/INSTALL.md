@@ -9,7 +9,7 @@ README, and `Install-Engineering.ps1`. Extract the engineering ZIP and run the h
 with `-TrustDevelopmentPublisher` to trust this specific signing certificate and install. No private key is exported.
 
 ## Distribution contract
-Produce `ForgeConductor-Windows-0.9.0-alpha.1-x64.zip` (or a reconciled noncolliding Alpha version) containing:
+Produce the versioned x64 Alpha ZIP emitted by `scripts/package.ps1`, containing:
 - Signed `ForgeConductor.Windows_<numeric-version>_x64.msix` with the actual native GUI, CLI, manager, session host and assets.
 - Public development certificate `.cer` and explicit trust instructions for an internal test build; never a PFX/private key.
 - Required Microsoft runtime dependencies, when not self-contained, with a working local install path.
@@ -29,8 +29,7 @@ The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.e
 Verify actual target output names rather than blindly adopting this proposed staging list.
 
 Choose a stable package identity and publisher once; make manifest Publisher match the signing certificate exactly.
-Use four-component numeric MSIX versions, for example `0.9.0.1` alongside human `0.9.0-alpha.1`.
-Reconcile current 0.9.0 source and 0.1.0.0 template values through one version source. Avoid downgrading an installed build.
+The R5 candidate uses product version `0.9.1` and numeric MSIX version `0.9.1.0`, incremented from the earlier `0.9.0.0` engineering package. Runtime identity and package scripts validate this source. Avoid downgrading an installed build.
 Replace every manifest placeholder and include the required logos/resources. The supplied PNG assets are sufficient
 starter packaging assets, not a UI design project.
 

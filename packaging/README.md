@@ -1,8 +1,10 @@
-# Packaging templates
+# Windows Alpha package inputs
 
-These files are placeholders. Codex must generate the final WinUI/MSIX project from the installed Windows App SDK template, preserve required manifest capabilities only, replace every `REPLACE_*` value, add all product executables/resources, and validate with MakeAppx/SignTool/MSBuild.
+`scripts/package.ps1` turns the committed x64 Release staging manifest into the signed MSIX. It keeps package identity `ForgeConductor.Windows.Alpha`, takes the numeric package version from the CMake product version, substitutes the selected certificate subject, and fails if any manifest placeholder remains.
 
-Do not retain guessed package identity, publisher, update URI, version, or asset names.
+The payload contains the GUI, Manager, CLI/MCP entry point, SessionHost, self-contained Windows App SDK files, release Visual C++ runtime, WinUI resources, agent resources, Forsetti manifest, assets, and third-party notices. `candidate-provenance.json` records the exact committed source and build identity inside the MSIX; `payload-manifest.json` hashes every pre-package file. The companion distribution records package/certificate hashes and the observed Authenticode signer. Only the public certificate is distributed.
+
+Package creation requires clean committed product and packaging inputs and a Release staging manifest from the same commit/tree. The installation helper validates hashes, signer, stable identity, strictly increasing update version, and Windows' post-install registration. Trusting the internal development publisher remains an explicit administrator action.
 
 <!-- alpha-phase-review:start -->
 Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).

@@ -26,6 +26,16 @@ $entries = foreach ($name in @('ForgeConductorApp.exe','forge-conductor.exe','Fo
     $file = Join-Path $output $name
     @{name=$name;path=$file;sha256=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}
 }
-@{configuration=$Configuration;architecture='x64';app_directory=$output;executables=@($entries)} |
+$sourceCommit = (& git -C $root rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $sourceCommit) { throw 'Could not resolve the build source commit.' }
+$sourceTree = (& git -C $root rev-parse 'HEAD^{tree}').Trim()
+if ($LASTEXITCODE -ne 0 -or -not $sourceTree) { throw 'Could not resolve the build source tree.' }
+$sourceInputs = @(
+    'CMakeLists.txt','CMakePresets.json','vcpkg.json','vcpkg-configuration.json',
+    'include','src')
+$sourceDirty = @(& git -C $root status --porcelain=v1 --untracked-files=all -- @sourceInputs)
+@{configuration=$Configuration;architecture='x64';app_directory=$output;
+  source_commit=$sourceCommit;source_tree=$sourceTree;source_dirty=@($sourceDirty);
+  executables=@($entries)} |
     ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $output 'staging-manifest.json') -Encoding utf8
 Write-Host "Native application and sibling services staged at $output"

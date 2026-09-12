@@ -3,9 +3,11 @@
 ## Scope and source
 Phase/milestone: [actual]
 Branch and reviewed product source commit/tree: [actual]
-Primary phase issue / PR: [actual links; PR may be recorded in a follow-up commit to this same PR]
+Primary phase issue / PR: [actual links; explicitly draft until ready; PR may be recorded in a follow-up commit to this same PR]
+Narrow continuation PR after an early merge: [reuse existing branch/PR; otherwise not applicable]
 Implementation status: [in progress / verified]
-Delivery status at this committed record: [not submitted / PR open / awaiting merge; don't predict a merge]
+Delivery status at this committed record: [draft PR / ready for review / awaiting merge / merged / synchronized; don't predict a merge]
+Acceptance status: [separate actual native/live/installed results]
 
 ## Completed slices
 | Slice | Concrete behavior/change | Evidence |
@@ -50,4 +52,4 @@ Merge authority/state: [actual]
 
 Post-merge receipt is a PR comment plus ignored local evidence, not a new tracked edit just to include this record's own commit SHA. The next ordinary phase update can incorporate previous merge facts. Final delivery requires actual GitHub/local equality, never an anticipated merge.
 
-After recording this checkpoint, execute the immediately available next action. Phase closeout, PR readiness and a saved handoff do not end the full R0–R7 assignment.
+After recording this checkpoint, execute the immediately available next action. Native compaction, phase closeout, PR readiness and a saved handoff do not end the full R0–R7 assignment. If a primary PR merged early, preserve its history and reuse one narrowly scoped continuation for unfinished phase work.

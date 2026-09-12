@@ -814,12 +814,12 @@ void testCentralRejectsUnsupportedFutureAndAmbiguousLayouts(
         auto environment = KernelEnvironment::create(directory.path(), L"store.sqlite");
         auto connection = openDatabase(
             *environment, WinsqliteOpenMode::ReadWriteExisting, context);
-        take(connection.execute("UPDATE schema_version SET version = 8;", context));
+        take(connection.execute("UPDATE schema_version SET version = 9;", context));
         take(connection.close(context));
         environment.reset();
         requireRejectedWithoutMainMutation(
             directory.path(), Domain::ErrorCodes::UnsupportedVersion,
-            "future central schema was not rejected without changing the main file");
+            "schema-9 central store was not rejected without changing the main file");
     }
     {
         ScopedTestDirectory directory{L"central-ambiguous"};

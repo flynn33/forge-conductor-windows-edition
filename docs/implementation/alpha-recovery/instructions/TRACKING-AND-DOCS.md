@@ -26,7 +26,7 @@ For blockers record `id`, exact failure, affected slice/gate, dependency type, l
 ## Update while working
 After each coherent slice, update its result, current cursor and relevant changed product documentation. Do not commit after every command or maintain command-by-command transcripts. One concise gate receipt may cover multiple relevant cases. Record source state accurately when evidence was obtained before a documentation-only commit: identify the tested code commit or source-tree hash and the later nonfunctional delta rather than claiming the test ran at a future SHA.
 
-On compaction/restart read root AGENTS, NEXT, the current status row and current phase. Refresh Git/PR/process facts needed to proceed. Do not repeatedly reload the entire repository, old package corpus, all instructions and logs.
+Codex Desktop native compaction is a normal continuation mechanism. On compaction or restart, read root AGENTS, NEXT, the current status row and current phase, refresh only the Git/PR/process facts needed to proceed, and execute the recorded current slice. The live cursor, ledger, branch, PR, and repository evidence outrank a static package prompt. Do not repeatedly reload the entire repository, old package corpus, all instructions and logs.
 
 ## Mandatory all-document update at EVERY phase completion
 This is a required delivery step, not optional cleanup after the final phase.

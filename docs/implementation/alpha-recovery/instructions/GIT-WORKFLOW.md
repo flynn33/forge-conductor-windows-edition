@@ -1,11 +1,11 @@
 # Owner-authenticated phase PRs and exact source synchronization
 
 ## The required transaction
-Every R phase has one primary phase branch and one PR **targeting `main` in `flynn33/forge-conductor-windows-edition`**. Open that PR as a draft after the first verified slice so the active work is visible, then update the same PR through the phase boundary. Finish the phase's functional checks and documentation sweep before marking it ready, and record the real URL. Reuse an existing PR for the same phase; do not open duplicates on resume.
+Every R phase has one primary phase branch and one PR **targeting `main` in `flynn33/forge-conductor-windows-edition`**. Open that PR explicitly as a draft after the first verified slice so the active work is visible, then update the same PR through the phase boundary. Finish the phase's functional checks and documentation sweep before marking it ready, and record the real URL. Reuse an existing PR for the same phase; do not open duplicates on resume. If the primary PR merges before the scoped phase work is complete, preserve that PR's history and use one narrowly scoped continuation PR for the missing work. Reuse an existing continuation branch or PR before creating one.
 
 **Merge authorization:** the owner explicitly requested phase PRs. Follow any already explicit owner authorization for Codex to merge passing PRs. Without such standing authorization, leave the PR ready for the owner's merge; do not infer permission to self-approve, bypass review or silently merge from the instruction to open a PR. A pending merge is a delivery dependency, not permission to stop independent implementation. When the owner or an authorized normal merge completes, fetch and synchronize local main immediately. Never enable auto-merge or change branch protection solely to avoid waiting. This package does not authorize public releases.
 
-Phase implementation is verified before submission; phase delivery is complete only after its actual merge and synchronization. GitHub's actual PR state is the merge authority. Never mark a planned merge as done. E07–E10 in [Sources](../audit/SOURCES.md) document the command behavior; the repository's current settings must be rechecked.
+Implementation progress, each functional check, draft PR visibility, review readiness, actual merge, synchronization, and product acceptance are recorded separately. Phase delivery is complete only after its actual merge and synchronization. GitHub's actual PR state is the merge authority. Never mark a planned merge as done. E07–E10 in [Sources](../audit/SOURCES.md) document the command behavior; the repository's current settings must be rechecked.
 
 ## 1. Observe without disturbing
 Run commands from the supplied D: checkout. Check exit status after each native command; a failed fetch/auth/PR command is not a receipt.
@@ -110,7 +110,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Local main diverged; preserve and reconcile, n
 A divergent main needs investigation: retain a named preservation branch for local-only commits, determine whether they are in-scope, and deliver them through the appropriate PR. Do not erase them to satisfy the equality check. Resolve conflicts by intent and rerun only the affected functionality.
 
 ## 7. Prove exact tracked-source equality
-The owner wants local source and GitHub source exactly aligned. That means the same selected branch commit/tree, clean tracked source/index, and no unpublished source files. It does not mean cloning GitHub server metadata, uploading ignored build output, moving local credentials, or publishing live application databases. Respect `.gitattributes` normalization rather than demanding matching filesystem timestamps/CRLF bytes outside Git's tracked content model.
+The owner wants local source and GitHub source exactly aligned. Report ref equality and working-tree cleanliness as separate observations: equality means the selected local, tracking, and GitHub refs identify the same commit/tree, while cleanliness describes tracked, staged, and untracked local files. Unrelated preserved work can make the tree dirty without disproving ref equality. Do not upload ignored build output, move local credentials, or publish live application databases to make the status empty. Respect `.gitattributes` normalization rather than demanding matching filesystem timestamps/CRLF bytes outside Git's tracked content model.
 
 After a successful final fetch, verify the checked-out branch is `main` and compare **three independently obtained** main SHAs:
 

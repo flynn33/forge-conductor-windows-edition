@@ -32,6 +32,7 @@
 #include "ForgeConductor/Application/ProjectMemoryRepositoryCache.h"
 #include "ForgeConductor/Application/ProjectMemoryService.h"
 #include "ForgeConductor/Dashboard/DashboardStaticAssetStore.h"
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
@@ -132,8 +133,8 @@ using namespace std::chrono_literals;
 
 constexpr std::chrono::seconds StartupTimeout{30};
 constexpr std::chrono::seconds ShutdownTimeout{10};
-constexpr std::string_view ProductName{"Forge Conductor"};
-constexpr std::string_view ProductVersion{"0.9.0"};
+constexpr auto ProductName = Domain::ProductName;
+constexpr auto ProductVersion = Domain::ProductVersion;
 constexpr std::string_view RuntimeName{"windows-manager"};
 constexpr std::size_t MaximumLmStudioSelectionRoots =
     InfrastructureWindows::WindowsWorkspaceAuthority::MaximumTrustedRootsPerPolicy;

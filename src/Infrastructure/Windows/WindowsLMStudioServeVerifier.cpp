@@ -1,5 +1,6 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioServeVerifier.h"
 
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Domain/Utf8.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "Detail/UtfConversion.h"
@@ -105,7 +106,7 @@ constexpr std::size_t MaximumInputSchemaBytes = 32U * 1024U;
 constexpr std::size_t MaximumExecutableSearchPathCharacters =
     Domain::MaximumProcessEnvironmentValueBytes + 1U;
 constexpr std::string_view RequestedProtocolVersion = "2025-11-25";
-constexpr std::string_view ExpectedServerVersion = "0.9.0";
+constexpr auto ExpectedServerVersion = Domain::ProductVersion;
 
 struct BoundedJsonRejected final {};
 
@@ -448,7 +449,7 @@ struct BoundedJsonRejected final {};
         {"params",
          Json{{"capabilities", Json::object()},
               {"clientInfo", Json{{"name", "forge-conductor-lmstudio-smoke"},
-                                   {"version", "0.9.0"}}},
+                                   {"version", std::string{ExpectedServerVersion}}}},
               {"protocolVersion", RequestedProtocolVersion}}}};
     const Json initialized{{"jsonrpc", "2.0"},
                            {"method", "notifications/initialized"},

@@ -1,6 +1,7 @@
 #include "CliCompositionRoot.h"
 #include "McpServeCompositionRoot.h"
 
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsDashboardUriActivationCommand.h"
 
 #include <iostream>
@@ -13,7 +14,7 @@ namespace ForgeConductor::Hosts::Cli {
 namespace {
 
 constexpr std::string_view ProductName{"Forge Conductor"};
-constexpr std::string_view ProductVersion{"0.9.0"};
+constexpr auto ProductVersion = Domain::ProductVersion;
 
 } // namespace
 
