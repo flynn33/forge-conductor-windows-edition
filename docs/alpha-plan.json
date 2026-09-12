@@ -321,8 +321,8 @@
         "issue_number": 6,
         "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/6",
         "branch": "alpha/r3-native-workflows",
-        "pr_number": null,
-        "pr_url": null
+        "pr_number": 14,
+        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/14"
       }
     },
     {

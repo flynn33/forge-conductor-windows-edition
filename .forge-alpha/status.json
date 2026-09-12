@@ -2,18 +2,18 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
-  "updated_at_utc": "2026-09-12T20:16:05.379676Z",
+  "updated_at_utc": "2026-09-12T20:24:23.880348Z",
   "current_phase": "R3",
   "current_slice": "R3.2",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r3-native-workflows",
-    "head": "working R3.1 changes based on bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
+    "head": "da199521176a338774a5e12bcd58fddddb9cbdce",
     "origin_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
     "github_main": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5",
     "dirty_summary": [
-      "R3.1 typed Manager project and memory operations, native Projects page, focused tests, and continuous-delivery guidance are in the reviewed working tree.",
+      "R3.1 is committed and pushed to draft PR #14; R3.2 continues on the same phase branch.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
       "Disposable R3 workflow evidence remains under out/alpha-profiles and is not published."
     ]
@@ -124,12 +124,12 @@
     },
     "R3": {
       "implementation": "in_progress",
-      "delivery": "not_started",
+      "delivery": "pr_open",
       "branch": "alpha/r3-native-workflows",
       "issue_number": 6,
       "milestone_number": 4,
-      "pr_number": null,
-      "pr_url": null,
+      "pr_number": 14,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/14",
       "reviewed_head": null,
       "slices": {
         "R3.1": "verified",

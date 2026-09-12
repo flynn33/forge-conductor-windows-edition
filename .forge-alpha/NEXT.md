@@ -10,7 +10,7 @@
 
 - PR #13 merged at `bdd6e05fd1843a353116628b1ef33c2e6a948fc5`; local `main`, `origin/main`, and a fresh GitHub ref observation were synchronized before the R3 branch was created.
 - R2-G2/G3 remain blocked under their original IDs for native rendered-value, keyboard, scaling, and high-contrast inspection. The merge did not close those acceptance checks.
-- R3.1 is implemented in the current branch: typed Manager requests expose project listing/registration and persistent memory search/read/write/status; the native Projects page shows exact identity, authorized folders, persistence health and records, persists selection, and binds that exact ID into Autonomy.
+- Draft [PR #14](https://github.com/flynn33/forge-conductor-windows-edition/pull/14) is open from commit da199521176a338774a5e12bcd58fddddb9cbdce; R3.1 is implemented in the current branch: typed Manager requests expose project listing/registration and persistent memory search/read/write/status; the native Projects page shows exact identity, authorized folders, persistence health and records, persists selection, and binds that exact ID into Autonomy.
 - Focused evidence: x64 Debug Manager and App builds passed; Manager protocol passed 625 assertions; dispatcher passed 10 groups including rejection of a cross-project memory response; the real native P2 workflow smoke passed on a fresh isolated profile with two distinct projects, no memory leakage and memory persistence after process restart.
 - The corrected continuous-delivery rule is incorporated into root execution/Git guidance and the handoff/closeout templates as part of this R3 change.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
