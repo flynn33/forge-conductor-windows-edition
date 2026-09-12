@@ -42,6 +42,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

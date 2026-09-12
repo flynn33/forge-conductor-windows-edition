@@ -16,12 +16,19 @@
 - Reconciled merged PR #2 and the real GitHub main, created R0–R7 milestones and phase issues, and migrated the execution ledger to R phase semantics.
 - Reconciled all active first-party documentation and classified prior P0–P6 guidance and audit records as historical reference.
 
+### R1 — Manager-owned managed runs and continuity controls
+
+- Added a durable Manager-owned ordinary run service with typed start/status/pause/resume/cancel commands and native GUI controls.
+- Completed `/v1/responses` function-call correlation through the authorized native MCP tool router with bounded turns, exact project/run/generation binding, and safe handling of uncertain recovered work.
+- Separated lifetime token accounting from retained context, deduplicated provider observations, and returned productive successor response identity to the ordinary run loop after a canonical context-only handoff.
+- Fixed isolated first-start Manager initialization by preparing the memory and handoff roots before workspace authority validation.
+- Verified the affected Manager, continuity, transport, environment, and native app builds; live LM Studio continuity remains an R6 acceptance requirement.
+
 ### Remaining Alpha work
 
-- Complete the typed Manager-owned ordinary run path and productive continuity wiring in R1.
 - Complete native telemetry, operational pages, persistent accessible Settings and scoped reset, installer/data behavior, and real installed/live acceptance in R2–R7.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

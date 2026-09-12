@@ -7,8 +7,8 @@ The active plan is `windows-alpha-recovery-2026-09-12`; its machine-readable sco
 | Phase | Milestone and issue | Deliverable | Delivery |
 |---|---|---|---|
 | [R0](docs/implementation/alpha-recovery/phases/R0.md) | [WA-R0](https://github.com/flynn33/forge-conductor-windows-edition/milestone/1) / [#3](https://github.com/flynn33/forge-conductor-windows-edition/issues/3) | Current baseline, adopted instructions, accountable delivery workflow | Implementation verified; [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11) awaiting normal merge |
-| [R1](docs/implementation/alpha-recovery/phases/R1.md) | [WA-R1](https://github.com/flynn33/forge-conductor-windows-edition/milestone/2) / [#4](https://github.com/flynn33/forge-conductor-windows-edition/issues/4) | Manager-owned ordinary inference and context continuity wiring | Next |
-| [R2](docs/implementation/alpha-recovery/phases/R2.md) | [WA-R2](https://github.com/flynn33/forge-conductor-windows-edition/milestone/3) / [#5](https://github.com/flynn33/forge-conductor-windows-edition/issues/5) | Real native telemetry and visual dashboards | Planned |
+| [R1](docs/implementation/alpha-recovery/phases/R1.md) | [WA-R1](https://github.com/flynn33/forge-conductor-windows-edition/milestone/2) / [#4](https://github.com/flynn33/forge-conductor-windows-edition/issues/4) | Manager-owned ordinary inference and context continuity wiring | Implementation verified; PR pending creation; native visual control walkthrough open |
+| [R2](docs/implementation/alpha-recovery/phases/R2.md) | [WA-R2](https://github.com/flynn33/forge-conductor-windows-edition/milestone/3) / [#5](https://github.com/flynn33/forge-conductor-windows-edition/issues/5) | Real native telemetry and visual dashboards | Next |
 | [R3](docs/implementation/alpha-recovery/phases/R3.md) | [WA-R3](https://github.com/flynn33/forge-conductor-windows-edition/milestone/4) / [#6](https://github.com/flynn33/forge-conductor-windows-edition/issues/6) | Native operating pages and local workflows | Planned |
 | [R4](docs/implementation/alpha-recovery/phases/R4.md) | [WA-R4](https://github.com/flynn33/forge-conductor-windows-edition/milestone/5) / [#7](https://github.com/flynn33/forge-conductor-windows-edition/issues/7) | Accessible settings and scoped maintenance | Planned |
 | [R5](docs/implementation/alpha-recovery/phases/R5.md) | [WA-R5](https://github.com/flynn33/forge-conductor-windows-edition/milestone/6) / [#8](https://github.com/flynn33/forge-conductor-windows-edition/issues/8) | Installable signed Windows candidate and data behavior | Planned |
@@ -17,7 +17,7 @@ The active plan is `windows-alpha-recovery-2026-09-12`; its machine-readable sco
 
 ## Execution
 
-R0 preserves and reconciles the existing foundation. R1 adds the first missing functional link: ordinary inference enters a typed Manager-owned run service and feeds real usage/context signals into continuity. R2–R5 complete telemetry, native workflows, settings/reset, and installer/data behavior. R6 performs the small real installed/live acceptance pass; R7 closes documentation and source synchronization.
+R0 preserves and reconciles the existing foundation. R1 supplies the typed Manager-owned ordinary Responses/tool loop, authoritative retained-context observations, continuity successor ownership, and native run controls. R2–R5 complete telemetry, native workflows, settings/reset, and installer/data behavior. R6 performs the small real installed/live acceptance pass; R7 closes documentation and source synchronization.
 
 Independent R2–R5 slices can continue while a provider, installation permission, migration source, review, or merge dependency is unavailable. Each phase has one primary PR to `main`; implementation, PR delivery, actual merge, and final acceptance remain distinct states.
 
@@ -26,6 +26,6 @@ The prior P0–P6 plan is retained under [historical implementation records](doc
 Full native operational telemetry, all required page functions, context settings, and the Windows installer are part of this Alpha. Optional browser-dashboard parity, advanced analytics, broad connector expansion, additional architectures, public Store/release infrastructure, and unrelated security/stress campaigns remain outside this internal delivery.
 
 <!-- alpha-phase-review:start -->
-Phase review: R0 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

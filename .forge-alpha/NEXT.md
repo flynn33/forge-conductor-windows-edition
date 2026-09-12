@@ -1,31 +1,34 @@
-# Resume — current Windows Alpha assignment
+# Windows Alpha execution cursor
 
-**Plan:** `windows-alpha-recovery-2026-09-12`
+**Package identity:** `windows-alpha-recovery-2026-09-12`
 **Repository:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R1.1
-**Observed branch / HEAD / origin-main:** `alpha/r0-reconcile` / `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b` before R0 edits / `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b`, observed 2026-09-12
-**Primary phase issue / PR:** [R0 issue #3](https://github.com/flynn33/forge-conductor-windows-edition/issues/3) / [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11), awaiting normal merge
-**Preserved unrelated work:** modified `.forge-qwen/state/event-ledger.jsonl`, modified `.forge-qwen/state/microtasks.json`, and untracked `.forge-qwen/state/evidence/P01-V/` plus `.forge-qwen/state/scan_microtasks.py`. Ignored backup receipt: `out/alpha-evidence/r0-preservation-20260912T145845Z/`.
+**Current phase/slice:** R2.1
+**Current branch:** `alpha/r1-managed-runs`
 
-## Latest concrete result
+## Verified state
 
-PR #2 is merged into GitHub main. R0 adopted the replacement instructions and R0–R7 plan, migrated the live ledger without discarding P0–P6 evidence, verified package checksums, verified owner `flynn33` authentication/push access and owner Git identity, and created milestones 1–8 with issues 3–10. The product source was unchanged in R0, so prior build, fixture and engineering package receipts remain historical evidence rather than newly executed tests.
+- R1 implementation is verified at product commit `759a86329fa67eca34d14cfba1131584d9761103`; R1-G1 and R1-G2 passed focused native builds and controlled service/transport tests.
+- The staged Debug GUI attached, detached, and reattached to the same Manager in `out/alpha-profiles/r1-gui-smoke`; the receipt is `out/alpha-evidence/r1/gui-manager-attach-detach.json`.
+- R1-G3 remains blocked only for the native visual control walkthrough because the available computer-control surface exposed browser tabs and no native application controls.
+- LM Studio was offline at `127.0.0.1:1234`; live provider acknowledgment and productive successor proof remains R6-G2.
+- R0 [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11) is still awaiting normal merge.
+- Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 
-LM Studio `127.0.0.1:1234` currently refuses TCP connections. The isolated Debug Manager process previously recorded as PID 32068 was rechecked and is still running from this repository's ignored build output. Do not treat that PID as stable state.
+## Exact next actions
 
-## Next exact action
+1. Push `alpha/r1-managed-runs`, open the separate R1 PR against `main`, update issue #4, and record the actual PR URL in this branch.
+2. Continue on dependent branch `alpha/r2-native-telemetry` from the reviewed R1 head after reading the active R2 phase and telemetry/UI contract.
+3. Implement R2.1 by composing one shared typed telemetry snapshot from existing Manager/runtime, provider, context/continuity, project/run/tool, event, and store-health sources. Preserve authoritative R1 token values rather than recomputing them in the GUI.
 
-R0 validation, owner push, PR creation and head verification are complete. Create the dependent `alpha/r1-managed-runs` branch from the reviewed R0 head and implement R1.1 in the existing Manager composition: a typed Manager-owned ordinary run service that owns Responses turns and reports real usage/context observations to `ContinuityAutomation`.
+## Open dependencies
 
-Read only `docs/implementation/alpha-recovery/phases/R1.md`, the product contract sections it cites, and the existing Manager/continuity/protocol source needed for that edit.
+- `B-R1-NATIVE-UI-CONTROL`: run the actual Autonomy/Continuity button walkthrough when a native Windows UI control surface is available.
+- `B-R1-LMSTUDIO-OFFLINE`: start a tool-capable LM Studio server for R6 live continuity acceptance.
+- `B-R5-CENTRAL-SCHEMA-HISTORY`: authentic C008/C009 history remains unavailable; continue using disposable `--alpha-root` profiles and never mutate the owner's newer live store.
 
-## Open blockers and independent work
+R1 delivery is not merged merely because its implementation and focused checks pass. Follow the normal PR/merge workflow and refresh real branch/main state after an actual merge.
 
-- `B-R1-LMSTUDIO-OFFLINE`: TCP connection to `127.0.0.1:1234` was refused on 2026-09-12. Live R1/R6 proof needs a running tool-capable LM Studio model; R1.1–R1.4 implementation and fixture checks remain actionable.
-- `B-R5-CENTRAL-SCHEMA-HISTORY`: source has central migrations C001–C007 while prior preserved evidence reports the owner's store at schema 9. Use `--alpha-root`; do not open/modify the live store or fabricate C008/C009.
-
-## Phase closeout obligations
-
-R0-G1 and R0-G2 passed and PR #11 awaits normal merge. R1 requires its focused implementation gates, README/changelog/roadmap/status/plan/cursor updates, a complete active-document review, owner push and its separate PR to main. Continue the dependent R1 branch now; reconcile refreshed main after R0 actually merges.
-
-No reset/reclone, no new profile subsystem, no quota policy, no fake live evidence. Refresh the minimal actual state and continue this slice.
+<!-- alpha-phase-review:start -->
+Phase review: R1 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
+Delivery/merge status is recorded by the linked phase pull request.
+<!-- alpha-phase-review:end -->
