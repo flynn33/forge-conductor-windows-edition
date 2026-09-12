@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-12T22:55:00Z",
-  "current_phase": "R5",
-  "current_slice": "R5.2",
+  "updated_at_utc": "2026-09-12T23:15:00Z",
+  "current_phase": "R6",
+  "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r5-installer-data",
-    "head": "82312a471028f2b49d4a83845835bb3b2f447c71",
+    "head": "3bcaeb3481022b38d6d6c9783510ace910957cf8",
     "origin_main": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1",
     "github_main": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1",
     "dirty_summary": [
-      "In-scope execution correction and R5 cursor edits are pending the next ordinary R5 commit.",
+      "In-scope R5 closeout documentation and native walkthrough receipts are pending the next R5 PR commit.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ref equality is recorded separately: local main, origin/main and authenticated GitHub PR #17 merge ref were b54525ac4aadb4847ad7685f4b9dd92c8546abc1 before returning to R5."
+      "Ref equality remains a separate observation: local main, origin/main, and authenticated GitHub main were b54525ac4aadb4847ad7685f4b9dd92c8546abc1 before returning to R5; the feature branch intentionally differs."
     ]
   },
   "baseline": {
@@ -80,8 +80,8 @@
           "evidence": "Controlled production-service fixtures passed normal response/tool/result correlation, offline/bad response, retained-context deduplication, continuity observation, pause/resume/cancel, and uncertain recovered-work behavior."
         },
         "R1-G3": {
-          "status": "blocked",
-          "evidence": "Actual staged GUI attached, detached, and reattached to the same isolated Manager; receipt out/alpha-evidence/r1/gui-manager-attach-detach.json. Native UI control automation was unavailable, so the visual button walkthrough was not run; live inference was not run because LM Studio was offline."
+          "status": "passed",
+          "evidence": "The actual x64 Release GUI started an isolated Manager, rendered its state, closed, and reopened against the same surviving Manager PID 31172 without duplicate ownership. Live inference remains separately not run because LM Studio is offline. Receipt: out/alpha-evidence/r6/native-ui-and-reattach-20260912.json."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
@@ -110,12 +110,12 @@
           "evidence": "20/20 Windows CPU/RAM collector checks passed, including invalid/stale/reset and real-machine cases; 569 protocol assertions, 9 dispatcher groups, an authenticated named-pipe round trip, and the telemetry presentation group passed on x64 Debug source through abda1e6."
         },
         "R2-G2": {
-          "status": "blocked",
-          "evidence": "Partial real execution: out/alpha-evidence/r2/freshness-lifetime.json records three changing Manager/Windows observations, nine seconds of repeated GUI refresh, Manager survival after GUI close, and a 7.188-second stable disconnected refresh probe. Native visual control was unavailable, so rendered chart/value comparison and visual stale inspection were not performed."
+          "status": "passed",
+          "evidence": "The real x64 Release GUI rendered changing CPU samples, stable RAM, explicit unsupported GPU utilization with detected adapter memory, and 326 history samples after reattach. GUI RAM 14.8% agreed with Windows observation 14.9%; disconnected rendering was previously exercised. Receipt: out/alpha-evidence/r6/native-ui-and-reattach-20260912.json."
         },
         "R2-G3": {
           "status": "blocked",
-          "evidence": "Native visuals expose AutomationProperties names plus direct text equivalents and redraw on SizeChanged. The available control surface exposed browser tabs only, so keyboard navigation and enlarged/high-contrast native walkthroughs were not performed."
+          "evidence": "Native controls and equivalent values are exposed through UI Automation, and visible keyboard focus was observed. The enlarged/high-contrast layout pass and full keyboard traversal were not performed; this gate remains open."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R2 review of every active first-party document; affected telemetry/UI/operator/test content updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
@@ -133,10 +133,10 @@
       "reviewed_head": "86e41980b60c2121f43ec4940b49f673247a0503",
       "slices": {
         "R3.1": "verified",
-        "R3.2": "in_progress",
-        "R3.3": "in_progress",
-        "R3.4": "in_progress",
-        "R3.5": "in_progress"
+        "R3.2": "verified",
+        "R3.3": "verified",
+        "R3.4": "verified",
+        "R3.5": "verified"
       },
       "gates": {
         "R3-G1": {
@@ -144,15 +144,15 @@
           "evidence": "Fresh isolated two-project memory/tool workflow passed with foreign MCP preservation and restart persistence."
         },
         "R3-G2": {
-          "status": "blocked",
-          "evidence": "All required native pages have dedicated typed implementations; browser-only control cannot operate the native walkthrough."
+          "status": "passed",
+          "evidence": "The actual x64 Release GUI visited Rig, LM Studio MCP, Agents, Tools, Feed, Projects, Autonomy, Continuity, Runtimes, Provider, Events & Evidence, Diagnostics, Manager, and Settings. It started the Manager, inspected incomplete LM Studio registration, loaded 53 tools/10 agents, and registered a disposable project."
         },
         "R3-G3": {
-          "status": "blocked",
-          "evidence": "Service restart persistence passed; native selection/reattachment awaits interactive native UI control."
+          "status": "passed",
+          "evidence": "After GUI close, Manager PID 31172 remained alive. Reopening the GUI attached to that same PID and retained exact project 51e1f9a4-5943-46f1-9797-35a275768cc3 with its authorized folder and healthy memory store."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R4 review includes final R3 delivery/source status while native R3-G2/G3 remain open.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 review records the later native page and reattachment evidence that closed R3-G2/G3.",
       "phase_receipt": ".forge-alpha/phases/R3.md",
       "last_known_merge": "1f6991d5fc60928c0a12ca348d08737fae703b1f"
     },
@@ -183,7 +183,7 @@
         },
         "R4-G3": {
           "status": "blocked",
-          "evidence": "Labeled native controls, accessible names, standard focus, paired slider/exact values and scaling-safe actions are implemented. Browser-only control cannot perform the native keyboard/scaling/high-contrast walkthrough."
+          "evidence": "Actual Settings rendered accessible names, paired sliders/exact values, visible keyboard focus, effective readback, and exact reset confirmations. The context slider/exact-value keyboard operation plus scaled/high-contrast layout pass were not completed, so the gate remains open."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
@@ -191,37 +191,37 @@
       "last_known_merge": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1"
     },
     "R5": {
-      "implementation": "in_progress",
-      "delivery": "not_started",
+      "implementation": "verified",
+      "delivery": "pr_open",
       "branch": "alpha/r5-installer-data",
       "issue_number": 8,
       "milestone_number": 6,
-      "pr_number": null,
-      "pr_url": null,
-      "reviewed_head": null,
+      "pr_number": 18,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/18",
+      "reviewed_head": "3bcaeb3481022b38d6d6c9783510ace910957cf8",
       "slices": {
         "R5.1": "verified",
-        "R5.2": "in_progress",
-        "R5.3": "in_progress",
-        "R5.4": "in_progress",
-        "R5.5": "in_progress"
+        "R5.2": "verified",
+        "R5.3": "verified",
+        "R5.4": "verified",
+        "R5.5": "verified"
       },
       "gates": {
         "R5-G1": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "Full x64 Release products built. Development-signed 0.9.1.0 MSIX from commit 3bcaeb3/tree ab4587c contains the complete 324-file payload and was unpacked/rehash-verified. MSIX SHA-256 ddb3e8c6c43aedc21be0747f46431061f29c2ed3dfaad332e79f1026073f5087."
         },
         "R5-G2": {
           "status": "passed",
           "evidence": "Focused x64 Debug persistence and infrastructure suites passed. A real Manager executable against a disposable schema-9 profile exited 20 with unsupported_version, and the database SHA-256 remained unchanged."
         },
         "R5-G3": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "Signer/public-certificate hashes, stable identity, increasing version, helper inputs and post-registration checks were inspected. A normal install attempt returned 0x800B0109 before registration because Local Machine publisher trust was unavailable; actual installed lifecycle stays open under R6-G1."
         }
       },
-      "documentation_review": null,
-      "phase_receipt": null,
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full active first-party document review; installer/data behavior and continuation correction updated, stamps refreshed, historical/vendor/product-resource/generated exclusions preserved.",
+      "phase_receipt": ".forge-alpha/phases/R5.md",
       "last_known_merge": null
     },
     "R6": {
@@ -301,15 +301,6 @@
       "next_independent_work": "Complete R2-R5 implementation and focused checks; retry live provider acceptance in R6."
     },
     {
-      "id": "B-R1-NATIVE-UI-CONTROL",
-      "failure": "The available computer-control surface exposed browser tabs only; native application UI control was unavailable.",
-      "affected": "R1-G3 visual control walkthrough, R2-G2 rendered telemetry comparison, and R2-G3 keyboard/scaling/high-contrast walkthrough",
-      "dependency_type": "verification_environment",
-      "last_observed_utc": "2026-09-12T18:49:44.7873603Z",
-      "necessary_external_action": "Use a Windows interactive session with a native UI control surface to exercise the real controls, rendered telemetry, keyboard navigation, scaling, and high contrast.",
-      "next_independent_work": "Continue R3.2-R5 source, focused checks, and packaging; execute the consolidated native walkthrough when an interactive native control surface is available."
-    },
-    {
       "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
       "failure": "Repository source contains central migrations C001-C007 while preserved prior evidence reports the owner store at schema 9; authentic C008/C009 history is unavailable.",
       "affected": "R5.1 and R6.4/R6-G1 existing-data acceptance",
@@ -317,15 +308,33 @@
       "last_observed_utc": "2026-09-12T15:06:05.3117096Z",
       "necessary_external_action": "Recover authentic migration history or maintain explicit newer-store rejection without mutation.",
       "next_independent_work": "Use --alpha-root for all disposable implementation and checks; do not open or modify the live store."
+    },
+    {
+      "id": "B-R6-NATIVE-SCALED-HIGH-CONTRAST",
+      "failure": "Native UI control is now available and the page matrix/reattach walkthrough ran, but enlarged/high-contrast layout and complete keyboard traversal were not performed.",
+      "affected": "R2-G3, R4-G3 and R6-G3",
+      "dependency_type": "verification_environment",
+      "last_observed_utc": "2026-09-12T23:12:07.7000455Z",
+      "necessary_external_action": "Run the actual Release GUI with enlarged Windows text/display scaling and High Contrast, then complete keyboard traversal including a context slider/exact-value pair.",
+      "next_independent_work": "Continue unpacked/installed candidate checks and live-provider availability without calling the native accessibility gate passed."
+    },
+    {
+      "id": "B-R6-INSTALL-TRUST",
+      "failure": "Add-AppxPackage rejected the signed 0.9.1.0 candidate with 0x800B0109; the development publisher is absent from LocalMachine/TrustedPeople. The elevated helper did not receive Windows consent and no package was registered.",
+      "affected": "R6.1, R6.4 and R6-G1",
+      "dependency_type": "windows_approval",
+      "last_observed_utc": "2026-09-12T23:05:00Z",
+      "necessary_external_action": "Approve the bundled public development certificate for Local Machine Trusted People through the normal elevated helper, then rerun installation.",
+      "next_independent_work": "Exercise the exact unpacked MSIX payload from an isolated directory, recheck LM Studio, and finish honest acceptance/delivery records."
     }
   ],
   "known_bugs": [],
-  "last_result": "R5 now has stable 0.9.1/0.9.1.0 identity, complete traceable MSIX payload/signing validation, an install/update helper, actionable GUI handling for a newer central store, and a dedicated Manager exit code. Debug focused checks and full Release build pass. The redundant remote alpha/r1-managed-runs ref was patch-equivalence checked, bundled locally, lease-deleted at its expected head, and verified absent.",
-  "next_action": "Commit the in-place execution correction and current R5 cursor, regenerate Release staging at that committed head, create and verify the development-signed MSIX, then open the R5 PR explicitly as a draft and continue remaining R5/R6 work.",
+  "last_result": "R5 implementation and its signed 0.9.1.0 candidate are verified in draft PR #18. Native Release walkthrough now passes the R1 ownership, R2 rendered sampling, and R3 page/reattachment gates on a disposable profile. Machine-trusted installation, scaled/high-contrast accessibility, live provider continuity, and authentic schema-9 compatibility remain open under their existing acceptance ownership.",
+  "next_action": "Unpack the exact signed MSIX into an ignored isolated directory and run its GUI/Manager/CLI without repository build paths, then recheck LM Studio availability. Preserve R6-G1/G2/G3 as blocked wherever machine trust, provider, or scaled/high-contrast prerequisites remain.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",
-    "native_visuals_settings": "not_run",
+    "native_visuals_settings": "partial_native_page_matrix_and_live_telemetry_passed_scaled_high_contrast_open",
     "installed_lifecycle": "not_run",
     "owner_existing_data_compatibility": "not_run",
     "alpha_accepted": false

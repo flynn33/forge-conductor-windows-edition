@@ -43,7 +43,11 @@ No new general plugin bus, migration to a web GUI, remote orchestration server, 
 new governance engine, multi-agent validator pipeline, or generalized cross-platform source rewrite.
 The Mac Swift source is behavioral evidence only. No Swift binaries belong in the Windows build or installer.
 
+## Product and package identity
+
+`ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `0.9.1` value; the stable MSIX identity is `ForgeConductor.Windows.Alpha` with numeric version `0.9.1.0`. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` alternative.
+
 <!-- alpha-phase-review:start -->
-Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -7,6 +7,8 @@ Install and launch from Start. Connect/start the manager, choose a project folde
 The application retains a stable project identity; reopening or relinking its folder must not silently create
 another project's memory. The source folder is never deleted by a memory reset.
 
+For the internal 0.9.1.0 candidate, verify the package and certificate hashes in `distribution.json`. In Administrator PowerShell, run the bundled `Install-Engineering.ps1 -TrustDevelopmentPublisher` only after reviewing the named development publisher. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope.
+
 ## Two LM Studio modes
 **Desktop MCP mode:** use LM Studio MCP -> Deploy to register the installed Forge primary/fallback stdio servers.
 The application preserves unrelated MCP entries and verifies the actual installed executable. Use the tools from
@@ -58,6 +60,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
