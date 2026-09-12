@@ -1005,6 +1005,157 @@ private:
              std::move(lines)});
     }
 
+    [[nodiscard]] Domain::Result<ManagerMaintenanceSnapshot> resetData(
+        const ManagerMaintenanceRequest& request,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.projectMemory == nullptr ||
+            telemetrySources_.continuity == nullptr ||
+            telemetrySources_.projects == nullptr) {
+            return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                Domain::makeError(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "Data maintenance is unavailable in this Manager composition."));
+        }
+
+        auto& memory = *telemetrySources_.projectMemory;
+        auto& continuity = *telemetrySources_.continuity;
+        auto resetProject = [&](const Domain::ProjectId& projectId,
+                                const ManagerMaintenanceScope scope,
+                                const std::string& suppliedToken)
+            -> Domain::Result<ManagerMaintenanceSnapshot> {
+            const auto id = projectId.value();
+            const auto confirmation = [&](const std::string& action,
+                                          const std::string& token) {
+                return Domain::DestructiveConfirmation{action, id, token};
+            };
+            ManagerMaintenanceSnapshot snapshot{scope, id};
+            if (scope == ManagerMaintenanceScope::ProjectMemory) {
+                auto report = memory.resetProjectMemory(
+                    projectId,
+                    confirmation("reset_project_memory", suppliedToken), context);
+                if (!report) return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                    std::move(report).error());
+                snapshot.projectsAffected = report.value().projectsAffected;
+                snapshot.recordsRemoved = report.value().recordsRemoved;
+                snapshot.linksRemoved = report.value().linksRemoved;
+                snapshot.eventsRemoved = report.value().eventsRemoved;
+                snapshot.verified = report.value().verified;
+                snapshot.detail = "Project memory reset completed and its repository generation was closed.";
+                return Domain::Result<ManagerMaintenanceSnapshot>::success(
+                    std::move(snapshot));
+            }
+            if (scope == ManagerMaintenanceScope::ProjectContinuity) {
+                auto report = continuity.resetProjectContinuity(
+                    Domain::ContinuityResetRequest{
+                        projectId,
+                        confirmation("reset_project_continuity", suppliedToken)},
+                    context);
+                if (!report) return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                    std::move(report).error());
+                auto closed = memory.closeProject(projectId, context);
+                if (!closed) return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                    std::move(closed).error());
+                snapshot.projectsAffected = report.value().report.projectsAffected;
+                snapshot.recordsRemoved = report.value().report.recordsRemoved;
+                snapshot.linksRemoved = report.value().report.linksRemoved;
+                snapshot.eventsRemoved = report.value().report.eventsRemoved;
+                snapshot.verified = report.value().report.verified;
+                snapshot.detail = "Project continuity reset completed and the old repository generation was closed.";
+                return Domain::Result<ManagerMaintenanceSnapshot>::success(
+                    std::move(snapshot));
+            }
+
+            const auto expected = "RESET PROJECT DATA " + id;
+            auto valid = Domain::validateDestructiveConfirmation(
+                confirmation("reset_project_data", suppliedToken),
+                "reset_project_data", id, expected);
+            if (!valid) return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                std::move(valid).error());
+            auto continuityReport = continuity.resetProjectContinuity(
+                Domain::ContinuityResetRequest{
+                    projectId,
+                    confirmation(
+                        "reset_project_continuity",
+                        "RESET PROJECT CONTINUITY " + id)},
+                context);
+            if (!continuityReport) {
+                return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                    std::move(continuityReport).error());
+            }
+            auto memoryReport = memory.resetProjectMemory(
+                projectId,
+                confirmation("reset_project_memory", "RESET PROJECT MEMORY " + id),
+                context);
+            if (!memoryReport) {
+                auto failure = std::move(memoryReport).error();
+                failure.message += " Continuity reset had already committed for this project.";
+                return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                    std::move(failure));
+            }
+            snapshot.projectsAffected = 1U;
+            snapshot.recordsRemoved = continuityReport.value().report.recordsRemoved +
+                memoryReport.value().recordsRemoved;
+            snapshot.linksRemoved = continuityReport.value().report.linksRemoved +
+                memoryReport.value().linksRemoved;
+            snapshot.eventsRemoved = continuityReport.value().report.eventsRemoved +
+                memoryReport.value().eventsRemoved;
+            snapshot.verified = continuityReport.value().report.verified &&
+                memoryReport.value().verified;
+            snapshot.detail = "Project memory and continuity reset completed; the old repository generation was closed.";
+            return Domain::Result<ManagerMaintenanceSnapshot>::success(
+                std::move(snapshot));
+        };
+
+        if (request.scope != ManagerMaintenanceScope::AllProjectsAllData) {
+            if (!request.projectId) {
+                return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                    Domain::makeError(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "A project maintenance reset requires an exact project ID."));
+            }
+            return resetProject(*request.projectId, request.scope,
+                request.confirmationToken);
+        }
+        if (request.projectId) {
+            return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                Domain::makeError(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "An all-project reset cannot include a project ID."));
+        }
+        auto valid = Domain::validateDestructiveConfirmation(
+            Domain::DestructiveConfirmation{
+                "reset_all_project_data", "all-projects", request.confirmationToken},
+            "reset_all_project_data", "all-projects", "RESET ALL PROJECT DATA");
+        if (!valid) return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+            std::move(valid).error());
+        auto listed = telemetrySources_.projects->list(1'024U, context);
+        if (!listed) return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+            std::move(listed).error());
+        ManagerMaintenanceSnapshot aggregate{
+            request.scope, "all-projects", 0U, 0U, 0U, 0U, true,
+            "All registered project memory and continuity stores were reset."};
+        for (const auto& project : listed.value()) {
+            auto report = resetProject(
+                project.id, ManagerMaintenanceScope::ProjectAllData,
+                "RESET PROJECT DATA " + project.id.value());
+            if (!report) {
+                auto failure = std::move(report).error();
+                failure.message += " " + std::to_string(aggregate.projectsAffected) +
+                    " earlier project reset(s) remain committed.";
+                return Domain::Result<ManagerMaintenanceSnapshot>::failure(
+                    std::move(failure));
+            }
+            ++aggregate.projectsAffected;
+            aggregate.recordsRemoved += report.value().recordsRemoved;
+            aggregate.linksRemoved += report.value().linksRemoved;
+            aggregate.eventsRemoved += report.value().eventsRemoved;
+            aggregate.verified = aggregate.verified && report.value().verified;
+        }
+        return Domain::Result<ManagerMaintenanceSnapshot>::success(
+            std::move(aggregate));
+    }
+
     [[nodiscard]] ManagerResponse dispatchRegular(
         const ManagerRequest& request,
         const Domain::OperationContext& context)
@@ -1132,6 +1283,10 @@ private:
                     std::is_same_v<Payload, ManagerOperationalRequest>) {
                     return controllerResponse(
                         request, operationalSnapshot(payload, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerMaintenanceRequest>) {
+                    return controllerResponse(
+                        request, resetData(payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                     return controllerResponse(

@@ -3,7 +3,7 @@
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Execution revision:** `continuous-delivery-repair-2026-09-12`
 **Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R4.4 — scoped maintenance
+**Current phase/slice:** R4.5 — settings accessibility and failure handling
 **Current branch:** `alpha/r4-settings-reset`
 
 ## Verified state
@@ -19,7 +19,7 @@
 
 ## Next exact action
 
-Expose the existing transactional project-memory and continuity reset services through one typed Manager maintenance request. Add explicit selected-project memory, continuity, combined, and separately confirmed all-project controls to the native Settings page; verify only against disposable --alpha-root stores.
+Complete the R4.5 failure/accessibility source review and focused persistence boundaries. Exercise feasible disposable-profile readback/reset checks, then perform the full R4 active-document closeout while retaining native keyboard/scaling/high-contrast work under R4-G3 if the current control surface remains unavailable.
 
 ## Open dependencies
 

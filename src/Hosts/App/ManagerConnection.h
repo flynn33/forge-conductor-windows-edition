@@ -70,6 +70,12 @@ struct OperationalView final {
     std::optional<Manager::ManagerOperationalSnapshot> snapshot;
 };
 
+struct MaintenanceView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerMaintenanceSnapshot> snapshot;
+};
+
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
@@ -130,6 +136,11 @@ public:
         Manager::ManagerOperationalAction action,
         std::string sessionId,
         std::string summary,
+        std::stop_token cancellation) noexcept = 0;
+    virtual MaintenanceView resetData(
+        Manager::ManagerMaintenanceScope scope,
+        std::optional<std::string> projectId,
+        std::string confirmationToken,
         std::stop_token cancellation) noexcept = 0;
 };
 class ManagerConnection final : public IManagerConnection {
@@ -193,6 +204,11 @@ public:
         Manager::ManagerOperationalAction action,
         std::string sessionId,
         std::string summary,
+        std::stop_token cancellation) noexcept override;
+    MaintenanceView resetData(
+        Manager::ManagerMaintenanceScope scope,
+        std::optional<std::string> projectId,
+        std::string confirmationToken,
         std::stop_token cancellation) noexcept override;
 private:
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>

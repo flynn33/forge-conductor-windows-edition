@@ -34,6 +34,7 @@ struct ManagerTelemetrySources final {
     Contracts::IContinuityAutomation* continuityAutomation{};
     std::optional<Domain::PathText> preferredForgeBinary;
     bool shellEnabled{};
+    Contracts::IContinuityCoordinator* continuity{};
 };
 
 class ManagerRequestDispatcher final {

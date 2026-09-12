@@ -2,9 +2,9 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
-  "updated_at_utc": "2026-09-12T22:06:35.931342Z",
+  "updated_at_utc": "2026-09-12T22:17:10.190067Z",
   "current_phase": "R4",
-  "current_slice": "R4.4",
+  "current_slice": "R4.5",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
@@ -158,18 +158,18 @@
     },
     "R4": {
       "implementation": "in_progress",
-      "delivery": "not_started",
+      "delivery": "draft_pr_open",
       "branch": "alpha/r4-settings-reset",
       "issue_number": 7,
       "milestone_number": 5,
-      "pr_number": null,
-      "pr_url": null,
-      "reviewed_head": null,
+      "pr_number": 16,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/16",
+      "reviewed_head": "b6eae60",
       "slices": {
         "R4.1": "implemented_focused_verification_pending",
         "R4.2": "implemented_focused_verification_pending",
         "R4.3": "implemented_focused_verification_pending",
-        "R4.4": "not_started",
+        "R4.4": "implemented_automated_components_verified",
         "R4.5": "not_started"
       },
       "gates": {
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R4.1-R4.3 source implemented: Settings is a dedicated native page for Manager/dashboard, LM Studio discovery, runtime/logging, and paired context controls. It validates through the domain model, reverts pending edits, persists through the Manager, and reads effective values back after save/restart. The x64 Debug native app build passed.",
-  "next_action": "Expose the existing transactional project-memory and continuity reset services through one typed Manager maintenance request, then add explicit project/combined/all-project confirmation controls to Settings and run disposable scope/cancellation/late-writer checks.",
+  "last_result": "R4.4 source implemented: a typed Manager maintenance request exposes selected-project memory, continuity, combined, and separately confirmed all-project data reset. Exact confirmation tokens are required; project repository generations close after reset. The Manager/App builds, 644 protocol assertions, 11 dispatcher groups, 4 project-memory application groups, 7 cache groups, 17 Windows memory repository groups, and 6 Windows continuity repository groups pass.",
+  "next_action": "Complete R4.5 failure/accessibility source review, add any missing settings persistence boundary coverage, perform all feasible disposable-profile reset/readback checks, then close R4 documentation while retaining the native keyboard/scaling/high-contrast walkthrough under R4-G3 if UI control remains unavailable.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

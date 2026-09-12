@@ -1306,6 +1306,18 @@ void validateSettingsUpdateOutcome(
                     ? Json(payload.sessionId->value()) : Json(nullptr);
                 params["summary"] = payload.summary;
             } else if constexpr (
+                std::is_same_v<Payload, ManagerMaintenanceRequest>) {
+                method = "maintenance.reset";
+                switch (payload.scope) {
+                case ManagerMaintenanceScope::ProjectMemory: params["scope"] = "project_memory"; break;
+                case ManagerMaintenanceScope::ProjectContinuity: params["scope"] = "project_continuity"; break;
+                case ManagerMaintenanceScope::ProjectAllData: params["scope"] = "project_all_data"; break;
+                case ManagerMaintenanceScope::AllProjectsAllData: params["scope"] = "all_projects_all_data"; break;
+                }
+                params["project_id"] = payload.projectId
+                    ? Json(payload.projectId->value()) : Json(nullptr);
+                params["confirmation_token"] = payload.confirmationToken;
+            } else if constexpr (
                 std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                 method = "manager.control";
                 params["action"] = controlActionName(payload.action);
@@ -1481,6 +1493,25 @@ void validateSettingsUpdateOutcome(
                     return identifierMember<Domain::SessionId>(object, name);
                 }),
             stringMember(params, "summary")};
+    } else if (method == "maintenance.reset") {
+        requireExactFields(
+            params, {"confirmation_token", "project_id", "scope"},
+            "maintenance.reset params");
+        const auto& scopeText = stringMember(params, "scope");
+        ManagerMaintenanceScope scope;
+        if (scopeText == "project_memory") scope = ManagerMaintenanceScope::ProjectMemory;
+        else if (scopeText == "project_continuity") scope = ManagerMaintenanceScope::ProjectContinuity;
+        else if (scopeText == "project_all_data") scope = ManagerMaintenanceScope::ProjectAllData;
+        else if (scopeText == "all_projects_all_data") scope = ManagerMaintenanceScope::AllProjectsAllData;
+        else reject(Domain::ErrorCodes::InvalidRequest, "Manager maintenance scope is unknown.");
+        payload = ManagerMaintenanceRequest{
+            scope,
+            optionalField<Domain::ProjectId>(
+                params, "project_id",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::ProjectId>(object, name);
+                }),
+            stringMember(params, "confirmation_token")};
     } else if (method == "manager.control") {
         requireExactFields(params, {"action"}, "manager.control params");
         payload = Domain::ManagerControlRequest{
@@ -2733,6 +2764,56 @@ template <typename T, typename Parser>
         stringArray(member(value, "lines"), "Manager operational lines")};
 }
 
+[[nodiscard]] std::string_view maintenanceScopeName(
+    const ManagerMaintenanceScope scope) noexcept
+{
+    switch (scope) {
+    case ManagerMaintenanceScope::ProjectMemory: return "project_memory";
+    case ManagerMaintenanceScope::ProjectContinuity: return "project_continuity";
+    case ManagerMaintenanceScope::ProjectAllData: return "project_all_data";
+    case ManagerMaintenanceScope::AllProjectsAllData: return "all_projects_all_data";
+    }
+    return "project_memory";
+}
+
+[[nodiscard]] Json maintenanceSnapshotJson(
+    const ManagerMaintenanceSnapshot& snapshot)
+{
+    return Json{{"scope", maintenanceScopeName(snapshot.scope)},
+                {"affected_scope", snapshot.affectedScope},
+                {"projects_affected", snapshot.projectsAffected},
+                {"records_removed", snapshot.recordsRemoved},
+                {"links_removed", snapshot.linksRemoved},
+                {"events_removed", snapshot.eventsRemoved},
+                {"verified", snapshot.verified},
+                {"detail", snapshot.detail}};
+}
+
+[[nodiscard]] ManagerMaintenanceSnapshot parseMaintenanceSnapshot(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"affected_scope", "detail", "events_removed", "links_removed",
+         "projects_affected", "records_removed", "scope", "verified"},
+        "Manager maintenance snapshot");
+    const auto& scopeText = stringMember(value, "scope");
+    ManagerMaintenanceScope scope;
+    if (scopeText == "project_memory") scope = ManagerMaintenanceScope::ProjectMemory;
+    else if (scopeText == "project_continuity") scope = ManagerMaintenanceScope::ProjectContinuity;
+    else if (scopeText == "project_all_data") scope = ManagerMaintenanceScope::ProjectAllData;
+    else if (scopeText == "all_projects_all_data") scope = ManagerMaintenanceScope::AllProjectsAllData;
+    else reject(Domain::ErrorCodes::InvalidRequest, "Manager maintenance scope is unknown.");
+    return ManagerMaintenanceSnapshot{
+        scope,
+        stringMember(value, "affected_scope"),
+        sizeMember(value, "projects_affected"),
+        sizeMember(value, "records_removed"),
+        sizeMember(value, "links_removed"),
+        sizeMember(value, "events_removed"),
+        booleanMember(value, "verified"),
+        stringMember(value, "detail")};
+}
+
 [[nodiscard]] Json resultJson(const ManagerResult& result)
 {
     Json wrapper = Json::object();
@@ -2781,6 +2862,10 @@ template <typename T, typename Parser>
                 std::is_same_v<Value, ManagerOperationalSnapshot>) {
                 wrapper["type"] = "operational";
                 wrapper["value"] = operationalSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerMaintenanceSnapshot>) {
+                wrapper["type"] = "maintenance";
+                wrapper["value"] = maintenanceSnapshotJson(value);
             } else if constexpr (std::is_same_v<Value, ManagerAcknowledgement>) {
                 wrapper["type"] = "acknowledgement";
                 Json acknowledgement = Json::object();
@@ -2829,6 +2914,9 @@ template <typename T, typename Parser>
     }
     if (type == "operational") {
         return ManagerResult{parseOperationalSnapshot(value)};
+    }
+    if (type == "maintenance") {
+        return ManagerResult{parseMaintenanceSnapshot(value)};
     }
     if (type == "acknowledgement") {
         requireExactFields(

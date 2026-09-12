@@ -1095,6 +1095,20 @@ WindowsManagerNamedPipeClient::operational(
               "The manager client transport is unavailable."));
 }
 
+Domain::Result<Manager::ManagerMaintenanceSnapshot>
+WindowsManagerNamedPipeClient::maintenance(
+    const Manager::ManagerMaintenanceRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerMaintenanceSnapshot>(
+              request, context)
+        : failure<Manager::ManagerMaintenanceSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
 Domain::Result<void> WindowsManagerNamedPipeClient::requestShutdown(
     const Domain::OperationContext& context) noexcept
 {

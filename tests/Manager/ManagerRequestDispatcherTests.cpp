@@ -1,6 +1,7 @@
 #include "ForgeConductor/Manager/ManagerRequestDispatcher.h"
 #include "../Fakes/ProjectRepositoryFakes.h"
 #include "../Fakes/RecordingProjectMemoryService.h"
+#include "../Fakes/RecordingContinuityCoordinator.h"
 
 #include <algorithm>
 #include <atomic>
@@ -755,6 +756,73 @@ void testProjectWorkflowKeepsExactProjectIdentity()
             "project A selection remains isolated from project B");
 }
 
+void testMaintenanceRequiresExactScopeAndCoordinatesStores()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    const auto project = Domain::ProjectId::parse(uuidText(850U)).value();
+    const Domain::ProjectMemoryDescriptor descriptor{
+        project, "Maintenance project", std::nullopt,
+        {Domain::PathText::create("D:\\Projects\\Maintenance").value()}};
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(descriptor)),
+        "seed maintenance project");
+    TestFakes::RecordingProjectMemoryService memory;
+    TestFakes::RecordingContinuityCoordinator continuity;
+    memory.resetProjectMemoryResult.set(
+        Domain::Result<Domain::ResetReport>::success(
+            Domain::ResetReport{
+                "reset_project_memory", project.value(), 1U, 2U, 3U, 4U, true}));
+    continuity.resetResult.set(
+        Domain::Result<Domain::ContinuityResetReport>::success(
+            Domain::ContinuityResetReport{
+                project,
+                Domain::ResetReport{
+                    "reset_project_continuity", project.value(),
+                    1U, 5U, 6U, 7U, true}}));
+
+    Manager::ManagerTelemetrySources sources;
+    sources.projects = &registry;
+    sources.projectMemory = &memory;
+    sources.continuity = &continuity;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    requireError(
+        dispatcher.dispatch(request(
+            *clock, 84U,
+            Manager::ManagerMaintenanceRequest{
+                Manager::ManagerMaintenanceScope::ProjectAllData,
+                project, "wrong confirmation"})),
+        Domain::ErrorCodes::Unauthorized,
+        "combined reset rejects wrong confirmation");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::ResetProjectMemory) == 0U,
+        "wrong confirmation leaves memory unchanged");
+    require(continuity.callCount(
+        TestFakes::ContinuityCall::ResetProjectContinuity) == 0U,
+        "wrong confirmation leaves continuity unchanged");
+
+    const auto completed = dispatcher.dispatch(request(
+        *clock, 85U,
+        Manager::ManagerMaintenanceRequest{
+            Manager::ManagerMaintenanceScope::ProjectAllData,
+            project, "RESET PROJECT DATA " + project.value()}));
+    const auto* snapshot = responseValue<Manager::ManagerMaintenanceSnapshot>(completed);
+    require(snapshot != nullptr && snapshot->verified,
+        "combined reset returns verified snapshot");
+    require(snapshot->affectedScope == project.value() &&
+            snapshot->projectsAffected == 1U,
+        "combined reset retains exact project scope");
+    require(snapshot->recordsRemoved == 7U && snapshot->linksRemoved == 9U &&
+            snapshot->eventsRemoved == 11U,
+        "combined reset aggregates both store reports");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::ResetProjectMemory) == 1U,
+        "combined reset invokes memory once");
+    require(continuity.callCount(
+        TestFakes::ContinuityCall::ResetProjectContinuity) == 1U,
+        "combined reset invokes continuity once");
+}
+
 void testPayloadMappingAndControllerFailures()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -1076,6 +1144,7 @@ int main()
         testPayloadMappingAndControllerFailures();
         testManagedRunDispatchAndIdentity();
         testProjectWorkflowKeepsExactProjectIdentity();
+        testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetrySnapshotUsesManagerOwnedRunValues();
         testDuplicateCapacityAndCancellationBypass();
         testShutdownOrderingAndClosedAdmission();
@@ -1083,7 +1152,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 10 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 11 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

@@ -308,6 +308,18 @@
       <Slider x:Name="SettingsSafetyMarginSlider" Grid.Row="3" Header="Estimation safety margin" Minimum="1" Maximum="65536" StepFrequency="256" Value="{Binding Value, ElementName=SettingsSafetyMargin, Mode=TwoWay}" AutomationProperties.Name="Estimation safety margin slider" />
       <NumberBox x:Name="SettingsSafetyMargin" Grid.Row="3" Grid.Column="1" Header="Exact tokens" Minimum="1" Maximum="1048575" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact estimation safety margin in tokens" />
      </Grid>
+     <TextBlock Text="Data maintenance" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     <InfoBar IsOpen="True" Severity="Warning" IsClosable="False" Title="Exact confirmation required"
+      Message="Project resets affect only the exact selected project ID. All-project reset affects every registered project in this profile. Source folders are never deleted." />
+     <ComboBox x:Name="MaintenanceScope" Header="Reset scope" Width="360" HorizontalAlignment="Left" SelectedIndex="0" AutomationProperties.Name="Data reset scope">
+      <ComboBoxItem Content="Selected project memory"/>
+      <ComboBoxItem Content="Selected project continuity"/>
+      <ComboBoxItem Content="Selected project memory and continuity"/>
+      <ComboBoxItem Content="All registered project data"/>
+     </ComboBox>
+     <TextBox x:Name="MaintenanceConfirmation" Header="Type the exact confirmation shown below" AutomationProperties.Name="Exact reset confirmation" />
+     <Button Content="Run confirmed reset" HorizontalAlignment="Left" Click="MaintenanceResetClicked" />
+     <TextBlock x:Name="MaintenanceState" Text="Select a project on the Projects page, then return here to see the exact confirmation." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
      <StackPanel Orientation="Horizontal" Spacing="12">
       <Button Content="Load effective settings" Click="SettingsLoadClicked" />
       <Button Content="Save and read back" Click="SettingsSaveClicked" />
