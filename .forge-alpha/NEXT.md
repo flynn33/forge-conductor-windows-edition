@@ -3,35 +3,33 @@
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Execution revision:** `continuous-delivery-repair-2026-09-12`
 **Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R4.4 — scoped maintenance
-**Current branch:** `alpha/r4-settings-reset`
+**Current phase/slice:** R5.1 — preserve and diagnose existing data
+**Current branch:** `alpha/r4-settings-reset-completion`
 
 ## Verified state
 
-- PR #13 merged at `bdd6e05fd1843a353116628b1ef33c2e6a948fc5`; local `main`, `origin/main`, and a fresh GitHub ref observation were synchronized before the R3 branch was created.
-- R2-G2/G3 remain blocked under their original IDs for native rendered-value, keyboard, scaling, and high-contrast inspection. The merge did not close those acceptance checks.
-- PR #14 merged at 6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4; completion [PR #15](https://github.com/flynn33/forge-conductor-windows-edition/pull/15) carries the remaining R3 pages from reviewed head 36ef28c4c5e9e67a20c57116f305b63b2412cca3; R3.1 is implemented in the current branch: typed Manager requests expose project listing/registration and persistent memory search/read/write/status; the native Projects page shows exact identity, authorized folders, persistence health and records, persists selection, and binds that exact ID into Autonomy.
-- Focused evidence: x64 Debug Manager and App builds passed; Manager protocol passed 625 assertions; dispatcher passed 10 groups including rejection of a cross-project memory response; the real native P2 workflow smoke passed on a fresh isolated profile with two distinct projects, no memory leakage and memory persistence after process restart.
-- R3.2 source is implemented: the native LM Studio MCP page performs Manager-owned inspect/repair/activate operations with foreign-entry preservation, while the Tools workbench displays the exact catalog and persisted shell preference and invokes tools under the selected project authority. Manager and WinUI builds pass; the consolidated native walkthrough remains open under R3-G2.
-- R3.3-R3.5 source is complete: Agents, Feed, Runtimes, Diagnostics, and Manager use typed operational Manager data; agent/session IDs, audit outcomes/errors/durations, close/prune actions, runtime counts, and doctor results are visible. Required R3 destinations no longer route through GenericPanel.
-- The corrected continuous-delivery rule is incorporated into root execution/Git guidance and the handoff/closeout templates as part of this R3 change.
+- R3 completion PR #15 merged at `1f6991d5fc60928c0a12ca348d08737fae703b1f`.
+- R4 Settings PR #16 merged at `cb5a074285be0f4bd17b210c7fe0cc0505b7efab`; local main was fast-forwarded to that exact commit.
+- R4 completion [PR #17](https://github.com/flynn33/forge-conductor-windows-edition/pull/17) carries typed scoped maintenance, persisted shell policy, accessibility refinements, focused tests and R4 documentation from reviewed functional head `91dd6bbfd6911773027188eb8b4f9357808ee30c`.
+- Full x64 Debug products build. Manager protocol reports 646 assertions; dispatcher 11 groups; controller 7 groups; project-memory application/cache 4/7 groups; Windows memory/continuity repositories 17/6 groups.
+- R3/R4 native walkthrough gates remain open under their original IDs because the available control surface cannot operate native windows.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 
 ## Next exact action
 
-Expose the existing transactional project-memory and continuity reset services through one typed Manager maintenance request. Add explicit selected-project memory, continuity, combined, and separately confirmed all-project controls to the native Settings page; verify only against disposable --alpha-root stores.
+Create `alpha/r5-installer-data` from the exact reviewed R4 completion head while PR #17 is pending. Inspect package identity, manifest, payload, signing path, install helper and current central-store compatibility. Build and verify the signed x64 Release MSIX and provenance against disposable profiles only; never open or mutate the owner's schema-9 store.
 
 ## Open dependencies
 
-- `B-R1-NATIVE-UI-CONTROL`: the current control surface exposes browser tabs only. Run the consolidated R1/R2/R3 native visual, keyboard, scaling and high-contrast walkthrough when an interactive native control surface becomes available; continue independent source work now.
-- `B-R1-LMSTUDIO-OFFLINE`: start a tool-capable LM Studio server for R6 live continuity acceptance. Offline provider state does not block R3.2 registration/tool implementation.
-- `B-R5-CENTRAL-SCHEMA-HISTORY`: authentic C008/C009 history remains unavailable. Continue using disposable `--alpha-root` profiles and never mutate the owner's live schema-9 store.
+- `B-R1-NATIVE-UI-CONTROL`: run the consolidated R1–R4 native page/visual/keyboard/scaling/high-contrast walkthrough when native UI control is available.
+- `B-R1-LMSTUDIO-OFFLINE`: start a tool-capable LM Studio server for R6 live continuity acceptance.
+- `B-R5-CENTRAL-SCHEMA-HISTORY`: authentic C008/C009 history is unavailable; preserve the schema-9 owner store and keep newer-store rejection non-destructive.
 
 ## Phase closeout obligations
 
-Complete R3.2–R3.5, the focused R3 gates, every required native destination, and the full active-document review. Push under verified `flynn33`, keep one R3 PR targeting main, and record its real URL and reviewed head. A build, ready PR, saved handoff, or phase boundary is a checkpoint; execute the next feasible R4–R7 action afterward.
+Finish R5 installer/data behavior, focused gates and the full active-document review. Push under verified `flynn33`, target main, and retain accurate dependency ordering. A build, package, PR, or phase boundary is a checkpoint; continue through R6–R7 afterward.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
+Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

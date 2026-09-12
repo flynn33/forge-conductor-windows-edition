@@ -104,6 +104,6 @@ The current Alpha build path must remain restorable from a fresh clone using the
 Keep build outputs, local signing state, caches, tokens and machine paths out of tracked source.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

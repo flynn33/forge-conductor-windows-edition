@@ -127,6 +127,7 @@ void replaceOne(
     settings.nextResponseReserve = 8'192U;
     settings.handoffReserve = 6'144U;
     settings.estimationSafetyMargin = 3'072U;
+    settings.shellEnabled = false;
     return settings;
 }
 
@@ -150,6 +151,7 @@ void replaceOne(
     patch.nextResponseReserve = 8'192U;
     patch.handoffReserve = 6'144U;
     patch.estimationSafetyMargin = 3'072U;
+    patch.shellEnabled = false;
     return patch;
 }
 
@@ -367,6 +369,11 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "Decision", "Keep project identity stable.",
         std::string{"Runs bind to the selected exact project ID."},
         {"architecture", "identity"}});
+    payloads.emplace_back(Manager::ManagerMaintenanceRequest{
+        Manager::ManagerMaintenanceScope::ProjectAllData,
+        identifier<Domain::ProjectId>(
+            "20000000-0000-4000-8000-000000000002"),
+        "RESET PROJECT DATA 20000000-0000-4000-8000-000000000002"});
     payloads.emplace_back(Domain::ManagerControlRequest{
         Domain::ManagerControlAction::Repair});
     payloads.emplace_back(Manager::ManagerSettingsUpdateRequest{
@@ -405,6 +412,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "projects.initialize",
         "projects.memory",
         "projects.remember",
+        "maintenance.reset",
         "manager.control",
         "manager.settings.update",
         "managed_run.start",
@@ -458,6 +466,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
     REQUIRE(updatePayload.patch.localModelSecure == true);
     REQUIRE(updatePayload.patch.localModelName == "fixture-model");
     REQUIRE(updatePayload.patch.effectiveContextCapacity == 65'536U);
+    REQUIRE(updatePayload.patch.shellEnabled == false);
 
     const auto managedStart = take(Manager::ManagerProtocolCodec::decodeRequest(
         take(Manager::ManagerProtocolCodec::encodeRequest(request(
@@ -535,6 +544,29 @@ void testManagerTelemetryRoundTripsWithoutLosingAvailability()
     REQUIRE(!actual.storeHealthy.value);
     REQUIRE(actual.storeHealthy.availability ==
             Domain::TelemetryMetricAvailability::TemporarilyUnavailable);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+}
+
+void testMaintenanceRoundTrips()
+{
+    const Manager::ManagerMaintenanceSnapshot snapshot{
+        Manager::ManagerMaintenanceScope::ProjectAllData,
+        "20000000-0000-4000-8000-000000000002",
+        1U, 3U, 4U, 5U, true,
+        "Project memory and continuity reset completed."};
+    const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{snapshot})));
+    const auto decoded = take(
+        Manager::ManagerProtocolCodec::decodeResponse(frame));
+    const auto& actual = std::get<Manager::ManagerMaintenanceSnapshot>(
+        std::get<Manager::ManagerResult>(decoded.body));
+    REQUIRE(actual.scope == Manager::ManagerMaintenanceScope::ProjectAllData);
+    REQUIRE(actual.affectedScope == snapshot.affectedScope);
+    REQUIRE(actual.projectsAffected == 1U);
+    REQUIRE(actual.recordsRemoved == 3U);
+    REQUIRE(actual.linksRemoved == 4U);
+    REQUIRE(actual.eventsRemoved == 5U);
+    REQUIRE(actual.verified);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 
@@ -749,7 +781,7 @@ void testNullOptionalFieldsAreLossless()
         request(Manager::ManagerSettingsUpdateRequest{emptyPatch, false})));
     const auto patchRoot = Json::parse(payloadText(patchFrame));
     const auto& patch = patchRoot.at("params").at("patch");
-    REQUIRE(patch.size() == 17U);
+    REQUIRE(patch.size() == 18U);
     for (const auto& field : patch) REQUIRE(field.is_null());
     const auto decodedPatch = take(
         Manager::ManagerProtocolCodec::decodeRequest(patchFrame));
@@ -1298,6 +1330,7 @@ int main()
         {"manager-telemetry-round-trips",
          testManagerTelemetryRoundTripsWithoutLosingAvailability},
         {"project-workflow-round-trips", testProjectWorkflowRoundTrips},
+        {"maintenance-round-trips", testMaintenanceRoundTrips},
         {"settings-update-outcome-round-trips",
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},

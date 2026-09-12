@@ -87,6 +87,19 @@ struct ManagerOperationalRequest final {
     std::string summary;
 };
 
+enum class ManagerMaintenanceScope {
+    ProjectMemory,
+    ProjectContinuity,
+    ProjectAllData,
+    AllProjectsAllData
+};
+
+struct ManagerMaintenanceRequest final {
+    ManagerMaintenanceScope scope{ManagerMaintenanceScope::ProjectMemory};
+    std::optional<Domain::ProjectId> projectId;
+    std::string confirmationToken;
+};
+
 struct ManagerProjectMemoryRecord final {
     Domain::MemoryRecordId id;
     std::uint32_t version{};
@@ -167,6 +180,17 @@ struct ManagerOperationalSnapshot final {
     std::vector<std::string> lines;
 };
 
+struct ManagerMaintenanceSnapshot final {
+    ManagerMaintenanceScope scope{ManagerMaintenanceScope::ProjectMemory};
+    std::string affectedScope;
+    std::size_t projectsAffected{};
+    std::size_t recordsRemoved{};
+    std::size_t linksRemoved{};
+    std::size_t eventsRemoved{};
+    bool verified{};
+    std::string detail;
+};
+
 struct ManagerSettingsUpdateRequest final {
     Domain::ManagerSettingsPatch patch;
     bool applyImmediately{};
@@ -218,6 +242,7 @@ using ManagerRequestPayload = std::variant<
     ManagerToolsRequest,
     ManagerToolInvokeRequest,
     ManagerOperationalRequest,
+    ManagerMaintenanceRequest,
     Domain::ManagerControlRequest,
     ManagerSettingsUpdateRequest,
     ManagedRunStartRequest,
@@ -255,6 +280,7 @@ using ManagerResult = std::variant<
     ManagerToolsSnapshot,
     ManagerToolOutcomeSnapshot,
     ManagerOperationalSnapshot,
+    ManagerMaintenanceSnapshot,
     ManagerAcknowledgement>;
 
 using ManagerResponseBody = std::variant<ManagerResult, Domain::Error>;

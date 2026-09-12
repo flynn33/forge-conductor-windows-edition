@@ -36,12 +36,14 @@ and store-read health before encoding one authenticated pipe response. The WinUI
 never opens telemetry collectors or recomputes retained-context headroom. One window-owned timer requests fresh
 snapshots; closing the window stops the timer and cancels in-flight UI work without stopping the Manager.
 
+R3 and R4 extend the same pipe boundary with typed project, LM Studio, tool, operational, settings, and maintenance requests. Settings never opens configuration JSON or project databases. Reset dispatch validates an exact project/profile confirmation, invokes the existing transactional memory and continuity owners, and closes the affected repository generation so a stale owner cannot continue writing after a committed reset.
+
 ## Changes deliberately avoided
 No new general plugin bus, migration to a web GUI, remote orchestration server, replacement database,
 new governance engine, multi-agent validator pipeline, or generalized cross-platform source rewrite.
 The Mac Swift source is behavioral evidence only. No Swift binaries belong in the Windows build or installer.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

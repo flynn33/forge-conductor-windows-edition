@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-repair-2026-09-12; continue after phase checkpoints while preserving original gates and delivery rules.",
-  "updated_at_utc": "2026-09-12T22:06:35.931342Z",
-  "current_phase": "R4",
-  "current_slice": "R4.4",
+  "updated_at_utc": "2026-09-12T22:26:35.016281Z",
+  "current_phase": "R5",
+  "current_slice": "R5.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r4-settings-reset",
-    "head": "86e41980b60c2121f43ec4940b49f673247a0503",
-    "origin_main": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4",
-    "github_main": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4",
+    "branch": "alpha/r4-settings-reset-completion",
+    "head": "91dd6bbfd6911773027188eb8b4f9357808ee30c",
+    "origin_main": "cb5a074285be0f4bd17b210c7fe0cc0505b7efab",
+    "github_main": "cb5a074285be0f4bd17b210c7fe0cc0505b7efab",
     "dirty_summary": [
-      "R4.1-R4.3 native Settings implementation is ready to commit on the exact pushed R3 completion head.",
+      "R4 completion documentation is pending commit on PR #17 after the reviewed functional head.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "R3 completion PR #15 remains the reviewed dependency for this R4 branch."
+      "R3 completion PR #15 and R4 Settings PR #16 were owner-merged; local main was fast-forwarded before the completion branch was created."
     ]
   },
   "baseline": {
@@ -123,72 +123,72 @@
       "last_known_merge": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5"
     },
     "R3": {
-      "implementation": "implemented_gates_pending",
-      "delivery": "followup_pr_open_after_primary_merge",
+      "implementation": "in_progress",
+      "delivery": "synced",
       "branch": "alpha/r3-native-workflows",
       "issue_number": 6,
       "milestone_number": 4,
       "pr_number": 15,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/15",
-      "reviewed_head": "36ef28c4c5e9e67a20c57116f305b63b2412cca3",
+      "reviewed_head": "86e41980b60c2121f43ec4940b49f673247a0503",
       "slices": {
         "R3.1": "verified",
-        "R3.2": "implemented_native_walkthrough_pending",
-        "R3.3": "implemented_native_walkthrough_pending",
-        "R3.4": "implemented_native_walkthrough_pending",
-        "R3.5": "implemented_native_walkthrough_pending"
+        "R3.2": "in_progress",
+        "R3.3": "in_progress",
+        "R3.4": "in_progress",
+        "R3.5": "in_progress"
       },
       "gates": {
         "R3-G1": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "Fresh isolated two-project memory/tool workflow passed with foreign MCP preservation and restart persistence."
         },
         "R3-G2": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "All required native pages have dedicated typed implementations; browser-only control cannot operate the native walkthrough."
         },
         "R3-G3": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "Service restart persistence passed; native selection/reattachment awaits interactive native UI control."
         }
       },
-      "documentation_review": null,
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R4 review includes final R3 delivery/source status while native R3-G2/G3 remain open.",
       "phase_receipt": ".forge-alpha/phases/R3.md",
-      "last_known_merge": "6c7368d4a876bdfae0c643d5f1eb2068f1cbd5d4"
+      "last_known_merge": "1f6991d5fc60928c0a12ca348d08737fae703b1f"
     },
     "R4": {
       "implementation": "in_progress",
-      "delivery": "not_started",
-      "branch": "alpha/r4-settings-reset",
+      "delivery": "pr_open",
+      "branch": "alpha/r4-settings-reset-completion",
       "issue_number": 7,
       "milestone_number": 5,
-      "pr_number": null,
-      "pr_url": null,
-      "reviewed_head": null,
+      "pr_number": 17,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/17",
+      "reviewed_head": "91dd6bbfd6911773027188eb8b4f9357808ee30c",
       "slices": {
-        "R4.1": "implemented_focused_verification_pending",
-        "R4.2": "implemented_focused_verification_pending",
-        "R4.3": "implemented_focused_verification_pending",
-        "R4.4": "not_started",
-        "R4.5": "not_started"
+        "R4.1": "verified",
+        "R4.2": "verified",
+        "R4.3": "verified",
+        "R4.4": "verified",
+        "R4.5": "in_progress"
       },
       "gates": {
         "R4-G1": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "Full x64 Debug products built; Manager controller 7 groups, protocol 646 assertions, and the authenticated named-pipe round-trip cover validation, persistence mapping, transport, update/readback and shell policy."
         },
         "R4-G2": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "Dispatcher 11 groups rejects wrong confirmation without calls and aggregates combined reset; project-memory application/cache and Windows memory/continuity repositories passed 4/7/17/6 disposable groups covering scoped transactions, isolation, close/post-close rejection, preservation and restart durability."
         },
         "R4-G3": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "Labeled native controls, accessible names, standard focus, paired slider/exact values and scaling-safe actions are implemented. Browser-only control cannot perform the native keyboard/scaling/high-contrast walkthrough."
         }
       },
-      "documentation_review": null,
-      "phase_receipt": null,
-      "last_known_merge": null
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
+      "phase_receipt": ".forge-alpha/phases/R4.md",
+      "last_known_merge": "cb5a074285be0f4bd17b210c7fe0cc0505b7efab"
     },
     "R5": {
       "implementation": "not_started",
@@ -320,8 +320,8 @@
     }
   ],
   "known_bugs": [],
-  "last_result": "R4.1-R4.3 source implemented: Settings is a dedicated native page for Manager/dashboard, LM Studio discovery, runtime/logging, and paired context controls. It validates through the domain model, reverts pending edits, persists through the Manager, and reads effective values back after save/restart. The x64 Debug native app build passed.",
-  "next_action": "Expose the existing transactional project-memory and continuity reset services through one typed Manager maintenance request, then add explicit project/combined/all-project confirmation controls to Settings and run disposable scope/cancellation/late-writer checks.",
+  "last_result": "R4 source complete. Settings covers effective Manager/dashboard/provider/context/logging/shell/startup/session values with validation, revert, discovery/test and readback. Typed maintenance covers project memory, continuity, combined and all-project scopes with exact confirmation and repository-generation close. Debug build and focused settings/reset groups pass; native visual accessibility remains open under R4-G3.",
+  "next_action": "Create alpha/r5-installer-data from the exact reviewed R4 completion head while PR #17 is pending. Inspect current package, identity, manifest, schema compatibility and install helpers; build the signed x64 Release MSIX with provenance without opening the owner schema-9 store.",
   "acceptance": {
     "installed_workflow": "not_run",
     "live_productive_successor": "not_run",

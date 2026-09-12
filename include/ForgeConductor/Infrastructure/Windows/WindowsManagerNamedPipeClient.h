@@ -118,6 +118,10 @@ public:
         const Manager::ManagerOperationalRequest& request,
         const Domain::OperationContext& context) noexcept;
 
+    [[nodiscard]] Domain::Result<Manager::ManagerMaintenanceSnapshot> maintenance(
+        const Manager::ManagerMaintenanceRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
     void shutdown() noexcept override;
 
 private:

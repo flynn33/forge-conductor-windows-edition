@@ -517,6 +517,44 @@ OperationalView ManagerConnection::operational(
     }
 }
 
+MaintenanceView ManagerConnection::resetData(
+    const Manager::ManagerMaintenanceScope scope,
+    std::optional<std::string> projectId,
+    std::string confirmationToken,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        std::optional<Domain::ProjectId> parsed;
+        if (projectId) {
+            auto value = Domain::ProjectId::parse(*projectId);
+            if (!value) return {false, value.error().message, std::nullopt};
+            parsed = std::move(value).value();
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation, std::chrono::seconds{60});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->maintenance(
+            Manager::ManagerMaintenanceRequest{
+                scope, std::move(parsed), std::move(confirmationToken)}, context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        auto message = snapshot.detail + " Projects affected: " +
+            std::to_string(snapshot.projectsAffected) +
+            "; records removed: " + std::to_string(snapshot.recordsRemoved) +
+            "; links removed: " + std::to_string(snapshot.linksRemoved) +
+            "; events removed: " + std::to_string(snapshot.eventsRemoved) + ".";
+        return {true, std::move(message), std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "The maintenance reset failed safely.", std::nullopt};
+    }
+}
+
 ProviderSettingsView ManagerConnection::providerSettings(
     const std::stop_token cancellation) noexcept
 {

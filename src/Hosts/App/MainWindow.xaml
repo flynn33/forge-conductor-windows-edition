@@ -280,6 +280,7 @@
       <NumberBox x:Name="SettingsSessionTtl" Grid.Row="3" Header="Inactive session retention (seconds)" Minimum="60" Maximum="31536000" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Inactive session retention in seconds" />
       <NumberBox x:Name="SettingsShellTimeout" Grid.Row="3" Grid.Column="1" Header="Shell timeout (seconds)" Minimum="1" Maximum="3600" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Shell timeout in seconds" />
      </Grid>
+     <ToggleSwitch x:Name="SettingsShellEnabled" Header="Allow shell-backed tools" OffContent="Disabled" OnContent="Enabled" />
      <ComboBox x:Name="SettingsLogLevel" Header="Log detail" Width="260" HorizontalAlignment="Left" AutomationProperties.Name="Log detail">
       <ComboBoxItem Content="Trace"/><ComboBoxItem Content="Debug"/><ComboBoxItem Content="Information"/>
       <ComboBoxItem Content="Warning"/><ComboBoxItem Content="Error"/><ComboBoxItem Content="Critical"/>
@@ -308,12 +309,28 @@
       <Slider x:Name="SettingsSafetyMarginSlider" Grid.Row="3" Header="Estimation safety margin" Minimum="1" Maximum="65536" StepFrequency="256" Value="{Binding Value, ElementName=SettingsSafetyMargin, Mode=TwoWay}" AutomationProperties.Name="Estimation safety margin slider" />
       <NumberBox x:Name="SettingsSafetyMargin" Grid.Row="3" Grid.Column="1" Header="Exact tokens" Minimum="1" Maximum="1048575" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact estimation safety margin in tokens" />
      </Grid>
-     <StackPanel Orientation="Horizontal" Spacing="12">
+     <TextBlock Text="Data maintenance" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     <InfoBar IsOpen="True" Severity="Warning" IsClosable="False" Title="Exact confirmation required"
+      Message="Project resets affect only the exact selected project ID. All-project reset affects every registered project in this profile. Source folders are never deleted." />
+     <ComboBox x:Name="MaintenanceScope" Header="Reset scope" Width="360" HorizontalAlignment="Left" SelectedIndex="0" AutomationProperties.Name="Data reset scope">
+      <ComboBoxItem Content="Selected project memory"/>
+      <ComboBoxItem Content="Selected project continuity"/>
+      <ComboBoxItem Content="Selected project memory and continuity"/>
+      <ComboBoxItem Content="All registered project data"/>
+     </ComboBox>
+     <TextBox x:Name="MaintenanceConfirmation" Header="Type the exact confirmation shown below" AutomationProperties.Name="Exact reset confirmation" />
+     <Button Content="Run confirmed reset" HorizontalAlignment="Left" Click="MaintenanceResetClicked" />
+     <TextBlock x:Name="MaintenanceState" Text="Select a project on the Projects page, then return here to see the exact confirmation." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
+     <StackPanel Spacing="8">
       <Button Content="Load effective settings" Click="SettingsLoadClicked" />
       <Button Content="Save and read back" Click="SettingsSaveClicked" />
       <Button Content="Revert pending edits" Click="SettingsRevertClicked" />
       <Button Content="Test LM Studio" Click="SettingsTestClicked" />
       <Button Content="Restart Manager" Click="SettingsRestartClicked" />
+     </StackPanel>
+     <StackPanel Orientation="Horizontal" Spacing="12">
+      <Button Content="Open focused Provider controls" Click="OpenProviderClicked" />
+      <Button Content="Open Manager status and controls" Click="OpenManagerClicked" />
      </StackPanel>
      <TextBlock x:Name="SettingsState" Text="Load effective settings to begin." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
     </StackPanel>

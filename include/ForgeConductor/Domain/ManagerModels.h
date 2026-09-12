@@ -55,6 +55,7 @@ struct ManagerSettings final {
     std::uint32_t nextResponseReserve{4'096U};
     std::uint32_t handoffReserve{4'096U};
     std::uint32_t estimationSafetyMargin{2'048U};
+    bool shellEnabled{true};
 };
 
 struct ManagerSettingsPatch final {
@@ -76,6 +77,7 @@ struct ManagerSettingsPatch final {
     std::optional<std::uint32_t> nextResponseReserve;
     std::optional<std::uint32_t> handoffReserve;
     std::optional<std::uint32_t> estimationSafetyMargin;
+    std::optional<bool> shellEnabled;
 };
 
 // One serialized manager settings mutation produces this complete outcome.

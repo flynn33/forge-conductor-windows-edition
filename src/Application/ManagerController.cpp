@@ -59,7 +59,8 @@ namespace {
         config.localModel.effectiveContextCapacity,
         config.localModel.nextResponseReserve,
         config.localModel.handoffReserve,
-        config.localModel.estimationSafetyMargin};
+        config.localModel.estimationSafetyMargin,
+        config.shell.enabled};
 }
 
 [[nodiscard]] Domain::AppConfigPatch configPatchFromManagerPatch(
@@ -83,6 +84,7 @@ namespace {
     mapped.nextResponseReserve = patch.nextResponseReserve;
     mapped.handoffReserve = patch.handoffReserve;
     mapped.estimationSafetyMargin = patch.estimationSafetyMargin;
+    mapped.shellEnabled = patch.shellEnabled;
     return mapped;
 }
 

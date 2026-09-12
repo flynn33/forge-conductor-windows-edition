@@ -321,8 +321,8 @@
         "issue_number": 6,
         "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/6",
         "branch": "alpha/r3-native-workflows",
-        "pr_number": 14,
-        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/14"
+        "pr_number": 15,
+        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/15"
       }
     },
     {
@@ -395,9 +395,9 @@
         "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/5",
         "issue_number": 7,
         "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/7",
-        "branch": "alpha/r4-settings-reset",
-        "pr_number": null,
-        "pr_url": null
+        "branch": "alpha/r4-settings-reset-completion",
+        "pr_number": 17,
+        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/17"
       }
     },
     {

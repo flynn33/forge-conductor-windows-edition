@@ -208,6 +208,24 @@ void MainWindow::SettingsTestClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsTest); }
 void MainWindow::SettingsRestartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsRestart); }
+void MainWindow::MaintenanceResetClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::MaintenanceReset); }
+void MainWindow::OpenProviderClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Provider"); }
+void MainWindow::OpenManagerClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Manager"); }
+
+void MainWindow::SelectPage(const winrt::hstring& tag)
+{
+    for (const auto& value : RootNavigation().MenuItems()) {
+        const auto item = value.try_as<
+            Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+        if (item && unbox_value_or<hstring>(item.Tag(), L"") == tag) {
+            RootNavigation().SelectedItem(item);
+            return;
+        }
+    }
+}
 void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStart); }
 void MainWindow::RunStatusClicked(Windows::Foundation::IInspectable const&,
@@ -315,6 +333,14 @@ void MainWindow::NavigationChanged(
         RunAction(Action::ToolsList);
     } else if (settings) {
         PageDescription().Text(L"Edit effective Manager, dashboard, provider, context, logging, and runtime preferences without editing configuration files.");
+        const auto project = selectedProjectId_.empty()
+            ? std::string{"<select a project first>"} : selectedProjectId_;
+        MaintenanceState().Text(winrt::to_hstring(
+            "Exact confirmations for the current selection:\n"
+            "Memory: RESET PROJECT MEMORY " + project +
+            "\nContinuity: RESET PROJECT CONTINUITY " + project +
+            "\nCombined: RESET PROJECT DATA " + project +
+            "\nAll registered project data: RESET ALL PROJECT DATA"));
         RunAction(Action::SettingsLoad);
     } else if (operational) {
         PageDescription().Text(L"Inspect authoritative Manager-owned operational data and available session actions.");
@@ -400,6 +426,7 @@ MainWindow::ReadSettingsForm(std::string& error)
             numberValue(SettingsSessionTtl(), "Session retention")};
         settings.shellTimeout = std::chrono::seconds{
             numberValue(SettingsShellTimeout(), "Shell timeout")};
+        settings.shellEnabled = SettingsShellEnabled().IsOn();
         const auto logIndex = SettingsLogLevel().SelectedIndex();
         if (logIndex < 0 || logIndex > 5) {
             throw std::invalid_argument{"Select a log detail level."};
@@ -439,6 +466,7 @@ void MainWindow::ApplySettingsForm(
     SettingsOpenBrowser().IsOn(settings.openBrowserOnStart);
     SettingsSessionTtl().Value(static_cast<double>(settings.sessionIdleTtl.count()));
     SettingsShellTimeout().Value(static_cast<double>(settings.shellTimeout.count()));
+    SettingsShellEnabled().IsOn(settings.shellEnabled);
     SettingsLogLevel().SelectedIndex(static_cast<std::int32_t>(settings.logLevel));
     SettingsProviderHost().Text(winrt::to_hstring(settings.localModelHost));
     SettingsProviderPort().Value(settings.localModelPort);
@@ -696,6 +724,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool settingsAction = action == Action::SettingsLoad ||
         action == Action::SettingsSave || action == Action::SettingsTest ||
         action == Action::SettingsRestart;
+    const bool maintenanceAction = action == Action::MaintenanceReset;
     std::string runProject;
     std::string runClient;
     std::string runTask;
@@ -713,6 +742,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string toolArguments;
     std::string operationalSessionId;
     std::string operationalSummary;
+    ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
+        ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectMemory};
+    std::optional<std::string> maintenanceProject;
+    std::string maintenanceToken;
     if (action == Action::Refresh) {
         runId = winrt::to_string(RunId().Text());
     }
@@ -795,6 +828,28 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             co_return;
         }
     }
+    if (maintenanceAction) {
+        const auto index = MaintenanceScope().SelectedIndex();
+        if (index < 0 || index > 3) {
+            MaintenanceState().Text(L"Select a reset scope.");
+            co_return;
+        }
+        maintenanceScope = static_cast<
+            ::ForgeConductor::Manager::ManagerMaintenanceScope>(index);
+        if (maintenanceScope != ::ForgeConductor::Manager::
+                ManagerMaintenanceScope::AllProjectsAllData) {
+            if (selectedProjectId_.empty()) {
+                MaintenanceState().Text(L"Select the exact project on the Projects page first.");
+                co_return;
+            }
+            maintenanceProject = selectedProjectId_;
+        }
+        maintenanceToken = winrt::to_string(MaintenanceConfirmation().Text());
+        if (maintenanceToken.empty()) {
+            MaintenanceState().Text(L"Type the exact confirmation before running a reset.");
+            co_return;
+        }
+    }
 
     busy_ = true;
     winrt::apartment_context ui;
@@ -810,6 +865,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         OperationalState().Text(L"Contacting the Manager…");
     } else if (settingsAction) {
         SettingsState().Text(L"Contacting the Manager…");
+    } else if (maintenanceAction) {
+        MaintenanceState().Text(L"The Manager is fencing the selected data scope…");
     } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
         action == Action::ProviderTest) {
         ProviderState().Text(L"Working…");
@@ -828,6 +885,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     ::ForgeConductor::Hosts::App::ToolsView toolsView;
     ::ForgeConductor::Hosts::App::ToolOutcomeView toolOutcomeView;
     ::ForgeConductor::Hosts::App::OperationalView operationalView;
+    ::ForgeConductor::Hosts::App::MaintenanceView maintenanceView;
     bool failed{};
     try {
         co_await winrt::resume_background();
@@ -886,6 +944,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             patch.openBrowserOnStart = submitted->openBrowserOnStart;
             patch.sessionIdleTtl = submitted->sessionIdleTtl;
             patch.shellTimeout = submitted->shellTimeout;
+            patch.shellEnabled = submitted->shellEnabled;
             patch.logLevel = submitted->logLevel;
             patch.localModelHost = submitted->localModelHost;
             patch.localModelPort = submitted->localModelPort;
@@ -907,6 +966,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             message = connection_->control(
                 ::ForgeConductor::Domain::ManagerControlAction::Restart,
                 cancellation_.get_token());
+            break;
+        case Action::MaintenanceReset:
+            maintenanceView = connection_->resetData(
+                maintenanceScope, std::move(maintenanceProject),
+                std::move(maintenanceToken), cancellation_.get_token());
+            message = maintenanceView.message;
             break;
         case Action::RunStart:
             runView = connection_->startManagedRun(
@@ -1066,6 +1131,14 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     action == Action::SettingsRestart) {
                     followUp = Action::SettingsLoad;
                 }
+            }
+        } else if (maintenanceAction) {
+            MaintenanceState().Text(winrt::to_hstring(message));
+            if (maintenanceView.loaded) {
+                MaintenanceConfirmation().Text(L"");
+                followUp = maintenanceScope == ::ForgeConductor::Manager::
+                    ManagerMaintenanceScope::AllProjectsAllData
+                    ? Action::ProjectList : Action::ProjectLoad;
             }
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
             action == Action::ProviderTest) {
