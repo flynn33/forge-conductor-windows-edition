@@ -269,14 +269,18 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'alpha/Install-Engineering.ps1')
 @"
 Forge Conductor Windows Alpha candidate $version (x64 Release)
 
-Double-click $packageName after the publisher certificate is trusted, or use
-Install-Engineering.ps1. The -TrustDevelopmentPublisher switch is the only
-step that requires an Administrator PowerShell window for this internal signer.
+An authorized administrator must import Publisher.cer into Local Machine Trusted
+People and designate a disposable account or test machine. Sign in there, install
+the retained lower candidate, and create the persistence markers. To perform the
+upgrade, run this candidate's Install-Engineering.ps1 -PreflightOnly. If it reports
+ready_for_install true, run it without either switch. Each successful install or
+update writes a distinct timestamped JSON receipt in this directory.
 
-The default data root is %LOCALAPPDATA%\Forge Conductor and remains outside the
-package so update and uninstall preserve user data. For disposable testing,
+Ordinary Start-menu launches use the persistent Internal Alpha profile at
+%LOCALAPPDATA%\Forge Conductor Internal Alpha. The legacy
+%LOCALAPPDATA%\Forge Conductor store remains untouched. For disposable testing,
 launch ForgeConductorApp.exe from a terminal with --alpha-root and an absolute
-empty folder. A database newer than schema 7 is refused without modification.
+empty folder.
 
 The package is self-contained for the Windows App SDK and release Visual C++
 runtime. LM Studio and a loaded model remain local runtime prerequisites for
@@ -286,11 +290,18 @@ password is present in this distribution.
 
 $packageHash=(Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
 $certificateHash=(Get-FileHash -LiteralPath $certificatePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$helperHash=(Get-FileHash -LiteralPath (
+    Join-Path $distribution 'Install-Engineering.ps1') -Algorithm SHA256).Hash.ToLowerInvariant()
+$readmeHash=(Get-FileHash -LiteralPath (
+    Join-Path $distribution 'README.txt') -Algorithm SHA256).Hash.ToLowerInvariant()
 $distributionMetadata = [ordered]@{
-    schema_version=1
+    schema_version=2
     created_at_utc=[DateTime]::UtcNow.ToString('o')
     source_commit=$sourceCommit
     source_tree=$sourceTree
+    distribution_source_commit=$sourceCommit
+    distribution_source_tree=$sourceTree
+    distribution_refresh='full_candidate'
     source_dirty=@()
     product_version=$productVersion
     package_identity=$identity
@@ -302,6 +313,8 @@ $distributionMetadata = [ordered]@{
     publisher=$subject
     certificate_thumbprint=$certificate.Thumbprint
     certificate_sha256=$certificateHash
+    install_helper_sha256=$helperHash
+    readme_sha256=$readmeHash
     signature_status=[string]$signature.Status
     payload_manifest_sha256=(Get-FileHash -LiteralPath (
         Join-Path $payload 'payload-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()

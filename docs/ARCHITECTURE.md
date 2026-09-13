@@ -47,6 +47,8 @@ The Mac Swift source is behavioral evidence only. No Swift binaries belong in th
 
 `ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `0.9.5` value; the stable MSIX identity is `ForgeConductor.Windows.Alpha` with numeric version `0.9.5.0`. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` alternative. Production view state retains the stable legacy registry names; `--alpha-root` derives deterministic per-profile names and validates a saved project ID against the authoritative Manager snapshot before use.
 
+Ordinary Internal Alpha startup selects `%LOCALAPPDATA%\Forge Conductor Internal Alpha`. The MSIX manifest exempts only that directory from AppData write virtualization through `unvirtualizedResources`, keeping its project, settings, memory, and continuity stores outside package-private data that Windows removes on uninstall. A focused manifest contract test rejects a broader exclusion and rejects any exclusion of the preserved legacy `%LOCALAPPDATA%\Forge Conductor` profile.
+
 <!-- alpha-phase-review:start -->
 Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.

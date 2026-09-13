@@ -1,11 +1,11 @@
 # Installer and installation
-**Current R6 acceptance candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 13, 2026. The package is `ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `78683d3cef440a190932b8f8cb0fe53b39a6a1ac2940a80c7e4da9e4309a8f22`, from commit `27c26e1401da72241cff68012ece2a8645f4e752` and tree `e9995ac4ca6de0043fb1f293091f23720a434acd`.
+**Current R6 acceptance candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and all 324 payload rehashes succeeded on September 13, 2026. The package is `out/dist/candidate-0.9.5.0-20260913-165014/ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `3efd692af03e15b7d8e5dad95be8119563e08c158c48b6df1dbf26ad899578c9`, from application commit `dab23aa8555a37203ba11136c58bb7f799317356` and tree `a0b6b25eb93ca30495c0348b214c51f69cfedf78`. Its companion ZIP SHA-256 is `bd098a2b672c528ce17233212980464e45dc628a5d1957b33800a5694e22c098` and records distribution commit `dab23aa8555a37203ba11136c58bb7f799317356` / tree `a0b6b25eb93ca30495c0348b214c51f69cfedf78`.
 
-The 0.9.5 candidate adds the reopened native telemetry parity implementation while retaining the managed-run invocation-guard repair after live acceptance exposed the legacy desktop-chat block. Windows still requires the included development publisher certificate in Local Machine Trusted People. Current-user trust is insufficient and no package was registered, so exact unpacked-package execution is recorded separately from installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
+The 0.9.5 candidate adds the reopened native telemetry parity implementation while retaining the managed-run invocation-guard repair after live acceptance exposed the legacy desktop-chat block. Ordinary Start launches select `%LOCALAPPDATA%\Forge Conductor Internal Alpha`, display it as the persistent profile, and use its independent Manager/IPC/secure-storage identity. The manifest narrowly exempts that directory from MSIX write virtualization so uninstall does not remove it with package-private storage. The legacy `%LOCALAPPDATA%\Forge Conductor` schema-9 store remains untouched and its migration is owner-deferred. The current candidate is registered in the owner's normal account and launches its GUI and Manager from WindowsApps against the durable root.
 
 Build with `scripts/build.ps1 -Configuration Release -Product All`, then `scripts/package.ps1 -DevelopmentSigning`.
 Each distribution under `out/dist/candidate-*` contains the signed MSIX, public certificate, checksum metadata,
-README, and `Install-Engineering.ps1`. Machine trust must be provisioned through an approved administrator action. Then run the helper without the trust switch from the dedicated test account. No private key is exported. Follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md) for the exact 0.9.4→0.9.5 lifecycle.
+README, and `Install-Engineering.ps1`. Machine trust must be provisioned through the exact administrator action in the handoff. In the disposable lifecycle environment, install the retained 0.9.4 baseline and create persistence markers before running the current helper with `-PreflightOnly`; it validates all inputs, machine trust, current registration, and increasing version without installing. When it reports `ready_for_install: true`, rerun without that switch. Every successful registration writes a distinct `install-result-*.json` receipt. No private key is exported. Follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md) for the exact 0.9.4→0.9.5 lifecycle.
 
 ## Distribution contract
 Produce the versioned x64 Alpha ZIP emitted by `scripts/package.ps1`, containing:
@@ -21,7 +21,7 @@ is not permission to omit files blindly. Do not silently install a model or requ
 LM Studio and an available tool-capable model are external prerequisites for model-dependent features.
 
 ## Packaging implementation
-`scripts/package.ps1` uses MakeAppx and SignTool. It refuses dirty candidate inputs or a mismatched staging commit/tree, then verifies the signed package by extracting it and comparing each payload hash. The candidate contains the self-contained App SDK, redistributable release CRT, executable hashes and real native binaries. Actual installed workflow acceptance remains open under R6-G1 until the explicit machine trust action succeeds.
+`scripts/package.ps1` uses MakeAppx and SignTool. It refuses dirty candidate inputs or a mismatched staging commit/tree, then verifies the signed package by extracting it and comparing each payload hash. The candidate contains the self-contained App SDK, redistributable release CRT, executable hashes and real native binaries. Machine trust and current normal-account registration pass. R6-G1 remains open for the retained lower-version upgrade and uninstall/reinstall lifecycle in a disposable environment.
 The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.exe`,
 `ForgeConductor.Manager.exe`, `ForgeConductor.SessionHost.exe`, the Forsetti manifest and agent/resources used at runtime.
 Verify actual target output names rather than blindly adopting this proposed staging list.
@@ -63,6 +63,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

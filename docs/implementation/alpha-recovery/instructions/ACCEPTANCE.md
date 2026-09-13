@@ -40,7 +40,7 @@ On disposable data only, cancel a project reset first (no change), then reset A'
 ## A4 — Upgrade, uninstall and data compatibility (R6-G1 / R5-G2)
 Test one real higher numeric package version under the same identity/publisher, then one uninstall/reinstall as necessary to inspect retention. Confirm the documented retained data and foreign MCP configuration survive. Do not count re-packaging the same numeric version with a newer timestamp as an upgrade. Inspect that old owned processes cannot keep using an uninstalled executable or cross-attach to another profile.
 
-Supported legacy schema fixtures must upgrade correctly. A newer unsupported store must be refused without mutation. The owner's schema-9 compatibility remains distinct: recover authentic C008/C009 contracts and prove compatibility on a coherent disposable copy before any authorized production migration, or record the missing contract as an unresolved compatibility requirement. Do not call an empty-profile launch a successful upgrade of existing data. A change in scope needs an explicit owner decision recorded in the plan; the agent cannot waive it by marking it not applicable.
+Supported legacy schema fixtures must upgrade correctly. A newer unsupported store must be refused without mutation. The owner has selected the fresh persistent Internal Alpha profile for this release and deferred schema-9/C008/C009 migration. Verify that ordinary installed Start launches use the selected profile, that its new data survives update/uninstall/reinstall as declared, and that the preserved legacy store is never opened or changed. Record legacy migration as deferred, not implemented, tested, or passed.
 
 ## Minimum bug triage
 Fix a required-path crash, data loss/cross-project write, broken settings, unusable required page, installer/path failure or false continuity success before final acceptance. Add a focused regression where it can reproduce the bug and is not already covered. Retest the affected integration after a shared-interface or lifetime change. Unrelated optional hardware coverage, cosmetic polish beyond usability and historical stress/security matrices may remain deferred with a truthful reason.
@@ -48,6 +48,6 @@ Fix a required-path crash, data loss/cross-project write, broken settings, unusa
 All gates need a short outcome and evidence reference. Use the [phase closeout](../templates/PHASE-CLOSEOUT.md) and [acceptance record](../templates/ACCEPTANCE-RESULT.md); no new evidence engine is required. A missing environment is not a bug fix, a mock is not the provider, a signed ZIP is not an installation, and a saved NEXT.md is not a finished assignment.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

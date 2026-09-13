@@ -1,21 +1,21 @@
 {
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
-  "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12 and the owner telemetry-parity correction; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T14:01:22Z",
-  "current_phase": "R2",
-  "current_slice": "R2.5",
+  "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12, the owner telemetry-parity correction, and the owner internal-Alpha completion goal; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
+  "updated_at_utc": "2026-09-13T16:55:47Z",
+  "current_phase": "R6",
+  "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r2-telemetry-parity",
-    "head": "27c26e1401da72241cff68012ece2a8645f4e752",
-    "origin_main": "56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517",
-    "github_main": "56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517",
+    "branch": "alpha/r6-internal-alpha-completion",
+    "head": "dab23aa8555a37203ba11136c58bb7f799317356",
+    "origin_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
+    "github_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "dirty_summary": [
-      "Draft PR #24 carries the reopened native telemetry parity implementation; closeout documentation is pending commit/push.",
+      "Draft PR #25 carries the persistent Internal Alpha startup, side-effect-free preflight guard, narrow MSIX data-persistence contract, current signed candidate, registered normal-account evidence, and owner-deferred legacy migration decision.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ignored exact 0.9.5 candidate and disposable visual profile remain local under out/ and are identified by hashes and source provenance."
+      "Ignored candidate-0.9.5.0-20260913-165014 contains the signed persistent-profile MSIX and records separate application/distribution provenance."
     ]
   },
   "baseline": {
@@ -50,7 +50,7 @@
           "evidence": "Authenticated owner flynn33 pushed alpha/r0-reconcile; PR #11 targets main; local, GitHub branch and PR head matched fcdf78761603a9369b172d90425b86c4ddbfb30b. Normal owner merge is pending."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R0.md",
       "last_known_merge": "0c52530"
     },
@@ -84,19 +84,19 @@
           "evidence": "The actual x64 Release GUI started an isolated Manager, rendered its state, closed, and reopened against the same surviving Manager PID 31172 without duplicate ownership. Live inference remains separately not run because LM Studio is offline. Receipt: out/alpha-evidence/r6/native-ui-and-reattach-20260912.json."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R1.md",
       "last_known_merge": "325d0470b8924e5fd6c202abec2b948b8312eb3a"
     },
     "R2": {
       "implementation": "verified",
-      "delivery": "pr_open",
+      "delivery": "synced",
       "branch": "alpha/r2-telemetry-parity",
       "issue_number": 5,
       "milestone_number": 3,
       "pr_number": 24,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/24",
-      "reviewed_head": "27c26e1401da72241cff68012ece2a8645f4e752",
+      "reviewed_head": "66b8228d358d0f951c309eaa6973c69ed7ffac5b",
       "slices": {
         "R2.1": "verified",
         "R2.2": "verified",
@@ -118,9 +118,9 @@
           "evidence": "The exact 0.9.5 candidate exposed metric values and keyboard focus. Actual Windows High Contrast rendered the expanded Rig with strong boundaries. An actual 150% text pass exposed status-banner clipping; the banner was changed to a vertical layout, the Release candidate was rebuilt, and the exact replacement package passed top-to-bottom inspection without clipped labels. Host High Contrast and text scale were restored."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 telemetry parity follow-up review of every active first-party document; affected telemetry, package, acceptance, ledger, and operator content updated; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — telemetry parity follow-up review of every active first-party document; affected telemetry, package, acceptance, ledger, and operator content updated; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R2.md",
-      "last_known_merge": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5"
+      "last_known_merge": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8"
     },
     "R3": {
       "implementation": "verified",
@@ -152,7 +152,7 @@
           "evidence": "After GUI close, Manager PID 31172 remained alive. Reopening the GUI attached to that same PID and retained exact project 51e1f9a4-5943-46f1-9797-35a275768cc3 with its authorized folder and healthy memory store."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R5 review records the later native page and reattachment evidence that closed R3-G2/G3.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 review records the later native page and reattachment evidence that closed R3-G2/G3.",
       "phase_receipt": ".forge-alpha/phases/R3.md",
       "last_known_merge": "1f6991d5fc60928c0a12ca348d08737fae703b1f"
     },
@@ -186,7 +186,7 @@
           "evidence": "The exact unpacked 0.9.2 Settings page exposed labeled paired context controls. Keyboard operation changed/restored the slider and exact token value, focus remained visible, High Contrast rendered strong boundaries, and 150% Windows text-size inspection passed."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R4.md",
       "last_known_merge": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1"
     },
@@ -220,19 +220,19 @@
           "evidence": "Signer/public-certificate hashes, stable identity, increasing version, helper inputs and post-registration checks were inspected. A normal install attempt returned 0x800B0109 before registration because Local Machine publisher trust was unavailable; actual installed lifecycle stays open under R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in review-ready PR #19.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in review-ready PR #19.",
       "phase_receipt": ".forge-alpha/phases/R5.md",
       "last_known_merge": "f83fe4c81c261545d70bdf8c786997ded4043dd2"
     },
     "R6": {
       "implementation": "blocked",
-      "delivery": "synced",
-      "branch": "alpha/r6-installed-acceptance-closeout",
+      "delivery": "pr_open",
+      "branch": "alpha/r6-internal-alpha-completion",
       "issue_number": 9,
       "milestone_number": 7,
-      "pr_number": 23,
-      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/23",
-      "reviewed_head": "3fb70143ef2db9704c8a395b49a29857bd087976",
+      "pr_number": 25,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/25",
+      "reviewed_head": "dab23aa8555a37203ba11136c58bb7f799317356",
       "slices": {
         "R6.1": "blocked",
         "R6.2": "verified",
@@ -242,7 +242,7 @@
       "gates": {
         "R6-G1": {
           "status": "blocked",
-          "evidence": "Signed exact 0.9.5.0 package build/unpack/native execution passed. Authorized Local Machine publisher trust and the dedicated-account 0.9.4\u21920.9.5 install/Start/update/uninstall/reinstall lifecycle remain open. Authentic schema-9 compatibility is a separate dependency."
+          "evidence": "Signed 0.9.5.0 persistent-profile application bytes were built from committed source, extracted, and rehashed across all 324 payload files. The distribution rejects conflicting preflight/trust switches before distribution access; its focused regression records zero Import-Certificate and Add-AppxPackage calls. Exact machine trust, read-only preflight, registration, Start launch, WindowsApps GUI/Manager identity, durable unvirtualized profile routing, and installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart smoke pass in the normal account. The disposable 0.9.4→0.9.5 update/uninstall/reinstall lifecycle remains open. Legacy schema-9 migration is owner-deferred and nonblocking."
         },
         "R6-G2": {
           "status": "passed",
@@ -250,12 +250,12 @@
         },
         "R6-G3": {
           "status": "passed",
-          "evidence": "Prior exact-package visual/settings/accessibility evidence remains applicable. Full Debug/Release builds, five focused suites, signed 0.9.4 package extraction/rehash, exact-package GUI/Manager live rollover, and terminal run passed."
+          "evidence": "Exact 0.9.5 packaged telemetry, all native pages, keyboard operation, High Contrast, repaired 150% text layout, disconnect, and reconnect passed under a disposable profile. The installed repetition remains part of R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R6 acceptance closeout full active first-party review; runtime error attribution, 80-turn coverage, 0.9.4 exact-package rollover, branch retirement, administrator handoff, and open gates reconciled.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 Internal Alpha completion affected-document review; registered normal-account evidence, narrow MSIX durable-profile exclusion, owner-deferred legacy migration, current candidate provenance, side-effect-free preflight, corrected lifecycle, PR #25, unavailable native-app control, and the remaining disposable lifecycle reconciled.",
       "phase_receipt": ".forge-alpha/phases/R6.md",
-      "last_known_merge": "56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517",
+      "last_known_merge": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
       "primary_pr_number": 20,
       "primary_pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
     },
@@ -280,47 +280,47 @@
         },
         "R7-G2": {
           "status": "passed",
-          "evidence": "All active first-party documents were reconciled and stamped R7; JSON syntax/schema and active local links pass. The retained candidate version, identity, source commit/tree and hashes are recorded, and blocked installed/live/schema-9 requirements remain visible."
+          "evidence": "The earlier R7 full-document reconciliation remains passed. The current R6 continuation records the owner-selected persistent profile, deferred legacy migration, current candidate identity/hashes, and open installed acceptance without rewriting historical evidence."
         },
         "R7-G3": {
           "status": "passed",
           "evidence": "R7 delivery remains merged. Subsequent permitted R6 continuation PR #22 merged normally; local main, origin/main, and authenticated GitHub main matched 35f61de3c5a8159e20752a3843e5f26bfa5290c9 before PR #23 work."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R7.md",
       "last_known_merge": "35f61de3c5a8159e20752a3843e5f26bfa5290c9"
     }
   },
   "blockers": [
     {
-      "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
-      "failure": "Repository source contains central migrations C001-C007 while preserved prior evidence reports the owner store at schema 9; authentic C008/C009 history is unavailable.",
-      "affected": "R5.1 and R6.4/R6-G1 existing-data acceptance",
-      "dependency_type": "source_history",
-      "last_observed_utc": "2026-09-12T15:06:05.3117096Z",
-      "necessary_external_action": "Recover authentic migration history or maintain explicit newer-store rejection without mutation.",
-      "next_independent_work": "Use --alpha-root for all disposable implementation and checks; do not open or modify the live store."
+      "id": "B-R6-DISPOSABLE-LIFECYCLE",
+      "failure": "Publisher 0AC803FF3292A2C736B1CBB31AFF88418983B992 is trusted at machine scope and current 0.9.5 normal-account installation passes. Local account .\\ForgeAlphaTest does not exist and no other designated disposable Windows environment is available for the retained lower-version lifecycle.",
+      "affected": "R6.1, R6.4 and R6-G1",
+      "dependency_type": "test_environment",
+      "last_observed_utc": "2026-09-13T16:55:47Z",
+      "necessary_external_action": "Provision or designate a disposable Windows 11 x64 account or test machine, then sign in to it. Do not downgrade the owner's normal account.",
+      "next_independent_work": "In the disposable environment, install retained 0.9.4 first, create the declared project/settings/memory/foreign-MCP markers, preflight and upgrade to current 0.9.5, then uninstall/reinstall and verify durable preservation."
     },
     {
-      "id": "B-R6-INSTALL-TRUST",
-      "failure": "Windows package deployment returns 0x800B0109 because the development publisher is absent from Local Machine Trusted People; no Forge package is registered. This session will not retry the denied elevated import.",
-      "affected": "R6.1, R6.4 and R6-G1",
-      "dependency_type": "windows_approval",
-      "last_observed_utc": "2026-09-13T12:15:00Z",
-      "necessary_external_action": "On an authorized Windows 11 x64 environment, import the verified public certificate into Local Machine Trusted People through the approved administrator process, then run the dedicated ForgeAlphaTest account lifecycle in docs/INSTALLED-ACCEPTANCE-HANDOFF.md.",
-      "next_independent_work": "Complete and merge PR #24, then run the installed lifecycle when authorized machine trust is available."
+      "id": "B-R6-NATIVE-UI-SURFACE",
+      "failure": "The final package launches from Start and registered process identities are verified, but the sanctioned Computer Use surface in this session exposes no native Windows applications. Final registered visual telemetry, Settings/reset, and managed-continuity interaction therefore remain unperformed; prior exact-version visual/accessibility evidence remains applicable.",
+      "affected": "R6.1 and R6-G1",
+      "dependency_type": "host_capability",
+      "last_observed_utc": "2026-09-13T16:55:47Z",
+      "necessary_external_action": "Resume from a session or host that exposes native Windows application control, or record the prescribed operator walkthrough manually against the currently registered package.",
+      "next_independent_work": "Use the current registered 0.9.5 package; do not rebuild while source and prerequisites are unchanged."
     }
   ],
   "known_bugs": [],
-  "last_result": "Native telemetry parity implementation, focused tests, exact packaged idle/disconnect/reconnect inspection, High Contrast and repaired 150% text inspection, Release build, and source-bound signed 0.9.5 candidate completed. Registered lifecycle and authentic schema-history acceptance remain open.",
-  "next_action": "Commit and push the PR #24 closeout, update its description, complete normal review/merge, preserve its exact remote head in a verified Git bundle, and retire only alpha/r2-telemetry-parity with an exact-head lease. Run the installed lifecycle when authorized machine trust is available.",
+  "last_result": "The exact publisher is trusted at machine scope. Current 0.9.5 preflight, registration, Start launch, WindowsApps GUI/Manager identity, durable unvirtualized profile routing, and installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart smoke pass. A same-version uninstall/reinstall preserved the external project registry while the package-private profile stayed absent. Legacy schema-9 migration remains owner-deferred; the preserved store was not opened or modified.",
+  "next_action": "Use sanctioned native-app control to finish the current registered visual telemetry/Settings/managed-continuity walkthrough. Separately provision a disposable Windows 11 x64 environment, install retained 0.9.4 first, create the declared markers, upgrade to 0.9.5, then complete the uninstall/reinstall preservation checks without downgrading the owner's normal account.",
   "acceptance": {
-    "installed_workflow": "blocked_machine_trust_exact_0.9.5_candidate_ready",
+    "installed_workflow": "passed_registered_start_windowsapps_manager_durable_profile_and_installed_tool_smoke",
     "live_productive_successor": "passed_exact_0.9.4_real_lm_studio_qwen3_coder_30b_terminal",
-    "native_visuals_settings": "partial_exact_0.9.5_telemetry_idle_disconnect_reconnect_passed_enlarged_text_high_contrast_open",
-    "installed_lifecycle": "blocked_machine_trust_0.9.4_to_0.9.5",
-    "owner_existing_data_compatibility": "blocked_authentic_schema_history_unavailable_live_store_untouched",
+    "native_visuals_settings": "passed_exact_0.9.5_package_visuals_keyboard_high_contrast_150_percent_disconnect_reconnect_final_registered_interaction_blocked_native_surface",
+    "installed_lifecycle": "blocked_disposable_environment_0.9.4_to_0.9.5_update_and_uninstall_reinstall",
+    "owner_existing_data_compatibility": "owner_deferred_nonblocking_legacy_store_untouched_fresh_persistent_profile_selected",
     "alpha_accepted": false
   },
   "legacy_phase_summary": {

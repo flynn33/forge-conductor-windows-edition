@@ -4,6 +4,7 @@
 #include "ForgeConductor/Infrastructure/Windows/DeadlineScheduler.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsApplicationPaths.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 #include "Infrastructure/Windows/Detail/SecureBuffer.h"
@@ -14,6 +15,7 @@
 #include "Infrastructure/Windows/Detail/UtfConversion.h"
 #include "Infrastructure/Windows/Detail/WindowsPathResolver.h"
 
+#include <ShlObj.h>
 #include <Windows.h>
 
 #include <chrono>
@@ -35,12 +37,14 @@ using Infrastructure::Windows::BCryptSha256Hasher;
 using Infrastructure::Windows::DeadlineScheduler;
 using Infrastructure::Windows::SecretRedactor;
 using Infrastructure::Windows::SystemClock;
+using Infrastructure::Windows::WindowsAlphaManagerProfile;
 using Infrastructure::Windows::WindowsApplicationPaths;
 using Infrastructure::Windows::WindowsApplicationPathsOptions;
 using Infrastructure::Windows::WindowsUuidGenerator;
 namespace Detail = Infrastructure::Windows::Detail;
 
 static_assert(std::is_final_v<WindowsApplicationPaths>);
+static_assert(std::is_final_v<WindowsAlphaManagerProfile>);
 static_assert(std::is_final_v<SystemClock>);
 static_assert(std::is_final_v<WindowsUuidGenerator>);
 static_assert(std::is_final_v<BCryptSha256Hasher>);
@@ -314,6 +318,37 @@ void testApplicationPathsAndOverridePolicy()
             "the environment overrode an explicitly injected app root");
 }
 
+void testPersistentInternalAlphaProfile()
+{
+    PWSTR rawLocalAppData = nullptr;
+    const HRESULT result = ::SHGetKnownFolderPath(
+        FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, &rawLocalAppData);
+    Detail::UniqueCoTaskMemAllocation<wchar_t> localAppData{rawLocalAppData};
+    require(SUCCEEDED(result) && rawLocalAppData != nullptr &&
+                *rawLocalAppData != L'\0',
+            "could not resolve Local AppData for the profile test");
+
+    std::filesystem::path expected{rawLocalAppData};
+    expected /= L"Forge Conductor Internal Alpha";
+    const auto selected = take(WindowsAlphaManagerProfile::persistentDataRoot());
+    require(selected == expected.native(),
+            "the persistent Internal Alpha root changed");
+
+    const auto first = take(WindowsAlphaManagerProfile::create(selected));
+    const auto second = take(WindowsAlphaManagerProfile::create(selected));
+    require(first.dataRoot() == pathText(expected),
+            "the persistent profile did not preserve its canonical data root");
+    require(first.purposeSuffix() == second.purposeSuffix(),
+            "the persistent profile Manager identity was not stable");
+    require(first.secureStorageRegistrySubkey() ==
+                second.secureStorageRegistrySubkey(),
+            "the persistent profile secure-storage identity was not stable");
+
+    WindowsApplicationPaths legacyDefault;
+    require(take(legacyDefault.dataRoot(activeContext())) != first.dataRoot(),
+            "the persistent Internal Alpha profile selected the legacy store");
+}
+
 void testPathResolverRejectsUnsafeForms()
 {
     using Detail::WindowsPathResolver;
@@ -364,6 +399,8 @@ void registerFoundationWindowsTests(TestRegistry& tests)
     addTest(tests, "foundation.utf_and_handle_owners", testUtfAndHandleOwners);
     addTest(tests, "foundation.application_paths_and_override_policy",
             testApplicationPathsAndOverridePolicy);
+    addTest(tests, "foundation.persistent_internal_alpha_profile",
+            testPersistentInternalAlphaProfile);
     addTest(tests, "foundation.path_resolver_rejects_unsafe_forms",
             testPathResolverRejectsUnsafeForms);
 }

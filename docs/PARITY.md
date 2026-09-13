@@ -4,18 +4,18 @@ This map records current Windows source capability against the internal Alpha co
 
 | Capability | Current Windows state | Alpha requirement | Owner |
 |---|---|---|---|
-| Native desktop shell | C++20/WinUI 3 host, Manager attachment, managed-run controls, native Rig visuals, typed detail summaries, isolated profile view state, all required destinations, and native accessibility walkthroughs exist | Repeat the essential workflow through a registered package after machine trust | R3–R4, R6 |
+| Native desktop shell | C++20/WinUI 3 host, Manager attachment, managed-run controls, native Rig visuals, typed detail summaries, isolated profile view state, all required destinations, native accessibility walkthroughs, and registered WindowsApps Start/Manager identity exist | Complete the formal disposable installed lifecycle | R3–R4, R6 |
 | Manager lifecycle | Per-user native Manager and GUI attach/detach path exist | Manager continues owning ordinary runs and services after GUI close | R1, R6 |
 | Provider integration | Real loopback model discovery and Responses transport passed against `qwen3-coder-30b`; endpoint/model/capacity/reserves persist | Typed ordinary run service, visible errors, live model validation | R1, R4, R6 |
 | Managed inference and continuity | Response IDs, correlated tool bootstrap, usage and context-only automation fixtures exist | Ordinary turns, tool dispatch and usage feed the Manager-owned controller; productive live successor is proven in the R6 continuation | R1, R6 |
 | Context policy | Count/time rollover behavior is removed | Context consumption alone triggers rollover; capacity/reserves stay configurable | R1, R4, R6 |
-| Projects and memory | Native services and disposable two-project isolation evidence exist | Full native registration/selection/memory workflow and installed persistence | R3, R6 |
-| MCP deployment and tools | Existing services passed disposable MCP, file/search/Git/shell/memory effects and foreign-entry preservation | Useful native deploy/inspect/repair and tool actions; shell clean-profile default with opt-out | R3, R6 |
+| Projects and memory | Native services, disposable two-project isolation, and registered durable-profile restart evidence exist | Preserve declared markers through the disposable upgrade/reinstall lifecycle | R3, R6 |
+| MCP deployment and tools | Registered payload passed the 53-tool catalog, project isolation, filesystem, search, Git, shell, and memory effects | Preserve the foreign MCP entry through the disposable upgrade/reinstall lifecycle | R3, R6 |
 | Operational telemetry | Manager-owned 250 ms CPU/RAM sampling, native per-logical CPU utilization/frequency, one-second PDH GPU-engine and physical-disk rates, five-second volumes/relevant processes, scoped DXGI memory, typed timestamps/freshness, bounded histories, and integrated WinUI instruments now exist. Exact 0.9.5 candidate idle/disconnect/reconnect rendering, UI Automation values, High Contrast, and repaired 150% text layout were inspected. | Complete registered-package acceptance | R2, R6 |
 | Agents, Feed, Runtimes, Events, Diagnostics | Typed operational summaries and Manager-owned agent/session actions replace placeholder text; recoverable failures remain visible | Repeat representative actions through the registered package | R3, R6 |
 | Settings and maintenance | Discoverable labeled settings, exact context controls, save/revert/readback, safe scoped/all-store reset, keyboard operation, High Contrast and enlarged text evidence exist | Repeat the confirmed reset through the registered package | R4, R6 |
-| Signed installer | Stable 0.9.5.0 identity, complete x64 Release payload, embedded provenance/hashes, development signature, public certificate, install helper, and exact unpacked-package verification exist | Machine-trusted install, Start launch, 0.9.4→0.9.5 update/uninstall/reinstall and data preservation | R6 |
-| Existing data | Source has authentic central migrations C001–C007; a disposable schema-9 Manager probe exits with the dedicated unsupported-version code and leaves the store hash unchanged | Recover authentic C008/C009 compatibility or retain explicit non-acceptance; never fabricate migrations or touch the owner store | R6 |
+| Signed installer | Stable 0.9.5.0 identity, complete x64 Release payload, embedded provenance/hashes, development signature, public certificate, install helper, machine-trusted registration/Start launch, and narrow durable-profile unvirtualization pass | Disposable 0.9.4→0.9.5 update/uninstall/reinstall and full marker preservation | R6 |
+| Existing data | Ordinary first-Alpha launches use the durable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` profile with a distinct Manager/IPC identity. A disposable schema-9 probe still proves non-mutating refusal. | Legacy schema-9/C008/C009 migration is owner-deferred, not implemented or passed; preserve the old store untouched. | Deferred B3 |
 
 ## Tool inventory
 
@@ -24,6 +24,6 @@ Reuse `.forge-codex/state/baseline/mcp-tool-baseline.json` and `p02-mcp-semantic
 Owner-directed removal of count/time-triggered run controls is intentional. Manager-owned continuity does not imply control of ordinary unowned LM Studio desktop chats. Optional browser dashboards, advanced analytics/connectors, additional architectures and public distribution infrastructure remain outside this internal Alpha; core native telemetry and settings are included.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

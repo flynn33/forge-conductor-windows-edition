@@ -88,17 +88,31 @@
 - Ran the exact 0.9.4 GUI and Manager against real LM Studio. Run `34c078f8-6256-4b03-80e1-936e2e50f2f4` completed canonical rollover to successor `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed the remaining effect, and returned terminal text `DONE` without the legacy block.
 - Preserved the four retired remote branch heads in one verified Git bundle before guarded deletion. Added an exact administrator/test-account handoff for the still-open installed lifecycle; no elevated trust workaround was attempted.
 
+### R6 internal Alpha completion continuation — Installed evidence integrity
+
+- Added `-PreflightOnly` to the engineering installation helper. It validates package, certificate, signer, machine trust, prior version, and update eligibility without registering the package.
+- Require the exact development publisher in Local Machine Trusted People before deployment and report the authorized administrator action when it is absent.
+- Write a unique timestamped JSON receipt after every successful install or update so lifecycle evidence cannot overwrite a prior result.
+- Rebuilt the source-bound 0.9.5.0 candidate from commit `c77c45386b25d7b76270c3685b79c172f41526c8` and tree `2bb16d60c7616f3d6f31ec94c85192dfe30db349`. Its MSIX SHA-256 is `9c772fcc9646f1e876f83c59c9e59a189f6f6881bcd603eb290dd589d5129a74` and ZIP SHA-256 is `2874a1cdf51d6861e780a32b599172f9ca0d84fe9ad9a9bb5eb92b55e3bb8dd4`.
+- Made conflicting `-PreflightOnly -TrustDevelopmentPublisher` invocation fail immediately; the focused regression proves that neither certificate import nor package deployment is called.
+- Changed ordinary GUI startup to the durable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` profile. Its Manager lease, named pipe, DPAPI token, view state, projects, memory, and continuity stay separate from the preserved legacy store, and a persistent header identifies the profile and exact path on every page.
+- Recorded the owner's decision to defer schema-9/C008/C009 migration as nonblocking backlog while preserving the legacy database and related files unchanged.
+- Rebuilt and fully rehashed the persistent-profile MSIX from application commit `dab23aa8555a37203ba11136c58bb7f799317356`; its SHA-256 is `3efd692af03e15b7d8e5dad95be8119563e08c158c48b6df1dbf26ad899578c9`. The final companion distribution records application and distribution provenance and has ZIP SHA-256 `bd098a2b672c528ce17233212980464e45dc628a5d1957b33800a5694e22c098`.
+- Added bounded packaged-Manager startup diagnostics so an early child-process failure reports sanitized stderr/stdout instead of only a generic exit code.
+- Fixed MSIX AppData virtualization for the durable Internal Alpha profile with one narrowly scoped manifest exclusion and a focused regression that fences the legacy profile out of that capability.
+- Verified exact machine trust, read-only preflight, current-package registration, Start launch, WindowsApps GUI/Manager identity, durable registry survival across reinstall, absence of package-private profile storage, and the installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart workflow. The disposable 0.9.4→0.9.5 update and uninstall/reinstall lifecycle remains open.
+
 ### R7 — Documented delivery
 
 - Reconciled every active first-party document with the implemented capability, exact acceptance evidence, honest limitations, and current PR dependency chain.
 - Retained and independently rehashed the unchanged tested 0.9.2.0 candidate: MSIX `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, distribution ZIP `18e43f5508499b56ec802447cfb98dfe8bfc048ba1f649eb1da657f0ae28f8dd`, source commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`.
-- Kept installed lifecycle and authentic schema-9 compatibility visibly open. PR #22 merged at `35f61de3c5a8159e20752a3843e5f26bfa5290c9`; PR #23 is the draft acceptance closeout.
+- Kept the installed lifecycle visibly open. The later owner decision defers legacy schema-9 migration outside the first Alpha gate. PR #22 merged at `35f61de3c5a8159e20752a3843e5f26bfa5290c9`; PR #23 records the earlier acceptance closeout.
 
 ### Remaining Alpha work
 
-- Complete machine-trusted install/Start/update/uninstall acceptance and authentic C008/C009 history recovery before accepting the owner schema-9 store. Live productive continuity and expanded-Rig accessibility are verified.
+- Complete the current registered visual telemetry/Settings/managed-continuity walkthrough when sanctioned native-app control is available, plus the retained 0.9.4→0.9.5 update and uninstall/reinstall marker lifecycle in a designated disposable environment. Current normal-account install/Start and durable installed tool use pass. Prior live productive continuity and expanded-Rig accessibility remain verified. Legacy schema-9 migration is deferred.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

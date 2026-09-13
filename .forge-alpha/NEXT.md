@@ -1,36 +1,25 @@
-# Windows Alpha execution cursor
+# Windows Alpha resume cursor
 
-**Package identity:** `windows-alpha-recovery-2026-09-12`
-**Execution revision:** `continuous-delivery-correction-2026-09-12` plus owner telemetry-parity correction
-**Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R2.5 — native telemetry parity closeout
-**Current branch:** `alpha/r2-telemetry-parity`, based on synchronized main `56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517`
+## Current state
 
-## Verified state
+- Worktree: `D:\GitHub\Forge-Conductor-Windows-Edition`; branch `alpha/r6-internal-alpha-completion`; draft PR #25 targets `main`.
+- Current signed application source: commit `dab23aa8555a37203ba11136c58bb7f799317356`, tree `a0b6b25eb93ca30495c0348b214c51f69cfedf78`.
+- Current companion distribution source: commit `dab23aa8555a37203ba11136c58bb7f799317356`, tree `a0b6b25eb93ca30495c0348b214c51f69cfedf78`.
+- Current candidate: `out/dist/candidate-0.9.5.0-20260913-165014`. MSIX SHA-256 `3efd692af03e15b7d8e5dad95be8119563e08c158c48b6df1dbf26ad899578c9`; ZIP SHA-256 `bd098a2b672c528ce17233212980464e45dc628a5d1957b33800a5694e22c098`.
+- Ordinary GUI launches now select `%LOCALAPPDATA%\Forge Conductor Internal Alpha`; the persistent header names it `Internal Alpha (persistent)` and shows the exact path. Its Manager lease, pipe, DPAPI storage, view state, projects, memory, and continuity are scoped away from `%LOCALAPPDATA%\Forge Conductor`.
+- The full 91-test Infrastructure Unit suite, Release WinUI build, full Release product staging, signed package creation, extraction, and all 324 payload rehashes pass.
+- `Install-Engineering.ps1` rejects `-PreflightOnly -TrustDevelopmentPublisher` before distribution access or side effects. Its focused regression records zero `Import-Certificate` and `Add-AppxPackage` calls. Ordinary preflight and registered installation pass with the exact publisher trusted at machine scope.
+- The current 0.9.5 package is registered. Start launches `ForgeConductorApp.exe` from its WindowsApps payload, the packaged Manager runs from the same payload with the durable Internal Alpha root, and installed MCP/tool/project/memory persistence checks pass. The package-private virtualized profile remains absent.
+- The owner explicitly deferred legacy schema-9/C008/C009 migration for the first Internal Alpha. It is nonblocking backlog and is not implemented, tested, or passed. The old store and related files remain untouched.
+- Unrelated `.forge-qwen/state/**` changes and evidence remain uncommitted and excluded.
 
-- PR #23 merged and main/origin/main/GitHub main were observed at `56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517` before this follow-up. Draft PR #24 targets main and carries the reopened R2 telemetry work.
-- Product source commit `27c26e1401da72241cff68012ece2a8645f4e752` adds native logical-CPU/frequency, GPU-engine, disk/volume, and relevant-process measurements with typed Manager transport and integrated WinUI presentation. Product identity is 0.9.5.
-- The Manager owns a 250 ms base sample, tiers GPU/disk near one second and process/volume work near five seconds, publishes measured cadence/timestamps/sample age, and retains bounded time-aware histories. The GUI does not own a second collector.
-- Debug and Release products built. Seven affected CTest targets passed after rebuilding: Telemetry Windows, Manager protocol/dispatcher, App presentation, MCP protocol/serve snapshot, and Infrastructure unit tests.
-- Final signed candidate `out/dist/candidate-0.9.5.0-20260913-135703/ForgeConductor-0.9.5.0-x64.msix` has SHA-256 `78683d3cef440a190932b8f8cb0fe53b39a6a1ac2940a80c7e4da9e4309a8f22`; ZIP SHA-256 is `6bb46f8992599a4d7da5729570011c76cf6cd0657857505ffbb19ca4737b8e91`. It is bound to commit `27c26e1401da72241cff68012ece2a8645f4e752` and tree `e9995ac4ca6de0043fb1f293091f23720a434acd`.
-- Exact packaged GUI/Manager bytes ran under disposable root `out/validation/telemetry-parity-alpha`. The native Rig rendered target/measured cadence, all 32 logical CPUs at positive frequency, RTX 4090 engine utilization, explicit current-process DXGI memory scope, live disk throughput/IOPS, A:/C:/D: capacity, relevant LM Studio/Forge process rows, workflow inventory, and growing histories.
-- The exact candidate also rendered an honest disconnected state and reconnected after the native **Start manager** control launched packaged Manager PID 43400. UI Automation exposed values and keyboard focus. Actual High Contrast rendered strong panel boundaries. An initial 150% text pass found a clipped horizontal status banner; commit `5b4c1cb` changed it to a vertical layout, and a rebuilt exact-candidate top-to-bottom 150% pass showed all telemetry headings, values, workflow inventory, history, and Manager controls without clipping. High Contrast and text scale were restored, exact packaged processes were stopped, and unrelated Manager PID 37832 was preserved.
-- Prior exact 0.9.4 LM Studio rollover evidence remains valid. The live owner database and unrelated `.forge-qwen/state/**` changes/evidence were untouched and excluded from commits.
+## Exact next action
 
-## Next exact action
+In a session with sanctioned native-app control, finish the current registered package's essential visual telemetry, Settings/reset, and managed-continuity walkthrough in the owner's normal account. Separately provision or sign in to a disposable Windows 11 x64 account or test machine, install retained candidate 0.9.4 first, create the required markers, upgrade to 0.9.5, then uninstall/reinstall and verify preservation. Follow [Installed acceptance handoff](../docs/INSTALLED-ACCEPTANCE-HANDOFF.md); do not downgrade the owner's normal account.
 
-Commit and push this documentation/ledger closeout to draft PR #24, update its description, mark it ready, complete normal review/merge under existing owner authority, then preserve and retire only `alpha/r2-telemetry-parity` with an exact-head lease. The machine-trusted installed lifecycle remains a separate open acceptance action.
+## Open dependency
 
-## Open dependencies
+- `B-R6-DISPOSABLE-LIFECYCLE`: the verified publisher is trusted and current 0.9.5 normal-account installation passes, but `.\ForgeAlphaTest` is not provisioned and no other disposable test environment is available. The retained 0.9.4→0.9.5 upgrade plus uninstall/reinstall lifecycle remains unperformed.
+- `B-R6-NATIVE-UI-SURFACE`: the final package launches from Start and its registered paths are verified, but this session's sanctioned Computer Use surface exposes no native Windows applications. The final registered visual telemetry, Settings/reset, and managed-continuity walkthrough remains unperformed; prior exact-version native visual/accessibility evidence remains valid.
 
-- `B-R5-CENTRAL-SCHEMA-HISTORY`: authentic C008/C009 history is unavailable; preserve the schema-9 owner store and keep newer-store rejection non-destructive.
-- `B-R6-INSTALL-TRUST`: an authorized administrator must import the public development certificate into Local Machine Trusted People and run the documented 0.9.4→0.9.5 install/update/uninstall/reinstall workflow in dedicated account `.\ForgeAlphaTest`. Do not use the owner profile.
-
-## Phase closeout obligations
-
-R2-G1, R2-G2, and R2-G3 pass for the parity follow-up. R6-G1 remains blocked and is not waived. Keep implementation, individual checks, review readiness, merge, and acceptance distinct; report Git ref equality separately from the intentionally dirty unrelated `.forge-qwen` working tree.
-
-<!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../docs/STATUS.md).
-Delivery/merge status is recorded by the linked phase pull request.
-<!-- alpha-phase-review:end -->
+R6-G2 and R6-G3 pass from real continuity and native visual/settings evidence. R6-G1 remains blocked by the disposable lifecycle and is not passed by the successful normal-account install alone. Keep Git ref equality separate from the intentionally dirty unrelated `.forge-qwen` working tree.

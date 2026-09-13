@@ -18,15 +18,13 @@ Keep the existing product identity and selected publisher stable through an upgr
 Signing certificates and passwords stay in configured user/secure stores outside Git. Only the public certificate may be included for trust. Request normal approval for an exact certificate import; do not suppress UAC, change global execution/trust policy or import a private key on user test machines. Preserve the original owner's credentials. If an existing package script leaks a secret in output, fix that narrow problem without starting a security-hardening program.
 
 ## Preserve the owner's existing database
-Repository records report a current-user central store at schema 9 while the available migration implementation reaches C007. The package review did not inspect the live store or recover absent migration bodies; those remain local/runtime facts to revalidate. The source references are S05, S19 and S20. Do not repeatedly diagnose the same old mismatch from scratch unless new evidence changes it.
+The owner's September 13 decision selects a fresh persistent profile for the first Internal Alpha and defers legacy schema-9/C008/C009 migration. Record that migration as one nonblocking backlog item; do not describe it as implemented, tested, or passed.
 
-Use the already implemented explicit `--alpha-root` isolation for disposable development. Preserve GUI-to-Manager profile propagation and the corresponding lease/pipe/secure-storage namespace. Normal startup must never silently fall back to an empty database or a developer `out/` profile. Show active profile and compatibility errors in the native UI.
+Ordinary GUI and Start launches use `%LOCALAPPDATA%\Forge Conductor Internal Alpha`. Reuse the existing Alpha profile propagation so the GUI, Manager, MCP, SessionHost, project memory, continuity ledger, Manager lease, named pipe, DPAPI secure storage, and view state agree on that root. Show the profile and exact data path in the native Manager surface. Explicit `--alpha-root` remains for disposable acceptance data.
 
-To resolve existing-data compatibility, inspect current migrations and relevant fetched Git refs/history in the authorized repository. Recover authentic C008/C009 implementation/contract if it has become available. If missing, record precisely what is missing; do not search unrelated drives endlessly or fabricate migration SQL from a schema number. Never lower the live schema version, forge migration checksums, skip validation, delete/rename the original store, or destructively “repair” it for acceptance.
+Leave `%LOCALAPPDATA%\Forge Conductor` and its schema-9 database, WAL, configuration, and related files untouched. Never lower schema metadata, forge migration checksums, delete or rename the store, copy it into the fresh profile, or attempt inferred C008/C009 SQL. Do not resume migration-history investigation during first-Alpha completion unless the owner changes scope.
 
-Any migration experiment uses a coherent disposable copy made through a supported SQLite backup/snapshot process. Copying a database and live WAL sequentially is not automatically a consistent snapshot. Quiesce only authorized owned test writers or use a real supported backup mechanism; preserve the original. Do not add a large backup framework just to perform the test. Verify supported upgrades on disposable fixtures and that newer unsupported stores are refused without mutation.
-
-A friendly refusal and isolated new profile allow continued development and may be a documented compatibility behavior. They do not establish that the owner's existing schema-9 data is usable. Keep that acceptance distinction explicit; only the owner can waive an existing-data requirement. Missing source remains a narrowly scoped blocker, never a justification to stop GUI/telemetry/packaging work.
+Verify supported upgrades on disposable fixtures and verify the new persistent profile's data through package update, uninstall, and reinstall. Those checks establish current-profile persistence; they do not establish legacy migration.
 
 ## Installed lifecycle proof
 Use a Windows 11 x64 VM or equivalent environment without the source checkout or Visual Studio and with the approved signing trust. A new user on a development machine with all dependencies already installed is not automatically clean-machine prerequisite evidence. Record the actual environment limitation instead of silently treating it as equivalent.
@@ -38,6 +36,6 @@ Perform one higher-version upgrade and one uninstall, preserving user-owned proj
 Record artifacts, actual package identity/version, installation/launch result, paths, lifecycle results, data sentinel preservation and remaining limitations. This single integrated pass can satisfy R5/R6 checks without repeated installer campaigns. Any product/package change that invalidates the tested path requires only that affected path to be retested.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

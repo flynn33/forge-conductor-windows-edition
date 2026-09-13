@@ -79,6 +79,10 @@ struct MaintenanceView final {
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
+    [[nodiscard]] virtual std::string profileSummary() const
+    {
+        return "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
+    }
     [[nodiscard]] virtual std::optional<std::string> viewStateScope()
         const noexcept { return std::nullopt; }
     virtual std::string refresh(std::stop_token cancellation) noexcept = 0;
@@ -150,6 +154,7 @@ public:
     explicit ManagerConnection(
         std::optional<std::wstring> alphaRoot = std::nullopt) noexcept;
 
+    [[nodiscard]] std::string profileSummary() const override;
     [[nodiscard]] std::optional<std::string> viewStateScope()
         const noexcept override;
 
@@ -218,6 +223,7 @@ public:
 private:
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>
         alphaProfile_;
+    bool persistentProfile_{};
     std::string profileError_;
 };
 }

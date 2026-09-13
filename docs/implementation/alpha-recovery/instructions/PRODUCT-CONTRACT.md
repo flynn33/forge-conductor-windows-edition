@@ -36,12 +36,14 @@ Normal externally owned LM Studio desktop chats with MCP and Forge-managed API r
 ## Acceptance and unsupported capabilities
 Full **functional native telemetry visuals** are in Alpha, including supported resource collectors and real operational state. Rig includes aggregate and per-logical CPU, RAM, supported GPU engines with correctly scoped memory, disk throughput/IOPS and volume capacity, relevant processes, operational/workflow activity, timestamps/freshness, and bounded histories in one integrated native surface. Optional specialized hardware metrics may be unavailable with a real capability reason; core supported CPU/RAM/process/disk integration and required product state may not be waved away as unsupported.
 
-A failing required workflow or existing-data compatibility issue stays explicit until repaired or the owner explicitly changes scope. This package does not authorize a model-generated waiver. A clean isolated install does not prove schema-9 migration. A fixture does not prove live rollover. A build does not prove an interactive GUI. A signed package does not prove installation.
+**INTERNAL ALPHA READY** means the signed MSIX has passed registered install and Start launch, a real installed operator task with project isolation/tools/memory and productive managed continuity, the installed native GUI/settings/telemetry workflow, and a real lower-version update plus uninstall/reinstall with declared data preserved. The owner has selected the fresh, durable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` deployment profile for this release. Ordinary Start launches must use that profile consistently across the GUI, Manager, MCP, SessionHost, memory, continuity, and IPC identity, while the legacy schema-9 store remains untouched. Normal operation must resolve all executables from the installed payload without the development checkout or developer tools.
+
+A failing required workflow stays explicit until repaired or the owner explicitly changes scope. Legacy schema-9/C008/C009 migration is owner-deferred, nonblocking backlog; it is not implemented, tested, or passed by the fresh-profile delivery. A fixture does not prove live rollover. A build does not prove an interactive GUI. A signed package does not prove installation, and a merged phase or closed issue does not by itself establish readiness.
 
 ## Deliberately outside this delivery
 Do not add a new application language/runtime, a new broad security/governance engine, Mac filesystem qualification, all-hardware/ARM64 testing, a browser dashboard replacement, enterprise distribution service, Store submission, new auto-update infrastructure, elaborate GPU artwork or another installer technology. Preserve useful existing capabilities without expanding them into unrelated completion gates. Support the named Alpha behaviors and the prior telemetry/settings clarification in full.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -29,14 +29,14 @@
     "github_delivery_truth": "actual phase pull request state"
   },
   "phase_completion_rule": "A phase checkpoint requires its applicable gates, documentation review, reviewed push and primary PR; continue to the next feasible R0-R7 action. Delivery completes only after actual merge/sync, and final Alpha requires all original R6 actual-product gates.",
-  "last_reviewed_phase": "R2-telemetry-parity-follow-up",
+  "last_reviewed_phase": "R6-internal-alpha-completion-continuation",
   "last_reviewed_on": "2026-09-13",
   "phases": [
     {
       "id": "R0",
       "slug": "reconcile",
       "title": "Reconcile the repository and establish the delivery workflow",
-      "milestone": "WA-R0 \u2014 Current baseline and accountable delivery",
+      "milestone": "WA-R0 — Current baseline and accountable delivery",
       "depends": [],
       "refs": [
         "S01",
@@ -59,7 +59,7 @@
           "id": "R0.2",
           "title": "Replace competing instructions",
           "work": "Adopt this package, migrate the existing Alpha plan and status without losing historical evidence, and retire conflicting historical selectors from active guidance. Keep working build/dependency helpers.",
-          "completion_evidence": "Root AGENTS and active links point to this roadmap; prior P0\u2013P6 are a historical crosswalk, not another current assignment."
+          "completion_evidence": "Root AGENTS and active links point to this roadmap; prior P0–P6 are a historical crosswalk, not another current assignment."
         },
         {
           "id": "R0.3",
@@ -100,7 +100,7 @@
       "id": "R1",
       "slug": "managed-runs",
       "title": "Complete Manager-owned inference and context continuity wiring",
-      "milestone": "WA-R1 \u2014 Real managed execution path",
+      "milestone": "WA-R1 — Real managed execution path",
       "depends": [
         "R0"
       ],
@@ -176,7 +176,7 @@
       "id": "R2",
       "slug": "visual-telemetry",
       "title": "Deliver real native telemetry and visual dashboards",
-      "milestone": "WA-R2 \u2014 Live visual operations",
+      "milestone": "WA-R2 — Live visual operations",
       "depends": [
         "R0"
       ],
@@ -256,7 +256,7 @@
       "id": "R3",
       "slug": "native-workflows",
       "title": "Finish the native operating pages and local workflows",
-      "milestone": "WA-R3 \u2014 Usable native workflows",
+      "milestone": "WA-R3 — Usable native workflows",
       "depends": [
         "R0"
       ],
@@ -331,7 +331,7 @@
       "id": "R4",
       "slug": "settings-reset",
       "title": "Complete accessible settings and scoped maintenance",
-      "milestone": "WA-R4 \u2014 Accessible controls and safe reset",
+      "milestone": "WA-R4 — Accessible controls and safe reset",
       "depends": [
         "R0"
       ],
@@ -406,7 +406,7 @@
       "id": "R5",
       "slug": "installer-data",
       "title": "Finish the Windows installer and existing-data behavior",
-      "milestone": "WA-R5 \u2014 Installable Windows candidate",
+      "milestone": "WA-R5 — Installable Windows candidate",
       "depends": [
         "R0"
       ],
@@ -483,7 +483,7 @@
       "id": "R6",
       "slug": "acceptance",
       "title": "Run the small real-product acceptance pass and fix blockers",
-      "milestone": "WA-R6 \u2014 Working Alpha proven",
+      "milestone": "WA-R6 — Working Alpha proven",
       "depends": [
         "R1",
         "R2",
@@ -499,13 +499,13 @@
         "E01",
         "E05"
       ],
-      "outcome": "Required native GUI, live managed continuity, installed workflow and data preservation are demonstrated on the candidate without fixture substitution.",
+      "outcome": "Required native GUI, live managed continuity, installed workflow, fresh persistent-profile use, and data preservation are demonstrated on the candidate without fixture substitution.",
       "slices": [
         {
           "id": "R6.1",
           "title": "Real installed workflow",
-          "work": "Install the signed candidate on Windows 11 x64 without the source checkout or development tools. Launch through Start and execute project/MCP/native-tool/memory work.",
-          "completion_evidence": "Actual installed GUI/Manager/CLI/SessionHost paths and relevant persistence are recorded."
+          "work": "Install the signed candidate on Windows 11 x64 without the source checkout or development tools. Launch through Start in the normal account using the selected persistent Internal Alpha profile and execute project/MCP/native-tool/memory work.",
+          "completion_evidence": "Actual installed GUI/Manager/CLI/SessionHost paths, persistent profile identity, and relevant persistence are recorded."
         },
         {
           "id": "R6.2",
@@ -523,14 +523,14 @@
           "id": "R6.4",
           "title": "Installed lifecycle and required defect repair",
           "work": "Perform one actual higher-version upgrade and one uninstall/reinstall as needed on disposable data. Fix required bugs and rerun only affected acceptance paths.",
-          "completion_evidence": "No known required functional/data-loss blocker remains. Existing schema-9 compatibility is either demonstrated or remains explicitly unaccepted; no silent scope waiver."
+          "completion_evidence": "No known required functional/data-loss blocker remains for the owner-selected fresh profile; its data persists and the legacy store remains untouched. Legacy migration is deferred, not passed."
         }
       ],
       "gates": [
         {
           "id": "R6-G1",
           "title": "Installed lifecycle",
-          "passing_evidence": "Install/Start launch/local workflow/memory persistence/upgrade/uninstall preservation all pass in the supported clean environment."
+          "passing_evidence": "Install/Start launch/local workflow/memory persistence/upgrade/uninstall preservation all pass for disposable lifecycle data and the installed normal-account persistent profile."
         },
         {
           "id": "R6-G2",
@@ -548,16 +548,18 @@
         "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/7",
         "issue_number": 9,
         "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/9",
-        "branch": "alpha/r6-acceptance",
-        "pr_number": 20,
-        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
+        "branch": "alpha/r6-internal-alpha-completion",
+        "pr_number": 25,
+        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/25",
+        "primary_pr_number": 20,
+        "primary_pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
       }
     },
     {
       "id": "R7",
       "slug": "delivery",
       "title": "Close documentation, merge the delivery PR and synchronize main",
-      "milestone": "WA-R7 \u2014 Documented and synchronized delivery",
+      "milestone": "WA-R7 — Documented and synchronized delivery",
       "depends": [
         "R6"
       ],

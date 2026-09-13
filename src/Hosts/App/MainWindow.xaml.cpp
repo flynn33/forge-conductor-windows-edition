@@ -167,6 +167,9 @@ void MainWindow::WindowContentLoaded(
 {
     if (telemetryUiInitialized_) return;
     telemetryUiInitialized_ = true;
+    ProfileState().Text(winrt::to_hstring(connection_
+        ? connection_->profileSummary()
+        : std::string{"Deployment profile unavailable"}));
     if (const auto savedProject = loadSavedText(
             selectedProjectValueName_.c_str())) {
         selectedProjectId_ = winrt::to_string(*savedProject);

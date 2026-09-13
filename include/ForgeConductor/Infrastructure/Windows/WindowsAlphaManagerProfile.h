@@ -8,11 +8,14 @@
 
 namespace ForgeConductor::Infrastructure::Windows {
 
-// An explicitly selected disposable Alpha profile. Its stable scope separates
-// the Manager lease, named pipe, and DPAPI registry entries from production
-// and from every other selected Alpha root.
+// An isolated Alpha profile. Its stable scope separates the Manager lease,
+// named pipe, and DPAPI registry entries from the legacy store and from every
+// other selected Alpha root. Ordinary GUI launches use persistentDataRoot;
+// --alpha-root remains available for disposable acceptance profiles.
 class WindowsAlphaManagerProfile final {
 public:
+    [[nodiscard]] static Domain::Result<std::wstring>
+    persistentDataRoot() noexcept;
     [[nodiscard]] static Domain::Result<WindowsAlphaManagerProfile> create(
         const Domain::PathText& requestedRoot) noexcept;
     [[nodiscard]] static Domain::Result<WindowsAlphaManagerProfile> create(

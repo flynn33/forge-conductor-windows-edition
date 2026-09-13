@@ -12,6 +12,7 @@
 #include <array>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <memory>
 #include <sstream>
@@ -24,6 +25,50 @@ struct ProcessHandles final {
     PROCESS_INFORMATION value{};
     ~ProcessHandles() { if (value.hThread) CloseHandle(value.hThread); if (value.hProcess) CloseHandle(value.hProcess); }
 };
+
+struct NativeHandle final {
+    HANDLE value{INVALID_HANDLE_VALUE};
+    NativeHandle() = default;
+    NativeHandle(const NativeHandle&) = delete;
+    NativeHandle& operator=(const NativeHandle&) = delete;
+    ~NativeHandle()
+    {
+        close();
+    }
+    [[nodiscard]] bool valid() const noexcept
+    {
+        return value != nullptr && value != INVALID_HANDLE_VALUE;
+    }
+    void close() noexcept
+    {
+        if (valid()) CloseHandle(value);
+        value = INVALID_HANDLE_VALUE;
+    }
+};
+
+[[nodiscard]] std::string managerStartupDetail(
+    const std::filesystem::path& path) noexcept
+{
+    try {
+        std::ifstream input{path, std::ios::binary};
+        if (!input) return {};
+        std::string detail(2'048U, '\0');
+        input.read(detail.data(), static_cast<std::streamsize>(detail.size()));
+        detail.resize(static_cast<std::size_t>(input.gcount()));
+        for (auto& character : detail) {
+            if (character == '\r' || character == '\n' || character == '\t') {
+                character = ' ';
+            } else if (static_cast<unsigned char>(character) < 0x20U) {
+                character = '?';
+            }
+        }
+        while (!detail.empty() && detail.back() == ' ') detail.pop_back();
+        const auto first = detail.find_first_not_of(' ');
+        return first == std::string::npos ? std::string{} : detail.substr(first);
+    } catch (...) {
+        return {};
+    }
+}
 
 [[nodiscard]] Domain::OperationContext operationContext(
     const std::shared_ptr<W::SystemClock>& clock,
@@ -195,6 +240,23 @@ ManagerConnection::ManagerConnection(
         return;
     }
     alphaProfile_.emplace(std::move(created).value());
+    auto persistentRoot = W::WindowsAlphaManagerProfile::persistentDataRoot();
+    persistentProfile_ = persistentRoot &&
+        ::CompareStringOrdinal(alphaProfile_->nativeDataRoot().data(),
+            static_cast<int>(alphaProfile_->nativeDataRoot().size()),
+            persistentRoot.value().data(),
+            static_cast<int>(persistentRoot.value().size()), TRUE) == CSTR_EQUAL;
+}
+
+std::string ManagerConnection::profileSummary() const
+{
+    if (!alphaProfile_) {
+        return "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
+    }
+    return std::string{persistentProfile_
+            ? "Internal Alpha (persistent)\nData: "
+            : "Isolated Alpha\nData: "} +
+        alphaProfile_->dataRoot().value();
 }
 
 std::optional<std::string> ManagerConnection::viewStateScope() const noexcept
@@ -207,18 +269,19 @@ std::optional<std::string> ManagerConnection::viewStateScope() const noexcept
 std::string ManagerConnection::refresh(std::stop_token cancellation) noexcept {
     try {
         if (!profileError_.empty()) return profileError_;
+        const std::string profile = profileSummary();
         auto clock = std::make_shared<W::SystemClock>();
         auto context = operationContext(clock, cancellation);
         auto created = connectManager(alphaProfile_, context, clock);
-        if (!created) return created.error().message;
+        if (!created) {
+            return "Profile: " + profile +
+                "\nDisconnected: " + created.error().message;
+        }
         auto client = std::move(created).value();
         const auto result = client->status(context);
         client->shutdown();
         if (!result) return "Disconnected: " + result.error().message;
         const auto& status = result.value();
-        const std::string profile = alphaProfile_
-            ? "Isolated Alpha\nData: " + alphaProfile_->dataRoot().value()
-            : "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
         return "Connected to manager PID " + std::to_string(status.processId) +
             "\nProfile: " + profile +
             "\nVersion: " + status.version +
@@ -782,33 +845,79 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
         }
         STARTUPINFOW startup{};
         startup.cb = sizeof(startup);
+        std::filesystem::path startupLog;
+        NativeHandle startupInput;
+        NativeHandle startupOutput;
+        try {
+            startupLog = std::filesystem::temp_directory_path() /
+                (L"ForgeConductor.Manager.startup." +
+                    std::to_wstring(GetCurrentProcessId()) + L".log");
+            SECURITY_ATTRIBUTES attributes{};
+            attributes.nLength = sizeof(attributes);
+            attributes.bInheritHandle = TRUE;
+            startupOutput.value = CreateFileW(
+                startupLog.c_str(), GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                &attributes, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            startupInput.value = CreateFileW(
+                L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                &attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (startupOutput.valid() && startupInput.valid()) {
+                startup.dwFlags = STARTF_USESTDHANDLES;
+                startup.hStdInput = startupInput.value;
+                startup.hStdOutput = startupOutput.value;
+                startup.hStdError = startupOutput.value;
+            }
+        } catch (...) {
+            startupLog.clear();
+        }
+        const auto discardStartupLog = [&]() noexcept {
+            startupInput.close();
+            startupOutput.close();
+            std::error_code ignored;
+            std::filesystem::remove(startupLog, ignored);
+        };
         ProcessHandles process;
-        if (!CreateProcessW(executable.c_str(), arguments.data(), nullptr, nullptr, FALSE,
+        const auto inheritHandles =
+            (startup.dwFlags & STARTF_USESTDHANDLES) != 0 ? TRUE : FALSE;
+        if (!CreateProcessW(executable.c_str(), arguments.data(), nullptr, nullptr, inheritHandles,
                 CREATE_NO_WINDOW, nullptr, executable.parent_path().c_str(), &startup, &process.value)) {
-            return "Manager could not start. Windows error " + std::to_string(GetLastError()) +
+            const auto error = GetLastError();
+            discardStartupLog();
+            return "Manager could not start. Windows error " + std::to_string(error) +
                 ". Verify the manager executable is installed beside the app.";
         }
         const DWORD startupState = WaitForSingleObject(process.value.hProcess, 2'000U);
         if (startupState == WAIT_OBJECT_0) {
             DWORD exitCode{};
             if (!GetExitCodeProcess(process.value.hProcess, &exitCode)) {
+                discardStartupLog();
                 return "Manager exited during startup and Windows could not read its exit code.";
             }
             if (exitCode == static_cast<DWORD>(
                     Manager::ManagerUnsupportedDataStoreExitCode)) {
+                discardStartupLog();
                 return "The default Forge Conductor data store is newer than this build "
                     "supports and was left unchanged. Install a build that supports that "
                     "store, or launch ForgeConductorApp.exe with --alpha-root followed by "
                     "an absolute empty folder to use an explicitly isolated profile.";
             }
+            startupOutput.close();
+            const auto detail = managerStartupDetail(startupLog);
+            discardStartupLog();
             return "Manager exited during startup with code " +
                 std::to_string(exitCode) +
-                ". Open Diagnostics for recovery details.";
+                (detail.empty()
+                    ? ". Open Diagnostics for recovery details."
+                    : ". " + detail);
         }
         if (startupState == WAIT_FAILED) {
+            const auto error = GetLastError();
+            discardStartupLog();
             return "Manager started, but Windows could not observe its startup state (error " +
-                std::to_string(GetLastError()) + "). Select Refresh to attach.";
+                std::to_string(error) + "). Select Refresh to attach.";
         }
+        discardStartupLog();
         // The manager is independently owned. Closing this connection never terminates it.
         return alphaProfile_
             ? "Isolated Alpha manager start requested for " +
