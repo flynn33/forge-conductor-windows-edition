@@ -26,7 +26,7 @@
 
      <StackPanel x:Name="RigPanel" Spacing="14">
       <Border Padding="12" CornerRadius="8" Background="{ThemeResource AccentFillColorSecondaryBrush}">
-       <StackPanel Orientation="Horizontal" Spacing="18">
+       <StackPanel Spacing="4">
         <TextBlock x:Name="SystemStrip" Text="Waiting for system identity" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.Name="System identity" />
         <TextBlock x:Name="SamplingStrip" Text="Waiting for sampling cadence" TextWrapping="Wrap" AutomationProperties.Name="Telemetry sampling cadence" />
        </StackPanel>
