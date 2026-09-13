@@ -29,7 +29,7 @@
 - Replaced the production unavailable telemetry adapter with native Windows CPU, RAM, Forge process, and DXGI capability collectors while preserving explicit warmup, stale, unavailable, and unsupported states.
 - Added one typed Manager telemetry snapshot across the authenticated named pipe for resources, runtime diagnostics, provider, authoritative run/context/continuity state, projects, tools, events, and store health.
 - Added WinUI status cards, CPU/RAM/GPU/context gauges, bounded resource and latency histories, accessible equivalent values, an activity timeline, and telemetry-backed Provider, Continuity, Runtimes, Projects, Tools, Feed, Events, Diagnostics, Manager, and Settings summaries.
-- Added two-second coalesced refresh, disconnected/stale rendering, resize redraw, persisted page selection, and window-close cancellation. Real isolated process probes confirmed repeated refresh and Manager survival after GUI close; native keyboard/high-contrast and visual rendering inspection remain blocked by the available control surface.
+- Added two-second coalesced refresh, disconnected/stale rendering, resize redraw, persisted page selection, and window-close cancellation. Real isolated process probes confirmed repeated refresh and Manager survival after GUI close; a later native review verified rendered telemetry, while complete keyboard and scaled/high-contrast inspection remain open.
 
 ### R3 — Native operating pages and local workflows
 
@@ -45,11 +45,19 @@
 - Added paired context sliders and exact token values, pending-edit revert, provider testing, effective readback after save/restart, and direct links to focused Provider and Manager pages.
 - Added typed Manager maintenance for exact-project memory, continuity, combined project data, and separately confirmed all-project data. Resets reuse transactional repositories, close old project generations, preserve source folders, and report affected counts.
 
+### R5 — Signed installer and data compatibility
+
+- Established stable product version `0.9.1` and MSIX identity/version `ForgeConductor.Windows.Alpha` / `0.9.1.0` across the native hosts and package manifest.
+- Bound the GUI, Manager, CLI, and SessionHost Release binaries to one committed staging receipt; added complete WinUI/runtime/resources payload validation, embedded provenance, per-file hashes, signature/certificate checks, unpack-and-rehash verification, and a minimal distribution bundle containing no private signing material.
+- Added strict install/update validation for package, certificate, identity, publisher, and increasing version while preserving user data through normal MSIX update/uninstall semantics.
+- Added a dedicated Manager exit code and actionable GUI explanation when the central store is newer than supported. The schema-9 disposable probe leaves the database unchanged and preserves `--alpha-root` as the explicit isolated alternative.
+- Applied the owner execution correction in place: native compaction continues the current slice; draft, checks, readiness, merge, and acceptance are separate; and a single reused continuation is allowed when a primary phase PR merges early.
+
 ### Remaining Alpha work
 
-- Complete installer/data behavior, native visual walkthroughs, and real installed/live acceptance in R5–R7.
+- Complete machine-trusted install/update/uninstall, native visual walkthroughs, live productive continuity acceptance, and final delivery synchronization in R6–R7.
 
 <!-- alpha-phase-review:start -->
-Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

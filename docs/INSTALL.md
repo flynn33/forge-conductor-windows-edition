@@ -1,19 +1,19 @@
 # Installer and installation
-**Engineering checkpoint:** x64 Release MSIX creation and development signing succeeded on September 12, 2026.
-Installation did not succeed: Windows requires machine publisher trust and the current session is not elevated.
-The existing default user database also has a newer schema than this checkout supports. Final Alpha is pending.
+**R5 candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.1.0-x64.msix`, SHA-256 `ddb3e8c6c43aedc21be0747f46431061f29c2ed3dfaad332e79f1026073f5087`, from commit `3bcaeb3481022b38d6d6c9783510ace910957cf8` and tree `ab4587c78fe8f03328f0a2a68a983ed856634833`.
+
+The first normal install attempt returned `0x800B0109`: Windows requires the included development publisher certificate in the Local Machine Trusted People store. No package was installed. The owner store is preserved; a newer unsupported store produces an actionable error and must not be used as migration evidence. Final installed Alpha acceptance remains open.
 
 Build with `scripts/build.ps1 -Configuration Release -Product All`, then `scripts/package.ps1 -DevelopmentSigning`.
-Each distribution under `out/dist/engineering-*` contains the signed MSIX, public certificate, checksum metadata,
+Each distribution under `out/dist/candidate-*` contains the signed MSIX, public certificate, checksum metadata,
 README, and `Install-Engineering.ps1`. Extract the engineering ZIP and run the helper in Administrator PowerShell
 with `-TrustDevelopmentPublisher` to trust this specific signing certificate and install. No private key is exported.
 
 ## Distribution contract
 Produce the versioned x64 Alpha ZIP emitted by `scripts/package.ps1`, containing:
-- Signed `ForgeConductor.Windows_<numeric-version>_x64.msix` with the actual native GUI, CLI, manager, session host and assets.
+- Signed `ForgeConductor-<numeric-version>-x64.msix` with the actual native GUI, CLI, Manager, SessionHost and assets.
 - Public development certificate `.cer` and explicit trust instructions for an internal test build; never a PFX/private key.
 - Required Microsoft runtime dependencies, when not self-contained, with a working local install path.
-- `Install.ps1`, `Uninstall.ps1` or equivalent native installer actions, QuickStart and release notes.
+- `Install-Engineering.ps1`, a concise operator README, package/bundle checksums, and distribution metadata.
 - Package checksum and concise build provenance (commit/configuration), without automated-authorship metadata.
 
 Prefer a self-contained Windows App SDK deployment where compatible with the selected WinUI project, to reduce
@@ -22,8 +22,7 @@ is not permission to omit files blindly. Do not silently install a model or requ
 LM Studio and an available tool-capable model are external prerequisites for model-dependent features.
 
 ## Packaging implementation
-`scripts/package.ps1` uses MakeAppx and SignTool; the engineering package contains the self-contained App SDK,
-redistributable release CRT, executable hashes and real native binaries. Complete installer behavior is R5; actual installed workflow acceptance remains R6.
+`scripts/package.ps1` uses MakeAppx and SignTool. It refuses dirty candidate inputs or a mismatched staging commit/tree, then verifies the signed package by extracting it and comparing each payload hash. The candidate contains the self-contained App SDK, redistributable release CRT, executable hashes and real native binaries. Actual installed workflow acceptance remains R6.
 The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.exe`,
 `ForgeConductor.Manager.exe`, `ForgeConductor.SessionHost.exe`, the Forsetti manifest and agent/resources used at runtime.
 Verify actual target output names rather than blindly adopting this proposed staging list.
@@ -65,6 +64,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows control application and MCP tool server for project work with local models in LM Studio.
 
-**Status: Windows Alpha implementation is active; the signed engineering package is not yet an accepted installed candidate.** R1–R4 source is implemented and merged through the first R4 slice. The native app now includes real telemetry and operating pages, persistent project workflows, complete Manager-owned Settings, and scoped memory/continuity maintenance. Native visual/accessibility walkthroughs remain blocked until a native UI control surface is available. Installer lifecycle and live productive rollover acceptance remain in R5–R7.
+**Status: Windows Alpha implementation is active; a complete signed candidate exists and installed acceptance remains open.** R1–R5 source is merged through [PR #18](https://github.com/flynn33/forge-conductor-windows-edition/pull/18) at `f83fe4c81c261545d70bdf8c786997ded4043dd2`; narrow draft [PR #19](https://github.com/flynn33/forge-conductor-windows-edition/pull/19) records the R5 closeout and later native evidence. Windows rejected the first install with `0x800B0109` until the development publisher is trusted at machine scope. Scaled/high-contrast and live productive rollover acceptance remain open under their original R6 gates.
 
 Use [Product status](docs/STATUS.md) for verified behavior and blockers, [Roadmap](ROADMAP.md) for the current phase sequence, and [Documentation index](docs/DOCUMENTATION-INDEX.md) for active and historical guidance. The adopted execution contract is under [Alpha recovery](docs/implementation/alpha-recovery/instructions/EXECUTION.md).
 
@@ -29,9 +29,9 @@ Windows 11 x64; C++20; Visual Studio 2022/MSVC v143; Windows SDK 10.0.26100.0; C
   -Target ForgeConductor.Cli,ForgeConductor.Manager,ForgeConductor.SessionHost
 ```
 
-The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a signed engineering distribution under ignored `out/dist`; it is development evidence rather than a public download or accepted installed Alpha.
+The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`; it is an internal test installer rather than a public download or accepted installed Alpha. Follow [Installer and installation](docs/INSTALL.md) for hash verification and the explicit Windows trust step.
 
 <!-- alpha-phase-review:start -->
-Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

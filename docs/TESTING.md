@@ -60,6 +60,8 @@ launch via Start, exercise the native pages and main workflow, update/reinstall 
 Use screenshots or a short operator record for the actual GUI; headless process creation does not prove UI usability.
 LM Studio/model installation remains a documented prerequisite, not a hidden embedded model download.
 
+R5 packaging verification used the full x64 Release product build and `scripts/package.ps1 -DevelopmentSigning` at commit `3bcaeb3481022b38d6d6c9783510ace910957cf8`. The package script successfully signed, unpacked, and rehashed the 0.9.1.0 MSIX. A normal installation attempt returned `0x800B0109` because machine-level trust for the development publisher was absent; keep all installed checks open until that explicit trust action succeeds.
+
 ## Evidence
 For each required result record command/action, commit, configuration, exit code or observed behavior,
 and one log/artifact path. A short Markdown acceptance record is sufficient. The absence of a suitable Windows host
@@ -68,6 +70,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R4 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
