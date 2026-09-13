@@ -672,7 +672,7 @@ private:
 
 void immediatePendingMutualExclusionAndPartialSend()
 {
-    RealHarness harness{"127.0.0.1", AF_INET, portBase(50000U)};
+    RealHarness harness{"127.0.0.1", AF_INET, portBase(20000U)};
     auto pair = harness.acceptOne();
     const auto api = std::make_shared<FakeNativeApi>();
     auto socket = owner(pair, harness, api);
@@ -829,7 +829,7 @@ void immediatePendingMutualExclusionAndPartialSend()
 
 void malformedIssuesCancellationAndShutdownAreTyped()
 {
-    RealHarness harness{"127.0.0.1", AF_INET, portBase(50500U)};
+    RealHarness harness{"127.0.0.1", AF_INET, portBase(20500U)};
     auto pair = harness.acceptOne();
     const auto api = std::make_shared<FakeNativeApi>();
     auto socket = owner(pair, harness, api);
@@ -1154,7 +1154,7 @@ void malformedIssuesCancellationAndShutdownAreTyped()
 
 void repeatedFakeIssueReapKeepsOneStableOperation()
 {
-    RealHarness harness{"127.0.0.1", AF_INET, portBase(51000U)};
+    RealHarness harness{"127.0.0.1", AF_INET, portBase(21000U)};
     auto pair = harness.acceptOne();
     const auto api = std::make_shared<FakeNativeApi>();
     api->receiveStatus = SOCKET_ERROR;
@@ -1223,7 +1223,7 @@ void repeatedFakeIssueReapKeepsOneStableOperation()
 
 void associationFailureConsumesAndClosesAcceptedSocket()
 {
-    RealHarness harness{"127.0.0.1", AF_INET, portBase(51500U)};
+    RealHarness harness{"127.0.0.1", AF_INET, portBase(21500U)};
 
     auto zeroPair = harness.acceptOne();
     const auto zeroApi = std::make_shared<FakeNativeApi>();
@@ -1469,12 +1469,12 @@ void realSocketIocpSmoke(
 
 void realIpv4AcceptedSocketIocpSmoke()
 {
-    realSocketIocpSmoke("127.0.0.1", AF_INET, 52000U);
+    realSocketIocpSmoke("127.0.0.1", AF_INET, 22000U);
 }
 
 void realIpv6AcceptedSocketIocpSmoke()
 {
-    realSocketIocpSmoke("::1", AF_INET6, 54000U);
+    realSocketIocpSmoke("::1", AF_INET6, 22500U);
 }
 
 } // namespace

@@ -102,6 +102,13 @@
 - Fixed MSIX AppData virtualization for the durable Internal Alpha profile with one narrowly scoped manifest exclusion and a focused regression that fences the legacy profile out of that capability.
 - Verified exact machine trust, read-only preflight, current-package registration, Start launch, WindowsApps GUI/Manager identity, durable registry survival across reinstall, absence of package-private profile storage, and the installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart workflow. The disposable 0.9.4→0.9.5 update and uninstall/reinstall lifecycle remains open.
 
+### R6 simulated acceptance closeout
+
+- Added a reproducible isolated lifecycle that rehashes all 323 manifest-listed files in both retained candidates, validates both signed packages, stages the real 0.9.4 then 0.9.5 CLI/MCP payloads, and verifies version/self-test behavior.
+- Proved settings, workspace files, two-project isolation, legacy memory, project memory, and an unrelated LM Studio MCP configuration survive the simulated upgrade, uninstall, and reinstall. The owner explicitly accepted simulated testing for this remaining gate; no actual disposable-machine package deployment is claimed.
+- Hardened the full Release test matrix against Windows excluded TCP ranges, asynchronous shutdown publication, Release-disabled managed-run assertions, and the current central schema version. All 150 configured tests pass.
+- Accepted the signed 0.9.5.0 distribution for Internal Alpha. Legacy schema-9/C008/C009 migration remains deferred, and the preserved legacy profile remains untouched.
+
 ### R7 — Documented delivery
 
 - Reconciled every active first-party document with the implemented capability, exact acceptance evidence, honest limitations, and current PR dependency chain.
@@ -110,9 +117,9 @@
 
 ### Remaining Alpha work
 
-- Complete the current registered visual telemetry/Settings/managed-continuity walkthrough when sanctioned native-app control is available, plus the retained 0.9.4→0.9.5 update and uninstall/reinstall marker lifecycle in a designated disposable environment. Current normal-account install/Start and durable installed tool use pass. Prior live productive continuity and expanded-Rig accessibility remain verified. Legacy schema-9 migration is deferred.
+- No required Internal Alpha functionality or acceptance work remains. Deliver this tested closeout through the normal pull-request and merge workflow, then synchronize local and GitHub `main`. Legacy schema-9 migration remains deferred outside the accepted first Alpha scope.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -721,7 +721,7 @@ void centralVersion5MigrationCompatibility(
 
     SqliteDatabase database{directory.path() / L"store.sqlite", false};
     REQUIRE(database.queryInteger(
-                "SELECT version FROM schema_version") == 6);
+                "SELECT version FROM schema_version") == 7);
     REQUIRE(database.queryText(
                 "SELECT summary FROM agent_sessions "
                 "WHERE id='legacy-session-1'") ==

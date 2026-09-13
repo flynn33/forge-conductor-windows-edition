@@ -21,7 +21,7 @@ is not permission to omit files blindly. Do not silently install a model or requ
 LM Studio and an available tool-capable model are external prerequisites for model-dependent features.
 
 ## Packaging implementation
-`scripts/package.ps1` uses MakeAppx and SignTool. It refuses dirty candidate inputs or a mismatched staging commit/tree, then verifies the signed package by extracting it and comparing each payload hash. The candidate contains the self-contained App SDK, redistributable release CRT, executable hashes and real native binaries. Machine trust and current normal-account registration pass. R6-G1 remains open for the retained lower-version upgrade and uninstall/reinstall lifecycle in a disposable environment.
+`scripts/package.ps1` uses MakeAppx and SignTool. It refuses dirty candidate inputs or a mismatched staging commit/tree, then verifies the signed package by extracting it and comparing each payload hash. The candidate contains the self-contained App SDK, redistributable release CRT, executable hashes and real native binaries. Machine trust and current normal-account registration pass. The owner accepted the retained lower-version gate through `scripts/validation/Test-R6SimulatedInstalledLifecycle.ps1`; it exercises the real 0.9.4 and 0.9.5 payloads without claiming a second-machine MSIX deployment.
 The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.exe`,
 `ForgeConductor.Manager.exe`, `ForgeConductor.SessionHost.exe`, the Forsetti manifest and agent/resources used at runtime.
 Verify actual target output names rather than blindly adopting this proposed staging list.
@@ -63,6 +63,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

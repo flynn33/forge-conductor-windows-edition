@@ -55,7 +55,7 @@ A small targeted interruption exercise suffices; do not build an adversarial cra
 
 ## Live-provider result
 
-The R6 continuation ran real LM Studio model `qwen3-coder-30b` with authoritative usage. The earlier run `786d0672-6231-4202-a46c-401732ade283` completed a real rollover and useful successor effects, then hit Forge's legacy desktop-chat repetition block; `PACKAGE_OK` came from a separate 0.9.3 exact-package run. After the guard repair, exact 0.9.4 run `34c078f8-6256-4b03-80e1-936e2e50f2f4` completed canonical rollover to `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed both requested effects, and returned `DONE`. R6-G2 passes; the installed pass below remains open.
+The R6 continuation ran real LM Studio model `qwen3-coder-30b` with authoritative usage. The earlier run `786d0672-6231-4202-a46c-401732ade283` completed a real rollover and useful successor effects, then hit Forge's legacy desktop-chat repetition block; `PACKAGE_OK` came from a separate 0.9.3 exact-package run. After the guard repair, exact 0.9.4 run `34c078f8-6256-4b03-80e1-936e2e50f2f4` completed canonical rollover to `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed both requested effects, and returned `DONE`. R6-G2 passes.
 
 ## One installed-app acceptance pass
 Use a Windows VM or suitable clean profile without source checkout/Visual Studio. Install the signed MSIX,
@@ -63,7 +63,7 @@ launch via Start, exercise the native pages and main workflow, update/reinstall 
 Use screenshots or a short operator record for the actual GUI; headless process creation does not prove UI usability.
 LM Studio/model installation remains a documented prerequisite, not a hidden embedded model download.
 
-The 0.9.5 telemetry change invalidated the affected collector, Manager protocol/projection, presentation, version identity, Release build, and package checks. All seven focused targets passed. The persistent-profile continuation then passed all 91 Release Infrastructure Unit tests, including `foundation.persistent_internal_alpha_profile`, and a full Release product build. Candidate `candidate-0.9.5.0-20260913-165014` was signed, unpacked, and checked against all 324 payload hashes. The focused manifest contract proves the exclusion is limited to the Internal Alpha root. Machine trust, registered Start launch, WindowsApps GUI/Manager identity, absence of package-private profile storage, durable registry preservation, and the installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart smoke pass. Earlier managed-run/live-provider and native visual/accessibility evidence remains applicable because the later changes do not alter those paths. The formal disposable 0.9.4→0.9.5 update and uninstall/reinstall lifecycle remains open. G04's historical aggregate wrapper overflow was not rerun.
+The 0.9.5 telemetry change invalidated the affected collector, Manager protocol/projection, presentation, version identity, Release build, and package checks. Candidate `candidate-0.9.5.0-20260913-165014` was signed, unpacked, and checked against all 324 payload files. Machine trust, registered Start launch, WindowsApps GUI/Manager identity, absence of package-private profile storage, durable registry preservation, and the installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart smoke pass. The owner accepted simulation for the final repetition and disposable lifecycle. `scripts/validation/Test-R6SimulatedInstalledLifecycle.ps1` validates both candidate signatures and all 323 manifest-listed files, then proves the real 0.9.4 and 0.9.5 payloads retain settings, workspace data, project isolation, legacy/project memory, and unrelated LM Studio MCP configuration through simulated upgrade, uninstall, and reinstall. The full Release build and all 150 configured tests pass. This does not claim a second-machine MSIX deployment. G04's historical aggregate wrapper overflow is superseded for release evidence by the complete direct CMake build and CTest matrix.
 
 ## Evidence
 For each required result record command/action, commit, configuration, exit code or observed behavior,
@@ -73,6 +73,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

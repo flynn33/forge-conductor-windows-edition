@@ -26,7 +26,7 @@ R2 telemetry collection/visual controls, R3 local workflow pages, R4 settings/re
 
 Use one active code slice at a time and preserve shared ledger state across branches. Passing a phase's implementation gates permits normal submission of that increment, **not final Alpha acceptance**. An actual code failure in that increment must be fixed before its PR is ready. Only checks explicitly assigned to R6 may remain as named final-acceptance dependencies on otherwise verified R1–R5 work. The phase file and PR must say so plainly.
 
-R6 requires the actual installed GUI, actual live provider productive rollover, actual settings/reset and lifecycle checks. It cannot be completed using fixtures or unavailable-environment notes. R7 cannot finish until the final PR is actually merged and local/main/GitHub source equality is verified. While an owner merge/review is pending, continue independent work under [Git workflow](GIT-WORKFLOW.md), not a polling loop or a status-only stop.
+R6 normally requires the actual installed GUI, actual live provider productive rollover, actual settings/reset and lifecycle checks. It cannot be completed using fixtures or unavailable-environment notes. For the 0.9.5.0 Internal Alpha, the owner explicitly authorized real-binary lifecycle simulation after the actual installed GUI, Manager, accessibility, telemetry and live-provider checks had passed; the signed previous/current payload simulation supplies the remaining lifecycle proof. R7 cannot finish until the final PR is actually merged and local/main/GitHub source equality is verified. While an owner merge/review is pending, continue independent work under [Git workflow](GIT-WORKFLOW.md), not a polling loop or a status-only stop.
 
 ## Common phase completion transaction
 For **every phase**, including R0 and R7: finish its coherent scope; pass its listed minimal gate checks; update source and tests where required; update README, CHANGELOG, ROADMAP, STATUS, plan/ledger, current handoff and every active first-party document; commit reviewed files as the owner; push and open that phase's PR to main. Read actual required reviews/checks and follow normal merge authority. After an actual merge synchronize local main and record a real receipt. See [tracking/docs](TRACKING-AND-DOCS.md) for all-doc review and [Git](GIT-WORKFLOW.md) for the distinction between PR submission and authorized merge.
@@ -43,7 +43,7 @@ Do not create an extra native rebuild for a documentation-only closeout. Do not 
 | P3 provider/continuity | Real bootstrap transport, context-only policy, Manager automation lifetime and fixtures exist | R1 supplies ordinary run/usage/productive continuation; R6 proves live behavior |
 | P4 native GUI | Provider page and navigation exist; required pages are not all implemented | R2 visuals, R3 operations, R4 Settings/maintenance |
 | P5 installer | Signed engineering packaging exists; installed trust/lifecycle unresolved | R5 candidate mechanism/data behavior; R6 real installed lifecycle |
-| P6 acceptance | Required live/installed GUI completion remains open | R6 actual acceptance and R7 truthful delivery |
+| P6 acceptance | Actual installed GUI/live-provider evidence and owner-approved signed-payload lifecycle simulation passed | R6 acceptance is complete; R7 performs truthful delivery and source synchronization |
 
 Do not relabel old reported passes as newly executed R-phase gates without checking their applicability. Keep original phase receipts immutable historical evidence, not active selectors.
 

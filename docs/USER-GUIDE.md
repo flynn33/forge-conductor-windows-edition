@@ -1,5 +1,5 @@
 # Operator guide — Alpha workflow
-This is the implemented Alpha workflow. Real LM Studio managed continuity and current-package registration in the owner's normal account have passed. The retained 0.9.4→0.9.5 update and uninstall/reinstall lifecycle remains open for a designated disposable environment.
+This is the accepted Internal Alpha workflow. Real LM Studio managed continuity and current-package registration in the owner's normal account have passed. The retained 0.9.4→0.9.5 update and uninstall/reinstall data contract passes under the owner's approved simulation using the real candidate payloads; no second-machine MSIX deployment is claimed.
 
 ## Start a project
 Install and launch from Start. The first Internal Alpha uses `%LOCALAPPDATA%\Forge Conductor Internal Alpha`; the persistent header identifies the profile and shows the exact path on every page. Connect/start the manager, choose a project folder and give it a display name.
@@ -57,6 +57,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

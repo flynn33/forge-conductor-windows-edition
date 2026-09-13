@@ -4,7 +4,7 @@ This map records current Windows source capability against the internal Alpha co
 
 | Capability | Current Windows state | Alpha requirement | Owner |
 |---|---|---|---|
-| Native desktop shell | C++20/WinUI 3 host, Manager attachment, managed-run controls, native Rig visuals, typed detail summaries, isolated profile view state, all required destinations, native accessibility walkthroughs, and registered WindowsApps Start/Manager identity exist | Complete the formal disposable installed lifecycle | R3–R4, R6 |
+| Native desktop shell | C++20/WinUI 3 host, Manager attachment, managed-run controls, native Rig visuals, typed detail summaries, isolated profile view state, all required destinations, native accessibility walkthroughs, registered WindowsApps Start/Manager identity, and owner-approved simulated lifecycle exist | Accepted for Internal Alpha; an actual second-machine lifecycle is optional follow-up | R3–R4, R6 |
 | Manager lifecycle | Per-user native Manager and GUI attach/detach path exist | Manager continues owning ordinary runs and services after GUI close | R1, R6 |
 | Provider integration | Real loopback model discovery and Responses transport passed against `qwen3-coder-30b`; endpoint/model/capacity/reserves persist | Typed ordinary run service, visible errors, live model validation | R1, R4, R6 |
 | Managed inference and continuity | Response IDs, correlated tool bootstrap, usage and context-only automation fixtures exist | Ordinary turns, tool dispatch and usage feed the Manager-owned controller; productive live successor is proven in the R6 continuation | R1, R6 |
@@ -24,6 +24,6 @@ Reuse `.forge-codex/state/baseline/mcp-tool-baseline.json` and `p02-mcp-semantic
 Owner-directed removal of count/time-triggered run controls is intentional. Manager-owned continuity does not imply control of ordinary unowned LM Studio desktop chats. Optional browser dashboards, advanced analytics/connectors, additional architectures and public distribution infrastructure remain outside this internal Alpha; core native telemetry and settings are included.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
