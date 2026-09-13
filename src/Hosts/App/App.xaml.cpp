@@ -14,7 +14,7 @@ struct LocalArguments final {
     ~LocalArguments() { if (values) ::LocalFree(values); }
 };
 
-[[nodiscard]] std::optional<std::wstring> selectedAlphaRoot() noexcept
+[[nodiscard]] std::optional<std::wstring> commandLineAlphaRoot() noexcept
 {
     int count = 0;
     LocalArguments arguments{
@@ -28,6 +28,16 @@ struct LocalArguments final {
         }
     }
     return std::nullopt;
+}
+
+[[nodiscard]] std::wstring selectedAlphaRoot() noexcept
+{
+    if (auto requested = commandLineAlphaRoot()) {
+        return std::move(*requested);
+    }
+    auto persistent = ::ForgeConductor::Infrastructure::Windows::
+        WindowsAlphaManagerProfile::persistentDataRoot();
+    return persistent ? std::move(persistent).value() : std::wstring{};
 }
 
 }

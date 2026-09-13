@@ -216,8 +216,10 @@ public:
         std::string confirmationToken,
         std::stop_token cancellation) noexcept override;
 private:
+    [[nodiscard]] std::string profileSummary() const;
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>
         alphaProfile_;
+    bool persistentProfile_{};
     std::string profileError_;
 };
 }

@@ -1,7 +1,11 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 
 #include "Detail/UtfConversion.h"
+#include "Detail/UniqueCoTaskMemAllocation.h"
 #include "Detail/WindowsPathResolver.h"
+
+#include <ShlObj.h>
+#include <Windows.h>
 
 #include <array>
 #include <cstdint>
@@ -10,6 +14,48 @@
 
 namespace ForgeConductor::Infrastructure::Windows {
 namespace WindowsDetail = ForgeConductor::Infrastructure::Windows::Detail;
+namespace {
+
+constexpr wchar_t PersistentProfileDirectoryName[] =
+    L"Forge Conductor Internal Alpha";
+
+}
+
+Domain::Result<std::wstring>
+WindowsAlphaManagerProfile::persistentDataRoot() noexcept
+{
+    try {
+        PWSTR rawLocalAppData = nullptr;
+        const HRESULT result = ::SHGetKnownFolderPath(
+            FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, &rawLocalAppData);
+        WindowsDetail::UniqueCoTaskMemAllocation<wchar_t> localAppData{
+            rawLocalAppData};
+        if (FAILED(result) || rawLocalAppData == nullptr ||
+            *rawLocalAppData == L'\0') {
+            return Domain::Result<std::wstring>::failure(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The persistent Internal Alpha profile root could not be "
+                "resolved from FOLDERID_LocalAppData."));
+        }
+
+        std::wstring requested{rawLocalAppData};
+        if (!requested.empty() && requested.back() != L'\\') {
+            requested.push_back(L'\\');
+        }
+        requested.append(PersistentProfileDirectoryName);
+        auto utf8 = WindowsDetail::strictUtf16ToUtf8(requested);
+        if (!utf8) {
+            return Domain::Result<std::wstring>::failure(
+                std::move(utf8).error());
+        }
+        return WindowsDetail::WindowsPathResolver::resolveAppOwnedRoot(
+            utf8.value());
+    } catch (...) {
+        return Domain::Result<std::wstring>::failure(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "The persistent Internal Alpha profile root could not be prepared."));
+    }
+}
 
 Domain::Result<WindowsAlphaManagerProfile>
 WindowsAlphaManagerProfile::createProfile(

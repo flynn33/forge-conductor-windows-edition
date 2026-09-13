@@ -195,6 +195,23 @@ ManagerConnection::ManagerConnection(
         return;
     }
     alphaProfile_.emplace(std::move(created).value());
+    auto persistentRoot = W::WindowsAlphaManagerProfile::persistentDataRoot();
+    persistentProfile_ = persistentRoot &&
+        ::CompareStringOrdinal(alphaProfile_->nativeDataRoot().data(),
+            static_cast<int>(alphaProfile_->nativeDataRoot().size()),
+            persistentRoot.value().data(),
+            static_cast<int>(persistentRoot.value().size()), TRUE) == CSTR_EQUAL;
+}
+
+std::string ManagerConnection::profileSummary() const
+{
+    if (!alphaProfile_) {
+        return "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
+    }
+    return std::string{persistentProfile_
+            ? "Internal Alpha (persistent)\nData: "
+            : "Isolated Alpha\nData: "} +
+        alphaProfile_->dataRoot().value();
 }
 
 std::optional<std::string> ManagerConnection::viewStateScope() const noexcept
@@ -207,18 +224,19 @@ std::optional<std::string> ManagerConnection::viewStateScope() const noexcept
 std::string ManagerConnection::refresh(std::stop_token cancellation) noexcept {
     try {
         if (!profileError_.empty()) return profileError_;
+        const std::string profile = profileSummary();
         auto clock = std::make_shared<W::SystemClock>();
         auto context = operationContext(clock, cancellation);
         auto created = connectManager(alphaProfile_, context, clock);
-        if (!created) return created.error().message;
+        if (!created) {
+            return "Profile: " + profile +
+                "\nDisconnected: " + created.error().message;
+        }
         auto client = std::move(created).value();
         const auto result = client->status(context);
         client->shutdown();
         if (!result) return "Disconnected: " + result.error().message;
         const auto& status = result.value();
-        const std::string profile = alphaProfile_
-            ? "Isolated Alpha\nData: " + alphaProfile_->dataRoot().value()
-            : "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
         return "Connected to manager PID " + std::to_string(status.processId) +
             "\nProfile: " + profile +
             "\nVersion: " + status.version +
