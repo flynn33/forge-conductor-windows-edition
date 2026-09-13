@@ -21,8 +21,10 @@
   </NavigationView.MenuItems>
   <ScrollViewer>
    <StackPanel Padding="32" Spacing="14" MaxWidth="920" HorizontalAlignment="Left">
-    <TextBlock x:Name="PageTitle" Text="Rig" Style="{ThemeResource TitleTextBlockStyle}" />
-     <TextBlock x:Name="PageDescription" Text="Manager, runtime, and provider health." TextWrapping="Wrap" Opacity="0.72" />
+     <TextBlock x:Name="PageTitle" Text="Rig" Style="{ThemeResource TitleTextBlockStyle}" />
+      <TextBlock x:Name="PageDescription" Text="Manager, runtime, and provider health." TextWrapping="Wrap" Opacity="0.72" />
+      <TextBlock x:Name="ProfileState" Text="Deployment profile unavailable" TextWrapping="Wrap"
+        IsTextSelectionEnabled="True" FontWeight="SemiBold" />
 
      <StackPanel x:Name="RigPanel" Spacing="14">
       <Border Padding="12" CornerRadius="8" Background="{ThemeResource AccentFillColorSecondaryBrush}">
@@ -157,10 +159,10 @@
        <StackPanel x:Name="ActivityTimeline" Spacing="6" AutomationProperties.Name="Recent Manager activity timeline" />
       </StackPanel>
      </Border>
-     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-      <StackPanel Spacing="10">
-       <TextBlock Text="Manager connection" Style="{ThemeResource SubtitleTextBlockStyle}" />
-       <TextBlock x:Name="ManagerState" Text="Start the manager or refresh to read its current status." TextWrapping="Wrap" />
+      <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+       <StackPanel Spacing="10">
+        <TextBlock Text="Manager connection" Style="{ThemeResource SubtitleTextBlockStyle}" />
+        <TextBlock x:Name="ManagerState" Text="Start the manager or refresh to read its current status." TextWrapping="Wrap" />
        <StackPanel Orientation="Horizontal" Spacing="12">
         <Button Content="Start manager" Click="StartClicked" />
         <Button Content="Stop service" Click="StopClicked" />
