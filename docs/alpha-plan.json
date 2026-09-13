@@ -29,7 +29,7 @@
     "github_delivery_truth": "actual phase pull request state"
   },
   "phase_completion_rule": "A phase checkpoint requires its applicable gates, documentation review, reviewed push and primary PR; continue to the next feasible R0-R7 action. Delivery completes only after actual merge/sync, and final Alpha requires all original R6 actual-product gates.",
-  "last_reviewed_phase": "R2-telemetry-parity-follow-up",
+  "last_reviewed_phase": "R6-internal-alpha-completion-continuation",
   "last_reviewed_on": "2026-09-13",
   "phases": [
     {
@@ -548,9 +548,11 @@
         "milestone_url": "https://github.com/flynn33/forge-conductor-windows-edition/milestone/7",
         "issue_number": 9,
         "issue_url": "https://github.com/flynn33/forge-conductor-windows-edition/issues/9",
-        "branch": "alpha/r6-acceptance",
-        "pr_number": 20,
-        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
+        "branch": "alpha/r6-internal-alpha-completion",
+        "pr_number": 25,
+        "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/25",
+        "primary_pr_number": 20,
+        "primary_pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
       }
     },
     {

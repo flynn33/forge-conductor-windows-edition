@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows control application and MCP tool server for project work with local models in LM Studio.
 
-**Status: the Windows Alpha now includes the reopened native telemetry parity implementation and a source-bound 0.9.5.0 signed candidate.** Draft [PR #24](https://github.com/flynn33/forge-conductor-windows-edition/pull/24) adds real per-logical CPU, GPU-engine, disk/volume, and relevant-process measurements to the integrated Rig while preserving the verified Manager-owned continuity and native workflows. Registered install/update/uninstall acceptance remains blocked by Windows machine trust. Authentic C008/C009 migration history is still unavailable, so schema-9 owner data remains explicitly unsupported and untouched.
+**Status: INTERNAL ALPHA NOT READY.** Native telemetry, Manager-owned continuity, projects, memory, MCP, tools, Settings, and the signed 0.9.5.0 package are implemented and verified outside package registration. Draft [PR #25](https://github.com/flynn33/forge-conductor-windows-edition/pull/25) preserves distinct install receipts and provides a read-only prerequisite check. Registered install/Start/update/uninstall/reinstall acceptance is blocked because the development publisher is absent from Local Machine Trusted People and no disposable test account is available. Authentic C008/C009 migration history is also unavailable, so schema-9 owner data remains unsupported and untouched.
 
 Use [Product status](docs/STATUS.md) for verified behavior and blockers, [Roadmap](ROADMAP.md) for the current phase sequence, and [Documentation index](docs/DOCUMENTATION-INDEX.md) for active and historical guidance. The adopted execution contract is under [Alpha recovery](docs/implementation/alpha-recovery/instructions/EXECUTION.md).
 
@@ -29,9 +29,9 @@ Windows 11 x64; C++20; Visual Studio 2022/MSVC v143; Windows SDK 10.0.26100.0; C
   -Target ForgeConductor.Cli,ForgeConductor.Manager,ForgeConductor.SessionHost
 ```
 
-The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `78683d3cef440a190932b8f8cb0fe53b39a6a1ac2940a80c7e4da9e4309a8f22`. Follow [Installer and installation](docs/INSTALL.md) for provenance and hash verification; [Installed acceptance handoff](docs/INSTALLED-ACCEPTANCE-HANDOFF.md) gives the exact administrator/test-account procedure.
+The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `9c772fcc9646f1e876f83c59c9e59a189f6f6881bcd603eb290dd589d5129a74`. Follow [Installer and installation](docs/INSTALL.md) for provenance and hash verification; [Installed acceptance handoff](docs/INSTALLED-ACCEPTANCE-HANDOFF.md) gives the exact administrator/test-account procedure.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

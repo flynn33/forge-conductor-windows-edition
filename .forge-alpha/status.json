@@ -1,21 +1,21 @@
 {
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
-  "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12 and the owner telemetry-parity correction; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T14:01:22Z",
-  "current_phase": "R2",
-  "current_slice": "R2.5",
+  "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12, the owner telemetry-parity correction, and the owner internal-Alpha completion goal; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
+  "updated_at_utc": "2026-09-13T14:47:00Z",
+  "current_phase": "R6",
+  "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r2-telemetry-parity",
-    "head": "27c26e1401da72241cff68012ece2a8645f4e752",
-    "origin_main": "56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517",
-    "github_main": "56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517",
+    "branch": "alpha/r6-internal-alpha-completion",
+    "head": "c77c45386b25d7b76270c3685b79c172f41526c8",
+    "origin_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
+    "github_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "dirty_summary": [
-      "Draft PR #24 carries the reopened native telemetry parity implementation; closeout documentation is pending commit/push.",
+      "Draft PR #25 carries the installed-acceptance receipt safeguards and current R6 documentation.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ignored exact 0.9.5 candidate and disposable visual profile remain local under out/ and are identified by hashes and source provenance."
+      "Ignored source-bound candidate-0.9.5.0-20260913-144427 remains local under out/ with recorded hashes and provenance."
     ]
   },
   "baseline": {
@@ -90,13 +90,13 @@
     },
     "R2": {
       "implementation": "verified",
-      "delivery": "pr_open",
+      "delivery": "synced",
       "branch": "alpha/r2-telemetry-parity",
       "issue_number": 5,
       "milestone_number": 3,
       "pr_number": 24,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/24",
-      "reviewed_head": "27c26e1401da72241cff68012ece2a8645f4e752",
+      "reviewed_head": "66b8228d358d0f951c309eaa6973c69ed7ffac5b",
       "slices": {
         "R2.1": "verified",
         "R2.2": "verified",
@@ -120,7 +120,7 @@
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 telemetry parity follow-up review of every active first-party document; affected telemetry, package, acceptance, ledger, and operator content updated; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R2.md",
-      "last_known_merge": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5"
+      "last_known_merge": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8"
     },
     "R3": {
       "implementation": "verified",
@@ -226,13 +226,13 @@
     },
     "R6": {
       "implementation": "blocked",
-      "delivery": "synced",
-      "branch": "alpha/r6-installed-acceptance-closeout",
+      "delivery": "pr_open",
+      "branch": "alpha/r6-internal-alpha-completion",
       "issue_number": 9,
       "milestone_number": 7,
-      "pr_number": 23,
-      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/23",
-      "reviewed_head": "3fb70143ef2db9704c8a395b49a29857bd087976",
+      "pr_number": 25,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/25",
+      "reviewed_head": "c77c45386b25d7b76270c3685b79c172f41526c8",
       "slices": {
         "R6.1": "blocked",
         "R6.2": "verified",
@@ -242,7 +242,7 @@
       "gates": {
         "R6-G1": {
           "status": "blocked",
-          "evidence": "Signed exact 0.9.5.0 package build/unpack/native execution passed. Authorized Local Machine publisher trust and the dedicated-account 0.9.4\u21920.9.5 install/Start/update/uninstall/reinstall lifecycle remain open. Authentic schema-9 compatibility is a separate dependency."
+          "evidence": "Source-bound signed 0.9.5.0 package build, extraction, 324-file rehash, and distributed-helper preflight passed through the machine-trust check. The verified publisher is absent from Local Machine Trusted People, no disposable ForgeAlphaTest account exists, and the current account has no Forge registration. Authorized machine trust plus the dedicated-account 0.9.4\u21920.9.5 install/Start/update/uninstall/reinstall lifecycle remain open. Authentic schema-9 compatibility is a separate dependency."
         },
         "R6-G2": {
           "status": "passed",
@@ -250,12 +250,12 @@
         },
         "R6-G3": {
           "status": "passed",
-          "evidence": "Prior exact-package visual/settings/accessibility evidence remains applicable. Full Debug/Release builds, five focused suites, signed 0.9.4 package extraction/rehash, exact-package GUI/Manager live rollover, and terminal run passed."
+          "evidence": "Exact 0.9.5 packaged telemetry, all native pages, keyboard operation, High Contrast, repaired 150% text layout, disconnect, and reconnect passed under a disposable profile. The installed repetition remains part of R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R6 acceptance closeout full active first-party review; runtime error attribution, 80-turn coverage, 0.9.4 exact-package rollover, branch retirement, administrator handoff, and open gates reconciled.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R6 internal Alpha completion continuation affected-document review; candidate provenance, preflight/receipt behavior, fresh administrator boundary, PR #25, and open gates reconciled. Prior full active-document reviews remain preserved.",
       "phase_receipt": ".forge-alpha/phases/R6.md",
-      "last_known_merge": "56e5f55a2439fd5c6f1e2ce5fe1ca5d54f5c4517",
+      "last_known_merge": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
       "primary_pr_number": 20,
       "primary_pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
     },
@@ -304,21 +304,21 @@
     },
     {
       "id": "B-R6-INSTALL-TRUST",
-      "failure": "Windows package deployment returns 0x800B0109 because the development publisher is absent from Local Machine Trusted People; no Forge package is registered. This session will not retry the denied elevated import.",
+      "failure": "Fresh checks found publisher 0AC803FF3292A2C736B1CBB31AFF88418983B992 absent from Local Machine Trusted People, the current user has no Forge package registration, the all-users query is access denied, and local account .\\ForgeAlphaTest does not exist. The exact distributed helper stops before deployment with the same machine-trust prerequisite.",
       "affected": "R6.1, R6.4 and R6-G1",
       "dependency_type": "windows_approval",
-      "last_observed_utc": "2026-09-13T12:15:00Z",
-      "necessary_external_action": "On an authorized Windows 11 x64 environment, import the verified public certificate into Local Machine Trusted People through the approved administrator process, then run the dedicated ForgeAlphaTest account lifecycle in docs/INSTALLED-ACCEPTANCE-HANDOFF.md.",
-      "next_independent_work": "Complete and merge PR #24, then run the installed lifecycle when authorized machine trust is available."
+      "last_observed_utc": "2026-09-13T14:35:00Z",
+      "necessary_external_action": "An authorized administrator must import the verified public certificate into Local Machine Trusted People and create or designate an explicitly disposable Windows account. In that account, run the current helper preflight and the dedicated 0.9.4\u21920.9.5 lifecycle in docs/INSTALLED-ACCEPTANCE-HANDOFF.md.",
+      "next_independent_work": "Independent implementation, candidate creation, packaged preflight, and handoff preparation are complete in draft PR #25. Resume at the administrator prerequisite and preserve every timestamped install receipt."
     }
   ],
   "known_bugs": [],
-  "last_result": "Native telemetry parity implementation, focused tests, exact packaged idle/disconnect/reconnect inspection, High Contrast and repaired 150% text inspection, Release build, and source-bound signed 0.9.5 candidate completed. Registered lifecycle and authentic schema-history acceptance remain open.",
-  "next_action": "Commit and push the PR #24 closeout, update its description, complete normal review/merge, preserve its exact remote head in a verified Git bundle, and retire only alpha/r2-telemetry-parity with an exact-head lease. Run the installed lifecycle when authorized machine trust is available.",
+  "last_result": "Release All build and source-bound signed 0.9.5 candidate from b2de729/tree 3cc5170 passed package creation, extraction, 324-file rehash, and exact distributed-helper validation. Preflight stopped before deployment at missing Local Machine publisher trust. Registered lifecycle and authentic schema-history acceptance remain open.",
+  "next_action": "An authorized administrator imports the exact Publisher.cer from candidate-0.9.5.0-20260913-144427 into Local Machine Trusted People and creates or designates a disposable test account. In that account, preflight the current candidate, then execute the retained 0.9.4 to current 0.9.5 install/Start/update/uninstall/reinstall and installed operator passes. Resolve authentic C008/C009 history or record an explicit owner deployment-profile decision.",
   "acceptance": {
-    "installed_workflow": "blocked_machine_trust_exact_0.9.5_candidate_ready",
+    "installed_workflow": "blocked_machine_trust_and_disposable_account_exact_0.9.5_candidate_ready",
     "live_productive_successor": "passed_exact_0.9.4_real_lm_studio_qwen3_coder_30b_terminal",
-    "native_visuals_settings": "partial_exact_0.9.5_telemetry_idle_disconnect_reconnect_passed_enlarged_text_high_contrast_open",
+    "native_visuals_settings": "passed_exact_0.9.5_telemetry_pages_keyboard_high_contrast_150_percent_disconnect_reconnect",
     "installed_lifecycle": "blocked_machine_trust_0.9.4_to_0.9.5",
     "owner_existing_data_compatibility": "blocked_authentic_schema_history_unavailable_live_store_untouched",
     "alpha_accepted": false

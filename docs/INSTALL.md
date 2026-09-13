@@ -1,11 +1,11 @@
 # Installer and installation
-**Current R6 acceptance candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 13, 2026. The package is `ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `78683d3cef440a190932b8f8cb0fe53b39a6a1ac2940a80c7e4da9e4309a8f22`, from commit `27c26e1401da72241cff68012ece2a8645f4e752` and tree `e9995ac4ca6de0043fb1f293091f23720a434acd`.
+**Current R6 acceptance candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 13, 2026. The package is `ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `9c772fcc9646f1e876f83c59c9e59a189f6f6881bcd603eb290dd589d5129a74`, from commit `c77c45386b25d7b76270c3685b79c172f41526c8` and tree `2bb16d60c7616f3d6f31ec94c85192dfe30db349`.
 
 The 0.9.5 candidate adds the reopened native telemetry parity implementation while retaining the managed-run invocation-guard repair after live acceptance exposed the legacy desktop-chat block. Windows still requires the included development publisher certificate in Local Machine Trusted People. Current-user trust is insufficient and no package was registered, so exact unpacked-package execution is recorded separately from installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
 
 Build with `scripts/build.ps1 -Configuration Release -Product All`, then `scripts/package.ps1 -DevelopmentSigning`.
 Each distribution under `out/dist/candidate-*` contains the signed MSIX, public certificate, checksum metadata,
-README, and `Install-Engineering.ps1`. Machine trust must be provisioned through an approved administrator action. Then run the helper without the trust switch from the dedicated test account. No private key is exported. Follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md) for the exact 0.9.4→0.9.5 lifecycle.
+README, and `Install-Engineering.ps1`. Machine trust must be provisioned through an approved administrator action. From the dedicated test account, run the helper first with `-PreflightOnly`; it validates all inputs, machine trust, current registration, and increasing version without installing. When it reports `ready_for_install: true`, rerun without that switch. Every successful registration writes a distinct `install-result-*.json` receipt. No private key is exported. Follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md) for the exact 0.9.4→0.9.5 lifecycle.
 
 ## Distribution contract
 Produce the versioned x64 Alpha ZIP emitted by `scripts/package.ps1`, containing:
@@ -63,6 +63,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

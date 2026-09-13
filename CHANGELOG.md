@@ -88,6 +88,14 @@
 - Ran the exact 0.9.4 GUI and Manager against real LM Studio. Run `34c078f8-6256-4b03-80e1-936e2e50f2f4` completed canonical rollover to successor `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed the remaining effect, and returned terminal text `DONE` without the legacy block.
 - Preserved the four retired remote branch heads in one verified Git bundle before guarded deletion. Added an exact administrator/test-account handoff for the still-open installed lifecycle; no elevated trust workaround was attempted.
 
+### R6 internal Alpha completion continuation — Installed evidence integrity
+
+- Added `-PreflightOnly` to the engineering installation helper. It validates package, certificate, signer, machine trust, prior version, and update eligibility without registering the package.
+- Require the exact development publisher in Local Machine Trusted People before deployment and report the authorized administrator action when it is absent.
+- Write a unique timestamped JSON receipt after every successful install or update so lifecycle evidence cannot overwrite a prior result.
+- Rebuilt the source-bound 0.9.5.0 candidate from commit `c77c45386b25d7b76270c3685b79c172f41526c8` and tree `2bb16d60c7616f3d6f31ec94c85192dfe30db349`. Its MSIX SHA-256 is `9c772fcc9646f1e876f83c59c9e59a189f6f6881bcd603eb290dd589d5129a74` and ZIP SHA-256 is `2874a1cdf51d6861e780a32b599172f9ca0d84fe9ad9a9bb5eb92b55e3bb8dd4`.
+- Confirmed the distributed helper stops at the missing machine-trust prerequisite before package deployment. Package registration and the installed lifecycle remain open; authentic schema-9 compatibility remains unresolved.
+
 ### R7 — Documented delivery
 
 - Reconciled every active first-party document with the implemented capability, exact acceptance evidence, honest limitations, and current PR dependency chain.
@@ -99,6 +107,6 @@
 - Complete machine-trusted install/Start/update/uninstall acceptance and authentic C008/C009 history recovery before accepting the owner schema-9 store. Live productive continuity and expanded-Rig accessibility are verified.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
