@@ -721,7 +721,11 @@ class BlockingDiagnosticRotationObserver final : public WindowsDetail::IDiagnost
 
     [[nodiscard]] bool waitUntilCheckpoint() const noexcept
     {
-        return ::WaitForSingleObject(checkpointReached_.get(), 15'000U) == WAIT_OBJECT_0;
+        // Reaching the validation checkpoint includes copying and durably flushing
+        // the 64 MiB stress fixture. Hosted Windows storage and real-time scanning
+        // can legitimately take longer than 15 seconds without indicating a
+        // synchronization or rotation failure.
+        return ::WaitForSingleObject(checkpointReached_.get(), 120'000U) == WAIT_OBJECT_0;
     }
 
     [[nodiscard]] std::filesystem::path stagedPath() const
