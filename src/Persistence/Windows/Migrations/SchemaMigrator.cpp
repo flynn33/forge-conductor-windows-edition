@@ -282,6 +282,93 @@ constexpr std::array ClientPresenceVersion7Columns{
     column("first_seen_at", "TEXT", true), column("last_seen_at", "TEXT", true),
 };
 
+constexpr std::array CluOperationColumns{
+    column("operation_id", "TEXT", true, 1),
+    column("continuity_id", "TEXT", true),
+    column("source_client_id", "TEXT", true),
+    column("idempotency_key", "TEXT", true),
+    column("request_fingerprint_sha256", "TEXT", true),
+    columnWithDefault("reason", "TEXT", true, "''"),
+    column("state", "TEXT", true),
+    column("handoff_write_sequence", "INTEGER"),
+    column("handoff_sha256", "TEXT"),
+    column("handoff_source", "TEXT"),
+    column("model_id", "TEXT"),
+    column("configuration_fingerprint_sha256", "TEXT"),
+    column("bootstrap_response_id", "TEXT"),
+    column("continuation_response_id", "TEXT"),
+    column("accepted_provider_phase", "TEXT"),
+    column("worker_id", "TEXT"),
+    column("lease_expires_at", "TEXT"),
+    columnWithDefault("attempt", "INTEGER", true, "0"),
+    column("next_retry_at", "TEXT"),
+    column("cancellation_reason", "TEXT"),
+    column("cancellation_requested_at", "TEXT"),
+    column("last_error_code", "TEXT"),
+    column("last_error_summary", "TEXT"),
+    columnWithDefault("revision", "INTEGER", true, "1"),
+    column("created_at", "TEXT", true),
+    column("updated_at", "TEXT", true),
+    column("completed_at", "TEXT"),
+};
+
+constexpr std::array CluProviderReceiptColumns{
+    column("receipt_id", "TEXT", true, 1),
+    column("operation_id", "TEXT", true),
+    column("phase", "TEXT", true),
+    column("attempt", "INTEGER", true),
+    column("request_fingerprint_sha256", "TEXT", true),
+    column("expected_previous_response_id", "TEXT"),
+    column("provider_response_id", "TEXT"),
+    column("model_instance_id", "TEXT"),
+    column("normalized_response_sha256", "TEXT"),
+    column("disposition", "TEXT", true),
+    column("created_at", "TEXT", true),
+    column("updated_at", "TEXT", true),
+};
+
+constexpr std::array CluEventColumns{
+    column("event_id", "INTEGER", false, 1),
+    column("operation_id", "TEXT", true),
+    column("timestamp", "TEXT", true),
+    column("event_type", "TEXT", true),
+    column("state", "TEXT", true),
+    columnWithDefault("bounded_json", "TEXT", true, "'{}'"),
+};
+
+constexpr std::array StoreMetadataColumns{
+    column("id", "INTEGER", false, 1),
+    column("generation", "INTEGER", true),
+    column("maintenance_state", "TEXT", true),
+    column("active_reset_id", "TEXT"),
+    column("updated_at", "TEXT", true),
+};
+
+constexpr std::array ClientGenerationBindingColumns{
+    column("client_id", "TEXT", false, 1),
+    column("generation", "INTEGER", true),
+    column("bound_at", "TEXT", true),
+};
+
+constexpr std::array ResetReceiptColumns{
+    column("reset_id", "TEXT", false, 1),
+    column("scope_kind", "TEXT", true),
+    column("scope_id", "TEXT", true),
+    column("display_name", "TEXT", true),
+    column("status", "TEXT", true),
+    column("started_at", "TEXT", true),
+    column("completed_at", "TEXT"),
+    column("old_generation", "INTEGER", true),
+    column("new_generation", "INTEGER"),
+    column("targets_json", "TEXT", true),
+    columnWithDefault("counts_before_json", "TEXT", true, "'{}'"),
+    columnWithDefault("counts_deleted_json", "TEXT", true, "'{}'"),
+    column("backup_json", "TEXT"),
+    column("error_code", "TEXT"),
+    column("recovery_action", "TEXT"),
+    column("application_build", "TEXT"),
+};
+
 constexpr std::array MemoryRecordVersion1Columns{
     column("id", "TEXT", false, 1),
     column("project_id", "TEXT", true),
@@ -471,6 +558,10 @@ constexpr std::array<std::string_view, 1> NameUniqueColumns{"name"};
 constexpr std::array<std::string_view, 1> OperationIdUniqueColumns{"operation_id"};
 constexpr std::array<std::string_view, 2> RolloverIdempotencyUniqueColumns{"project_id",
                                                                            "idempotency_key"};
+constexpr std::array<std::string_view, 1> IdempotencyKeyUniqueColumns{"idempotency_key"};
+constexpr std::array<std::string_view, 3> CluReceiptAttemptUniqueColumns{
+    "operation_id", "phase", "attempt"};
+constexpr std::array<std::string_view, 1> ProviderResponseUniqueColumns{"provider_response_id"};
 
 constexpr std::array SchemaMigrationUniqueConstraints{
     UniqueConstraintSpec{IdentifierUniqueColumns},
@@ -488,6 +579,13 @@ constexpr std::array ContinuityHandoffUniqueConstraints{
 constexpr std::array RolloverOperationUniqueConstraints{
     UniqueConstraintSpec{RolloverIdempotencyUniqueColumns},
 };
+constexpr std::array CluOperationUniqueConstraints{
+    UniqueConstraintSpec{IdempotencyKeyUniqueColumns},
+};
+constexpr std::array CluProviderReceiptUniqueConstraints{
+    UniqueConstraintSpec{CluReceiptAttemptUniqueColumns},
+    UniqueConstraintSpec{ProviderResponseUniqueColumns},
+};
 
 constexpr std::array MemoryRecordTagForeignKeys{
     ForeignKeySpec{"memory_records", "record_id", "id", "NO ACTION", "CASCADE", "NONE"},
@@ -496,6 +594,14 @@ constexpr std::array MemoryRecordTagForeignKeys{
 constexpr std::array MemoryLinkForeignKeys{
     ForeignKeySpec{"memory_records", "source_id", "id", "NO ACTION", "NO ACTION", "NONE"},
     ForeignKeySpec{"memory_records", "target_id", "id", "NO ACTION", "NO ACTION", "NONE"},
+};
+constexpr std::array CluProviderReceiptForeignKeys{
+    ForeignKeySpec{"clu_operations", "operation_id", "operation_id", "NO ACTION", "NO ACTION",
+                   "NONE"},
+};
+constexpr std::array CluEventForeignKeys{
+    ForeignKeySpec{"clu_operations", "operation_id", "operation_id", "NO ACTION", "NO ACTION",
+                   "NONE"},
 };
 
 constexpr std::array UpdatedAtDescendingIndexColumns{
@@ -527,6 +633,36 @@ constexpr std::array AgentSessionCreatedDescendingIndexColumns{
 constexpr std::array ClientPresenceLastSeenDescendingIndexColumns{
     IndexColumnSpec{"last_seen_at", true},
     IndexColumnSpec{"client_id", true},
+};
+
+constexpr std::array CluReadyIndexColumns{
+    IndexColumnSpec{"state", false},
+    IndexColumnSpec{"next_retry_at", false},
+    IndexColumnSpec{"created_at", false},
+};
+constexpr std::array CluContinuityIndexColumns{
+    IndexColumnSpec{"continuity_id", false},
+    IndexColumnSpec{"created_at", true},
+};
+constexpr std::array CluHandoffOwnerIndexColumns{
+    IndexColumnSpec{"source_client_id", false},
+    IndexColumnSpec{"continuity_id", false},
+};
+constexpr std::array CluLeaseIndexColumns{
+    IndexColumnSpec{"state", false},
+    IndexColumnSpec{"lease_expires_at", false},
+};
+constexpr std::array CluReceiptOperationIndexColumns{
+    IndexColumnSpec{"operation_id", false},
+    IndexColumnSpec{"phase", false},
+    IndexColumnSpec{"attempt", false},
+};
+constexpr std::array CluEventOperationIndexColumns{
+    IndexColumnSpec{"operation_id", false},
+    IndexColumnSpec{"event_id", false},
+};
+constexpr std::array ResetReceiptStartedIndexColumns{
+    IndexColumnSpec{"started_at", true},
 };
 
 constexpr std::array ProjectIdIndexColumns{
@@ -647,6 +783,39 @@ constexpr std::array CentralVersion7Tables{
     TableSpec{"schema_version", SchemaVersionColumns, {}},
 };
 
+constexpr std::array CentralVersion8Tables{
+    TableSpec{"agent_sessions", CentralAgentSessionVersion6Columns, {}},
+    TableSpec{"audit_events", AuditEventVersion6Columns, {}},
+    TableSpec{"client_presence", ClientPresenceVersion7Columns, {}},
+    TableSpec{"clu_events", CluEventColumns, {}},
+    TableSpec{"clu_operations", CluOperationColumns, {}},
+    TableSpec{"clu_provider_receipts", CluProviderReceiptColumns, {}},
+    TableSpec{"context_handoffs", ContextHandoffVersion6FixtureColumns,
+              ContextHandoffVersion6ManifestColumns},
+    TableSpec{"memory_notes", MemoryNoteColumns, {}},
+    TableSpec{"presence", PresenceColumns, {}},
+    TableSpec{"schema_migrations", SchemaMigrationColumns, {}},
+    TableSpec{"schema_version", SchemaVersionColumns, {}},
+};
+
+constexpr std::array CentralVersion9Tables{
+    TableSpec{"agent_sessions", CentralAgentSessionVersion6Columns, {}},
+    TableSpec{"audit_events", AuditEventVersion6Columns, {}},
+    TableSpec{"client_generation_bindings", ClientGenerationBindingColumns, {}},
+    TableSpec{"client_presence", ClientPresenceVersion7Columns, {}},
+    TableSpec{"clu_events", CluEventColumns, {}},
+    TableSpec{"clu_operations", CluOperationColumns, {}},
+    TableSpec{"clu_provider_receipts", CluProviderReceiptColumns, {}},
+    TableSpec{"context_handoffs", ContextHandoffVersion6FixtureColumns,
+              ContextHandoffVersion6ManifestColumns},
+    TableSpec{"memory_notes", MemoryNoteColumns, {}},
+    TableSpec{"presence", PresenceColumns, {}},
+    TableSpec{"reset_receipts", ResetReceiptColumns, {}},
+    TableSpec{"schema_migrations", SchemaMigrationColumns, {}},
+    TableSpec{"schema_version", SchemaVersionColumns, {}},
+    TableSpec{"store_metadata", StoreMetadataColumns, {}},
+};
+
 constexpr std::array CentralVersion6Indexes{
     IndexSpec{"idx_audit_events_event_id", "audit_events", true, true, EventIdIndexColumns,
               "event_id IS NOT NULL"},
@@ -721,6 +890,72 @@ constexpr std::array CentralVersion7Indexes{
               false,
               UpdatedAtDescendingIndexColumns,
               {}},
+};
+
+constexpr std::array CentralVersion8Indexes{
+    IndexSpec{"idx_agent_sessions_created_id", "agent_sessions", false, false,
+              AgentSessionCreatedDescendingIndexColumns, {}},
+    IndexSpec{"idx_agent_sessions_open_created_id", "agent_sessions", false, true,
+              AgentSessionCreatedDescendingIndexColumns,
+              "status IN ('open','active','running','started')"},
+    IndexSpec{"idx_audit_events_event_id", "audit_events", true, true, EventIdIndexColumns,
+              "event_id IS NOT NULL"},
+    IndexSpec{"idx_audit_events_occurred_at", "audit_events", false, false,
+              OccurredAtDescendingIndexColumns, {}},
+    IndexSpec{"idx_client_presence_last_seen_client", "client_presence", false, false,
+              ClientPresenceLastSeenDescendingIndexColumns, {}},
+    IndexSpec{"idx_clu_events_operation", "clu_events", false, false,
+              CluEventOperationIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_continuity", "clu_operations", false, false,
+              CluContinuityIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_handoff_owner", "clu_operations", true, false,
+              CluHandoffOwnerIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_lease", "clu_operations", false, false,
+              CluLeaseIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_ready", "clu_operations", false, false,
+              CluReadyIndexColumns, {}},
+    IndexSpec{"idx_clu_receipts_operation", "clu_provider_receipts", false, false,
+              CluReceiptOperationIndexColumns, {}},
+    IndexSpec{"idx_context_handoffs_client_sequence", "context_handoffs", false, false,
+              ClientWriteSequenceIndexColumns, {}},
+    IndexSpec{"idx_context_handoffs_sequence", "context_handoffs", false, false,
+              WriteSequenceDescendingIndexColumns, {}},
+    IndexSpec{"idx_context_handoffs_updated", "context_handoffs", false, false,
+              UpdatedAtDescendingIndexColumns, {}},
+};
+
+constexpr std::array CentralVersion9Indexes{
+    IndexSpec{"idx_agent_sessions_created_id", "agent_sessions", false, false,
+              AgentSessionCreatedDescendingIndexColumns, {}},
+    IndexSpec{"idx_agent_sessions_open_created_id", "agent_sessions", false, true,
+              AgentSessionCreatedDescendingIndexColumns,
+              "status IN ('open','active','running','started')"},
+    IndexSpec{"idx_audit_events_event_id", "audit_events", true, true, EventIdIndexColumns,
+              "event_id IS NOT NULL"},
+    IndexSpec{"idx_audit_events_occurred_at", "audit_events", false, false,
+              OccurredAtDescendingIndexColumns, {}},
+    IndexSpec{"idx_client_presence_last_seen_client", "client_presence", false, false,
+              ClientPresenceLastSeenDescendingIndexColumns, {}},
+    IndexSpec{"idx_clu_events_operation", "clu_events", false, false,
+              CluEventOperationIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_continuity", "clu_operations", false, false,
+              CluContinuityIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_handoff_owner", "clu_operations", true, false,
+              CluHandoffOwnerIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_lease", "clu_operations", false, false,
+              CluLeaseIndexColumns, {}},
+    IndexSpec{"idx_clu_operations_ready", "clu_operations", false, false,
+              CluReadyIndexColumns, {}},
+    IndexSpec{"idx_clu_receipts_operation", "clu_provider_receipts", false, false,
+              CluReceiptOperationIndexColumns, {}},
+    IndexSpec{"idx_context_handoffs_client_sequence", "context_handoffs", false, false,
+              ClientWriteSequenceIndexColumns, {}},
+    IndexSpec{"idx_context_handoffs_sequence", "context_handoffs", false, false,
+              WriteSequenceDescendingIndexColumns, {}},
+    IndexSpec{"idx_context_handoffs_updated", "context_handoffs", false, false,
+              UpdatedAtDescendingIndexColumns, {}},
+    IndexSpec{"idx_reset_receipts_started", "reset_receipts", false, false,
+              ResetReceiptStartedIndexColumns, {}},
 };
 
 constexpr std::array ProjectVersion1Tables{
@@ -883,8 +1118,18 @@ constexpr LayoutSpec CentralVersion6Layout{
 };
 
 constexpr LayoutSpec CentralVersion7Layout{
-    DatabaseKind::Central, SchemaLayout::CentralVersion7, 7, CentralPhysicalVersion, false, true,
+    DatabaseKind::Central, SchemaLayout::CentralVersion7, 7, CentralPhysicalVersion, true, true,
     CentralVersion7Tables, CentralVersion7Indexes,
+};
+
+constexpr LayoutSpec CentralVersion8Layout{
+    DatabaseKind::Central, SchemaLayout::CentralVersion8, 8, CentralPhysicalVersion, true, true,
+    CentralVersion8Tables, CentralVersion8Indexes,
+};
+
+constexpr LayoutSpec CentralVersion9Layout{
+    DatabaseKind::Central, SchemaLayout::CentralVersion9, 9, CentralPhysicalVersion, false, true,
+    CentralVersion9Tables, CentralVersion9Indexes,
 };
 
 constexpr LayoutSpec ProjectVersion1Layout{
@@ -1010,7 +1255,9 @@ template <typename T>
         return layout == SchemaLayout::CentralVersion3Minimal ||
                layout == SchemaLayout::CentralVersion3 || layout == SchemaLayout::CentralVersion5 ||
                layout == SchemaLayout::CentralVersion6 ||
-               layout == SchemaLayout::CentralVersion7;
+               layout == SchemaLayout::CentralVersion7 ||
+               layout == SchemaLayout::CentralVersion8 ||
+               layout == SchemaLayout::CentralVersion9;
     }
     if (databaseKind == DatabaseKind::Project)
     {
@@ -1949,6 +2196,14 @@ template <typename Reader>
     {
         return RolloverOperationUniqueConstraints;
     }
+    if (tableName == "clu_operations")
+    {
+        return CluOperationUniqueConstraints;
+    }
+    if (tableName == "clu_provider_receipts")
+    {
+        return CluProviderReceiptUniqueConstraints;
+    }
     return {};
 }
 
@@ -1963,13 +2218,22 @@ template <typename Reader>
     {
         return MemoryLinkForeignKeys;
     }
+    if (tableName == "clu_provider_receipts")
+    {
+        return CluProviderReceiptForeignKeys;
+    }
+    if (tableName == "clu_events")
+    {
+        return CluEventForeignKeys;
+    }
     return {};
 }
 
 [[nodiscard]] bool expectsAutoincrement(const std::string_view tableName) noexcept
 {
     return tableName == "audit_events" || tableName == "memory_tags" ||
-           tableName == "event_journal" || tableName == "rollover_transitions";
+           tableName == "event_journal" || tableName == "rollover_transitions" ||
+           tableName == "clu_events";
 }
 
 [[nodiscard]] std::size_t countCanonicalToken(const std::string_view text,
@@ -2335,12 +2599,44 @@ template <typename Reader>
         return migrationFailure<void>("A database table has the wrong AUTOINCREMENT contract.");
     }
     const auto checkCount = countCanonicalToken(canonical, "CHECK(");
-    const bool expectsMutatingCheck =
+    const bool centralLedgerLayout =
         (layout.layout == SchemaLayout::CentralVersion6 ||
-         layout.layout == SchemaLayout::CentralVersion7) &&
-        table.name == "audit_events";
-    if (checkCount != (expectsMutatingCheck ? 1U : 0U) ||
-        (expectsMutatingCheck && canonical.find("CHECK(MUTATINGIN(0,1))") == std::string::npos))
+         layout.layout == SchemaLayout::CentralVersion7 ||
+         layout.layout == SchemaLayout::CentralVersion8 ||
+         layout.layout == SchemaLayout::CentralVersion9);
+    std::size_t expectedCheckCount{};
+    bool requiredChecksPresent{true};
+    if (centralLedgerLayout && table.name == "audit_events")
+    {
+        expectedCheckCount = 1U;
+        requiredChecksPresent = canonical.find("CHECK(MUTATINGIN(0,1))") != std::string::npos;
+    }
+    else if ((layout.layout == SchemaLayout::CentralVersion8 ||
+              layout.layout == SchemaLayout::CentralVersion9) &&
+             table.name == "clu_operations")
+    {
+        expectedCheckCount = 8U;
+        requiredChecksPresent =
+            canonical.find("CHECK(STATEIN('queued','claimed','resolving_handoff','handoff_resolved','bootstrap_intent','bootstrap_response_received','bootstrap_accepted','continuation_intent','continuation_response_received','retry_wait','blocked','cancel_requested','completed','failed','cancelled','quarantined'))") != std::string::npos &&
+            canonical.find("CHECK(ATTEMPT>=0)") != std::string::npos &&
+            canonical.find("CHECK(REVISION>=1)") != std::string::npos &&
+            canonical.find("CHECK(LENGTH(CONTINUITY_ID)BETWEEN1AND128)") != std::string::npos &&
+            canonical.find("CHECK(LENGTH(IDEMPOTENCY_KEY)BETWEEN1AND128)") != std::string::npos &&
+            canonical.find("CHECK(LENGTH(REQUEST_FINGERPRINT_SHA256)=64)") != std::string::npos &&
+            canonical.find("CHECK(HANDOFF_SHA256ISNULLORLENGTH(HANDOFF_SHA256)=64)") != std::string::npos &&
+            canonical.find("CHECK(CONFIGURATION_FINGERPRINT_SHA256ISNULLORLENGTH(CONFIGURATION_FINGERPRINT_SHA256)=64)") != std::string::npos;
+    }
+    else if ((layout.layout == SchemaLayout::CentralVersion8 ||
+              layout.layout == SchemaLayout::CentralVersion9) &&
+             table.name == "clu_provider_receipts")
+    {
+        expectedCheckCount = 3U;
+        requiredChecksPresent =
+            canonical.find("CHECK(PHASEIN('bootstrap','continuation'))") != std::string::npos &&
+            canonical.find("CHECK(ATTEMPT>=1)") != std::string::npos &&
+            canonical.find("CHECK(DISPOSITIONIN('intent','received','accepted','quarantined','failed','unknown'))") != std::string::npos;
+    }
+    if (checkCount != expectedCheckCount || !requiredChecksPresent)
     {
         return migrationFailure<void>("A database table has the wrong CHECK constraints.");
     }
@@ -2584,9 +2880,17 @@ template <typename Reader>
         {
             layout = &CentralVersion6Layout;
         }
-        else if (sourceVersion.value() == CentralPhysicalVersion)
+        else if (sourceVersion.value() == 7)
         {
             layout = &CentralVersion7Layout;
+        }
+        else if (sourceVersion.value() == 8)
+        {
+            layout = &CentralVersion8Layout;
+        }
+        else if (sourceVersion.value() == CentralPhysicalVersion)
+        {
+            layout = &CentralVersion9Layout;
         }
         else
         {
@@ -2725,8 +3029,7 @@ template <typename T>
 
     if (assessment.databaseKind == DatabaseKind::Central)
     {
-        const bool ledgerAlreadyExists =
-            assessment.layout == SchemaLayout::CentralVersion6;
+        const bool ledgerAlreadyExists = assessment.sourceVersion >= 6;
         if (!ledgerAlreadyExists)
         {
             auto ledgerCreated = transaction.execute(steps.front().sql);
@@ -2811,7 +3114,7 @@ CREATE INDEX idx_context_handoffs_updated
                                                                          : projectMigrationSteps();
     const bool ledgerAlreadyExists =
         assessment.layout == SchemaLayout::ProjectVersion2 ||
-        assessment.layout == SchemaLayout::CentralVersion6;
+        (assessment.databaseKind == DatabaseKind::Central && assessment.sourceVersion >= 6);
     for (const auto &step : steps)
     {
         if (ledgerAlreadyExists && step.version <= assessment.sourceVersion)
@@ -3161,7 +3464,7 @@ Domain::Result<SchemaAssessment> SchemaMigrator::migrate(
                                                      std::move(finalAssessment).error());
         }
         const SchemaLayout expectedCurrentLayout =
-            priorAssessment.databaseKind == DatabaseKind::Central ? SchemaLayout::CentralVersion7
+            priorAssessment.databaseKind == DatabaseKind::Central ? SchemaLayout::CentralVersion9
                                                                   : SchemaLayout::ProjectVersion3;
         if (finalAssessment.value().layout != expectedCurrentLayout ||
             finalAssessment.value().sourceVersion != priorAssessment.targetVersion ||

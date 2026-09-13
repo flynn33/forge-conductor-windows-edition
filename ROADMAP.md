@@ -1,31 +1,19 @@
-# Windows Alpha delivery roadmap
+# Forge Conductor roadmap
 
-**Outcome:** an installed Windows 11 x64 native GUI with complete operational visuals, usable Settings, real local tools/project memory, and Manager-owned productive context continuity. Existing working C++/WinUI implementation is retained.
+## 1.0 completion
 
-The active plan is `windows-alpha-recovery-2026-09-12`; its machine-readable scope is [docs/alpha-plan.json](docs/alpha-plan.json). The audited main `68c835729b94e574a0ecb9aa5a1bf1ebf3ff9f0b` records merged PR #2 and is a reconciliation observation, not a rollback destination.
+The 1.0 release line closes the gaps left after the internal Windows validation cycle:
 
-| Phase | Milestone and issue | Deliverable | Delivery |
-|---|---|---|---|
-| [R0](docs/implementation/alpha-recovery/phases/R0.md) | [WA-R0](https://github.com/flynn33/forge-conductor-windows-edition/milestone/1) / [#3](https://github.com/flynn33/forge-conductor-windows-edition/issues/3) | Current baseline, adopted instructions, accountable delivery workflow | Merged through [PR #11](https://github.com/flynn33/forge-conductor-windows-edition/pull/11) and synchronized |
-| [R1](docs/implementation/alpha-recovery/phases/R1.md) | [WA-R1](https://github.com/flynn33/forge-conductor-windows-edition/milestone/2) / [#4](https://github.com/flynn33/forge-conductor-windows-edition/issues/4) | Manager-owned ordinary inference and context continuity wiring | Merged through [PR #12](https://github.com/flynn33/forge-conductor-windows-edition/pull/12) and synchronized; later native ownership/reattachment verification passed, while live inference remains R6 |
-| [R2](docs/implementation/alpha-recovery/phases/R2.md) | [WA-R2](https://github.com/flynn33/forge-conductor-windows-edition/milestone/3) / [#5](https://github.com/flynn33/forge-conductor-windows-edition/issues/5) | Real native telemetry and visual dashboards | Merged baseline [PR #13](https://github.com/flynn33/forge-conductor-windows-edition/pull/13) and parity follow-up [PR #24](https://github.com/flynn33/forge-conductor-windows-edition/pull/24). Native logical-CPU, GPU-engine, disk/volume, process, cadence/freshness, integrated Rig, accessibility, and exact-candidate disconnect/reconnect checks pass. |
-| [R3](docs/implementation/alpha-recovery/phases/R3.md) | [WA-R3](https://github.com/flynn33/forge-conductor-windows-edition/milestone/4) / [#6](https://github.com/flynn33/forge-conductor-windows-edition/issues/6) | Native operating pages and local workflows | Merged through primary PR #14 and completion [PR #15](https://github.com/flynn33/forge-conductor-windows-edition/pull/15); later native page and reattachment gates passed |
-| [R4](docs/implementation/alpha-recovery/phases/R4.md) | [WA-R4](https://github.com/flynn33/forge-conductor-windows-edition/milestone/5) / [#7](https://github.com/flynn33/forge-conductor-windows-edition/issues/7) | Accessible settings and scoped maintenance | Merged through [PR #16](https://github.com/flynn33/forge-conductor-windows-edition/pull/16) and completion [PR #17](https://github.com/flynn33/forge-conductor-windows-edition/pull/17); later R6 keyboard, High Contrast and 150% text checks passed |
-| [R5](docs/implementation/alpha-recovery/phases/R5.md) | [WA-R5](https://github.com/flynn33/forge-conductor-windows-edition/milestone/6) / [#8](https://github.com/flynn33/forge-conductor-windows-edition/issues/8) | Installable signed Windows candidate and data behavior | Merged through [PR #18](https://github.com/flynn33/forge-conductor-windows-edition/pull/18) and closeout [PR #19](https://github.com/flynn33/forge-conductor-windows-edition/pull/19); installed lifecycle acceptance remains R6 |
-| [R6](docs/implementation/alpha-recovery/phases/R6.md) | [WA-R6](https://github.com/flynn33/forge-conductor-windows-edition/milestone/7) / [#9](https://github.com/flynn33/forge-conductor-windows-edition/issues/9) | Installed and live-provider Alpha acceptance | PRs #20, #22, #23, and [#25](https://github.com/flynn33/forge-conductor-windows-edition/pull/25) merged. Machine trust, registered Start/Manager identity, durable profile routing, installed 53-tool workflows, real provider rollover, and exact-package GUI/accessibility evidence pass. The owner accepted simulated testing for the remaining gate; the real 0.9.4 and 0.9.5 payloads pass the isolated upgrade/uninstall/reinstall marker lifecycle, and all 150 Release tests pass. R6 is verified. Legacy schema-9 migration is owner-deferred outside the Alpha gate. |
-| [R7](docs/implementation/alpha-recovery/phases/R7.md) | [WA-R7](https://github.com/flynn33/forge-conductor-windows-edition/milestone/8) / [#10](https://github.com/flynn33/forge-conductor-windows-edition/issues/10) | Documented delivery and exact main synchronization | [PR #21](https://github.com/flynn33/forge-conductor-windows-edition/pull/21) merged; main later advanced through merged PR #24 to `7ad26a931620285d9cf2b1dabfdc1ea7fae474a8`. The active R6 acceptance continuation remains distinct from completed R7 delivery. |
+- production version and package identity;
+- ordinary use of `%LOCALAPPDATA%\Forge Conductor`;
+- exact compatibility with released central schema 9 and immutable C001–C009 migration history;
+- signed MSIX distribution plus optional App Installer update manifest;
+- complete WinUI GUI and native runtime build;
+- repeatable Windows CI and production-signing automation;
+- full Release test, static-gate, package-integrity, and simulated lifecycle validation.
 
-## Execution
+The earlier R0–R7 plan is complete and retained under [historical delivery records](docs/implementation/alpha-recovery/). It no longer defines release readiness.
 
-R0 preserves and reconciles the existing foundation. R1 supplies the typed Manager-owned ordinary Responses/tool loop, authoritative retained-context observations, continuity successor ownership, and native run controls. R2 supplies native resource collection and operational presentation. R3–R5 complete native operating actions, settings/reset, and installer/data behavior. R6 performs real installed/live acceptance and owns the remaining external gates. R7 documentation, candidate traceability, merge, and source synchronization are complete.
+## After 1.0
 
-Independent slices continue while a provider, installation permission, review, or merge dependency is unavailable. Each phase has one primary draft PR to `main`; implementation, individual checks, review readiness, actual merge, and final acceptance remain distinct states. A phase merged early may use one narrowly scoped continuation, preserving and reusing existing history rather than duplicating it. After a merged parent, work starts from synchronized main; while a parent is pending, independent work starts from current main and dependent work starts from the exact reviewed parent head without merging ahead of it.
-
-The prior P0–P6 plan is retained under [historical implementation records](docs/implementation/) and mapped in the adopted [roadmap contract](docs/implementation/alpha-recovery/instructions/ROADMAP.md). It records useful foundation evidence but does not compete with R0–R7.
-
-Full native operational telemetry, all required page functions, context settings, and the Windows installer are part of this Alpha. Optional browser-dashboard parity, advanced analytics, broad connector expansion, additional architectures, public Store/release infrastructure, and unrelated security/stress campaigns remain outside this internal delivery.
-
-<!-- alpha-phase-review:start -->
-Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
-Delivery/merge status is recorded by the linked phase pull request.
-<!-- alpha-phase-review:end -->
+Future work is versioned enhancement, not unfinished 1.0 scope. Candidate themes include additional processor architectures, more provider integrations, expanded performance telemetry, and Store distribution. Any such work must preserve the native C++20/WinUI architecture, Manager ownership boundaries, project isolation, and migration compatibility.

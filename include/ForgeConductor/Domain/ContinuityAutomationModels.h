@@ -40,7 +40,7 @@ struct ContinuityAutomationOutcome final {
 };
 
 // Compact context-only continuity status. Count and time rollover controls are
-// intentionally absent from the Alpha product.
+// intentionally absent from the product.
 struct ContinuityAutomationStatusSnapshot final {
     bool enabled{true};
     bool blocked{};

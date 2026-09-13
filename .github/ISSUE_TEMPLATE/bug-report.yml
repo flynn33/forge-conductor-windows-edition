@@ -1,20 +1,20 @@
-name: Alpha defect
-description: Report a reproducible Windows Alpha behavior that does not work.
-title: "[Alpha defect] "
-labels: ["alpha:required"]
+name: Product defect
+description: Report a reproducible Forge Conductor behavior that does not work.
+title: "[Defect] "
+labels: ["bug"]
 body:
   - type: textarea
     id: behavior
     attributes:
       label: Expected and actual behavior
-      description: Include the app version, Windows version and the smallest reproduction. Do not include credentials.
+      description: Include the app version, Windows version, and smallest reproduction. Do not include credentials.
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
       label: Error or evidence
-      description: Relevant error/action/log excerpt; no private tokens or signing keys.
+      description: Include a relevant error, action, or log excerpt without private tokens or signing keys.
   - type: dropdown
     id: scope
     attributes:

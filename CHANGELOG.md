@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0 — Windows production release
+
+- Promoted runtime and package identity to stable 1.0.0 / `ForgeConductor.Windows`.
+- Routed ordinary GUI launches to the production `%LOCALAPPDATA%\Forge Conductor` profile.
+- Added strict compatibility with the released central schema 9, including immutable C008/C009 ledger checksums, continuation operation tables, and reset-generation metadata.
+- Added an independently reconstructed schema-9 fixture that contains no user content and proves byte-stable compatible open behavior.
+- Added Windows Release CI and secret-backed production-signing automation.
+- Corrected App Installer metadata to reference the generated MSIX and added optional update-manifest generation.
+- Updated shipped profile, package, CLI self-test, installer, and documentation language for the finished product.
+- Retained `--alpha-root` only as a backward-compatible isolated-profile option.
+
 ## Unreleased — Windows Alpha recovery
 
 ### Implemented foundation

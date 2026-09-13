@@ -1,12 +1,11 @@
-## Alpha issue / phase
-Reference the existing issue and P0–P6 phase.
+## Change
 
-## What works now
-Describe actual behavior changed, not the full future plan.
+Describe the user-visible behavior and implementation boundaries.
 
 ## Verification
-Command/action, configuration, result, and one evidence/artifact link. State anything not run.
-No full historical-gate requirement for this Alpha.
 
-## Remaining scope
-Required blockers versus deliberately deferred B1/B2 work. Note configuration/data migrations.
+Record the relevant build, test, packaging, and manual or simulated checks. State anything not run.
+
+## Release impact
+
+Note compatibility, persistence, installer, security, or migration implications.

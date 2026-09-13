@@ -156,7 +156,127 @@ CREATE INDEX idx_client_presence_last_seen_client
     ON client_presence(last_seen_at DESC, client_id DESC);
 UPDATE schema_version SET version = 7;)sql";
 
-constexpr std::array<MigrationStep, 7> Steps{{
+// C008 and C009 preserve the released legacy schema exactly. Their immutable
+// ledger checksums are the values written by the original Windows release.
+constexpr std::string_view C008Sql = R"sql(CREATE TABLE clu_operations (
+    operation_id TEXT PRIMARY KEY NOT NULL,
+    continuity_id TEXT NOT NULL,
+    source_client_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    request_fingerprint_sha256 TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    state TEXT NOT NULL CHECK (state IN (
+        'queued','claimed','resolving_handoff','handoff_resolved',
+        'bootstrap_intent','bootstrap_response_received','bootstrap_accepted',
+        'continuation_intent','continuation_response_received',
+        'retry_wait','blocked','cancel_requested',
+        'completed','failed','cancelled','quarantined'
+    )),
+    handoff_write_sequence INTEGER,
+    handoff_sha256 TEXT,
+    handoff_source TEXT,
+    model_id TEXT,
+    configuration_fingerprint_sha256 TEXT,
+    bootstrap_response_id TEXT,
+    continuation_response_id TEXT,
+    accepted_provider_phase TEXT,
+    worker_id TEXT,
+    lease_expires_at TEXT,
+    attempt INTEGER NOT NULL DEFAULT 0 CHECK (attempt >= 0),
+    next_retry_at TEXT,
+    cancellation_reason TEXT,
+    cancellation_requested_at TEXT,
+    last_error_code TEXT,
+    last_error_summary TEXT,
+    revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT,
+    CHECK (length(continuity_id) BETWEEN 1 AND 128),
+    CHECK (length(idempotency_key) BETWEEN 1 AND 128),
+    CHECK (length(request_fingerprint_sha256) = 64),
+    CHECK (handoff_sha256 IS NULL OR length(handoff_sha256) = 64),
+    CHECK (configuration_fingerprint_sha256 IS NULL OR length(configuration_fingerprint_sha256) = 64)
+);
+CREATE INDEX idx_clu_operations_ready
+    ON clu_operations(state, next_retry_at, created_at);
+CREATE INDEX idx_clu_operations_continuity
+    ON clu_operations(continuity_id, created_at DESC);
+CREATE UNIQUE INDEX idx_clu_operations_handoff_owner
+    ON clu_operations(source_client_id, continuity_id);
+CREATE INDEX idx_clu_operations_lease
+    ON clu_operations(state, lease_expires_at);
+CREATE TABLE clu_provider_receipts (
+    receipt_id TEXT PRIMARY KEY NOT NULL,
+    operation_id TEXT NOT NULL,
+    phase TEXT NOT NULL CHECK (phase IN ('bootstrap','continuation')),
+    attempt INTEGER NOT NULL CHECK (attempt >= 1),
+    request_fingerprint_sha256 TEXT NOT NULL,
+    expected_previous_response_id TEXT,
+    provider_response_id TEXT,
+    model_instance_id TEXT,
+    normalized_response_sha256 TEXT,
+    disposition TEXT NOT NULL CHECK (disposition IN (
+        'intent','received','accepted','quarantined','failed','unknown'
+    )),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(operation_id) REFERENCES clu_operations(operation_id),
+    UNIQUE(operation_id, phase, attempt),
+    UNIQUE(provider_response_id)
+);
+CREATE INDEX idx_clu_receipts_operation
+    ON clu_provider_receipts(operation_id, phase, attempt);
+CREATE TABLE clu_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_id TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    state TEXT NOT NULL,
+    bounded_json TEXT NOT NULL DEFAULT '{}',
+    FOREIGN KEY(operation_id) REFERENCES clu_operations(operation_id)
+);
+CREATE INDEX idx_clu_events_operation
+    ON clu_events(operation_id, event_id);
+UPDATE schema_version SET version = 8;)sql";
+
+constexpr std::string_view C009Sql = R"sql(CREATE TABLE store_metadata (
+    id INTEGER PRIMARY KEY,
+    generation INTEGER NOT NULL,
+    maintenance_state TEXT NOT NULL,
+    active_reset_id TEXT,
+    updated_at TEXT NOT NULL
+);
+INSERT INTO store_metadata(id, generation, maintenance_state, updated_at)
+VALUES(1, 1, 'idle', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+CREATE TABLE client_generation_bindings (
+    client_id TEXT PRIMARY KEY,
+    generation INTEGER NOT NULL,
+    bound_at TEXT NOT NULL
+);
+CREATE TABLE reset_receipts (
+    reset_id TEXT PRIMARY KEY,
+    scope_kind TEXT NOT NULL,
+    scope_id TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    completed_at TEXT,
+    old_generation INTEGER NOT NULL,
+    new_generation INTEGER,
+    targets_json TEXT NOT NULL,
+    counts_before_json TEXT NOT NULL DEFAULT '{}',
+    counts_deleted_json TEXT NOT NULL DEFAULT '{}',
+    backup_json TEXT,
+    error_code TEXT,
+    recovery_action TEXT,
+    application_build TEXT
+);
+CREATE INDEX idx_reset_receipts_started
+    ON reset_receipts(started_at DESC);
+UPDATE schema_version SET version = 9;)sql";
+
+constexpr std::array<MigrationStep, 9> Steps{{
     {1, "C001", C001Sql, "6d34b6a07a3d74440b598f2ca8b73ce84b615f99b814911b0f23e517e77c3eeb"},
     {2, "C002", C002Sql, "3c6fed9dd5aad4cda6d1bf511c48bfb27e450b68cba7b9446e6ddc9ef0d60315"},
     {3, "C003", C003Sql, "600c16d28acd5f54a53a900d20e9ca51392a764e4bc9cdcb0b0b895a335173d9"},
@@ -164,9 +284,11 @@ constexpr std::array<MigrationStep, 7> Steps{{
     {5, "C005", C005Sql, "e710c085f429574b82013d1bd5d711418147fdb15b91a1de7f74a83e14703cba"},
     {6, "C006", C006Sql, "2f4ebc81ba122ca1a471504ce69fad1b11e7cbeecedd972024a521ebc849c427"},
     {7, "C007", C007Sql, "e484d351fc622d0664bddeaa17a47b17929213a226341a98a9bed055df0864bd"},
+    {8, "C008", C008Sql, "d4aff22aa147de43bfb77437762421f55c0c667e14a51f4e229ee1d1df9d5368"},
+    {9, "C009", C009Sql, "3aadf0efc1844836e10bcab4927532767be92ed06b25cf9a12cb101c0dce6b11"},
 }};
 
-constexpr std::array<SchemaObject, 16> RequiredSchema{{
+constexpr std::array<SchemaObject, 29> RequiredSchema{{
     {"table", "agent_sessions"},
     {"table", "audit_events"},
     {"table", "client_presence"},
@@ -175,6 +297,12 @@ constexpr std::array<SchemaObject, 16> RequiredSchema{{
     {"table", "presence"},
     {"table", "schema_migrations"},
     {"table", "schema_version"},
+    {"table", "clu_events"},
+    {"table", "clu_operations"},
+    {"table", "clu_provider_receipts"},
+    {"table", "store_metadata"},
+    {"table", "client_generation_bindings"},
+    {"table", "reset_receipts"},
     {"index", "idx_audit_events_event_id"},
     {"index", "idx_audit_events_occurred_at"},
     {"index", "idx_agent_sessions_created_id"},
@@ -183,6 +311,13 @@ constexpr std::array<SchemaObject, 16> RequiredSchema{{
     {"index", "idx_context_handoffs_client_sequence"},
     {"index", "idx_context_handoffs_sequence"},
     {"index", "idx_context_handoffs_updated"},
+    {"index", "idx_clu_events_operation"},
+    {"index", "idx_clu_operations_continuity"},
+    {"index", "idx_clu_operations_handoff_owner"},
+    {"index", "idx_clu_operations_lease"},
+    {"index", "idx_clu_operations_ready"},
+    {"index", "idx_clu_receipts_operation"},
+    {"index", "idx_reset_receipts_started"},
 }};
 
 } // namespace

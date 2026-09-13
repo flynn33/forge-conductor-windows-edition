@@ -53,10 +53,10 @@ public:
             static_assert(!std::is_copy_constructible_v<CliCompositionRoot>);
             static_assert(!std::is_move_constructible_v<CliCompositionRoot>);
             if constexpr (sizeof(void*) != 8) {
-                std::cerr << "Forge Conductor scaffold self-test requires a 64-bit build.\n";
+                std::cerr << "Forge Conductor self-test requires a 64-bit build.\n";
                 return 1;
             }
-            std::cout << "Forge Conductor native scaffold self-test passed.\n";
+            std::cout << "Forge Conductor native self-test passed.\n";
             return 0;
         }
         if (command == "--help" || command == "-h" || command == "help") {
@@ -104,7 +104,7 @@ private:
             << "  mcp-serve             Alias for serve.\n"
             << "  mcp                   Alias for serve.\n"
             << "  version               Print the product version.\n"
-            << "  --self-test           Validate the native CLI scaffold.\n";
+            << "  --self-test           Validate the native CLI installation.\n";
     }
 };
 

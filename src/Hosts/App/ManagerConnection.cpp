@@ -235,7 +235,7 @@ ManagerConnection::ManagerConnection(
     if (!alphaRoot) return;
     auto created = W::WindowsAlphaManagerProfile::create(*alphaRoot);
     if (!created) {
-        profileError_ = "Invalid isolated Alpha root: " +
+        profileError_ = "Invalid isolated data root: " +
             created.error().message;
         return;
     }
@@ -254,8 +254,8 @@ std::string ManagerConnection::profileSummary() const
         return "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
     }
     return std::string{persistentProfile_
-            ? "Internal Alpha (persistent)\nData: "
-            : "Isolated Alpha\nData: "} +
+            ? "Production\nData: "
+            : "Isolated profile\nData: "} +
         alphaProfile_->dataRoot().value();
 }
 
@@ -920,7 +920,7 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
         discardStartupLog();
         // The manager is independently owned. Closing this connection never terminates it.
         return alphaProfile_
-            ? "Isolated Alpha manager start requested for " +
+            ? "Isolated manager start requested for " +
                 alphaProfile_->dataRoot().value() +
                 ". Select Refresh to attach and read its status."
             : "Manager start requested. Select Refresh to attach and read its status.";

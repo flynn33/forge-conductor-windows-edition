@@ -1,80 +1,22 @@
-# Current documentation inventory and phase review
+# Documentation index
 
-Current plan: `windows-alpha-recovery-2026-09-12`
-Latest checkpoint review: R6 simulated acceptance closeout — 2026-09-13 — [.forge-alpha/phases/R6.md](../.forge-alpha/phases/R6.md)
+## Current product documentation
 
-The earlier R2 telemetry parity review covered every active first-party document below. This R6 closeout reviewed the affected product, installer, testing, acceptance, roadmap, ledger, cursor, and handoff documents against merged PR #25, registered normal-account results, the complete 150-test Release matrix, and the owner-approved real-candidate simulated lifecycle. Actual evidence and simulation are distinguished explicitly; the preserved schema-9 store remains deferred and untouched. Unchanged documents retain their last full-review markers. `content_updated` means behavior/status or phase ownership changed; `review_stamp_updated` means applicable content remained current and its single review marker was refreshed.
+- [README](../README.md)
+- [Product status](STATUS.md)
+- [Roadmap](../ROADMAP.md)
+- [Build](BUILD.md)
+- [Install](INSTALL.md)
+- [User guide](USER-GUIDE.md)
+- [Testing](TESTING.md)
+- [Architecture](ARCHITECTURE.md)
+- [Capability map](PARITY.md)
+- [Windows toolchain](WINDOWS_TOOLCHAIN.md)
+- [Post-1.0 enhancements](DEFERRED.md)
+- [Packaging inputs](../packaging/README.md)
 
-| Actual path | Class | Canonical subject | Latest applicable review |
-|---|---|---|---|
-| `AGENTS.md` | active first-party | Repository execution guidance | content_updated — owner-selected persistent profile and deferred legacy migration |
-| `CHANGELOG.md` | active first-party | Implemented user-facing changes | content_updated — simulated acceptance closeout and complete Release matrix repairs |
-| `docs/ALPHA-ACCEPTANCE-RECORD.md` | active first-party | Active product/developer/operator reference | content_updated — accepted Alpha, actual evidence, simulation boundary, and deferred migration |
-| `docs/ALPHA-SCOPE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/ARCHITECTURE.md` | active first-party | Active product/developer/operator reference | content_updated — narrow MSIX unvirtualization contract and durable Internal Alpha root |
-| `docs/BUILD.md` | active first-party | Active product/developer/operator reference | content_updated — exact 0.9.5 Release and signed-package provenance |
-| `docs/DEFERRED.md` | active first-party | Active product/developer/operator reference | content_updated — owner-deferred legacy migration backlog |
-| `docs/DOCUMENTATION-INDEX.md` | active first-party | Active/historical documentation ownership | content_updated — R6 affected-document checkpoint and preserved full-review boundary |
-| `docs/implementation/alpha-recovery/github/README.md` | active first-party | GitHub tracking administration | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/ACCEPTANCE.md` | active first-party | Adopted active execution contract | content_updated — owner-approved 0.9.5 real-binary simulation exception and retained actual evidence |
-| `docs/implementation/alpha-recovery/instructions/BUILD-AND-MINIMUM-TESTS.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/EXECUTION.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/GIT-WORKFLOW.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/INSTALLER-AND-DATA.md` | active first-party | Adopted active execution contract | content_updated — durable ordinary-use root and preserved legacy store |
-| `docs/implementation/alpha-recovery/instructions/PRODUCT-CONTRACT.md` | active first-party | Adopted active execution contract | content_updated — explicit installed internal Alpha readiness and existing-data profile decision |
-| `docs/implementation/alpha-recovery/instructions/ROADMAP.md` | active first-party | Adopted active execution contract | content_updated — accepted R6 evidence boundary and remaining delivery synchronization |
-| `docs/implementation/alpha-recovery/instructions/SETTINGS-AND-MAINTENANCE.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/TELEMETRY-AND-UI.md` | active first-party | Adopted active execution contract | content_updated — tiered sampling and complete Rig composition |
-| `docs/implementation/alpha-recovery/instructions/TRACKING-AND-DOCS.md` | active first-party | Adopted active execution contract | content_updated — precise owner-approved simulation tracking exception |
-| `docs/implementation/alpha-recovery/phases/R0.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R1.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R2.md` | active first-party | Adopted active phase order | content_updated — owner-reopened parity scope and continuation branch |
-| `docs/implementation/alpha-recovery/phases/R3.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R4.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R5.md` | active first-party | Adopted active phase order | content_updated — persistent-profile owner decision applied |
-| `docs/implementation/alpha-recovery/phases/R6.md` | active first-party | Adopted active phase order | content_updated — actual/simulated evidence boundary and completed R6 gates |
-| `docs/implementation/alpha-recovery/phases/R7.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/CONTEXT-CONTINUITY.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/NATIVE-GUI.md` | active first-party | Active product/developer/operator reference | content_updated — complete native Rig panels and histories |
-| `docs/implementation/REPOSITORY-ORGANIZATION.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/INSTALL.md` | active first-party | Active product/developer/operator reference | content_updated — registered candidate, preflight, durable storage contract, and simulated lifecycle command |
-| `docs/INSTALLED-ACCEPTANCE-HANDOFF.md` | active first-party | Authorized installed lifecycle procedure | content_updated — exact hashes, verified actual results, reproducible simulation, and claim boundary |
-| `docs/PARITY.md` | active first-party | Active product/developer/operator reference | content_updated — telemetry parity plus durable-profile/deferred-migration scope |
-| `docs/STATUS.md` | active first-party | Current product evidence and remaining acceptance | content_updated — accepted Alpha, 150-test matrix, real-candidate simulation, and no required blockers |
-| `docs/TESTING.md` | active first-party | Active product/developer/operator reference | content_updated — complete Release matrix and reproducible real-candidate lifecycle |
-| `docs/USER-GUIDE.md` | active first-party | Active product/developer/operator reference | content_updated — persistent Internal Alpha root and exact trust handoff |
-| `docs/WINDOWS_TOOLCHAIN.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `packaging/Assets/README.md` | active first-party | Active packaging/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `packaging/README.md` | active first-party | Active packaging/operator reference | content_updated — preflight guard, companion hashes, manifest persistence contract, and registered candidate |
-| `README.md` | active first-party | Product entry point and current status | content_updated — accepted Alpha and explicit simulated-test boundary |
-| `ROADMAP.md` | active first-party | R0–R7 phase delivery and links | content_updated — merged PR #25 and verified R6 gates |
-| `.forge-alpha/phases/R0.md` | active first-party | R0 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `.forge-alpha/phases/R1.md` | active first-party | R1 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `.forge-alpha/phases/R2.md` | active first-party | R2 closeout, gates and documentation review | content_updated — parity implementation, focused tests, exact-candidate visuals, High Contrast, and repaired 150% text verification |
-| `.forge-alpha/phases/R3.md` | active first-party | R3 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `.forge-alpha/phases/R4.md` | active first-party | R4 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `.forge-alpha/phases/R5.md` | active first-party | R5 closeout, gates and documentation review | content_updated — historical open lifecycle dependency linked to its later accepted R6 result |
-| `.forge-alpha/phases/R6.md` | active first-party | R6 closeout, gates and documentation review | content_updated — all gates passed with actual/simulated evidence distinguished |
-| `.forge-alpha/phases/R7.md` | active first-party | R7 closeout, gates and documentation review | content_updated — merged R7 delivery receipt retained |
-| `docs/alpha-plan.json` | active first-party machine-readable | Stable R0–R7 scope, slices, gates and GitHub IDs | content_updated — owner-approved real-binary simulation boundary and R6 closeout |
-| `.forge-alpha/status.json` | active first-party machine-readable | Execution/delivery ledger and blockers | content_updated — accepted Alpha, cleared blockers, complete Release matrix, and simulated lifecycle |
-| `.forge-alpha/NEXT.md` | active first-party operational | Exact resume cursor | content_updated — acceptance complete; delivery synchronization remains |
-| `docs/implementation/alpha-recovery/github/plan.json` | active first-party machine-readable | Desired GitHub phase records | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/implementation/alpha-recovery/tracking/status.schema.json` | active first-party schema | Ledger shape and state values | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
+## Historical delivery records
 
-## Historical, generated, product-resource and legal exclusions
+The `.forge-alpha/`, `docs/alpha-plan.json`, `docs/ALPHA-SCOPE.md`, `docs/implementation/alpha-recovery/`, and earlier implementation phase files are retained as audit history. They describe the 0.9.x validation program and do not override the 1.0 product status, build, installation, or roadmap documents above.
 
-| Paths | Class | Treatment in R7 |
-|---|---|---|
-| `docs/implementation/P0.md` through `P6.md`, `.forge-alpha/P0-result.md`, `.forge-alpha/P1-result.md`, `.forge-codex/**`, `.forge-qwen/**` | historical evidence and superseded selectors | Preserved; R0–R7 crosswalk remains in the active roadmap. Runtime Qwen changes were excluded from staging and backed up under ignored evidence. |
-| `docs/reference/**`, `docs/implementation/alpha-recovery/audit/**` | immutable historical audit/reference | Preserved without changing original observations. |
-| `docs/implementation/alpha-recovery/templates/**` | reference templates | Preserved as blank examples; never substituted for actual state. |
-| `src/ForgeConductor.Application/Resources/Agents/*.md` | product runtime resources | Excluded from documentation stamping because edits would change bundled agent behavior. |
-| `tests/Persistence/Fixtures/README.md`, test fixtures and generated manifests | test/generated reference | Preserved; no R6 product behavior changed there. |
-| `THIRD-PARTY-NOTICES.md`, licenses and dependency notices | vendor/legal | Preserved without review-stamp churn or attribution changes. |
-| `out/**`, build trees, packages, logs, local certificates and databases | ignored/generated/local data | Preserved locally and never published as source documentation. |
-
-<!-- alpha-phase-review:start -->
-Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
-Delivery/merge status is recorded by the linked phase pull request.
-<!-- alpha-phase-review:end -->
+Generated `out/**` content, local signing state, restored dependencies, and `.forge-qwen/**` runtime state are not product documentation.

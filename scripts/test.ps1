@@ -38,9 +38,11 @@ else {
     throw 'ctest.exe was not found on PATH or in .forge-codex/state/toolchain.json.'
 }
 
-if (-not (Test-Path -LiteralPath (Join-Path $buildRoot 'CMakeCache.txt') -PathType Leaf)) {
-    throw "The $Architecture build tree is not configured. Run scripts/build.ps1 first."
-}
+& (Join-Path $PSScriptRoot 'build.ps1') `
+    -Configuration $Configuration `
+    -Architecture $Architecture `
+    -Product Backend `
+    -Parallel $Parallel
 
 $arguments = @(
     '--preset', $preset,

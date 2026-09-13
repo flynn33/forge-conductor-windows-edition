@@ -17,7 +17,7 @@ namespace winrt::ForgeConductorApp::implementation {
 namespace {
 using Visibility = Microsoft::UI::Xaml::Visibility;
 constexpr wchar_t ViewSettingsKey[] =
-    L"Software\\Forge Conductor\\Windows Alpha";
+    L"Software\\Forge Conductor\\Windows";
 
 struct RegistryKey final {
     HKEY value{};

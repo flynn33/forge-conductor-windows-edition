@@ -5,4 +5,3 @@ $tools=Join-Path $root '.forge-qwen\instructions\scripts'
 & (Join-Path $tools 'Validate-NoPython.ps1') -Repository $root
 & (Join-Path $tools 'Validate-NativeStack.ps1') -Repository $root
 & (Join-Path $tools 'Validate-NoAttribution.ps1') -Repository $root
-& (Join-Path $tools 'Verify-Ledger.ps1') -Repository $root
