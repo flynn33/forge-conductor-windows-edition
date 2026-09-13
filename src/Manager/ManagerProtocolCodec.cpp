@@ -1918,13 +1918,24 @@ template <typename T, typename Parser>
 
 [[nodiscard]] Json gpuJson(const Domain::GpuMetrics& gpu)
 {
+    Json engines = Json::array();
+    for (const auto& engine : gpu.engines) {
+        engines.push_back(Json{{"name", engine.name},
+                               {"utilization_percent", engine.utilizationPercent}});
+    }
     return Json{
+        {"adapter_id", gpu.adapterId},
+        {"captured_at_utc_ms", gpu.capturedAt
+            ? Json(epochMilliseconds(*gpu.capturedAt)) : Json(nullptr)},
         {"dedicated_bytes_total", gpu.dedicatedBytesTotal},
         {"dedicated_bytes_used", gpu.dedicatedBytesUsed},
         {"direct3d_available", gpu.direct3dAvailable},
+        {"engines", std::move(engines)},
+        {"memory_scope", gpu.memoryScope},
         {"name", gpu.name},
         {"shared_bytes_used", gpu.sharedBytesUsed},
         {"utilization_percent", gpu.utilizationPercent},
+        {"utilization_source", gpu.utilizationSource},
         {"vendor", gpu.vendor}};
 }
 
@@ -1932,10 +1943,25 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"dedicated_bytes_total", "dedicated_bytes_used", "direct3d_available",
-         "name", "shared_bytes_used", "utilization_percent", "vendor"},
+        {"adapter_id", "captured_at_utc_ms", "dedicated_bytes_total",
+         "dedicated_bytes_used", "direct3d_available", "engines", "memory_scope",
+         "name", "shared_bytes_used", "utilization_percent", "utilization_source",
+         "vendor"},
         "Manager GPU telemetry");
-    return Domain::GpuMetrics{
+    const auto& engineValues = member(value, "engines");
+    if (!engineValues.is_array() || engineValues.size() > 512U) {
+        reject(Domain::ErrorCodes::LimitExceeded,
+               "Manager GPU engine telemetry exceeds its bound.");
+    }
+    std::vector<Domain::GpuEngineMetrics> engines;
+    for (const auto& engine : engineValues) {
+        requireExactFields(engine, {"name", "utilization_percent"},
+                           "Manager GPU engine telemetry");
+        engines.push_back(Domain::GpuEngineMetrics{
+            stringMember(engine, "name"),
+            doubleMember(engine, "utilization_percent")});
+    }
+    Domain::GpuMetrics result{
         stringMember(value, "vendor"),
         stringMember(value, "name"),
         optionalField<double>(value, "utilization_percent", doubleMember),
@@ -1943,12 +1969,24 @@ template <typename T, typename Parser>
         optionalField<std::uint64_t>(value, "dedicated_bytes_total", uint64Member),
         optionalField<std::uint64_t>(value, "shared_bytes_used", uint64Member),
         booleanMember(value, "direct3d_available")};
+    result.adapterId = stringMember(value, "adapter_id");
+    result.engines = std::move(engines);
+    result.capturedAt = optionalField<Domain::UtcTimePoint>(
+        value, "captured_at_utc_ms",
+        [](const Json& object, const std::string_view name) {
+            return utcTimePointFromMilliseconds(nonnegativeIntegerMember(object, name));
+        });
+    result.utilizationSource = stringMember(value, "utilization_source");
+    result.memoryScope = stringMember(value, "memory_scope");
+    return result;
 }
 
 [[nodiscard]] Json processJson(const Domain::ProcessMetrics& process)
 {
     return Json{
         {"cpu_percent", process.cpuPercent},
+        {"captured_at_utc_ms", process.capturedAt
+            ? Json(epochMilliseconds(*process.capturedAt)) : Json(nullptr)},
         {"handle_count", process.handleCount},
         {"name", process.name},
         {"private_bytes", process.privateBytes},
@@ -1962,10 +2000,11 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"cpu_percent", "handle_count", "name", "private_bytes", "process_id",
-         "source", "thread_count", "working_set_bytes"},
+        {"captured_at_utc_ms", "cpu_percent", "handle_count", "name",
+         "private_bytes", "process_id", "source", "thread_count",
+         "working_set_bytes"},
         "Manager process telemetry");
-    return Domain::ProcessMetrics{
+    Domain::ProcessMetrics result{
         uint32Member(value, "process_id"),
         stringMember(value, "name"),
         doubleMember(value, "cpu_percent"),
@@ -1974,6 +2013,12 @@ template <typename T, typename Parser>
         uint32Member(value, "thread_count"),
         uint32Member(value, "handle_count"),
         stringMember(value, "source")};
+    result.capturedAt = optionalField<Domain::UtcTimePoint>(
+        value, "captured_at_utc_ms",
+        [](const Json& object, const std::string_view name) {
+            return utcTimePointFromMilliseconds(nonnegativeIntegerMember(object, name));
+        });
+    return result;
 }
 
 [[nodiscard]] Json historyJson(const Domain::HistoryPoint& point)
@@ -2006,6 +2051,87 @@ template <typename T, typename Parser>
         parseTelemetryHealth(stringMember(value, "orchestration_health"))};
 }
 
+[[nodiscard]] Json diskIoJson(const Domain::DiskIoMetrics& disk)
+{
+    return Json{
+        {"read_bytes_per_second", disk.readBytesPerSecond},
+        {"read_operations_per_second", disk.readOperationsPerSecond},
+        {"write_bytes_per_second", disk.writeBytesPerSecond},
+        {"write_operations_per_second", disk.writeOperationsPerSecond}};
+}
+
+[[nodiscard]] Domain::DiskIoMetrics parseDiskIo(
+    const Json& value,
+    const std::string_view name)
+{
+    const auto& disk = member(value, name);
+    requireExactFields(
+        disk,
+        {"read_bytes_per_second", "read_operations_per_second",
+         "write_bytes_per_second", "write_operations_per_second"},
+        "Manager disk I/O telemetry");
+    return Domain::DiskIoMetrics{
+        doubleMember(disk, "read_bytes_per_second"),
+        doubleMember(disk, "write_bytes_per_second"),
+        doubleMember(disk, "read_operations_per_second"),
+        doubleMember(disk, "write_operations_per_second")};
+}
+
+[[nodiscard]] Json diskIoMetricJson(
+    const Domain::TelemetryMetric<Domain::DiskIoMetrics>& metric)
+{
+    const auto valid = Domain::validateTelemetryMetric(metric);
+    if (!valid) reject(valid.error().code, valid.error().message);
+    return Json{
+        {"availability", Domain::telemetryMetricAvailabilityName(metric.availability)},
+        {"captured_at_utc_ms", metric.capturedAt
+            ? Json(epochMilliseconds(*metric.capturedAt)) : Json(nullptr)},
+        {"observed_at_utc_ms", metric.observedAt
+            ? Json(epochMilliseconds(*metric.observedAt)) : Json(nullptr)},
+        {"source", metric.source},
+        {"stale", metric.stale},
+        {"unavailable_reason", optionalString(metric.unavailableReason)},
+        {"value", metric.value ? diskIoJson(*metric.value) : Json(nullptr)}};
+}
+
+[[nodiscard]] Json volumeJson(const Domain::DiskVolume& volume)
+{
+    return Json{
+        {"available_bytes", volume.availableBytes},
+        {"captured_at_utc_ms", volume.capturedAt
+            ? Json(epochMilliseconds(*volume.capturedAt)) : Json(nullptr)},
+        {"device", volume.device},
+        {"file_system", volume.fileSystem},
+        {"mount", volume.mount.value()},
+        {"percent", volume.percent},
+        {"source", volume.source},
+        {"total_bytes", volume.totalBytes},
+        {"used_bytes", volume.usedBytes}};
+}
+
+[[nodiscard]] Domain::DiskVolume parseVolume(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"available_bytes", "captured_at_utc_ms", "device", "file_system",
+         "mount", "percent", "source", "total_bytes", "used_bytes"},
+        "Manager volume telemetry");
+    auto mount = Domain::PathText::create(stringMember(value, "mount"));
+    if (!mount) reject(mount.error().code, mount.error().message);
+    Domain::DiskVolume result{
+        stringMember(value, "device"), std::move(mount).value(),
+        stringMember(value, "file_system"), uint64Member(value, "total_bytes"),
+        uint64Member(value, "used_bytes"), uint64Member(value, "available_bytes"),
+        doubleMember(value, "percent")};
+    result.capturedAt = optionalField<Domain::UtcTimePoint>(
+        value, "captured_at_utc_ms",
+        [](const Json& object, const std::string_view name) {
+            return utcTimePointFromMilliseconds(nonnegativeIntegerMember(object, name));
+        });
+    result.source = stringMember(value, "source");
+    return result;
+}
+
 [[nodiscard]] Json resourceSnapshotJson(
     const Domain::ManagerResourceSnapshot& snapshot)
 {
@@ -2019,10 +2145,19 @@ template <typename T, typename Parser>
     for (const auto& point : snapshot.history) {
         history.push_back(historyJson(point));
     }
+    Json disks = Json::array();
+    for (const auto& disk : snapshot.disks) disks.push_back(volumeJson(disk));
     return Json{
         {"architecture", snapshot.architecture},
         {"captured_at_utc_ms", epochMilliseconds(snapshot.capturedAt)},
+        {"cpu_frequency_mhz", telemetryMetricJson(snapshot.cpuFrequencyMhz)},
+        {"cpu_per_logical_frequency_mhz",
+            telemetryMetricJson(snapshot.cpuPerLogicalFrequencyMhz)},
+        {"cpu_per_logical_percent",
+            telemetryMetricJson(snapshot.cpuPerLogicalProcessor)},
         {"cpu_percent", telemetryMetricJson(snapshot.cpuPercent)},
+        {"disk_io", diskIoMetricJson(snapshot.diskIo)},
+        {"disks", std::move(disks)},
         {"gpus", std::move(gpus)},
         {"history", std::move(history)},
         {"host", snapshot.host},
@@ -2031,7 +2166,10 @@ template <typename T, typename Parser>
         {"ram_available_bytes", telemetryMetricJson(snapshot.ramAvailableBytes)},
         {"ram_percent", telemetryMetricJson(snapshot.ramPercent)},
         {"ram_total_bytes", telemetryMetricJson(snapshot.ramTotalBytes)},
-        {"ram_used_bytes", telemetryMetricJson(snapshot.ramUsedBytes)}};
+        {"ram_used_bytes", telemetryMetricJson(snapshot.ramUsedBytes)},
+        {"measured_sample_interval_ms", snapshot.measuredSampleIntervalMilliseconds},
+        {"sampling_policy", snapshot.samplingPolicy},
+        {"target_sample_interval_ms", snapshot.targetSampleIntervalMilliseconds}};
 }
 
 [[nodiscard]] Domain::ManagerResourceSnapshot parseResourceSnapshot(
@@ -2039,9 +2177,12 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"architecture", "captured_at_utc_ms", "cpu_percent", "gpus", "history",
-         "host", "platform", "processes", "ram_available_bytes", "ram_percent",
-         "ram_total_bytes", "ram_used_bytes"},
+        {"architecture", "captured_at_utc_ms", "cpu_frequency_mhz",
+         "cpu_per_logical_frequency_mhz", "cpu_per_logical_percent", "cpu_percent",
+         "disk_io", "disks", "gpus", "history", "host",
+         "measured_sample_interval_ms", "platform", "processes",
+         "ram_available_bytes", "ram_percent", "ram_total_bytes", "ram_used_bytes",
+         "sampling_policy", "target_sample_interval_ms"},
         "Manager resource telemetry");
     const auto parseDoubleMetric = [](const Json& metric, const std::string_view schema) {
         return parseTelemetryMetric<double>(metric, schema, doubleMember);
@@ -2052,13 +2193,14 @@ template <typename T, typename Parser>
     const auto& gpuValues = member(value, "gpus");
     const auto& processValues = member(value, "processes");
     const auto& historyValues = member(value, "history");
+    const auto& diskValues = member(value, "disks");
     if (!gpuValues.is_array() || !processValues.is_array() ||
-        !historyValues.is_array()) {
+        !historyValues.is_array() || !diskValues.is_array()) {
         reject(Domain::ErrorCodes::InvalidRequest,
                "Manager resource telemetry collections must be arrays.");
     }
     if (gpuValues.size() > 64U || processValues.size() > 4'096U ||
-        historyValues.size() > 7'200U) {
+        historyValues.size() > 7'200U || diskValues.size() > 256U) {
         reject(Domain::ErrorCodes::LimitExceeded,
                "Manager resource telemetry collection exceeds its bound.");
     }
@@ -2068,7 +2210,9 @@ template <typename T, typename Parser>
     for (const auto& item : processValues) processes.push_back(parseProcess(item));
     std::vector<Domain::HistoryPoint> history;
     for (const auto& item : historyValues) history.push_back(parseHistory(item));
-    return Domain::ManagerResourceSnapshot{
+    std::vector<Domain::DiskVolume> disks;
+    for (const auto& item : diskValues) disks.push_back(parseVolume(item));
+    Domain::ManagerResourceSnapshot result{
         utcTimePointFromMilliseconds(
             nonnegativeIntegerMember(value, "captured_at_utc_ms")),
         stringMember(value, "host"),
@@ -2082,6 +2226,59 @@ template <typename T, typename Parser>
         std::move(gpus),
         std::move(processes),
         std::move(history)};
+    result.cpuPerLogicalProcessor = parseTelemetryMetric<std::vector<double>>(
+        member(value, "cpu_per_logical_percent"),
+        "Manager logical CPU metric",
+        [](const Json& object, const std::string_view name) {
+            const auto& values = member(object, name);
+            if (!values.is_array() || values.size() > 256U) {
+                reject(Domain::ErrorCodes::LimitExceeded,
+                       "Manager logical CPU metric exceeds its bound.");
+            }
+            std::vector<double> result;
+            for (const auto& item : values) {
+                if (!item.is_number()) {
+                    reject(Domain::ErrorCodes::InvalidRequest,
+                           "Manager logical CPU metric contains a non-number.");
+                }
+                result.push_back(item.get<double>());
+            }
+            return result;
+        });
+    result.cpuFrequencyMhz = parseTelemetryMetric<std::uint32_t>(
+        member(value, "cpu_frequency_mhz"), "Manager CPU frequency metric",
+        uint32Member);
+    result.cpuPerLogicalFrequencyMhz =
+        parseTelemetryMetric<std::vector<std::uint32_t>>(
+            member(value, "cpu_per_logical_frequency_mhz"),
+            "Manager logical CPU frequency metric",
+            [](const Json& object, const std::string_view name) {
+                const auto& values = member(object, name);
+                if (!values.is_array() || values.size() > 256U) {
+                    reject(Domain::ErrorCodes::LimitExceeded,
+                           "Manager logical CPU frequency metric exceeds its bound.");
+                }
+                std::vector<std::uint32_t> result;
+                for (const auto& item : values) {
+                    if (!item.is_number_unsigned() ||
+                        item.get<std::uint64_t>() >
+                            (std::numeric_limits<std::uint32_t>::max)()) {
+                        reject(Domain::ErrorCodes::InvalidRequest,
+                               "Manager logical CPU frequency metric is invalid.");
+                    }
+                    result.push_back(item.get<std::uint32_t>());
+                }
+                return result;
+            });
+    result.disks = std::move(disks);
+    result.diskIo = parseTelemetryMetric<Domain::DiskIoMetrics>(
+        member(value, "disk_io"), "Manager disk I/O metric", parseDiskIo);
+    result.targetSampleIntervalMilliseconds =
+        uint32Member(value, "target_sample_interval_ms");
+    result.measuredSampleIntervalMilliseconds = optionalField<double>(
+        value, "measured_sample_interval_ms", doubleMember);
+    result.samplingPolicy = stringMember(value, "sampling_policy");
+    return result;
 }
 
 [[nodiscard]] Json runtimeDiagnosticsJson(

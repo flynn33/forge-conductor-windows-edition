@@ -252,6 +252,31 @@ void replaceOne(
         {Domain::HistoryPoint{
             capturedAt, 42.5, 61.25, std::nullopt, 0.0, 3U,
             Domain::TelemetryHealth::Ok}}};
+    resources.cpuPerLogicalProcessor =
+        Domain::makeAvailableTelemetryMetric<std::vector<double>>(
+            {12.5, 72.25}, capturedAt, "PDH logical CPU");
+    resources.cpuFrequencyMhz =
+        Domain::makeAvailableTelemetryMetric<std::uint32_t>(
+            3401U, capturedAt, "PDH CPU frequency");
+    resources.cpuPerLogicalFrequencyMhz =
+        Domain::makeAvailableTelemetryMetric<std::vector<std::uint32_t>>(
+            {3401U, 3401U}, capturedAt, "PDH CPU frequency");
+    resources.diskIo = Domain::makeAvailableTelemetryMetric(
+        Domain::DiskIoMetrics{1024.0, 2048.0, 3.0, 4.0},
+        capturedAt, "PDH PhysicalDisk");
+    resources.disks.push_back(Domain::DiskVolume{
+        "C:\\", path("C:\\"), "NTFS", 10'000U, 4'000U, 6'000U,
+        40.0, capturedAt, "GetDiskFreeSpaceEx"});
+    resources.targetSampleIntervalMilliseconds = 250U;
+    resources.measuredSampleIntervalMilliseconds = 251.5;
+    resources.samplingPolicy = "realtime_cpu_ram; gpu_disk_1s; process_volume_5s";
+    resources.gpus.front().adapterId = "0:1";
+    resources.gpus.front().engines.push_back(
+        Domain::GpuEngineMetrics{"3D 0", 37.5});
+    resources.gpus.front().capturedAt = capturedAt;
+    resources.gpus.front().utilizationSource = "PDH GPU Engine";
+    resources.gpus.front().memoryScope = "current-process usage; adapter capacity";
+    resources.processes.front().capturedAt = capturedAt;
     const auto run = sampleManagedRun();
     return Domain::ManagerTelemetrySnapshot{
         capturedAt,
@@ -532,6 +557,17 @@ void testManagerTelemetryRoundTripsWithoutLosingAvailability()
             sampleManagerTelemetry().resources.cpuPercent.capturedAt);
     REQUIRE(actual.resources.gpus.size() == 1U);
     REQUIRE(!actual.resources.gpus.front().utilizationPercent);
+    REQUIRE(actual.resources.gpus.front().adapterId == "0:1");
+    REQUIRE(actual.resources.gpus.front().engines.size() == 1U);
+    REQUIRE(actual.resources.cpuPerLogicalProcessor.value &&
+            actual.resources.cpuPerLogicalProcessor.value->at(1) == 72.25);
+    REQUIRE(actual.resources.cpuFrequencyMhz.value == 3401U);
+    REQUIRE(actual.resources.diskIo.value &&
+            actual.resources.diskIo.value->writeBytesPerSecond == 2048.0);
+    REQUIRE(actual.resources.disks.size() == 1U &&
+            actual.resources.disks.front().mount.value() == "C:\\");
+    REQUIRE(actual.resources.targetSampleIntervalMilliseconds == 250U);
+    REQUIRE(actual.resources.measuredSampleIntervalMilliseconds == 251.5);
     REQUIRE(actual.context.retainedTokens == 4'096U);
     REQUIRE(actual.context.headroomTokens == 44'032U);
     REQUIRE(actual.context.authoritative);
