@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T08:15:00Z",
+  "updated_at_utc": "2026-09-13T12:15:00Z",
   "current_phase": "R6",
   "current_slice": "R6.4",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r6-live-continuity-fix",
-    "head": "93c93d9cf790ec1ab7cb2ec9f24dffcd7bc53628",
-    "origin_main": "a161443c974bce594ef7a655a88d02b20dec6040",
-    "github_main": "a161443c974bce594ef7a655a88d02b20dec6040",
+    "branch": "alpha/r6-installed-acceptance-closeout",
+    "head": "3fb70143ef2db9704c8a395b49a29857bd087976",
+    "origin_main": "35f61de3c5a8159e20752a3843e5f26bfa5290c9",
+    "github_main": "35f61de3c5a8159e20752a3843e5f26bfa5290c9",
     "dirty_summary": [
-      "PR #22 reference closeout is pending its owner commit and push; the draft PR is open at exact pre-closeout head 93c93d9cf790ec1ab7cb2ec9f24dffcd7bc53628.",
+      "Draft PR #23 carries the 0.9.4 managed-continuity guard repair and acceptance closeout; documentation commit/push is pending.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ignored live/provider/package evidence remains local under out/ and is referenced by stable IDs and hashes."
+      "Ignored live/provider/package and verified branch-retirement evidence remains local under out/ and is referenced by stable IDs and hashes."
     ]
   },
   "baseline": {
@@ -227,12 +227,12 @@
     "R6": {
       "implementation": "blocked",
       "delivery": "pr_open",
-      "branch": "alpha/r6-live-continuity-fix",
+      "branch": "alpha/r6-installed-acceptance-closeout",
       "issue_number": 9,
       "milestone_number": 7,
-      "pr_number": 22,
-      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/22",
-      "reviewed_head": "93c93d9cf790ec1ab7cb2ec9f24dffcd7bc53628",
+      "pr_number": 23,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/23",
+      "reviewed_head": "3fb70143ef2db9704c8a395b49a29857bd087976",
       "slices": {
         "R6.1": "blocked",
         "R6.2": "verified",
@@ -242,20 +242,20 @@
       "gates": {
         "R6-G1": {
           "status": "blocked",
-          "evidence": "Signed exact 0.9.3.0 package build/unpack/native execution passed, but Windows still returns 0x800B0109 without Local Machine publisher trust. Registered install/Start/update/uninstall and authentic schema-9 compatibility remain open."
+          "evidence": "Signed exact 0.9.4.0 package build/unpack/native execution passed. Authorized Local Machine publisher trust and the dedicated-account 0.9.3→0.9.4 install/Start/update/uninstall/reinstall lifecycle remain open. Authentic schema-9 compatibility is a separate dependency."
         },
         "R6-G2": {
           "status": "passed",
-          "evidence": "Real qwen3-coder-30b operation 786d0672-6231-4202-a46c-401732ade283 crossed the authoritative context threshold, saved exact handoff, activated fresh successor 7dd7aece-532a-459a-8489-ab9d62567466, received the structured provider acknowledgment, fenced the predecessor, and completed useful successor filesystem effects. Separate detach/restart recovery and exact unpacked 0.9.3 PACKAGE_OK run passed."
+          "evidence": "Exact 0.9.4 qwen3-coder-30b run 34c078f8-6256-4b03-80e1-936e2e50f2f4 completed canonical rollover to successor 4ddd93de-6cc6-413f-b5fd-90da72e074d8, persisted all eight transitions, completed pre/post-successor effects, and returned DONE. The legacy desktop-chat guard defect exposed by the earlier run is fixed; 12-identical-call and 80-tool regressions pass."
         },
         "R6-G3": {
           "status": "passed",
-          "evidence": "Prior exact-package visual/settings/accessibility evidence remains applicable. Full Debug/Release builds, five affected suites, signed 0.9.3 package extraction/rehash, and exact-package live tool read passed."
+          "evidence": "Prior exact-package visual/settings/accessibility evidence remains applicable. Full Debug/Release builds, five focused suites, signed 0.9.4 package extraction/rehash, exact-package GUI/Manager live rollover, and terminal run passed."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 continuation full active first-party review; live rollover, 0.9.3 candidate, merged R7 state and remaining external gates reconciled.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 acceptance closeout full active first-party review; runtime error attribution, 80-turn coverage, 0.9.4 exact-package rollover, branch retirement, administrator handoff, and open gates reconciled.",
       "phase_receipt": ".forge-alpha/phases/R6.md",
-      "last_known_merge": null,
+      "last_known_merge": "35f61de3c5a8159e20752a3843e5f26bfa5290c9",
       "primary_pr_number": 20,
       "primary_pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
     },
@@ -284,12 +284,12 @@
         },
         "R7-G3": {
           "status": "passed",
-          "evidence": "PRs #19, #20, and #21 merged in dependency order. Local main, origin/main, and authenticated GitHub main synchronized at a161443c974bce594ef7a655a88d02b20dec6040 with tracked tree 7d49cfb491740cdf49bcc7dc90ba3863e85d756b."
+          "evidence": "R7 delivery remains merged. Subsequent permitted R6 continuation PR #22 merged normally; local main, origin/main, and authenticated GitHub main matched 35f61de3c5a8159e20752a3843e5f26bfa5290c9 before PR #23 work."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R7.md",
-      "last_known_merge": "a161443c974bce594ef7a655a88d02b20dec6040"
+      "last_known_merge": "35f61de3c5a8159e20752a3843e5f26bfa5290c9"
     }
   },
   "blockers": [
@@ -304,21 +304,21 @@
     },
     {
       "id": "B-R6-INSTALL-TRUST",
-      "failure": "Windows package deployment returns 0x800B0109 because the development publisher is absent from Local Machine Trusted People; no Forge package is registered. The elevated import was rejected by automatic approval policy.",
+      "failure": "Windows package deployment returns 0x800B0109 because the development publisher is absent from Local Machine Trusted People; no Forge package is registered. This session will not retry the denied elevated import.",
       "affected": "R6.1, R6.4 and R6-G1",
       "dependency_type": "windows_approval",
-      "last_observed_utc": "2026-09-13T08:15:00Z",
-      "necessary_external_action": "Approve the bundled public development certificate for Local Machine Trusted People through the normal elevated helper, then rerun installation.",
-      "next_independent_work": "Deliver the verified live-continuity repair and 0.9.3 candidate while keeping registered lifecycle acceptance open."
+      "last_observed_utc": "2026-09-13T12:15:00Z",
+      "necessary_external_action": "On an authorized Windows 11 x64 environment, import the verified public certificate into Local Machine Trusted People through the approved administrator process, then run the dedicated ForgeAlphaTest account lifecycle in docs/INSTALLED-ACCEPTANCE-HANDOFF.md.",
+      "next_independent_work": "Merge and retire PR #23, preserving the installed lifecycle and schema-history checks as open external work."
     }
   ],
   "known_bugs": [],
-  "last_result": "R6 live continuity repaired and verified against real LM Studio. R6-G2 passes with authoritative usage, exact handoff, fresh provider root, structured acknowledgment, fencing, useful successor effects and Manager recovery. Signed exact 0.9.3 package live smoke passed; registered lifecycle and authentic schema-9 compatibility remain open.",
-  "next_action": "Push the PR #22 reference closeout, verify exact remote/PR head, mark the draft ready, merge through normal repository rules, then fetch and fast-forward local main. Keep R6-G1 and schema-9 compatibility open.",
+  "last_result": "The managed-run legacy invocation-guard defect is fixed and exact 0.9.4 real LM Studio run 34c078f8-6256-4b03-80e1-936e2e50f2f4 completed a canonical rollover, useful post-successor work, and terminal DONE. Signed 0.9.4 package and focused checks pass; registered lifecycle and authentic schema-9 compatibility remain open.",
+  "next_action": "Complete PR #23 review/merge, synchronize main, bundle and retire only its merged remote branch with an expected-head lease, then execute docs/INSTALLED-ACCEPTANCE-HANDOFF.md when authorized machine trust is available. Keep schema compatibility separate.",
   "acceptance": {
     "installed_workflow": "blocked_machine_trust",
-    "live_productive_successor": "passed_real_lm_studio_qwen3_coder_30b",
-    "native_visuals_settings": "passed_exact_unpacked_candidate",
+    "live_productive_successor": "passed_exact_0.9.4_real_lm_studio_qwen3_coder_30b_terminal",
+    "native_visuals_settings": "passed_exact_unpacked_candidate_behavior_applicable_0.9.4",
     "installed_lifecycle": "blocked_machine_trust",
     "owner_existing_data_compatibility": "blocked_authentic_schema_history_unavailable_live_store_untouched",
     "alpha_accepted": false

@@ -27,6 +27,6 @@ One settings test group should cover a valid save/readback through restart, inva
 Finish with a keyboard/focus/scaling walk through Settings and a context slider/exact-value pair. Custom visuals expose name/value text. Do not claim screen-reader usability from a static screenshot alone, and do not create a large UI testing framework just for this pass.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -3,34 +3,36 @@
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Execution revision:** `continuous-delivery-correction-2026-09-12`
 **Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R6.4 — continuation delivery and remaining installed lifecycle
-**Current branch:** `alpha/r6-live-continuity-fix`, created from synchronized main `a161443c974bce594ef7a655a88d02b20dec6040`
+**Current phase/slice:** R6.4 — installed lifecycle and authentic schema compatibility
+**Current branch:** `alpha/r6-installed-acceptance-closeout`, created from synchronized main `35f61de3c5a8159e20752a3843e5f26bfa5290c9`
 
 ## Verified state
 
-- PRs #19, #20, and #21 merged in dependency order. Local main, origin/main, and authenticated GitHub main synchronized at `a161443c974bce594ef7a655a88d02b20dec6040` before this continuation.
-- The managed-run start transaction now creates an admissible open session and active binding before running. Continuity observes persisted tool effects, includes bounded completed-work summaries, and tells the successor to continue without repeating them.
-- Native Manager and CLI session ledgers live under the memory root, with pre-SQLite migration from the legacy root location. LM Studio bootstrap uses its supported required-tool selection.
-- Real LM Studio run `786d0672-6231-4202-a46c-401732ade283` activated fresh successor `7dd7aece-532a-459a-8489-ab9d62567466` after authoritative context usage crossed the configured threshold. Exact saved handoff retrieval, structured provider acknowledgment, predecessor fencing, and useful post-successor filesystem effects passed.
-- A separate operation recovered after GUI detach and Manager restart. Exact unpacked 0.9.3 GUI/Manager/CLI bytes completed live run `b74477f9-25e8-4e6b-ba3c-d73daeb370f8` with `PACKAGE_OK`.
-- Full x64 Debug and Release products built. The five affected focused suites passed. Signed candidate `ForgeConductor-0.9.3.0-x64.msix` SHA-256 is `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`; ZIP SHA-256 is `dbef5788b6bd2bc91d03ee9228db02e7a9605bfdadbc66ed9e55e58329aa2721`.
-- Remote `alpha/r1-managed-runs` remains retired and preserved in the verified ignored bundle under `out/alpha-evidence/branch-retirement/`.
+- PR #22 merged at `35f61de3c5a8159e20752a3843e5f26bfa5290c9`. Draft PR #23 carries the narrow acceptance closeout and 0.9.4 candidate.
+- The four redundant remote branches named in the owner directive were preserved at their exact expected heads in verified bundle `out/alpha-evidence/branch-retirement/redundant-alpha-branches-20260913.bundle`, SHA-256 `fc1085d1979739eb1cf313ddf5556d5f5f1e05143c2f7c521c37998895b76ea9`, then deleted with individual expected-head leases and verified absent. Their local branches remain.
+- The old live run's terminal `context_budget_exceeded` text came from Forge's legacy desktop-chat invocation guard, not the model or Codex runtime. Manager-owned `managed-run-v1` calls now bypass that guard while retaining authorization, routing, and audit.
+- The managed-run service regression covers 80 tool turns; a separate invocation-guard regression proves 12 identical Manager-owned calls proceed without legacy handoff or block.
+- Full x64 Debug and Release products and the five affected focused suites passed. Existing G04 wrapper overflow remains failed and was not rerun.
+- Signed candidate `ForgeConductor-0.9.4.0-x64.msix` has SHA-256 `937e503c3198d829907aff2a349067ad8f21c7cec54df071d668a531eb65c586`; ZIP SHA-256 is `2e0598163d582999f18d26f373cb49f23334b17425ac2277f1eee50912ed0403`. It is bound to commit `3fb70143ef2db9704c8a395b49a29857bd087976` and tree `fad39f10bdb2638a74a0b28deb0c0ecc1e88dede`.
+- Exact 0.9.4 GUI/Manager run `34c078f8-6256-4b03-80e1-936e2e50f2f4` completed canonical rollover to successor `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed both requested file effects, and returned terminal `DONE`. The per-project ledger records all eight transitions through `active_session_pointer_swapped`.
+- The 0.9.3 `PACKAGE_OK` run is separate package-execution evidence. It is not used as the rollover run.
+- LM Studio was restored to its initial state: model unloaded and server stopped.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 
 ## Next exact action
 
-Push the PR #22 reference closeout, mark the draft ready after verifying its exact head, follow normal review/merge rules, then fetch and fast-forward local main. Keep R6-G1 and schema-9 compatibility open.
+After PR #23 merges, synchronize local `main`, preserve the exact merged continuation ref in a verified bundle, retire only its remote branch with an expected-head lease, and verify absence. The remaining product action is the authorized installed lifecycle in [Installed acceptance handoff](../docs/INSTALLED-ACCEPTANCE-HANDOFF.md), followed independently by authentic C008/C009 history recovery or continued non-destructive rejection.
 
 ## Open dependencies
 
 - `B-R5-CENTRAL-SCHEMA-HISTORY`: authentic C008/C009 history is unavailable; preserve the schema-9 owner store and keep newer-store rejection non-destructive.
-- `B-R6-INSTALL-TRUST`: Windows returned `0x800B0109` because the development publisher is absent from Local Machine Trusted People. Approve the bundled public certificate through the normal elevated helper, then run registered install/Start/update/uninstall acceptance.
+- `B-R6-INSTALL-TRUST`: an authorized administrator must import the public development certificate into Local Machine Trusted People and run the documented 0.9.3→0.9.4 install/update/uninstall/reinstall workflow in dedicated account `.\ForgeAlphaTest`. Do not retry elevation from this session or use the owner profile.
 
 ## Phase closeout obligations
 
-R6-G2 and R6-G3 pass. R6-G1 remains blocked and is not waived. R7 is merged and synchronized. Preserve implementation, checks, readiness, merge, and acceptance as distinct states; report ref equality separately from the intentionally dirty unrelated `.forge-qwen` working tree.
+R6-G2 and R6-G3 pass. R6-G1 remains blocked and is not waived. R7 remains merged. Keep implementation, individual checks, review readiness, merge, and acceptance distinct; report Git ref equality separately from the intentionally dirty unrelated `.forge-qwen` working tree.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows control application and MCP tool server for project work with local models in LM Studio.
 
-**Status: the Windows Alpha implementation and documentation are complete, including real LM Studio context rollover and a source-bound 0.9.3.0 signed candidate; registered install/update/uninstall acceptance remains blocked by Windows machine trust.** R0–R7 delivery is merged through [PR #21](https://github.com/flynn33/forge-conductor-windows-edition/pull/21) at `a161443c974bce594ef7a655a88d02b20dec6040`. Draft [PR #22](https://github.com/flynn33/forge-conductor-windows-edition/pull/22) carries the permitted R6 continuation, which repairs live managed-run persistence and rollover, records a real provider-originated handoff and productive successor, and advances the candidate to 0.9.3.0. Authentic C008/C009 migration history is still unavailable, so schema-9 owner data remains explicitly unsupported and untouched.
+**Status: the Windows Alpha implementation and documentation are complete, including real LM Studio context rollover and a source-bound 0.9.4.0 signed candidate; registered install/update/uninstall acceptance remains blocked by Windows machine trust.** PR #22 merged at `35f61de3c5a8159e20752a3843e5f26bfa5290c9`. Draft [PR #23](https://github.com/flynn33/forge-conductor-windows-edition/pull/23) carries the narrow acceptance closeout: Manager-owned `managed-run-v1` calls now bypass the legacy desktop-chat repetition guard, an exact 0.9.4 package completed a real rollover and terminal run, and an administrator handoff defines the remaining installed lifecycle. Authentic C008/C009 migration history is still unavailable, so schema-9 owner data remains explicitly unsupported and untouched.
 
 Use [Product status](docs/STATUS.md) for verified behavior and blockers, [Roadmap](ROADMAP.md) for the current phase sequence, and [Documentation index](docs/DOCUMENTATION-INDEX.md) for active and historical guidance. The adopted execution contract is under [Alpha recovery](docs/implementation/alpha-recovery/instructions/EXECUTION.md).
 
@@ -29,9 +29,9 @@ Windows 11 x64; C++20; Visual Studio 2022/MSVC v143; Windows SDK 10.0.26100.0; C
   -Target ForgeConductor.Cli,ForgeConductor.Manager,ForgeConductor.SessionHost
 ```
 
-The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `ForgeConductor-0.9.3.0-x64.msix`, SHA-256 `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`. Follow [Installer and installation](docs/INSTALL.md) for provenance, hash verification, and the explicit Windows trust step.
+The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `ForgeConductor-0.9.4.0-x64.msix`, SHA-256 `937e503c3198d829907aff2a349067ad8f21c7cec54df071d668a531eb65c586`. Follow [Installer and installation](docs/INSTALL.md) for provenance and hash verification; [Installed acceptance handoff](docs/INSTALLED-ACCEPTANCE-HANDOFF.md) gives the exact administrator/test-account procedure.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

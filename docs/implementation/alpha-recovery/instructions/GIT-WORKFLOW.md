@@ -141,6 +141,6 @@ The last count must be `0 0`. Inspect all reported untracked files: no unpublish
 Record the final SHA, tree, PR URL/merge SHA, clean-state results and UTC observation time in a GitHub PR comment and an ignored local evidence receipt, then in the final report. Do not make a new tracked edit merely to embed that commit's own SHA into itself. The next phase's normal commit can incorporate the previous phase's now-known merge receipt. This avoids endless metadata commits and leaves local/main/remote identical.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

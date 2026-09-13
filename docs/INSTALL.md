@@ -1,12 +1,11 @@
 # Installer and installation
-**Current R6 continuation candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.3.0-x64.msix`, SHA-256 `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`, from commit `0cd18ae1e7fd160e2fcbbe690552ef5c61a4a203` and tree `0ff125b00f51f7ad9ece314edbcbde387c69fdc2`.
+**Current R6 acceptance candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 13, 2026. The package is `ForgeConductor-0.9.4.0-x64.msix`, SHA-256 `937e503c3198d829907aff2a349067ad8f21c7cec54df071d668a531eb65c586`, from commit `3fb70143ef2db9704c8a395b49a29857bd087976` and tree `fad39f10bdb2638a74a0b28deb0c0ecc1e88dede`.
 
-The 0.9.3 candidate replaces the earlier retained bytes after live-continuity repairs. Windows still requires the included development publisher certificate in Local Machine Trusted People. Current-user trust is insufficient and no package was registered, so exact unpacked-package execution is recorded separately from installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
+The 0.9.4 candidate adds the managed-run invocation-guard repair after live acceptance exposed the legacy desktop-chat block. Windows still requires the included development publisher certificate in Local Machine Trusted People. Current-user trust is insufficient and no package was registered, so exact unpacked-package execution is recorded separately from installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
 
 Build with `scripts/build.ps1 -Configuration Release -Product All`, then `scripts/package.ps1 -DevelopmentSigning`.
 Each distribution under `out/dist/candidate-*` contains the signed MSIX, public certificate, checksum metadata,
-README, and `Install-Engineering.ps1`. Extract the engineering ZIP and run the helper in Administrator PowerShell
-with `-TrustDevelopmentPublisher` to trust this specific signing certificate and install. No private key is exported.
+README, and `Install-Engineering.ps1`. Machine trust must be provisioned through an approved administrator action. Then run the helper without the trust switch from the dedicated test account. No private key is exported. Follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md) for the exact 0.9.3→0.9.4 lifecycle.
 
 ## Distribution contract
 Produce the versioned x64 Alpha ZIP emitted by `scripts/package.ps1`, containing:
@@ -28,7 +27,7 @@ The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.e
 Verify actual target output names rather than blindly adopting this proposed staging list.
 
 Choose a stable package identity and publisher once; make manifest Publisher match the signing certificate exactly.
-The current candidate uses product version `0.9.3` and numeric MSIX version `0.9.3.0`, incremented from the retained `0.9.1.0` candidate so a real update path is available. Runtime identity and package scripts validate this source. Avoid downgrading an installed build.
+The current candidate uses product version `0.9.4` and numeric MSIX version `0.9.4.0`. The retained 0.9.3.0 candidate supplies the lower version for the installed update test. Runtime identity and package scripts validate this source. Avoid downgrading an installed build.
 Replace every manifest placeholder and include the required logos/resources. The supplied PNG assets are sufficient
 starter packaging assets, not a UI design project.
 
@@ -64,6 +63,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
