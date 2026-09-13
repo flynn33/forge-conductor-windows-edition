@@ -269,9 +269,11 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'alpha/Install-Engineering.ps1')
 @"
 Forge Conductor Windows Alpha candidate $version (x64 Release)
 
-Double-click $packageName after the publisher certificate is trusted, or use
-Install-Engineering.ps1. The -TrustDevelopmentPublisher switch is the only
-step that requires an Administrator PowerShell window for this internal signer.
+An authorized administrator must import Publisher.cer into Local Machine Trusted
+People through the approved process. Then, from the disposable test account, run
+Install-Engineering.ps1 -PreflightOnly. If it reports ready_for_install true,
+run Install-Engineering.ps1 without either switch. Each successful install or
+update writes a distinct timestamped JSON receipt in this directory.
 
 The default data root is %LOCALAPPDATA%\Forge Conductor and remains outside the
 package so update and uninstall preserve user data. For disposable testing,
