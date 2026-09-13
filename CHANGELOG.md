@@ -61,11 +61,17 @@
 - Completed the native Settings accessibility work with keyboard operation of the context slider and exact token value, actual Windows High Contrast, and actual 150% text scaling; every temporary system setting was restored.
 - Retained installation and live-provider gates as blocked: Windows returned `0x800B0109` without machine-level publisher trust, and LM Studio was still unavailable at `127.0.0.1:1234`.
 
+### R7 — Documented delivery
+
+- Reconciled every active first-party document with the implemented capability, exact acceptance evidence, honest limitations, and current PR dependency chain.
+- Retained and independently rehashed the unchanged tested 0.9.2.0 candidate: MSIX `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, distribution ZIP `18e43f5508499b56ec802447cfb98dfe8bfc048ba1f649eb1da657f0ae28f8dd`, source commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`.
+- Kept installed lifecycle, live-provider continuity, authentic schema-9 compatibility, PR merge, and post-merge main synchronization visibly open.
+
 ### Remaining Alpha work
 
-- Complete machine-trusted install/update/uninstall and live productive continuity acceptance when those external prerequisites are available; finish R7 delivery synchronization without calling the open gates passed.
+- Complete machine-trusted install/update/uninstall and live productive continuity acceptance when those external prerequisites are available; complete dependency-order PR merges and exact main synchronization without calling the open gates passed.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
