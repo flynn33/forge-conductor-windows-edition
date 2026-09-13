@@ -161,7 +161,7 @@ public:
                Json{{"name", role == Domain::LMStudioConnectorRole::Fallback
                                   ? "forge-conductor-fallback"
                                   : "forge-conductor"},
-                    {"version", "0.9.3"}}}}}};
+                    {"version", "0.9.4"}}}}}};
     Json tools = canonicalTools();
     require(toolCount <= tools.size(), "the requested verifier tool subset is invalid");
     while (tools.size() > toolCount) {

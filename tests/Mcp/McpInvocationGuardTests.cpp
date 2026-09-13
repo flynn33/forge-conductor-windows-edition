@@ -336,7 +336,8 @@ private:
     const Domain::ClientId& caller,
     const std::string_view tool,
     std::string arguments,
-    const std::uint64_t sequence)
+    const std::uint64_t sequence,
+    std::string protocolVersion = "2025-03-26")
 {
     return Domain::ToolCallRequest{
         Domain::McpRequestMetadata{
@@ -345,7 +346,7 @@ private:
                 "correlation-" + std::to_string(sequence)),
             caller,
             std::nullopt,
-            "2025-03-26"},
+            std::move(protocolVersion)},
         std::string{tool},
         std::move(arguments)};
 }
@@ -652,6 +653,38 @@ void ordinaryProgressNeverCreatesCountOrTimeHandoffs()
     REQUIRE(continuity.automaticRequests().front().inferred.keyFiles.has_value());
     REQUIRE(guard->snapshot(caller).implicitRoots ==
             std::vector<Domain::PathText>{root});
+}
+
+void managedRunProtocolUsesContextOnlyContinuity()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(
+        continuity, hasher, clock));
+    const auto caller = client("manager-owned-run");
+
+    for (std::uint64_t index = 1U; index <= 12U; ++index) {
+        const auto call = request(
+            caller,
+            "fs_write",
+            R"json({"content":"same","path":"same.txt"})json",
+            index,
+            "managed-run-v1");
+        const auto result = take(execute(
+            *guard,
+            call,
+            context(call, index),
+            std::nullopt,
+            observedPath("D:/workspace/same.txt")));
+        REQUIRE(result.receipt.ok);
+        REQUIRE(!payload(result).contains("handoff_required"));
+        REQUIRE(!payload(result).contains("auto_continuity"));
+    }
+
+    REQUIRE(continuity.budgetCalls() == 0U);
+    REQUIRE(continuity.automaticCalls() == 0U);
+    REQUIRE(!guard->snapshot(caller).blocked);
 }
 
 void failuresCancellationBoundsAndShutdownAreSafe()
@@ -1011,6 +1044,7 @@ int main()
                       Mcp::McpInvocationGuard>);
         identicalCallsSoftHandoffHardBlockAndResume();
         ordinaryProgressNeverCreatesCountOrTimeHandoffs();
+        managedRunProtocolUsesContextOnlyContinuity();
         failuresCancellationBoundsAndShutdownAreSafe();
         concurrentThresholdCrossingCoalescesPersistence();
         implicitRootsAreAuthorizedAndBounded();
