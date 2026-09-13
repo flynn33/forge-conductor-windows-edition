@@ -1044,6 +1044,26 @@ void samplesTheQualifiedWindowsMachine()
         measured.percent.value && *measured.percent.value >= 0.0 &&
             *measured.percent.value <= 100.0,
         "the second real GetSystemTimes sample did not publish bounded utilization");
+    require(
+        measured.perLogicalProcessor.value &&
+            measured.perLogicalProcessor.value->size() ==
+                *measured.logicalProcessorCount.value &&
+            std::ranges::all_of(
+                *measured.perLogicalProcessor.value,
+                [](const double value) noexcept {
+                    return std::isfinite(value) && value >= 0.0 &&
+                        value <= 100.0;
+                }),
+        "the real PDH probe did not publish one bounded utilization value per logical processor");
+    require(
+        measured.frequencyMhz.value && *measured.frequencyMhz.value > 0U &&
+            measured.perCoreFrequencyMhz.value &&
+            measured.perCoreFrequencyMhz.value->size() ==
+                *measured.logicalProcessorCount.value &&
+            std::ranges::all_of(
+                *measured.perCoreFrequencyMhz.value,
+                [](const std::uint32_t value) noexcept { return value > 0U; }),
+        "the real PDH probe did not publish aggregate and per-logical processor frequency");
     collector->shutdown();
 }
 

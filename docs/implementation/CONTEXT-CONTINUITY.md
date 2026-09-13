@@ -125,6 +125,6 @@ Official references: https://lmstudio.ai/docs/developer/openai-compat/responses 
 https://lmstudio.ai/docs/developer/openai-compat/tools (checked September 10, 2026).
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

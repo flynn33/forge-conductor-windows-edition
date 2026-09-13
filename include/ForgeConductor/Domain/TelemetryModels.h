@@ -135,6 +135,8 @@ struct DiskVolume final {
     std::uint64_t usedBytes{};
     std::uint64_t availableBytes{};
     double percent{};
+    std::optional<UtcTimePoint> capturedAt;
+    std::string source;
 };
 
 struct DiskIoMetrics final {
@@ -146,6 +148,11 @@ struct DiskIoMetrics final {
 
 using DiskIOMetrics = DiskIoMetrics;
 
+struct GpuEngineMetrics final {
+    std::string name;
+    double utilizationPercent{};
+};
+
 struct GpuMetrics final {
     std::string vendor;
     std::string name;
@@ -154,6 +161,11 @@ struct GpuMetrics final {
     std::optional<std::uint64_t> dedicatedBytesTotal;
     std::optional<std::uint64_t> sharedBytesUsed;
     bool direct3dAvailable{};
+    std::string adapterId;
+    std::vector<GpuEngineMetrics> engines;
+    std::optional<UtcTimePoint> capturedAt;
+    std::string utilizationSource;
+    std::string memoryScope;
 };
 
 using GPUMetrics = GpuMetrics;
@@ -167,6 +179,7 @@ struct ProcessMetrics final {
     std::uint32_t threadCount{};
     std::uint32_t handleCount{};
     std::string source;
+    std::optional<UtcTimePoint> capturedAt;
 };
 
 struct PowerMetrics final {
@@ -189,6 +202,10 @@ struct SystemMetrics final {
     std::vector<GpuMetrics> gpus;
     std::vector<ProcessMetrics> processes;
     PowerMetrics power;
+    std::uint32_t targetSampleIntervalMilliseconds{250U};
+    std::optional<double> measuredSampleIntervalMilliseconds;
+    std::string samplingPolicy{"realtime_cpu_ram; gpu_disk_1s; process_volume_5s"};
+    TelemetryMetric<DiskIoMetrics> diskIoSample;
 };
 
 struct ForgeSnapshot final {

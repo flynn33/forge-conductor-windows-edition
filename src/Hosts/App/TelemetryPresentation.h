@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <chrono>
 #include <cstdint>
 #include <cwchar>
 #include <iomanip>
@@ -30,11 +32,46 @@ struct TelemetryPresentation final {
     std::string providerStatus;
     std::string storeStatus;
     std::string continuityStatus;
+    std::string systemStatus;
+    std::string samplingStatus;
+    std::string diskStatus;
+    std::string workflowStatus;
+    std::vector<std::string> cpuLogicalRows;
+    std::vector<double> cpuLogicalValues;
+    std::vector<std::string> gpuRows;
+    std::vector<std::string> volumeRows;
+    std::vector<std::string> processRows;
     std::vector<double> cpuHistory;
     std::vector<double> ramHistory;
+    std::vector<double> gpuHistory;
+    std::vector<double> diskHistoryBytesPerSecond;
     std::vector<double> latencyHistoryMilliseconds;
     std::vector<std::string> timeline;
 };
+
+[[nodiscard]] inline std::string sampleAgeText(
+    const Domain::UtcTimePoint now,
+    const std::optional<Domain::UtcTimePoint>& capturedAt)
+{
+    if (!capturedAt || *capturedAt > now) return "sample time unavailable";
+    const auto age = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now - *capturedAt).count();
+    return "sample age " + std::to_string(age) + " ms";
+}
+
+[[nodiscard]] inline std::string bytesText(const std::uint64_t bytes)
+{
+    constexpr double Gibibyte = 1024.0 * 1024.0 * 1024.0;
+    constexpr double Mebibyte = 1024.0 * 1024.0;
+    std::ostringstream value;
+    value << std::fixed << std::setprecision(1);
+    if (bytes >= static_cast<std::uint64_t>(Gibibyte)) {
+        value << static_cast<double>(bytes) / Gibibyte << " GiB";
+    } else {
+        value << static_cast<double>(bytes) / Mebibyte << " MiB";
+    }
+    return value.str();
+}
 
 [[nodiscard]] inline std::wstring scopedViewStateValueName(
     const std::wstring_view base,
@@ -165,11 +202,97 @@ struct TelemetryPresentation final {
             snapshot.continuity.runId->value()
         : "Context-only · no selected run";
 
+    presentation.systemStatus = snapshot.resources.host + " · " +
+        snapshot.resources.platform + " " + snapshot.resources.architecture;
+    presentation.samplingStatus = "Target " +
+        std::to_string(snapshot.resources.targetSampleIntervalMilliseconds) + " ms";
+    if (snapshot.resources.measuredSampleIntervalMilliseconds) {
+        std::ostringstream interval;
+        interval << std::fixed << std::setprecision(0)
+                 << *snapshot.resources.measuredSampleIntervalMilliseconds;
+        presentation.samplingStatus += " · measured " + interval.str() + " ms";
+    }
+    presentation.samplingStatus += " · " + snapshot.resources.samplingPolicy;
+    presentation.samplingStatus += " · captured UTC ms " + std::to_string(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            snapshot.capturedAt.time_since_epoch()).count());
+
+    if (snapshot.resources.cpuPerLogicalProcessor.value) {
+        const auto& logical = *snapshot.resources.cpuPerLogicalProcessor.value;
+        const auto* frequencies = snapshot.resources.cpuPerLogicalFrequencyMhz.value
+            ? &*snapshot.resources.cpuPerLogicalFrequencyMhz.value : nullptr;
+        presentation.cpuLogicalRows.reserve(logical.size());
+        for (std::size_t index{}; index < logical.size(); ++index) {
+            std::ostringstream row;
+            row << "Logical " << index << " · " << std::fixed
+                << std::setprecision(1) << logical[index] << '%';
+            if (frequencies != nullptr && index < frequencies->size()) {
+                row << " · " << (*frequencies)[index] << " MHz";
+            }
+            presentation.cpuLogicalRows.push_back(row.str());
+            presentation.cpuLogicalValues.push_back(
+                std::clamp(logical[index], 0.0, 100.0));
+        }
+    }
+    for (const auto& gpu : snapshot.resources.gpus) {
+        std::string row = gpu.name + " · " + gpu.vendor;
+        if (gpu.dedicatedBytesTotal) row += " · " + bytesText(*gpu.dedicatedBytesTotal);
+        row += "\n" + gpu.memoryScope + " · " +
+            sampleAgeText(snapshot.capturedAt, gpu.capturedAt);
+        presentation.gpuRows.push_back(std::move(row));
+        for (const auto& engine : gpu.engines) {
+            std::ostringstream engineRow;
+            engineRow << "  " << engine.name << " · " << std::fixed
+                      << std::setprecision(1) << engine.utilizationPercent << '%';
+            presentation.gpuRows.push_back(engineRow.str());
+        }
+    }
+    if (snapshot.resources.diskIo.value) {
+        const auto& disk = *snapshot.resources.diskIo.value;
+        presentation.diskStatus = "Read " + bytesText(static_cast<std::uint64_t>(
+            disk.readBytesPerSecond)) + "/s · Write " +
+            bytesText(static_cast<std::uint64_t>(disk.writeBytesPerSecond)) +
+            "/s · " + std::to_string(static_cast<std::uint64_t>(
+                disk.readOperationsPerSecond + disk.writeOperationsPerSecond)) + " IOPS · " +
+            snapshot.resources.diskIo.source + " · " +
+            sampleAgeText(snapshot.capturedAt, snapshot.resources.diskIo.capturedAt);
+    } else {
+        presentation.diskStatus = snapshot.resources.diskIo.unavailableReason.value_or(
+            availabilityText(snapshot.resources.diskIo.availability));
+    }
+    for (const auto& volume : snapshot.resources.disks) {
+        std::ostringstream row;
+        row << volume.mount.value() << " · " << volume.fileSystem << " · "
+            << std::fixed << std::setprecision(1) << volume.percent
+            << "% used · " << bytesText(volume.availableBytes) << " free · "
+            << sampleAgeText(snapshot.capturedAt, volume.capturedAt);
+        presentation.volumeRows.push_back(row.str());
+    }
+    for (const auto& process : snapshot.resources.processes) {
+        std::ostringstream row;
+        row << process.name << " · PID " << process.processId << " · "
+            << std::fixed << std::setprecision(1) << process.cpuPercent
+            << "% CPU · " << bytesText(process.workingSetBytes)
+            << " RAM · " << process.threadCount << " threads · "
+            << sampleAgeText(snapshot.capturedAt, process.capturedAt);
+        presentation.processRows.push_back(row.str());
+    }
+    presentation.workflowStatus = std::to_string(snapshot.projects.size()) +
+        " projects · " + std::to_string(snapshot.tools.size()) + " tools · " +
+        std::to_string(snapshot.openSessionCount) + " open agents · " +
+        std::to_string(snapshot.presenceCount) + " presence records";
+
     presentation.cpuHistory.reserve(snapshot.resources.history.size());
     presentation.ramHistory.reserve(snapshot.resources.history.size());
+    presentation.gpuHistory.reserve(snapshot.resources.history.size());
+    presentation.diskHistoryBytesPerSecond.reserve(snapshot.resources.history.size());
     for (const auto& point : snapshot.resources.history) {
         presentation.cpuHistory.push_back(std::clamp(point.cpuPercent, 0.0, 100.0));
         presentation.ramHistory.push_back(std::clamp(point.ramPercent, 0.0, 100.0));
+        presentation.gpuHistory.push_back(std::clamp(
+            point.gpuPercent.value_or(0.0), 0.0, 100.0));
+        presentation.diskHistoryBytesPerSecond.push_back(
+            std::max(0.0, point.diskBytesPerSecond));
     }
 
     presentation.timeline.reserve(snapshot.recentEvents.size() + 1U);

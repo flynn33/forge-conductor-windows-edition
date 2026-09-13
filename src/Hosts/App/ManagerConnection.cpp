@@ -148,7 +148,7 @@ connectManager(
         "Connected to Manager PID " + std::to_string(snapshot.manager.processId) +
         "\nCPU: " + percentText(snapshot.resources.cpuPercent) +
         "\nRAM: " + percentText(snapshot.resources.ramPercent) +
-        "\nManager processes: " +
+        "\nRelevant processes: " +
             std::to_string(snapshot.resources.processes.size()) +
         "\nProvider: " + (snapshot.provider.secure ? "https://" : "http://") +
             snapshot.provider.host + ':' + std::to_string(snapshot.provider.port) +

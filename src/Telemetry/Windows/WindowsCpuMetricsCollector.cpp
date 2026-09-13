@@ -5,14 +5,18 @@
 #include "ForgeConductor/Domain/Utf8.h"
 
 #include <Windows.h>
+#include <pdh.h>
+#include <pdhmsg.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <exception>
+#include <iomanip>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <set>
 #include <string>
 #include <string_view>
@@ -124,6 +128,72 @@ template <typename Observation>
     return Domain::makeError(Domain::ErrorCodes::InternalFailure, std::move(message), true);
 }
 
+[[nodiscard]] Domain::Error pdhError(
+    const std::string_view operation,
+    const PDH_STATUS status)
+{
+    std::ostringstream message;
+    message << operation << " failed with PDH status 0x"
+            << std::hex << std::uppercase
+            << static_cast<unsigned long>(status) << '.';
+    const auto code = status == ERROR_ACCESS_DENIED
+        ? Domain::ErrorCodes::Unauthorized
+        : (status == PDH_CSTATUS_NO_OBJECT ||
+              status == PDH_CSTATUS_NO_COUNTER ||
+              status == PDH_NOT_IMPLEMENTED
+            ? Domain::ErrorCodes::HostCapabilityUnavailable
+            : Domain::ErrorCodes::InternalFailure);
+    return Domain::makeError(code, message.str(), code == Domain::ErrorCodes::InternalFailure);
+}
+
+struct PdhFormattedObservation final {
+    std::wstring instance;
+    double value{};
+};
+
+[[nodiscard]] Domain::Result<std::vector<PdhFormattedObservation>>
+queryPdhArray(const PDH_HCOUNTER counter)
+{
+    DWORD bytes{};
+    DWORD itemCount{};
+    auto status = ::PdhGetFormattedCounterArrayW(
+        counter, PDH_FMT_DOUBLE, &bytes, &itemCount, nullptr);
+    if (status != PDH_MORE_DATA || bytes == 0U) {
+        return Domain::Result<std::vector<PdhFormattedObservation>>::failure(
+            pdhError("PdhGetFormattedCounterArrayW(size)", status));
+    }
+    std::vector<std::byte> storage(bytes);
+    auto* items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_W*>(storage.data());
+    status = ::PdhGetFormattedCounterArrayW(
+        counter, PDH_FMT_DOUBLE, &bytes, &itemCount, items);
+    if (status != ERROR_SUCCESS) {
+        return Domain::Result<std::vector<PdhFormattedObservation>>::failure(
+            pdhError("PdhGetFormattedCounterArrayW", status));
+    }
+
+    std::vector<PdhFormattedObservation> result;
+    result.reserve(itemCount);
+    for (DWORD index{}; index < itemCount; ++index) {
+        const auto& item = items[index];
+        if (item.szName == nullptr ||
+            (item.FmtValue.CStatus != PDH_CSTATUS_VALID_DATA &&
+             item.FmtValue.CStatus != PDH_CSTATUS_NEW_DATA)) {
+            continue;
+        }
+        result.push_back(PdhFormattedObservation{
+            item.szName, item.FmtValue.doubleValue});
+    }
+    if (result.empty()) {
+        return Domain::Result<std::vector<PdhFormattedObservation>>::failure(
+            Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "PDH returned no valid Processor Information instances.",
+                true));
+    }
+    return Domain::Result<std::vector<PdhFormattedObservation>>::success(
+        std::move(result));
+}
+
 [[nodiscard]] std::uint64_t fileTimeValue(const FILETIME value) noexcept
 {
     ULARGE_INTEGER converted{};
@@ -147,6 +217,33 @@ namespace {
 
 class WindowsCpuMetricsPlatform final : public ICpuMetricsPlatform {
 public:
+    WindowsCpuMetricsPlatform() noexcept
+    {
+        queryStatus_ = ::PdhOpenQueryW(nullptr, 0U, &query_);
+        if (queryStatus_ != ERROR_SUCCESS) {
+            query_ = nullptr;
+            return;
+        }
+        utilizationStatus_ = ::PdhAddEnglishCounterW(
+            query_,
+            L"\\Processor Information(*)\\% Processor Utility",
+            0U,
+            &utilizationCounter_);
+        if (utilizationStatus_ != ERROR_SUCCESS) {
+            utilizationCounter_ = nullptr;
+        }
+        frequencyStatus_ = ::PdhAddEnglishCounterW(
+            query_,
+            L"\\Processor Information(*)\\Processor Frequency",
+            0U,
+            &frequencyCounter_);
+        if (frequencyStatus_ != ERROR_SUCCESS) {
+            frequencyCounter_ = nullptr;
+        }
+    }
+
+    ~WindowsCpuMetricsPlatform() override { shutdown(); }
+
     [[nodiscard]] Domain::Result<CpuTimesObservation> querySystemTimes() noexcept override
     {
         FILETIME idle{}, kernel{}, user{};
@@ -255,21 +352,145 @@ public:
     [[nodiscard]] Domain::Result<CpuPerformanceObservation>
     queryProcessorPerformance() noexcept override
     {
-        CpuPerformanceObservation observation;
-        observation.utilizationReady = false;
-        observation.utilizationFailure = Domain::makeError(
-            Domain::ErrorCodes::HostCapabilityUnavailable,
-            "Per-logical PDH processor utilization is unavailable on this host.");
-        observation.aggregateFrequencyFailure = Domain::makeError(
-            Domain::ErrorCodes::HostCapabilityUnavailable,
-            "The PDH aggregate Actual Frequency counter is unavailable on this host.");
-        observation.perLogicalFrequencyFailure = Domain::makeError(
-            Domain::ErrorCodes::HostCapabilityUnavailable,
-            "Per-logical PDH Actual Frequency counters are unavailable on this host.");
-        return Domain::Result<CpuPerformanceObservation>::success(std::move(observation));
+        try {
+            CpuPerformanceObservation observation;
+            if (query_ == nullptr) {
+                const auto error = pdhError("PdhOpenQueryW", queryStatus_);
+                observation.utilizationFailure = error;
+                observation.aggregateFrequencyFailure = error;
+                observation.perLogicalFrequencyFailure = error;
+                return Domain::Result<CpuPerformanceObservation>::success(
+                    std::move(observation));
+            }
+
+            const bool hadPriorCollection = collected_;
+            const auto collectStatus = ::PdhCollectQueryData(query_);
+            if (collectStatus != ERROR_SUCCESS) {
+                const auto error = pdhError("PdhCollectQueryData", collectStatus);
+                observation.utilizationFailure = error;
+                observation.aggregateFrequencyFailure = error;
+                observation.perLogicalFrequencyFailure = error;
+                return Domain::Result<CpuPerformanceObservation>::success(
+                    std::move(observation));
+            }
+            collected_ = true;
+
+            if (utilizationCounter_ == nullptr) {
+                observation.utilizationFailure =
+                    pdhError("PdhAddEnglishCounterW(% Processor Utility)",
+                        utilizationStatus_);
+            } else {
+                auto values = queryPdhArray(utilizationCounter_);
+                if (!values) {
+                    if (hadPriorCollection) {
+                        observation.utilizationFailure = values.error();
+                    }
+                } else {
+                    for (const auto& value : values.value()) {
+                        auto identity = parsePdhProcessorInstanceName(value.instance);
+                        if (!identity ||
+                            identity.value().kind !=
+                                PdhProcessorInstanceKind::LogicalProcessor) {
+                            continue;
+                        }
+                        observation.perLogicalUtilization.push_back(
+                            LogicalProcessorUtilizationObservation{
+                                identity.value().group,
+                                identity.value().processor,
+                                std::clamp(value.value, 0.0, 100.0)});
+                    }
+                    observation.utilizationReady =
+                        !observation.perLogicalUtilization.empty();
+                    if (!observation.utilizationReady && hadPriorCollection) {
+                        observation.utilizationFailure = Domain::makeError(
+                            Domain::ErrorCodes::InternalFailure,
+                            "PDH returned no logical Processor Utility instances.",
+                            true);
+                    }
+                }
+            }
+
+            if (frequencyCounter_ == nullptr) {
+                const auto error =
+                    pdhError("PdhAddEnglishCounterW(Processor Frequency)",
+                        frequencyStatus_);
+                observation.aggregateFrequencyFailure = error;
+                observation.perLogicalFrequencyFailure = error;
+            } else {
+                auto values = queryPdhArray(frequencyCounter_);
+                if (!values) {
+                    observation.aggregateFrequencyFailure = values.error();
+                    observation.perLogicalFrequencyFailure = values.error();
+                } else {
+                    double logicalFrequencyTotal{};
+                    for (const auto& value : values.value()) {
+                        auto identity = parsePdhProcessorInstanceName(value.instance);
+                        if (!identity || !std::isfinite(value.value) ||
+                            value.value <= 0.0) {
+                            continue;
+                        }
+                        if (identity.value().kind ==
+                            PdhProcessorInstanceKind::LogicalProcessor) {
+                            observation.perLogicalFrequencyMhz.push_back(
+                                LogicalProcessorFrequencyObservation{
+                                    identity.value().group,
+                                    identity.value().processor,
+                                    value.value});
+                            logicalFrequencyTotal += value.value;
+                        } else if (identity.value().kind ==
+                            PdhProcessorInstanceKind::SystemTotal) {
+                            observation.aggregateFrequencyMhz = value.value;
+                        }
+                    }
+                    if (!observation.aggregateFrequencyMhz &&
+                        !observation.perLogicalFrequencyMhz.empty()) {
+                        observation.aggregateFrequencyMhz =
+                            logicalFrequencyTotal /
+                            static_cast<double>(
+                                observation.perLogicalFrequencyMhz.size());
+                    }
+                    if (observation.perLogicalFrequencyMhz.empty()) {
+                        observation.perLogicalFrequencyFailure =
+                            Domain::makeError(
+                                Domain::ErrorCodes::InternalFailure,
+                                "PDH returned no logical Processor Frequency instances.",
+                                true);
+                    }
+                    if (!observation.aggregateFrequencyMhz) {
+                        observation.aggregateFrequencyFailure =
+                            Domain::makeError(
+                                Domain::ErrorCodes::InternalFailure,
+                                "PDH returned no aggregate Processor Frequency value.",
+                                true);
+                    }
+                }
+            }
+            return Domain::Result<CpuPerformanceObservation>::success(
+                std::move(observation));
+        } catch (...) {
+            return boundaryFailure<CpuPerformanceObservation>(
+                "The Windows PDH processor performance probe failed safely.");
+        }
     }
 
-    void shutdown() noexcept override {}
+    void shutdown() noexcept override
+    {
+        if (query_ != nullptr) {
+            ::PdhCloseQuery(query_);
+            query_ = nullptr;
+            utilizationCounter_ = nullptr;
+            frequencyCounter_ = nullptr;
+        }
+    }
+
+private:
+    PDH_HQUERY query_{};
+    PDH_HCOUNTER utilizationCounter_{};
+    PDH_HCOUNTER frequencyCounter_{};
+    PDH_STATUS queryStatus_{static_cast<PDH_STATUS>(PDH_CSTATUS_NO_MACHINE)};
+    PDH_STATUS utilizationStatus_{static_cast<PDH_STATUS>(PDH_CSTATUS_NO_COUNTER)};
+    PDH_STATUS frequencyStatus_{static_cast<PDH_STATUS>(PDH_CSTATUS_NO_COUNTER)};
+    bool collected_{};
 };
 
 [[nodiscard]] Domain::Result<std::uint16_t> parseUnsigned16(

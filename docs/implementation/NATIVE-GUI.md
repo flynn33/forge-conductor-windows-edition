@@ -36,7 +36,7 @@ pending calls, output, and errors; and exposes start, refresh, pause, resume, an
 client: closing it does not cancel or duplicate Manager-owned work.
 
 R2 adds the live Rig presentation backed by `ManagerTelemetrySnapshot`: four operational health cards, direct
-CPU/RAM/GPU/context values and gauges, bounded resource and activity-latency histories, accessible text equivalents,
+CPU/RAM/GPU/context values and gauges, per-logical CPU bars/frequency, GPU adapters and engine activity, disk/volume and relevant-process panels, bounded resource/disk/activity-latency histories, measured cadence/sample age, accessible text equivalents,
 and a recent activity timeline. Provider, Runtimes, Projects, Tools, Feed, Events, Diagnostics, Manager, and Settings
 destinations project the same snapshot into readable detail text. Page selection persists for the Windows user,
 refresh is coalesced at two seconds, chart points are recomputed after resize, and disconnected reads keep prior history explicitly stale.
@@ -59,6 +59,6 @@ Use a real Windows interactive session. Check navigation, keyboard focus, window
 One focused native smoke is enough; do not add a large screenshot automation framework. Keep a short result record.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

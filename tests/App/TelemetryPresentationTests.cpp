@@ -54,16 +54,37 @@ void testPresentationPreservesTelemetryMeaning()
         "Counter reset");
     snapshot.resources.ramPercent = Domain::makeAvailableTelemetryMetric<double>(
         67.25, time, "GlobalMemoryStatusEx");
-    snapshot.resources.gpus.push_back(Domain::GpuMetrics{
-        "vendor", "DXGI adapter", std::nullopt, 1024U, 4096U,
-        std::nullopt, true});
+    snapshot.resources.cpuPerLogicalProcessor =
+        Domain::makeAvailableTelemetryMetric<std::vector<double>>(
+            {25.0, 75.0}, time, "PDH logical CPU");
+    snapshot.resources.cpuPerLogicalFrequencyMhz =
+        Domain::makeAvailableTelemetryMetric<std::vector<std::uint32_t>>(
+            {3400U, 3400U}, time, "PDH CPU frequency");
+    Domain::GpuMetrics gpu{
+        "vendor", "DXGI adapter", 33.5, 1024U, 4096U,
+        std::nullopt, true};
+    gpu.adapterId = "0:1";
+    gpu.engines.push_back(Domain::GpuEngineMetrics{"3D 0", 33.5});
+    gpu.capturedAt = time - std::chrono::milliseconds{250};
+    gpu.utilizationSource = "PDH GPU Engine";
+    gpu.memoryScope = "current-process local memory; adapter capacity";
+    snapshot.resources.gpus.push_back(std::move(gpu));
+    snapshot.resources.diskIo = Domain::makeAvailableTelemetryMetric(
+        Domain::DiskIoMetrics{1024.0, 2048.0, 2.0, 3.0},
+        time - std::chrono::seconds{1}, "PDH PhysicalDisk");
+    snapshot.resources.disks.push_back(Domain::DiskVolume{
+        "C:\\", Domain::PathText::create("C:\\").value(), "NTFS",
+        10'000U, 4'000U, 6'000U, 40.0, time, "GetDiskFreeSpaceEx"});
+    snapshot.resources.processes.push_back(Domain::ProcessMetrics{
+        4242U, "ForgeConductor.Manager.exe", 2.5, 1024U * 1024U,
+        900U * 1024U, 12U, 30U, "Toolhelp/GetProcessTimes", time});
     snapshot.resources.history = {
         Domain::HistoryPoint{
             time - std::chrono::seconds{1}, 25.0, 60.0, std::nullopt,
             0.0, 0U, Domain::TelemetryHealth::Ok},
         Domain::HistoryPoint{
-            time, 48.5, 67.25, std::nullopt,
-            0.0, 1U, Domain::TelemetryHealth::Ok}};
+            time, 48.5, 67.25, 33.5,
+            3072.0, 1U, Domain::TelemetryHealth::Ok}};
     snapshot.provider.host = "127.0.0.1";
     snapshot.provider.port = 1234U;
     snapshot.context.capacityTokens = 32'768U;
@@ -88,17 +109,29 @@ void testPresentationPreservesTelemetryMeaning()
     require(presentation.cpu.value == "48.5%", "CPU direct value");
     require(presentation.cpu.state.starts_with("Stale"), "CPU stale state");
     require(presentation.ram.value == "67.2%", "RAM direct value");
-    require(presentation.gpu.value == "Unavailable", "GPU unavailable value");
-    require(presentation.gpu.state.find("Utilization unsupported") !=
-                std::string::npos,
-            "GPU unsupported explanation");
+    require(presentation.gpu.value == "33.5%", "GPU measured value");
+    require(presentation.cpuLogicalRows.size() == 2U &&
+                presentation.cpuLogicalValues[1] == 75.0,
+            "logical CPU projection");
+    require(presentation.gpuRows.size() == 2U &&
+                presentation.gpuRows[1].find("3D 0") != std::string::npos,
+            "GPU engine projection");
+    require(presentation.diskStatus.find("5 IOPS") != std::string::npos &&
+                presentation.volumeRows.size() == 1U,
+            "disk and volume projection");
+    require(presentation.processRows.size() == 1U &&
+                presentation.processRows.front().find("PID 4242") !=
+                    std::string::npos,
+            "relevant process projection");
     require(presentation.context.value == "12000 / 32768 tokens",
             "authoritative context direct values");
     require(presentation.context.state ==
                 "10528 tokens available after reserves",
             "Manager-provided headroom");
     require(presentation.cpuHistory.size() == 2U &&
-                presentation.ramHistory.size() == 2U,
+                presentation.ramHistory.size() == 2U &&
+                presentation.gpuHistory.back() == 33.5 &&
+                presentation.diskHistoryBytesPerSecond.back() == 3072.0,
             "bounded history projection");
     require(presentation.latencyHistoryMilliseconds.size() == 1U &&
                 presentation.latencyHistoryMilliseconds.front() == 42.0,

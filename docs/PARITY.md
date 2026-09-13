@@ -11,10 +11,10 @@ This map records current Windows source capability against the internal Alpha co
 | Context policy | Count/time rollover behavior is removed | Context consumption alone triggers rollover; capacity/reserves stay configurable | R1, R4, R6 |
 | Projects and memory | Native services and disposable two-project isolation evidence exist | Full native registration/selection/memory workflow and installed persistence | R3, R6 |
 | MCP deployment and tools | Existing services passed disposable MCP, file/search/Git/shell/memory effects and foreign-entry preservation | Useful native deploy/inspect/repair and tool actions; shell clean-profile default with opt-out | R3, R6 |
-| Operational telemetry | Real Manager-owned CPU/RAM/process collection, DXGI capability state, typed pipe snapshots, native gauges/histories/status/timeline controls, accessible values, disconnected/stale rendering, keyboard operation, High Contrast and 150% text-size evidence exist | Installed acceptance | R2, R6 |
+| Operational telemetry | Manager-owned 250 ms CPU/RAM sampling, native per-logical CPU utilization/frequency, one-second PDH GPU-engine and physical-disk rates, five-second volumes/relevant processes, scoped DXGI memory, typed timestamps/freshness, bounded histories, and integrated WinUI instruments now exist. Exact 0.9.5 candidate idle/disconnect/reconnect rendering, UI Automation values, High Contrast, and repaired 150% text layout were inspected. | Complete registered-package acceptance | R2, R6 |
 | Agents, Feed, Runtimes, Events, Diagnostics | Typed operational summaries and Manager-owned agent/session actions replace placeholder text; recoverable failures remain visible | Repeat representative actions through the registered package | R3, R6 |
 | Settings and maintenance | Discoverable labeled settings, exact context controls, save/revert/readback, safe scoped/all-store reset, keyboard operation, High Contrast and enlarged text evidence exist | Repeat the confirmed reset through the registered package | R4, R6 |
-| Signed installer | Stable 0.9.4.0 identity, complete x64 Release payload, embedded provenance/hashes, development signature, public certificate, install helper, and exact unpacked-package verification exist | Machine-trusted install, Start launch, 0.9.3→0.9.4 update/uninstall/reinstall and data preservation | R6 |
+| Signed installer | Stable 0.9.5.0 identity, complete x64 Release payload, embedded provenance/hashes, development signature, public certificate, install helper, and exact unpacked-package verification exist | Machine-trusted install, Start launch, 0.9.4→0.9.5 update/uninstall/reinstall and data preservation | R6 |
 | Existing data | Source has authentic central migrations C001–C007; a disposable schema-9 Manager probe exits with the dedicated unsupported-version code and leaves the store hash unchanged | Recover authentic C008/C009 compatibility or retain explicit non-acceptance; never fabricate migrations or touch the owner store | R6 |
 
 ## Tool inventory
@@ -24,6 +24,6 @@ Reuse `.forge-codex/state/baseline/mcp-tool-baseline.json` and `p02-mcp-semantic
 Owner-directed removal of count/time-triggered run controls is intentional. Manager-owned continuity does not imply control of ordinary unowned LM Studio desktop chats. Optional browser dashboards, advanced analytics/connectors, additional architectures and public distribution infrastructure remain outside this internal Alpha; core native telemetry and settings are included.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

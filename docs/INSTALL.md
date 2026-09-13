@@ -1,11 +1,11 @@
 # Installer and installation
-**Current R6 acceptance candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 13, 2026. The package is `ForgeConductor-0.9.4.0-x64.msix`, SHA-256 `937e503c3198d829907aff2a349067ad8f21c7cec54df071d668a531eb65c586`, from commit `3fb70143ef2db9704c8a395b49a29857bd087976` and tree `fad39f10bdb2638a74a0b28deb0c0ecc1e88dede`.
+**Current R6 acceptance candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 13, 2026. The package is `ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `78683d3cef440a190932b8f8cb0fe53b39a6a1ac2940a80c7e4da9e4309a8f22`, from commit `27c26e1401da72241cff68012ece2a8645f4e752` and tree `e9995ac4ca6de0043fb1f293091f23720a434acd`.
 
-The 0.9.4 candidate adds the managed-run invocation-guard repair after live acceptance exposed the legacy desktop-chat block. Windows still requires the included development publisher certificate in Local Machine Trusted People. Current-user trust is insufficient and no package was registered, so exact unpacked-package execution is recorded separately from installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
+The 0.9.5 candidate adds the reopened native telemetry parity implementation while retaining the managed-run invocation-guard repair after live acceptance exposed the legacy desktop-chat block. Windows still requires the included development publisher certificate in Local Machine Trusted People. Current-user trust is insufficient and no package was registered, so exact unpacked-package execution is recorded separately from installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
 
 Build with `scripts/build.ps1 -Configuration Release -Product All`, then `scripts/package.ps1 -DevelopmentSigning`.
 Each distribution under `out/dist/candidate-*` contains the signed MSIX, public certificate, checksum metadata,
-README, and `Install-Engineering.ps1`. Machine trust must be provisioned through an approved administrator action. Then run the helper without the trust switch from the dedicated test account. No private key is exported. Follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md) for the exact 0.9.3→0.9.4 lifecycle.
+README, and `Install-Engineering.ps1`. Machine trust must be provisioned through an approved administrator action. Then run the helper without the trust switch from the dedicated test account. No private key is exported. Follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md) for the exact 0.9.4→0.9.5 lifecycle.
 
 ## Distribution contract
 Produce the versioned x64 Alpha ZIP emitted by `scripts/package.ps1`, containing:
@@ -27,7 +27,7 @@ The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.e
 Verify actual target output names rather than blindly adopting this proposed staging list.
 
 Choose a stable package identity and publisher once; make manifest Publisher match the signing certificate exactly.
-The current candidate uses product version `0.9.4` and numeric MSIX version `0.9.4.0`. The retained 0.9.3.0 candidate supplies the lower version for the installed update test. Runtime identity and package scripts validate this source. Avoid downgrading an installed build.
+The current candidate uses product version `0.9.5` and numeric MSIX version `0.9.5.0`. The retained 0.9.4.0 candidate supplies the lower version for the installed update test. Runtime identity and package scripts validate this source. Avoid downgrading an installed build.
 Replace every manifest placeholder and include the required logos/resources. The supplied PNG assets are sufficient
 starter packaging assets, not a UI design project.
 
@@ -63,6 +63,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

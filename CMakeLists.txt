@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 0.9.4
+    VERSION 0.9.5
     LANGUAGES CXX RC
 )
 
@@ -138,6 +138,7 @@ target_compile_definitions(ForgeConductor.Telemetry.Windows PRIVATE
     _WIN32_WINNT=0x0A00)
 target_link_libraries(ForgeConductor.Telemetry.Windows PRIVATE
     dxgi
+    pdh
     psapi)
 
 set(FORGE_APPLICATION_SOURCES

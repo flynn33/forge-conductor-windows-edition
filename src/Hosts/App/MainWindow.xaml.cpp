@@ -2,6 +2,7 @@
 #include "MainWindow.xaml.h"
 #include "MainWindow.g.cpp"
 #include "TelemetryPresentation.h"
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 
 #include <algorithm>
 #include <chrono>
@@ -195,11 +196,23 @@ void MainWindow::WindowContentLoaded(
 void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::Refresh); }
 void MainWindow::StartClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::Start); }
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    telemetryTimer_.Stop();
+    RunAction(Action::Start);
+}
 void MainWindow::StopClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::Stop); }
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    telemetryTimer_.Stop();
+    RunAction(Action::Stop);
+}
 void MainWindow::RestartClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::Restart); }
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    telemetryTimer_.Stop();
+    RunAction(Action::Restart);
+}
 void MainWindow::ProviderLoadClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderLoad); }
 void MainWindow::ProviderSaveClicked(Windows::Foundation::IInspectable const&,
@@ -518,11 +531,67 @@ void MainWindow::ApplyTelemetryPresentation(
     ProviderHealth().Text(winrt::to_hstring(presentation.providerStatus));
     StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
     ContinuityHealth().Text(winrt::to_hstring(presentation.continuityStatus));
+    SystemStrip().Text(winrt::to_hstring(presentation.systemStatus));
+    SamplingStrip().Text(winrt::to_hstring(presentation.samplingStatus));
+    DiskState().Text(winrt::to_hstring(presentation.diskStatus));
+    WorkflowStatus().Text(winrt::to_hstring(presentation.workflowStatus));
+
+    const auto applyRows = [](const Microsoft::UI::Xaml::Controls::StackPanel& panel,
+                              const std::vector<std::string>& rows,
+                              const wchar_t* emptyText) {
+        panel.Children().Clear();
+        if (rows.empty()) {
+            Microsoft::UI::Xaml::Controls::TextBlock row;
+            row.Text(emptyText);
+            row.Opacity(0.72);
+            panel.Children().Append(row);
+            return;
+        }
+        for (const auto& text : rows) {
+            Microsoft::UI::Xaml::Controls::TextBlock row;
+            row.Text(winrt::to_hstring(text));
+            row.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+            row.IsTextSelectionEnabled(true);
+            panel.Children().Append(row);
+        }
+    };
+    CpuCoreRows().Children().Clear();
+    if (presentation.cpuLogicalRows.empty()) {
+        Microsoft::UI::Xaml::Controls::TextBlock row;
+        row.Text(L"Logical processor counters are unavailable.");
+        row.Opacity(0.72);
+        CpuCoreRows().Children().Append(row);
+    } else {
+        for (std::size_t index{}; index < presentation.cpuLogicalRows.size(); ++index) {
+            Microsoft::UI::Xaml::Controls::StackPanel row;
+            row.Spacing(2.0);
+            Microsoft::UI::Xaml::Controls::TextBlock label;
+            label.Text(winrt::to_hstring(presentation.cpuLogicalRows[index]));
+            label.IsTextSelectionEnabled(true);
+            Microsoft::UI::Xaml::Controls::ProgressBar gauge;
+            gauge.Minimum(0.0);
+            gauge.Maximum(100.0);
+            gauge.Value(index < presentation.cpuLogicalValues.size()
+                ? presentation.cpuLogicalValues[index] : 0.0);
+            Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+                gauge, winrt::to_hstring(presentation.cpuLogicalRows[index]));
+            row.Children().Append(label);
+            row.Children().Append(gauge);
+            CpuCoreRows().Children().Append(row);
+        }
+    }
+    applyRows(GpuAdapterRows(), presentation.gpuRows,
+              L"No hardware GPU adapter was reported.");
+    applyRows(VolumeRows(), presentation.volumeRows,
+              L"No mounted fixed or removable volume was reported.");
+    applyRows(ProcessRows(), presentation.processRows,
+              L"No Forge or model-server process is currently visible.");
 
     const auto width = std::max(320.0, HistoryCanvas().ActualWidth());
     constexpr double Height = 132.0;
     CpuHistoryLine().Points(chartPoints(presentation.cpuHistory, width, Height));
     RamHistoryLine().Points(chartPoints(presentation.ramHistory, width, Height));
+    GpuHistoryLine().Points(chartPoints(presentation.gpuHistory, width, Height));
     if (presentation.cpuHistory.empty()) {
         HistoryEquivalentText().Text(L"No measured CPU/RAM history samples.");
     } else {
@@ -530,6 +599,28 @@ void MainWindow::ApplyTelemetryPresentation(
             std::to_string(presentation.cpuHistory.size()) +
             " measured samples · latest CPU " + presentation.cpu.value +
             " · latest RAM " + presentation.ram.value));
+    }
+
+    if (presentation.diskHistoryBytesPerSecond.empty()) {
+        DiskHistoryLine().Points(Microsoft::UI::Xaml::Media::PointCollection{});
+        DiskHistoryEquivalentText().Text(L"No measured disk throughput samples.");
+    } else {
+        const auto diskMaximum = *std::max_element(
+            presentation.diskHistoryBytesPerSecond.begin(),
+            presentation.diskHistoryBytesPerSecond.end());
+        std::vector<double> normalized;
+        normalized.reserve(presentation.diskHistoryBytesPerSecond.size());
+        for (const auto value : presentation.diskHistoryBytesPerSecond) {
+            normalized.push_back(diskMaximum > 0.0 ? value * 100.0 / diskMaximum : 0.0);
+        }
+        DiskHistoryLine().Points(chartPoints(
+            normalized, std::max(320.0, DiskHistoryCanvas().ActualWidth()), 72.0));
+        DiskHistoryEquivalentText().Text(winrt::to_hstring(
+            std::to_string(normalized.size()) + " samples · latest " +
+            ::ForgeConductor::Hosts::App::bytesText(static_cast<std::uint64_t>(
+                presentation.diskHistoryBytesPerSecond.back())) + "/s · peak " +
+            ::ForgeConductor::Hosts::App::bytesText(static_cast<std::uint64_t>(
+                diskMaximum)) + "/s"));
     }
 
     if (presentation.latencyHistoryMilliseconds.empty()) {
@@ -690,11 +781,17 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
     ProviderHealth().Text(L"Unavailable while Manager is disconnected");
     StoreHealth().Text(L"Unavailable while Manager is disconnected");
     ContinuityHealth().Text(L"Unavailable while Manager is disconnected");
+    SystemStrip().Text(L"System telemetry disconnected");
+    SamplingStrip().Text(winrt::to_hstring(explanation));
+    DiskState().Text(winrt::to_hstring(explanation));
+    WorkflowStatus().Text(winrt::to_hstring(explanation));
     if (telemetrySnapshot_) {
         HistoryEquivalentText().Text(
             L"Last measured CPU/RAM history is stale because the Manager is disconnected.");
         LatencyEquivalentText().Text(
             L"Last measured latency history is stale because the Manager is disconnected.");
+        DiskHistoryEquivalentText().Text(
+            L"Last measured disk history is stale because the Manager is disconnected.");
     }
 }
 
@@ -1198,6 +1295,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
     }
     busy_ = false;
+    if (action == Action::Start || action == Action::Stop ||
+        action == Action::Restart) {
+        telemetryTimer_.Start();
+    }
     if (followUp) RunAction(*followUp);
 }
 }

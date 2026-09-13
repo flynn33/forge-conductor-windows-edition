@@ -22,9 +22,15 @@
   <ScrollViewer>
    <StackPanel Padding="32" Spacing="14" MaxWidth="920" HorizontalAlignment="Left">
     <TextBlock x:Name="PageTitle" Text="Rig" Style="{ThemeResource TitleTextBlockStyle}" />
-    <TextBlock x:Name="PageDescription" Text="Manager, runtime, and provider health." TextWrapping="Wrap" Opacity="0.72" />
+     <TextBlock x:Name="PageDescription" Text="Manager, runtime, and provider health." TextWrapping="Wrap" Opacity="0.72" />
 
-    <StackPanel x:Name="RigPanel" Spacing="14">
+     <StackPanel x:Name="RigPanel" Spacing="14">
+      <Border Padding="12" CornerRadius="8" Background="{ThemeResource AccentFillColorSecondaryBrush}">
+       <StackPanel Spacing="4">
+        <TextBlock x:Name="SystemStrip" Text="Waiting for system identity" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.Name="System identity" />
+        <TextBlock x:Name="SamplingStrip" Text="Waiting for sampling cadence" TextWrapping="Wrap" AutomationProperties.Name="Telemetry sampling cadence" />
+       </StackPanel>
+      </Border>
      <Grid ColumnSpacing="12" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -87,23 +93,64 @@
         <TextBlock x:Name="ContextState" Text="Waiting for a run sample" TextWrapping="Wrap" Opacity="0.72" />
        </StackPanel>
       </Border>
-     </Grid>
-     <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+      </Grid>
+      <Grid ColumnSpacing="12" RowSpacing="12">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+        <StackPanel Spacing="8">
+         <TextBlock Text="Logical processors" Style="{ThemeResource SubtitleTextBlockStyle}" />
+         <TextBlock Text="Per-logical utilization and native frequency" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.72" />
+         <StackPanel x:Name="CpuCoreRows" Spacing="4" AutomationProperties.Name="Logical processor telemetry" />
+        </StackPanel>
+       </Border>
+       <Border Grid.Column="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+        <StackPanel Spacing="8">
+         <TextBlock Text="GPU adapters and engines" Style="{ThemeResource SubtitleTextBlockStyle}" />
+         <StackPanel x:Name="GpuAdapterRows" Spacing="4" AutomationProperties.Name="GPU adapter and engine telemetry" />
+        </StackPanel>
+       </Border>
+       <Border Grid.Row="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+        <StackPanel Spacing="8">
+         <TextBlock Text="Disk activity" Style="{ThemeResource SubtitleTextBlockStyle}" />
+         <TextBlock x:Name="DiskState" Text="Waiting for disk counters" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+         <StackPanel x:Name="VolumeRows" Spacing="4" AutomationProperties.Name="Mounted volume capacity" />
+        </StackPanel>
+       </Border>
+       <Border Grid.Row="1" Grid.Column="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+        <StackPanel Spacing="8">
+         <TextBlock Text="Relevant native processes" Style="{ThemeResource SubtitleTextBlockStyle}" />
+         <StackPanel x:Name="ProcessRows" Spacing="4" AutomationProperties.Name="Forge and model server processes" />
+        </StackPanel>
+       </Border>
+      </Grid>
+      <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
       <StackPanel Spacing="8">
        <TextBlock Text="Resource history" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <TextBlock x:Name="HistoryEquivalentText" Text="No history samples" TextWrapping="Wrap" AutomationProperties.Name="Resource history values" />
        <Canvas x:Name="HistoryCanvas" Height="132" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="CPU and RAM history chart" SizeChanged="TelemetryChartSizeChanged">
-        <Polyline x:Name="CpuHistoryLine" Stroke="{ThemeResource AccentFillColorDefaultBrush}" StrokeThickness="3" />
-        <Polyline x:Name="RamHistoryLine" Stroke="{ThemeResource SystemFillColorSuccessBrush}" StrokeThickness="3" />
-       </Canvas>
-       <TextBlock Text="CPU (accent) · RAM (success) · 0–100 percent" Style="{ThemeResource CaptionTextBlockStyle}" />
+         <Polyline x:Name="CpuHistoryLine" Stroke="{ThemeResource AccentFillColorDefaultBrush}" StrokeThickness="3" />
+         <Polyline x:Name="RamHistoryLine" Stroke="{ThemeResource SystemFillColorSuccessBrush}" StrokeThickness="3" />
+         <Polyline x:Name="GpuHistoryLine" Stroke="{ThemeResource SystemFillColorCautionBrush}" StrokeThickness="2" />
+        </Canvas>
+        <TextBlock Text="CPU (accent) · RAM (success) · GPU (caution) · 0–100 percent" Style="{ThemeResource CaptionTextBlockStyle}" />
+        <TextBlock x:Name="DiskHistoryEquivalentText" Text="No disk throughput history" TextWrapping="Wrap" AutomationProperties.Name="Disk throughput history values" />
+        <Canvas x:Name="DiskHistoryCanvas" Height="72" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="Disk throughput history chart" SizeChanged="TelemetryChartSizeChanged">
+         <Polyline x:Name="DiskHistoryLine" Stroke="{ThemeResource SystemFillColorAttentionBrush}" StrokeThickness="3" />
+        </Canvas>
        <TextBlock Text="Tool and provider latency" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,8,0,0" />
        <TextBlock x:Name="LatencyEquivalentText" Text="No latency observations" TextWrapping="Wrap" AutomationProperties.Name="Activity latency values" />
        <Canvas x:Name="LatencyCanvas" Height="72" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="Recent activity latency chart" SizeChanged="TelemetryChartSizeChanged">
         <Polyline x:Name="LatencyHistoryLine" Stroke="{ThemeResource SystemFillColorCautionBrush}" StrokeThickness="3" />
        </Canvas>
       </StackPanel>
-     </Border>
+      </Border>
+      <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+       <StackPanel Spacing="8">
+        <TextBlock Text="Projects, MCP tools, and agents" Style="{ThemeResource SubtitleTextBlockStyle}" />
+        <TextBlock x:Name="WorkflowStatus" Text="Waiting for Manager workflow inventory" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+       </StackPanel>
+      </Border>
      <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
       <StackPanel Spacing="8">
        <TextBlock Text="Recent activity" Style="{ThemeResource SubtitleTextBlockStyle}" />

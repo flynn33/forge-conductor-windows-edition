@@ -560,7 +560,15 @@ private:
             telemetry->system.ram.availableBytes,
             telemetry->system.gpus,
             telemetry->system.processes,
-            telemetry->history};
+            telemetry->history,
+            telemetry->system.cpu.perLogicalProcessor,
+            telemetry->system.cpu.frequencyMhz,
+            telemetry->system.cpu.perCoreFrequencyMhz,
+            telemetry->system.disks,
+            telemetry->system.diskIoSample,
+            telemetry->system.targetSampleIntervalMilliseconds,
+            telemetry->system.measuredSampleIntervalMilliseconds,
+            telemetry->system.samplingPolicy};
 
         return Domain::Result<Domain::ManagerTelemetrySnapshot>::success(
             Domain::ManagerTelemetrySnapshot{

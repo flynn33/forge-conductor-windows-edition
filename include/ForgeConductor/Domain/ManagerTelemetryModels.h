@@ -33,6 +33,14 @@ struct ManagerResourceSnapshot final {
     std::vector<GpuMetrics> gpus;
     std::vector<ProcessMetrics> processes;
     std::vector<HistoryPoint> history;
+    TelemetryMetric<std::vector<double>> cpuPerLogicalProcessor;
+    TelemetryMetric<std::uint32_t> cpuFrequencyMhz;
+    TelemetryMetric<std::vector<std::uint32_t>> cpuPerLogicalFrequencyMhz;
+    std::vector<DiskVolume> disks;
+    TelemetryMetric<DiskIoMetrics> diskIo;
+    std::uint32_t targetSampleIntervalMilliseconds{250U};
+    std::optional<double> measuredSampleIntervalMilliseconds;
+    std::string samplingPolicy{"realtime_cpu_ram; gpu_disk_1s; process_volume_5s"};
 };
 
 struct ManagerProviderSnapshot final {

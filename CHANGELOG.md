@@ -31,6 +31,15 @@
 - Added WinUI status cards, CPU/RAM/GPU/context gauges, bounded resource and latency histories, accessible equivalent values, an activity timeline, and telemetry-backed Provider, Continuity, Runtimes, Projects, Tools, Feed, Events, Diagnostics, Manager, and Settings summaries.
 - Added two-second coalesced refresh, disconnected/stale rendering, resize redraw, persisted page selection, and window-close cancellation. Real isolated process probes confirmed repeated refresh and Manager survival after GUI close; a later native review verified rendered telemetry, while complete keyboard and scaled/high-contrast inspection remain open.
 
+### R2 parity follow-up — Complete native Rig instrumentation
+
+- Added persistent PDH collection for per-logical CPU utilization/frequency, GPU engine utilization, and physical-disk bytes/operations per second, plus native volume capacity and relevant Forge/LM Studio process measurements.
+- Extended the Manager snapshot and strict pipe codec with metric identity, timestamps, availability, cadence, source, memory scope, GPU engines, disks, volumes, and process samples; the GUI remains a typed consumer rather than a second collector.
+- Expanded the WinUI Rig with logical-CPU bars, GPU adapter/engine and scoped-memory details, disk/volume and process panels, GPU/disk histories, workflow inventory, measured cadence, sample ages, and honest disconnected gaps.
+- Tiered collection at a 250 ms base cadence with heavier one-second and five-second probes, bounded histories, and refresh cancellation during lifecycle actions. Focused collector/protocol/presentation and version-sensitive MCP/infrastructure tests pass.
+- Advanced runtime/package identity to `0.9.5` / `0.9.5.0`. The source-bound signed candidate has MSIX SHA-256 `78683d3cef440a190932b8f8cb0fe53b39a6a1ac2940a80c7e4da9e4309a8f22` and ZIP SHA-256 `6bb46f8992599a4d7da5729570011c76cf6cd0657857505ffbb19ca4737b8e91`.
+- Inspected the exact candidate under a disposable `--alpha-root`: real RTX 4090 engines, 32 logical CPUs, three volumes, live disk rates, relevant processes, workflow counts, disconnect state, Manager start/reconnect, and native keyboard focus were exposed. High Contrast passed. A 150% text pass found status-banner clipping; the layout was repaired, rebuilt, repackaged, and then passed a top-to-bottom 150% walkthrough with host settings restored.
+
 ### R3 — Native operating pages and local workflows
 
 - Added typed Manager project-list, folder-registration, memory-search/read/write, and persistence-status operations over the authenticated named pipe.
@@ -87,9 +96,9 @@
 
 ### Remaining Alpha work
 
-- Complete machine-trusted install/Start/update/uninstall acceptance and recover authentic C008/C009 history before accepting the owner schema-9 store. Live productive continuity is now verified.
+- Complete machine-trusted install/Start/update/uninstall acceptance and authentic C008/C009 history recovery before accepting the owner schema-9 store. Live productive continuity and expanded-Rig accessibility are verified.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
