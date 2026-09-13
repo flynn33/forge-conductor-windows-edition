@@ -14,7 +14,7 @@ This map records current Windows source capability against the internal Alpha co
 | Operational telemetry | Real Manager-owned CPU/RAM/process collection, DXGI capability state, typed pipe snapshots, native gauges/histories/status/timeline controls, accessible values, disconnected/stale rendering, keyboard operation, High Contrast and 150% text-size evidence exist | Installed acceptance | R2, R6 |
 | Agents, Feed, Runtimes, Events, Diagnostics | Typed operational summaries and Manager-owned agent/session actions replace placeholder text; recoverable failures remain visible | Repeat representative actions through the registered package | R3, R6 |
 | Settings and maintenance | Discoverable labeled settings, exact context controls, save/revert/readback, safe scoped/all-store reset, keyboard operation, High Contrast and enlarged text evidence exist | Repeat the confirmed reset through the registered package | R4, R6 |
-| Signed installer | Stable 0.9.3.0 identity, complete x64 Release payload, embedded provenance/hashes, development signature, public certificate, install helper, and exact unpacked-package verification exist | Machine-trusted install, Start launch, 0.9.1→0.9.3 update/uninstall and data preservation | R6 |
+| Signed installer | Stable 0.9.4.0 identity, complete x64 Release payload, embedded provenance/hashes, development signature, public certificate, install helper, and exact unpacked-package verification exist | Machine-trusted install, Start launch, 0.9.3→0.9.4 update/uninstall/reinstall and data preservation | R6 |
 | Existing data | Source has authentic central migrations C001–C007; a disposable schema-9 Manager probe exits with the dedicated unsupported-version code and leaves the store hash unchanged | Recover authentic C008/C009 compatibility or retain explicit non-acceptance; never fabricate migrations or touch the owner store | R6 |
 
 ## Tool inventory
@@ -24,6 +24,6 @@ Reuse `.forge-codex/state/baseline/mcp-tool-baseline.json` and `p02-mcp-semantic
 Owner-directed removal of count/time-triggered run controls is intentional. Manager-owned continuity does not imply control of ordinary unowned LM Studio desktop chats. Optional browser dashboards, advanced analytics/connectors, additional architectures and public distribution infrastructure remain outside this internal Alpha; core native telemetry and settings are included.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

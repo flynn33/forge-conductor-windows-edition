@@ -55,6 +55,6 @@ All charts have text/value equivalents; status uses words/icons as well as color
 Use the actual native app and Manager for the collector/render check. Observe changing samples and an explicit disconnected/reconnected state. Verify readings against appropriately scoped Windows observations without claiming numerical identity between instruments with different intervals/normalization. Keep a few actual screenshots and a brief interaction record when available. Fixture screenshots may assist component development but are never actual machine/installed acceptance evidence. If UI automation or the display session is unavailable, keep that check open and continue independent implementation.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

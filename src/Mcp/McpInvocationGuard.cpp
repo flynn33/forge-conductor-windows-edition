@@ -126,6 +126,12 @@ template <typename T>
     return matches(tool, Values);
 }
 
+[[nodiscard]] bool usesLegacyContinuityPolicy(
+    const Domain::ToolCallRequest& request) noexcept
+{
+    return request.metadata.protocolVersion != "managed-run-v1";
+}
+
 [[nodiscard]] bool isForcePersistTool(const std::string_view tool) noexcept
 {
     return tool == "agent_run_start" || tool == "agent_run_complete";
@@ -450,9 +456,11 @@ public:
 
             const bool continuityTool = isContinuityTool(request.toolName);
             const bool progressTool = isProgressTool(request.toolName);
+            const bool legacyContinuityPolicy =
+                usesLegacyContinuityPolicy(request);
 
             std::string fingerprint;
-            if (!continuityTool) {
+            if (legacyContinuityPolicy && !continuityTool) {
                 const auto characters = std::span{
                     request.canonicalArguments.data(),
                     request.canonicalArguments.size()};
@@ -476,7 +484,8 @@ public:
                         "The MCP invocation guard is shutting down.");
                 }
                 const auto clientKey = request.metadata.clientId.value();
-                if (!continuityTool && !isResumeTool(request.toolName)) {
+                if (legacyContinuityPolicy && !continuityTool &&
+                    !isResumeTool(request.toolName)) {
                     const auto state = continuityStates_.find(clientKey);
                     if (state != continuityStates_.end() &&
                         state->second.blocked) {
@@ -492,7 +501,7 @@ public:
                                 contextBudgetOutcome(request, *blocked)});
                 }
 
-                if (!continuityTool) {
+                if (legacyContinuityPolicy && !continuityTool) {
                     makeRoom(loopStates_, MaximumTrackedLoopClients, clientKey);
                     auto& loop = loopStates_[clientKey];
                     if (loop.fingerprint == fingerprint) {
@@ -530,7 +539,8 @@ public:
                             true);
                     }
                     std::optional<StateToken> continuityState;
-                    if (progressTool || request.toolName == "context_get") {
+                    if (legacyContinuityPolicy &&
+                        (progressTool || request.toolName == "context_get")) {
                         auto reserved = reserveContinuityStateLocked(
                             request.metadata.clientId,
                             request.toolName == "context_get");

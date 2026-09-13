@@ -76,13 +76,13 @@ v143 UWP/XAML tools; Desktop C++ Build Tools alone was insufficient on the teste
 Windows App SDK 2.4.0 and C++/WinRT 3.0.260818.1 are pinned. Outputs and executable hashes are recorded
 in `out/app/x64/<configuration>/staging-manifest.json`.
 
-Executed successfully on September 12, 2026 (Debug and Release builds plus the source-bound development-signed 0.9.3.0 package):
+Executed successfully on September 13, 2026 (Debug and Release builds plus the source-bound development-signed 0.9.4.0 package):
 ```powershell
 .\scripts\build.ps1 -Configuration Debug -Architecture x64 -Product All
 .\scripts\build.ps1 -Configuration Release -Architecture x64 -Product All
 .\scripts\package.ps1 -Configuration Release -Architecture x64 -DevelopmentSigning
 ```
-Debug app also built and launched through the MSBuild helper. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Candidate 0.9.3.0 is bound to commit `0cd18ae1e7fd160e2fcbbe690552ef5c61a4a203` and tree `0ff125b00f51f7ad9ece314edbcbde387c69fdc2`. The signed internal distribution is under `out/dist/`; installed acceptance remains blocked by machine trust. Development signing uses a non-exportable current-user certificate.
+Debug app also built and launched through the MSBuild helper. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Candidate 0.9.4.0 is bound to commit `3fb70143ef2db9704c8a395b49a29857bd087976` and tree `fad39f10bdb2638a74a0b28deb0c0ecc1e88dede`. The signed internal distribution is under `out/dist/`; installed acceptance remains blocked by machine trust. Development signing uses a non-exportable current-user certificate.
 `FORGE_SIGNING_PFX` remains supported for explicitly supplied signing credentials.
 Installation requires machine trust for the signing publisher; see the bundled install helper and current status.
 
@@ -95,7 +95,7 @@ Installation requires machine trust for the signing publisher; see the bundled i
 | GUI library/CRT mismatch | Build x64 and the same Debug/Release and dynamic CRT settings on both sides. |
 | XAML/MSBuild targets missing | Repair/install the C++ WinUI toolchain; avoid an improvised .NET application rewrite. |
 | Packaged process cannot find sibling CLI | Stage all real production executables and resolve install-relative paths; never point at out/build. |
-| `Add-AppxPackage` returns `0x800B0109` | Verify the included certificate hash, then run the bundled helper from Administrator PowerShell with `-TrustDevelopmentPublisher`; do not disable Windows trust checks. |
+| `Add-AppxPackage` returns `0x800B0109` | Follow the authorized administrator/test-account handoff; do not retry elevation here or disable Windows trust checks. |
 | Provider rejects ordinary run | Inspect the managed-run error and LM Studio `/v1/responses` compatibility; the Manager owns the ordinary run and native tool loop. Do not change `/v1/forge` ports. |
 
 Fresh isolated profiles create the configuration, data, projects, logs, memory, and handoff directories before the Manager constructs workspace authorities. Use `--alpha-root` only with a disposable path under ignored output for development checks.
@@ -104,6 +104,6 @@ The current Alpha build path must remain restorable from a fresh clone using the
 Keep build outputs, local signing state, caches, tokens and machine paths out of tracked source.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

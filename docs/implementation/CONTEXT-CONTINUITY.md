@@ -106,6 +106,8 @@ and useful successor filesystem work passed.
 The ordinary provider loop no longer has a turn limit. It continues until the task completes, the operator cancels,
 a real failure occurs, or context-only continuity transfers ownership.
 
+Manager-owned native calls carry protocol version `managed-run-v1`. `McpInvocationGuard` excludes that protocol from the legacy desktop-chat blocked-client, identical-call counter, and legacy handoff reservation because the Manager already owns context-only continuity. Project resolution, tool authorization, native invocation, and audit remain in the shared route. Ordinary MCP desktop-chat clients retain the legacy guard. Exact 0.9.4 run `34c078f8-6256-4b03-80e1-936e2e50f2f4` crossed the real threshold, completed the eight durable transition sequence to successor `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed the post-successor effect, and returned terminal `DONE`. Focused coverage includes 12 identical managed-run calls and an 80-tool run.
+
 ## Configuration migration
 Read old quota/count/time fields only long enough to ignore/drop them safely during migration.
 Do not emit them in saved config, user documentation, CLI help, runtime tool descriptions or prompts.
@@ -123,6 +125,6 @@ Official references: https://lmstudio.ai/docs/developer/openai-compat/responses 
 https://lmstudio.ai/docs/developer/openai-compat/tools (checked September 10, 2026).
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

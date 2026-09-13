@@ -39,7 +39,7 @@ R2 focused coverage uses the Windows CPU/RAM collector tests, Manager protocol/d
 tests, and `ForgeConductor.App.TelemetryPresentationTests`. The presentation check preserves stale CPU, unsupported GPU,
 Manager-derived context headroom, bounded histories, measured latency, store failures, and page detail projections.
 The ignored receipt `out/alpha-evidence/r2/freshness-lifetime.json` records a real isolated Debug Manager/app lifetime
-probe and matching Windows process/RAM observations. R6 later completed native keyboard, High Contrast, and 150% Windows text-size inspection on the exact 0.9.3 package.
+probe and matching Windows process/RAM observations. R6 later completed native keyboard, High Contrast, and 150% Windows text-size inspection on exact unpacked package bytes; the 0.9.4 runtime delta does not change those views.
 
 R4 focused coverage uses the Manager controller settings groups, protocol codec, dispatcher maintenance group, project-memory application/cache groups, and Windows memory/continuity repository groups. Together they cover exact confirmation rejection without service calls, typed combined-reset aggregation, transactional reset, project isolation, post-close rejection, restart durability, and continuity reset preservation. R6 completed the separate native keyboard, focus, High Contrast, and 150% text-size walkthrough.
 
@@ -56,7 +56,7 @@ A small targeted interruption exercise suffices; do not build an adversarial cra
 
 ## Live-provider result
 
-The R6 continuation ran the real smoke with LM Studio model `qwen3-coder-30b`, provider capacity 32768, effective capacity 13500, and authoritative usage. Run `786d0672-6231-4202-a46c-401732ade283` crossed the context threshold, saved the canonical handoff, activated fresh-root successor `7dd7aece-532a-459a-8489-ab9d62567466`, accepted the provider's structured acknowledgment, fenced the predecessor, and completed useful post-successor filesystem effects. Exact unpacked 0.9.3 product bytes then completed a separate live read with `PACKAGE_OK`. R6-G2 passes; the installed pass below remains open.
+The R6 continuation ran real LM Studio model `qwen3-coder-30b` with authoritative usage. The earlier run `786d0672-6231-4202-a46c-401732ade283` completed a real rollover and useful successor effects, then hit Forge's legacy desktop-chat repetition block; `PACKAGE_OK` came from a separate 0.9.3 exact-package run. After the guard repair, exact 0.9.4 run `34c078f8-6256-4b03-80e1-936e2e50f2f4` completed canonical rollover to `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed both requested effects, and returned `DONE`. R6-G2 passes; the installed pass below remains open.
 
 ## One installed-app acceptance pass
 Use a Windows VM or suitable clean profile without source checkout/Visual Studio. Install the signed MSIX,
@@ -64,7 +64,7 @@ launch via Start, exercise the native pages and main workflow, update/reinstall 
 Use screenshots or a short operator record for the actual GUI; headless process creation does not prove UI usability.
 LM Studio/model installation remains a documented prerequisite, not a hidden embedded model download.
 
-The 0.9.3 continuation invalidated the earlier managed-run and packaging checks. The full Debug product build, five affected focused suites, full Release product build, package signing/extraction/rehash, real rollover, recovery, and exact-package live smoke passed. Registered installation still returns `0x800B0109` without machine trust.
+The 0.9.4 guard repair invalidated the affected MCP/managed-run and packaging checks. Full Debug and Release product builds, MCP ProtocolServer, serve snapshot, invocation guard, infrastructure, and 80-turn managed-run suites, package signing/extraction/rehash, and exact-package live rollover passed. The 12-identical-call regression confirms Manager-owned traffic does not enter legacy continuity. G04's aggregate wrapper overflow remains failed and was not rerun. Registered installation still returns `0x800B0109` without machine trust.
 
 ## Evidence
 For each required result record command/action, commit, configuration, exit code or observed behavior,
@@ -74,6 +74,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

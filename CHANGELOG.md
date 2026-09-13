@@ -70,17 +70,26 @@
 - Updated LM Studio bootstrap tool selection to its supported required mode and proved a real context-triggered rollover with authoritative usage, saved handoff, fresh provider root, structured acknowledgment, predecessor fencing, and useful successor filesystem effects.
 - Advanced runtime/package identity to `0.9.3` / `0.9.3.0`; built, signed, unpacked, and rehashed the source-bound candidate. MSIX SHA-256 is `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`.
 
+### R6 acceptance closeout — Managed continuity guard
+
+- Corrected the earlier rollover record: the terminal context-budget block was emitted by Forge's legacy desktop-chat invocation guard after repeated native calls, while `PACKAGE_OK` belonged to a separate exact-package run.
+- Exempted Manager-owned `managed-run-v1` traffic from that legacy repetition/handoff guard while retaining normal routing, authorization, and audit behavior; ordinary MCP desktop chats retain their existing protection.
+- Added a 12-identical-call guard regression and reconciled the managed-run service regression at 80 tool turns. The five focused suites and full x64 Debug/Release product builds passed.
+- Advanced runtime/package identity to `0.9.4` / `0.9.4.0`. The source-bound signed candidate has MSIX SHA-256 `937e503c3198d829907aff2a349067ad8f21c7cec54df071d668a531eb65c586`.
+- Ran the exact 0.9.4 GUI and Manager against real LM Studio. Run `34c078f8-6256-4b03-80e1-936e2e50f2f4` completed canonical rollover to successor `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, performed the remaining effect, and returned terminal text `DONE` without the legacy block.
+- Preserved the four retired remote branch heads in one verified Git bundle before guarded deletion. Added an exact administrator/test-account handoff for the still-open installed lifecycle; no elevated trust workaround was attempted.
+
 ### R7 — Documented delivery
 
 - Reconciled every active first-party document with the implemented capability, exact acceptance evidence, honest limitations, and current PR dependency chain.
 - Retained and independently rehashed the unchanged tested 0.9.2.0 candidate: MSIX `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, distribution ZIP `18e43f5508499b56ec802447cfb98dfe8bfc048ba1f649eb1da657f0ae28f8dd`, source commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`.
-- Kept installed lifecycle and authentic schema-9 compatibility visibly open. PRs #19–#21 merged in dependency order and local/origin/GitHub main synchronized at `a161443c974bce594ef7a655a88d02b20dec6040` before the R6 continuation.
+- Kept installed lifecycle and authentic schema-9 compatibility visibly open. PR #22 merged at `35f61de3c5a8159e20752a3843e5f26bfa5290c9`; PR #23 is the draft acceptance closeout.
 
 ### Remaining Alpha work
 
 - Complete machine-trusted install/Start/update/uninstall acceptance and recover authentic C008/C009 history before accepting the owner schema-9 store. Live productive continuity is now verified.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

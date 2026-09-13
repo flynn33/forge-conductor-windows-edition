@@ -42,6 +42,6 @@ Preserve useful existing implementations without expanding them into Alpha block
 Full parity beyond the explicit Alpha subset is a later milestone; do not label deferred rows complete.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

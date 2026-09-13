@@ -25,6 +25,6 @@ Every R phase updates README, CHANGELOG, ROADMAP, STATUS, the plan and ledger, t
 Each R phase has one primary PR targeting `main`, opened explicitly as a draft after its first verified slice. Keep implementation, individual checks, review readiness, merge, and acceptance as separate states. If the primary PR is merged before the phase's scoped work is complete, preserve its history and use one narrowly scoped continuation PR for the missing work; reuse any existing continuation branch or PR and never create duplicates. Push through the verified `flynn33` account using the repository-verified owner identity. Add no assistant/model attribution, generated-by notices, assistant coauthor trailers, or bot authorship. Respect normal reviews and merge permissions. After an actual merge, fetch and fast-forward local `main`, then report local/tracking/GitHub ref equality separately from working-tree cleanliness without publishing credentials, databases, build output, or unrelated files.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

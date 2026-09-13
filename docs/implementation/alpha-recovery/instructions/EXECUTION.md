@@ -39,6 +39,6 @@ The cursor must always include one immediately executable action and, when a par
 Normal completion means the application and required acceptance are finished and delivery synchronization is verified. Otherwise report a genuine forced interruption or that all remaining useful actions are externally blocked. Describe unfinished work accurately; do not label an incomplete application complete.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
