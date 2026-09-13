@@ -30,7 +30,7 @@ Shell remains enabled on a clean install; honor explicit opt-out. Tool counts ma
 No interpreted application runtime, Swift, Electron, Qt, Java, Node or new .NET production application. PowerShell remains build/test/install automation. Preserve existing approved JSON/dependencies and native resource assets. No expensive security-hardening campaign, Mac filesystem qualification, all-architecture matrix, stress program or optional browser-dashboard rewrite is part of this assignment.
 
 ## Continue, fail forward, and resume
-Never end merely because a build, installer, saved NEXT, phase boundary or fixture suite succeeded. Do not ask “shall I continue?” Resolve ordinary engineering choices inside this scope. A required external approval, unavailable model, inaccessible migration source or required review is recorded with its exact blocked operation and next independent action. Use supported approval/authentication flows; no silent bypass or fake success.
+Never end merely because a build, installer, saved NEXT, phase boundary or fixture suite succeeded. Do not ask “shall I continue?” Resolve ordinary engineering choices inside this scope. A required external approval, unavailable model, or required review is recorded with its exact blocked operation and next independent action. Use supported approval/authentication flows; no silent bypass or fake success.
 
 At a context transition, including native compaction, update the repository cursor with plan ID, current phase/slice, observed branch/base, dirty-file summary, actual evidence and next exact edit/command. On resume refresh Git/process/provider facts once and continue the recorded slice. The current ledger, cursor, branch, PR, and repository evidence outrank stale memory or a static package prompt.
 
@@ -39,6 +39,6 @@ The cursor must always include one immediately executable action and, when a par
 Normal completion means the application and required acceptance are finished and delivery synchronization is verified. Otherwise report a genuine forced interruption or that all remaining useful actions are externally blocked. Describe unfinished work accurately; do not label an incomplete application complete.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

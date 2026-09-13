@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12, the owner telemetry-parity correction, and the owner internal-Alpha completion goal; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T14:47:00Z",
+  "updated_at_utc": "2026-09-13T15:40:00Z",
   "current_phase": "R6",
   "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r6-internal-alpha-completion",
-    "head": "c77c45386b25d7b76270c3685b79c172f41526c8",
+    "head": "2c34eb7e99554faad4059dc3082e160b0f32e415",
     "origin_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "github_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "dirty_summary": [
-      "Draft PR #25 carries the installed-acceptance receipt safeguards and current R6 documentation.",
+      "Draft PR #25 carries the persistent Internal Alpha startup, side-effect-free preflight guard, focused regression, current signed candidate, and owner-deferred legacy migration decision.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ignored source-bound candidate-0.9.5.0-20260913-144427 remains local under out/ with recorded hashes and provenance."
+      "Ignored candidate-0.9.5.0-20260913-153641 contains the signed persistent-profile MSIX and records separate application/distribution provenance."
     ]
   },
   "baseline": {
@@ -50,7 +50,7 @@
           "evidence": "Authenticated owner flynn33 pushed alpha/r0-reconcile; PR #11 targets main; local, GitHub branch and PR head matched fcdf78761603a9369b172d90425b86c4ddbfb30b. Normal owner merge is pending."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R0.md",
       "last_known_merge": "0c52530"
     },
@@ -84,7 +84,7 @@
           "evidence": "The actual x64 Release GUI started an isolated Manager, rendered its state, closed, and reopened against the same surviving Manager PID 31172 without duplicate ownership. Live inference remains separately not run because LM Studio is offline. Receipt: out/alpha-evidence/r6/native-ui-and-reattach-20260912.json."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R1.md",
       "last_known_merge": "325d0470b8924e5fd6c202abec2b948b8312eb3a"
     },
@@ -118,7 +118,7 @@
           "evidence": "The exact 0.9.5 candidate exposed metric values and keyboard focus. Actual Windows High Contrast rendered the expanded Rig with strong boundaries. An actual 150% text pass exposed status-banner clipping; the banner was changed to a vertical layout, the Release candidate was rebuilt, and the exact replacement package passed top-to-bottom inspection without clipped labels. Host High Contrast and text scale were restored."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 telemetry parity follow-up review of every active first-party document; affected telemetry, package, acceptance, ledger, and operator content updated; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — telemetry parity follow-up review of every active first-party document; affected telemetry, package, acceptance, ledger, and operator content updated; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R2.md",
       "last_known_merge": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8"
     },
@@ -152,7 +152,7 @@
           "evidence": "After GUI close, Manager PID 31172 remained alive. Reopening the GUI attached to that same PID and retained exact project 51e1f9a4-5943-46f1-9797-35a275768cc3 with its authorized folder and healthy memory store."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R5 review records the later native page and reattachment evidence that closed R3-G2/G3.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 review records the later native page and reattachment evidence that closed R3-G2/G3.",
       "phase_receipt": ".forge-alpha/phases/R3.md",
       "last_known_merge": "1f6991d5fc60928c0a12ca348d08737fae703b1f"
     },
@@ -186,7 +186,7 @@
           "evidence": "The exact unpacked 0.9.2 Settings page exposed labeled paired context controls. Keyboard operation changed/restored the slider and exact token value, focus remained visible, High Contrast rendered strong boundaries, and 150% Windows text-size inspection passed."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R4.md",
       "last_known_merge": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1"
     },
@@ -220,7 +220,7 @@
           "evidence": "Signer/public-certificate hashes, stable identity, increasing version, helper inputs and post-registration checks were inspected. A normal install attempt returned 0x800B0109 before registration because Local Machine publisher trust was unavailable; actual installed lifecycle stays open under R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in review-ready PR #19.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in review-ready PR #19.",
       "phase_receipt": ".forge-alpha/phases/R5.md",
       "last_known_merge": "f83fe4c81c261545d70bdf8c786997ded4043dd2"
     },
@@ -232,7 +232,7 @@
       "milestone_number": 7,
       "pr_number": 25,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/25",
-      "reviewed_head": "c77c45386b25d7b76270c3685b79c172f41526c8",
+      "reviewed_head": "2c34eb7e99554faad4059dc3082e160b0f32e415",
       "slices": {
         "R6.1": "blocked",
         "R6.2": "verified",
@@ -242,7 +242,7 @@
       "gates": {
         "R6-G1": {
           "status": "blocked",
-          "evidence": "Source-bound signed 0.9.5.0 package build, extraction, 324-file rehash, and distributed-helper preflight passed through the machine-trust check. The verified publisher is absent from Local Machine Trusted People, no disposable ForgeAlphaTest account exists, and the current account has no Forge registration. Authorized machine trust plus the dedicated-account 0.9.4\u21920.9.5 install/Start/update/uninstall/reinstall lifecycle remain open. Authentic schema-9 compatibility is a separate dependency."
+          "evidence": "Signed 0.9.5.0 persistent-profile application bytes were built from committed source, extracted, and rehashed across all 324 payload files. The refreshed distribution rejects conflicting preflight/trust switches before distribution access; its focused regression records zero Import-Certificate and Add-AppxPackage calls. Ordinary read-only preflight reaches the machine-trust boundary. Publisher trust, the disposable 0.9.4→0.9.5 lifecycle, and final installed normal-account workflow remain open. Legacy schema-9 migration is owner-deferred and nonblocking."
         },
         "R6-G2": {
           "status": "passed",
@@ -253,7 +253,7 @@
           "evidence": "Exact 0.9.5 packaged telemetry, all native pages, keyboard operation, High Contrast, repaired 150% text layout, disconnect, and reconnect passed under a disposable profile. The installed repetition remains part of R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R6 internal Alpha completion continuation affected-document review; candidate provenance, preflight/receipt behavior, fresh administrator boundary, PR #25, and open gates reconciled. Prior full active-document reviews remain preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 Internal Alpha completion affected-document review; persistent-profile startup, owner-deferred legacy migration, current candidate provenance, side-effect-free preflight, corrected lifecycle, PR #25, and the single open installed gate reconciled.",
       "phase_receipt": ".forge-alpha/phases/R6.md",
       "last_known_merge": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
       "primary_pr_number": 20,
@@ -280,47 +280,38 @@
         },
         "R7-G2": {
           "status": "passed",
-          "evidence": "All active first-party documents were reconciled and stamped R7; JSON syntax/schema and active local links pass. The retained candidate version, identity, source commit/tree and hashes are recorded, and blocked installed/live/schema-9 requirements remain visible."
+          "evidence": "The earlier R7 full-document reconciliation remains passed. The current R6 continuation records the owner-selected persistent profile, deferred legacy migration, current candidate identity/hashes, and open installed acceptance without rewriting historical evidence."
         },
         "R7-G3": {
           "status": "passed",
           "evidence": "R7 delivery remains merged. Subsequent permitted R6 continuation PR #22 merged normally; local main, origin/main, and authenticated GitHub main matched 35f61de3c5a8159e20752a3843e5f26bfa5290c9 before PR #23 work."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R7.md",
       "last_known_merge": "35f61de3c5a8159e20752a3843e5f26bfa5290c9"
     }
   },
   "blockers": [
     {
-      "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
-      "failure": "Repository source contains central migrations C001-C007 while preserved prior evidence reports the owner store at schema 9; authentic C008/C009 history is unavailable.",
-      "affected": "R5.1 and R6.4/R6-G1 existing-data acceptance",
-      "dependency_type": "source_history",
-      "last_observed_utc": "2026-09-12T15:06:05.3117096Z",
-      "necessary_external_action": "Recover authentic migration history or maintain explicit newer-store rejection without mutation.",
-      "next_independent_work": "Use --alpha-root for all disposable implementation and checks; do not open or modify the live store."
-    },
-    {
       "id": "B-R6-INSTALL-TRUST",
-      "failure": "Fresh checks found publisher 0AC803FF3292A2C736B1CBB31AFF88418983B992 absent from Local Machine Trusted People, the current user has no Forge package registration, the all-users query is access denied, and local account .\\ForgeAlphaTest does not exist. The exact distributed helper stops before deployment with the same machine-trust prerequisite.",
+      "failure": "Publisher 0AC803FF3292A2C736B1CBB31AFF88418983B992 is absent from Local Machine Trusted People. The current user has no Forge package registration, the all-users query is access denied, and local account .\\ForgeAlphaTest does not exist. Exact packaged preflight stops before deployment at machine trust.",
       "affected": "R6.1, R6.4 and R6-G1",
       "dependency_type": "windows_approval",
-      "last_observed_utc": "2026-09-13T14:35:00Z",
-      "necessary_external_action": "An authorized administrator must import the verified public certificate into Local Machine Trusted People and create or designate an explicitly disposable Windows account. In that account, run the current helper preflight and the dedicated 0.9.4\u21920.9.5 lifecycle in docs/INSTALLED-ACCEPTANCE-HANDOFF.md.",
-      "next_independent_work": "Independent implementation, candidate creation, packaged preflight, and handoff preparation are complete in draft PR #25. Resume at the administrator prerequisite and preserve every timestamped install receipt."
+      "last_observed_utc": "2026-09-13T15:37:00Z",
+      "necessary_external_action": "Open PowerShell as Administrator and run: Import-Certificate -FilePath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\out\\dist\\candidate-0.9.5.0-20260913-153641\\Publisher.cer' -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPeople'. Confirm thumbprint 0AC803FF3292A2C736B1CBB31AFF88418983B992.",
+      "next_independent_work": "After the exact trust action, preflight and install current 0.9.5 in the normal account for the persistent-profile workflow. Use the separately designated disposable environment for the retained 0.9.4 baseline, update, uninstall, and reinstall lifecycle."
     }
   ],
   "known_bugs": [],
-  "last_result": "Release All build and source-bound signed 0.9.5 candidate from b2de729/tree 3cc5170 passed package creation, extraction, 324-file rehash, and exact distributed-helper validation. Preflight stopped before deployment at missing Local Machine publisher trust. Registered lifecycle and authentic schema-history acceptance remain open.",
-  "next_action": "An authorized administrator imports the exact Publisher.cer from candidate-0.9.5.0-20260913-144427 into Local Machine Trusted People and creates or designates a disposable test account. In that account, preflight the current candidate, then execute the retained 0.9.4 to current 0.9.5 install/Start/update/uninstall/reinstall and installed operator passes. Resolve authentic C008/C009 history or record an explicit owner deployment-profile decision.",
+  "last_result": "Ordinary GUI startup now selects the durable Internal Alpha root with a distinct Manager/pipe/DPAPI identity and visible profile path. The full 89-test Infrastructure suite and Release WinUI/product builds pass. Current signed MSIX packaging, extraction, and all 324 payload rehashes pass. Legacy schema-9 migration is owner-deferred and removed from active blockers; the preserved store was not opened or modified.",
+  "next_action": "The owner opens PowerShell as Administrator and imports Publisher.cer from candidate-0.9.5.0-20260913-153641 into Cert:\\LocalMachine\\TrustedPeople using the exact command in docs/INSTALLED-ACCEPTANCE-HANDOFF.md. Then complete current-package Start launch and normal-account persistent-profile acceptance, followed by the disposable 0.9.4→0.9.5/update/uninstall/reinstall lifecycle.",
   "acceptance": {
-    "installed_workflow": "blocked_machine_trust_and_disposable_account_exact_0.9.5_candidate_ready",
+    "installed_workflow": "blocked_machine_trust_current_persistent_profile_candidate_ready",
     "live_productive_successor": "passed_exact_0.9.4_real_lm_studio_qwen3_coder_30b_terminal",
     "native_visuals_settings": "passed_exact_0.9.5_telemetry_pages_keyboard_high_contrast_150_percent_disconnect_reconnect",
-    "installed_lifecycle": "blocked_machine_trust_0.9.4_to_0.9.5",
-    "owner_existing_data_compatibility": "blocked_authentic_schema_history_unavailable_live_store_untouched",
+    "installed_lifecycle": "blocked_machine_trust_0.9.4_to_0.9.5_and_normal_account_0.9.5",
+    "owner_existing_data_compatibility": "owner_deferred_nonblocking_legacy_store_untouched_fresh_persistent_profile_selected",
     "alpha_accepted": false
   },
   "legacy_phase_summary": {

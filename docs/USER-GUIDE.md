@@ -2,11 +2,11 @@
 This is the implemented Alpha workflow. Real LM Studio managed continuity has passed; registered install/update/uninstall remains open where the current host lacks machine publisher trust.
 
 ## Start a project
-Install and launch from Start. Connect/start the manager, choose a project folder and give it a display name.
+Install and launch from Start. The first Internal Alpha uses `%LOCALAPPDATA%\Forge Conductor Internal Alpha`; the Manager page identifies it as the persistent profile and shows the exact path. Connect/start the manager, choose a project folder and give it a display name.
 The application retains a stable project identity; reopening or relinking its folder must not silently create
 another project's memory. The source folder is never deleted by a memory reset.
 
-For the internal 0.9.5.0 candidate, verify the package and certificate hashes in `distribution.json`. An authorized administrator must provision the reviewed public certificate in Local Machine Trusted People; then the dedicated test account runs `Install-Engineering.ps1` without the trust switch. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope. See [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md).
+For the internal 0.9.5.0 candidate, verify the package and certificate hashes in `distribution.json`. Run the exact certificate-import command in the installed acceptance handoff from an elevated PowerShell window; then use `Install-Engineering.ps1` without the trust switch. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope. See [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md).
 
 ## Two LM Studio modes
 **Desktop MCP mode:** use LM Studio MCP -> Deploy to register the installed Forge primary/fallback stdio servers.
@@ -27,7 +27,7 @@ handoff and resumed useful work. Errors show the retained handoff and a retry/re
 
 Rig renders coalesced Manager snapshots backed by a 250 ms CPU/RAM sampler, one-second GPU/disk tiers, and five-second process/volume tiers. It shows Manager, provider, continuity, and store health; per-logical and aggregate CPU, RAM, supported GPU engines and scoped memory, retained context, disk throughput/IOPS, volume capacity, relevant processes, workflow inventory, and bounded histories. Measured cadence and sample ages appear beside the values. The text next to each visual is the accessible authoritative value. Unavailable or stale measurements show
 a reason rather than zero. Projects, Tools, Feed, Runtimes, Provider, Events & Evidence, Diagnostics, Manager, and
-Settings reuse the same snapshot for their current detail summary. The last selected page and exact project are restored on next launch; disposable Alpha roots keep independent selections and stale IDs clear instead of selecting another project.
+Settings reuse the same snapshot for their current detail summary. The last selected page and exact project are restored on next launch within the persistent Internal Alpha profile; disposable Alpha roots keep independent selections and stale IDs clear instead of selecting another project.
 
 ## Tools and shell
 Tools shows actual availability. Clean installs allow the native shell tool; an explicit opt-out is preserved.
@@ -57,6 +57,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

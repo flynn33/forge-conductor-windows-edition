@@ -94,17 +94,21 @@
 - Require the exact development publisher in Local Machine Trusted People before deployment and report the authorized administrator action when it is absent.
 - Write a unique timestamped JSON receipt after every successful install or update so lifecycle evidence cannot overwrite a prior result.
 - Rebuilt the source-bound 0.9.5.0 candidate from commit `c77c45386b25d7b76270c3685b79c172f41526c8` and tree `2bb16d60c7616f3d6f31ec94c85192dfe30db349`. Its MSIX SHA-256 is `9c772fcc9646f1e876f83c59c9e59a189f6f6881bcd603eb290dd589d5129a74` and ZIP SHA-256 is `2874a1cdf51d6861e780a32b599172f9ca0d84fe9ad9a9bb5eb92b55e3bb8dd4`.
-- Confirmed the distributed helper stops at the missing machine-trust prerequisite before package deployment. Package registration and the installed lifecycle remain open; authentic schema-9 compatibility remains unresolved.
+- Made conflicting `-PreflightOnly -TrustDevelopmentPublisher` invocation fail immediately; the focused regression proves that neither certificate import nor package deployment is called.
+- Changed ordinary GUI startup to the durable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` profile. Its Manager lease, named pipe, DPAPI token, view state, projects, memory, and continuity stay separate from the preserved legacy store, and the Manager page identifies the persistent profile and exact path.
+- Recorded the owner's decision to defer schema-9/C008/C009 migration as nonblocking backlog while preserving the legacy database and related files unchanged.
+- Rebuilt and fully rehashed the persistent-profile MSIX from application commit `44b0369a0a7d7456b1a696a37450f29463555b02`; its SHA-256 is `692bbc20230f58a9c0b8ed1619aa85cdbb634d67450533bf9657c3bba56ceeb5`. The final companion distribution records separate application and distribution provenance and has ZIP SHA-256 `c93a4b42545a4d9a1ea3c8ebc373db77f6c81d367c14f366c94b15a32b02ca86`.
+- Confirmed the distributed helper stops at the missing machine-trust prerequisite before package deployment. Package registration and the installed lifecycle remain open.
 
 ### R7 — Documented delivery
 
 - Reconciled every active first-party document with the implemented capability, exact acceptance evidence, honest limitations, and current PR dependency chain.
 - Retained and independently rehashed the unchanged tested 0.9.2.0 candidate: MSIX `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, distribution ZIP `18e43f5508499b56ec802447cfb98dfe8bfc048ba1f649eb1da657f0ae28f8dd`, source commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`.
-- Kept installed lifecycle and authentic schema-9 compatibility visibly open. PR #22 merged at `35f61de3c5a8159e20752a3843e5f26bfa5290c9`; PR #23 is the draft acceptance closeout.
+- Kept the installed lifecycle visibly open. The later owner decision defers legacy schema-9 migration outside the first Alpha gate. PR #22 merged at `35f61de3c5a8159e20752a3843e5f26bfa5290c9`; PR #23 records the earlier acceptance closeout.
 
 ### Remaining Alpha work
 
-- Complete machine-trusted install/Start/update/uninstall acceptance and authentic C008/C009 history recovery before accepting the owner schema-9 store. Live productive continuity and expanded-Rig accessibility are verified.
+- Complete machine-trusted install/Start/update/uninstall acceptance on disposable data, then verify the current installed candidate uses the durable Internal Alpha profile in the owner's normal account. Live productive continuity and expanded-Rig accessibility are verified. Legacy schema-9 migration is deferred.
 
 <!-- alpha-phase-review:start -->
 Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).

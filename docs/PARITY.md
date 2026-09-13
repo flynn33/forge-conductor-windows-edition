@@ -15,7 +15,7 @@ This map records current Windows source capability against the internal Alpha co
 | Agents, Feed, Runtimes, Events, Diagnostics | Typed operational summaries and Manager-owned agent/session actions replace placeholder text; recoverable failures remain visible | Repeat representative actions through the registered package | R3, R6 |
 | Settings and maintenance | Discoverable labeled settings, exact context controls, save/revert/readback, safe scoped/all-store reset, keyboard operation, High Contrast and enlarged text evidence exist | Repeat the confirmed reset through the registered package | R4, R6 |
 | Signed installer | Stable 0.9.5.0 identity, complete x64 Release payload, embedded provenance/hashes, development signature, public certificate, install helper, and exact unpacked-package verification exist | Machine-trusted install, Start launch, 0.9.4→0.9.5 update/uninstall/reinstall and data preservation | R6 |
-| Existing data | Source has authentic central migrations C001–C007; a disposable schema-9 Manager probe exits with the dedicated unsupported-version code and leaves the store hash unchanged | Recover authentic C008/C009 compatibility or retain explicit non-acceptance; never fabricate migrations or touch the owner store | R6 |
+| Existing data | Ordinary first-Alpha launches use the durable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` profile with a distinct Manager/IPC identity. A disposable schema-9 probe still proves non-mutating refusal. | Legacy schema-9/C008/C009 migration is owner-deferred, not implemented or passed; preserve the old store untouched. | Deferred B3 |
 
 ## Tool inventory
 
@@ -24,6 +24,6 @@ Reuse `.forge-codex/state/baseline/mcp-tool-baseline.json` and `p02-mcp-semantic
 Owner-directed removal of count/time-triggered run controls is intentional. Manager-owned continuity does not imply control of ordinary unowned LM Studio desktop chats. Optional browser dashboards, advanced analytics/connectors, additional architectures and public distribution infrastructure remain outside this internal Alpha; core native telemetry and settings are included.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
