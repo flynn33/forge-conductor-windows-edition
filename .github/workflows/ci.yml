@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   release-build-and-test:
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 90
     env:
       VCPKG_ROOT: C:\vcpkg
