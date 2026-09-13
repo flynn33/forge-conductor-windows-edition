@@ -138,6 +138,7 @@ target_compile_definitions(ForgeConductor.Telemetry.Windows PRIVATE
     _WIN32_WINNT=0x0A00)
 target_link_libraries(ForgeConductor.Telemetry.Windows PRIVATE
     dxgi
+    pdh
     psapi)
 
 set(FORGE_APPLICATION_SOURCES
