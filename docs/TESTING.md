@@ -35,11 +35,10 @@ R1 controlled transport coverage proves ordinary response/tool correlation, offl
 retained-context deduplication, continuity observation, pause/resume/cancel boundaries, and recovered uncertain-work
 failure. It does not replace the R6 live provider acknowledgment and productive successor check.
 
-R2 focused coverage uses the Windows CPU/RAM collector tests, Manager protocol/dispatcher and authenticated named-pipe
-tests, and `ForgeConductor.App.TelemetryPresentationTests`. The presentation check preserves stale CPU, unsupported GPU,
-Manager-derived context headroom, bounded histories, measured latency, store failures, and page detail projections.
+R2 focused coverage uses the Windows CPU/RAM/PDH collector tests, Manager protocol/dispatcher and authenticated named-pipe
+tests, and `ForgeConductor.App.TelemetryPresentationTests`. The presentation check covers logical CPUs/frequency, GPU adapters/engines and memory scope, disk rates/IOPS, volumes, relevant processes, cadence/freshness, Manager-derived context headroom, bounded histories, measured latency, store failures, disconnected values, and page detail projections.
 The ignored receipt `out/alpha-evidence/r2/freshness-lifetime.json` records a real isolated Debug Manager/app lifetime
-probe and matching Windows process/RAM observations. R6 later completed native keyboard, High Contrast, and 150% Windows text-size inspection on exact unpacked package bytes; the 0.9.4 runtime delta does not change those views.
+probe and matching Windows process/RAM observations. The 0.9.5 parity follow-up built Debug and Release products, passed the seven affected CTest targets, and then ran exact packaged bytes under `out/validation/telemetry-parity-alpha`. The native Rig exposed all 32 logical CPUs at positive frequency, RTX 4090 engine activity with explicit current-process DXGI memory scope, live disk/volume and relevant-process rows, 250 ms target/measured cadence, sample ages, growing histories, a real disconnected state, and successful Manager-start reconnect. UI Automation exposed the values and keyboard focus. Actual High Contrast rendered strong boundaries across the new panels. An initial 150% text pass exposed status-banner clipping; after the vertical-layout fix and rebuild, the exact replacement candidate passed a top-to-bottom 150% walkthrough without clipped telemetry labels, and both host settings were restored.
 
 R4 focused coverage uses the Manager controller settings groups, protocol codec, dispatcher maintenance group, project-memory application/cache groups, and Windows memory/continuity repository groups. Together they cover exact confirmation rejection without service calls, typed combined-reset aggregation, transactional reset, project isolation, post-close rejection, restart durability, and continuity reset preservation. R6 completed the separate native keyboard, focus, High Contrast, and 150% text-size walkthrough.
 
@@ -64,7 +63,7 @@ launch via Start, exercise the native pages and main workflow, update/reinstall 
 Use screenshots or a short operator record for the actual GUI; headless process creation does not prove UI usability.
 LM Studio/model installation remains a documented prerequisite, not a hidden embedded model download.
 
-The 0.9.4 guard repair invalidated the affected MCP/managed-run and packaging checks. Full Debug and Release product builds, MCP ProtocolServer, serve snapshot, invocation guard, infrastructure, and 80-turn managed-run suites, package signing/extraction/rehash, and exact-package live rollover passed. The 12-identical-call regression confirms Manager-owned traffic does not enter legacy continuity. G04's aggregate wrapper overflow remains failed and was not rerun. Registered installation still returns `0x800B0109` without machine trust.
+The 0.9.5 telemetry change invalidated the affected collector, Manager protocol/projection, presentation, version identity, Release build, and package checks. All seven focused targets passed; the signed package was unpacked and all 324 payload hashes were rechecked. Earlier managed-run/live-provider evidence remains applicable. G04's historical aggregate wrapper overflow was not rerun. Registered installation remains blocked without machine-level publisher trust.
 
 ## Evidence
 For each required result record command/action, commit, configuration, exit code or observed behavior,
@@ -74,6 +73,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

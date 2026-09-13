@@ -33,7 +33,7 @@ network placement does not change project identity, cancellation or data-safety 
 R2 implements that snapshot as `ManagerTelemetrySnapshot`. The Manager joins its existing telemetry service with
 status, settings, selected-run context, continuity identity, runtime diagnostics, project/tool catalogs, audit events,
 and store-read health before encoding one authenticated pipe response. The WinUI process renders the typed values and
-never opens telemetry collectors or recomputes retained-context headroom. One window-owned timer requests fresh
+never opens telemetry collectors or recomputes retained-context headroom. Native PDH queries remain open in the Manager for per-logical CPU, GPU-engine, and physical-disk counters; Toolhelp/process APIs and volume APIs supply the heavier process and capacity tiers. The 250 ms base sampler refreshes GPU/disk near one second and processes/volumes near five seconds, publishes actual cadence and timestamps, and retains bounded histories. One window-owned timer requests fresh
 snapshots; closing the window stops the timer and cancels in-flight UI work without stopping the Manager.
 
 R3 and R4 extend the same pipe boundary with typed project, LM Studio, tool, operational, settings, and maintenance requests. Settings never opens configuration JSON or project databases. Reset dispatch validates an exact project/profile confirmation, invokes the existing transactional memory and continuity owners, and closes the affected repository generation so a stale owner cannot continue writing after a committed reset.
@@ -45,9 +45,9 @@ The Mac Swift source is behavioral evidence only. No Swift binaries belong in th
 
 ## Product and package identity
 
-`ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `0.9.4` value; the stable MSIX identity is `ForgeConductor.Windows.Alpha` with numeric version `0.9.4.0`. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` alternative. Production view state retains the stable legacy registry names; `--alpha-root` derives deterministic per-profile names and validates a saved project ID against the authoritative Manager snapshot before use.
+`ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `0.9.5` value; the stable MSIX identity is `ForgeConductor.Windows.Alpha` with numeric version `0.9.5.0`. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` alternative. Production view state retains the stable legacy registry names; `--alpha-root` derives deterministic per-profile names and validates a saved project ID against the authoritative Manager snapshot before use.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -76,13 +76,13 @@ v143 UWP/XAML tools; Desktop C++ Build Tools alone was insufficient on the teste
 Windows App SDK 2.4.0 and C++/WinRT 3.0.260818.1 are pinned. Outputs and executable hashes are recorded
 in `out/app/x64/<configuration>/staging-manifest.json`.
 
-Executed successfully on September 13, 2026 (Debug and Release builds plus the source-bound development-signed 0.9.4.0 package):
+Executed successfully on September 13, 2026 (Debug and Release builds plus the source-bound development-signed 0.9.5.0 package):
 ```powershell
 .\scripts\build.ps1 -Configuration Debug -Architecture x64 -Product All
 .\scripts\build.ps1 -Configuration Release -Architecture x64 -Product All
 .\scripts\package.ps1 -Configuration Release -Architecture x64 -DevelopmentSigning
 ```
-Debug app also built and launched through the MSBuild helper. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Candidate 0.9.4.0 is bound to commit `3fb70143ef2db9704c8a395b49a29857bd087976` and tree `fad39f10bdb2638a74a0b28deb0c0ecc1e88dede`. The signed internal distribution is under `out/dist/`; installed acceptance remains blocked by machine trust. Development signing uses a non-exportable current-user certificate.
+Debug and Release apps built through the MSBuild helper. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Candidate 0.9.5.0 is bound to commit `27c26e1401da72241cff68012ece2a8645f4e752` and tree `e9995ac4ca6de0043fb1f293091f23720a434acd`. The signed internal distribution is under `out/dist/`; installed acceptance remains blocked by machine trust. Development signing uses a non-exportable current-user certificate.
 `FORGE_SIGNING_PFX` remains supported for explicitly supplied signing credentials.
 Installation requires machine trust for the signing publisher; see the bundled install helper and current status.
 
@@ -104,6 +104,6 @@ The current Alpha build path must remain restorable from a fresh clone using the
 Keep build outputs, local signing state, caches, tokens and machine paths out of tracked source.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
