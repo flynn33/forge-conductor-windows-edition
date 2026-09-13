@@ -497,7 +497,7 @@ public:
                           {"properties",
                            Json{{"handoff_id", Json{{"type", "string"}}}}},
                           {"required", Json::array({"handoff_id"})}}}}})},
-                {"tool_choice", Json{{"type", "function"}, {"name", "context_get"}}},
+                {"tool_choice", "required"},
                 {"parallel_tool_calls", false},
                 {"store", true}};
             auto first = postResponses(firstBody, context);

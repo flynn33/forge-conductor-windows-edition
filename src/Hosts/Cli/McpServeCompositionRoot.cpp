@@ -518,6 +518,51 @@ private:
         const auto dataScope = take(dataAuthority_->authorityFor(
             dataProjectId, startupContext));
 
+        const auto ledgerPath =
+            childPath(memoryRoot, "native-session-ledger.json");
+        const auto ledgerRead = authorizePath(
+            *dataAuthority_, dataScope, ledgerPath, dataRoot,
+            Domain::FileAccess::Read, startupContext);
+        auto currentLedger = atomicFileStore_->read(
+            ledgerRead,
+            InfrastructureWindows::WindowsNativeSessionLedger::
+                MaximumDocumentBytes,
+            startupContext);
+        if (!currentLedger &&
+            currentLedger.error().code != Domain::ErrorCodes::RecordNotFound) {
+            throw std::runtime_error{
+                currentLedger.error().code + ": " +
+                currentLedger.error().message};
+        }
+        if (!currentLedger) {
+            const std::array legacyCandidates{
+                childPath(dataRoot, "native-session-ledger.json"),
+                childPath(dataRoot, "native-session-ledger.json.bak")};
+            for (const auto& legacyPath : legacyCandidates) {
+                auto legacy = atomicFileStore_->read(
+                    authorizePath(
+                        *dataAuthority_, dataScope, legacyPath, dataRoot,
+                        Domain::FileAccess::Read, startupContext),
+                    InfrastructureWindows::WindowsNativeSessionLedger::
+                        MaximumDocumentBytes,
+                    startupContext);
+                if (!legacy) {
+                    if (legacy.error().code ==
+                        Domain::ErrorCodes::RecordNotFound) {
+                        continue;
+                    }
+                    throw std::runtime_error{
+                        legacy.error().code + ": " + legacy.error().message};
+                }
+                take(atomicFileStore_->replace(
+                    authorizePath(
+                        *dataAuthority_, dataScope, ledgerPath, dataRoot,
+                        Domain::FileAccess::Create, startupContext),
+                    legacy.value(), false, startupContext));
+                break;
+            }
+        }
+
         const auto configPath = childPath(configurationRoot, "config.json");
         configurationStore_ = std::make_unique<
             InfrastructureWindows::WindowsConfigurationStore>(
@@ -672,7 +717,6 @@ private:
         continuityCodec_ = std::make_unique<
             InfrastructureWindows::WindowsContinuityDocumentCodec>(
             hasher_, clock_);
-        const auto ledgerPath = childPath(dataRoot, "native-session-ledger.json");
         nativeSessionLedger_ = std::make_unique<
             InfrastructureWindows::WindowsNativeSessionLedger>(
             *atomicFileStore_, *hasher_,
