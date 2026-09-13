@@ -3,8 +3,8 @@
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Execution revision:** `continuous-delivery-correction-2026-09-12`
 **Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R7.1 — final documentation and traceability
-**Current branch:** `alpha/r6-acceptance`, based on exact R5 continuation head `9d8c181789f998fd2928b993eeae9ff318417bc5`
+**Current phase/slice:** R7.3 — draft delivery and dependency-order synchronization
+**Current branch:** `alpha/r7-delivery`, created from exact R6 PR #20 head `ad5b3fc6a9215f3fa08dccaefa14703e6183eedc`
 
 ## Verified state
 
@@ -18,19 +18,19 @@
 
 ## Next exact action
 
-Push the PR #20 reference update, create `alpha/r7-delivery` from the exact resulting R6 head, and complete R7 artifact/traceability documentation while keeping R6-G1/G2 blocked.
+Commit and push the completed R7.1/R7.2 record, open the primary R7 PR explicitly as a draft against main, record its URL/head, and then follow normal dependency-order merge and exact-main synchronization. Keep R6-G1/G2 open.
 
 ## Open dependencies
 
-- `B-R1-LMSTUDIO-OFFLINE`: TCP `127.0.0.1:1234` remained unavailable at `2026-09-13T00:05:58Z`; start a tool-capable LM Studio server for provider-originated productive successor acceptance.
+- `B-R1-LMSTUDIO-OFFLINE`: TCP `127.0.0.1:1234` remained unavailable at `2026-09-13T00:20:40Z`; start a tool-capable LM Studio server for provider-originated productive successor acceptance.
 - `B-R5-CENTRAL-SCHEMA-HISTORY`: authentic C008/C009 history is unavailable; preserve the schema-9 owner store and keep newer-store rejection non-destructive.
 - `B-R6-INSTALL-TRUST`: `Add-AppxPackage` returned `0x800B0109`. Current-user trust is insufficient and the machine-level publisher import was rejected by automatic approval policy; approve the bundled public certificate in Local Machine Trusted People, then run install/Start/update/uninstall acceptance.
 
 ## Phase closeout obligations
 
-R6-G3 is passed. R6-G1 and R6-G2 remain blocked and are not waived. PR #20 is open as a draft; continue R7 from its exact head and preserve implementation, checks, readiness, merge and acceptance as distinct states. Ref equality remains separate from the intentionally dirty unrelated `.forge-qwen` working tree.
+R7-G1 and R7-G2 are passed. R7-G3 remains blocked until dependent PRs actually merge and main is synchronized. R6-G1 and R6-G2 remain blocked and are not waived. Preserve implementation, checks, readiness, merge and acceptance as distinct states; report ref equality separately from the intentionally dirty unrelated `.forge-qwen` working tree.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
+Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

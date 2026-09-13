@@ -38,6 +38,6 @@ Perform one higher-version upgrade and one uninstall, preserving user-owned proj
 Record artifacts, actual package identity/version, installation/launch result, paths, lifecycle results, data sentinel preservation and remaining limitations. This single integrated pass can satisfy R5/R6 checks without repeated installer campaigns. Any product/package change that invalidates the tested path requires only that affected path to be retested.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

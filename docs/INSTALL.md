@@ -1,7 +1,7 @@
 # Installer and installation
-**R6 candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.2.0-x64.msix`, SHA-256 `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, from commit `d8a2d68c80f2fd090aa36466a517725a0eb59445` and tree `151ccf51a9aa3d1a0b6fdcfe22af2cbf599a7c6e`.
+**Retained R7 delivery candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.2.0-x64.msix`, SHA-256 `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, from commit `d8a2d68c80f2fd090aa36466a517725a0eb59445` and tree `151ccf51a9aa3d1a0b6fdcfe22af2cbf599a7c6e`.
 
-Normal 0.9.1.0 install attempts returned `0x800B0109`: Windows requires the included development publisher certificate in the Local Machine Trusted People store. Current-user trust does not satisfy package deployment, and the machine-level import was unavailable on the acceptance host. No package was installed. The 0.9.2.0 MSIX was instead unpacked from its signed bytes, rehashed, and exercised without repository build paths; that is useful package evidence but not installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
+The R7 recheck retained the unchanged candidate and confirmed its recorded hashes. Normal 0.9.1.0 install attempts returned `0x800B0109`: Windows requires the included development publisher certificate in the Local Machine Trusted People store. Current-user trust does not satisfy package deployment, and the machine-level import was unavailable on the acceptance host. No package was installed. The 0.9.2.0 MSIX was instead unpacked from its signed bytes, rehashed, and exercised without repository build paths; that is useful package evidence but not installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
 
 Build with `scripts/build.ps1 -Configuration Release -Product All`, then `scripts/package.ps1 -DevelopmentSigning`.
 Each distribution under `out/dist/candidate-*` contains the signed MSIX, public certificate, checksum metadata,
@@ -64,6 +64,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -60,7 +60,7 @@ launch via Start, exercise the native pages and main workflow, update/reinstall 
 Use screenshots or a short operator record for the actual GUI; headless process creation does not prove UI usability.
 LM Studio/model installation remains a documented prerequisite, not a hidden embedded model download.
 
-R6 packaging verification used the full x64 Release product build and `scripts/package.ps1 -DevelopmentSigning` at commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`. The package script signed, unpacked, and rehashed the 0.9.2.0 MSIX. The exact unpacked CLI/GUI/Manager path, detach/reattach, telemetry, profile-isolation and accessibility checks passed. A normal 0.9.1.0 installation attempt still returned `0x800B0109` because machine-level trust for the development publisher was absent; keep installed checks open until that explicit trust action succeeds.
+R7 introduced no functional or packaging delta and reuses the R6 results under the affected-check rule. R6 packaging verification used the full x64 Release product build and `scripts/package.ps1 -DevelopmentSigning` at commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`. The package script signed, unpacked, and rehashed the 0.9.2.0 MSIX. The exact unpacked CLI/GUI/Manager path, detach/reattach, telemetry, profile-isolation and accessibility checks passed. A normal 0.9.1.0 installation attempt still returned `0x800B0109` because machine-level trust for the development publisher was absent; keep installed checks open until that explicit trust action succeeds.
 
 ## Evidence
 For each required result record command/action, commit, configuration, exit code or observed behavior,
@@ -70,6 +70,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
