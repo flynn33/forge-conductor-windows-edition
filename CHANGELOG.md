@@ -53,11 +53,19 @@
 - Added a dedicated Manager exit code and actionable GUI explanation when the central store is newer than supported. The schema-9 disposable probe leaves the database unchanged and preserves `--alpha-root` as the explicit isolated alternative.
 - Applied the owner execution correction in place: native compaction continues the current slice; draft, checks, readiness, merge, and acceptance are separate; and a single reused continuation is allowed when a primary phase PR merges early.
 
+### R6 — Candidate acceptance and defect repair
+
+- Fixed Alpha profile view-state isolation so project/page selection cannot leak between disposable roots, stale project IDs clear against the Manager snapshot, and an unrelated first project is never selected implicitly.
+- Advanced the product and stable MSIX identity to version `0.9.2` / `0.9.2.0`, then built, signed, unpacked, and rehashed the complete committed Release package.
+- Exercised the exact unpacked package: CLI version, GUI and Manager paths, live CPU/RAM and explicit GPU capability state, single-Manager detach/reattach, and independent two-profile project selection all passed.
+- Completed the native Settings accessibility work with keyboard operation of the context slider and exact token value, actual Windows High Contrast, and actual 150% text scaling; every temporary system setting was restored.
+- Retained installation and live-provider gates as blocked: Windows returned `0x800B0109` without machine-level publisher trust, and LM Studio was still unavailable at `127.0.0.1:1234`.
+
 ### Remaining Alpha work
 
-- Complete machine-trusted install/update/uninstall, native visual walkthroughs, live productive continuity acceptance, and final delivery synchronization in R6–R7.
+- Complete machine-trusted install/update/uninstall and live productive continuity acceptance when those external prerequisites are available; finish R7 delivery synchronization without calling the open gates passed.
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

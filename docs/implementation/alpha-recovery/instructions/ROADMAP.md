@@ -53,6 +53,6 @@ Full **native operational telemetry, all required page functions, context slider
 The final result is a working internal candidate and synchronized source/documentation, not permission to publish a public release. Absence of a model, an approval or an authentic migration contract is recorded precisely; it cannot be silently changed into final success.
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

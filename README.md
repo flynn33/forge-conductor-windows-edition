@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows control application and MCP tool server for project work with local models in LM Studio.
 
-**Status: Windows Alpha implementation is active; a complete signed candidate exists and installed acceptance remains open.** R1–R5 source is merged through [PR #18](https://github.com/flynn33/forge-conductor-windows-edition/pull/18) at `f83fe4c81c261545d70bdf8c786997ded4043dd2`; narrow draft [PR #19](https://github.com/flynn33/forge-conductor-windows-edition/pull/19) records the R5 closeout and later native evidence. Windows rejected the first install with `0x800B0109` until the development publisher is trusted at machine scope. Scaled/high-contrast and live productive rollover acceptance remain open under their original R6 gates.
+**Status: the Windows Alpha product is implemented and a source-bound 0.9.2.0 signed candidate exists; installed and live-provider acceptance remain externally blocked.** R1–R5 source is merged through [PR #18](https://github.com/flynn33/forge-conductor-windows-edition/pull/18) at `f83fe4c81c261545d70bdf8c786997ded4043dd2`; [PR #19](https://github.com/flynn33/forge-conductor-windows-edition/pull/19) carries the narrow R5 closeout. R6 fixed isolated-profile selection leakage and verified the exact packaged GUI, Manager, CLI, telemetry, detach/reattach, keyboard use, High Contrast, and 150% Windows text scaling. Windows still requires machine-level development-publisher trust for installation, and LM Studio remained offline for the real productive rollover check.
 
 Use [Product status](docs/STATUS.md) for verified behavior and blockers, [Roadmap](ROADMAP.md) for the current phase sequence, and [Documentation index](docs/DOCUMENTATION-INDEX.md) for active and historical guidance. The adopted execution contract is under [Alpha recovery](docs/implementation/alpha-recovery/instructions/EXECUTION.md).
 
@@ -14,7 +14,7 @@ Use [Product status](docs/STATUS.md) for verified behavior and blockers, [Roadma
 
 The target has a per-user Manager, persistent projects and memory, filesystem/Git/shell tools, LM Studio MCP deployment, real visual operational telemetry, accessible Settings, and automatic context continuity for Forge-managed runs. The native Autonomy and Continuity surfaces can start and inspect managed work and request safe pause, resume, or stop through the Manager. Ordinary LM Studio desktop MCP chats and Forge-managed API runs are different modes; connecting MCP does not enroll an existing desktop chat into managed continuity.
 
-The current Rig refreshes every two seconds from one authenticated Manager snapshot. CPU and RAM retain bounded history, GPU utilization stays explicitly unavailable when DXGI cannot supply it, and retained-context headroom comes from the Manager rather than a GUI estimate. The last selected page is retained for the current Windows user.
+The current Rig refreshes every two seconds from one authenticated Manager snapshot. CPU and RAM retain bounded history, GPU utilization stays explicitly unavailable when DXGI cannot supply it, and retained-context headroom comes from the Manager rather than a GUI estimate. Page and project selection persist for the current production profile; disposable `--alpha-root` profiles keep independent view state.
 
 The Projects page registers an authorized folder through the Manager, displays its stable project ID and all authorized aliases, persists the selected identity, and binds it into the Autonomy run form. Memory search returns full readable records; memory writes and integrity/storage status use the existing per-project repository, with cross-project responses rejected before presentation.
 
@@ -29,9 +29,9 @@ Windows 11 x64; C++20; Visual Studio 2022/MSVC v143; Windows SDK 10.0.26100.0; C
   -Target ForgeConductor.Cli,ForgeConductor.Manager,ForgeConductor.SessionHost
 ```
 
-The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`; it is an internal test installer rather than a public download or accepted installed Alpha. Follow [Installer and installation](docs/INSTALL.md) for hash verification and the explicit Windows trust step.
+The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `ForgeConductor-0.9.2.0-x64.msix`, SHA-256 `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`. Follow [Installer and installation](docs/INSTALL.md) for provenance, hash verification, and the explicit Windows trust step.
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

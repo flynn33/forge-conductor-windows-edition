@@ -1,33 +1,33 @@
 # Installed Alpha acceptance record
-Status: IN PROGRESS. Package/build evidence is recorded; installed, native visual, and live-provider checks remain open.
+Status: IN PROGRESS. Package, unpacked native workflow, visual accessibility, and defect-repair evidence are recorded; installed lifecycle and live-provider continuity remain externally blocked.
 
-Version / numeric MSIX version: `0.9.1` / `0.9.1.0`
-Commit / branch: `3bcaeb3481022b38d6d6c9783510ace910957cf8` / `alpha/r5-installer-data`
+Version / numeric MSIX version: `0.9.2` / `0.9.2.0`
+Commit / branch: `d8a2d68c80f2fd090aa36466a517725a0eb59445` / `alpha/r6-acceptance`
 Windows configuration: Windows 11 x64 Release; development-signed internal package
-Installer path or retained artifact URL: ignored local `out/dist/candidate-0.9.1.0-20260912-225739/ForgeConductor-0.9.1.0-x64.msix`
-Installer SHA-256: `ddb3e8c6c43aedc21be0747f46431061f29c2ed3dfaad332e79f1026073f5087`
-Provider / model / LM Studio version:
-Loaded context capacity / effective context target / reserves / usage source:
+Installer path or retained artifact URL: ignored local `out/dist/candidate-0.9.2.0-20260912-235342/ForgeConductor-0.9.2.0-x64.msix`
+Installer SHA-256: `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`
+Provider / model / LM Studio version: not available; TCP `127.0.0.1:1234` unavailable at `2026-09-13T00:05:58Z`
+Loaded context capacity / effective context target / reserves / usage source: no live provider sample; Settings effective context value observed at 32768 and restored after keyboard checks
 
 | Check | Result (not run/pass/fail) | Command/action and evidence |
 |---|---|---|
-| Reproducible x64 Release product build | pass | All four products built and staged at the committed source; package extraction and payload rehash passed. |
-| Signed MSIX clean install and Start launch | blocked | Normal `Add-AppxPackage` returned `0x800B0109`; the development publisher requires explicit Local Machine trust. No Start launch is claimed. |
-| Projects and memory persistence/isolation | not run | |
-| Installed MCP primary/fallback and representative native tools | not run | |
-| Real context-triggered provider successor and useful continued work | not run | |
-| GUI detach/reattach during manager-owned work | not run | |
-| Required native pages and Settings/reset actions | not run | |
-| Installed CLI serve stdout and path correctness | not run | |
-| Update/reinstall and uninstall preserve user data | not run | |
+| Reproducible x64 Release product build | pass | All four products built from commit `d8a2d68`; package signing, extraction, payload rehash, and focused App/MCP/Infrastructure tests passed. |
+| Signed MSIX clean install and Start launch | blocked | Normal 0.9.1.0 `Add-AppxPackage` returned `0x800B0109`; current-user trust was insufficient and the machine-level trust action was unavailable. No package registered. |
+| Projects and memory persistence/isolation | partial | Exact unpacked 0.9.2 GUI restored project `51e1f9a4-5943-46f1-9797-35a275768cc3` in profile A while profile B retained zero projects and no selection. Installed persistence remains open. |
+| Installed MCP primary/fallback and representative native tools | blocked | Source/native workflow evidence exists, but the package is not registered. |
+| Real context-triggered provider successor and useful continued work | blocked | LM Studio was offline; no provider-originated acknowledgment or productive successor is claimed. |
+| GUI detach/reattach during manager-owned work | pass | Exact unpacked package retained Manager PID 3820 after GUI close and reattached one GUI without creating another Manager. |
+| Required native pages and Settings/reset actions | partial | Fourteen-page walkthrough, Settings labels/readback, keyboard context controls, High Contrast, and 150% text size passed. Installed confirmed reset remains open. |
+| Installed CLI serve stdout and path correctness | partial | Exact package bytes reported `Forge Conductor 0.9.2 (Windows native)` and all sibling paths resolved inside the unpacked MSIX. Installed alias remains open. |
+| Update/reinstall and uninstall preserve user data | blocked | 0.9.1.0 and higher 0.9.2.0 candidates exist, but package deployment cannot start without machine trust. |
 
-Required failures still open: machine publisher trust/install, native page and accessibility walkthroughs, live tool-capable LM Studio continuity, higher-version update/uninstall, and authentic schema-9 compatibility.
-Known limitations and deferred B1/B2 issues:
-Operator launch instructions:
+Required failures still open: machine publisher trust/install, live tool-capable LM Studio continuity, installed update/uninstall, and authentic schema-9 compatibility. Native page and accessibility checks are complete.
+Known limitations: GPU utilization is explicitly unsupported where Windows/DXGI exposes adapter memory but no utilization source. The live schema-9 owner store remains unsupported because authentic C008/C009 migrations are unavailable and was never opened during this work.
+Operator launch instructions: verify `distribution.json`, trust only the included publisher certificate from an Administrator PowerShell, run `Install-Engineering.ps1 -TrustDevelopmentPublisher`, launch Forge Conductor from Start, and keep acceptance data in a disposable profile.
 
 Do not attach private credentials, signing keys or unrelated project data. Do not prefill pass statuses.
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
