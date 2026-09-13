@@ -13,7 +13,7 @@
 - Native Manager and CLI session ledgers live under the memory root, with pre-SQLite migration from the legacy root location. LM Studio bootstrap uses its supported required-tool selection.
 - Real LM Studio run `786d0672-6231-4202-a46c-401732ade283` activated fresh successor `7dd7aece-532a-459a-8489-ab9d62567466` after authoritative context usage crossed the configured threshold. Exact saved handoff retrieval, structured provider acknowledgment, predecessor fencing, and useful post-successor filesystem effects passed.
 - A separate operation recovered after GUI detach and Manager restart. Exact unpacked 0.9.3 GUI/Manager/CLI bytes completed live run `b74477f9-25e8-4e6b-ba3c-d73daeb370f8` with `PACKAGE_OK`.
-- Full x64 Debug and Release products built. The five affected focused suites passed. Signed candidate `ForgeConductor-0.9.3.0-x64.msix` SHA-256 is `9704fac82920618e19bb183e6381961a3a1880b4b4824787034e120f266c2071`; ZIP SHA-256 is `f0df560869b13e7a87596995ba4f27c5938c3c5a090ad11da48aa37b0bf78cc6`.
+- Full x64 Debug and Release products built. The five affected focused suites passed. Signed candidate `ForgeConductor-0.9.3.0-x64.msix` SHA-256 is `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`; ZIP SHA-256 is `dbef5788b6bd2bc91d03ee9228db02e7a9605bfdadbc66ed9e55e58329aa2721`.
 - Remote `alpha/r1-managed-runs` remains retired and preserved in the verified ignored bundle under `out/alpha-evidence/branch-retirement/`.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 

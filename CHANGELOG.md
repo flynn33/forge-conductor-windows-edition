@@ -68,7 +68,7 @@
 - Removed the remaining ordinary-run turn cap; completion, operator cancellation, a real failure, or context-triggered continuity now determine when managed work stops.
 - Moved the native session ledger under the memory root and added legacy-root migration before SQLite opens, preventing the ledger and central database from sharing an atomic-replace directory.
 - Updated LM Studio bootstrap tool selection to its supported required mode and proved a real context-triggered rollover with authoritative usage, saved handoff, fresh provider root, structured acknowledgment, predecessor fencing, and useful successor filesystem effects.
-- Advanced runtime/package identity to `0.9.3` / `0.9.3.0`; built, signed, unpacked, and rehashed the source-bound candidate. MSIX SHA-256 is `9704fac82920618e19bb183e6381961a3a1880b4b4824787034e120f266c2071`.
+- Advanced runtime/package identity to `0.9.3` / `0.9.3.0`; built, signed, unpacked, and rehashed the source-bound candidate. MSIX SHA-256 is `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`.
 
 ### R7 — Documented delivery
 

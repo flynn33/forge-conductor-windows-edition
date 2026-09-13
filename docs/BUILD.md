@@ -82,7 +82,7 @@ Executed successfully on September 12, 2026 (Debug and Release builds plus the s
 .\scripts\build.ps1 -Configuration Release -Architecture x64 -Product All
 .\scripts\package.ps1 -Configuration Release -Architecture x64 -DevelopmentSigning
 ```
-Debug app also built and launched through the MSBuild helper. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Candidate 0.9.3.0 is bound to commit `a348b41d57b24e06822276f799cfb0d21a57ab5d` and tree `5759d6d80b8228679398db41f893275270515000`. The signed internal distribution is under `out/dist/`; installed acceptance remains blocked by machine trust. Development signing uses a non-exportable current-user certificate.
+Debug app also built and launched through the MSBuild helper. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Candidate 0.9.3.0 is bound to commit `0cd18ae1e7fd160e2fcbbe690552ef5c61a4a203` and tree `0ff125b00f51f7ad9ece314edbcbde387c69fdc2`. The signed internal distribution is under `out/dist/`; installed acceptance remains blocked by machine trust. Development signing uses a non-exportable current-user certificate.
 `FORGE_SIGNING_PFX` remains supported for explicitly supplied signing credentials.
 Installation requires machine trust for the signing publisher; see the bundled install helper and current status.
 

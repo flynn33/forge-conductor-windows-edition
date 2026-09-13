@@ -1,5 +1,5 @@
 # Installer and installation
-**Current R6 continuation candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.3.0-x64.msix`, SHA-256 `9704fac82920618e19bb183e6381961a3a1880b4b4824787034e120f266c2071`, from commit `a348b41d57b24e06822276f799cfb0d21a57ab5d` and tree `5759d6d80b8228679398db41f893275270515000`.
+**Current R6 continuation candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.3.0-x64.msix`, SHA-256 `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`, from commit `0cd18ae1e7fd160e2fcbbe690552ef5c61a4a203` and tree `0ff125b00f51f7ad9ece314edbcbde387c69fdc2`.
 
 The 0.9.3 candidate replaces the earlier retained bytes after live-continuity repairs. Windows still requires the included development publisher certificate in Local Machine Trusted People. Current-user trust is insufficient and no package was registered, so exact unpacked-package execution is recorded separately from installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
 

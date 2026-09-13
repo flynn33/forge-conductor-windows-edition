@@ -29,7 +29,7 @@ Windows 11 x64; C++20; Visual Studio 2022/MSVC v143; Windows SDK 10.0.26100.0; C
   -Target ForgeConductor.Cli,ForgeConductor.Manager,ForgeConductor.SessionHost
 ```
 
-The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `ForgeConductor-0.9.3.0-x64.msix`, SHA-256 `9704fac82920618e19bb183e6381961a3a1880b4b4824787034e120f266c2071`. Follow [Installer and installation](docs/INSTALL.md) for provenance, hash verification, and the explicit Windows trust step.
+The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `ForgeConductor-0.9.3.0-x64.msix`, SHA-256 `9d9b899e7133cb9b46ac3f6221df5673e0bb7f55f1f92ef979d08ab77324607f`. Follow [Installer and installation](docs/INSTALL.md) for provenance, hash verification, and the explicit Windows trust step.
 
 <!-- alpha-phase-review:start -->
 Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
