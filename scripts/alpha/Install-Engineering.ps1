@@ -5,6 +5,9 @@ param(
     [switch]$TrustDevelopmentPublisher,
     [switch]$PreflightOnly
 )
+if ($PreflightOnly -and $TrustDevelopmentPublisher) {
+    throw 'PreflightOnly cannot be combined with TrustDevelopmentPublisher.'
+}
 $ErrorActionPreference='Stop'
 $metadata=Get-Content -LiteralPath (Join-Path $Distribution 'distribution.json') -Raw | ConvertFrom-Json
 $package=Join-Path $Distribution ([IO.Path]::GetFileName($metadata.package))
