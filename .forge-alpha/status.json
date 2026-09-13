@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T00:28:00Z",
-  "current_phase": "R7",
-  "current_slice": "R7.3",
+  "updated_at_utc": "2026-09-13T08:15:00Z",
+  "current_phase": "R6",
+  "current_slice": "R6.4",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r7-delivery",
-    "head": "87c7511fd7a5d7693d77bd85b899762ae3ea0509",
-    "origin_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
-    "github_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
+    "branch": "alpha/r6-live-continuity-fix",
+    "head": "a348b41d57b24e06822276f799cfb0d21a57ab5d",
+    "origin_main": "a161443c974bce594ef7a655a88d02b20dec6040",
+    "github_main": "a161443c974bce594ef7a655a88d02b20dec6040",
     "dirty_summary": [
-      "R7 documentation and retained-candidate traceability are pushed in explicitly draft PR #21; its PR reference closeout is pending push.",
+      "Reviewed continuation documentation is pending its owner commit and PR.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ref equality is separate from cleanliness: local main, origin/main, and authenticated GitHub main equal f83fe4c81c261545d70bdf8c786997ded4043dd2; dependent PR #19 and draft PR #20 remain open."
+      "Ignored live/provider/package evidence remains local under out/ and is referenced by stable IDs and hashes."
     ]
   },
   "baseline": {
@@ -50,7 +50,7 @@
           "evidence": "Authenticated owner flynn33 pushed alpha/r0-reconcile; PR #11 targets main; local, GitHub branch and PR head matched fcdf78761603a9369b172d90425b86c4ddbfb30b. Normal owner merge is pending."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R0 review of every active first-party document; historical, generated, agent-resource, fixture and legal exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R0.md",
       "last_known_merge": "0c52530"
     },
@@ -84,7 +84,7 @@
           "evidence": "The actual x64 Release GUI started an isolated Manager, rendered its state, closed, and reopened against the same surviving Manager PID 31172 without duplicate ownership. Live inference remains separately not run because LM Studio is offline. Receipt: out/alpha-evidence/r6/native-ui-and-reattach-20260912.json."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R1 review of every active first-party document; affected behavior updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R1.md",
       "last_known_merge": "325d0470b8924e5fd6c202abec2b948b8312eb3a"
     },
@@ -118,7 +118,7 @@
           "evidence": "The exact unpacked 0.9.2 GUI exposed accessible names/values, keyboard-operable controls, actual Windows High Contrast, and actual 150% text scaling. Settings remained readable and scrollable; temporary OS settings were restored."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R2 review of every active first-party document; affected telemetry/UI/operator/test content updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R2 review of every active first-party document; affected telemetry/UI/operator/test content updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R2.md",
       "last_known_merge": "bdd6e05fd1843a353116628b1ef33c2e6a948fc5"
     },
@@ -152,7 +152,7 @@
           "evidence": "After GUI close, Manager PID 31172 remained alive. Reopening the GUI attached to that same PID and retained exact project 51e1f9a4-5943-46f1-9797-35a275768cc3 with its authorized folder and healthy memory store."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R5 review records the later native page and reattachment evidence that closed R3-G2/G3.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 review records the later native page and reattachment evidence that closed R3-G2/G3.",
       "phase_receipt": ".forge-alpha/phases/R3.md",
       "last_known_merge": "1f6991d5fc60928c0a12ca348d08737fae703b1f"
     },
@@ -186,7 +186,7 @@
           "evidence": "The exact unpacked 0.9.2 Settings page exposed labeled paired context controls. Keyboard operation changed/restored the slider and exact token value, focus remained visible, High Contrast rendered strong boundaries, and 150% Windows text-size inspection passed."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R4.md",
       "last_known_merge": "b54525ac4aadb4847ad7685f4b9dd92c8546abc1"
     },
@@ -220,56 +220,56 @@
           "evidence": "Signer/public-certificate hashes, stable identity, increasing version, helper inputs and post-registration checks were inspected. A normal install attempt returned 0x800B0109 before registration because Local Machine publisher trust was unavailable; actual installed lifecycle stays open under R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in review-ready PR #19.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in review-ready PR #19.",
       "phase_receipt": ".forge-alpha/phases/R5.md",
       "last_known_merge": "f83fe4c81c261545d70bdf8c786997ded4043dd2"
     },
     "R6": {
       "implementation": "blocked",
-      "delivery": "pr_open",
-      "branch": "alpha/r6-acceptance",
+      "delivery": "not_started",
+      "branch": "alpha/r6-live-continuity-fix",
       "issue_number": 9,
       "milestone_number": 7,
-      "pr_number": 20,
-      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20",
-      "reviewed_head": "ad5b3fc6a9215f3fa08dccaefa14703e6183eedc",
+      "pr_number": null,
+      "pr_url": null,
+      "reviewed_head": "a348b41d57b24e06822276f799cfb0d21a57ab5d",
       "slices": {
         "R6.1": "blocked",
-        "R6.2": "blocked",
+        "R6.2": "verified",
         "R6.3": "verified",
         "R6.4": "blocked"
       },
       "gates": {
         "R6-G1": {
           "status": "blocked",
-          "evidence": "Signed 0.9.2.0 package build/unpack/CLI/GUI/Manager/profile-isolation checks passed, but Add-AppxPackage 0.9.1.0 returned 0x800B0109 without machine-level publisher trust. No package registered, so Start/update/uninstall are not claimed."
+          "evidence": "Signed exact 0.9.3.0 package build/unpack/native execution passed, but Windows still returns 0x800B0109 without Local Machine publisher trust. Registered install/Start/update/uninstall and authentic schema-9 compatibility remain open."
         },
         "R6-G2": {
-          "status": "blocked",
-          "evidence": "Manager detach/reattach passed on exact package bytes, but LM Studio TCP 127.0.0.1:1234 remained unavailable at 2026-09-13T00:05:58Z. No provider-originated acknowledgment or productive successor is claimed."
+          "status": "passed",
+          "evidence": "Real qwen3-coder-30b operation 786d0672-6231-4202-a46c-401732ade283 crossed the authoritative context threshold, saved exact handoff, activated fresh successor 7dd7aece-532a-459a-8489-ab9d62567466, received the structured provider acknowledgment, fenced the predecessor, and completed useful successor filesystem effects. Separate detach/restart recovery and exact unpacked 0.9.3 PACKAGE_OK run passed."
         },
         "R6-G3": {
           "status": "passed",
-          "evidence": "All required pages had prior native coverage. Exact 0.9.2 package telemetry, two-profile selection isolation, page restore, keyboard context controls, actual High Contrast and 150% Windows text-size checks passed; focused App/MCP/Infrastructure suites passed."
+          "evidence": "Prior exact-package visual/settings/accessibility evidence remains applicable. Full Debug/Release builds, five affected suites, signed 0.9.3 package extraction/rehash, and exact-package live tool read passed."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R6 full active first-party document review; exact candidate, accessibility, defect repair and remaining external gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 continuation full active first-party review; live rollover, 0.9.3 candidate, merged R7 state and remaining external gates reconciled.",
       "phase_receipt": ".forge-alpha/phases/R6.md",
       "last_known_merge": null
     },
     "R7": {
       "implementation": "verified",
-      "delivery": "pr_open",
+      "delivery": "synced",
       "branch": "alpha/r7-delivery",
       "issue_number": 10,
       "milestone_number": 8,
       "pr_number": 21,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/21",
-      "reviewed_head": "87c7511fd7a5d7693d77bd85b899762ae3ea0509",
+      "reviewed_head": "af7dc3f6fbb5d61e9fb76516055c2a8e5cc312e4",
       "slices": {
         "R7.1": "verified",
         "R7.2": "verified",
-        "R7.3": "in_progress"
+        "R7.3": "verified"
       },
       "gates": {
         "R7-G1": {
@@ -281,25 +281,16 @@
           "evidence": "All active first-party documents were reconciled and stamped R7; JSON syntax/schema and active local links pass. The retained candidate version, identity, source commit/tree and hashes are recorded, and blocked installed/live/schema-9 requirements remain visible."
         },
         "R7-G3": {
-          "status": "blocked",
-          "evidence": "PR #19, draft PR #20 and draft PR #21 remain open. The dependent chain has not actually merged, so post-merge GitHub/origin/local main equality cannot yet be claimed."
+          "status": "passed",
+          "evidence": "PRs #19, #20, and #21 merged in dependency order. Local main, origin/main, and authenticated GitHub main synchronized at a161443c974bce594ef7a655a88d02b20dec6040 with tracked tree 7d49cfb491740cdf49bcc7dc90ba3863e85d756b."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
       "phase_receipt": ".forge-alpha/phases/R7.md",
-      "last_known_merge": null
+      "last_known_merge": "a161443c974bce594ef7a655a88d02b20dec6040"
     }
   },
   "blockers": [
-    {
-      "id": "B-R1-LMSTUDIO-OFFLINE",
-      "failure": "TCP 127.0.0.1:1234 remained unavailable at 2026-09-13T00:20:40Z; no live provider/model observation or productive successor acceptance is available.",
-      "affected": "R6-G2 final live continuity acceptance",
-      "dependency_type": "external_service",
-      "last_observed_utc": "2026-09-13T00:20:40.8896057Z",
-      "necessary_external_action": "Start LM Studio local server with a tool-capable model when live verification is attempted.",
-      "next_independent_work": "Complete R7 delivery records and normal PR progression while retaining live productive continuity as blocked."
-    },
     {
       "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
       "failure": "Repository source contains central migrations C001-C007 while preserved prior evidence reports the owner store at schema 9; authentic C008/C009 history is unavailable.",
@@ -311,21 +302,21 @@
     },
     {
       "id": "B-R6-INSTALL-TRUST",
-      "failure": "At 2026-09-13T00:20:40Z the development publisher was absent from Local Machine Trusted People and no Forge package was registered. Prior Add-AppxPackage returned 0x800B0109; the machine-level publisher import was rejected by automatic approval policy.",
+      "failure": "Windows package deployment returns 0x800B0109 because the development publisher is absent from Local Machine Trusted People; no Forge package is registered. The elevated import was rejected by automatic approval policy.",
       "affected": "R6.1, R6.4 and R6-G1",
       "dependency_type": "windows_approval",
-      "last_observed_utc": "2026-09-13T00:20:40.8896057Z",
+      "last_observed_utc": "2026-09-13T08:15:00Z",
       "necessary_external_action": "Approve the bundled public development certificate for Local Machine Trusted People through the normal elevated helper, then rerun installation.",
-      "next_independent_work": "Use the verified exact unpacked 0.9.2 evidence and complete R7 delivery without calling installed acceptance passed."
+      "next_independent_work": "Deliver the verified live-continuity repair and 0.9.3 candidate while keeping registered lifecycle acceptance open."
     }
   ],
   "known_bugs": [],
-  "last_result": "R7.1/R7.2 reconciled the complete active documentation set and retained the unchanged tested 0.9.2.0 candidate. Its MSIX and ZIP hashes exactly match the embedded source-bound distribution record. R6 installed/live gates and R7 merge/synchronization remain open.",
-  "next_action": "Push the R7 PR #21 reference closeout, then follow normal merge/review rules in dependency order (#19, #20, #21). After actual merges, fetch and fast-forward local main and prove GitHub/origin/local equality; keep R6 external gates open.",
+  "last_result": "R6 live continuity repaired and verified against real LM Studio. R6-G2 passes with authoritative usage, exact handoff, fresh provider root, structured acknowledgment, fencing, useful successor effects and Manager recovery. Signed exact 0.9.3 package live smoke passed; registered lifecycle and authentic schema-9 compatibility remain open.",
+  "next_action": "Commit and push the reviewed R6 continuation, open the permitted continuation PR against main, follow normal merge rules, then synchronize local/origin/GitHub main. Keep R6-G1 and schema-9 compatibility open.",
   "acceptance": {
     "installed_workflow": "blocked_machine_trust",
-    "live_productive_successor": "blocked_lm_studio_offline",
-    "native_visuals_settings": "passed_exact_unpacked_0_9_2",
+    "live_productive_successor": "passed_real_lm_studio_qwen3_coder_30b",
+    "native_visuals_settings": "passed_exact_unpacked_candidate",
     "installed_lifecycle": "blocked_machine_trust",
     "owner_existing_data_compatibility": "blocked_authentic_schema_history_unavailable_live_store_untouched",
     "alpha_accepted": false

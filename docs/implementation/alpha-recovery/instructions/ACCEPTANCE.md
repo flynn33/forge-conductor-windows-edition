@@ -48,6 +48,6 @@ Fix a required-path crash, data loss/cross-project write, broken settings, unusa
 All gates need a short outcome and evidence reference. Use the [phase closeout](../templates/PHASE-CLOSEOUT.md) and [acceptance record](../templates/ACCEPTANCE-RESULT.md); no new evidence engine is required. A missing environment is not a bug fix, a mock is not the provider, a signed ZIP is not an installation, and a saved NEXT.md is not a finished assignment.
 
 <!-- alpha-phase-review:start -->
-Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -39,7 +39,7 @@ R2 focused coverage uses the Windows CPU/RAM collector tests, Manager protocol/d
 tests, and `ForgeConductor.App.TelemetryPresentationTests`. The presentation check preserves stale CPU, unsupported GPU,
 Manager-derived context headroom, bounded histories, measured latency, store failures, and page detail projections.
 The ignored receipt `out/alpha-evidence/r2/freshness-lifetime.json` records a real isolated Debug Manager/app lifetime
-probe and matching Windows process/RAM observations. R6 later completed native keyboard, High Contrast, and 150% Windows text-size inspection on the exact 0.9.2 package.
+probe and matching Windows process/RAM observations. R6 later completed native keyboard, High Contrast, and 150% Windows text-size inspection on the exact 0.9.3 package.
 
 R4 focused coverage uses the Manager controller settings groups, protocol codec, dispatcher maintenance group, project-memory application/cache groups, and Windows memory/continuity repository groups. Together they cover exact confirmation rejection without service calls, typed combined-reset aggregation, transactional reset, project isolation, post-close rejection, restart durability, and continuity reset preservation. R6 completed the separate native keyboard, focus, High Contrast, and 150% text-size walkthrough.
 
@@ -54,13 +54,17 @@ Close the GUI during the run and reattach once to verify that ownership is in th
 An unrecorded inference or ambiguous external tool effect after interruption must not be blindly repeated.
 A small targeted interruption exercise suffices; do not build an adversarial crash campaign for Alpha.
 
+## Live-provider result
+
+The R6 continuation ran the real smoke with LM Studio model `qwen3-coder-30b`, provider capacity 32768, effective capacity 13500, and authoritative usage. Run `786d0672-6231-4202-a46c-401732ade283` crossed the context threshold, saved the canonical handoff, activated fresh-root successor `7dd7aece-532a-459a-8489-ab9d62567466`, accepted the provider's structured acknowledgment, fenced the predecessor, and completed useful post-successor filesystem effects. Exact unpacked 0.9.3 product bytes then completed a separate live read with `PACKAGE_OK`. R6-G2 passes; the installed pass below remains open.
+
 ## One installed-app acceptance pass
 Use a Windows VM or suitable clean profile without source checkout/Visual Studio. Install the signed MSIX,
 launch via Start, exercise the native pages and main workflow, update/reinstall once, then uninstall once with data retained.
 Use screenshots or a short operator record for the actual GUI; headless process creation does not prove UI usability.
 LM Studio/model installation remains a documented prerequisite, not a hidden embedded model download.
 
-R7 introduced no functional or packaging delta and reuses the R6 results under the affected-check rule. R6 packaging verification used the full x64 Release product build and `scripts/package.ps1 -DevelopmentSigning` at commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`. The package script signed, unpacked, and rehashed the 0.9.2.0 MSIX. The exact unpacked CLI/GUI/Manager path, detach/reattach, telemetry, profile-isolation and accessibility checks passed. A normal 0.9.1.0 installation attempt still returned `0x800B0109` because machine-level trust for the development publisher was absent; keep installed checks open until that explicit trust action succeeds.
+The 0.9.3 continuation invalidated the earlier managed-run and packaging checks. The full Debug product build, five affected focused suites, full Release product build, package signing/extraction/rehash, real rollover, recovery, and exact-package live smoke passed. Registered installation still returns `0x800B0109` without machine trust.
 
 ## Evidence
 For each required result record command/action, commit, configuration, exit code or observed behavior,
@@ -70,6 +74,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

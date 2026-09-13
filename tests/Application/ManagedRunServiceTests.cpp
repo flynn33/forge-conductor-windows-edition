@@ -306,7 +306,7 @@ public:
                     {}});
         }
         if (mode == Mode::ExtendedToolLoop) {
-            if (calls <= 40U) {
+            if (calls <= 80U) {
                 const auto suffix = std::to_string(calls);
                 return Domain::Result<Domain::ManagedProviderTurnResult>::success(
                     Domain::ManagedProviderTurnResult{
@@ -878,8 +878,8 @@ int main()
            Domain::ManagedRunState::Completed);
     assert(extendedCompleted.record.outputText ==
            "extended tool loop completed");
-    assert(extendedTransport.calls == 41U);
-    assert(extendedRouter.calls == 40U);
+    assert(extendedTransport.calls == 81U);
+    assert(extendedRouter.calls == 80U);
     extendedService.shutdown();
 
     Store continuityStore;

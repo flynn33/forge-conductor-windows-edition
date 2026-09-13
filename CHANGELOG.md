@@ -61,17 +61,26 @@
 - Completed the native Settings accessibility work with keyboard operation of the context slider and exact token value, actual Windows High Contrast, and actual 150% text scaling; every temporary system setting was restored.
 - Retained installation and live-provider gates as blocked: Windows returned `0x800B0109` without machine-level publisher trust, and LM Studio was still unavailable at `127.0.0.1:1234`.
 
+### R6 continuation — Live managed continuity
+
+- Repaired the repository-backed managed-run start transaction so each new run creates the admissible open session and active binding before it enters the running state.
+- Moved continuity observation after persisted native tool effects, retained bounded completed-work summaries in the canonical handoff, and instructed the fresh successor to continue without repeating those effects.
+- Removed the remaining ordinary-run turn cap; completion, operator cancellation, a real failure, or context-triggered continuity now determine when managed work stops.
+- Moved the native session ledger under the memory root and added legacy-root migration before SQLite opens, preventing the ledger and central database from sharing an atomic-replace directory.
+- Updated LM Studio bootstrap tool selection to its supported required mode and proved a real context-triggered rollover with authoritative usage, saved handoff, fresh provider root, structured acknowledgment, predecessor fencing, and useful successor filesystem effects.
+- Advanced runtime/package identity to `0.9.3` / `0.9.3.0`; built, signed, unpacked, and rehashed the source-bound candidate. MSIX SHA-256 is `9704fac82920618e19bb183e6381961a3a1880b4b4824787034e120f266c2071`.
+
 ### R7 — Documented delivery
 
 - Reconciled every active first-party document with the implemented capability, exact acceptance evidence, honest limitations, and current PR dependency chain.
 - Retained and independently rehashed the unchanged tested 0.9.2.0 candidate: MSIX `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, distribution ZIP `18e43f5508499b56ec802447cfb98dfe8bfc048ba1f649eb1da657f0ae28f8dd`, source commit `d8a2d68c80f2fd090aa36466a517725a0eb59445`.
-- Kept installed lifecycle, live-provider continuity, authentic schema-9 compatibility, PR merge, and post-merge main synchronization visibly open.
+- Kept installed lifecycle and authentic schema-9 compatibility visibly open. PRs #19–#21 merged in dependency order and local/origin/GitHub main synchronized at `a161443c974bce594ef7a655a88d02b20dec6040` before the R6 continuation.
 
 ### Remaining Alpha work
 
-- Complete machine-trusted install/update/uninstall and live productive continuity acceptance when those external prerequisites are available; complete dependency-order PR merges and exact main synchronization without calling the open gates passed.
+- Complete machine-trusted install/Start/update/uninstall acceptance and recover authentic C008/C009 history before accepting the owner schema-9 store. Live productive continuity is now verified.
 
 <!-- alpha-phase-review:start -->
-Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
+Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

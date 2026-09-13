@@ -692,11 +692,7 @@ private:
         std::vector<Domain::ManagedFunctionCallOutput> toolOutputs;
         std::vector<Domain::ContinuityWorkEntry> completedToolWork;
         std::set<Domain::ProviderSessionId> observedResponses;
-        constexpr std::size_t MaximumTurns = 64U;
-        for (std::size_t turnIndex{};
-             record.state == Domain::ManagedRunState::Running &&
-             turnIndex < MaximumTurns;
-             ++turnIndex) {
+        while (record.state == Domain::ManagedRunState::Running) {
             if (!awaitDispatchBoundary(
                     request, record, persistenceContext, token)) {
                 break;

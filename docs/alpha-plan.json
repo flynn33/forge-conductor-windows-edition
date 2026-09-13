@@ -29,14 +29,14 @@
     "github_delivery_truth": "actual phase pull request state"
   },
   "phase_completion_rule": "A phase checkpoint requires its applicable gates, documentation review, reviewed push and primary PR; continue to the next feasible R0-R7 action. Delivery completes only after actual merge/sync, and final Alpha requires all original R6 actual-product gates.",
-  "last_reviewed_phase": "R7",
+  "last_reviewed_phase": "R6-continuation",
   "last_reviewed_on": "2026-09-12",
   "phases": [
     {
       "id": "R0",
       "slug": "reconcile",
       "title": "Reconcile the repository and establish the delivery workflow",
-      "milestone": "WA-R0 \u2014 Current baseline and accountable delivery",
+      "milestone": "WA-R0 — Current baseline and accountable delivery",
       "depends": [],
       "refs": [
         "S01",
@@ -59,7 +59,7 @@
           "id": "R0.2",
           "title": "Replace competing instructions",
           "work": "Adopt this package, migrate the existing Alpha plan and status without losing historical evidence, and retire conflicting historical selectors from active guidance. Keep working build/dependency helpers.",
-          "completion_evidence": "Root AGENTS and active links point to this roadmap; prior P0\u2013P6 are a historical crosswalk, not another current assignment."
+          "completion_evidence": "Root AGENTS and active links point to this roadmap; prior P0–P6 are a historical crosswalk, not another current assignment."
         },
         {
           "id": "R0.3",
@@ -100,7 +100,7 @@
       "id": "R1",
       "slug": "managed-runs",
       "title": "Complete Manager-owned inference and context continuity wiring",
-      "milestone": "WA-R1 \u2014 Real managed execution path",
+      "milestone": "WA-R1 — Real managed execution path",
       "depends": [
         "R0"
       ],
@@ -176,7 +176,7 @@
       "id": "R2",
       "slug": "visual-telemetry",
       "title": "Deliver real native telemetry and visual dashboards",
-      "milestone": "WA-R2 \u2014 Live visual operations",
+      "milestone": "WA-R2 — Live visual operations",
       "depends": [
         "R0"
       ],
@@ -254,7 +254,7 @@
       "id": "R3",
       "slug": "native-workflows",
       "title": "Finish the native operating pages and local workflows",
-      "milestone": "WA-R3 \u2014 Usable native workflows",
+      "milestone": "WA-R3 — Usable native workflows",
       "depends": [
         "R0"
       ],
@@ -329,7 +329,7 @@
       "id": "R4",
       "slug": "settings-reset",
       "title": "Complete accessible settings and scoped maintenance",
-      "milestone": "WA-R4 \u2014 Accessible controls and safe reset",
+      "milestone": "WA-R4 — Accessible controls and safe reset",
       "depends": [
         "R0"
       ],
@@ -404,7 +404,7 @@
       "id": "R5",
       "slug": "installer-data",
       "title": "Finish the Windows installer and existing-data behavior",
-      "milestone": "WA-R5 \u2014 Installable Windows candidate",
+      "milestone": "WA-R5 — Installable Windows candidate",
       "depends": [
         "R0"
       ],
@@ -481,7 +481,7 @@
       "id": "R6",
       "slug": "acceptance",
       "title": "Run the small real-product acceptance pass and fix blockers",
-      "milestone": "WA-R6 \u2014 Working Alpha proven",
+      "milestone": "WA-R6 — Working Alpha proven",
       "depends": [
         "R1",
         "R2",
@@ -555,7 +555,7 @@
       "id": "R7",
       "slug": "delivery",
       "title": "Close documentation, merge the delivery PR and synchronize main",
-      "milestone": "WA-R7 \u2014 Documented and synchronized delivery",
+      "milestone": "WA-R7 — Documented and synchronized delivery",
       "depends": [
         "R6"
       ],
