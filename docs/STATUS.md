@@ -1,6 +1,6 @@
 # Product status
 
-Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R5 are merged through PR #18 at `f83fe4c81c261545d70bdf8c786997ded4043dd2`, and local main was fast-forwarded to that exact ref. PR #19 carries the narrow R5 closeout. R6 product repair and feasible candidate acceptance are complete on `alpha/r6-acceptance`; the phase PR and external gates remain separate in [the execution ledger](../.forge-alpha/status.json).
+Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R5 are merged through PR #18 at `f83fe4c81c261545d70bdf8c786997ded4043dd2`, and local main was fast-forwarded to that exact ref. PR #19 carries the narrow R5 closeout. R6 product repair and feasible candidate acceptance are complete in draft [PR #20](https://github.com/flynn33/forge-conductor-windows-edition/pull/20); review, merge and external gates remain separate in [the execution ledger](../.forge-alpha/status.json).
 
 | Area | Current source/evidence | Remaining requirement |
 |---|---|---|
