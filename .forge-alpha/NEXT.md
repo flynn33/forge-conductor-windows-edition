@@ -8,7 +8,7 @@
 
 ## Verified state
 
-- R1–R5 implementation is merged through PR #18 at `f83fe4c81c261545d70bdf8c786997ded4043dd2`; local main and origin/main match it. PR #19 preserves the narrow R5 closeout and later native evidence. Primary R6 [PR #20](https://github.com/flynn33/forge-conductor-windows-edition/pull/20) is open explicitly as a draft.
+- R1–R5 implementation is merged through PR #18 at `f83fe4c81c261545d70bdf8c786997ded4043dd2`; local main and origin/main match it. PR #19 preserves the narrow R5 closeout and later native evidence. Primary R6 [PR #20](https://github.com/flynn33/forge-conductor-windows-edition/pull/20) and primary R7 [PR #21](https://github.com/flynn33/forge-conductor-windows-edition/pull/21) are open explicitly as drafts.
 - R6 fixed cross-profile page/project selection leakage and stale-ID use. Profile A restores exact project `51e1f9a4-5943-46f1-9797-35a275768cc3`; profile B retains zero projects and no selection.
 - Candidate source commit `d8a2d68c80f2fd090aa36466a517725a0eb59445` / tree `151ccf51a9aa3d1a0b6fdcfe22af2cbf599a7c6e` produced signed `ForgeConductor-0.9.2.0-x64.msix`, SHA-256 `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`; bundle SHA-256 `18e43f5508499b56ec802447cfb98dfe8bfc048ba1f649eb1da657f0ae28f8dd`.
 - Full x64 Release products built. Focused App telemetry, MCP protocol/process, and Infrastructure tests passed. Exact unpacked MSIX bytes supplied the CLI, GUI and Manager; no repository build path was used for package acceptance.
@@ -18,7 +18,7 @@
 
 ## Next exact action
 
-Commit and push the completed R7.1/R7.2 record, open the primary R7 PR explicitly as a draft against main, record its URL/head, and then follow normal dependency-order merge and exact-main synchronization. Keep R6-G1/G2 open.
+Push the R7 PR #21 reference closeout, then follow normal dependency-order review/merge for PR #19, PR #20, and PR #21. After actual merges, fetch and fast-forward local main and prove GitHub/origin/local equality. Keep R6-G1/G2 open.
 
 ## Open dependencies
 

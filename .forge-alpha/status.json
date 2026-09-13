@@ -2,18 +2,18 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T00:21:00Z",
+  "updated_at_utc": "2026-09-13T00:28:00Z",
   "current_phase": "R7",
   "current_slice": "R7.3",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r7-delivery",
-    "head": "ad5b3fc6a9215f3fa08dccaefa14703e6183eedc",
+    "head": "87c7511fd7a5d7693d77bd85b899762ae3ea0509",
     "origin_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
     "github_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
     "dirty_summary": [
-      "R7 documentation and retained-candidate traceability are complete in the working tree; commit, push and the explicitly draft primary PR remain.",
+      "R7 documentation and retained-candidate traceability are pushed in explicitly draft PR #21; its PR reference closeout is pending push.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
       "Ref equality is separate from cleanliness: local main, origin/main, and authenticated GitHub main equal f83fe4c81c261545d70bdf8c786997ded4043dd2; dependent PR #19 and draft PR #20 remain open."
     ]
@@ -259,13 +259,13 @@
     },
     "R7": {
       "implementation": "verified",
-      "delivery": "not_started",
+      "delivery": "pr_open",
       "branch": "alpha/r7-delivery",
       "issue_number": 10,
       "milestone_number": 8,
-      "pr_number": null,
-      "pr_url": null,
-      "reviewed_head": null,
+      "pr_number": 21,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/21",
+      "reviewed_head": "87c7511fd7a5d7693d77bd85b899762ae3ea0509",
       "slices": {
         "R7.1": "verified",
         "R7.2": "verified",
@@ -282,7 +282,7 @@
         },
         "R7-G3": {
           "status": "blocked",
-          "evidence": "PR #19 and draft PR #20 remain open and the R7 draft PR is pending. The dependent chain has not actually merged, so post-merge GitHub/origin/local main equality cannot yet be claimed."
+          "evidence": "PR #19, draft PR #20 and draft PR #21 remain open. The dependent chain has not actually merged, so post-merge GitHub/origin/local main equality cannot yet be claimed."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md \u2014 R7 full active first-party document review; final capability/evidence mapping, retained candidate provenance, delivery dependencies and open R6 acceptance gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
@@ -321,7 +321,7 @@
   ],
   "known_bugs": [],
   "last_result": "R7.1/R7.2 reconciled the complete active documentation set and retained the unchanged tested 0.9.2.0 candidate. Its MSIX and ZIP hashes exactly match the embedded source-bound distribution record. R6 installed/live gates and R7 merge/synchronization remain open.",
-  "next_action": "Commit and push R7 documentation, open primary R7 PR explicitly as a draft against main, record its URL/head, then follow normal dependency-order merge and exact-main synchronization while R6 external gates remain open.",
+  "next_action": "Push the R7 PR #21 reference closeout, then follow normal merge/review rules in dependency order (#19, #20, #21). After actual merges, fetch and fast-forward local main and prove GitHub/origin/local equality; keep R6 external gates open.",
   "acceptance": {
     "installed_workflow": "blocked_machine_trust",
     "live_productive_successor": "blocked_lm_studio_offline",
