@@ -12,6 +12,7 @@
 #include <array>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <memory>
 #include <sstream>
@@ -24,6 +25,50 @@ struct ProcessHandles final {
     PROCESS_INFORMATION value{};
     ~ProcessHandles() { if (value.hThread) CloseHandle(value.hThread); if (value.hProcess) CloseHandle(value.hProcess); }
 };
+
+struct NativeHandle final {
+    HANDLE value{INVALID_HANDLE_VALUE};
+    NativeHandle() = default;
+    NativeHandle(const NativeHandle&) = delete;
+    NativeHandle& operator=(const NativeHandle&) = delete;
+    ~NativeHandle()
+    {
+        close();
+    }
+    [[nodiscard]] bool valid() const noexcept
+    {
+        return value != nullptr && value != INVALID_HANDLE_VALUE;
+    }
+    void close() noexcept
+    {
+        if (valid()) CloseHandle(value);
+        value = INVALID_HANDLE_VALUE;
+    }
+};
+
+[[nodiscard]] std::string managerStartupDetail(
+    const std::filesystem::path& path) noexcept
+{
+    try {
+        std::ifstream input{path, std::ios::binary};
+        if (!input) return {};
+        std::string detail(2'048U, '\0');
+        input.read(detail.data(), static_cast<std::streamsize>(detail.size()));
+        detail.resize(static_cast<std::size_t>(input.gcount()));
+        for (auto& character : detail) {
+            if (character == '\r' || character == '\n' || character == '\t') {
+                character = ' ';
+            } else if (static_cast<unsigned char>(character) < 0x20U) {
+                character = '?';
+            }
+        }
+        while (!detail.empty() && detail.back() == ' ') detail.pop_back();
+        const auto first = detail.find_first_not_of(' ');
+        return first == std::string::npos ? std::string{} : detail.substr(first);
+    } catch (...) {
+        return {};
+    }
+}
 
 [[nodiscard]] Domain::OperationContext operationContext(
     const std::shared_ptr<W::SystemClock>& clock,
@@ -800,33 +845,79 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
         }
         STARTUPINFOW startup{};
         startup.cb = sizeof(startup);
+        std::filesystem::path startupLog;
+        NativeHandle startupInput;
+        NativeHandle startupOutput;
+        try {
+            startupLog = std::filesystem::temp_directory_path() /
+                (L"ForgeConductor.Manager.startup." +
+                    std::to_wstring(GetCurrentProcessId()) + L".log");
+            SECURITY_ATTRIBUTES attributes{};
+            attributes.nLength = sizeof(attributes);
+            attributes.bInheritHandle = TRUE;
+            startupOutput.value = CreateFileW(
+                startupLog.c_str(), GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                &attributes, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            startupInput.value = CreateFileW(
+                L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                &attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (startupOutput.valid() && startupInput.valid()) {
+                startup.dwFlags = STARTF_USESTDHANDLES;
+                startup.hStdInput = startupInput.value;
+                startup.hStdOutput = startupOutput.value;
+                startup.hStdError = startupOutput.value;
+            }
+        } catch (...) {
+            startupLog.clear();
+        }
+        const auto discardStartupLog = [&]() noexcept {
+            startupInput.close();
+            startupOutput.close();
+            std::error_code ignored;
+            std::filesystem::remove(startupLog, ignored);
+        };
         ProcessHandles process;
-        if (!CreateProcessW(executable.c_str(), arguments.data(), nullptr, nullptr, FALSE,
+        const auto inheritHandles =
+            (startup.dwFlags & STARTF_USESTDHANDLES) != 0 ? TRUE : FALSE;
+        if (!CreateProcessW(executable.c_str(), arguments.data(), nullptr, nullptr, inheritHandles,
                 CREATE_NO_WINDOW, nullptr, executable.parent_path().c_str(), &startup, &process.value)) {
-            return "Manager could not start. Windows error " + std::to_string(GetLastError()) +
+            const auto error = GetLastError();
+            discardStartupLog();
+            return "Manager could not start. Windows error " + std::to_string(error) +
                 ". Verify the manager executable is installed beside the app.";
         }
         const DWORD startupState = WaitForSingleObject(process.value.hProcess, 2'000U);
         if (startupState == WAIT_OBJECT_0) {
             DWORD exitCode{};
             if (!GetExitCodeProcess(process.value.hProcess, &exitCode)) {
+                discardStartupLog();
                 return "Manager exited during startup and Windows could not read its exit code.";
             }
             if (exitCode == static_cast<DWORD>(
                     Manager::ManagerUnsupportedDataStoreExitCode)) {
+                discardStartupLog();
                 return "The default Forge Conductor data store is newer than this build "
                     "supports and was left unchanged. Install a build that supports that "
                     "store, or launch ForgeConductorApp.exe with --alpha-root followed by "
                     "an absolute empty folder to use an explicitly isolated profile.";
             }
+            startupOutput.close();
+            const auto detail = managerStartupDetail(startupLog);
+            discardStartupLog();
             return "Manager exited during startup with code " +
                 std::to_string(exitCode) +
-                ". Open Diagnostics for recovery details.";
+                (detail.empty()
+                    ? ". Open Diagnostics for recovery details."
+                    : ". " + detail);
         }
         if (startupState == WAIT_FAILED) {
+            const auto error = GetLastError();
+            discardStartupLog();
             return "Manager started, but Windows could not observe its startup state (error " +
-                std::to_string(GetLastError()) + "). Select Refresh to attach.";
+                std::to_string(error) + "). Select Refresh to attach.";
         }
+        discardStartupLog();
         // The manager is independently owned. Closing this connection never terminates it.
         return alphaProfile_
             ? "Isolated Alpha manager start requested for " +
