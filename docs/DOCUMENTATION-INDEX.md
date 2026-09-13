@@ -3,15 +3,15 @@
 Current plan: `windows-alpha-recovery-2026-09-12`
 Latest checkpoint review: R6 internal Alpha completion continuation — 2026-09-13 — [.forge-alpha/phases/R6.md](../.forge-alpha/phases/R6.md)
 
-The earlier R2 telemetry parity review covered every active first-party document below. This R6 continuation reviewed the affected product, installer, acceptance, roadmap, ledger, cursor, and handoff documents against the owner's fresh persistent-profile decision, preserved schema-9 store, current signed candidate, side-effect-free preflight, preserved managed-run/live-provider evidence, and exact administrator prerequisite. R6 is still open, so unchanged documents retain their last full-review markers. `content_updated` means behavior/status or phase ownership changed; `review_stamp_updated` means applicable content remained current and its single review marker was refreshed.
+The earlier R2 telemetry parity review covered every active first-party document below. This R6 continuation reviewed the affected product, architecture, installer, acceptance, roadmap, ledger, cursor, and handoff documents against the registered normal-account results, narrow MSIX durable-profile exclusion, preserved schema-9 store, current signed candidate, side-effect-free preflight, preserved managed-run/live-provider evidence, unavailable native-app control surface, and remaining disposable lifecycle. R6 is still open, so unchanged documents retain their last full-review markers. `content_updated` means behavior/status or phase ownership changed; `review_stamp_updated` means applicable content remained current and its single review marker was refreshed.
 
 | Actual path | Class | Canonical subject | Latest applicable review |
 |---|---|---|---|
 | `AGENTS.md` | active first-party | Repository execution guidance | content_updated — owner-selected persistent profile and deferred legacy migration |
-| `CHANGELOG.md` | active first-party | Implemented user-facing changes | content_updated — R6 preflight, receipt integrity, replacement candidate, and open installed gate |
-| `docs/ALPHA-ACCEPTANCE-RECORD.md` | active first-party | Active product/developer/operator reference | content_updated — persistent-profile candidate, owner-deferred migration, exact prerequisite, and open installed gate |
+| `CHANGELOG.md` | active first-party | Implemented user-facing changes | content_updated — R6 registered install, durable storage repair, replacement candidate, and open disposable lifecycle |
+| `docs/ALPHA-ACCEPTANCE-RECORD.md` | active first-party | Active product/developer/operator reference | content_updated — registered normal-account evidence, owner-deferred migration, and open disposable lifecycle |
 | `docs/ALPHA-SCOPE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/ARCHITECTURE.md` | active first-party | Active product/developer/operator reference | content_updated — Manager-owned tiered native telemetry architecture and 0.9.5 identity |
+| `docs/ARCHITECTURE.md` | active first-party | Active product/developer/operator reference | content_updated — narrow MSIX unvirtualization contract and durable Internal Alpha root |
 | `docs/BUILD.md` | active first-party | Active product/developer/operator reference | content_updated — exact 0.9.5 Release and signed-package provenance |
 | `docs/DEFERRED.md` | active first-party | Active product/developer/operator reference | content_updated — owner-deferred legacy migration backlog |
 | `docs/DOCUMENTATION-INDEX.md` | active first-party | Active/historical documentation ownership | content_updated — R6 affected-document checkpoint and preserved full-review boundary |
@@ -37,28 +37,28 @@ The earlier R2 telemetry parity review covered every active first-party document
 | `docs/implementation/CONTEXT-CONTINUITY.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 | `docs/implementation/NATIVE-GUI.md` | active first-party | Active product/developer/operator reference | content_updated — complete native Rig panels and histories |
 | `docs/implementation/REPOSITORY-ORGANIZATION.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `docs/INSTALL.md` | active first-party | Active product/developer/operator reference | content_updated — exact replacement candidate, preflight, receipt behavior, and administrator handoff |
-| `docs/INSTALLED-ACCEPTANCE-HANDOFF.md` | active first-party | Authorized installed lifecycle procedure | content_updated — exact hashes/import command, disposable lifecycle, and final normal-account pass |
+| `docs/INSTALL.md` | active first-party | Active product/developer/operator reference | content_updated — registered candidate, preflight, durable storage contract, and remaining disposable lifecycle |
+| `docs/INSTALLED-ACCEPTANCE-HANDOFF.md` | active first-party | Authorized installed lifecycle procedure | content_updated — exact hashes, verified trust/current-host results, and internally consistent disposable lifecycle |
 | `docs/PARITY.md` | active first-party | Active product/developer/operator reference | content_updated — telemetry parity plus durable-profile/deferred-migration scope |
-| `docs/STATUS.md` | active first-party | Current product evidence and remaining acceptance | content_updated — persistent-profile candidate, owner decision, exact blocker, and open installed gate |
-| `docs/TESTING.md` | active first-party | Active product/developer/operator reference | content_updated — affected telemetry tests, exact-candidate visual evidence, and retained rollover proof |
+| `docs/STATUS.md` | active first-party | Current product evidence and remaining acceptance | content_updated — registered candidate, durable profile, exact disposable blocker, and open installed gate |
+| `docs/TESTING.md` | active first-party | Active product/developer/operator reference | content_updated — installed smoke, manifest contract, retained visual and rollover proof, and open lifecycle |
 | `docs/USER-GUIDE.md` | active first-party | Active product/developer/operator reference | content_updated — persistent Internal Alpha root and exact trust handoff |
 | `docs/WINDOWS_TOOLCHAIN.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 | `packaging/Assets/README.md` | active first-party | Active packaging/operator reference | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `packaging/README.md` | active first-party | Active packaging/operator reference | content_updated — preflight guard, companion hashes, and persistent-profile candidate |
-| `README.md` | active first-party | Product entry point and current status | content_updated — durable profile, deferred migration, exact candidate, and open install gate |
-| `ROADMAP.md` | active first-party | R0–R7 phase delivery and links | content_updated — active R6 PR #25, persistent profile, and narrowed installed gate |
+| `packaging/README.md` | active first-party | Active packaging/operator reference | content_updated — preflight guard, companion hashes, manifest persistence contract, and registered candidate |
+| `README.md` | active first-party | Product entry point and current status | content_updated — durable profile, deferred migration, exact candidate, and open disposable lifecycle |
+| `ROADMAP.md` | active first-party | R0–R7 phase delivery and links | content_updated — active R6 PR #25, registered normal-account results, and narrowed disposable gate |
 | `.forge-alpha/phases/R0.md` | active first-party | R0 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 | `.forge-alpha/phases/R1.md` | active first-party | R1 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 | `.forge-alpha/phases/R2.md` | active first-party | R2 closeout, gates and documentation review | content_updated — parity implementation, focused tests, exact-candidate visuals, High Contrast, and repaired 150% text verification |
 | `.forge-alpha/phases/R3.md` | active first-party | R3 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 | `.forge-alpha/phases/R4.md` | active first-party | R4 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 | `.forge-alpha/phases/R5.md` | active first-party | R5 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
-| `.forge-alpha/phases/R6.md` | active first-party | R6 closeout, gates and documentation review | content_updated — current candidate/profile evidence, owner decision, exact administrator action, and open installed gate |
+| `.forge-alpha/phases/R6.md` | active first-party | R6 closeout, gates and documentation review | content_updated — registered candidate/profile evidence, MSIX persistence repair, owner decision, and open disposable lifecycle |
 | `.forge-alpha/phases/R7.md` | active first-party | R7 closeout, gates and documentation review | content_updated — merged R7 delivery receipt retained |
 | `docs/alpha-plan.json` | active first-party machine-readable | Stable R0–R7 scope, slices, gates and GitHub IDs | content_updated — owner-selected persistent-profile R6 acceptance |
-| `.forge-alpha/status.json` | active first-party machine-readable | Execution/delivery ledger and blockers | content_updated — current candidate/profile, deferred migration, and single external install dependency |
-| `.forge-alpha/NEXT.md` | active first-party operational | Exact resume cursor | content_updated — exact certificate import and post-trust installed actions |
+| `.forge-alpha/status.json` | active first-party machine-readable | Execution/delivery ledger and blockers | content_updated — registered candidate/profile, deferred migration, disposable-environment dependency, and unavailable native-app control surface |
+| `.forge-alpha/NEXT.md` | active first-party operational | Exact resume cursor | content_updated — current installed result and exact disposable lifecycle action |
 | `docs/implementation/alpha-recovery/github/plan.json` | active first-party machine-readable | Desired GitHub phase records | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 | `docs/implementation/alpha-recovery/tracking/status.schema.json` | active first-party schema | Ledger shape and state values | review_stamp_updated — applicable content checked against the R2 telemetry parity follow-up; no behavior change required |
 

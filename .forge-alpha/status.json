@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12, the owner telemetry-parity correction, and the owner internal-Alpha completion goal; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T16:11:21Z",
+  "updated_at_utc": "2026-09-13T16:55:47Z",
   "current_phase": "R6",
   "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r6-internal-alpha-completion",
-    "head": "53901f110e9d7c5f360da65eb4419a37f4e24613",
+    "head": "dab23aa8555a37203ba11136c58bb7f799317356",
     "origin_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "github_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "dirty_summary": [
-      "Draft PR #25 carries the persistent Internal Alpha startup, side-effect-free preflight guard, focused regression, current signed candidate, and owner-deferred legacy migration decision.",
+      "Draft PR #25 carries the persistent Internal Alpha startup, side-effect-free preflight guard, narrow MSIX data-persistence contract, current signed candidate, registered normal-account evidence, and owner-deferred legacy migration decision.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ignored candidate-0.9.5.0-20260913-160324 contains the signed persistent-profile MSIX and records separate application/distribution provenance."
+      "Ignored candidate-0.9.5.0-20260913-165014 contains the signed persistent-profile MSIX and records separate application/distribution provenance."
     ]
   },
   "baseline": {
@@ -232,7 +232,7 @@
       "milestone_number": 7,
       "pr_number": 25,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/25",
-      "reviewed_head": "53901f110e9d7c5f360da65eb4419a37f4e24613",
+      "reviewed_head": "dab23aa8555a37203ba11136c58bb7f799317356",
       "slices": {
         "R6.1": "blocked",
         "R6.2": "verified",
@@ -242,7 +242,7 @@
       "gates": {
         "R6-G1": {
           "status": "blocked",
-          "evidence": "Signed 0.9.5.0 persistent-profile application bytes were built from committed source, extracted, and rehashed across all 324 payload files. The distribution rejects conflicting preflight/trust switches before distribution access; its focused regression records zero Import-Certificate and Add-AppxPackage calls. Ordinary read-only preflight reaches the machine-trust boundary. Publisher trust, the disposable 0.9.4→0.9.5 lifecycle, and final installed normal-account workflow remain open. Legacy schema-9 migration is owner-deferred and nonblocking."
+          "evidence": "Signed 0.9.5.0 persistent-profile application bytes were built from committed source, extracted, and rehashed across all 324 payload files. The distribution rejects conflicting preflight/trust switches before distribution access; its focused regression records zero Import-Certificate and Add-AppxPackage calls. Exact machine trust, read-only preflight, registration, Start launch, WindowsApps GUI/Manager identity, durable unvirtualized profile routing, and installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart smoke pass in the normal account. The disposable 0.9.4→0.9.5 update/uninstall/reinstall lifecycle remains open. Legacy schema-9 migration is owner-deferred and nonblocking."
         },
         "R6-G2": {
           "status": "passed",
@@ -253,7 +253,7 @@
           "evidence": "Exact 0.9.5 packaged telemetry, all native pages, keyboard operation, High Contrast, repaired 150% text layout, disconnect, and reconnect passed under a disposable profile. The installed repetition remains part of R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 Internal Alpha completion affected-document review; persistent-profile startup, owner-deferred legacy migration, current candidate provenance, side-effect-free preflight, corrected lifecycle, PR #25, and the single open installed gate reconciled.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 Internal Alpha completion affected-document review; registered normal-account evidence, narrow MSIX durable-profile exclusion, owner-deferred legacy migration, current candidate provenance, side-effect-free preflight, corrected lifecycle, PR #25, unavailable native-app control, and the remaining disposable lifecycle reconciled.",
       "phase_receipt": ".forge-alpha/phases/R6.md",
       "last_known_merge": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
       "primary_pr_number": 20,
@@ -294,23 +294,32 @@
   },
   "blockers": [
     {
-      "id": "B-R6-INSTALL-TRUST",
-      "failure": "Publisher 0AC803FF3292A2C736B1CBB31AFF88418983B992 is absent from Local Machine Trusted People. The current user has no Forge package registration, the all-users query is access denied, and local account .\\ForgeAlphaTest does not exist. Exact packaged preflight stops before deployment at machine trust.",
+      "id": "B-R6-DISPOSABLE-LIFECYCLE",
+      "failure": "Publisher 0AC803FF3292A2C736B1CBB31AFF88418983B992 is trusted at machine scope and current 0.9.5 normal-account installation passes. Local account .\\ForgeAlphaTest does not exist and no other designated disposable Windows environment is available for the retained lower-version lifecycle.",
       "affected": "R6.1, R6.4 and R6-G1",
-      "dependency_type": "windows_approval",
-      "last_observed_utc": "2026-09-13T15:37:00Z",
-      "necessary_external_action": "Open PowerShell as Administrator and run: Import-Certificate -FilePath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\out\\dist\\candidate-0.9.5.0-20260913-160324\\Publisher.cer' -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPeople'. Confirm thumbprint 0AC803FF3292A2C736B1CBB31AFF88418983B992.",
-      "next_independent_work": "After the exact trust action, preflight and install current 0.9.5 in the normal account for the persistent-profile workflow. Use the separately designated disposable environment for the retained 0.9.4 baseline, update, uninstall, and reinstall lifecycle."
+      "dependency_type": "test_environment",
+      "last_observed_utc": "2026-09-13T16:55:47Z",
+      "necessary_external_action": "Provision or designate a disposable Windows 11 x64 account or test machine, then sign in to it. Do not downgrade the owner's normal account.",
+      "next_independent_work": "In the disposable environment, install retained 0.9.4 first, create the declared project/settings/memory/foreign-MCP markers, preflight and upgrade to current 0.9.5, then uninstall/reinstall and verify durable preservation."
+    },
+    {
+      "id": "B-R6-NATIVE-UI-SURFACE",
+      "failure": "The final package launches from Start and registered process identities are verified, but the sanctioned Computer Use surface in this session exposes no native Windows applications. Final registered visual telemetry, Settings/reset, and managed-continuity interaction therefore remain unperformed; prior exact-version visual/accessibility evidence remains applicable.",
+      "affected": "R6.1 and R6-G1",
+      "dependency_type": "host_capability",
+      "last_observed_utc": "2026-09-13T16:55:47Z",
+      "necessary_external_action": "Resume from a session or host that exposes native Windows application control, or record the prescribed operator walkthrough manually against the currently registered package.",
+      "next_independent_work": "Use the current registered 0.9.5 package; do not rebuild while source and prerequisites are unchanged."
     }
   ],
   "known_bugs": [],
-  "last_result": "Ordinary GUI startup now selects the durable Internal Alpha root with a distinct Manager/pipe/DPAPI identity and visible profile path. The full 91-test Infrastructure suite and Release WinUI/product builds pass. Current signed MSIX packaging, extraction, all 324 payload rehashes, and exact unpacked profile-header inspection pass. Legacy schema-9 migration is owner-deferred and removed from active blockers; the preserved store was not opened or modified.",
-  "next_action": "The owner opens PowerShell as Administrator and imports Publisher.cer from candidate-0.9.5.0-20260913-160324 into Cert:\\LocalMachine\\TrustedPeople using the exact command in docs/INSTALLED-ACCEPTANCE-HANDOFF.md. Then complete current-package Start launch and normal-account persistent-profile acceptance, followed by the disposable 0.9.4→0.9.5/update/uninstall/reinstall lifecycle.",
+  "last_result": "The exact publisher is trusted at machine scope. Current 0.9.5 preflight, registration, Start launch, WindowsApps GUI/Manager identity, durable unvirtualized profile routing, and installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart smoke pass. A same-version uninstall/reinstall preserved the external project registry while the package-private profile stayed absent. Legacy schema-9 migration remains owner-deferred; the preserved store was not opened or modified.",
+  "next_action": "Use sanctioned native-app control to finish the current registered visual telemetry/Settings/managed-continuity walkthrough. Separately provision a disposable Windows 11 x64 environment, install retained 0.9.4 first, create the declared markers, upgrade to 0.9.5, then complete the uninstall/reinstall preservation checks without downgrading the owner's normal account.",
   "acceptance": {
-    "installed_workflow": "blocked_machine_trust_current_persistent_profile_candidate_ready",
+    "installed_workflow": "passed_registered_start_windowsapps_manager_durable_profile_and_installed_tool_smoke",
     "live_productive_successor": "passed_exact_0.9.4_real_lm_studio_qwen3_coder_30b_terminal",
-    "native_visuals_settings": "passed_exact_0.9.5_telemetry_pages_keyboard_high_contrast_150_percent_disconnect_reconnect",
-    "installed_lifecycle": "blocked_machine_trust_0.9.4_to_0.9.5_and_normal_account_0.9.5",
+    "native_visuals_settings": "passed_exact_0.9.5_package_visuals_keyboard_high_contrast_150_percent_disconnect_reconnect_final_registered_interaction_blocked_native_surface",
+    "installed_lifecycle": "blocked_disposable_environment_0.9.4_to_0.9.5_update_and_uninstall_reinstall",
     "owner_existing_data_compatibility": "owner_deferred_nonblocking_legacy_store_untouched_fresh_persistent_profile_selected",
     "alpha_accepted": false
   },

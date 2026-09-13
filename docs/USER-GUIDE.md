@@ -1,12 +1,12 @@
 # Operator guide — Alpha workflow
-This is the implemented Alpha workflow. Real LM Studio managed continuity has passed; registered install/update/uninstall remains open where the current host lacks machine publisher trust.
+This is the implemented Alpha workflow. Real LM Studio managed continuity and current-package registration in the owner's normal account have passed. The retained 0.9.4→0.9.5 update and uninstall/reinstall lifecycle remains open for a designated disposable environment.
 
 ## Start a project
 Install and launch from Start. The first Internal Alpha uses `%LOCALAPPDATA%\Forge Conductor Internal Alpha`; the persistent header identifies the profile and shows the exact path on every page. Connect/start the manager, choose a project folder and give it a display name.
 The application retains a stable project identity; reopening or relinking its folder must not silently create
 another project's memory. The source folder is never deleted by a memory reset.
 
-For the internal 0.9.5.0 candidate, verify the package and certificate hashes in `distribution.json`. Run the exact certificate-import command in the installed acceptance handoff from an elevated PowerShell window; then use `Install-Engineering.ps1` without the trust switch. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope. See [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md).
+For the internal 0.9.5.0 candidate, verify the package and certificate hashes in `distribution.json`. Provision the public publisher certificate as described in the installed acceptance handoff, then use `Install-Engineering.ps1` without the trust switch. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. The current host has the exact publisher trusted and the package registered. A Windows `0x800B0109` result on another test environment means the publisher is not yet trusted at the required machine scope. See [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md).
 
 ## Two LM Studio modes
 **Desktop MCP mode:** use LM Studio MCP -> Deploy to register the installed Forge primary/fallback stdio servers.

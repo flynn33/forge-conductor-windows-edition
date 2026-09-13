@@ -97,8 +97,10 @@
 - Made conflicting `-PreflightOnly -TrustDevelopmentPublisher` invocation fail immediately; the focused regression proves that neither certificate import nor package deployment is called.
 - Changed ordinary GUI startup to the durable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` profile. Its Manager lease, named pipe, DPAPI token, view state, projects, memory, and continuity stay separate from the preserved legacy store, and a persistent header identifies the profile and exact path on every page.
 - Recorded the owner's decision to defer schema-9/C008/C009 migration as nonblocking backlog while preserving the legacy database and related files unchanged.
-- Rebuilt and fully rehashed the persistent-profile MSIX from application commit `53901f110e9d7c5f360da65eb4419a37f4e24613`; its SHA-256 is `157cc35181e1b940d353c38278047f522c0ac5e62bd12f24cee314417aa4b1cc`. The final companion distribution records application and distribution provenance and has ZIP SHA-256 `437d96e584c00dcf1995277e7a069d9ff665b16b45863ed2a7984adf616d49b5`.
-- Confirmed the distributed helper stops at the missing machine-trust prerequisite before package deployment. Package registration and the installed lifecycle remain open.
+- Rebuilt and fully rehashed the persistent-profile MSIX from application commit `dab23aa8555a37203ba11136c58bb7f799317356`; its SHA-256 is `3efd692af03e15b7d8e5dad95be8119563e08c158c48b6df1dbf26ad899578c9`. The final companion distribution records application and distribution provenance and has ZIP SHA-256 `bd098a2b672c528ce17233212980464e45dc628a5d1957b33800a5694e22c098`.
+- Added bounded packaged-Manager startup diagnostics so an early child-process failure reports sanitized stderr/stdout instead of only a generic exit code.
+- Fixed MSIX AppData virtualization for the durable Internal Alpha profile with one narrowly scoped manifest exclusion and a focused regression that fences the legacy profile out of that capability.
+- Verified exact machine trust, read-only preflight, current-package registration, Start launch, WindowsApps GUI/Manager identity, durable registry survival across reinstall, absence of package-private profile storage, and the installed 53-tool/project/isolation/filesystem/search/Git/shell/memory-restart workflow. The disposable 0.9.4→0.9.5 update and uninstall/reinstall lifecycle remains open.
 
 ### R7 — Documented delivery
 
@@ -108,7 +110,7 @@
 
 ### Remaining Alpha work
 
-- Complete machine-trusted install/Start/update/uninstall acceptance on disposable data, then verify the current installed candidate uses the durable Internal Alpha profile in the owner's normal account. Live productive continuity and expanded-Rig accessibility are verified. Legacy schema-9 migration is deferred.
+- Complete the current registered visual telemetry/Settings/managed-continuity walkthrough when sanctioned native-app control is available, plus the retained 0.9.4→0.9.5 update and uninstall/reinstall marker lifecycle in a designated disposable environment. Current normal-account install/Start and durable installed tool use pass. Prior live productive continuity and expanded-Rig accessibility remain verified. Legacy schema-9 migration is deferred.
 
 <!-- alpha-phase-review:start -->
 Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).

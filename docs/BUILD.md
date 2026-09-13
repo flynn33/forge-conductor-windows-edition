@@ -82,9 +82,9 @@ Executed successfully on September 13, 2026 (Debug and Release builds plus the s
 .\scripts\build.ps1 -Configuration Release -Architecture x64 -Product All
 .\scripts\package.ps1 -Configuration Release -Architecture x64 -DevelopmentSigning
 ```
-Release products and the WinUI app built through the repository helpers. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Current candidate 0.9.5.0 is bound to application commit `53901f110e9d7c5f360da65eb4419a37f4e24613` and tree `c14b60302688538f7d49fd0f77a20b73ecad2395`; its MSIX SHA-256 is `157cc35181e1b940d353c38278047f522c0ac5e62bd12f24cee314417aa4b1cc`. The signed internal distribution is under `out/dist/candidate-0.9.5.0-20260913-160324`; installed acceptance remains blocked by machine trust. Development signing uses a non-exportable current-user certificate.
+Release products and the WinUI app built through the repository helpers. The package script verified the four staged executable hashes, complete runtime/resources payload, manifest identity, signer/public certificate, embedded provenance, and every extracted payload hash. Current candidate 0.9.5.0 is bound to application commit `dab23aa8555a37203ba11136c58bb7f799317356` and tree `a0b6b25eb93ca30495c0348b214c51f69cfedf78`; its MSIX SHA-256 is `3efd692af03e15b7d8e5dad95be8119563e08c158c48b6df1dbf26ad899578c9`. The signed internal distribution is under `out/dist/candidate-0.9.5.0-20260913-165014`; machine trust, current-package registration, Start launch, and installed tool smoke pass. Development signing uses a non-exportable current-user certificate.
 `FORGE_SIGNING_PFX` remains supported for explicitly supplied signing credentials.
-Installation requires machine trust for the signing publisher; see the bundled install helper and current status.
+Installation requires machine trust for the signing publisher; the current host has the exact publisher trusted. See the bundled install helper and current status.
 
 ## Common failures and cheapest correction
 | Failure | Correction |
