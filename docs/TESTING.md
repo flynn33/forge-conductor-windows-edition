@@ -63,7 +63,7 @@ launch via Start, exercise the native pages and main workflow, update/reinstall 
 Use screenshots or a short operator record for the actual GUI; headless process creation does not prove UI usability.
 LM Studio/model installation remains a documented prerequisite, not a hidden embedded model download.
 
-The 0.9.5 telemetry change invalidated the affected collector, Manager protocol/projection, presentation, version identity, Release build, and package checks. All seven focused targets passed; the signed package was unpacked and all 324 payload hashes were rechecked. Earlier managed-run/live-provider evidence remains applicable. G04's historical aggregate wrapper overflow was not rerun. Registered installation remains blocked without machine-level publisher trust.
+The 0.9.5 telemetry change invalidated the affected collector, Manager protocol/projection, presentation, version identity, Release build, and package checks. All seven focused targets passed. The persistent-profile continuation then passed all 91 Release Infrastructure Unit tests, including `foundation.persistent_internal_alpha_profile`, and a full Release product build. Candidate `candidate-0.9.5.0-20260913-160324` was signed, unpacked, and checked against all 324 payload hashes; UI Automation against those exact unpacked bytes found the persistent profile name and exact data path without creating the data root. Earlier managed-run/live-provider evidence remains applicable. G04's historical aggregate wrapper overflow was not rerun. Registered installation remains blocked without machine-level publisher trust.
 
 ## Evidence
 For each required result record command/action, commit, configuration, exit code or observed behavior,
@@ -73,6 +73,6 @@ Do not run historical Run-All-Gates, every architecture, lengthy stress tests, o
 before each commit. Do not create a fake-green CI check that skips all tests when the filter matches nothing.
 
 <!-- alpha-phase-review:start -->
-Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

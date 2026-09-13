@@ -3,17 +3,17 @@
 Status: INTERNAL ALPHA NOT READY. Package creation, exact unpacked native telemetry workflow, expanded-Rig accessibility, real live-provider continuity, and persistent-profile integration pass. Registered install/Start/update/uninstall/reinstall and final normal-account use remain open behind machine publisher trust. Legacy schema-9 migration is owner-deferred and is not an Alpha blocker.
 
 Version / numeric MSIX version: `0.9.5` / `0.9.5.0`
-Product commit / delivery branch: `44b0369a0a7d7456b1a696a37450f29463555b02` / `alpha/r6-internal-alpha-completion`
-Product tree: `390fe7b20b61233c39f12cd657ad0075a3e8c2f8`
+Product commit / delivery branch: `53901f110e9d7c5f360da65eb4419a37f4e24613` / `alpha/r6-internal-alpha-completion`
+Product tree: `c14b60302688538f7d49fd0f77a20b73ecad2395`
 Windows configuration: Windows 11 x64 Release; development-signed internal package
-Installer: ignored local `out/dist/candidate-0.9.5.0-20260913-153641/ForgeConductor-0.9.5.0-x64.msix`
-Installer SHA-256: `692bbc20230f58a9c0b8ed1619aa85cdbb634d67450533bf9657c3bba56ceeb5`
+Installer: ignored local `out/dist/candidate-0.9.5.0-20260913-160324/ForgeConductor-0.9.5.0-x64.msix`
+Installer SHA-256: `157cc35181e1b940d353c38278047f522c0ac5e62bd12f24cee314417aa4b1cc`
 Provider / model: LM Studio loopback `127.0.0.1:1234` / `qwen3-coder-30b`
 
 | Check | Result | Command/action and evidence |
 |---|---|---|
-| Reproducible x64 Release product build | pass | All products built at `44b0369`; package signing, extraction, all 324 payload rehashes, and source/tree binding passed. |
-| Persistent ordinary-use profile | pass at source/package build | A focused Windows test proves the stable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` root, stable Manager/DPAPI identity, and separation from the legacy root. The Release WinUI app builds and identifies the profile/path even while disconnected. Registered Start launch remains below. |
+| Reproducible x64 Release product build | pass | All products built at `53901f1`; package signing, extraction, all 324 payload rehashes, and source/tree binding passed. |
+| Persistent ordinary-use profile | pass at source/package build | A focused Windows test proves the stable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` root, stable Manager/DPAPI identity, and separation from the legacy root. The exact unpacked signed package exposes the profile and path in its persistent header even while disconnected. Registered Start launch remains below. |
 | Integrated native telemetry Rig | pass | Prior exact 0.9.5 packaged bytes rendered per-logical CPU/frequency, RTX 4090 engines, scoped GPU memory, disk throughput/IOPS, three volumes, relevant processes, workflow inventory, freshness, and growing histories; disconnected and Manager-start reconnect states passed. High Contrast and repaired 150% text passed. The current source changes only startup profile selection/status presentation. |
 | Signed MSIX clean install and Start launch | blocked | The verified publisher is absent from Local Machine Trusted People. The packaged helper's read-only preflight stops at that exact prerequisite before deployment; the current account has no Forge registration and `.\ForgeAlphaTest` does not exist. Conflicting preflight/trust switches fail before distribution access, certificate import, or package deployment. |
 | Projects and memory persistence/isolation | partial | Exact unpacked package and disposable profiles preserve exact project identity; registered persistent-profile verification remains open. |
@@ -25,7 +25,7 @@ Provider / model: LM Studio loopback `127.0.0.1:1234` / `qwen3-coder-30b`
 | Update/reinstall and uninstall preserve data | blocked | Retained 0.9.4 and current 0.9.5 candidates provide a real increasing-version path, but deployment cannot begin without machine trust. |
 | Legacy schema-9 migration | owner-deferred, nonblocking | C008/C009 recovery is not implemented, tested, or passed. `%LOCALAPPDATA%\Forge Conductor` and associated files remain untouched; first-Alpha use is scoped to the fresh persistent sibling profile. |
 
-The current candidate's `Install-Engineering.ps1` supports `-PreflightOnly`, rejects its combination with `-TrustDevelopmentPublisher` before any side effect, requires exact machine-scoped publisher trust before deployment, and writes unique timestamped receipts after successful installs. The focused mocked regression reports zero `Import-Certificate` and zero `Add-AppxPackage` calls for the conflicting invocation. The final ZIP SHA-256 is `c93a4b42545a4d9a1ea3c8ebc373db77f6c81d367c14f366c94b15a32b02ca86`; the signed MSIX SHA-256 is `692bbc20230f58a9c0b8ed1619aa85cdbb634d67450533bf9657c3bba56ceeb5`. GPU utilization remains explicitly unavailable where native PDH cannot provide a supported counter. G04's historical aggregate wrapper overflow remains failed; direct builds and focused functional checks are recorded instead.
+The current candidate's `Install-Engineering.ps1` supports `-PreflightOnly`, rejects its combination with `-TrustDevelopmentPublisher` before any side effect, requires exact machine-scoped publisher trust before deployment, and writes unique timestamped receipts after successful installs. The focused mocked regression reports zero `Import-Certificate` and zero `Add-AppxPackage` calls for the conflicting invocation. The final ZIP SHA-256 is `437d96e584c00dcf1995277e7a069d9ff665b16b45863ed2a7984adf616d49b5`; the signed MSIX SHA-256 is `157cc35181e1b940d353c38278047f522c0ac5e62bd12f24cee314417aa4b1cc`. GPU utilization remains explicitly unavailable where native PDH cannot provide a supported counter. G04's historical aggregate wrapper overflow remains failed; direct builds and focused functional checks are recorded instead.
 
 Required action: follow [Installed acceptance handoff](INSTALLED-ACCEPTANCE-HANDOFF.md). Run its exact certificate import from elevated PowerShell, perform the 0.9.4→0.9.5 disposable lifecycle, then install current 0.9.5 in the owner's normal account and verify the persistent Internal Alpha workflow.
 

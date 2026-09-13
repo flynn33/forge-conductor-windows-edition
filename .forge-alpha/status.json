@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12, the owner telemetry-parity correction, and the owner internal-Alpha completion goal; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-13T15:40:00Z",
+  "updated_at_utc": "2026-09-13T16:11:21Z",
   "current_phase": "R6",
   "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r6-internal-alpha-completion",
-    "head": "2c34eb7e99554faad4059dc3082e160b0f32e415",
+    "head": "53901f110e9d7c5f360da65eb4419a37f4e24613",
     "origin_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "github_main": "7ad26a931620285d9cf2b1dabfdc1ea7fae474a8",
     "dirty_summary": [
       "Draft PR #25 carries the persistent Internal Alpha startup, side-effect-free preflight guard, focused regression, current signed candidate, and owner-deferred legacy migration decision.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ignored candidate-0.9.5.0-20260913-153641 contains the signed persistent-profile MSIX and records separate application/distribution provenance."
+      "Ignored candidate-0.9.5.0-20260913-160324 contains the signed persistent-profile MSIX and records separate application/distribution provenance."
     ]
   },
   "baseline": {
@@ -232,7 +232,7 @@
       "milestone_number": 7,
       "pr_number": 25,
       "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/25",
-      "reviewed_head": "2c34eb7e99554faad4059dc3082e160b0f32e415",
+      "reviewed_head": "53901f110e9d7c5f360da65eb4419a37f4e24613",
       "slices": {
         "R6.1": "blocked",
         "R6.2": "verified",
@@ -242,7 +242,7 @@
       "gates": {
         "R6-G1": {
           "status": "blocked",
-          "evidence": "Signed 0.9.5.0 persistent-profile application bytes were built from committed source, extracted, and rehashed across all 324 payload files. The refreshed distribution rejects conflicting preflight/trust switches before distribution access; its focused regression records zero Import-Certificate and Add-AppxPackage calls. Ordinary read-only preflight reaches the machine-trust boundary. Publisher trust, the disposable 0.9.4→0.9.5 lifecycle, and final installed normal-account workflow remain open. Legacy schema-9 migration is owner-deferred and nonblocking."
+          "evidence": "Signed 0.9.5.0 persistent-profile application bytes were built from committed source, extracted, and rehashed across all 324 payload files. The distribution rejects conflicting preflight/trust switches before distribution access; its focused regression records zero Import-Certificate and Add-AppxPackage calls. Ordinary read-only preflight reaches the machine-trust boundary. Publisher trust, the disposable 0.9.4→0.9.5 lifecycle, and final installed normal-account workflow remain open. Legacy schema-9 migration is owner-deferred and nonblocking."
         },
         "R6-G2": {
           "status": "passed",
@@ -299,13 +299,13 @@
       "affected": "R6.1, R6.4 and R6-G1",
       "dependency_type": "windows_approval",
       "last_observed_utc": "2026-09-13T15:37:00Z",
-      "necessary_external_action": "Open PowerShell as Administrator and run: Import-Certificate -FilePath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\out\\dist\\candidate-0.9.5.0-20260913-153641\\Publisher.cer' -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPeople'. Confirm thumbprint 0AC803FF3292A2C736B1CBB31AFF88418983B992.",
+      "necessary_external_action": "Open PowerShell as Administrator and run: Import-Certificate -FilePath 'D:\\GitHub\\Forge-Conductor-Windows-Edition\\out\\dist\\candidate-0.9.5.0-20260913-160324\\Publisher.cer' -CertStoreLocation 'Cert:\\LocalMachine\\TrustedPeople'. Confirm thumbprint 0AC803FF3292A2C736B1CBB31AFF88418983B992.",
       "next_independent_work": "After the exact trust action, preflight and install current 0.9.5 in the normal account for the persistent-profile workflow. Use the separately designated disposable environment for the retained 0.9.4 baseline, update, uninstall, and reinstall lifecycle."
     }
   ],
   "known_bugs": [],
-  "last_result": "Ordinary GUI startup now selects the durable Internal Alpha root with a distinct Manager/pipe/DPAPI identity and visible profile path. The full 89-test Infrastructure suite and Release WinUI/product builds pass. Current signed MSIX packaging, extraction, and all 324 payload rehashes pass. Legacy schema-9 migration is owner-deferred and removed from active blockers; the preserved store was not opened or modified.",
-  "next_action": "The owner opens PowerShell as Administrator and imports Publisher.cer from candidate-0.9.5.0-20260913-153641 into Cert:\\LocalMachine\\TrustedPeople using the exact command in docs/INSTALLED-ACCEPTANCE-HANDOFF.md. Then complete current-package Start launch and normal-account persistent-profile acceptance, followed by the disposable 0.9.4→0.9.5/update/uninstall/reinstall lifecycle.",
+  "last_result": "Ordinary GUI startup now selects the durable Internal Alpha root with a distinct Manager/pipe/DPAPI identity and visible profile path. The full 91-test Infrastructure suite and Release WinUI/product builds pass. Current signed MSIX packaging, extraction, all 324 payload rehashes, and exact unpacked profile-header inspection pass. Legacy schema-9 migration is owner-deferred and removed from active blockers; the preserved store was not opened or modified.",
+  "next_action": "The owner opens PowerShell as Administrator and imports Publisher.cer from candidate-0.9.5.0-20260913-160324 into Cert:\\LocalMachine\\TrustedPeople using the exact command in docs/INSTALLED-ACCEPTANCE-HANDOFF.md. Then complete current-package Start launch and normal-account persistent-profile acceptance, followed by the disposable 0.9.4→0.9.5/update/uninstall/reinstall lifecycle.",
   "acceptance": {
     "installed_workflow": "blocked_machine_trust_current_persistent_profile_candidate_ready",
     "live_productive_successor": "passed_exact_0.9.4_real_lm_studio_qwen3_coder_30b_terminal",

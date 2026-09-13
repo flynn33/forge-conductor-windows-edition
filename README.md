@@ -29,7 +29,7 @@ Windows 11 x64; C++20; Visual Studio 2022/MSVC v143; Windows SDK 10.0.26100.0; C
   -Target ForgeConductor.Cli,ForgeConductor.Manager,ForgeConductor.SessionHost
 ```
 
-The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `out/dist/candidate-0.9.5.0-20260913-153641/ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `692bbc20230f58a9c0b8ed1619aa85cdbb634d67450533bf9657c3bba56ceeb5`. Follow [Installer and installation](docs/INSTALL.md) for provenance and hash verification; [Installed acceptance handoff](docs/INSTALLED-ACCEPTANCE-HANDOFF.md) gives the exact trust and lifecycle procedure.
+The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `out/dist/candidate-0.9.5.0-20260913-160324/ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `157cc35181e1b940d353c38278047f522c0ac5e62bd12f24cee314417aa4b1cc`. Follow [Installer and installation](docs/INSTALL.md) for provenance and hash verification; [Installed acceptance handoff](docs/INSTALLED-ACCEPTANCE-HANDOFF.md) gives the exact trust and lifecycle procedure.
 
 <!-- alpha-phase-review:start -->
 Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).

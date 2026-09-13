@@ -2,7 +2,7 @@
 This is the implemented Alpha workflow. Real LM Studio managed continuity has passed; registered install/update/uninstall remains open where the current host lacks machine publisher trust.
 
 ## Start a project
-Install and launch from Start. The first Internal Alpha uses `%LOCALAPPDATA%\Forge Conductor Internal Alpha`; the Manager page identifies it as the persistent profile and shows the exact path. Connect/start the manager, choose a project folder and give it a display name.
+Install and launch from Start. The first Internal Alpha uses `%LOCALAPPDATA%\Forge Conductor Internal Alpha`; the persistent header identifies the profile and shows the exact path on every page. Connect/start the manager, choose a project folder and give it a display name.
 The application retains a stable project identity; reopening or relinking its folder must not silently create
 another project's memory. The source folder is never deleted by a memory reset.
 
