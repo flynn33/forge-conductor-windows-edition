@@ -1,3 +1,4 @@
+#include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
 #include "ForgeConductor/Application/ManagedRunService.h"
 
 #include <cassert>
@@ -80,9 +81,153 @@ private:
     std::map<Domain::SessionId, Domain::ManagedRunRecord> records_;
 };
 
+class AdmissionRepository final : public Contracts::IAgentSessionRepository {
+public:
+    [[nodiscard]] Domain::Result<void> save(
+        const Domain::AgentSession& session,
+        const Domain::OperationContext&) noexcept override
+    {
+        assert(run_);
+        run_->session = session;
+        ++sessionSaves;
+        return Domain::Result<void>::success();
+    }
+
+    [[nodiscard]] Domain::Result<std::optional<Domain::AgentSession>> get(
+        const Domain::SessionId& id,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<std::optional<Domain::AgentSession>>::success(
+            run_ && run_->session.id == id
+                ? std::optional<Domain::AgentSession>{run_->session}
+                : std::nullopt);
+    }
+
+    [[nodiscard]] Domain::Result<std::vector<Domain::AgentSession>> list(
+        const std::optional<Domain::AgentId>&,
+        const std::optional<Domain::SessionStatus>&,
+        std::size_t,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<std::vector<Domain::AgentSession>>::success({});
+    }
+
+    [[nodiscard]] Domain::Result<Domain::AgentRunStartPersistenceOutcome>
+    startRun(
+        const Domain::AgentRunStartMutation& mutation,
+        const Domain::OperationContext&) noexcept override
+    {
+        admittedOpen = mutation.run.session.status == Domain::SessionStatus::Open;
+        admittedWithoutSummary = !mutation.run.session.summary;
+        admittedWithBinding = mutation.activeBinding &&
+            mutation.run.session.clientId &&
+            mutation.activeBinding->sessionId == mutation.run.session.id &&
+            mutation.activeBinding->agentId == mutation.run.session.agentId &&
+            mutation.activeBinding->goal == *mutation.run.goal;
+        if (!admittedOpen || !admittedWithoutSummary || !admittedWithBinding) {
+            return Domain::Result<
+                Domain::AgentRunStartPersistenceOutcome>::failure(
+                Domain::makeError(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The admission mutation violated the repository contract."));
+        }
+        run_ = mutation.run;
+        return Domain::Result<
+            Domain::AgentRunStartPersistenceOutcome>::success(
+            {*run_, mutation.activeBinding, 0U});
+    }
+
+    [[nodiscard]] Domain::Result<std::optional<Domain::AgentRunRecord>> getRun(
+        const Domain::SessionId& id,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<
+            std::optional<Domain::AgentRunRecord>>::success(
+            run_ && run_->session.id == id ? run_ : std::nullopt);
+    }
+
+    [[nodiscard]] Domain::Result<Domain::AgentRunReattachOutcome> reattachRun(
+        const Domain::AgentRunReattachMutation&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return unavailable<Domain::AgentRunReattachOutcome>();
+    }
+
+    [[nodiscard]] Domain::Result<Domain::AgentRunCompletePersistenceOutcome>
+    completeRun(
+        const Domain::AgentRunCompleteMutation&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return unavailable<Domain::AgentRunCompletePersistenceOutcome>();
+    }
+
+    [[nodiscard]] Domain::Result<bool> touchRun(
+        const Domain::SessionId&,
+        Domain::UtcTimePoint,
+        const Domain::OperationContext&) noexcept override
+    {
+        return unavailable<bool>();
+    }
+
+    [[nodiscard]] Domain::Result<std::optional<Domain::AgentRunRecord>>
+    latestOpenRun(
+        const Domain::ClientId&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<
+            std::optional<Domain::AgentRunRecord>>::success(std::nullopt);
+    }
+
+    [[nodiscard]] Domain::Result<Domain::AgentRunRecoveryOutcome> recoverRun(
+        const Domain::AgentRunRecoveryRequest&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return unavailable<Domain::AgentRunRecoveryOutcome>();
+    }
+
+    [[nodiscard]] Domain::Result<Domain::AgentProjectionRepairOutcome>
+    repairProjection(
+        const Domain::AgentProjectionRepairRequest&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return unavailable<Domain::AgentProjectionRepairOutcome>();
+    }
+
+    [[nodiscard]] Domain::Result<Domain::AgentStaleCloseOutcome> closeStale(
+        const Domain::AgentStaleCloseRequest&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return unavailable<Domain::AgentStaleCloseOutcome>();
+    }
+
+    [[nodiscard]] Domain::Result<void> quickCheck(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<void>::success();
+    }
+
+    void close() noexcept override {}
+
+    bool admittedOpen{};
+    bool admittedWithoutSummary{};
+    bool admittedWithBinding{};
+    std::size_t sessionSaves{};
+
+private:
+    template <typename T>
+    [[nodiscard]] static Domain::Result<T> unavailable() noexcept
+    {
+        return Domain::Result<T>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable,
+            "This repository operation is outside the admission test."));
+    }
+
+    std::optional<Domain::AgentRunRecord> run_;
+};
+
 class Transport final : public Contracts::IManagedResponsesTransport {
 public:
-    enum class Mode { Success, Offline, Block, ToolLoop };
+    enum class Mode { Success, Offline, Block, ToolLoop, ExtendedToolLoop };
 
     [[nodiscard]] Domain::Result<Domain::ManagedProviderTurnResult> complete(
         const Domain::ManagedProviderTurnRequest& request,
@@ -137,6 +282,13 @@ public:
                         35U,
                         {{"call_fixture_1", "fixture_read", "{\"path\":\"README.md\"}"}}});
             }
+            sawSuccessorPrompt = request.previousResponseId &&
+                request.previousResponseId->value() == "resp_successor_root" &&
+                request.input.find("Treat completed_work as authoritative") !=
+                    std::string::npos &&
+                request.input.find("return a terminal response") !=
+                    std::string::npos &&
+                request.toolOutputs.empty();
             sawToolOutput = request.input.empty() &&
                 request.previousResponseId &&
                 request.previousResponseId->value() == "resp_tool_1" &&
@@ -151,6 +303,31 @@ public:
                     40U,
                     7U,
                     47U,
+                    {}});
+        }
+        if (mode == Mode::ExtendedToolLoop) {
+            if (calls <= 80U) {
+                const auto suffix = std::to_string(calls);
+                return Domain::Result<Domain::ManagedProviderTurnResult>::success(
+                    Domain::ManagedProviderTurnResult{
+                        parsed(Domain::ProviderSessionId::parse(
+                            "resp_extended_" + suffix)),
+                        {},
+                        1U,
+                        1U,
+                        calls,
+                        {{"call_extended_" + suffix,
+                          "fixture_read",
+                          "{\"path\":\"README.md\"}"}}});
+            }
+            return Domain::Result<Domain::ManagedProviderTurnResult>::success(
+                Domain::ManagedProviderTurnResult{
+                    parsed(Domain::ProviderSessionId::parse(
+                        "resp_extended_done")),
+                    "extended tool loop completed",
+                    1U,
+                    1U,
+                    calls,
                     {}});
         }
         return Domain::Result<Domain::ManagedProviderTurnResult>::success(
@@ -181,6 +358,7 @@ public:
     std::uint64_t lastGeneration{};
     bool sawToolDescriptor{};
     bool sawToolOutput{};
+    bool sawSuccessorPrompt{};
 
     void holdFirstToolResponse() noexcept
     {
@@ -409,11 +587,22 @@ public:
         retained.push_back(
             observation.budgetSignals.providerUsed.value_or(0U));
         handoffIds.push_back(observation.handoff.handoffId.value());
+        for (const auto& work : observation.handoff.completedWork) {
+            completedSummaries.push_back(work.summary);
+        }
+        Domain::ContinuityAutomationOutcome outcome{
+            observation.handoff.project.projectId,
+            observation.handoff.handoffId,
+            Domain::ContextBudgetAction::Normal};
+        if (activateSuccessor) {
+            outcome.action = Domain::ContextBudgetAction::Rollover;
+            outcome.rolloverRequested = true;
+            outcome.successorActivated = true;
+            outcome.successorProviderResponseId = parsed(
+                Domain::ProviderSessionId::parse("resp_successor_root"));
+        }
         return Domain::Result<Domain::ContinuityAutomationOutcome>::success(
-            Domain::ContinuityAutomationOutcome{
-                observation.handoff.project.projectId,
-                observation.handoff.handoffId,
-                Domain::ContextBudgetAction::Normal});
+            std::move(outcome));
     }
 
     void cancel(const Domain::OperationId&) noexcept override {}
@@ -426,6 +615,8 @@ public:
     std::size_t calls{};
     std::vector<std::uint64_t> retained;
     std::vector<std::string> handoffIds;
+    std::vector<std::string> completedSummaries;
+    bool activateSuccessor{};
 };
 
 [[nodiscard]] Domain::OperationContext context(
@@ -500,6 +691,46 @@ public:
 
 int main()
 {
+    AdmissionRepository admissionRepository;
+    Application::AgentRepositoryManagedRunStore durableStore{
+        admissionRepository,
+        parsed(Domain::AgentId::parse("forge-managed-run"))};
+    const auto admittedAt = Domain::UtcTimePoint{};
+    const Domain::ManagedRunRecord durableRecord{
+        parsed(Domain::SessionId::parse(
+            "10101010-1010-4010-8010-101010101010")),
+        parsed(Domain::ProjectId::parse(
+            "20202020-2020-4020-8020-202020202020")),
+        parsed(Domain::ClientId::parse("managed-admission-test")),
+        "Persist a Manager-owned run.",
+        3U,
+        Domain::ManagedRunState::Running,
+        std::nullopt,
+        0U,
+        0U,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        admittedAt,
+        admittedAt};
+    const auto admissionContext = context(
+        "30303030-3030-4030-8030-303030303030",
+        "managed-admission-test");
+    assert(durableStore.save(durableRecord, admissionContext));
+    assert(admissionRepository.admittedOpen);
+    assert(admissionRepository.admittedWithoutSummary);
+    assert(admissionRepository.admittedWithBinding);
+    assert(admissionRepository.sessionSaves == 1U);
+    const auto durableLoaded = durableStore.load(
+        durableRecord.runId, admissionContext);
+    assert(durableLoaded && durableLoaded.value());
+    assert(durableLoaded.value()->state == Domain::ManagedRunState::Failed);
+    assert(durableLoaded.value()->lastError);
+    assert(durableLoaded.value()->lastError->code == Domain::ErrorCodes::Conflict);
+    assert(durableLoaded.value()->authorityGeneration == 3U);
+    assert(durableLoaded.value()->task == durableRecord.task);
+
     Clock clock;
     Store store;
     Transport transport;
@@ -620,12 +851,44 @@ int main()
     assert(toolRouter.sawBinding);
     toolService.shutdown();
 
+    Store extendedStore;
+    Transport extendedTransport;
+    extendedTransport.mode = Transport::Mode::ExtendedToolLoop;
+    ToolRouter extendedRouter;
+    const auto extendedRequest = request(
+        "f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0",
+        "f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1",
+        "Complete an extended native tool workflow.");
+    WorkspaceAuthority extendedAuthority{
+        extendedRequest.projectId, extendedRequest.clientId};
+    Application::ManagedRunService extendedService{
+        extendedTransport,
+        extendedStore,
+        clock,
+        Application::ManagedRunToolDependencies{
+            &toolCatalog, &extendedRouter, &extendedAuthority}};
+    assert(extendedService.start(
+        extendedRequest,
+        context(
+            "f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1",
+            "managed-run-extended-tool-loop")));
+    const auto extendedCompleted = waitForTerminal(
+        extendedService, extendedRequest.runId);
+    assert(extendedCompleted.record.state ==
+           Domain::ManagedRunState::Completed);
+    assert(extendedCompleted.record.outputText ==
+           "extended tool loop completed");
+    assert(extendedTransport.calls == 81U);
+    assert(extendedRouter.calls == 80U);
+    extendedService.shutdown();
+
     Store continuityStore;
     Transport continuityTransport;
     continuityTransport.mode = Transport::Mode::ToolLoop;
     ToolRouter continuityRouter;
     ContinuityCodec continuityCodec;
     ContinuityObserver continuityObserver;
+    continuityObserver.activateSuccessor = true;
     ProjectRegistry projectRegistry{toolRequest.projectId};
     WorkspaceAuthority continuityAuthority{
         toolRequest.projectId, toolRequest.clientId};
@@ -659,12 +922,14 @@ int main()
     assert(continuityCompleted.record.inputTokens == 70U);
     assert(continuityCompleted.record.outputTokens == 12U);
     assert(continuityCompleted.record.retainedContextTokens == 47U);
-    assert(continuityObserver.calls == 2U);
-    assert((continuityObserver.retained == std::vector<std::uint64_t>{35U, 47U}));
-    assert(continuityObserver.handoffIds.size() == 2U);
+    assert(continuityObserver.calls == 1U);
+    assert((continuityObserver.retained == std::vector<std::uint64_t>{35U}));
+    assert(continuityObserver.handoffIds.size() == 1U);
     assert(continuityObserver.handoffIds.front() == continuityRequest.runId.value());
-    assert(continuityObserver.handoffIds.front() ==
-           continuityObserver.handoffIds.back());
+    assert(continuityObserver.completedSummaries.size() == 1U);
+    assert(continuityObserver.completedSummaries.front() ==
+           "Native tool fixture_read result: {\"ok\":true,\"text\":\"fixture\"}");
+    assert(continuityTransport.sawSuccessorPrompt);
     continuityService.shutdown();
 
     Store pauseStore;

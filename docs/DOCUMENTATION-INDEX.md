@@ -1,66 +1,66 @@
 # Current documentation inventory and phase review
 
 Current plan: `windows-alpha-recovery-2026-09-12`
-Latest phase review: R7 — 2026-09-12 — [.forge-alpha/phases/R7.md](../.forge-alpha/phases/R7.md)
+Latest phase review: R6 continuation — 2026-09-12 — [.forge-alpha/phases/R6.md](../.forge-alpha/phases/R6.md)
 
-Every active first-party document below was reviewed against the completed R7 documentation/candidate traceability work and the R0–R7 replacement contract. `content_updated` means behavior/status or phase ownership changed; `review_stamp_updated` means applicable content remained current and its single review marker was refreshed.
+Every active first-party document below was reviewed against the R6 live-continuity repair and 0.9.3 candidate work and the R0–R7 replacement contract. `content_updated` means behavior/status or phase ownership changed; `review_stamp_updated` means applicable content remained current and its single review marker was refreshed.
 
-| Actual path | Class | Canonical subject | R7 review |
+| Actual path | Class | Canonical subject | R6 continuation review |
 |---|---|---|---|
-| `AGENTS.md` | active first-party | Repository execution guidance | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `CHANGELOG.md` | active first-party | Implemented user-facing changes | content_updated — R7 delivery and retained-candidate record |
-| `docs/ALPHA-ACCEPTANCE-RECORD.md` | active first-party | Active product/developer/operator reference | content_updated — R7 recheck and open acceptance gates |
-| `docs/ALPHA-SCOPE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/ARCHITECTURE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/BUILD.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/DEFERRED.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/DOCUMENTATION-INDEX.md` | active first-party | Active/historical documentation ownership | content_updated — complete R7 review and exclusions |
-| `docs/implementation/alpha-recovery/github/README.md` | active first-party | GitHub tracking administration | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/ACCEPTANCE.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/BUILD-AND-MINIMUM-TESTS.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/EXECUTION.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/GIT-WORKFLOW.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/INSTALLER-AND-DATA.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/PRODUCT-CONTRACT.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/ROADMAP.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/SETTINGS-AND-MAINTENANCE.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/TELEMETRY-AND-UI.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/instructions/TRACKING-AND-DOCS.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R0.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R1.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R2.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R3.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R4.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R5.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R6.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/phases/R7.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/CONTEXT-CONTINUITY.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/NATIVE-GUI.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/REPOSITORY-ORGANIZATION.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/INSTALL.md` | active first-party | Active product/developer/operator reference | content_updated — retained candidate and current trust result |
-| `docs/PARITY.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/STATUS.md` | active first-party | Current product evidence and remaining acceptance | content_updated — R7 delivery state and dependency chain |
-| `docs/TESTING.md` | active first-party | Active product/developer/operator reference | content_updated — unchanged-byte R6 test reuse |
-| `docs/USER-GUIDE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/WINDOWS_TOOLCHAIN.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `packaging/Assets/README.md` | active first-party | Active packaging/operator reference | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `packaging/README.md` | active first-party | Active packaging/operator reference | content_updated — retained R7 delivery candidate |
-| `README.md` | active first-party | Product entry point and current status | content_updated — final implementation, candidate and blocker status |
-| `ROADMAP.md` | active first-party | R0–R7 phase delivery and links | content_updated — R7 traceability completion and pending synchronization |
-| `.forge-alpha/phases/R0.md` | active first-party | R0 closeout, gates and documentation review | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `.forge-alpha/phases/R1.md` | active first-party | R1 closeout, gates and documentation review | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `.forge-alpha/phases/R2.md` | active first-party | R2 closeout, gates and documentation review | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `.forge-alpha/phases/R3.md` | active first-party | R3 closeout, gates and documentation review | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `.forge-alpha/phases/R4.md` | active first-party | R4 closeout, gates and documentation review | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `.forge-alpha/phases/R5.md` | active first-party | R5 closeout, gates and documentation review | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `.forge-alpha/phases/R6.md` | active first-party | R6 closeout, gates and documentation review | review_stamp_updated — applicable content checked against R7; no behavior change required |
+| `AGENTS.md` | active first-party | Repository execution guidance | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `CHANGELOG.md` | active first-party | Implemented user-facing changes | content_updated — live-continuity repair and 0.9.3 candidate |
+| `docs/ALPHA-ACCEPTANCE-RECORD.md` | active first-party | Active product/developer/operator reference | content_updated — live-provider pass and open installed gates |
+| `docs/ALPHA-SCOPE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/ARCHITECTURE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/BUILD.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/DEFERRED.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/DOCUMENTATION-INDEX.md` | active first-party | Active/historical documentation ownership | content_updated — complete continuation review and exclusions |
+| `docs/implementation/alpha-recovery/github/README.md` | active first-party | GitHub tracking administration | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/ACCEPTANCE.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/BUILD-AND-MINIMUM-TESTS.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/EXECUTION.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/GIT-WORKFLOW.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/INSTALLER-AND-DATA.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/PRODUCT-CONTRACT.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/ROADMAP.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/SETTINGS-AND-MAINTENANCE.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/TELEMETRY-AND-UI.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/instructions/TRACKING-AND-DOCS.md` | active first-party | Adopted active execution contract | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R0.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R1.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R2.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R3.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R4.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R5.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R6.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/phases/R7.md` | active first-party | Adopted active phase order | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/CONTEXT-CONTINUITY.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/NATIVE-GUI.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/REPOSITORY-ORGANIZATION.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/INSTALL.md` | active first-party | Active product/developer/operator reference | content_updated — 0.9.3 candidate and current trust result |
+| `docs/PARITY.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/STATUS.md` | active first-party | Current product evidence and remaining acceptance | content_updated — live rollover, merged delivery, and remaining gates |
+| `docs/TESTING.md` | active first-party | Active product/developer/operator reference | content_updated — affected regressions and real live rollover |
+| `docs/USER-GUIDE.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/WINDOWS_TOOLCHAIN.md` | active first-party | Active product/developer/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `packaging/Assets/README.md` | active first-party | Active packaging/operator reference | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `packaging/README.md` | active first-party | Active packaging/operator reference | content_updated — 0.9.3 continuation candidate |
+| `README.md` | active first-party | Product entry point and current status | content_updated — 0.9.3 live-continuity and blocker status |
+| `ROADMAP.md` | active first-party | R0–R7 phase delivery and links | content_updated — merged R7 delivery and active R6 continuation |
+| `.forge-alpha/phases/R0.md` | active first-party | R0 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `.forge-alpha/phases/R1.md` | active first-party | R1 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `.forge-alpha/phases/R2.md` | active first-party | R2 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `.forge-alpha/phases/R3.md` | active first-party | R3 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `.forge-alpha/phases/R4.md` | active first-party | R4 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `.forge-alpha/phases/R5.md` | active first-party | R5 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `.forge-alpha/phases/R6.md` | active first-party | R6 closeout, gates and documentation review | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
 | `docs/alpha-plan.json` | active first-party machine-readable | Stable R0–R7 scope, slices, gates and GitHub IDs | content_updated — R7 review and actual R5/R6 PR references |
-| `.forge-alpha/status.json` | active first-party machine-readable | Execution/delivery ledger and blockers | content_updated — R7 slices/gates, refreshed blockers and next action |
-| `.forge-alpha/NEXT.md` | active first-party operational | Exact resume cursor | content_updated — exact R7 delivery cursor |
-| `docs/implementation/alpha-recovery/github/plan.json` | active first-party machine-readable | Desired GitHub phase records | review_stamp_updated — applicable content checked against R7; no behavior change required |
-| `docs/implementation/alpha-recovery/tracking/status.schema.json` | active first-party schema | Ledger shape and state values | review_stamp_updated — applicable content checked against R7; no behavior change required |
+| `.forge-alpha/status.json` | active first-party machine-readable | Execution/delivery ledger and blockers | content_updated — R6 live gate, refreshed blockers and continuation delivery |
+| `.forge-alpha/NEXT.md` | active first-party operational | Exact resume cursor | content_updated — exact R6 continuation cursor |
+| `docs/implementation/alpha-recovery/github/plan.json` | active first-party machine-readable | Desired GitHub phase records | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
+| `docs/implementation/alpha-recovery/tracking/status.schema.json` | active first-party schema | Ledger shape and state values | review_stamp_updated — applicable content checked against the R6 continuation; no behavior change required |
 
-| `.forge-alpha/phases/R7.md` | active first-party | R7 closeout, gates and documentation review | content_updated — final documentation, retained candidate and delivery dependencies recorded |
+| `.forge-alpha/phases/R7.md` | active first-party | R7 closeout, gates and documentation review | content_updated — merged R7 delivery receipt retained |
 
 ## Historical, generated, product-resource and legal exclusions
 
@@ -75,6 +75,6 @@ Every active first-party document below was reviewed against the completed R7 do
 | `out/**`, build trees, packages, logs, local certificates and databases | ignored/generated/local data | Preserved locally and never published as source documentation. |
 
 <!-- alpha-phase-review:start -->
-Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

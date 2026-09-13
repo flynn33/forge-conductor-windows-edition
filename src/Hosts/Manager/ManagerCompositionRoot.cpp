@@ -485,6 +485,7 @@ public:
 private:
     void initialize();
     void initializeFoundation(const Domain::OperationContext& context);
+    void migrateNativeSessionLedger(const Domain::OperationContext& context);
     void initializePersistence(const Domain::OperationContext& context);
     void initializeLmStudio(const Domain::OperationContext& context);
     void initializeDashboard(const Domain::OperationContext& context);
@@ -711,10 +712,60 @@ void ManagerCompositionRoot::Impl::initialize()
         *uuidGenerator_, *clock_, StartupTimeout,
         "manager-production-composition");
     initializeFoundation(compositionContext);
+    migrateNativeSessionLedger(compositionContext);
     initializePersistence(compositionContext);
     initializeLmStudio(compositionContext);
     initializeDashboard(compositionContext);
     initializeManagerHost(compositionContext);
+}
+
+void ManagerCompositionRoot::Impl::migrateNativeSessionLedger(
+    const Domain::OperationContext& context)
+{
+    const auto& process = snapshot();
+    const auto currentPath =
+        childPath(process.memoryRoot(), "native-session-ledger.json");
+    const auto currentRead = authorizePath(
+        *dataAuthority_, *dataScope_, currentPath,
+        process.dataRoot(), Domain::FileAccess::Read, context);
+    auto current = atomicFileStore_->read(
+        currentRead,
+        InfrastructureWindows::WindowsNativeSessionLedger::MaximumDocumentBytes,
+        context);
+    if (current) {
+        return;
+    }
+    if (current.error().code != Domain::ErrorCodes::RecordNotFound) {
+        throw CompositionFailure{std::move(current).error()};
+    }
+
+    const std::array legacyCandidates{
+        childPath(process.dataRoot(), "native-session-ledger.json"),
+        childPath(process.dataRoot(), "native-session-ledger.json.bak")};
+    for (const auto& legacyPath : legacyCandidates) {
+        const auto legacyRead = authorizePath(
+            *dataAuthority_, *dataScope_, legacyPath,
+            process.dataRoot(), Domain::FileAccess::Read, context);
+        auto legacy = atomicFileStore_->read(
+            legacyRead,
+            InfrastructureWindows::WindowsNativeSessionLedger::MaximumDocumentBytes,
+            context);
+        if (!legacy) {
+            if (legacy.error().code == Domain::ErrorCodes::RecordNotFound) {
+                continue;
+            }
+            throw CompositionFailure{std::move(legacy).error()};
+        }
+        const auto currentCreate = authorizePath(
+            *dataAuthority_, *dataScope_, currentPath,
+            process.dataRoot(), Domain::FileAccess::Create, context);
+        auto migrated = atomicFileStore_->replace(
+            currentCreate, legacy.value(), false, context);
+        if (!migrated) {
+            throw CompositionFailure{std::move(migrated).error()};
+        }
+        return;
+    }
 }
 
 void ManagerCompositionRoot::Impl::initializeFoundation(
@@ -954,7 +1005,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         InfrastructureWindows::WindowsContinuityDocumentCodec>(
         hasher_, clock_);
     const auto ledgerPath =
-        childPath(process.dataRoot(), "native-session-ledger.json");
+        childPath(process.memoryRoot(), "native-session-ledger.json");
     nativeSessionLedger_ = std::make_unique<
         InfrastructureWindows::WindowsNativeSessionLedger>(
         *atomicFileStore_, *hasher_,
@@ -969,7 +1020,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             process.dataRoot(), Domain::FileAccess::Create, context),
         authorizePath(
             *dataAuthority_, *dataScope_,
-            childPath(process.dataRoot(), "native-session-ledger.json.bak"),
+            childPath(process.memoryRoot(), "native-session-ledger.json.bak"),
             process.dataRoot(), Domain::FileAccess::Read, context));
     InfrastructureWindows::LMStudioResponsesTransportConfiguration
         providerConfiguration;

@@ -1,12 +1,12 @@
 # Operator guide — Alpha workflow
-This is the implemented Alpha workflow. Installed lifecycle and live-provider continuity remain open where the current host lacks machine publisher trust or a running tool-capable LM Studio model.
+This is the implemented Alpha workflow. Real LM Studio managed continuity has passed; registered install/update/uninstall remains open where the current host lacks machine publisher trust.
 
 ## Start a project
 Install and launch from Start. Connect/start the manager, choose a project folder and give it a display name.
 The application retains a stable project identity; reopening or relinking its folder must not silently create
 another project's memory. The source folder is never deleted by a memory reset.
 
-For the internal 0.9.2.0 candidate, verify the package and certificate hashes in `distribution.json`. In Administrator PowerShell, run the bundled `Install-Engineering.ps1 -TrustDevelopmentPublisher` only after reviewing the named development publisher. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope.
+For the internal 0.9.3.0 candidate, verify the package and certificate hashes in `distribution.json`. In Administrator PowerShell, run the bundled `Install-Engineering.ps1 -TrustDevelopmentPublisher` only after reviewing the named development publisher. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope.
 
 ## Two LM Studio modes
 **Desktop MCP mode:** use LM Studio MCP -> Deploy to register the installed Forge primary/fallback stdio servers.
@@ -59,6 +59,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

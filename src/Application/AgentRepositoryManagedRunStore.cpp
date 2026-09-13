@@ -217,23 +217,34 @@ public:
                 record.createdAt,
                 record.updatedAt};
             if (!loaded.value()) {
+                auto initialSession = session;
+                initialSession.status = Domain::SessionStatus::Open;
+                initialSession.summary.reset();
                 Domain::AgentRunStartMutation mutation{
                     Domain::AgentRunRecord{
-                        session,
+                        std::move(initialSession),
                         record.projectId,
                         record.task,
                         std::nullopt,
                         {},
                         {},
                         std::nullopt},
-                    std::nullopt,
+                    Domain::ActiveBinding{
+                        record.runId,
+                        managedAgentId_,
+                        record.task,
+                        {},
+                        {},
+                        {},
+                        {},
+                        std::nullopt},
                     "Superseded by a newer Manager-owned run."};
                 auto saved = repository_.startRun(mutation, context);
                 if (!saved) {
                     return Domain::Result<void>::failure(
                         std::move(saved).error());
                 }
-                return Domain::Result<void>::success();
+                return repository_.save(session, context);
             }
             if (loaded.value()->session.agentId != managedAgentId_ ||
                 loaded.value()->projectId !=

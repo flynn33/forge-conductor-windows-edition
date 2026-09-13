@@ -763,6 +763,7 @@ void lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId()
     REQUIRE(!first.contains("previous_response_id"));
     REQUIRE(first.at("model") == "fixture-model");
     REQUIRE(first.at("tools").at(0).at("name") == "context_get");
+    REQUIRE(first.at("tool_choice") == "required");
     const auto second = Json::parse(requests[2].body);
     REQUIRE(second.at("previous_response_id") == "resp_fresh_root");
     REQUIRE(second.at("input").at(0).at("type") == "function_call_output");

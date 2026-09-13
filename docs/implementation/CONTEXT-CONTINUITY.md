@@ -95,6 +95,17 @@ through the authorized native MCP tool router and feeds retained usage to `Conti
 returns the activated successor response ID to the same work loop. Recovered pending external work fails for explicit
 reconciliation rather than being replayed blindly.
 
+The R6 continuation preserves an admissible open session and active binding before a repository-backed run starts,
+observes continuity only after completed native effects are persisted, and transfers bounded completed-work summaries
+in the canonical handoff so a fresh successor can continue without repeating those effects. Manager and CLI session
+ledgers live under the memory root after pre-SQLite migration of the legacy location. Real LM Studio operation
+`786d0672-6231-4202-a46c-401732ade283` crossed the authoritative threshold and activated fresh successor
+`7dd7aece-532a-459a-8489-ab9d62567466`; exact handoff retrieval, structured model acknowledgment, predecessor fencing,
+and useful successor filesystem work passed.
+
+The ordinary provider loop no longer has a turn limit. It continues until the task completes, the operator cancels,
+a real failure occurs, or context-only continuity transfers ownership.
+
 ## Configuration migration
 Read old quota/count/time fields only long enough to ignore/drop them safely during migration.
 Do not emit them in saved config, user documentation, CLI help, runtime tool descriptions or prompts.
@@ -112,6 +123,6 @@ Official references: https://lmstudio.ai/docs/developer/openai-compat/responses 
 https://lmstudio.ai/docs/developer/openai-compat/tools (checked September 10, 2026).
 
 <!-- alpha-phase-review:start -->
-Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

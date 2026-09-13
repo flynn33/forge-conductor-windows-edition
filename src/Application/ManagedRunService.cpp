@@ -499,6 +499,7 @@ private:
     observeContinuity(
         const Domain::ManagedRunStartRequest& request,
         const Domain::ManagedRunRecord& record,
+        const std::vector<Domain::ContinuityWorkEntry>& completedToolWork,
         const Domain::OperationContext& context) noexcept
     {
         if (!record.retainedContextTokens ||
@@ -535,7 +536,7 @@ private:
                     Domain::ErrorCodes::IntegrityFailure,
                     "The managed run identity cannot form continuity identity."));
         }
-        std::vector<Domain::ContinuityWorkEntry> completedWork;
+        auto completedWork = completedToolWork;
         if (record.outputText) {
             auto summary = *record.outputText;
             if (summary.size() > 2U * 1024U) {
@@ -689,12 +690,9 @@ private:
 
         std::string input = request.task;
         std::vector<Domain::ManagedFunctionCallOutput> toolOutputs;
+        std::vector<Domain::ContinuityWorkEntry> completedToolWork;
         std::set<Domain::ProviderSessionId> observedResponses;
-        constexpr std::size_t MaximumTurns = 32U;
-        for (std::size_t turnIndex{};
-             record.state == Domain::ManagedRunState::Running &&
-             turnIndex < MaximumTurns;
-             ++turnIndex) {
+        while (record.state == Domain::ManagedRunState::Running) {
             if (!awaitDispatchBoundary(
                     request, record, persistenceContext, token)) {
                 break;
@@ -745,37 +743,6 @@ private:
             if (!awaitDispatchBoundary(
                     request, record, persistenceContext, token)) {
                 break;
-            }
-            auto continuity = observeContinuity(
-                request, record, providerContext);
-            if (!continuity) {
-                record.state = Domain::ManagedRunState::Failed;
-                record.lastError = std::move(continuity).error();
-                break;
-            }
-            if (continuity.value() &&
-                continuity.value()->successorActivated) {
-                if (!continuity.value()->successorProviderResponseId) {
-                    record.state = Domain::ManagedRunState::Failed;
-                    record.lastError = failure(
-                        Domain::ErrorCodes::IntegrityFailure,
-                        "Continuity activated a successor without a provider response identity.");
-                    break;
-                }
-                record.providerResponseId =
-                    continuity.value()->successorProviderResponseId;
-                record.pendingFunctionCalls.clear();
-                toolOutputs.clear();
-                input =
-                    "Continue the Manager-owned task from the canonical handoff. "
-                    "Do not repeat any effect whose completion is uncertain.";
-                if (auto saved = store_.save(record, persistenceContext); !saved) {
-                    record.state = Domain::ManagedRunState::Failed;
-                    record.lastError = saved.error();
-                    break;
-                }
-                publishActive(record);
-                continue;
             }
             if (value.functionCalls.empty()) {
                 if (value.outputText.size() > Domain::MaximumManagedRunOutputBytes) {
@@ -834,6 +801,60 @@ private:
                           {"retryable", invoked.error().retryable}}}};
                     toolOutputs.push_back({call.callId, errorResult.dump()});
                 }
+                auto summary = "Native tool " + call.name + " result: " +
+                    toolOutputs.back().canonicalOutput;
+                if (summary.size() > 2U * 1024U) {
+                    summary.resize(2U * 1024U);
+                }
+                if (completedToolWork.size() ==
+                    Domain::MaximumContinuityHandoffListItems) {
+                    completedToolWork.erase(completedToolWork.begin());
+                }
+                completedToolWork.push_back(
+                    {call.callId, std::move(summary),
+                     std::optional<std::string>{"completed"}});
+            }
+            if (record.state != Domain::ManagedRunState::Running) {
+                break;
+            }
+            record.pendingFunctionCalls.clear();
+            if (auto saved = store_.save(record, persistenceContext); !saved) {
+                record.state = Domain::ManagedRunState::Failed;
+                record.lastError = saved.error();
+                break;
+            }
+            publishActive(record);
+            auto continuity = observeContinuity(
+                request, record, completedToolWork, providerContext);
+            if (!continuity) {
+                record.state = Domain::ManagedRunState::Failed;
+                record.lastError = std::move(continuity).error();
+                break;
+            }
+            if (continuity.value() &&
+                continuity.value()->successorActivated) {
+                if (!continuity.value()->successorProviderResponseId) {
+                    record.state = Domain::ManagedRunState::Failed;
+                    record.lastError = failure(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "Continuity activated a successor without a provider response identity.");
+                    break;
+                }
+                record.providerResponseId =
+                    continuity.value()->successorProviderResponseId;
+                toolOutputs.clear();
+                input =
+                    "Continue the Manager-owned task from the canonical handoff. "
+                    "Treat completed_work as authoritative and do not repeat "
+                    "completed tool effects. When the task is satisfied, return "
+                    "a terminal response without another tool call.";
+                if (auto saved = store_.save(record, persistenceContext); !saved) {
+                    record.state = Domain::ManagedRunState::Failed;
+                    record.lastError = saved.error();
+                    break;
+                }
+                publishActive(record);
+                continue;
             }
             input.clear();
         }

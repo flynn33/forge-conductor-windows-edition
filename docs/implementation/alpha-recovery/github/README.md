@@ -9,6 +9,6 @@ Every phase PR targets main and is pushed with the verified owner's account/auth
 The normative workflow is [owner-authenticated Git](../instructions/GIT-WORKFLOW.md), including normal review/merge authority, preserving dirty work and post-merge tracked-source equality. The package does not grant permission to bypass branch rules or publish a public Release. The connected review observed the merged foundation PR but did not create or edit any remote record.
 
 <!-- alpha-phase-review:start -->
-Phase review: R7 — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 continuation — 2026-09-12. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

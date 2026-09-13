@@ -406,7 +406,7 @@ public:
         : configuration_{validateConfiguration(std::move(configuration))},
           host_{Detail::strictUtf8ToUtf16(configuration_.loopbackHost).value()},
           session_{std::make_shared<InternetHandle>(WinHttpOpen(
-              L"Forge Conductor LM Studio Responses/0.9.2",
+              L"Forge Conductor LM Studio Responses/0.9.3",
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,
@@ -497,7 +497,7 @@ public:
                           {"properties",
                            Json{{"handoff_id", Json{{"type", "string"}}}}},
                           {"required", Json::array({"handoff_id"})}}}}})},
-                {"tool_choice", Json{{"type", "function"}, {"name", "context_get"}}},
+                {"tool_choice", "required"},
                 {"parallel_tool_calls", false},
                 {"store", true}};
             auto first = postResponses(firstBody, context);
