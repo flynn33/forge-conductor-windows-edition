@@ -79,6 +79,7 @@ private:
         const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
     void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
+    void ClearSelectedProject();
     void SelectPage(const winrt::hstring& tag);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
@@ -87,6 +88,8 @@ private:
         telemetrySnapshot_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
     std::string selectedProjectId_;
+    std::wstring selectedPageValueName_{L"SelectedPage"};
+    std::wstring selectedProjectValueName_{L"SelectedProjectId"};
     std::stop_source cancellation_;
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};

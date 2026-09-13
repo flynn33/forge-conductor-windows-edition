@@ -161,7 +161,7 @@ public:
                Json{{"name", role == Domain::LMStudioConnectorRole::Fallback
                                   ? "forge-conductor-fallback"
                                   : "forge-conductor"},
-                    {"version", "0.9.1"}}}}}};
+                    {"version", "0.9.2"}}}}}};
     Json tools = canonicalTools();
     require(toolCount <= tools.size(), "the requested verifier tool subset is invalid");
     while (tools.size() > toolCount) {
@@ -636,7 +636,7 @@ void testProtocolDriftAndProcessFailuresFailClosed()
     processes.setOutput(mutateInitialize(
         successfulResponse(Domain::LMStudioConnectorRole::Primary),
         [](Json& response) {
-            response["result"]["serverInfo"]["version"] = "0.9.2";
+            response["result"]["serverInfo"]["version"] = "0.9.1";
         }));
     requireError(verify(35U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a mismatched MCP server version was accepted");

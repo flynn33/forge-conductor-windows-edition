@@ -1,13 +1,12 @@
 # Operator guide — Alpha workflow
-This is the intended Alpha workflow. Update screenshots, actual labels and artifact links after implementation;
-do not publish this draft as evidence that the current application already performs every step.
+This is the implemented Alpha workflow. Installed lifecycle and live-provider continuity remain open where the current host lacks machine publisher trust or a running tool-capable LM Studio model.
 
 ## Start a project
 Install and launch from Start. Connect/start the manager, choose a project folder and give it a display name.
 The application retains a stable project identity; reopening or relinking its folder must not silently create
 another project's memory. The source folder is never deleted by a memory reset.
 
-For the internal 0.9.1.0 candidate, verify the package and certificate hashes in `distribution.json`. In Administrator PowerShell, run the bundled `Install-Engineering.ps1 -TrustDevelopmentPublisher` only after reviewing the named development publisher. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope.
+For the internal 0.9.2.0 candidate, verify the package and certificate hashes in `distribution.json`. In Administrator PowerShell, run the bundled `Install-Engineering.ps1 -TrustDevelopmentPublisher` only after reviewing the named development publisher. The helper verifies identity, signer, version, and Windows registration; it never distributes a private key. A Windows `0x800B0109` result means the publisher is not yet trusted at the required machine scope.
 
 ## Two LM Studio modes
 **Desktop MCP mode:** use LM Studio MCP -> Deploy to register the installed Forge primary/fallback stdio servers.
@@ -30,7 +29,7 @@ Rig refreshes from the Manager every two seconds. It shows Manager, provider, co
 CPU, RAM, GPU capability, and retained context; recent CPU/RAM and activity-latency history; and a readable activity
 timeline. The text next to each visual is the accessible authoritative value. Unavailable or stale measurements show
 a reason rather than zero. Projects, Tools, Feed, Runtimes, Provider, Events & Evidence, Diagnostics, Manager, and
-Settings reuse the same snapshot for their current detail summary. The last selected page is restored on next launch.
+Settings reuse the same snapshot for their current detail summary. The last selected page and exact project are restored on next launch; disposable Alpha roots keep independent selections and stale IDs clear instead of selecting another project.
 
 ## Tools and shell
 Tools shows actual availability. Clean installs allow the native shell tool; an explicit opt-out is preserved.
@@ -60,6 +59,6 @@ Use Events & Evidence to open relevant local logs/results. Report the app versio
 never include an access token or signing private key in an issue.
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

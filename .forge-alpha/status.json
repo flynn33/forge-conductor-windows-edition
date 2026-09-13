@@ -2,20 +2,20 @@
   "schema_version": 2,
   "plan_id": "windows-alpha-recovery-2026-09-12",
   "instructions": "Current R0-R7 execution ledger under continuous-delivery-correction-2026-09-12; native compaction continues the current slice, current facts outrank static prompts, draft/review/merge/acceptance remain separate, and one narrow reused continuation is allowed after an early phase merge.",
-  "updated_at_utc": "2026-09-12T23:28:00Z",
+  "updated_at_utc": "2026-09-13T00:15:00Z",
   "current_phase": "R6",
   "current_slice": "R6.1",
   "adoption": "replacement_package_adopted_foundation_preserved",
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
-    "branch": "alpha/r5-installer-data",
-    "head": "fbad840c83258785135363cb768bec67276c7c46",
+    "branch": "alpha/r6-acceptance",
+    "head": "d883f3b71ca72c85d4877c260d2d858519ebd259",
     "origin_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
     "github_main": "f83fe4c81c261545d70bdf8c786997ded4043dd2",
     "dirty_summary": [
-      "Narrow R5 documentation closeout PR #19 is open as a draft after primary PR #18 merged early; R6 begins from this exact reviewed continuation head.",
+      "R6 source repair, 0.9.2 candidate and documentation closeout are pushed in draft PR #20; the PR reference update is pending push.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
-      "Ref equality is separate from cleanliness: local main, origin/main, and authenticated GitHub main equal f83fe4c81c261545d70bdf8c786997ded4043dd2; the continuation branch intentionally differs."
+      "Ref equality is separate from cleanliness: local main, origin/main, and authenticated GitHub main equal f83fe4c81c261545d70bdf8c786997ded4043dd2; the dependent R6 branch intentionally starts from exact PR #19 head 9d8c181789f998fd2928b993eeae9ff318417bc5."
     ]
   },
   "baseline": {
@@ -114,8 +114,8 @@
           "evidence": "The real x64 Release GUI rendered changing CPU samples, stable RAM, explicit unsupported GPU utilization with detected adapter memory, and 326 history samples after reattach. GUI RAM 14.8% agreed with Windows observation 14.9%; disconnected rendering was previously exercised. Receipt: out/alpha-evidence/r6/native-ui-and-reattach-20260912.json."
         },
         "R2-G3": {
-          "status": "blocked",
-          "evidence": "Native controls and equivalent values are exposed through UI Automation, and visible keyboard focus was observed. The enlarged/high-contrast layout pass and full keyboard traversal were not performed; this gate remains open."
+          "status": "passed",
+          "evidence": "The exact unpacked 0.9.2 GUI exposed accessible names/values, keyboard-operable controls, actual Windows High Contrast, and actual 150% text scaling. Settings remained readable and scrollable; temporary OS settings were restored."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R2 review of every active first-party document; affected telemetry/UI/operator/test content updated and all other active Markdown stamps refreshed; immutable and local exclusions preserved.",
@@ -182,8 +182,8 @@
           "evidence": "Dispatcher 11 groups rejects wrong confirmation without calls and aggregates combined reset; project-memory application/cache and Windows memory/continuity repositories passed 4/7/17/6 disposable groups covering scoped transactions, isolation, close/post-close rejection, preservation and restart durability."
         },
         "R4-G3": {
-          "status": "blocked",
-          "evidence": "Actual Settings rendered accessible names, paired sliders/exact values, visible keyboard focus, effective readback, and exact reset confirmations. The context slider/exact-value keyboard operation plus scaled/high-contrast layout pass were not completed, so the gate remains open."
+          "status": "passed",
+          "evidence": "The exact unpacked 0.9.2 Settings page exposed labeled paired context controls. Keyboard operation changed/restored the slider and exact token value, focus remained visible, High Contrast rendered strong boundaries, and 150% Windows text-size inspection passed."
         }
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R4 full active first-party document review; historical/vendor/product-resource/generated exclusions preserved.",
@@ -220,41 +220,41 @@
           "evidence": "Signer/public-certificate hashes, stable identity, increasing version, helper inputs and post-registration checks were inspected. A normal install attempt returned 0x800B0109 before registration because Local Machine publisher trust was unavailable; actual installed lifecycle stays open under R6-G1."
         }
       },
-      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in narrow draft PR #19.",
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R5 full review; primary PR #18 merged and synchronized, with later closeout/native evidence preserved in review-ready PR #19.",
       "phase_receipt": ".forge-alpha/phases/R5.md",
       "last_known_merge": "f83fe4c81c261545d70bdf8c786997ded4043dd2"
     },
     "R6": {
-      "implementation": "not_started",
-      "delivery": "not_started",
+      "implementation": "blocked",
+      "delivery": "draft_open",
       "branch": "alpha/r6-acceptance",
       "issue_number": 9,
       "milestone_number": 7,
-      "pr_number": null,
-      "pr_url": null,
-      "reviewed_head": null,
+      "pr_number": 20,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20",
+      "reviewed_head": "d883f3b71ca72c85d4877c260d2d858519ebd259",
       "slices": {
-        "R6.1": "not_started",
-        "R6.2": "not_started",
-        "R6.3": "not_started",
-        "R6.4": "not_started"
+        "R6.1": "blocked",
+        "R6.2": "blocked",
+        "R6.3": "verified",
+        "R6.4": "blocked"
       },
       "gates": {
         "R6-G1": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "Signed 0.9.2.0 package build/unpack/CLI/GUI/Manager/profile-isolation checks passed, but Add-AppxPackage 0.9.1.0 returned 0x800B0109 without machine-level publisher trust. No package registered, so Start/update/uninstall are not claimed."
         },
         "R6-G2": {
-          "status": "not_run",
-          "evidence": null
+          "status": "blocked",
+          "evidence": "Manager detach/reattach passed on exact package bytes, but LM Studio TCP 127.0.0.1:1234 remained unavailable at 2026-09-13T00:05:58Z. No provider-originated acknowledgment or productive successor is claimed."
         },
         "R6-G3": {
-          "status": "not_run",
-          "evidence": null
+          "status": "passed",
+          "evidence": "All required pages had prior native coverage. Exact 0.9.2 package telemetry, two-profile selection isolation, page restore, keyboard context controls, actual High Contrast and 150% Windows text-size checks passed; focused App/MCP/Infrastructure suites passed."
         }
       },
-      "documentation_review": null,
-      "phase_receipt": null,
+      "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 full active first-party document review; exact candidate, accessibility, defect repair and remaining external gates reconciled; historical/vendor/product-resource/generated exclusions preserved.",
+      "phase_receipt": ".forge-alpha/phases/R6.md",
       "last_known_merge": null
     },
     "R7": {
@@ -293,12 +293,12 @@
   "blockers": [
     {
       "id": "B-R1-LMSTUDIO-OFFLINE",
-      "failure": "TCP connection to 127.0.0.1:1234 was refused.",
+      "failure": "TCP connection to 127.0.0.1:1234 was unavailable; no live model endpoint could be queried.",
       "affected": "R6-G2 final live continuity acceptance",
       "dependency_type": "external_service",
-      "last_observed_utc": "2026-09-12T15:06:05.3117096Z",
+      "last_observed_utc": "2026-09-13T00:05:58.0926923Z",
       "necessary_external_action": "Start LM Studio local server with a tool-capable model when live verification is attempted.",
-      "next_independent_work": "Complete R2-R5 implementation and focused checks; retry live provider acceptance in R6."
+      "next_independent_work": "Complete R6/R7 delivery records while retaining live productive continuity as blocked."
     },
     {
       "id": "B-R5-CENTRAL-SCHEMA-HISTORY",
@@ -310,33 +310,24 @@
       "next_independent_work": "Use --alpha-root for all disposable implementation and checks; do not open or modify the live store."
     },
     {
-      "id": "B-R6-NATIVE-SCALED-HIGH-CONTRAST",
-      "failure": "Native UI control is now available and the page matrix/reattach walkthrough ran, but enlarged/high-contrast layout and complete keyboard traversal were not performed.",
-      "affected": "R2-G3, R4-G3 and R6-G3",
-      "dependency_type": "verification_environment",
-      "last_observed_utc": "2026-09-12T23:12:07.7000455Z",
-      "necessary_external_action": "Run the actual Release GUI with enlarged Windows text/display scaling and High Contrast, then complete keyboard traversal including a context slider/exact-value pair.",
-      "next_independent_work": "Continue unpacked/installed candidate checks and live-provider availability without calling the native accessibility gate passed."
-    },
-    {
       "id": "B-R6-INSTALL-TRUST",
-      "failure": "Add-AppxPackage rejected the signed 0.9.1.0 candidate with 0x800B0109; the development publisher is absent from LocalMachine/TrustedPeople. The elevated helper did not receive Windows consent and no package was registered.",
+      "failure": "Add-AppxPackage rejected 0.9.1.0 with 0x800B0109. Current-user certificate trust did not satisfy deployment; the machine-level publisher import was rejected by automatic approval policy. No package is registered.",
       "affected": "R6.1, R6.4 and R6-G1",
       "dependency_type": "windows_approval",
-      "last_observed_utc": "2026-09-12T23:05:00Z",
+      "last_observed_utc": "2026-09-13T00:05:58.0926923Z",
       "necessary_external_action": "Approve the bundled public development certificate for Local Machine Trusted People through the normal elevated helper, then rerun installation.",
-      "next_independent_work": "Exercise the exact unpacked MSIX payload from an isolated directory, recheck LM Studio, and finish honest acceptance/delivery records."
+      "next_independent_work": "Use the verified exact unpacked 0.9.2 package evidence and complete R6/R7 delivery without calling installed acceptance passed."
     }
   ],
   "known_bugs": [],
-  "last_result": "R5 implementation merged in PR #18 at f83fe4c81c261545d70bdf8c786997ded4043dd2 and local main was synchronized. Narrow draft PR #19 preserves the R5 documentation closeout and later native evidence. Machine-trusted installation, scaled/high-contrast accessibility, live provider continuity, and authentic schema-9 compatibility remain open under their existing acceptance ownership.",
-  "next_action": "Unpack the exact signed MSIX into an ignored isolated directory and run its GUI/Manager/CLI without repository build paths, then recheck LM Studio availability. Preserve R6-G1/G2/G3 as blocked wherever machine trust, provider, or scaled/high-contrast prerequisites remain.",
+  "last_result": "R6 repaired Alpha profile selection leakage, produced the committed signed 0.9.2.0 candidate, and passed exact-package GUI/Manager/CLI, telemetry, detach/reattach, two-profile isolation, keyboard, High Contrast and 150% text-size checks. Installed lifecycle and live productive continuity remain blocked by machine trust and offline LM Studio; the live schema-9 owner store was untouched.",
+  "next_action": "Push the R6 PR #20 reference update, create alpha/r7-delivery from the exact resulting R6 head, and complete R7 traceability/artifact delivery while R6-G1/G2 remain blocked.",
   "acceptance": {
-    "installed_workflow": "not_run",
-    "live_productive_successor": "not_run",
-    "native_visuals_settings": "partial_native_page_matrix_and_live_telemetry_passed_scaled_high_contrast_open",
-    "installed_lifecycle": "not_run",
-    "owner_existing_data_compatibility": "not_run",
+    "installed_workflow": "blocked_machine_trust",
+    "live_productive_successor": "blocked_lm_studio_offline",
+    "native_visuals_settings": "passed_exact_unpacked_0_9_2",
+    "installed_lifecycle": "blocked_machine_trust",
+    "owner_existing_data_compatibility": "blocked_authentic_schema_history_unavailable_live_store_untouched",
     "alpha_accepted": false
   },
   "legacy_phase_summary": {

@@ -59,6 +59,6 @@ Use a real Windows interactive session. Check navigation, keyboard focus, window
 One focused native smoke is enough; do not add a large screenshot automation framework. Keep a short result record.
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

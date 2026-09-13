@@ -3,37 +3,34 @@
 **Package identity:** `windows-alpha-recovery-2026-09-12`
 **Execution revision:** `continuous-delivery-correction-2026-09-12`
 **Repository host:** `D:\GitHub\Forge-Conductor-Windows-Edition`
-**Current phase/slice:** R6.1 — real installed workflow
-**Current branch:** `alpha/r5-installer-data` (narrow R5 closeout continuation; R6 branch follows this exact head)
+**Current phase/slice:** R7.1 — final documentation and traceability
+**Current branch:** `alpha/r6-acceptance`, based on exact R5 continuation head `9d8c181789f998fd2928b993eeae9ff318417bc5`
 
 ## Verified state
 
-- R3 completion PR #15 merged at `1f6991d5fc60928c0a12ca348d08737fae703b1f`.
-- R4 Settings PR #16 merged at `cb5a074285be0f4bd17b210c7fe0cc0505b7efab`; local main was fast-forwarded to that exact commit.
-- R4 completion [PR #17](https://github.com/flynn33/forge-conductor-windows-edition/pull/17) merged at `b54525ac4aadb4847ad7685f4b9dd92c8546abc1`; local `main` and `origin/main` were synchronized to that exact ref before it was merged into the active R5 branch.
-- R5 candidate source is committed at `3bcaeb3481022b38d6d6c9783510ace910957cf8` / tree `ab4587c78fe8f03328f0a2a68a983ed856634833`; [PR #18](https://github.com/flynn33/forge-conductor-windows-edition/pull/18) merged at `f83fe4c81c261545d70bdf8c786997ded4043dd2`, local main was synchronized, and narrow draft closeout [PR #19](https://github.com/flynn33/forge-conductor-windows-edition/pull/19) carries later evidence.
-- Full x64 Debug and Release products build. Focused MCP, persistence, infrastructure and PowerShell syntax checks pass. The signed 0.9.1.0 MSIX was unpacked and rehashed; its SHA-256 is `ddb3e8c6c43aedc21be0747f46431061f29c2ed3dfaad332e79f1026073f5087`. A real disposable schema-9 Manager start exited with the dedicated newer-store code 20 and left the database hash unchanged.
-- The Release GUI used disposable profile `out/alpha-profiles/r6-native-ui`, started Manager PID 31172, visited all 14 required destinations, registered exact project `51e1f9a4-5943-46f1-9797-35a275768cc3`, closed and reattached to the same surviving Manager, and retained the selection. Rig showed changing CPU and 14.8% RAM against Windows 14.9%; GPU utilization gave an explicit unsupported reason. The test GUI and owned Manager were stopped afterward.
-- Remote `alpha/r1-managed-runs` was verified at expected head `e304edeef72d9dc251a742cbefcd31693d6db423`, had no active PR, and had the same stable patch as main commit `b5ad0f4f280ac5e11b558c73ae60f8f90fd8b584`. Its exact ref is preserved in the verified ignored bundle under `out/alpha-evidence/branch-retirement/`, and only that remote branch was deleted with an expected-head lease.
-- The native page/reattachment walkthrough now closes R1-G3, R2-G2, R3-G2 and R3-G3. Enlarged/high-contrast layout and complete keyboard operation remain open under R2-G3/R4-G3/R6-G3.
+- R1–R5 implementation is merged through PR #18 at `f83fe4c81c261545d70bdf8c786997ded4043dd2`; local main and origin/main match it. PR #19 preserves the narrow R5 closeout and later native evidence. Primary R6 [PR #20](https://github.com/flynn33/forge-conductor-windows-edition/pull/20) is open explicitly as a draft.
+- R6 fixed cross-profile page/project selection leakage and stale-ID use. Profile A restores exact project `51e1f9a4-5943-46f1-9797-35a275768cc3`; profile B retains zero projects and no selection.
+- Candidate source commit `d8a2d68c80f2fd090aa36466a517725a0eb59445` / tree `151ccf51a9aa3d1a0b6fdcfe22af2cbf599a7c6e` produced signed `ForgeConductor-0.9.2.0-x64.msix`, SHA-256 `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`; bundle SHA-256 `18e43f5508499b56ec802447cfb98dfe8bfc048ba1f649eb1da657f0ae28f8dd`.
+- Full x64 Release products built. Focused App telemetry, MCP protocol/process, and Infrastructure tests passed. Exact unpacked MSIX bytes supplied the CLI, GUI and Manager; no repository build path was used for package acceptance.
+- Exact-package Manager detach/reattach, measured CPU/RAM, explicit unsupported GPU state, two-profile selection, keyboard context controls, actual High Contrast, and actual 150% Windows text size passed. Temporary OS settings, trust entries and Forge processes were restored.
+- Remote `alpha/r1-managed-runs` remains retired. Its exact former ref is preserved in the verified ignored bundle under `out/alpha-evidence/branch-retirement/`; no other remote branch was deleted.
 - Preserve and exclude `.forge-qwen/state/**` changes and evidence. Never use `C:\Program Files\ForgeConductor` as source.
 
 ## Next exact action
 
-Unpack the exact signed MSIX into an ignored isolated directory and launch its GUI/Manager/CLI from those package bytes without repository build paths. Then recheck LM Studio at `127.0.0.1:1234`. Keep installed, live-provider, and scaled/high-contrast gates open wherever their prerequisites remain unavailable.
+Push the PR #20 reference update, create `alpha/r7-delivery` from the exact resulting R6 head, and complete R7 artifact/traceability documentation while keeping R6-G1/G2 blocked.
 
 ## Open dependencies
 
-- `B-R1-LMSTUDIO-OFFLINE`: start a tool-capable LM Studio server for R6 live continuity acceptance.
+- `B-R1-LMSTUDIO-OFFLINE`: TCP `127.0.0.1:1234` remained unavailable at `2026-09-13T00:05:58Z`; start a tool-capable LM Studio server for provider-originated productive successor acceptance.
 - `B-R5-CENTRAL-SCHEMA-HISTORY`: authentic C008/C009 history is unavailable; preserve the schema-9 owner store and keep newer-store rejection non-destructive.
-- `B-R6-INSTALL-TRUST`: `Add-AppxPackage` returned `0x800B0109`; approve the bundled public development certificate in Local Machine Trusted People through the normal elevated helper. No package is currently registered.
-- `B-R6-NATIVE-SCALED-HIGH-CONTRAST`: native control and the page matrix now work, but enlarged/high-contrast layout and complete keyboard traversal remain unperformed.
+- `B-R6-INSTALL-TRUST`: `Add-AppxPackage` returned `0x800B0109`. Current-user trust is insufficient and the machine-level publisher import was rejected by automatic approval policy; approve the bundled public certificate in Local Machine Trusted People, then run install/Start/update/uninstall acceptance.
 
 ## Phase closeout obligations
 
-Push the R5 documentation/evidence closeout to draft PR #19, then continue R6 from its exact head while review is pending. Machine trust, provider availability, scaled/high-contrast inspection and authentic migration history retain their gate IDs; none is treated as passed. Keep implementation, checks, readiness, merge and acceptance distinct through R7.
+R6-G3 is passed. R6-G1 and R6-G2 remain blocked and are not waived. PR #20 is open as a draft; continue R7 from its exact head and preserve implementation, checks, readiness, merge and acceptance as distinct states. Ref equality remains separate from the intentionally dirty unrelated `.forge-qwen` working tree.
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](../docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

@@ -79,6 +79,8 @@ struct MaintenanceView final {
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
+    [[nodiscard]] virtual std::optional<std::string> viewStateScope()
+        const noexcept { return std::nullopt; }
     virtual std::string refresh(std::stop_token cancellation) noexcept = 0;
     virtual TelemetryView telemetry(
         std::string selectedRunId,
@@ -147,6 +149,9 @@ class ManagerConnection final : public IManagerConnection {
 public:
     explicit ManagerConnection(
         std::optional<std::wstring> alphaRoot = std::nullopt) noexcept;
+
+    [[nodiscard]] std::optional<std::string> viewStateScope()
+        const noexcept override;
 
     std::string refresh(std::stop_token cancellation) noexcept override;
     TelemetryView telemetry(

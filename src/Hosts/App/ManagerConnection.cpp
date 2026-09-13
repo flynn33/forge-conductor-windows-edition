@@ -196,6 +196,14 @@ ManagerConnection::ManagerConnection(
     }
     alphaProfile_.emplace(std::move(created).value());
 }
+
+std::optional<std::string> ManagerConnection::viewStateScope() const noexcept
+{
+    return alphaProfile_
+        ? std::optional<std::string>{alphaProfile_->dataRoot().value()}
+        : std::nullopt;
+}
+
 std::string ManagerConnection::refresh(std::stop_token cancellation) noexcept {
     try {
         if (!profileError_.empty()) return profileError_;

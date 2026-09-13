@@ -1,7 +1,7 @@
 # Installer and installation
-**R5 candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.1.0-x64.msix`, SHA-256 `ddb3e8c6c43aedc21be0747f46431061f29c2ed3dfaad332e79f1026073f5087`, from commit `3bcaeb3481022b38d6d6c9783510ace910957cf8` and tree `ab4587c78fe8f03328f0a2a68a983ed856634833`.
+**R6 candidate:** x64 Release MSIX creation, development signing, full payload validation, extraction, and rehash succeeded on September 12, 2026. The package is `ForgeConductor-0.9.2.0-x64.msix`, SHA-256 `4f43569b45438202d10cbfb67da4e456a04d65a80bb4b33177a3c94cfb74a695`, from commit `d8a2d68c80f2fd090aa36466a517725a0eb59445` and tree `151ccf51a9aa3d1a0b6fdcfe22af2cbf599a7c6e`.
 
-The first normal install attempt returned `0x800B0109`: Windows requires the included development publisher certificate in the Local Machine Trusted People store. No package was installed. The owner store is preserved; a newer unsupported store produces an actionable error and must not be used as migration evidence. Final installed Alpha acceptance remains open.
+Normal 0.9.1.0 install attempts returned `0x800B0109`: Windows requires the included development publisher certificate in the Local Machine Trusted People store. Current-user trust does not satisfy package deployment, and the machine-level import was unavailable on the acceptance host. No package was installed. The 0.9.2.0 MSIX was instead unpacked from its signed bytes, rehashed, and exercised without repository build paths; that is useful package evidence but not installed acceptance. The owner store remains untouched, and a newer unsupported store produces an actionable non-destructive error.
 
 Build with `scripts/build.ps1 -Configuration Release -Product All`, then `scripts/package.ps1 -DevelopmentSigning`.
 Each distribution under `out/dist/candidate-*` contains the signed MSIX, public certificate, checksum metadata,
@@ -22,13 +22,13 @@ is not permission to omit files blindly. Do not silently install a model or requ
 LM Studio and an available tool-capable model are external prerequisites for model-dependent features.
 
 ## Packaging implementation
-`scripts/package.ps1` uses MakeAppx and SignTool. It refuses dirty candidate inputs or a mismatched staging commit/tree, then verifies the signed package by extracting it and comparing each payload hash. The candidate contains the self-contained App SDK, redistributable release CRT, executable hashes and real native binaries. Actual installed workflow acceptance remains R6.
+`scripts/package.ps1` uses MakeAppx and SignTool. It refuses dirty candidate inputs or a mismatched staging commit/tree, then verifies the signed package by extracting it and comparing each payload hash. The candidate contains the self-contained App SDK, redistributable release CRT, executable hashes and real native binaries. Actual installed workflow acceptance remains open under R6-G1 until the explicit machine trust action succeeds.
 The real app is `ForgeConductorApp.exe`; sibling programs are `forge-conductor.exe`,
 `ForgeConductor.Manager.exe`, `ForgeConductor.SessionHost.exe`, the Forsetti manifest and agent/resources used at runtime.
 Verify actual target output names rather than blindly adopting this proposed staging list.
 
 Choose a stable package identity and publisher once; make manifest Publisher match the signing certificate exactly.
-The R5 candidate uses product version `0.9.1` and numeric MSIX version `0.9.1.0`, incremented from the earlier `0.9.0.0` engineering package. Runtime identity and package scripts validate this source. Avoid downgrading an installed build.
+The current candidate uses product version `0.9.2` and numeric MSIX version `0.9.2.0`, incremented from the retained `0.9.1.0` candidate so a real update path is available. Runtime identity and package scripts validate this source. Avoid downgrading an installed build.
 Replace every manifest placeholder and include the required logos/resources. The supplied PNG assets are sufficient
 starter packaging assets, not a UI design project.
 
@@ -64,6 +64,6 @@ https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/self-contained
 https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview
 
 <!-- alpha-phase-review:start -->
-Phase review: R5 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
+Phase review: R6 — 2026-09-12. Implementation and verification status: [Product status](STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
