@@ -4,9 +4,9 @@
 
 The payload contains the GUI, Manager, CLI/MCP entry point, SessionHost, self-contained Windows App SDK files, release Visual C++ runtime, WinUI resources, agent resources, Forsetti manifest, assets, and third-party notices. `candidate-provenance.json` records the exact committed source and build identity inside the MSIX; `payload-manifest.json` hashes every pre-package file. The companion distribution records package/certificate hashes and the observed Authenticode signer. Only the public certificate is distributed.
 
-Package creation requires clean committed product and packaging inputs and a Release staging manifest from the same commit/tree. The installation helper validates hashes, signer, stable identity, strictly increasing update version, and Windows' post-install registration. Trusting the internal development publisher remains an explicit administrator action. The R6 acceptance closeout supplies the verified candidate at version 0.9.4.0, SHA-256 `937e503c3198d829907aff2a349067ad8f21c7cec54df071d668a531eb65c586`; Windows returned `0x800B0109` without machine-level trust, so installed acceptance remains open under the administrator handoff.
+Package creation requires clean committed product and packaging inputs and a Release staging manifest from the same commit/tree. The installation helper validates hashes, signer, stable identity, strictly increasing update version, and Windows' post-install registration. Trusting the internal development publisher remains an explicit administrator action. The telemetry parity closeout supplies the verified candidate at version 0.9.5.0, SHA-256 `04b371e8ebea8ed7303d50498c24d40f6f965d523cc72dd339b200fc1a9a0098`; Windows still lacks machine-level trust for the development publisher, so installed acceptance remains open under the administrator handoff.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../docs/STATUS.md).
+Phase review: R2 telemetry parity follow-up — 2026-09-13. Implementation and verification status: [Product status](../docs/STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->
