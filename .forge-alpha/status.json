@@ -9,11 +9,11 @@
   "observed_repository": {
     "root": "D:\\GitHub\\Forge-Conductor-Windows-Edition",
     "branch": "alpha/r6-live-continuity-fix",
-    "head": "0cd18ae1e7fd160e2fcbbe690552ef5c61a4a203",
+    "head": "93c93d9cf790ec1ab7cb2ec9f24dffcd7bc53628",
     "origin_main": "a161443c974bce594ef7a655a88d02b20dec6040",
     "github_main": "a161443c974bce594ef7a655a88d02b20dec6040",
     "dirty_summary": [
-      "Reviewed continuation documentation is pending its owner commit and PR.",
+      "PR #22 reference closeout is pending its owner commit and push; the draft PR is open at exact pre-closeout head 93c93d9cf790ec1ab7cb2ec9f24dffcd7bc53628.",
       "Preserved unrelated .forge-qwen/state runtime changes and untracked evidence; excluded from product staging.",
       "Ignored live/provider/package evidence remains local under out/ and is referenced by stable IDs and hashes."
     ]
@@ -226,13 +226,13 @@
     },
     "R6": {
       "implementation": "blocked",
-      "delivery": "not_started",
+      "delivery": "pr_open",
       "branch": "alpha/r6-live-continuity-fix",
       "issue_number": 9,
       "milestone_number": 7,
-      "pr_number": null,
-      "pr_url": null,
-      "reviewed_head": "0cd18ae1e7fd160e2fcbbe690552ef5c61a4a203",
+      "pr_number": 22,
+      "pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/22",
+      "reviewed_head": "93c93d9cf790ec1ab7cb2ec9f24dffcd7bc53628",
       "slices": {
         "R6.1": "blocked",
         "R6.2": "verified",
@@ -255,7 +255,9 @@
       },
       "documentation_review": "docs/DOCUMENTATION-INDEX.md — R6 continuation full active first-party review; live rollover, 0.9.3 candidate, merged R7 state and remaining external gates reconciled.",
       "phase_receipt": ".forge-alpha/phases/R6.md",
-      "last_known_merge": null
+      "last_known_merge": null,
+      "primary_pr_number": 20,
+      "primary_pr_url": "https://github.com/flynn33/forge-conductor-windows-edition/pull/20"
     },
     "R7": {
       "implementation": "verified",
@@ -312,7 +314,7 @@
   ],
   "known_bugs": [],
   "last_result": "R6 live continuity repaired and verified against real LM Studio. R6-G2 passes with authoritative usage, exact handoff, fresh provider root, structured acknowledgment, fencing, useful successor effects and Manager recovery. Signed exact 0.9.3 package live smoke passed; registered lifecycle and authentic schema-9 compatibility remain open.",
-  "next_action": "Commit and push the reviewed R6 continuation, open the permitted continuation PR against main, follow normal merge rules, then synchronize local/origin/GitHub main. Keep R6-G1 and schema-9 compatibility open.",
+  "next_action": "Push the PR #22 reference closeout, verify exact remote/PR head, mark the draft ready, merge through normal repository rules, then fetch and fast-forward local main. Keep R6-G1 and schema-9 compatibility open.",
   "acceptance": {
     "installed_workflow": "blocked_machine_trust",
     "live_productive_successor": "passed_real_lm_studio_qwen3_coder_30b",

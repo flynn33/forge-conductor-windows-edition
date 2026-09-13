@@ -19,7 +19,7 @@
 
 ## Next exact action
 
-Commit the reviewed R6 continuation records, push `alpha/r6-live-continuity-fix`, open the permitted continuation PR against main, follow normal review/merge rules, then fetch and fast-forward local main. Keep R6-G1 and schema-9 compatibility open.
+Push the PR #22 reference closeout, mark the draft ready after verifying its exact head, follow normal review/merge rules, then fetch and fast-forward local main. Keep R6-G1 and schema-9 compatibility open.
 
 ## Open dependencies
 

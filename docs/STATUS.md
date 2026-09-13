@@ -1,6 +1,6 @@
 # Product status
 
-Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R7 and PRs #19–#21 are merged and local/origin/GitHub main synchronized at `a161443c974bce594ef7a655a88d02b20dec6040`. The R6 continuation branch repairs the genuine live-provider defects found during acceptance, passes R6-G2, and supplies signed candidate 0.9.3.0. R6-G1 remains open for registered installation and authentic schema-9 compatibility.
+Updated September 12, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R7 and PRs #19–#21 are merged and local/origin/GitHub main synchronized at `a161443c974bce594ef7a655a88d02b20dec6040`. Draft [PR #22](https://github.com/flynn33/forge-conductor-windows-edition/pull/22) repairs the genuine live-provider defects found during acceptance, passes R6-G2, and supplies signed candidate 0.9.3.0. R6-G1 remains open for registered installation and authentic schema-9 compatibility.
 
 | Area | Current source/evidence | Remaining requirement |
 |---|---|---|
