@@ -329,10 +329,10 @@ void testPersistentInternalAlphaProfile()
             "could not resolve Local AppData for the profile test");
 
     std::filesystem::path expected{rawLocalAppData};
-    expected /= L"Forge Conductor Internal Alpha";
+    expected /= L"Forge Conductor";
     const auto selected = take(WindowsAlphaManagerProfile::persistentDataRoot());
     require(selected == expected.native(),
-            "the persistent Internal Alpha root changed");
+            "the persistent production root changed");
 
     const auto first = take(WindowsAlphaManagerProfile::create(selected));
     const auto second = take(WindowsAlphaManagerProfile::create(selected));
@@ -345,8 +345,8 @@ void testPersistentInternalAlphaProfile()
             "the persistent profile secure-storage identity was not stable");
 
     WindowsApplicationPaths legacyDefault;
-    require(take(legacyDefault.dataRoot(activeContext())) != first.dataRoot(),
-            "the persistent Internal Alpha profile selected the legacy store");
+    require(take(legacyDefault.dataRoot(activeContext())) == first.dataRoot(),
+            "the persistent production profile did not select the application store");
 }
 
 void testPathResolverRejectsUnsafeForms()

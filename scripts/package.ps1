@@ -5,32 +5,33 @@ param(
     [ValidateSet('x64')][string]$Architecture='x64',
     [switch]$DevelopmentSigning,
     [string]$PfxPath=$env:FORGE_SIGNING_PFX,
-    [string]$PfxPassword=$env:FORGE_SIGNING_PASSWORD
+    [string]$PfxPassword=$env:FORGE_SIGNING_PASSWORD,
+    [string]$UpdateBaseUri
 )
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$false
 $root = Split-Path -Parent $PSScriptRoot
-$identity = 'ForgeConductor.Windows.Alpha'
+$identity = 'ForgeConductor.Windows'
 
 function Invoke-GitScalar {
     param([Parameter(Mandatory)][string[]]$Arguments)
     $value = (& git -C $root @Arguments)
     if ($LASTEXITCODE -ne 0 -or -not $value) {
-        throw "Git failed while resolving candidate provenance: $($Arguments -join ' ')"
+        throw "Git failed while resolving release provenance: $($Arguments -join ' ')"
     }
     return ([string]$value).Trim()
 }
 
 $sourceCommit = Invoke-GitScalar @('rev-parse','HEAD')
 $sourceTree = Invoke-GitScalar @('rev-parse','HEAD^{tree}')
-$candidateInputs = @(
+$releaseInputs = @(
     'CMakeLists.txt','CMakePresets.json','vcpkg.json','vcpkg-configuration.json',
     'include','src','packaging','scripts/build.ps1','scripts/alpha/Build-App.ps1',
     'scripts/alpha/Install-Engineering.ps1','scripts/package.ps1','THIRD-PARTY-NOTICES.md')
-$candidateDirty = @(& git -C $root status --porcelain=v1 --untracked-files=all -- @candidateInputs)
-if ($LASTEXITCODE -ne 0) { throw 'Git could not inspect candidate inputs.' }
-if ($candidateDirty.Count -ne 0) {
-    throw "Commit all product and packaging inputs before creating a candidate:`n$($candidateDirty -join "`n")"
+$releaseDirty = @(& git -C $root status --porcelain=v1 --untracked-files=all -- @releaseInputs)
+if ($LASTEXITCODE -ne 0) { throw 'Git could not inspect release inputs.' }
+if ($releaseDirty.Count -ne 0) {
+    throw "Commit all product and packaging inputs before creating a release:`n$($releaseDirty -join "`n")"
 }
 
 $cmake = Get-Content -LiteralPath (Join-Path $root 'CMakeLists.txt') -Raw
@@ -52,10 +53,10 @@ if (-not (Test-Path -LiteralPath $stagingManifest -PathType Leaf)) {
 }
 $staging = Get-Content -LiteralPath $stagingManifest -Raw | ConvertFrom-Json
 if ($staging.configuration -cne $Configuration -or $staging.architecture -cne $Architecture) {
-    throw 'The staged build configuration or architecture does not match the candidate.'
+    throw 'The staged build configuration or architecture does not match the release.'
 }
 if ($staging.source_commit -cne $sourceCommit -or $staging.source_tree -cne $sourceTree) {
-    throw 'The staged products were not built from the current candidate commit and tree.'
+    throw 'The staged products were not built from the current release commit and tree.'
 }
 if (@($staging.source_dirty).Count -ne 0) {
     throw 'The staged products were built while product source was dirty.'
@@ -72,7 +73,7 @@ foreach ($entry in $staging.executables) {
     $expectedPath = Join-Path $app ([string]$entry.name)
     if (-not [IO.Path]::GetFullPath([string]$entry.path).Equals(
             [IO.Path]::GetFullPath($expectedPath), [StringComparison]::OrdinalIgnoreCase)) {
-        throw "A staged executable path escaped the candidate directory: $($entry.name)"
+        throw "A staged executable path escaped the release directory: $($entry.name)"
     }
     if ((Get-FileHash -LiteralPath $expectedPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne
         [string]$entry.sha256) {
@@ -92,7 +93,7 @@ foreach ($tool in @($makeappx,$signtool)) {
 $certificate = $null
 if ($DevelopmentSigning) {
     if ($PfxPath) { throw 'Choose DevelopmentSigning or PFX signing, not both.' }
-    $subject = 'CN=Forge Conductor Alpha Development'
+    $subject = 'CN=Forge Conductor Development'
     foreach ($candidate in Get-ChildItem Cert:/CurrentUser/My) {
         if ($candidate.Subject -eq $subject -and $candidate.HasPrivateKey -and
             $candidate.NotAfter -gt (Get-Date).AddDays(7)) {
@@ -114,7 +115,7 @@ if ($DevelopmentSigning) {
 }
 
 $distribution = Join-Path $root (
-    "out/dist/candidate-$version-" + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))
+    "out/dist/release-$version-" + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))
 $payload = Join-Path $distribution 'payload'
 New-Item -ItemType Directory -Path $payload -Force | Out-Null
 foreach ($file in Get-ChildItem -LiteralPath $app -Force) {
@@ -201,10 +202,11 @@ $provenance = [ordered]@{
     configuration=$Configuration
     architecture=$Architecture
     staged_executables=$buildExecutables
-    alpha_accepted=$false
+    release_channel='stable'
+    development_signed=[bool]$DevelopmentSigning
 }
 $provenance | ConvertTo-Json -Depth 6 |
-    Set-Content -LiteralPath (Join-Path $payload 'candidate-provenance.json') -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $payload 'release-provenance.json') -Encoding utf8
 
 $payloadEntries = @(
     Get-ChildItem -LiteralPath $payload -File -Recurse | ForEach-Object {
@@ -265,22 +267,19 @@ $certificatePath = Join-Path $distribution 'Publisher.cer'
 [IO.File]::WriteAllBytes($certificatePath,$certificate.Export(
     [Security.Cryptography.X509Certificates.X509ContentType]::Cert))
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'alpha/Install-Engineering.ps1') `
-    -Destination $distribution
+    -Destination (Join-Path $distribution 'Install.ps1')
 @"
-Forge Conductor Windows Alpha candidate $version (x64 Release)
+Forge Conductor $version for Windows 11 x64
 
-An authorized administrator must import Publisher.cer into Local Machine Trusted
-People and designate a disposable account or test machine. Sign in there, install
-the retained lower candidate, and create the persistence markers. To perform the
-upgrade, run this candidate's Install-Engineering.ps1 -PreflightOnly. If it reports
-ready_for_install true, run it without either switch. Each successful install or
-update writes a distinct timestamped JSON receipt in this directory.
+Verify distribution.json, then run Install.ps1 -PreflightOnly. If it reports
+ready_for_install true, run Install.ps1. Development-signed builds additionally
+require an authorized administrator to trust Publisher.cer in Local Machine
+Trusted People. Each successful install or update writes a timestamped receipt.
 
-Ordinary Start-menu launches use the persistent Internal Alpha profile at
-%LOCALAPPDATA%\Forge Conductor Internal Alpha. The legacy
-%LOCALAPPDATA%\Forge Conductor store remains untouched. For disposable testing,
-launch ForgeConductorApp.exe from a terminal with --alpha-root and an absolute
-empty folder.
+Ordinary Start-menu launches use the production profile at
+%LOCALAPPDATA%\Forge Conductor. Existing schema-9 data is supported in place.
+For isolated testing, launch ForgeConductorApp.exe from a terminal with
+--alpha-root and an absolute empty folder.
 
 The package is self-contained for the Windows App SDK and release Visual C++
 runtime. LM Studio and a loaded model remain local runtime prerequisites for
@@ -291,7 +290,7 @@ password is present in this distribution.
 $packageHash=(Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
 $certificateHash=(Get-FileHash -LiteralPath $certificatePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $helperHash=(Get-FileHash -LiteralPath (
-    Join-Path $distribution 'Install-Engineering.ps1') -Algorithm SHA256).Hash.ToLowerInvariant()
+    Join-Path $distribution 'Install.ps1') -Algorithm SHA256).Hash.ToLowerInvariant()
 $readmeHash=(Get-FileHash -LiteralPath (
     Join-Path $distribution 'README.txt') -Algorithm SHA256).Hash.ToLowerInvariant()
 $distributionMetadata = [ordered]@{
@@ -301,7 +300,7 @@ $distributionMetadata = [ordered]@{
     source_tree=$sourceTree
     distribution_source_commit=$sourceCommit
     distribution_source_tree=$sourceTree
-    distribution_refresh='full_candidate'
+    distribution_refresh='full_release'
     source_dirty=@()
     product_version=$productVersion
     package_identity=$identity
@@ -318,21 +317,50 @@ $distributionMetadata = [ordered]@{
     signature_status=[string]$signature.Status
     payload_manifest_sha256=(Get-FileHash -LiteralPath (
         Join-Path $payload 'payload-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
-    alpha_accepted=$false
+    release_channel='stable'
+    development_signed=[bool]$DevelopmentSigning
 }
 $distributionMetadata | ConvertTo-Json -Depth 5 |
     Set-Content -LiteralPath (Join-Path $distribution 'distribution.json') -Encoding utf8
 
+$appInstallerPath = $null
+if ($UpdateBaseUri) {
+    $baseUri = $UpdateBaseUri.TrimEnd('/')
+    if (-not [Uri]::IsWellFormedUriString($baseUri, [UriKind]::Absolute) -or
+        ([Uri]$baseUri).Scheme -cne 'https') {
+        throw 'UpdateBaseUri must be an absolute HTTPS URI.'
+    }
+    $appInstaller = Get-Content -LiteralPath (
+        Join-Path $root 'packaging/ForgeConductor.appinstaller.template') -Raw
+    $appInstaller = $appInstaller.Replace('REPLACE_PACKAGE_IDENTITY',$identity).
+        Replace('REPLACE_CERTIFICATE_SUBJECT',[Security.SecurityElement]::Escape($subject)).
+        Replace('REPLACE_PRODUCT_VERSION',$version).
+        Replace('REPLACE_UPDATE_BASE_URI',[Security.SecurityElement]::Escape($baseUri)).
+        Replace('REPLACE_PACKAGE_FILENAME',$packageName)
+    if ($appInstaller -match 'REPLACE_[A-Z_]+') {
+        throw 'The App Installer manifest retains a placeholder.'
+    }
+    $appInstallerPath = Join-Path $distribution 'ForgeConductor.appinstaller'
+    Set-Content -LiteralPath $appInstallerPath -Value $appInstaller -Encoding utf8
+    $distributionMetadata['appinstaller'] = [IO.Path]::GetFileName($appInstallerPath)
+    $distributionMetadata['appinstaller_sha256'] = (
+        Get-FileHash -LiteralPath $appInstallerPath -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    $distributionMetadata | ConvertTo-Json -Depth 5 |
+        Set-Content -LiteralPath (Join-Path $distribution 'distribution.json') -Encoding utf8
+}
+
 $zip = Join-Path $distribution "ForgeConductor-$version-x64.zip"
 $bundleFiles = @(
-    $package,$certificatePath,(Join-Path $distribution 'Install-Engineering.ps1'),
+    $package,$certificatePath,(Join-Path $distribution 'Install.ps1'),
     (Join-Path $distribution 'README.txt'),(Join-Path $distribution 'distribution.json'))
+if ($appInstallerPath) { $bundleFiles += $appInstallerPath }
 Compress-Archive -LiteralPath $bundleFiles -DestinationPath $zip
 $zipHash=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 "$zipHash  $([IO.Path]::GetFileName($zip))" |
     Set-Content -LiteralPath (Join-Path $distribution 'bundle-sha256.txt') -Encoding ascii
 
-Write-Host "Signed Windows Alpha candidate: $distribution"
+Write-Host "Signed Forge Conductor release: $distribution"
 [ordered]@{
     distribution=$distribution
     package=$package

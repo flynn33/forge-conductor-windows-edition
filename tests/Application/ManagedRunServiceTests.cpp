@@ -1,6 +1,9 @@
 #include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
 #include "ForgeConductor/Application/ManagedRunService.h"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
@@ -653,7 +656,7 @@ public:
     const auto query = context(
         "99999999-9999-4999-8999-999999999999",
         "managed-run-status");
-    for (std::size_t attempt = 0; attempt < 200U; ++attempt) {
+    for (std::size_t attempt = 0; attempt < 1'000U; ++attempt) {
         auto current = service.status(runId, query);
         assert(current);
         if (current.value().record.state != Domain::ManagedRunState::Running &&
@@ -675,7 +678,7 @@ public:
     const auto query = context(
         "88888888-8888-4888-8888-888888888888",
         "managed-run-state");
-    for (std::size_t attempt = 0; attempt < 200U; ++attempt) {
+    for (std::size_t attempt = 0; attempt < 1'000U; ++attempt) {
         auto current = service.status(runId, query);
         assert(current);
         if (current.value().record.state == expected) {

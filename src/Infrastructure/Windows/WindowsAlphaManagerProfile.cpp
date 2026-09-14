@@ -17,7 +17,7 @@ namespace WindowsDetail = ForgeConductor::Infrastructure::Windows::Detail;
 namespace {
 
 constexpr wchar_t PersistentProfileDirectoryName[] =
-    L"Forge Conductor Internal Alpha";
+    L"Forge Conductor";
 
 }
 
@@ -34,7 +34,7 @@ WindowsAlphaManagerProfile::persistentDataRoot() noexcept
             *rawLocalAppData == L'\0') {
             return Domain::Result<std::wstring>::failure(Domain::makeError(
                 Domain::ErrorCodes::InternalFailure,
-                "The persistent Internal Alpha profile root could not be "
+                "The persistent Forge Conductor profile root could not be "
                 "resolved from FOLDERID_LocalAppData."));
         }
 
@@ -53,7 +53,7 @@ WindowsAlphaManagerProfile::persistentDataRoot() noexcept
     } catch (...) {
         return Domain::Result<std::wstring>::failure(Domain::makeError(
             Domain::ErrorCodes::InternalFailure,
-            "The persistent Internal Alpha profile root could not be prepared."));
+            "The persistent Forge Conductor profile root could not be prepared."));
     }
 }
 
@@ -83,9 +83,9 @@ WindowsAlphaManagerProfile::createProfile(
             identifier *= 1099511628211ULL;
         }
         const std::string token = std::format("{:016x}", identifier);
-        std::string purposeSuffix = "alpha-" + token;
+        std::string purposeSuffix = "profile-" + token;
         std::wstring registrySubkey =
-            L"Software\\Forge Conductor\\AlphaProfiles\\";
+            L"Software\\Forge Conductor\\Profiles\\";
         registrySubkey.append(token.begin(), token.end());
         registrySubkey.append(L"\\SecureStorage");
 
@@ -97,7 +97,7 @@ WindowsAlphaManagerProfile::createProfile(
         return Domain::Result<WindowsAlphaManagerProfile>::failure(
             Domain::makeError(
                 Domain::ErrorCodes::InternalFailure,
-                "The isolated Alpha Manager profile could not be prepared."));
+                "The isolated Manager profile could not be prepared."));
     }
 }
 

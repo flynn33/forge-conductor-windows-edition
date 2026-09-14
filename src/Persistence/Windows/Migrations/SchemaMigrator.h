@@ -40,6 +40,8 @@ enum class SchemaLayout
     CentralVersion5,
     CentralVersion6,
     CentralVersion7,
+    CentralVersion8,
+    CentralVersion9,
     ProjectVersion1,
     ProjectVersion2,
     ProjectVersion3,

@@ -1,0 +1,51 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main, "release/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-build-and-test:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      VCPKG_ROOT: C:\vcpkg
+      TEMP: C:\forge-conductor-ci-temp
+      TMP: C:\forge-conductor-ci-temp
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Prepare canonical test directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
+
+      - name: Build complete Release product
+        shell: pwsh
+        run: ./scripts/build.ps1 -Configuration Release -Architecture x64 -Product All -Parallel 4
+
+      - name: Run complete Release test suite
+        shell: pwsh
+        run: ./scripts/test.ps1 -Configuration Release -Architecture x64 -Parallel 4
+
+      - name: Validate static release gates
+        shell: pwsh
+        run: ./scripts/Run-Static-Gates.ps1
+
+      - name: Upload staged product
+        uses: actions/upload-artifact@v7
+        with:
+          name: ForgeConductor-Windows-x64-${{ github.sha }}
+          path: out/app/x64/Release/
+          if-no-files-found: error
+          retention-days: 14

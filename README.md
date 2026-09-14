@@ -1,37 +1,37 @@
 # Forge Conductor for Windows
 
-Forge Conductor is a native Windows control application and MCP tool server for project work with local models in LM Studio.
+Forge Conductor is a native Windows 11 control application and MCP tool server for project work with local models in LM Studio.
 
-**Status: INTERNAL ALPHA NOT READY.** Native telemetry, Manager-owned continuity, projects, memory, MCP, tools, Settings, and the signed 0.9.5.0 package are implemented. Ordinary GUI launches select the durable `%LOCALAPPDATA%\Forge Conductor Internal Alpha` profile and give it an independent Manager, pipe, secure-storage, memory, and continuity identity; the preserved schema-9 store is not opened. Draft [PR #25](https://github.com/flynn33/forge-conductor-windows-edition/pull/25) carries that change, side-effect-free installation preflight, distinct install receipts, and a narrow MSIX persistence repair. Machine trust, registered normal-account Start/Manager paths, durable profile routing, and installed MCP/tool/project/memory smoke pass. The final registered visual telemetry/Settings/managed-continuity walkthrough remains open because native app control is unavailable in this session; the disposable 0.9.4→0.9.5 update and uninstall/reinstall lifecycle also remains open because no disposable environment is available. Legacy schema-9 migration is owner-deferred and nonblocking.
+The 1.0 product includes a full WinUI 3 desktop interface, per-user Manager process, managed inference and context continuity, project registration, legacy and project memory, 53 native MCP tools, LM Studio deployment, scoped maintenance, and live CPU, RAM, GPU, disk, volume, process, and workflow telemetry.
 
-Use [Product status](docs/STATUS.md) for verified behavior and blockers, [Roadmap](ROADMAP.md) for the current phase sequence, and [Documentation index](docs/DOCUMENTATION-INDEX.md) for active and historical guidance. The adopted execution contract is under [Alpha recovery](docs/implementation/alpha-recovery/instructions/EXECUTION.md).
+## Product surfaces
 
-## Start here
+- **Rig:** live system, model, store, continuity, process, and workflow status with bounded histories and disconnect visibility.
+- **Autonomy:** start, inspect, pause, resume, stop, and reattach managed local-model runs.
+- **Projects:** register authorized folders and manage stable project identities and aliases.
+- **Memory:** search and inspect durable project memory with project isolation.
+- **Tools:** invoke authorized filesystem, search, Git, PowerShell, PDF, project, memory, agent, and continuity tools.
+- **Settings:** configure Manager, dashboard, LM Studio, logs, shell, startup, retention, and context thresholds; perform confirmed scoped resets.
 
-- Developers: [Build](docs/BUILD.md), [Architecture](docs/ARCHITECTURE.md), and [Focused testing](docs/TESTING.md).
-- Operators: [Install](docs/INSTALL.md) and [User guide](docs/USER-GUIDE.md).
-- Scope: [Alpha scope](docs/ALPHA-SCOPE.md), [Parity](docs/PARITY.md), and [Deferred work](docs/DEFERRED.md).
+Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`. Released schema-9 data is supported in place. The historical `--alpha-root <absolute-path>` option remains as a compatibility alias for disposable isolated profiles.
 
-The target has a per-user Manager, persistent projects and memory, filesystem/Git/shell tools, LM Studio MCP deployment, real visual operational telemetry, accessible Settings, and automatic context continuity for Forge-managed runs. The native Autonomy and Continuity surfaces can start and inspect managed work and request safe pause, resume, or stop through the Manager. Ordinary LM Studio desktop MCP chats and Forge-managed API runs are different modes; connecting MCP does not enroll an existing desktop chat into managed continuity.
+## Build and verify
 
-The current Rig renders a coalesced Manager-owned telemetry stream with a 250 ms base sample, one-second GPU/disk tiers, and five-second process/volume tiers. It shows bounded CPU/RAM/GPU and disk histories, per-logical CPU bars and frequency, supported GPU engine activity, correctly scoped DXGI memory accounting, disk throughput/IOPS and volume capacity, relevant-process rows, workflow inventory, sample age, and disconnected gaps. Retained-context headroom comes from the Manager rather than a GUI estimate. Page and project selection persist for the durable Internal Alpha profile; disposable `--alpha-root` profiles keep independent view state.
-
-The Projects page registers an authorized folder through the Manager, displays its stable project ID and all authorized aliases, persists the selected identity, and binds it into the Autonomy run form. Memory search returns full readable records; memory writes and integrity/storage status use the existing per-project repository, with cross-project responses rejected before presentation.
-
-Settings loads and reads back Manager, dashboard, LM Studio, logging, shell, startup, session-retention, and context values through the authenticated Manager pipe. Context thresholds have paired sliders and exact token inputs. Memory-only, continuity-only, combined, and all-project resets require exact visible confirmation text; they clear registered profile data through transactional services and never delete source folders.
-
-## Development stack
-
-Windows 11 x64; C++20; Visual Studio 2022/MSVC v143; Windows SDK 10.0.26100.0; CMake 3.28 or later; Windows App SDK/C++/WinRT; Windows SQLite; vcpkg JSON dependency.
+Requirements and reproducible commands are in [Build](docs/BUILD.md). The complete Release path is:
 
 ```powershell
-.\scripts\build.ps1 -Configuration Debug -Architecture x64 `
-  -Target ForgeConductor.Cli,ForgeConductor.Manager,ForgeConductor.SessionHost
+./scripts/build.ps1 -Configuration Release -Architecture x64 -Product All
+./scripts/build.ps1 -Configuration Release -Architecture x64 -Product Backend
+./scripts/test.ps1 -Configuration Release -Architecture x64
+./scripts/Run-Static-Gates.ps1
 ```
 
-The GUI builds with `scripts/build.ps1 -Configuration Release -Architecture x64 -Product All`. `scripts/package.ps1 -DevelopmentSigning` creates a source-bound signed candidate under ignored `out/dist`. The current internal package is `out/dist/candidate-0.9.5.0-20260913-165014/ForgeConductor-0.9.5.0-x64.msix`, SHA-256 `3efd692af03e15b7d8e5dad95be8119563e08c158c48b6df1dbf26ad899578c9`. Follow [Installer and installation](docs/INSTALL.md) for provenance and hash verification; [Installed acceptance handoff](docs/INSTALLED-ACCEPTANCE-HANDOFF.md) gives the exact trust and lifecycle procedure.
+Create a development-signed validation package with:
 
-<!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](docs/STATUS.md).
-Delivery/merge status is recorded by the linked phase pull request.
-<!-- alpha-phase-review:end -->
+```powershell
+./scripts/package.ps1 -DevelopmentSigning
+```
+
+Production distributions require an explicitly supplied code-signing PFX. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), and [Architecture](docs/ARCHITECTURE.md).
+
+Historical Alpha plans and evidence remain under `.forge-alpha/` and `docs/implementation/alpha-recovery/`; they are archived delivery records, not the current product definition.

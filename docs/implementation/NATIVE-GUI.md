@@ -1,13 +1,13 @@
 # Native Windows GUI implementation map
 Use the WinUI 3 C++/WinRT MSBuild app project under `src/Hosts/App`.
 CMake remains the backend build. Prefer one NavigationView shell, reusable list/detail/status controls,
-ordinary Windows typography/icons, and native settings dialogs. Do not spend Alpha effort reproducing Metal artwork.
+ordinary Windows typography/icons, and native settings dialogs. Platform-specific Metal artwork is not a Windows requirement.
 
 Each view model receives the same typed manager client. Marshal UI updates through the UI dispatcher.
 Async actions expose busy/cancel/result/error state and must not freeze the window during provider inference,
 MCP deployment or process execution. A disconnected page offers reconnect, not fabricated empty success.
 
-| Native surface | Essential Alpha actions/data | Reuse / reference |
+| Native surface | Essential actions/data | Reuse / reference |
 |---|---|---|
 | Rig | Overall manager/model/project/run status; start point for common work | Existing manager snapshot; Mac AppModel |
 | LM Studio MCP | Preview/deploy/verify primary and fallback; show exact active executable/config | Existing deployment services, CLI serve |
@@ -28,7 +28,7 @@ R3 replaces required generic destinations with typed project, LM Studio, tool, a
 
 Group related destinations using tabs if useful, but do not omit actions. All pages must use real data through R2–R4.
 When an optional feature is unavailable, say which dependency is missing and give a real recovery action;
-required Alpha features cannot be deferred by showing an unavailable label.
+required product features cannot be deferred by showing an unavailable label.
 
 R1 adds a concrete Autonomy/Continuity control panel backed by typed Manager pipe commands. It accepts project,
 client, authority generation, run, and task identity; displays run state, lifetime and retained token values,
@@ -39,7 +39,7 @@ R2 adds the live Rig presentation backed by `ManagerTelemetrySnapshot`: four ope
 CPU/RAM/GPU/context values and gauges, per-logical CPU bars/frequency, GPU adapters and engine activity, disk/volume and relevant-process panels, bounded resource/disk/activity-latency histories, measured cadence/sample age, accessible text equivalents,
 and a recent activity timeline. Provider, Runtimes, Projects, Tools, Feed, Events, Diagnostics, Manager, and Settings
 destinations project the same snapshot into readable detail text. Page selection persists for the Windows user,
-refresh is coalesced at two seconds, chart points are recomputed after resize, and disconnected reads keep prior history explicitly stale. Ordinary GUI launch uses the durable Internal Alpha profile, and a persistent header shows its profile name and exact data root on every page even when the Manager is disconnected.
+refresh is coalesced at two seconds, chart points are recomputed after resize, and disconnected reads keep prior history explicitly stale. Ordinary GUI launch uses the production `%LOCALAPPDATA%\Forge Conductor` profile, and a persistent header shows its profile name and exact data root on every page even when the Manager is disconnected.
 
 ## Project and reset behavior
 A memory reset is not deletion of the source folder. Present the selected project and targeted stores before confirmation.
@@ -58,7 +58,4 @@ Make failures discoverable within the GUI; source checkout paths and a developer
 Use a real Windows interactive session. Check navigation, keyboard focus, window resize and one useful action per page.
 One focused native smoke is enough; do not add a large screenshot automation framework. Keep a short result record.
 
-<!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](../STATUS.md).
-Delivery/merge status is recorded by the linked phase pull request.
-<!-- alpha-phase-review:end -->
+Historical implementation-phase records are retained alongside this document; [Product status](../STATUS.md) is authoritative for the 1.0 release.

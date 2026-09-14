@@ -5,6 +5,8 @@ R0 establishes the workflow. R1–R5 qualify the implementation increment and it
 
 Each phase's primary PR includes all its available required evidence and explicitly names remaining R6 conditions. Do not hold telemetry/settings/local workflows idle behind a missing local model or certificate approval. Do not close R6 or label the product a working Alpha while a required real-product check is unavailable or failed. See [Roadmap](ROADMAP.md) and [build/test policy](BUILD-AND-MINIMUM-TESTS.md).
 
+For the 0.9.5.0 Internal Alpha closeout, the owner explicitly authorized real-binary lifecycle simulation instead of another physical-machine pass. The simulation must still use the signed 0.9.4.0 and 0.9.5.0 payloads, exercise the real CLI and MCP transports, and prove retained-profile, settings, project-isolation, foreign-configuration and reinstall behavior. Existing actual installed GUI, Manager, accessibility, telemetry and live-provider receipts remain required; this exception does not make fixture-only acceptance the default for later releases.
+
 ## Preparation without another setup campaign
 Use the owner's actual Windows 11 x64 test environment. Preserve the production store. Choose an explicitly disposable Alpha root, two disposable projects A/B, a harmless local test Git repository, and a foreign MCP configuration sentinel. Record the actual candidate package identity/version/hash and the exact product source commit/tree. Identify the actual LM Studio endpoint and loaded tool-capable model from effective settings; do not assume the old localhost refusal remains current.
 
@@ -48,6 +50,6 @@ Fix a required-path crash, data loss/cross-project write, broken settings, unusa
 All gates need a short outcome and evidence reference. Use the [phase closeout](../templates/PHASE-CLOSEOUT.md) and [acceptance record](../templates/ACCEPTANCE-RESULT.md); no new evidence engine is required. A missing environment is not a bug fix, a mock is not the provider, a signed ZIP is not an installation, and a saved NEXT.md is not a finished assignment.
 
 <!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
+Phase review: R6 simulated acceptance closeout — 2026-09-13. Implementation and verification status: [Product status](../../../STATUS.md).
 Delivery/merge status is recorded by the linked phase pull request.
 <!-- alpha-phase-review:end -->

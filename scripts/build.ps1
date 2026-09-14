@@ -24,7 +24,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 
 $workspaceRoot = Split-Path -Parent $PSScriptRoot
 $buildApp = $Product -ne 'Backend' -and ($Target.Count -eq 0 -or $PSBoundParameters.ContainsKey('Product'))
-if ($buildApp -and $Architecture -ne 'x64') { throw 'The Alpha native app currently supports x64 only. Use -Product Backend for other backend architectures.' }
+if ($buildApp -and $Architecture -ne 'x64') { throw 'The native app supports x64 only. Use -Product Backend for other backend architectures.' }
 if ($buildApp) {
     $productTargets = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($name in @($Target) + @('ForgeConductor.Cli','ForgeConductor.Manager','ForgeConductor.SessionHost')) {

@@ -30,14 +30,12 @@ struct LocalArguments final {
     return std::nullopt;
 }
 
-[[nodiscard]] std::wstring selectedAlphaRoot() noexcept
+[[nodiscard]] std::optional<std::wstring> selectedDataRoot() noexcept
 {
     if (auto requested = commandLineAlphaRoot()) {
-        return std::move(*requested);
+        return requested;
     }
-    auto persistent = ::ForgeConductor::Infrastructure::Windows::
-        WindowsAlphaManagerProfile::persistentDataRoot();
-    return persistent ? std::move(persistent).value() : std::wstring{};
+    return std::nullopt;
 }
 
 }
@@ -46,7 +44,7 @@ App::App() {}
 void App::OnLaunched(Microsoft::UI::Xaml::LaunchActivatedEventArgs const&) {
     window_ = winrt::make<MainWindow>(
         std::make_shared<::ForgeConductor::Hosts::App::ManagerConnection>(
-            selectedAlphaRoot()));
+            selectedDataRoot()));
     window_.Activate();
 }
 }

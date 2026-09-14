@@ -44,13 +44,13 @@ $trustedPublisher=Get-ChildItem -LiteralPath Cert:/LocalMachine/TrustedPeople -E
         $_.Subject -eq $metadata.publisher
     } |
     Select-Object -First 1
-if (-not $trustedPublisher) {
-    throw "Development publisher $($metadata.publisher) [$($certificate.Thumbprint)] is not trusted in Local Machine Trusted People. Ask an authorized administrator to import Publisher.cer there, then rerun this helper without -TrustDevelopmentPublisher."
+if ($signature.Status -ne 'Valid' -and -not $trustedPublisher) {
+    throw "Publisher $($metadata.publisher) [$($certificate.Thumbprint)] is not trusted. For a development-signed build, ask an authorized administrator to import Publisher.cer into Local Machine Trusted People, then rerun this helper."
 }
 $installedBefore=Get-AppxPackage -Name $metadata.package_identity -ErrorAction SilentlyContinue |
     Sort-Object Version -Descending | Select-Object -First 1
-if ($installedBefore -and [version]$installedBefore.Version -ge [version]$metadata.package_version) {
-    throw "Installed version $($installedBefore.Version) must be lower than candidate $($metadata.package_version) for an update, or removed before a fresh install."
+if ($installedBefore -and [version]$installedBefore.Version -gt [version]$metadata.package_version) {
+    throw "Installed version $($installedBefore.Version) is newer than release $($metadata.package_version); downgrade is not automatic."
 }
 if ($PreflightOnly) {
     [ordered]@{

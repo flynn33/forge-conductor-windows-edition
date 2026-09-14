@@ -1,0 +1,77 @@
+name: Signed Windows Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      update_base_uri:
+        description: Optional HTTPS base URI for App Installer updates
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  signed-release:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      VCPKG_ROOT: C:\vcpkg
+      TEMP: C:\forge-conductor-ci-temp
+      TMP: C:\forge-conductor-ci-temp
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Prepare canonical test directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
+
+      - name: Require signing secrets
+        shell: pwsh
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.FORGE_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.FORGE_SIGNING_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX_BASE64) -or
+              [string]::IsNullOrWhiteSpace($env:SIGNING_PASSWORD)) {
+            throw 'FORGE_SIGNING_PFX_BASE64 and FORGE_SIGNING_PASSWORD are required.'
+          }
+
+      - name: Build and test Release product
+        shell: pwsh
+        run: |
+          ./scripts/build.ps1 -Configuration Release -Architecture x64 -Product All -Parallel 4
+          ./scripts/test.ps1 -Configuration Release -Architecture x64 -Parallel 4
+
+      - name: Create signed distribution
+        shell: pwsh
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.FORGE_SIGNING_PFX_BASE64 }}
+          FORGE_SIGNING_PASSWORD: ${{ secrets.FORGE_SIGNING_PASSWORD }}
+          UPDATE_BASE_URI: ${{ inputs.update_base_uri }}
+        run: |
+          $certificatePath = Join-Path $env:RUNNER_TEMP 'forge-signing.pfx'
+          [IO.File]::WriteAllBytes(
+            $certificatePath,
+            [Convert]::FromBase64String($env:SIGNING_PFX_BASE64))
+          try {
+            $arguments = @('-PfxPath', $certificatePath)
+            if (-not [string]::IsNullOrWhiteSpace($env:UPDATE_BASE_URI)) {
+              $arguments += @('-UpdateBaseUri', $env:UPDATE_BASE_URI)
+            }
+            ./scripts/package.ps1 @arguments
+          }
+          finally {
+            Remove-Item -LiteralPath $certificatePath -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload signed distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: ForgeConductor-signed-${{ github.ref_name }}
+          path: out/dist/release-*/
+          if-no-files-found: error
+          retention-days: 30

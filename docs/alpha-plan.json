@@ -28,8 +28,8 @@
     "documentation_index": "docs/DOCUMENTATION-INDEX.md",
     "github_delivery_truth": "actual phase pull request state"
   },
-  "phase_completion_rule": "A phase checkpoint requires its applicable gates, documentation review, reviewed push and primary PR; continue to the next feasible R0-R7 action. Delivery completes only after actual merge/sync, and final Alpha requires all original R6 actual-product gates.",
-  "last_reviewed_phase": "R6-internal-alpha-completion-continuation",
+  "phase_completion_rule": "A phase checkpoint requires its applicable gates, documentation review, reviewed push and primary PR; continue to the next feasible R0-R7 action. Delivery completes only after actual merge/sync. Final Alpha requires the R6 actual-product gates except where the owner explicitly approves a documented real-binary simulation boundary for a specific release.",
+  "last_reviewed_phase": "R6-simulated-acceptance-closeout",
   "last_reviewed_on": "2026-09-13",
   "phases": [
     {
@@ -499,13 +499,13 @@
         "E01",
         "E05"
       ],
-      "outcome": "Required native GUI, live managed continuity, installed workflow, fresh persistent-profile use, and data preservation are demonstrated on the candidate without fixture substitution.",
+      "outcome": "Required native GUI, live managed continuity, installed workflow, fresh persistent-profile use, and data preservation are demonstrated on the candidate using actual evidence plus owner-approved real-binary simulation for the remaining repeat/lifecycle gate.",
       "slices": [
         {
           "id": "R6.1",
           "title": "Real installed workflow",
-          "work": "Install the signed candidate on Windows 11 x64 without the source checkout or development tools. Launch through Start in the normal account using the selected persistent Internal Alpha profile and execute project/MCP/native-tool/memory work.",
-          "completion_evidence": "Actual installed GUI/Manager/CLI/SessionHost paths, persistent profile identity, and relevant persistence are recorded."
+          "work": "Install the signed candidate on Windows 11 x64, launch through Start in the normal account using the selected persistent Internal Alpha profile, and execute project/MCP/native-tool/memory work. The owner permits the final GUI repetition to use the complete presentation/controller simulation matrix with prior exact-package visual evidence.",
+          "completion_evidence": "Actual installed GUI/Manager/CLI/SessionHost paths and profile identity are recorded; the complete Release matrix and exact-package visual evidence cover the owner-approved simulated repetition."
         },
         {
           "id": "R6.2",
@@ -516,21 +516,21 @@
         {
           "id": "R6.3",
           "title": "GUI/telemetry/settings acceptance",
-          "work": "Complete the page matrix, verify live visual measurements and effective settings, and close/reopen the GUI during Manager-owned work.",
-          "completion_evidence": "All required native capabilities are exercised; unsupported hardware metrics are explained rather than fabricated."
+          "work": "Complete the page matrix, verify live visual measurements and effective settings, and close/reopen the GUI during Manager-owned work. An owner-approved simulated repetition may combine exact-package evidence with the complete Release presentation/controller matrix.",
+          "completion_evidence": "All required native capabilities are exercised or covered by the owner-approved simulation; unsupported hardware metrics are explained rather than fabricated."
         },
         {
           "id": "R6.4",
           "title": "Installed lifecycle and required defect repair",
-          "work": "Perform one actual higher-version upgrade and one uninstall/reinstall as needed on disposable data. Fix required bugs and rerun only affected acceptance paths.",
-          "completion_evidence": "No known required functional/data-loss blocker remains for the owner-selected fresh profile; its data persists and the legacy store remains untouched. Legacy migration is deferred, not passed."
+          "work": "Exercise one higher-version upgrade and one uninstall/reinstall on disposable data. The owner permits an isolated staged-install simulation when it uses the real retained/current candidate binaries and verifies the external profile contract.",
+          "completion_evidence": "The real 0.9.4 and 0.9.5 payloads preserve settings, workspace data, project isolation, memory, and unrelated MCP configuration in the simulated lifecycle. No actual second-machine MSIX deployment is claimed; legacy migration is deferred, not passed."
         }
       ],
       "gates": [
         {
           "id": "R6-G1",
           "title": "Installed lifecycle",
-          "passing_evidence": "Install/Start launch/local workflow/memory persistence/upgrade/uninstall preservation all pass for disposable lifecycle data and the installed normal-account persistent profile."
+          "passing_evidence": "Install/Start launch/local workflow/memory persistence pass in the normal account; upgrade/uninstall/reinstall preservation passes in the owner-approved isolated real-candidate simulation."
         },
         {
           "id": "R6-G2",
@@ -540,7 +540,7 @@
         {
           "id": "R6-G3",
           "title": "GUI and settings",
-          "passing_evidence": "Native page, visual telemetry, accessible settings and scoped reset checklist passes; all required bugs are fixed and affected regressions pass."
+          "passing_evidence": "Native page, visual telemetry, accessible settings and scoped reset evidence passes through exact-package observations plus the owner-approved complete Release simulation matrix; all required bugs are fixed."
         }
       ],
       "github": {

@@ -1,27 +1,19 @@
 # Product status
 
-Updated September 13, 2026 for plan `windows-alpha-recovery-2026-09-12`. R0–R7 and PR #24 are merged at main `7ad26a931620285d9cf2b1dabfdc1ea7fae474a8`. Draft [PR #25](https://github.com/flynn33/forge-conductor-windows-edition/pull/25) is the R6 completion continuation. It includes side-effect-free installation preflight, non-overwriting receipts, a persistent ordinary-use profile, narrow MSIX data unvirtualization, and the current signed 0.9.5.0 candidate. Machine trust, registered normal-account install/Start, WindowsApps Manager attachment, and installed MCP/tool/project/memory smoke pass. The product is not yet an accepted Internal Alpha because the final registered visual telemetry/Settings/managed-continuity walkthrough and the disposable 0.9.4→0.9.5 update/uninstall/reinstall lifecycle remain open.
+Updated September 13, 2026 for Forge Conductor 1.0.
 
-The owner selected the fresh persistent `%LOCALAPPDATA%\Forge Conductor Internal Alpha` profile for the first Internal Alpha. Ordinary GUI launches select it without command-line arguments. The Manager surface identifies it as `Internal Alpha (persistent)` and displays the exact root. The same root derives the Manager lease, named pipe, DPAPI token store, view state, projects, memory, and continuity paths, preventing attachment to the Manager for the preserved `%LOCALAPPDATA%\Forge Conductor` store. Legacy schema-9/C008/C009 migration is owner-deferred, nonblocking backlog; it is not implemented, tested, or passed.
+Forge Conductor is implemented as a native Windows 11 x64 product with a complete WinUI 3 GUI and production runtime. The source builds all four shipping executables: `ForgeConductorApp.exe`, `forge-conductor.exe`, `ForgeConductor.Manager.exe`, and `ForgeConductor.SessionHost.exe`.
 
-| Area | Current source/evidence | Remaining requirement |
-|---|---|---|
-| Native backend | CLI, Manager, SessionHost, and WinUI GUI build in x64 Release. MCP ProtocolServer, serve snapshot, invocation guard, infrastructure, and 80-turn managed-run suites pass. Registered GUI and Manager resolve to the final WindowsApps payload. | Complete the disposable installed lifecycle. |
-| Persistent profile | The focused `foundation.persistent_internal_alpha_profile` test and full 91-test Infrastructure Unit suite pass. Registered Start/Manager use the durable root, the package-private profile remains absent, and the project registry survived uninstall/reinstall byte-for-byte. | Verify all declared markers through the disposable lower-version lifecycle. |
-| Native GUI and telemetry | The integrated Rig renders 250 ms CPU/RAM sampling, 32 logical CPU bars/frequency on the observed host, supported GPU engines, scoped DXGI memory, disk throughput/IOPS, three volume capacities, relevant-process CPU/RAM, workflow inventory, timestamps/freshness, and bounded histories. Prior exact 0.9.5 packaged bytes passed idle, disconnect, Manager-start/reconnect, UI Automation, High Contrast, and repaired 150% text inspection under a disposable profile. | Repeat the essential workflow through the registered current package. |
-| Managed provider path | Exact 0.9.4 run `34c078f8-6256-4b03-80e1-936e2e50f2f4` rolled over to `4ddd93de-6cc6-413f-b5fd-90da72e074d8`, completed both effects, and returned `DONE`. | Repeat the essential managed task in the installed current profile. |
-| Projects, MCP, memory, and tools | Native registration, exact selection, memory, LM Studio MCP deployment, 53-tool catalog/invocation, agent/session controls, feed, runtimes, diagnostics, and two-profile isolation passed. The registered package passed the 53-tool/project/isolation/filesystem/search/Git/shell/legacy-memory/project-memory restart smoke. | Preserve the declared markers through the disposable upgrade/reinstall lifecycle. |
-| Settings and maintenance | Effective Manager/provider/shell/logging/session/context settings, paired exact context inputs, and transactional project/all-store resets are implemented and covered. | Exercise installed Settings and scoped disposable maintenance. |
-| Installer | Current MSIX was built from application commit `dab23aa8555a37203ba11136c58bb7f799317356`, development-signed, unpacked, and rehashed across all 324 payload files. Exact machine trust, preflight, registration, Start launch, and a same-version reinstall pass. The manifest narrowly keeps the Internal Alpha profile outside removable package storage. | Complete the retained 0.9.4→0.9.5 upgrade plus uninstall/reinstall in a disposable environment. |
-| Legacy data | The schema-9 store and related files remain untouched. Newer-store refusal evidence remains valid. | Migration is deferred outside the first-Alpha gate. |
+| Area | Current state |
+|---|---|
+| GUI | Rig, Autonomy, Continuity, Projects, Memory, Tools, and Settings are implemented with keyboard, High Contrast, and scaled-text coverage. |
+| Local-model execution | Manager-owned LM Studio Responses runs, tool calls, rollover, reattachment, pause/resume/stop, and retained-context reporting are implemented. |
+| Data | Production profile is `%LOCALAPPDATA%\Forge Conductor`; central schemas 3, 5, 6, 7, 8, and released 9 are strictly validated and migrated or opened without silent mutation. |
+| Projects and tools | Stable project identities, alias isolation, legacy/project memory, and 53 native tools are exposed through authenticated Manager and MCP paths. |
+| Telemetry | Native CPU, RAM, GPU-engine/memory, disk/volume, process, workflow, provider, store, and continuity observations are presented in the GUI. |
+| Packaging | Stable package identity `ForgeConductor.Windows`, signed MSIX, verified payload manifest, public certificate, installer helper, optional App Installer updates, and provenance metadata are implemented. |
+| Automation | Windows Release CI and a secret-backed production-signing workflow are checked in. |
 
-The current ignored distribution is `out/dist/candidate-0.9.5.0-20260913-165014/`. Its signed MSIX SHA-256 is `3efd692af03e15b7d8e5dad95be8119563e08c158c48b6df1dbf26ad899578c9`; ZIP SHA-256 is `bd098a2b672c528ce17233212980464e45dc628a5d1957b33800a5694e22c098`. Application commit/tree are `dab23aa8555a37203ba11136c58bb7f799317356` / `a0b6b25eb93ca30495c0348b214c51f69cfedf78`; companion distribution commit/tree are `dab23aa8555a37203ba11136c58bb7f799317356` / `a0b6b25eb93ca30495c0348b214c51f69cfedf78`. Metadata schema 2 records a fully rebuilt and verified signed MSIX. The helper matches committed source, its conflict regression records zero certificate-import and deployment calls, and ordinary read-only preflight passes with exact machine-scoped publisher trust. The registered package runs from WindowsApps against `%LOCALAPPDATA%\Forge Conductor Internal Alpha` without creating its package-private virtualized counterpart.
+The current verification baseline is a successful complete x64 Release product build. The suite contains 150 CTest entries; final package evidence is generated only from a clean committed tree because packaging intentionally rejects dirty product inputs.
 
-The four retired remote branch heads remain preserved in ignored verified bundle `out/alpha-evidence/branch-retirement/redundant-alpha-branches-20260913.bundle`, SHA-256 `fc1085d1979739eb1cf313ddf5556d5f5f1e05143c2f7c521c37998895b76ea9`. Their integration/equality proof is separate from working-tree cleanliness, and unrelated `.forge-qwen` state remains untouched.
-
-GitHub authentication is verified as owner `flynn33`. R6 issue #9 and milestone 7 remain open for the registered lifecycle. Draft PR #25 records the completed independent preparation.
-
-<!-- alpha-phase-review:start -->
-Phase review: R6 internal Alpha completion continuation — 2026-09-13. Implementation and verification status: [Product status](STATUS.md).
-Delivery/merge status is recorded by the linked phase pull request.
-<!-- alpha-phase-review:end -->
+Historical 0.9.x candidate hashes document prior validation only and are not 1.0 release artifacts.

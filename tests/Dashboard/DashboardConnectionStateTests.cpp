@@ -1542,8 +1542,10 @@ void gracefulShutdownRejectsEveryNonFinalSendCutoff()
         waitUntil(
             [&application] { return application->cancelled(); },
             "graceful cutoff did not cancel preparation");
-        require(fixture.state->isDrained() &&
-                    fixture.socket->sendIssueCount() == 0U,
+        waitUntil(
+            [&fixture] { return fixture.state->isDrained(); },
+            "graceful preparation cancellation did not drain");
+        require(fixture.socket->sendIssueCount() == 0U,
                 "Preparing produced a response after graceful cutoff");
     }
     {

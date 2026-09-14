@@ -90,7 +90,7 @@ int wmain(const int argc, wchar_t** const argv)
                         *processArguments.alphaDataRoot);
             if (!alphaProfile) {
                 writeError(
-                    "Forge Conductor Manager Alpha profile error",
+                    "Forge Conductor Manager profile error",
                     alphaProfile.error());
                 return ForgeConductor::Manager::ManagerInvalidArgumentsExitCode;
             }
