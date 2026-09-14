@@ -1,176 +1,296 @@
-<Window x:Class="ForgeConductorApp.MainWindow"
+<Window
+ x:Class="ForgeConductorApp.MainWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Forge Conductor" Closed="WindowClosed">
- <NavigationView x:Name="RootNavigation" IsBackButtonVisible="Collapsed"
-   IsSettingsVisible="False" PaneDisplayMode="Left" SelectionChanged="NavigationChanged" Loaded="WindowContentLoaded">
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Forge Conductor"
+ Closed="WindowClosed">
+ <NavigationView
+   x:Name="RootNavigation"
+   Background="{StaticResource ForgeAppBackgroundBrush}"
+   PaneTitle="Forge Conductor"
+   PaneDisplayMode="Left"
+   OpenPaneLength="286"
+   CompactPaneLength="56"
+   CompactModeThresholdWidth="920"
+   ExpandedModeThresholdWidth="1180"
+   IsBackButtonVisible="Collapsed"
+   IsSettingsVisible="False"
+   IsPaneToggleButtonVisible="True"
+   IsTitleBarAutoPaddingEnabled="True"
+   SelectionChanged="NavigationChanged"
+   Loaded="WindowContentLoaded">
   <NavigationView.MenuItems>
    <NavigationViewItem Content="Rig" Tag="Rig" Icon="Home" IsSelected="True" />
-   <NavigationViewItem Content="LM Studio MCP" Tag="LM Studio MCP" />
-   <NavigationViewItem Content="Agents" Tag="Agents" />
-   <NavigationViewItem Content="Tools" Tag="Tools" />
-   <NavigationViewItem Content="Feed" Tag="Feed" />
-   <NavigationViewItem Content="Projects" Tag="Projects" />
-   <NavigationViewItem Content="Autonomy" Tag="Autonomy" />
-   <NavigationViewItem Content="Continuity" Tag="Continuity" />
-   <NavigationViewItem Content="Runtimes" Tag="Runtimes" />
-   <NavigationViewItem Content="Provider" Tag="Provider" />
-   <NavigationViewItem Content="Events &amp; Evidence" Tag="Events &amp; Evidence" />
-   <NavigationViewItem Content="Diagnostics" Tag="Diagnostics" />
-   <NavigationViewItem Content="Manager" Tag="Manager" />
-   <NavigationViewItem Content="Settings" Tag="Settings" />
+   <NavigationViewItem Content="LM Studio MCP" Tag="LM Studio MCP" Icon="Library" />
+   <NavigationViewItem Content="Agents" Tag="Agents" Icon="People" />
+   <NavigationViewItem Content="Tools" Tag="Tools" Icon="Repair" />
+   <NavigationViewItem Content="Feed" Tag="Feed" Icon="Document" />
+   <NavigationViewItem Content="Projects" Tag="Projects" Icon="Folder" />
+   <NavigationViewItem Content="Autonomy" Tag="Autonomy" Icon="Play" />
+   <NavigationViewItem Content="Continuity" Tag="Continuity" Icon="Refresh" />
+   <NavigationViewItem Content="Runtimes" Tag="Runtimes" Icon="World" />
+   <NavigationViewItem Content="Provider" Tag="Provider" Icon="Link" />
+   <NavigationViewItem Content="Events &amp; Evidence" Tag="Events &amp; Evidence" Icon="Document" />
+   <NavigationViewItem Content="Diagnostics" Tag="Diagnostics" Icon="Repair" />
+   <NavigationViewItem Content="Manager" Tag="Manager" Icon="Admin" />
+   <NavigationViewItem Content="Settings" Tag="Settings" Icon="Setting" />
   </NavigationView.MenuItems>
-  <ScrollViewer>
-   <StackPanel Padding="32" Spacing="14" MaxWidth="920" HorizontalAlignment="Left">
-     <TextBlock x:Name="PageTitle" Text="Rig" Style="{ThemeResource TitleTextBlockStyle}" />
-      <TextBlock x:Name="PageDescription" Text="Manager, runtime, and provider health." TextWrapping="Wrap" Opacity="0.72" />
-      <TextBlock x:Name="ProfileState" Text="Deployment profile unavailable" TextWrapping="Wrap"
-        IsTextSelectionEnabled="True" FontWeight="SemiBold" />
+  <NavigationView.PaneFooter>
+   <Border Margin="10,8,10,16" Style="{StaticResource ForgeInsetStyle}" Padding="12">
+    <Grid ColumnSpacing="10">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <Border Width="34" Height="34" CornerRadius="9" Background="{StaticResource ForgeAccentSoftBrush}">
+      <FontIcon Glyph="&#xE7F4;" FontSize="16" Foreground="{StaticResource ForgeAccentBrush}" />
+     </Border>
+     <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+      <TextBlock Text="Native Windows runtime" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis" />
+      <StackPanel Orientation="Horizontal" Spacing="6">
+       <Ellipse Width="7" Height="7" Fill="{StaticResource ForgeSuccessBrush}" VerticalAlignment="Center" />
+       <TextBlock Text="Manager monitored" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="11" />
+      </StackPanel>
+     </StackPanel>
+    </Grid>
+   </Border>
+  </NavigationView.PaneFooter>
+  <ScrollViewer x:Name="MainScrollViewer" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Left" VerticalScrollBarVisibility="Auto">
+   <StackPanel x:Name="PageContent" Padding="32,26,32,40" Spacing="18" HorizontalAlignment="Left">
+    <VisualStateManager.VisualStateGroups>
+     <VisualStateGroup x:Name="ResponsiveStates">
+      <VisualState x:Name="WideLayout">
+       <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1260" /></VisualState.StateTriggers>
+      </VisualState>
+      <VisualState x:Name="CompactLayout">
+       <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers>
+       <VisualState.Setters>
+        <Setter Target="MetricColumn2.Width" Value="0" />
+        <Setter Target="MetricColumn3.Width" Value="0" />
+        <Setter Target="GpuMetricCard.(Grid.Column)" Value="0" />
+        <Setter Target="GpuMetricCard.(Grid.Row)" Value="1" />
+        <Setter Target="ContextMetricCard.(Grid.Column)" Value="1" />
+        <Setter Target="ContextMetricCard.(Grid.Row)" Value="1" />
+        <Setter Target="HeaderProfileColumn.Width" Value="0" />
+        <Setter Target="ProfileCard.(Grid.Column)" Value="0" />
+        <Setter Target="ProfileCard.(Grid.Row)" Value="1" />
+        <Setter Target="ProfileCard.Margin" Value="0,14,0,0" />
+       </VisualState.Setters>
+      </VisualState>
+     </VisualStateGroup>
+    </VisualStateManager.VisualStateGroups>
+    <Grid x:Name="HeaderGrid" ColumnSpacing="24">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="HeaderProfileColumn" Width="Auto"/></Grid.ColumnDefinitions>
+     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+     <StackPanel Spacing="4">
+      <TextBlock x:Name="PageTitle" Text="Rig" FontFamily="Segoe UI Variable Display" FontSize="34" FontWeight="SemiBold" Foreground="{StaticResource ForgeTextPrimaryBrush}" />
+      <TextBlock x:Name="PageDescription" Text="Manager, runtime, and provider health." TextWrapping="Wrap" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="14" />
+     </StackPanel>
+     <Border x:Name="ProfileCard" Grid.Column="1" Style="{StaticResource ForgeInsetStyle}" MinWidth="270" MaxWidth="480" VerticalAlignment="Center">
+      <Grid ColumnSpacing="10">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <Ellipse Width="9" Height="9" Fill="{StaticResource ForgeSuccessBrush}" VerticalAlignment="Top" Margin="0,4,0,0" />
+       <StackPanel Grid.Column="1" Spacing="2">
+        <TextBlock Text="Production" FontWeight="SemiBold" />
+        <TextBlock x:Name="ProfileState" Text="Deployment profile unavailable" TextWrapping="Wrap" IsTextSelectionEnabled="True" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="12" />
+       </StackPanel>
+      </Grid>
+     </Border>
+    </Grid>
 
-     <StackPanel x:Name="RigPanel" Spacing="14">
-      <Border Padding="12" CornerRadius="8" Background="{ThemeResource AccentFillColorSecondaryBrush}">
-       <StackPanel Spacing="4">
-        <TextBlock x:Name="SystemStrip" Text="Waiting for system identity" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.Name="System identity" />
-        <TextBlock x:Name="SamplingStrip" Text="Waiting for sampling cadence" TextWrapping="Wrap" AutomationProperties.Name="Telemetry sampling cadence" />
-       </StackPanel>
+     <StackPanel x:Name="RigPanel" Spacing="16">
+      <Border Style="{StaticResource ForgeHeroCardStyle}">
+       <Grid ColumnSpacing="18">
+        <Grid.ColumnDefinitions>
+         <ColumnDefinition Width="Auto"/>
+         <ColumnDefinition Width="*"/>
+         <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Border Width="64" Height="64" CornerRadius="14" Background="{StaticResource ForgeAccentSoftBrush}" VerticalAlignment="Center">
+         <FontIcon Glyph="&#xE7F4;" FontSize="30" Foreground="{StaticResource ForgeAccentBrush}" />
+        </Border>
+        <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+         <TextBlock Text="SYSTEM HEALTH" Foreground="{StaticResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold" CharacterSpacing="120" />
+         <TextBlock x:Name="SystemStrip" Text="Waiting for system identity" TextWrapping="Wrap" FontFamily="Segoe UI Variable Display" FontSize="23" FontWeight="SemiBold" AutomationProperties.Name="System identity" />
+         <TextBlock x:Name="SamplingStrip" Text="Waiting for sampling cadence" TextWrapping="Wrap" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="12" AutomationProperties.Name="Telemetry sampling cadence" />
+        </StackPanel>
+        <Border Grid.Column="2" Style="{StaticResource ForgeInsetStyle}" MinWidth="210" VerticalAlignment="Center">
+         <StackPanel Spacing="5">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+           <Ellipse Width="10" Height="10" Fill="{StaticResource ForgeSuccessBrush}" VerticalAlignment="Center" />
+           <TextBlock Text="Manager runtime" FontWeight="SemiBold" />
+          </StackPanel>
+          <TextBlock x:Name="ManagerHealth" Text="Waiting for a sample" TextWrapping="Wrap" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="12" AutomationProperties.LiveSetting="Polite" />
+         </StackPanel>
+        </Border>
+       </Grid>
       </Border>
-     <Grid ColumnSpacing="12" RowSpacing="12">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="4">
-        <TextBlock Text="Manager" Style="{ThemeResource CaptionTextBlockStyle}" />
-        <TextBlock x:Name="ManagerHealth" Text="Waiting for a sample" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-       </StackPanel>
-      </Border>
-      <Border Grid.Column="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="4">
-        <TextBlock Text="Provider" Style="{ThemeResource CaptionTextBlockStyle}" />
-        <TextBlock x:Name="ProviderHealth" Text="Waiting for a sample" TextWrapping="Wrap" />
-       </StackPanel>
-      </Border>
-      <Border Grid.Row="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="4">
-        <TextBlock Text="Continuity" Style="{ThemeResource CaptionTextBlockStyle}" />
-        <TextBlock x:Name="ContinuityHealth" Text="Waiting for a sample" TextWrapping="Wrap" />
-       </StackPanel>
-      </Border>
-      <Border Grid.Row="1" Grid.Column="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="4">
-        <TextBlock Text="Store" Style="{ThemeResource CaptionTextBlockStyle}" />
-        <TextBlock x:Name="StoreHealth" Text="Waiting for a sample" TextWrapping="Wrap" />
-       </StackPanel>
-      </Border>
-     </Grid>
-     <Grid ColumnSpacing="12">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="6">
-        <TextBlock Text="CPU" Style="{ThemeResource SubtitleTextBlockStyle}" />
-        <TextBlock x:Name="CpuValue" Text="Unavailable" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.Name="CPU current value" />
+      <Grid x:Name="TelemetryGrid" ColumnSpacing="12" RowSpacing="12">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition x:Name="MetricColumn2" Width="*"/><ColumnDefinition x:Name="MetricColumn3" Width="*"/></Grid.ColumnDefinitions>
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Border x:Name="CpuMetricCard" Style="{StaticResource ForgeCardStyle}" MinHeight="154">
+       <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="9">
+         <FontIcon Glyph="&#xE950;" FontSize="16" Foreground="{StaticResource ForgeAccentBrush}" />
+         <TextBlock Text="CPU" Style="{StaticResource ForgeSectionTitleStyle}" />
+        </StackPanel>
+        <TextBlock x:Name="CpuValue" Text="Unavailable" Style="{StaticResource ForgeMetricValueStyle}" AutomationProperties.Name="CPU current value" />
         <ProgressBar x:Name="CpuGauge" Minimum="0" Maximum="100" IsIndeterminate="True" AutomationProperties.Name="CPU utilization" />
-        <TextBlock x:Name="CpuState" Text="Waiting for a sample" TextWrapping="Wrap" Opacity="0.72" />
+        <TextBlock x:Name="CpuState" Text="Waiting for a sample" Style="{StaticResource ForgeCaptionStyle}" />
        </StackPanel>
       </Border>
-      <Border Grid.Column="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="6">
-        <TextBlock Text="RAM" Style="{ThemeResource SubtitleTextBlockStyle}" />
-        <TextBlock x:Name="RamValue" Text="Unavailable" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.Name="RAM current value" />
+      <Border x:Name="RamMetricCard" Grid.Column="1" Style="{StaticResource ForgeCardStyle}" MinHeight="154">
+       <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="9">
+         <FontIcon Glyph="&#xE7F1;" FontSize="16" Foreground="{StaticResource ForgeAccentBrush}" />
+         <TextBlock Text="RAM" Style="{StaticResource ForgeSectionTitleStyle}" />
+        </StackPanel>
+        <TextBlock x:Name="RamValue" Text="Unavailable" Style="{StaticResource ForgeMetricValueStyle}" AutomationProperties.Name="RAM current value" />
         <ProgressBar x:Name="RamGauge" Minimum="0" Maximum="100" IsIndeterminate="True" AutomationProperties.Name="RAM utilization" />
-        <TextBlock x:Name="RamState" Text="Waiting for a sample" TextWrapping="Wrap" Opacity="0.72" />
+        <TextBlock x:Name="RamState" Text="Waiting for a sample" Style="{StaticResource ForgeCaptionStyle}" />
        </StackPanel>
       </Border>
-      <Border Grid.Column="2" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="6">
-        <TextBlock Text="GPU" Style="{ThemeResource SubtitleTextBlockStyle}" />
-        <TextBlock x:Name="GpuValue" Text="Unavailable" Style="{ThemeResource TitleTextBlockStyle}" AutomationProperties.Name="GPU current value" />
+      <Border x:Name="GpuMetricCard" Grid.Column="2" Style="{StaticResource ForgeCardStyle}" MinHeight="154">
+       <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="9">
+         <FontIcon Glyph="&#xE7F4;" FontSize="16" Foreground="{StaticResource ForgeAccentBrush}" />
+         <TextBlock Text="GPU" Style="{StaticResource ForgeSectionTitleStyle}" />
+        </StackPanel>
+        <TextBlock x:Name="GpuValue" Text="Unavailable" Style="{StaticResource ForgeMetricValueStyle}" AutomationProperties.Name="GPU current value" />
         <ProgressBar x:Name="GpuGauge" Minimum="0" Maximum="100" IsIndeterminate="True" AutomationProperties.Name="GPU utilization" />
-        <TextBlock x:Name="GpuState" Text="Waiting for a sample" TextWrapping="Wrap" Opacity="0.72" />
+        <TextBlock x:Name="GpuState" Text="Waiting for a sample" Style="{StaticResource ForgeCaptionStyle}" />
        </StackPanel>
       </Border>
-      <Border Grid.Column="3" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="6">
-        <TextBlock Text="Retained context" Style="{ThemeResource SubtitleTextBlockStyle}" />
-        <TextBlock x:Name="ContextValue" Text="No selected run" Style="{ThemeResource TitleTextBlockStyle}" TextWrapping="Wrap" AutomationProperties.Name="Retained context value" />
+      <Border x:Name="ContextMetricCard" Grid.Column="3" Style="{StaticResource ForgeCardStyle}" MinHeight="154">
+       <StackPanel Spacing="8">
+        <StackPanel Orientation="Horizontal" Spacing="9">
+         <FontIcon Glyph="&#xE8F1;" FontSize="16" Foreground="{StaticResource ForgeAccentBrush}" />
+         <TextBlock Text="Retained context" Style="{StaticResource ForgeSectionTitleStyle}" />
+        </StackPanel>
+        <TextBlock x:Name="ContextValue" Text="No selected run" Style="{StaticResource ForgeMetricValueStyle}" TextWrapping="Wrap" AutomationProperties.Name="Retained context value" />
         <ProgressBar x:Name="ContextGauge" Minimum="0" Maximum="100" IsIndeterminate="True" AutomationProperties.Name="Retained context capacity" />
-        <TextBlock x:Name="ContextState" Text="Waiting for a run sample" TextWrapping="Wrap" Opacity="0.72" />
+        <TextBlock x:Name="ContextState" Text="Waiting for a run sample" Style="{StaticResource ForgeCaptionStyle}" />
        </StackPanel>
       </Border>
       </Grid>
-      <Grid ColumnSpacing="12" RowSpacing="12">
+       <Grid ColumnSpacing="12">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="5*"/><ColumnDefinition Width="7*"/></Grid.ColumnDefinitions>
+        <StackPanel Spacing="12">
+        <TextBlock Text="Runtime configuration" Style="{StaticResource ForgeSectionTitleStyle}" Margin="2,4,0,0" />
+       <Grid ColumnSpacing="12" RowSpacing="12">
        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-        <StackPanel Spacing="8">
-         <TextBlock Text="Logical processors" Style="{ThemeResource SubtitleTextBlockStyle}" />
-         <TextBlock Text="Per-logical utilization and native frequency" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.72" />
+       <Border Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="5">
+         <TextBlock Text="Workflow inventory" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="12" />
+         <TextBlock x:Name="WorkflowStatus" Text="Waiting for Manager workflow inventory" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.LiveSetting="Polite" />
+        </StackPanel>
+       </Border>
+       <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="5">
+         <TextBlock Text="Provider" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="12" />
+         <TextBlock x:Name="ProviderHealth" Text="Waiting for a sample" TextWrapping="Wrap" FontWeight="SemiBold" />
+        </StackPanel>
+       </Border>
+       <Border Grid.Row="1" Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="5">
+         <TextBlock Text="Continuity" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="12" />
+         <TextBlock x:Name="ContinuityHealth" Text="Waiting for a sample" TextWrapping="Wrap" FontWeight="SemiBold" />
+        </StackPanel>
+       </Border>
+       <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="5">
+         <TextBlock Text="Store" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="12" />
+         <TextBlock x:Name="StoreHealth" Text="Waiting for a sample" TextWrapping="Wrap" FontWeight="SemiBold" />
+        </StackPanel>
+       </Border>
+       </Grid>
+        </StackPanel>
+        <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="10">
+         <StackPanel Orientation="Horizontal" Spacing="9">
+          <FontIcon Glyph="&#xE9D9;" FontSize="17" Foreground="{StaticResource ForgeAccentBrush}" />
+          <TextBlock Text="Resource utilization" Style="{StaticResource ForgeSectionTitleStyle}" />
+         </StackPanel>
+         <TextBlock x:Name="HistoryEquivalentText" Text="No history samples" Style="{StaticResource ForgeCaptionStyle}" AutomationProperties.Name="Resource history values" />
+         <Canvas x:Name="HistoryCanvas" Height="160" MinWidth="320" Background="{StaticResource ForgeSurfaceSubtleBrush}" AutomationProperties.Name="CPU and RAM history chart" SizeChanged="TelemetryChartSizeChanged">
+          <Polyline x:Name="CpuHistoryLine" Stroke="{StaticResource ForgeAccentBrush}" StrokeThickness="3" />
+          <Polyline x:Name="RamHistoryLine" Stroke="#FF7768FF" StrokeThickness="3" />
+          <Polyline x:Name="GpuHistoryLine" Stroke="#FF37D5E9" StrokeThickness="2" />
+         </Canvas>
+         <TextBlock Text="CPU  ·  RAM  ·  GPU  ·  0–100 percent" Style="{StaticResource ForgeCaptionStyle}" />
+         <Grid ColumnSpacing="12" Margin="0,4,0,0">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <StackPanel Spacing="6">
+           <TextBlock Text="Disk throughput" Style="{StaticResource ForgeSectionTitleStyle}" />
+           <TextBlock x:Name="DiskHistoryEquivalentText" Text="No disk throughput history" Style="{StaticResource ForgeCaptionStyle}" AutomationProperties.Name="Disk throughput history values" />
+           <Canvas x:Name="DiskHistoryCanvas" Height="56" MinWidth="180" Background="{StaticResource ForgeSurfaceSubtleBrush}" AutomationProperties.Name="Disk throughput history chart" SizeChanged="TelemetryChartSizeChanged">
+            <Polyline x:Name="DiskHistoryLine" Stroke="{StaticResource ForgeSuccessBrush}" StrokeThickness="3" />
+           </Canvas>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="6">
+           <TextBlock Text="Tool and provider latency" Style="{StaticResource ForgeSectionTitleStyle}" />
+           <TextBlock x:Name="LatencyEquivalentText" Text="No latency observations" Style="{StaticResource ForgeCaptionStyle}" AutomationProperties.Name="Activity latency values" />
+           <Canvas x:Name="LatencyCanvas" Height="56" MinWidth="180" Background="{StaticResource ForgeSurfaceSubtleBrush}" AutomationProperties.Name="Recent activity latency chart" SizeChanged="TelemetryChartSizeChanged">
+            <Polyline x:Name="LatencyHistoryLine" Stroke="{StaticResource ForgeWarningBrush}" StrokeThickness="3" />
+           </Canvas>
+          </StackPanel>
+         </Grid>
+        </StackPanel>
+       </Border>
+      </Grid>
+       <Grid ColumnSpacing="12">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="7*"/><ColumnDefinition Width="5*"/></Grid.ColumnDefinitions>
+        <Border Style="{StaticResource ForgeCardStyle}">
+         <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+           <FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{StaticResource ForgeAccentBrush}" />
+           <TextBlock Text="Recent activity" Style="{StaticResource ForgeSectionTitleStyle}" />
+          </StackPanel>
+          <StackPanel x:Name="ActivityTimeline" Spacing="6" AutomationProperties.Name="Recent Manager activity timeline" />
+         </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}">
+         <StackPanel Spacing="10">
+          <TextBlock Text="Actions" Style="{StaticResource ForgeSectionTitleStyle}" />
+          <TextBlock x:Name="ManagerState" Text="Forge Conductor is establishing the per-user Manager automatically." TextWrapping="Wrap" Foreground="{StaticResource ForgeTextSecondaryBrush}" AutomationProperties.LiveSetting="Polite" />
+          <StackPanel Orientation="Horizontal" Spacing="12">
+           <Button Content="Ensure manager" Click="StartClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
+           <Button Content="Stop service" Click="StopClicked" />
+           <Button Content="Restart service" Click="RestartClicked" />
+           <Button Content="Refresh" Click="RefreshClicked" />
+          </StackPanel>
+         </StackPanel>
+        </Border>
+       </Grid>
+       <TextBlock Text="System detail" Style="{StaticResource ForgeSectionTitleStyle}" Margin="2,4,0,0" />
+       <Grid ColumnSpacing="12" RowSpacing="12">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Border Style="{StaticResource ForgeCardStyle}">
+         <StackPanel Spacing="8">
+          <TextBlock Text="Logical processors" Style="{StaticResource ForgeSectionTitleStyle}" />
+          <TextBlock Text="Per-logical utilization and native frequency" Style="{StaticResource ForgeCaptionStyle}" />
          <StackPanel x:Name="CpuCoreRows" Spacing="4" AutomationProperties.Name="Logical processor telemetry" />
         </StackPanel>
        </Border>
-       <Border Grid.Column="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-        <StackPanel Spacing="8">
-         <TextBlock Text="GPU adapters and engines" Style="{ThemeResource SubtitleTextBlockStyle}" />
+        <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}">
+         <StackPanel Spacing="8">
+          <TextBlock Text="GPU adapters and engines" Style="{StaticResource ForgeSectionTitleStyle}" />
          <StackPanel x:Name="GpuAdapterRows" Spacing="4" AutomationProperties.Name="GPU adapter and engine telemetry" />
         </StackPanel>
        </Border>
-       <Border Grid.Row="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-        <StackPanel Spacing="8">
-         <TextBlock Text="Disk activity" Style="{ThemeResource SubtitleTextBlockStyle}" />
+        <Border Grid.Row="1" Style="{StaticResource ForgeCardStyle}">
+         <StackPanel Spacing="8">
+          <TextBlock Text="Disk activity" Style="{StaticResource ForgeSectionTitleStyle}" />
          <TextBlock x:Name="DiskState" Text="Waiting for disk counters" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
          <StackPanel x:Name="VolumeRows" Spacing="4" AutomationProperties.Name="Mounted volume capacity" />
         </StackPanel>
        </Border>
-       <Border Grid.Row="1" Grid.Column="1" Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-        <StackPanel Spacing="8">
-         <TextBlock Text="Relevant native processes" Style="{ThemeResource SubtitleTextBlockStyle}" />
+        <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ForgeCardStyle}">
+         <StackPanel Spacing="8">
+          <TextBlock Text="Relevant native processes" Style="{StaticResource ForgeSectionTitleStyle}" />
          <StackPanel x:Name="ProcessRows" Spacing="4" AutomationProperties.Name="Forge and model server processes" />
         </StackPanel>
        </Border>
       </Grid>
-      <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-      <StackPanel Spacing="8">
-       <TextBlock Text="Resource history" Style="{ThemeResource SubtitleTextBlockStyle}" />
-       <TextBlock x:Name="HistoryEquivalentText" Text="No history samples" TextWrapping="Wrap" AutomationProperties.Name="Resource history values" />
-       <Canvas x:Name="HistoryCanvas" Height="132" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="CPU and RAM history chart" SizeChanged="TelemetryChartSizeChanged">
-         <Polyline x:Name="CpuHistoryLine" Stroke="{ThemeResource AccentFillColorDefaultBrush}" StrokeThickness="3" />
-         <Polyline x:Name="RamHistoryLine" Stroke="{ThemeResource SystemFillColorSuccessBrush}" StrokeThickness="3" />
-         <Polyline x:Name="GpuHistoryLine" Stroke="{ThemeResource SystemFillColorCautionBrush}" StrokeThickness="2" />
-        </Canvas>
-        <TextBlock Text="CPU (accent) · RAM (success) · GPU (caution) · 0–100 percent" Style="{ThemeResource CaptionTextBlockStyle}" />
-        <TextBlock x:Name="DiskHistoryEquivalentText" Text="No disk throughput history" TextWrapping="Wrap" AutomationProperties.Name="Disk throughput history values" />
-        <Canvas x:Name="DiskHistoryCanvas" Height="72" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="Disk throughput history chart" SizeChanged="TelemetryChartSizeChanged">
-         <Polyline x:Name="DiskHistoryLine" Stroke="{ThemeResource SystemFillColorAttentionBrush}" StrokeThickness="3" />
-        </Canvas>
-       <TextBlock Text="Tool and provider latency" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,8,0,0" />
-       <TextBlock x:Name="LatencyEquivalentText" Text="No latency observations" TextWrapping="Wrap" AutomationProperties.Name="Activity latency values" />
-       <Canvas x:Name="LatencyCanvas" Height="72" MinWidth="320" Background="{ThemeResource SubtleFillColorTransparentBrush}" AutomationProperties.Name="Recent activity latency chart" SizeChanged="TelemetryChartSizeChanged">
-        <Polyline x:Name="LatencyHistoryLine" Stroke="{ThemeResource SystemFillColorCautionBrush}" StrokeThickness="3" />
-       </Canvas>
-      </StackPanel>
-      </Border>
-      <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="8">
-        <TextBlock Text="Projects, MCP tools, and agents" Style="{ThemeResource SubtitleTextBlockStyle}" />
-        <TextBlock x:Name="WorkflowStatus" Text="Waiting for Manager workflow inventory" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-       </StackPanel>
-      </Border>
-     <Border Padding="16" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-      <StackPanel Spacing="8">
-       <TextBlock Text="Recent activity" Style="{ThemeResource SubtitleTextBlockStyle}" />
-       <StackPanel x:Name="ActivityTimeline" Spacing="6" AutomationProperties.Name="Recent Manager activity timeline" />
-      </StackPanel>
-     </Border>
-      <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-       <StackPanel Spacing="10">
-        <TextBlock Text="Manager connection and advanced controls" Style="{ThemeResource SubtitleTextBlockStyle}" />
-        <TextBlock x:Name="ManagerState" Text="Forge Conductor is establishing the per-user Manager automatically." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-       <StackPanel Orientation="Horizontal" Spacing="12">
-        <Button Content="Ensure manager" Click="StartClicked" />
-        <Button Content="Stop service" Click="StopClicked" />
-        <Button Content="Restart service" Click="RestartClicked" />
-        <Button Content="Refresh" Click="RefreshClicked" />
-       </StackPanel>
-      </StackPanel>
-     </Border>
     </StackPanel>
 
     <StackPanel x:Name="ProviderPanel" Spacing="14" Visibility="Collapsed">
@@ -194,7 +314,7 @@
      <TextBlock Text="Rollover begins only when observed context plus the next-response, handoff, and safety reserves reaches the effective capacity." TextWrapping="Wrap" Opacity="0.72" />
      <StackPanel Orientation="Horizontal" Spacing="12">
       <Button Content="Reload effective settings" Click="ProviderLoadClicked" />
-      <Button Content="Save" Click="ProviderSaveClicked" />
+      <Button Content="Save" Click="ProviderSaveClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
       <Button Content="Test connection" Click="ProviderTestClicked" />
      </StackPanel>
      <TextBlock x:Name="ProviderState" Text="Validated defaults load immediately; effective Manager settings replace them after connection." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
@@ -213,13 +333,13 @@
       <TextBox x:Name="RunTask" Grid.Row="2" Grid.ColumnSpan="2" Header="Task" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
      </Grid>
      <StackPanel Orientation="Horizontal" Spacing="12">
-      <Button Content="Start" Click="RunStartClicked" />
+      <Button Content="Start" Click="RunStartClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
       <Button Content="Refresh" Click="RunStatusClicked" />
       <Button Content="Pause" Click="RunPauseClicked" />
       <Button Content="Resume" Click="RunResumeClicked" />
       <Button Content="Stop" Click="RunCancelClicked" />
      </StackPanel>
-     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+     <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="8">
        <TextBlock Text="Run and continuity state" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <TextBlock x:Name="RunState" Text="Enter a project and task, or paste a run ID to attach." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
@@ -230,7 +350,7 @@
     <StackPanel x:Name="ProjectsPanel" Spacing="14" Visibility="Collapsed">
      <InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
        Title="Manager-owned project identity" Message="Registration binds an authorized folder to a stable project ID. Memory reads and writes always use the selected ID." />
-     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+     <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="10">
        <TextBlock Text="Register or select a project" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <Grid ColumnSpacing="12" RowSpacing="10">
@@ -241,7 +361,7 @@
         <ComboBox x:Name="ProjectSelector" Grid.Row="1" Grid.ColumnSpan="2" Header="Active project" HorizontalAlignment="Stretch" SelectionChanged="ProjectSelectionChanged" />
        </Grid>
        <StackPanel Orientation="Horizontal" Spacing="12">
-        <Button Content="Register folder" Click="ProjectRegisterClicked" />
+        <Button Content="Register folder" Click="ProjectRegisterClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
         <Button Content="Refresh projects" Click="ProjectRefreshClicked" />
        </StackPanel>
        <TextBlock x:Name="ProjectState" Text="Refresh to load registered projects." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
@@ -250,7 +370,7 @@
        <TextBlock x:Name="ProjectPersistence" Text="Memory persistence has not been read." TextWrapping="Wrap" />
       </StackPanel>
      </Border>
-     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+     <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="10">
        <TextBlock Text="Search and read memory" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <TextBox x:Name="ProjectMemoryQuery" Header="Search" PlaceholderText="Leave empty for recent memory" />
@@ -258,14 +378,14 @@
        <StackPanel x:Name="ProjectMemoryRecords" Spacing="8" AutomationProperties.Name="Project memory results" />
       </StackPanel>
      </Border>
-     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+     <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="10">
        <TextBlock Text="Remember" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <TextBox x:Name="ProjectMemoryTitle" Header="Title" />
        <TextBox x:Name="ProjectMemorySummary" Header="Summary" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" />
        <TextBox x:Name="ProjectMemoryBody" Header="Details (optional)" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
        <TextBox x:Name="ProjectMemoryTags" Header="Tags (comma separated)" />
-       <Button Content="Save memory" HorizontalAlignment="Left" Click="ProjectRememberClicked" />
+       <Button Content="Save memory" HorizontalAlignment="Left" Click="ProjectRememberClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
       </StackPanel>
      </Border>
     </StackPanel>
@@ -276,9 +396,9 @@
      <StackPanel Orientation="Horizontal" Spacing="8">
       <Button Content="Inspect registration" Click="LmStudioInspectClicked" />
       <Button Content="Repair registration" Click="LmStudioRepairClicked" />
-      <Button Content="Activate and verify" Click="LmStudioActivateClicked" />
+      <Button Content="Activate and verify" Click="LmStudioActivateClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
      </StackPanel>
-     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+     <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="8">
        <TextBlock x:Name="LmStudioRegistrationState" Text="Inspect to read installed registration." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
        <TextBlock x:Name="LmStudioConnectionState" Text="Connected client has not been observed." TextWrapping="Wrap" />
@@ -297,7 +417,7 @@
      <TextBox x:Name="ToolProjectId" Visibility="Collapsed" />
      <TextBox x:Name="ToolName" Header="Tool name" PlaceholderText="For example fs_list or git_status" />
      <TextBox x:Name="ToolArguments" Header="JSON arguments" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" />
-     <Button Content="Run selected tool" HorizontalAlignment="Left" Click="ToolInvokeClicked" />
+     <Button Content="Run selected tool" HorizontalAlignment="Left" Click="ToolInvokeClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
      <TextBlock x:Name="ToolOutcome" Text="No tool result." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
     </StackPanel>
 
@@ -370,9 +490,9 @@
      <TextBox x:Name="MaintenanceConfirmation" Header="Type the exact confirmation shown below" AutomationProperties.Name="Exact reset confirmation" />
      <Button Content="Run confirmed reset" HorizontalAlignment="Left" Click="MaintenanceResetClicked" />
      <TextBlock x:Name="MaintenanceState" Text="Select a project on the Projects page, then return here to see the exact confirmation." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
-     <StackPanel Spacing="8">
+     <StackPanel Orientation="Horizontal" Spacing="10">
       <Button Content="Load effective settings" Click="SettingsLoadClicked" />
-      <Button Content="Save and read back" Click="SettingsSaveClicked" />
+      <Button Content="Save and read back" Click="SettingsSaveClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
       <Button Content="Revert pending edits" Click="SettingsRevertClicked" />
       <Button Content="Test LM Studio" Click="SettingsTestClicked" />
       <Button Content="Restart Manager" Click="SettingsRestartClicked" />
@@ -385,7 +505,7 @@
     </StackPanel>
 
     <StackPanel x:Name="GenericPanel" Spacing="14" Visibility="Collapsed">
-     <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+     <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="10">
        <TextBlock Text="Live Manager status" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <TextBlock x:Name="GenericState" Text="Refresh to read the current Manager-owned state." TextWrapping="Wrap" />

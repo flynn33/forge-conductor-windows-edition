@@ -139,12 +139,16 @@ void applyMetric(
 }
 }
 
-MainWindow::MainWindow() {}
+MainWindow::MainWindow()
+{
+    SystemBackdrop(Microsoft::UI::Xaml::Media::MicaBackdrop{});
+}
 
 MainWindow::MainWindow(
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection)
     : connection_{std::move(connection)}
 {
+    SystemBackdrop(Microsoft::UI::Xaml::Media::MicaBackdrop{});
     const auto scope = connection_ ? connection_->viewStateScope() : std::nullopt;
     selectedPageValueName_ =
         ::ForgeConductor::Hosts::App::scopedViewStateValueName(
@@ -597,10 +601,10 @@ void MainWindow::ApplyTelemetryPresentation(
               L"No Forge or model-server process is currently visible.");
 
     const auto width = std::max(320.0, HistoryCanvas().ActualWidth());
-    constexpr double Height = 132.0;
-    CpuHistoryLine().Points(chartPoints(presentation.cpuHistory, width, Height));
-    RamHistoryLine().Points(chartPoints(presentation.ramHistory, width, Height));
-    GpuHistoryLine().Points(chartPoints(presentation.gpuHistory, width, Height));
+    const auto height = std::max(1.0, HistoryCanvas().ActualHeight());
+    CpuHistoryLine().Points(chartPoints(presentation.cpuHistory, width, height));
+    RamHistoryLine().Points(chartPoints(presentation.ramHistory, width, height));
+    GpuHistoryLine().Points(chartPoints(presentation.gpuHistory, width, height));
     if (presentation.cpuHistory.empty()) {
         HistoryEquivalentText().Text(L"No measured CPU/RAM history samples.");
     } else {
