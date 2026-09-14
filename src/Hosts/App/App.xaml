@@ -9,24 +9,38 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <SolidColorBrush x:Key="ForgeAppBackgroundBrush" Color="#E608111D" />
-            <SolidColorBrush x:Key="ForgePaneBackgroundBrush" Color="#F20A1421" />
-            <SolidColorBrush x:Key="ForgeSurfaceBrush" Color="#E6121E2D" />
-            <SolidColorBrush x:Key="ForgeSurfaceRaisedBrush" Color="#F2182739" />
-            <SolidColorBrush x:Key="ForgeSurfaceSubtleBrush" Color="#99172535" />
-            <SolidColorBrush x:Key="ForgeControlFillBrush" Color="#CC1A2A3D" />
-            <SolidColorBrush x:Key="ForgeBorderBrush" Color="#6652708E" />
-            <SolidColorBrush x:Key="ForgeDividerBrush" Color="#3D6D849A" />
+            <SolidColorBrush x:Key="ForgeAppBackgroundBrush" Color="#FF07111E" />
+            <SolidColorBrush x:Key="ForgePaneBackgroundBrush" Color="#FF081522" />
+            <SolidColorBrush x:Key="ForgeSurfaceBrush" Color="#F5121F2E" />
+            <SolidColorBrush x:Key="ForgeSurfaceRaisedBrush" Color="#FF18283B" />
+            <SolidColorBrush x:Key="ForgeSurfaceSubtleBrush" Color="#B30D1B2A" />
+            <SolidColorBrush x:Key="ForgeControlFillBrush" Color="#F01B2D43" />
+            <SolidColorBrush x:Key="ForgeBorderBrush" Color="#754A6885" />
+            <SolidColorBrush x:Key="ForgeDividerBrush" Color="#4D668099" />
             <SolidColorBrush x:Key="ForgeTextPrimaryBrush" Color="#FFF4F8FC" />
             <SolidColorBrush x:Key="ForgeTextSecondaryBrush" Color="#FFB8C5D3" />
             <SolidColorBrush x:Key="ForgeTextTertiaryBrush" Color="#FF8495A8" />
             <SolidColorBrush x:Key="ForgeAccentBrush" Color="#FF2BA8FF" />
             <SolidColorBrush x:Key="ForgeAccentSoftBrush" Color="#332BA8FF" />
-            <SolidColorBrush x:Key="ForgeAccentSurfaceBrush" Color="#D9163B66" />
+            <SolidColorBrush x:Key="ForgeAccentSurfaceBrush" Color="#E1133964" />
             <SolidColorBrush x:Key="ForgeSuccessBrush" Color="#FF3DDC97" />
             <SolidColorBrush x:Key="ForgeSuccessSoftBrush" Color="#263DDC97" />
             <SolidColorBrush x:Key="ForgeWarningBrush" Color="#FFFFC857" />
             <SolidColorBrush x:Key="ForgeChartGridBrush" Color="#335B7794" />
+
+            <LinearGradientBrush x:Key="ForgeCardGradientBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#FF142334" Offset="0" />
+                <GradientStop Color="#FF0D1927" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ForgeHeroGradientBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#FF123D70" Offset="0" />
+                <GradientStop Color="#FF0B2747" Offset="0.66" />
+                <GradientStop Color="#FF091D33" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ForgeAccentButtonGradientBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#FF35B5FF" Offset="0" />
+                <GradientStop Color="#FF187BEF" Offset="1" />
+            </LinearGradientBrush>
 
             <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#FF2BA8FF" />
             <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#CC237CC4" />
@@ -34,18 +48,18 @@
             <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="#6652708E" />
 
             <Style x:Key="ForgeCardStyle" TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource ForgeSurfaceBrush}" />
+                <Setter Property="Background" Value="{StaticResource ForgeCardGradientBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource ForgeBorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="14" />
-                <Setter Property="Padding" Value="18" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="16" />
             </Style>
             <Style x:Key="ForgeHeroCardStyle" TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource ForgeAccentSurfaceBrush}" />
+                <Setter Property="Background" Value="{StaticResource ForgeHeroGradientBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource ForgeAccentBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="16" />
-                <Setter Property="Padding" Value="20" />
+                <Setter Property="CornerRadius" Value="13" />
+                <Setter Property="Padding" Value="18" />
             </Style>
             <Style x:Key="ForgeInsetStyle" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource ForgeSurfaceSubtleBrush}" />
@@ -57,13 +71,13 @@
             <Style x:Key="ForgeMetricValueStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource ForgeTextPrimaryBrush}" />
                 <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
-                <Setter Property="FontSize" Value="30" />
+                <Setter Property="FontSize" Value="29" />
                 <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
             <Style x:Key="ForgeSectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource ForgeTextPrimaryBrush}" />
                 <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
-                <Setter Property="FontSize" Value="17" />
+                <Setter Property="FontSize" Value="15" />
                 <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
             <Style x:Key="ForgeCaptionStyle" TargetType="TextBlock">
@@ -72,7 +86,7 @@
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
             <Style x:Key="ForgeAccentButtonStyle" TargetType="Button">
-                <Setter Property="Background" Value="{StaticResource ForgeAccentBrush}" />
+                <Setter Property="Background" Value="{StaticResource ForgeAccentButtonGradientBrush}" />
                 <Setter Property="Foreground" Value="White" />
                 <Setter Property="BorderBrush" Value="{StaticResource ForgeAccentBrush}" />
                 <Setter Property="BorderThickness" Value="1" />

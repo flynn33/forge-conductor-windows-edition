@@ -3,6 +3,8 @@
 #include "MainWindow.g.cpp"
 #include "TelemetryPresentation.h"
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Windowing.h>
+#include <winrt/Windows.UI.h>
 
 #include <algorithm>
 #include <chrono>
@@ -137,6 +139,24 @@ void applyMetric(
     }
     return points;
 }
+
+[[nodiscard]] hstring currentLocalTime()
+{
+    SYSTEMTIME now{};
+    ::GetLocalTime(&now);
+    wchar_t text[32]{};
+    static_cast<void>(swprintf_s(text, L"Today %02u:%02u:%02u",
+        now.wHour, now.wMinute, now.wSecond));
+    return hstring{text};
+}
+
+[[nodiscard]] hstring currentMachineName()
+{
+    wchar_t name[MAX_COMPUTERNAME_LENGTH + 1]{};
+    DWORD size = static_cast<DWORD>(std::size(name));
+    if (::GetComputerNameW(name, &size) && size != 0U) return hstring{name, size};
+    return L"Windows workstation";
+}
 }
 
 MainWindow::MainWindow()
@@ -172,6 +192,22 @@ void MainWindow::WindowContentLoaded(
 {
     if (telemetryUiInitialized_) return;
     telemetryUiInitialized_ = true;
+    try {
+        const auto titleBar = AppWindow().TitleBar();
+        titleBar.BackgroundColor(Windows::UI::Color{255, 7, 17, 30});
+        titleBar.ForegroundColor(Windows::UI::Color{255, 244, 248, 252});
+        titleBar.InactiveBackgroundColor(Windows::UI::Color{255, 7, 17, 30});
+        titleBar.InactiveForegroundColor(Windows::UI::Color{255, 132, 149, 168});
+        titleBar.ButtonBackgroundColor(Windows::UI::Color{255, 7, 17, 30});
+        titleBar.ButtonForegroundColor(Windows::UI::Color{255, 244, 248, 252});
+        titleBar.ButtonHoverBackgroundColor(Windows::UI::Color{255, 24, 40, 59});
+        titleBar.ButtonHoverForegroundColor(Windows::UI::Color{255, 255, 255, 255});
+        titleBar.ButtonPressedBackgroundColor(Windows::UI::Color{255, 43, 168, 255});
+        titleBar.ButtonPressedForegroundColor(Windows::UI::Color{255, 255, 255, 255});
+    } catch (...) {
+        // Title-bar theming is presentation-only; never block the runtime surface.
+    }
+    FooterMachineName().Text(currentMachineName());
     ProfileState().Text(winrt::to_hstring(connection_
         ? connection_->profileSummary()
         : std::string{"Deployment profile unavailable"}));
@@ -548,6 +584,16 @@ void MainWindow::ApplyTelemetryPresentation(
     SamplingStrip().Text(winrt::to_hstring(presentation.samplingStatus));
     DiskState().Text(winrt::to_hstring(presentation.diskStatus));
     WorkflowStatus().Text(winrt::to_hstring(presentation.workflowStatus));
+    NavigationManagerState().Text(L"System online");
+    LastUpdatedText().Text(currentLocalTime());
+    const auto online = Microsoft::UI::Xaml::Media::SolidColorBrush{
+        Windows::UI::Color{255, 61, 220, 151}};
+    NavigationStatusDot().Fill(online);
+    HeroManagerDot().Fill(online);
+    WorkflowDot().Fill(online);
+    ProviderDot().Fill(online);
+    ContinuityDot().Fill(online);
+    StoreDot().Fill(online);
 
     const auto applyRows = [](const Microsoft::UI::Xaml::Controls::StackPanel& panel,
                               const std::vector<std::string>& rows,
@@ -605,6 +651,15 @@ void MainWindow::ApplyTelemetryPresentation(
     CpuHistoryLine().Points(chartPoints(presentation.cpuHistory, width, height));
     RamHistoryLine().Points(chartPoints(presentation.ramHistory, width, height));
     GpuHistoryLine().Points(chartPoints(presentation.gpuHistory, width, height));
+    MiniCpuLine().Points(chartPoints(presentation.cpuHistory,
+        std::max(1.0, MiniCpuCanvas().ActualWidth()),
+        std::max(1.0, MiniCpuCanvas().ActualHeight())));
+    MiniRamLine().Points(chartPoints(presentation.ramHistory,
+        std::max(1.0, MiniRamCanvas().ActualWidth()),
+        std::max(1.0, MiniRamCanvas().ActualHeight())));
+    MiniGpuLine().Points(chartPoints(presentation.gpuHistory,
+        std::max(1.0, MiniGpuCanvas().ActualWidth()),
+        std::max(1.0, MiniGpuCanvas().ActualHeight())));
     if (presentation.cpuHistory.empty()) {
         HistoryEquivalentText().Text(L"No measured CPU/RAM history samples.");
     } else {
@@ -800,6 +855,16 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
     SamplingStrip().Text(winrt::to_hstring(explanation));
     DiskState().Text(winrt::to_hstring(explanation));
     WorkflowStatus().Text(winrt::to_hstring(explanation));
+    NavigationManagerState().Text(L"Manager unavailable");
+    LastUpdatedText().Text(L"Connection unavailable");
+    const auto unavailableBrush = Microsoft::UI::Xaml::Media::SolidColorBrush{
+        Windows::UI::Color{255, 255, 200, 87}};
+    NavigationStatusDot().Fill(unavailableBrush);
+    HeroManagerDot().Fill(unavailableBrush);
+    WorkflowDot().Fill(unavailableBrush);
+    ProviderDot().Fill(unavailableBrush);
+    ContinuityDot().Fill(unavailableBrush);
+    StoreDot().Fill(unavailableBrush);
     if (telemetrySnapshot_) {
         HistoryEquivalentText().Text(
             L"Last measured CPU/RAM history is stale because the Manager is disconnected.");
