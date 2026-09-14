@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2 — Command center fit and finish
+
+- Tightened the Rig viewport so the complete operational action cluster remains above the fold at the reference desktop size.
+
 ## 1.1.1 — Direction A command center
 
 - Rebuilt the native Windows shell around the selected Obsidian Command Center direction, including dark window chrome, a compact production command strip, high-density telemetry cards, live sparklines, an operational chart grid, status rows, and a consistent premium surface system across every view.
