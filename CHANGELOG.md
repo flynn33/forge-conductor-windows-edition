@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 — Direction A command center
+
+- Rebuilt the native Windows shell around the selected Obsidian Command Center direction, including dark window chrome, a compact production command strip, high-density telemetry cards, live sparklines, an operational chart grid, status rows, and a consistent premium surface system across every view.
+- Preserved the authenticated Manager data path, existing navigation destinations, native command handlers, and release provenance while advancing the Windows package to `1.1.1.0` for a safe in-place upgrade.
+
 ## 1.1.0 — Windows product recovery
 
 - Removed the global WinUI busy gate. Live telemetry now coalesces independently while user commands retain a bounded FIFO disposition, and closing the window cancels both lanes.
