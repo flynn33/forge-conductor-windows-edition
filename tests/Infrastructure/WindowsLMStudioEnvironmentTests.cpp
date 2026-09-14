@@ -608,21 +608,27 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
                 Domain::LMStudioConnectorRole::Primary,
                 true,
                 std::string{"2025-11-25"},
-                53U,
+                57U,
                 "Primary role ready."},
             Domain::LMStudioConnectorHealth{
                 Domain::LMStudioConnectorRole::Fallback,
                 true,
                 std::string{"2025-11-25"},
-                53U,
+                57U,
                 "Fallback role ready."},
+            Domain::LMStudioConnectorHealth{
+                Domain::LMStudioConnectorRole::Clu,
+                true,
+                std::string{"2025-11-25"},
+                4U,
+                "CLU role ready."},
         },
         Domain::LMStudioConnectionState::Ready};
     require(environment.cacheConnectionHealth(ready, context).hasValue(),
             "A consistent measured role-health snapshot was rejected.");
     const auto cached = take(environment.connectionHealth(context));
     require(cached.state == Domain::LMStudioConnectionState::Ready &&
-                cached.roles.size() == 2U && cached.roles[0].toolCount == 53U,
+                cached.roles.size() == 3U && cached.roles[0].toolCount == 57U,
             "The connection-health snapshot was not cached exactly.");
 
     auto inconsistent = ready;
@@ -640,7 +646,7 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
         "A ready role with an unsupported MCP protocol was cached.");
 
     auto wrongToolCount = ready;
-    wrongToolCount.roles[1].toolCount = 52U;
+    wrongToolCount.roles[1].toolCount = 56U;
     requireError(
         environment.cacheConnectionHealth(std::move(wrongToolCount), context),
         Domain::ErrorCodes::InvalidRequest,
@@ -651,7 +657,7 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
             Domain::LMStudioConnectorRole::Primary,
             false,
             std::string{"2025-11-25"},
-            53U,
+            57U,
             "Primary role failed after a prior measurement."}},
         Domain::LMStudioConnectionState::Unavailable};
     requireError(

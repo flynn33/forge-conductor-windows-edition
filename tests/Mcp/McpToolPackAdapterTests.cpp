@@ -455,10 +455,11 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 53U);
+    REQUIRE(tools.size() == 57U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 8U},
+        {"ContinuityControlToolPack", 4U},
         {"ContinuityLifecycleToolPack", 7U},
         {"ContinuityToolPack", 4U},
         {"DocsToolPack", 2U},
@@ -479,7 +480,8 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 
         const bool closedPack =
             descriptor.tool.pack == "ProjectMemoryToolPack" ||
-            descriptor.tool.pack == "ContinuityLifecycleToolPack";
+            descriptor.tool.pack == "ContinuityLifecycleToolPack" ||
+            descriptor.tool.pack == "ContinuityControlToolPack";
         REQUIRE(schema.value("additionalProperties", true) != closedPack);
     }
     REQUIRE(actualPackCounts == expectedPackCounts);
@@ -627,7 +629,7 @@ void testRuntimeDispatchAndSchemaPolicy()
             "0.9.0",
             "windows-cpp",
             42U}));
-    REQUIRE(adapter->tools().size() == 53U);
+    REQUIRE(adapter->tools().size() == 57U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
@@ -669,6 +671,57 @@ void testRuntimeDispatchAndSchemaPolicy()
             requestId,
             authority);
     };
+
+    auto cluCapabilitiesCall = authorize(
+        "clu_capabilities",
+        Domain::ToolEffect::Read,
+        "{}",
+        "request-clu-capabilities");
+    auto cluCapabilities = adapter->handle(
+        cluCapabilitiesCall, authority, context);
+    REQUIRE(cluCapabilities);
+    const auto cluCapabilitiesPayload = Json::parse(
+        cluCapabilities.value().canonicalPayload);
+    REQUIRE(cluCapabilitiesPayload.at("ok") == true);
+    REQUIRE(cluCapabilitiesPayload.at("ready") == false);
+    REQUIRE(cluCapabilitiesPayload.at("task_identity") == "unavailable");
+    REQUIRE(cluCapabilitiesPayload.at("qualification").at("desktop_new_chat") ==
+            "not_observed");
+
+    const auto cluFailure = [&](const std::string& name,
+                                const Domain::ToolEffect effect,
+                                const Json& arguments,
+                                const std::string& requestId) {
+        auto call = authorize(name, effect, arguments.dump(), requestId);
+        auto outcome = adapter->handle(call, authority, context);
+        REQUIRE(outcome);
+        return Json::parse(outcome.value().canonicalPayload);
+    };
+    auto malformedOperation = cluFailure(
+        "clu_status",
+        Domain::ToolEffect::Read,
+        Json{{"operation_id", "latest"}},
+        "request-clu-malformed-operation");
+    REQUIRE(malformedOperation.at("code") == "invalid_request");
+    REQUIRE(malformedOperation.at("field") == "operation_id");
+
+    const std::string unicodeControl{"a\xC2\x85" "b"};
+    auto malformedStart = cluFailure(
+        "clu_start_handoff",
+        Domain::ToolEffect::Write,
+        Json{{"continuity_id", "source-1"},
+             {"idempotency_key", unicodeControl}},
+        "request-clu-malformed-start");
+    REQUIRE(malformedStart.at("code") == "invalid_request");
+    REQUIRE(malformedStart.at("field") == "idempotency_key");
+
+    auto unboundStatus = cluFailure(
+        "clu_status",
+        Domain::ToolEffect::Read,
+        Json{{"operation_id", "40000000-0000-4000-8000-000000000004"}},
+        "request-clu-unbound-status");
+    REQUIRE(unboundStatus.at("code") == "task_identity_unavailable");
+    REQUIRE(unboundStatus.at("field").is_null());
 
     auto forgeStatusCall = authorize(
         "forge_status",

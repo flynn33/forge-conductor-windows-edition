@@ -291,14 +291,22 @@ private:
 
 [[nodiscard]] const char* roleText(const Domain::LMStudioConnectorRole role) noexcept
 {
-    return role == Domain::LMStudioConnectorRole::Primary ? "primary" : "fallback";
+    switch (role) {
+    case Domain::LMStudioConnectorRole::Primary: return "primary";
+    case Domain::LMStudioConnectorRole::Fallback: return "fallback";
+    case Domain::LMStudioConnectorRole::Clu: return "clu";
+    }
+    return "primary";
 }
 
 [[nodiscard]] const char* serverId(const Domain::LMStudioConnectorRole role) noexcept
 {
-    return role == Domain::LMStudioConnectorRole::Primary
-        ? LMStudioPrimaryServerId
-        : LMStudioFallbackServerId;
+    switch (role) {
+    case Domain::LMStudioConnectorRole::Primary: return LMStudioPrimaryServerId;
+    case Domain::LMStudioConnectorRole::Fallback: return LMStudioFallbackServerId;
+    case Domain::LMStudioConnectorRole::Clu: return LMStudioCluServerId;
+    }
+    return LMStudioPrimaryServerId;
 }
 
 struct PluginLayout final {
@@ -306,6 +314,7 @@ struct PluginLayout final {
     Domain::PathText pluginsRoot;
     Domain::PathText primaryPlugin;
     Domain::PathText fallbackPlugin;
+    Domain::PathText continuityPlugin;
 };
 
 [[nodiscard]] Domain::Result<PluginLayout> makeLayout(
@@ -328,11 +337,16 @@ struct PluginLayout final {
         if (!fallback) {
             return Domain::Result<PluginLayout>::failure(std::move(fallback).error());
         }
+        auto continuity = childPath(plugins.value(), LMStudioCluServerId);
+        if (!continuity) {
+            return Domain::Result<PluginLayout>::failure(std::move(continuity).error());
+        }
         return Domain::Result<PluginLayout>::success(PluginLayout{
             std::move(root).value(),
             std::move(plugins).value(),
             std::move(primary).value(),
-            std::move(fallback).value()});
+            std::move(fallback).value(),
+            std::move(continuity).value()});
     } catch (...) {
         return Domain::Result<PluginLayout>::failure(Domain::makeError(
             Domain::ErrorCodes::InternalFailure,
@@ -344,9 +358,12 @@ struct PluginLayout final {
     const PluginLayout& layout,
     const Domain::LMStudioConnectorRole role) noexcept
 {
-    return role == Domain::LMStudioConnectorRole::Primary
-        ? layout.primaryPlugin
-        : layout.fallbackPlugin;
+    switch (role) {
+    case Domain::LMStudioConnectorRole::Primary: return layout.primaryPlugin;
+    case Domain::LMStudioConnectorRole::Fallback: return layout.fallbackPlugin;
+    case Domain::LMStudioConnectorRole::Clu: return layout.continuityPlugin;
+    }
+    return layout.primaryPlugin;
 }
 
 [[nodiscard]] Domain::Result<Json> parseJson(
@@ -499,11 +516,13 @@ struct PluginLayout final {
 
 [[nodiscard]] std::string healthDetail(
     const Domain::LMStudioConnectorHealth& primary,
-    const Domain::LMStudioConnectorHealth& fallback)
+    const Domain::LMStudioConnectorHealth& fallback,
+    const Domain::LMStudioConnectorHealth& clu)
 {
     return std::string{"primary="} + (primary.ready ? "ready" : "failed") +
         " (" + primary.detail + "); fallback=" +
-        (fallback.ready ? "ready" : "failed") + " (" + fallback.detail + ")";
+        (fallback.ready ? "ready" : "failed") + " (" + fallback.detail +
+        "); clu=" + (clu.ready ? "ready" : "failed") + " (" + clu.detail + ")";
 }
 
 [[nodiscard]] Domain::OperationContext rollbackContext(
@@ -578,8 +597,18 @@ public:
     [[nodiscard]] bool beginOperation(const Domain::OperationId& operationId) noexcept
     {
         try {
-            std::scoped_lock lock{operationMutex};
+            std::unique_lock lock{operationMutex};
             if (closed || active) {
+                return false;
+            }
+            writerPending = true;
+            const auto ready = operationChanged.wait_for(
+                lock,
+                std::chrono::seconds{5},
+                [&] { return closed || activeReaders == 0U; });
+            writerPending = false;
+            if (!ready || closed || active || activeReaders != 0U) {
+                operationChanged.notify_all();
                 return false;
             }
             active = true;
@@ -587,6 +616,34 @@ public:
             return true;
         } catch (...) {
             return false;
+        }
+    }
+
+    [[nodiscard]] bool beginObservation() noexcept
+    {
+        try {
+            std::scoped_lock lock{operationMutex};
+            if (closed || active || writerPending) {
+                return false;
+            }
+            ++activeReaders;
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+    void completeObservation() noexcept
+    {
+        try {
+            {
+                std::scoped_lock lock{operationMutex};
+                if (activeReaders != 0U) {
+                    --activeReaders;
+                }
+            }
+            operationChanged.notify_all();
+        } catch (...) {
         }
     }
 
@@ -906,6 +963,8 @@ public:
     std::condition_variable operationChanged;
     bool closed{};
     bool active{};
+    bool writerPending{};
+    std::size_t activeReaders{};
     std::optional<Domain::OperationId> activeOperation;
     std::optional<Domain::OperationId> cancelledOperation;
 };
@@ -924,6 +983,28 @@ public:
     {
         if (acquired_) {
             implementation_.completeOperation();
+        }
+    }
+
+    [[nodiscard]] bool acquired() const noexcept { return acquired_; }
+
+private:
+    Implementation& implementation_;
+    bool acquired_{};
+};
+
+template <typename Implementation>
+class ActiveObservation final {
+public:
+    explicit ActiveObservation(Implementation& implementation)
+        : implementation_{implementation},
+          acquired_{implementation_.beginObservation()}
+    {}
+
+    ~ActiveObservation() noexcept
+    {
+        if (acquired_) {
+            implementation_.completeObservation();
         }
     }
 
@@ -1065,11 +1146,13 @@ template <typename Implementation>
                     false,
                     false,
                     false,
+                    false,
                     binary,
                     binaryExecutable,
                     environment.lmStudioPresent,
                     layout.primaryPlugin,
                     layout.fallbackPlugin,
+                    layout.continuityPlugin,
                     environment.configurationPath.value(),
                     std::nullopt,
                     "LM Studio mcp.json is missing."});
@@ -1081,11 +1164,13 @@ template <typename Implementation>
                     false,
                     false,
                     false,
+                    false,
                     binary,
                     binaryExecutable,
                     environment.lmStudioPresent,
                     layout.primaryPlugin,
                     layout.fallbackPlugin,
+                    layout.continuityPlugin,
                     environment.configurationPath.value(),
                     std::nullopt,
                     "LM Studio mcp.json is malformed or has an invalid root; existing bytes were preserved."});
@@ -1099,6 +1184,7 @@ template <typename Implementation>
 
         bool primaryInstalled{};
         bool fallbackInstalled{};
+        bool continuityInstalled{};
         if (inspection.value().deploymentId) {
             primaryInstalled = implementation.pluginInstalled(
                 authority, layout.primaryPlugin, layout.lmStudioRoot,
@@ -1107,6 +1193,10 @@ template <typename Implementation>
             fallbackInstalled = implementation.pluginInstalled(
                 authority, layout.fallbackPlugin, layout.lmStudioRoot,
                 Domain::LMStudioConnectorRole::Fallback, binary, forgeHome,
+                inspection.value().deploymentId.value(), context);
+            continuityInstalled = implementation.pluginInstalled(
+                authority, layout.continuityPlugin, layout.lmStudioRoot,
+                Domain::LMStudioConnectorRole::Clu, binary, forgeHome,
                 inspection.value().deploymentId.value(), context);
         }
         std::string detail;
@@ -1122,22 +1212,27 @@ template <typename Implementation>
         if (!fallbackInstalled) {
             detail += "fallback plugin missing or stale; ";
         }
+        if (!continuityInstalled) {
+            detail += "CLU plugin missing or stale; ";
+        }
         if (!inspection.value().registered) {
             detail += inspection.value().detail;
         }
         if (detail.empty()) {
-            detail = "LM Studio primary and fallback plugins match one shared current revision.";
+            detail = "LM Studio primary, fallback, and CLU plugins match one shared current revision.";
         }
         return Domain::Result<Domain::LMStudioPluginStatus>::success(
             Domain::LMStudioPluginStatus{
                 primaryInstalled,
                 fallbackInstalled,
+                continuityInstalled,
                 inspection.value().registered,
                 binary,
                 binaryExecutable,
                 environment.lmStudioPresent,
                 layout.primaryPlugin,
                 layout.fallbackPlugin,
+                layout.continuityPlugin,
                 environment.configurationPath.value(),
                 inspection.value().deploymentId,
                 std::move(detail)});
@@ -1170,8 +1265,9 @@ struct ConfigurationMutationJournal final {
 };
 
 struct DeploymentMutationJournal final {
-    std::array<RoleMutationJournal, 2U> roles{
+    std::array<RoleMutationJournal, 3U> roles{
         RoleMutationJournal{Domain::LMStudioConnectorRole::Fallback},
+        RoleMutationJournal{Domain::LMStudioConnectorRole::Clu},
         RoleMutationJournal{Domain::LMStudioConnectorRole::Primary}};
     bool transactionTreeMutationAttempted{};
     ConfigurationMutationJournal configuration;
@@ -1352,7 +1448,7 @@ Domain::Result<Domain::LMStudioPluginStatus> WindowsLMStudioDeploymentService::s
     const Domain::OperationContext& context) noexcept
 {
     const auto implementation = implementation_;
-    ActiveOperation operation{*implementation, context.operationId};
+    ActiveObservation operation{*implementation};
     if (!operation.acquired()) {
         return Domain::Result<Domain::LMStudioPluginStatus>::failure(
             implementation->admissionFailure(
@@ -1440,12 +1536,16 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
         const auto preFallback = take(implementation->serveVerifier.verify(
             binary, forgeHome, Domain::LMStudioConnectorRole::Fallback,
             std::nullopt, maintenance, context));
+        const auto preClu = take(implementation->serveVerifier.verify(
+            binary, forgeHome, Domain::LMStudioConnectorRole::Clu,
+            std::nullopt, maintenance, context));
         if (!prePrimary.ready || prePrimary.role != Domain::LMStudioConnectorRole::Primary ||
-            !preFallback.ready || preFallback.role != Domain::LMStudioConnectorRole::Fallback) {
+            !preFallback.ready || preFallback.role != Domain::LMStudioConnectorRole::Fallback ||
+            !preClu.ready || preClu.role != Domain::LMStudioConnectorRole::Clu) {
             throw DeploymentFailure{Domain::makeError(
                 Domain::ErrorCodes::IntegrityFailure,
                 "LM Studio pre-deployment serve verification failed: " +
-                    healthDetail(prePrimary, preFallback))};
+                    healthDetail(prePrimary, preFallback, preClu))};
         }
 
         auto generated = take(implementation->uuidGenerator.next());
@@ -1468,6 +1568,7 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
 
         auto stagedPrimary = take(childPath(stagedRoot, LMStudioPrimaryServerId));
         auto stagedFallback = take(childPath(stagedRoot, LMStudioFallbackServerId));
+        auto stagedClu = take(childPath(stagedRoot, LMStudioCluServerId));
         auto stagedConfiguration = take(childPath(
             stagedRoot, LMStudioConfigurationFileName));
         auto backupConfiguration = take(childPath(
@@ -1479,6 +1580,10 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
         implementation->stagePlugin(
             maintenance, stagedFallback, layout->lmStudioRoot,
             Domain::LMStudioConnectorRole::Fallback,
+            binary, forgeHome, deploymentId, context);
+        implementation->stagePlugin(
+            maintenance, stagedClu, layout->lmStudioRoot,
+            Domain::LMStudioConnectorRole::Clu,
             binary, forgeHome, deploymentId, context);
         implementation->writeNewFile(
             maintenance, stagedConfiguration, layout->lmStudioRoot,
@@ -1518,6 +1623,7 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
             *implementation, request, maintenance, context));
         if (!committedStatus.primaryPluginInstalled ||
             !committedStatus.fallbackPluginInstalled ||
+            !committedStatus.continuityPluginInstalled ||
             !committedStatus.mcpConfigurationRegistered ||
             !committedStatus.deploymentId ||
             committedStatus.deploymentId.value() != deploymentId) {
@@ -1532,12 +1638,16 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
         const auto postFallback = take(implementation->serveVerifier.verify(
             binary, forgeHome, Domain::LMStudioConnectorRole::Fallback,
             deploymentId, maintenance, context));
+        const auto postClu = take(implementation->serveVerifier.verify(
+            binary, forgeHome, Domain::LMStudioConnectorRole::Clu,
+            deploymentId, maintenance, context));
         if (!postPrimary.ready || postPrimary.role != Domain::LMStudioConnectorRole::Primary ||
-            !postFallback.ready || postFallback.role != Domain::LMStudioConnectorRole::Fallback) {
+            !postFallback.ready || postFallback.role != Domain::LMStudioConnectorRole::Fallback ||
+            !postClu.ready || postClu.role != Domain::LMStudioConnectorRole::Clu) {
             throw DeploymentFailure{Domain::makeError(
                 Domain::ErrorCodes::IntegrityFailure,
                 "LM Studio post-deployment serve verification failed: " +
-                    healthDetail(postPrimary, postFallback))};
+                    healthDetail(postPrimary, postFallback, postClu))};
         }
 
         journal.commitValidated = true;
@@ -1552,10 +1662,11 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
             Domain::LMStudioInstallResult{
                 true,
                 binary,
-                {layout->primaryPlugin, layout->fallbackPlugin},
+                {layout->primaryPlugin, layout->fallbackPlugin,
+                 layout->continuityPlugin},
                 configurationPath.value(),
                 deploymentId,
-                "Committed one fresh LM Studio primary/fallback revision after pre-smoke, transactional install, post-validation, and post-smoke."});
+                "Committed one fresh LM Studio primary/fallback/CLU revision after pre-smoke, transactional install, post-validation, and post-smoke."});
     } catch (DeploymentFailure& failure) {
         auto error = failure.releaseError();
         if (journal.commitValidated) {
@@ -1741,7 +1852,10 @@ void WindowsLMStudioDeploymentService::shutdown() noexcept
     static_cast<void>(implementation->operationChanged.wait_for(
         lock,
         std::chrono::seconds{30},
-        [&] { return !implementation->active; }));
+        [&] {
+            return !implementation->active &&
+                implementation->activeReaders == 0U;
+        }));
 }
 
 } // namespace ForgeConductor::Infrastructure::Windows

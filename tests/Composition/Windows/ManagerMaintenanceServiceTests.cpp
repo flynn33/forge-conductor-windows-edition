@@ -207,12 +207,14 @@ template <typename Value>
     return Domain::LMStudioPluginStatus{
         primaryInstalled,
         fallbackInstalled,
+        lmStudioPresent,
         configurationRegistered,
         preferredBinary(),
         binaryExecutable,
         lmStudioPresent,
         path("C:\\Forge\\lmstudio\\primary"),
         path("C:\\Forge\\lmstudio\\fallback"),
+        path("C:\\Forge\\lmstudio\\clu"),
         path("C:\\Forge\\lmstudio\\mcp.json"),
         std::move(installedDeployment),
         lmStudioPresent ? "present" : "absent"};
@@ -239,7 +241,8 @@ template <typename Value>
         true,
         preferredBinary(),
         {path("C:\\Forge\\lmstudio\\primary"),
-         path("C:\\Forge\\lmstudio\\fallback")},
+         path("C:\\Forge\\lmstudio\\fallback"),
+         path("C:\\Forge\\lmstudio\\clu")},
         path("C:\\Forge\\lmstudio\\mcp.json"),
         deploymentId(),
         "installed"};
@@ -604,7 +607,7 @@ void healthyPassPrunesRecoversAndInspectsWithoutDeployment()
         "healthy LM Studio inspection changed the operation context");
 }
 
-void exactDriftAuthorizationDeploysTwoPlugins()
+void exactDriftAuthorizationDeploysThreePlugins()
 {
     Fixture fixture;
     fixture.lmStudio.statusResult.set(success(driftedPluginStatus()));
@@ -670,8 +673,8 @@ void exactDriftAuthorizationDeploysTwoPlugins()
                 Composition::ManagerMaintenanceService::DeploymentToolName,
         "LM Studio deployment did not receive the exact write capability");
     require(
-        completeInstallResult().pluginsWritten.size() == 2U,
-        "the scripted successful deployment did not contain exactly two plugins");
+        completeInstallResult().pluginsWritten.size() == 3U,
+        "the scripted successful deployment did not contain exactly three plugins");
 }
 
 void absentLmStudioDoesNotDeploy()
@@ -1024,7 +1027,7 @@ int main()
 {
     try {
         healthyPassPrunesRecoversAndInspectsWithoutDeployment();
-        exactDriftAuthorizationDeploysTwoPlugins();
+        exactDriftAuthorizationDeploysThreePlugins();
         absentLmStudioDoesNotDeploy();
         earlierFailureDoesNotSuppressLaterIndependentStages();
         partialContinuityFailureIsRetryableAndLmStillRuns();

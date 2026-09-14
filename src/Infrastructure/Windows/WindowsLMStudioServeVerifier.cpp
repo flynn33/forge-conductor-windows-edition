@@ -36,7 +36,7 @@ using namespace std::chrono_literals;
 constexpr auto VerificationTimeout = 15s;
 constexpr std::size_t VerificationStdoutBytesMaximum = 80'000U;
 constexpr std::size_t VerificationStderrBytesMaximum = 20'000U;
-constexpr std::array<std::string_view, 53U> CanonicalToolNames{
+constexpr std::array<std::string_view, 57U> CanonicalToolNames{
     "agent_context",
     "agent_get",
     "agent_list",
@@ -44,6 +44,10 @@ constexpr std::array<std::string_view, 53U> CanonicalToolNames{
     "agent_run_complete",
     "agent_run_start",
     "agent_run_status",
+    "clu_cancel",
+    "clu_capabilities",
+    "clu_start_handoff",
+    "clu_status",
     "context_get",
     "context_list",
     "continuity.acknowledge_handoff",
@@ -96,7 +100,11 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "b32131db479c2158f50f54c06f3652d8e880c49047b613c2bcbdcac31465753d";
+    "7fce6fb070cd8f9aefd42a7c6e77d67373c44f09b9d09d3ad16b7b4b9f13fbca";
+constexpr std::array<std::string_view, 4U> CluToolNames{
+    "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"};
+constexpr std::string_view CluToolDescriptorSha256 =
+    "59cce5985bace67cd7389eb13660386a60a7531841d8d25bdddb8396818b75d4";
 constexpr std::size_t MaximumResponseFrames = 2U;
 constexpr std::size_t MaximumJsonDepth = 64U;
 constexpr std::size_t MaximumJsonEvents = 16'384U;
@@ -112,13 +120,38 @@ struct BoundedJsonRejected final {};
 
 [[nodiscard]] std::string_view roleText(const Domain::LMStudioConnectorRole role) noexcept
 {
-    return role == Domain::LMStudioConnectorRole::Fallback ? "fallback" : "primary";
+    switch (role) {
+    case Domain::LMStudioConnectorRole::Primary: return "primary";
+    case Domain::LMStudioConnectorRole::Fallback: return "fallback";
+    case Domain::LMStudioConnectorRole::Clu: return "clu";
+    }
+    return "primary";
 }
 
 [[nodiscard]] std::string_view serverName(const Domain::LMStudioConnectorRole role) noexcept
 {
-    return role == Domain::LMStudioConnectorRole::Fallback ? "forge-conductor-fallback"
-                                                            : "forge-conductor";
+    switch (role) {
+    case Domain::LMStudioConnectorRole::Primary: return "forge-conductor";
+    case Domain::LMStudioConnectorRole::Fallback: return "forge-conductor-fallback";
+    case Domain::LMStudioConnectorRole::Clu: return "forge-conductor-clu";
+    }
+    return "forge-conductor";
+}
+
+[[nodiscard]] std::string verificationHome(
+    const Domain::PathText& forgeHome,
+    const Domain::OperationContext& context,
+    const Domain::LMStudioConnectorRole role)
+{
+    std::string result{forgeHome.value()};
+    if (!result.empty() && result.back() != '\\' && result.back() != '/') {
+        result.push_back('\\');
+    }
+    result += ".serve-verifier\\";
+    result += context.operationId.value();
+    result.push_back('-');
+    result += roleText(role);
+    return result;
 }
 
 [[nodiscard]] Domain::Result<std::string> executableSearchPath() noexcept
@@ -378,7 +411,8 @@ struct BoundedJsonRejected final {};
 }
 
 [[nodiscard]] Domain::Result<std::size_t> validateToolResponse(
-    const std::vector<Json>& frames)
+    const std::vector<Json>& frames,
+    const Domain::LMStudioConnectorRole role)
 {
     try {
         const Json* response = responseFor(frames, 2);
@@ -393,9 +427,12 @@ struct BoundedJsonRejected final {};
                 "The MCP tools/list reply was missing, duplicated, or unsuccessful."));
         }
         const auto& tools = response->at("result").at("tools");
-        if (tools.size() != ExpectedToolCount) {
+        const auto expectedCount = role == Domain::LMStudioConnectorRole::Clu
+            ? CluToolNames.size()
+            : ExpectedToolCount;
+        if (tools.size() != expectedCount) {
             return Domain::Result<std::size_t>::failure(verificationFailure(
-                "The MCP tools/list reply did not expose exactly 53 tools."));
+                "The MCP tools/list reply did not expose the exact role-specific inventory."));
         }
         for (std::size_t index{}; index < tools.size(); ++index) {
             const auto& tool = tools[index];
@@ -410,7 +447,10 @@ struct BoundedJsonRejected final {};
                 tool.at("description").get_ref<const std::string&>();
             const auto& schema = tool.at("inputSchema");
             if (name.empty() || name.size() > MaximumToolNameBytes ||
-                !Domain::isValidUtf8(name) || name != CanonicalToolNames[index]) {
+                !Domain::isValidUtf8(name) ||
+                name != (role == Domain::LMStudioConnectorRole::Clu
+                    ? CluToolNames[index]
+                    : CanonicalToolNames[index])) {
                 return Domain::Result<std::size_t>::failure(verificationFailure(
                     "The MCP tools/list reply did not match the exact canonical tool inventory."));
             }
@@ -429,7 +469,10 @@ struct BoundedJsonRejected final {};
         const auto canonical = tools.dump();
         BCryptSha256Hasher hasher;
         const auto digest = hasher.sha256(std::as_bytes(std::span{canonical}));
-        if (!digest || digest.value().value() != CanonicalToolDescriptorSha256) {
+        const auto expectedDigest = role == Domain::LMStudioConnectorRole::Clu
+            ? CluToolDescriptorSha256
+            : CanonicalToolDescriptorSha256;
+        if (!digest || digest.value().value() != expectedDigest) {
             return Domain::Result<std::size_t>::failure(verificationFailure(
                 "The MCP tools/list reply descriptor schemas or semantics drifted from the canonical inventory."));
         }
@@ -537,15 +580,17 @@ public:
                 std::move(searchPath).error());
         }
 
+        const auto probeHome = verificationHome(forgeHome, context, role);
         Domain::ProcessRequest request{binaryPath};
-        request.arguments = {"serve"};
+        request.arguments = {"serve", "--home", probeHome};
         // The serve composition root adopts its current directory as a durable
         // project. Binding that directory to Forge home prevents a smoke probe
-        // from inheriting and persisting an unrelated caller workspace, and it
-        // makes the process supervisor authorize the data root as a launch path.
+        // from inheriting and persisting an unrelated caller workspace. The
+        // probe receives a per-operation data home so it cannot contend with
+        // the running Manager's production SQLite store.
         request.workingDirectory = forgeHome;
         request.environment = {
-            Domain::EnvironmentVariable{"FORGE_CONDUCTOR_HOME", forgeHome.value()},
+            Domain::EnvironmentVariable{"FORGE_CONDUCTOR_HOME", probeHome},
             Domain::EnvironmentVariable{"FORGE_MCP_ROLE", std::string{roleText(role)}},
             // An explicit empty overlay suppresses an ambient parent revision;
             // the serve composition root then creates an isolated probe ID.
@@ -614,7 +659,7 @@ public:
             return Domain::Result<Domain::LMStudioConnectorHealth>::failure(
                 std::move(protocol).error());
         }
-        auto toolCount = validateToolResponse(frames.value());
+        auto toolCount = validateToolResponse(frames.value(), role);
         if (!toolCount) {
             return Domain::Result<Domain::LMStudioConnectorHealth>::failure(
                 std::move(toolCount).error());

@@ -37,7 +37,7 @@ constexpr auto ChildTimeout = 30s;
 constexpr auto ForcedCleanupTimeout = 5s;
 constexpr auto DrainCancelRetryInterval = 25ms;
 constexpr std::size_t MaximumCapturedBytes = 2U * 1024U * 1024U;
-constexpr std::size_t ExpectedToolCount = 53U;
+constexpr std::size_t ExpectedToolCount = 57U;
 
 std::size_t assertions{};
 
@@ -889,10 +889,12 @@ private:
     return result.at("structuredContent");
 }
 
-void validateToolArray(const Json& tools)
+void validateToolArray(
+    const Json& tools,
+    const std::size_t expectedCount = ExpectedToolCount)
 {
     REQUIRE(tools.is_array());
-    REQUIRE(tools.size() == ExpectedToolCount);
+    REQUIRE(tools.size() == expectedCount);
     std::set<std::string, std::less<>> names;
     std::string previous;
     for (const auto& tool : tools) {
@@ -937,7 +939,8 @@ struct RoleObservation final {
 };
 
 [[nodiscard]] RoleObservation observeRole(
-    McpProcessSession& session)
+    McpProcessSession& session,
+    const std::size_t expectedToolCount = ExpectedToolCount)
 {
     const auto frames = session.awaitFrames(2U);
 
@@ -948,7 +951,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.0.0");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.1.0");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
 
     const auto& listed = responseFor(frames, 2);
@@ -957,7 +960,7 @@ struct RoleObservation final {
     REQUIRE(listed.contains("result"));
     REQUIRE(!listed.contains("error"));
     const auto& tools = listed.at("result").at("tools");
-    validateToolArray(tools);
+    validateToolArray(tools, expectedToolCount);
     return RoleObservation{
         initializeResult.at("serverInfo").at("name").get<std::string>(),
         tools};
@@ -1180,6 +1183,30 @@ void run(
     REQUIRE(primaryObservation.serverName != fallbackObservation.serverName);
     REQUIRE(primaryObservation.tools == fallbackObservation.tools);
     REQUIRE(primaryObservation.tools == golden.at("tools"));
+
+    McpProcessSession clu{
+        executable,
+        home,
+        workspace,
+        L"clu",
+        L"p14-shared-root-clu"};
+    clu.send(handshake);
+    const auto cluObservation = observeRole(clu, 4U);
+    REQUIRE(cluObservation.serverName == "forge-conductor-clu");
+    std::vector<std::string> cluNames;
+    for (const auto& tool : cluObservation.tools) {
+        cluNames.push_back(tool.at("name").get<std::string>());
+    }
+    REQUIRE((cluNames ==
+        std::vector<std::string>{
+            "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"}));
+    clu.send(toolRequest(3, "clu_capabilities", Json::object()));
+    const auto cluFrames = clu.awaitFrames(3U);
+    const auto& cluResult = responseFor(cluFrames, 3).at("result");
+    REQUIRE(cluResult.at("isError") == false);
+    REQUIRE(cluResult.at("structuredContent").at("task_identity") == "unavailable");
+    REQUIRE(cluResult.at("structuredContent").at("ready") == false);
+    clu.finish(3U);
 
     primary.send(statusRequest(3));
     fallback.send(statusRequest(3));

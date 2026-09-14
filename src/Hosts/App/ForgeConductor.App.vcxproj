@@ -67,6 +67,7 @@
     <Midl Include="MainWindow.idl" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h"><DependentUpon>App.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="AppActionScheduler.h" />
     <ClInclude Include="MainWindow.xaml.h"><DependentUpon>MainWindow.xaml</DependentUpon></ClInclude>
     <ClInclude Include="TelemetryPresentation.h" />
     <ClCompile Include="App.xaml.cpp" />

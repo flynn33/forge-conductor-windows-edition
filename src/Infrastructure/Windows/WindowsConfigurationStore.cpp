@@ -142,8 +142,10 @@ struct ParsedConfiguration final {
         return Domain::McpRole::Primary;
     if (value == "fallback")
         return Domain::McpRole::Fallback;
+    if (value == "clu")
+        return Domain::McpRole::Clu;
     reject(Domain::ErrorCodes::InvalidRequest,
-           "Configuration mcp.role is not primary or fallback.");
+           "Configuration mcp.role is not primary, fallback, or clu.");
 }
 
 [[nodiscard]] std::string lowercase(std::string value)

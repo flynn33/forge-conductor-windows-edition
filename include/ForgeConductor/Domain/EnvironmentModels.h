@@ -11,8 +11,14 @@
 
 namespace ForgeConductor::Domain {
 
-enum class LMStudioConnectorRole { Primary, Fallback };
-enum class LMStudioConnectionState { Ready, PrimaryOnly, FallbackPromoted, Unavailable };
+enum class LMStudioConnectorRole { Primary, Fallback, Clu };
+enum class LMStudioConnectionState {
+    Ready,
+    ContinuityUnavailable,
+    PrimaryOnly,
+    FallbackPromoted,
+    Unavailable
+};
 enum class LMStudioDiscoverySource {
     ExplicitConfiguration,
     InstalledApplication,
@@ -53,12 +59,14 @@ struct LMStudioEnvironmentStatus final {
 struct LMStudioPluginStatus final {
     bool primaryPluginInstalled{};
     bool fallbackPluginInstalled{};
+    bool continuityPluginInstalled{};
     bool mcpConfigurationRegistered{};
     PathText binaryPath;
     bool binaryExecutable{};
     bool lmStudioPresent{};
     PathText primaryPluginPath;
     PathText fallbackPluginPath;
+    PathText continuityPluginPath;
     PathText mcpConfigurationPath;
     std::optional<DeploymentId> deploymentId;
     std::string detail;

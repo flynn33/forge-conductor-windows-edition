@@ -214,8 +214,11 @@ void requireSuccess(Domain::Result<void> result)
     if (*configured == "fallback") {
         return Domain::McpRole::Fallback;
     }
+    if (*configured == "clu") {
+        return Domain::McpRole::Clu;
+    }
     throw std::runtime_error{
-        "invalid_request: FORGE_MCP_ROLE must be primary or fallback."};
+        "invalid_request: FORGE_MCP_ROLE must be primary, fallback, or clu."};
 }
 
 [[nodiscard]] Domain::PathText currentDirectory()
@@ -441,9 +444,7 @@ public:
             requireSuccess(presenceLifecycle_->start(
                 Domain::ClientPresenceIdentity{
                     clientId_,
-                    role_ == Domain::McpRole::Fallback
-                        ? std::string{"fallback"}
-                        : std::string{"primary"},
+                    std::string{Domain::wireName(role_)},
                     deploymentId_,
                     static_cast<std::uint32_t>(::GetCurrentProcessId())},
                 currentDirectory(),

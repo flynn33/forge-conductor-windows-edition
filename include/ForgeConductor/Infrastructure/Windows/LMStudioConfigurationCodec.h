@@ -14,6 +14,7 @@ namespace ForgeConductor::Infrastructure::Windows {
 
 inline constexpr char LMStudioPrimaryServerId[] = "forge-conductor";
 inline constexpr char LMStudioFallbackServerId[] = "forge-conductor-fallback";
+inline constexpr char LMStudioCluServerId[] = "forge-conductor-clu";
 
 struct LMStudioRoleConfigurationStatus final {
     Domain::LMStudioConnectorRole role{Domain::LMStudioConnectorRole::Primary};

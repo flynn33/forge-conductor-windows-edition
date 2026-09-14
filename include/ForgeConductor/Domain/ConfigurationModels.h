@@ -25,7 +25,8 @@ enum class LogLevel {
 
 enum class McpRole {
     Primary,
-    Fallback
+    Fallback,
+    Clu
 };
 
 struct ShellConfig final {

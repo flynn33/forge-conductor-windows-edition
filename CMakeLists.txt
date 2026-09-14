@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.0.0
+    VERSION 1.1.0
     LANGUAGES CXX RC
 )
 
@@ -818,6 +818,18 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.App.TelemetryPresentationTests>)
     set_tests_properties(ForgeConductor.App.TelemetryPresentationTests PROPERTIES
         LABELS "R2;T-UI;T-UNIT"
+        TIMEOUT 60)
+
+    add_executable(ForgeConductor.App.ActionSchedulerTests
+        tests/App/AppActionSchedulerTests.cpp)
+    forge_configure_standard_target(ForgeConductor.App.ActionSchedulerTests)
+    target_include_directories(ForgeConductor.App.ActionSchedulerTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Hosts/App)
+    add_test(
+        NAME ForgeConductor.App.ActionSchedulerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.App.ActionSchedulerTests>)
+    set_tests_properties(ForgeConductor.App.ActionSchedulerTests PROPERTIES
+        LABELS "R03;T-UI;T-UNIT"
         TIMEOUT 60)
 
     add_executable(ForgeConductor.Manager.ControllerTests

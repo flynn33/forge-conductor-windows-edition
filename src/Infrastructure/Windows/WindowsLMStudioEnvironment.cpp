@@ -440,12 +440,13 @@ private:
 [[nodiscard]] bool validConnectionHealth(
     const Domain::LMStudioConnectionHealth& health) noexcept
 {
-    if (health.roles.size() > 2U ||
+    if (health.roles.size() > 3U ||
         health.state != Domain::deriveLMStudioConnectionState(health.roles)) {
         return false;
     }
     bool primary{};
     bool fallback{};
+    bool clu{};
     for (const auto& role : health.roles) {
         if (role.detail.empty() || role.detail.size() > MaximumHealthDetailBytes ||
             role.toolCount > MaximumReportedToolCount ||
@@ -456,13 +457,18 @@ private:
         if (role.ready) {
             if (!role.protocolVersion ||
                 *role.protocolVersion != SupportedMcpProtocolVersion ||
-                role.toolCount != 53U) {
+                role.toolCount !=
+                    (role.role == Domain::LMStudioConnectorRole::Clu ? 4U : 57U)) {
                 return false;
             }
         } else if (role.protocolVersion || role.toolCount != 0U) {
             return false;
         }
-        bool& seen = role.role == Domain::LMStudioConnectorRole::Primary ? primary : fallback;
+        bool& seen = role.role == Domain::LMStudioConnectorRole::Primary
+            ? primary
+            : role.role == Domain::LMStudioConnectorRole::Fallback
+                ? fallback
+                : clu;
         if (seen) {
             return false;
         }

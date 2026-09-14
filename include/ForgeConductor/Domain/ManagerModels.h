@@ -56,6 +56,8 @@ struct ManagerSettings final {
     std::uint32_t handoffReserve{4'096U};
     std::uint32_t estimationSafetyMargin{2'048U};
     bool shellEnabled{true};
+
+    bool operator==(const ManagerSettings&) const = default;
 };
 
 struct ManagerSettingsPatch final {

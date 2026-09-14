@@ -381,6 +381,8 @@ struct ForgeConfigurationState final {
         std::optional<std::string> sharedHome;
         if (!synchronizedRole(*servers, LMStudioFallbackServerId, "fallback",
                               deploymentId, sharedCommand, sharedHome) ||
+            !synchronizedRole(*servers, LMStudioCluServerId, "clu",
+                              deploymentId, sharedCommand, sharedHome) ||
             !synchronizedRole(*servers, LMStudioPrimaryServerId, "primary",
                               deploymentId, sharedCommand, sharedHome) ||
             !sharedCommand || !sharedHome) {
@@ -628,7 +630,7 @@ Domain::Result<Domain::LMStudioHostActivationResult> WindowsLMStudioHostActivato
                 return Domain::Result<ForgeConfigurationState>::failure(
                     Domain::makeError(
                         Domain::ErrorCodes::IntegrityFailure,
-                        "The selected live LM Studio configuration does not contain both exact Forge roles at the requested revision."));
+                        "The selected live LM Studio configuration does not contain all three exact Forge roles at the requested revision."));
             }
             return Domain::Result<ForgeConfigurationState>::success(
                 std::move(state).value());
@@ -706,8 +708,8 @@ Domain::Result<Domain::LMStudioHostActivationResult> WindowsLMStudioHostActivato
                             true,
                             {},
                             launched
-                                ? "LM Studio launched and synchronized both MCP registrations; hosted roles remain lazy until selected by a chat."
-                                : "LM Studio hot-synchronized both MCP registrations; hosted roles remain lazy until selected by a chat."});
+                                ? "LM Studio launched and synchronized all three MCP registrations; hosted roles remain lazy until selected by a chat."
+                                : "LM Studio hot-synchronized all three MCP registrations; hosted roles remain lazy until selected by a chat."});
                 }
                 if (!content && content.error().code != Domain::ErrorCodes::RecordNotFound) {
                     return Domain::Result<Domain::LMStudioHostActivationResult>::failure(

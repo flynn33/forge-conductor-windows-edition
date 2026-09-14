@@ -923,7 +923,8 @@ public:
                 false);
             const bool pluginOk = nativeStdio &&
                 lmStudio->primaryPluginInstalled &&
-                lmStudio->fallbackPluginInstalled;
+                lmStudio->fallbackPluginInstalled &&
+                lmStudio->continuityPluginInstalled;
             append(
                 "lm_studio_mcp_plugin",
                 pluginOk,

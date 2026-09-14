@@ -7,11 +7,14 @@ LMStudioConnectionState deriveLMStudioConnectionState(
 {
     bool primary{};
     bool fallback{};
+    bool clu{};
     for (const auto& role : roles) {
         if (role.role == LMStudioConnectorRole::Primary) primary = primary || role.ready;
         if (role.role == LMStudioConnectorRole::Fallback) fallback = fallback || role.ready;
+        if (role.role == LMStudioConnectorRole::Clu) clu = clu || role.ready;
     }
-    if (primary && fallback) return LMStudioConnectionState::Ready;
+    if (primary && fallback && clu) return LMStudioConnectionState::Ready;
+    if (primary && fallback) return LMStudioConnectionState::ContinuityUnavailable;
     if (primary) return LMStudioConnectionState::PrimaryOnly;
     if (fallback) return LMStudioConnectionState::FallbackPromoted;
     return LMStudioConnectionState::Unavailable;

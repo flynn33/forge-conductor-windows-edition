@@ -158,6 +158,7 @@ void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::WindowEventArgs const&)
 {
     if (telemetryTimer_) telemetryTimer_.Stop();
+    actionScheduler_.cancel();
     cancellation_.request_stop();
 }
 
@@ -170,6 +171,11 @@ void MainWindow::WindowContentLoaded(
     ProfileState().Text(winrt::to_hstring(connection_
         ? connection_->profileSummary()
         : std::string{"Deployment profile unavailable"}));
+    providerSettings_.emplace();
+    ApplyProviderForm(*providerSettings_);
+    ApplySettingsForm(*providerSettings_);
+    ProviderState().Text(L"Validated product defaults are available while the Manager connects.");
+    SettingsState().Text(L"Validated product defaults are available while effective settings load.");
     if (const auto savedProject = loadSavedText(
             selectedProjectValueName_.c_str())) {
         selectedProjectId_ = winrt::to_string(*savedProject);
@@ -188,10 +194,13 @@ void MainWindow::WindowContentLoaded(
     }
     const auto weak = get_weak();
     telemetryTimer_ = Microsoft::UI::Xaml::DispatcherTimer{};
-    telemetryTimer_.Interval(std::chrono::seconds{2});
+    telemetryTimer_.Interval(std::chrono::milliseconds{500});
     telemetryTimer_.Tick([weak](auto const&, auto const&) {
         if (const auto self = weak.get()) self->RunAction(Action::Refresh);
     });
+    RunAction(Action::Start);
+    RunAction(Action::SettingsLoad);
+    RunAction(Action::ProjectList);
     RunAction(Action::Refresh);
     telemetryTimer_.Start();
 }
@@ -201,19 +210,16 @@ void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,
 void MainWindow::StartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
-    telemetryTimer_.Stop();
     RunAction(Action::Start);
 }
 void MainWindow::StopClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
-    telemetryTimer_.Stop();
     RunAction(Action::Stop);
 }
 void MainWindow::RestartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
-    telemetryTimer_.Stop();
     RunAction(Action::Restart);
 }
 void MainWindow::ProviderLoadClicked(Windows::Foundation::IInspectable const&,
@@ -691,6 +697,7 @@ void MainWindow::ApplyProjectList(
         const auto selected = winrt::to_hstring(selectedProjectId_);
         storeSavedText(selectedProjectValueName_.c_str(), selected);
         RunProjectId().Text(selected);
+        ToolProjectId().Text(selected);
     } else {
         ClearSelectedProject();
         ProjectIdentity().Text(L"No registered project is selected.");
@@ -718,6 +725,7 @@ void MainWindow::ApplyProjectWorkspace(
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
     RunProjectId().Text(selected);
+    ToolProjectId().Text(selected);
 
     std::string identity = "Active project: " + snapshot.project.displayName +
         "\nExact ID: " + selectedProjectId_;
@@ -802,12 +810,14 @@ void MainWindow::ApplyLmStudio(
     const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot)
 {
     const auto installed = snapshot.primaryPluginInstalled &&
-        snapshot.fallbackPluginInstalled && snapshot.mcpConfigurationRegistered &&
+        snapshot.fallbackPluginInstalled && snapshot.continuityPluginInstalled &&
+        snapshot.mcpConfigurationRegistered &&
         snapshot.binaryExecutable;
     LmStudioRegistrationState().Text(winrt::to_hstring(
         std::string{"Installed registration: "} + (installed ? "complete" : "incomplete") +
         "\nPrimary: " + (snapshot.primaryPluginInstalled ? "installed" : "missing") +
         " · Fallback: " + (snapshot.fallbackPluginInstalled ? "installed" : "missing") +
+        " · CLU: " + (snapshot.continuityPluginInstalled ? "installed" : "missing") +
         " · MCP config: " + (snapshot.mcpConfigurationRegistered ? "registered" : "missing") +
         "\n" + snapshot.detail + "\n" + snapshot.actionDetail));
     LmStudioConnectionState().Text(winrt::to_hstring(
@@ -815,6 +825,7 @@ void MainWindow::ApplyLmStudio(
             ? std::string{"Connector verification: primary "} +
                 (snapshot.primaryConnectorReady ? "ready" : "not ready") +
                 ", fallback " + (snapshot.fallbackConnectorReady ? "ready" : "not ready") +
+                ", CLU " + (snapshot.continuityConnectorReady ? "ready" : "not ready") +
                 ". Connected LM Studio client observed: " +
                 (snapshot.connectedClientObserved ? "yes" : "no") + "."
             : "Connector verification: not run. Connected LM Studio client observed: no."));
@@ -824,6 +835,7 @@ void MainWindow::ApplyLmStudio(
     LmStudioPaths().Text(winrt::to_hstring(
         "Binary: " + snapshot.binaryPath + "\nPrimary: " + snapshot.primaryPluginPath +
         "\nFallback: " + snapshot.fallbackPluginPath +
+        "\nCLU: " + snapshot.continuityPluginPath +
         "\nConfiguration: " + snapshot.mcpConfigurationPath));
 }
 
@@ -843,7 +855,7 @@ void MainWindow::ApplyTools(
 winrt::fire_and_forget MainWindow::RunAction(const Action action)
 {
     auto lifetime = get_strong();
-    if (busy_ || !connection_) co_return;
+    if (!connection_ || cancellation_.stop_requested()) co_return;
 
     std::optional<::ForgeConductor::Domain::ManagerSettings> submitted;
     const bool runAction = action == Action::RunStart ||
@@ -896,14 +908,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (runAction) {
         runId = winrt::to_string(RunId().Text());
         if (action == Action::RunStart) {
-            runProject = winrt::to_string(RunProjectId().Text());
-            runClient = winrt::to_string(RunClientId().Text());
+            runProject = selectedProjectId_;
+            runClient = "forge-conductor-manager";
             runTask = winrt::to_string(RunTask().Text());
-            try {
-                runGeneration = numberValue(
-                    RunAuthorityGeneration(), "Authority generation");
-            } catch (const std::exception& exception) {
-                RunState().Text(winrt::to_hstring(exception.what()));
+            runGeneration = 0U;
+            if (runProject.empty()) {
+                RunState().Text(L"Select a named project before starting work.");
                 co_return;
             }
         } else if (runId.empty()) {
@@ -987,7 +997,32 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
     }
 
-    busy_ = true;
+    const auto lane = action == Action::Refresh
+        ? ::ForgeConductor::Hosts::App::AppActionLane::Observation
+        : ::ForgeConductor::Hosts::App::AppActionLane::Command;
+    const auto admission = actionScheduler_.admit(
+        lane, static_cast<std::size_t>(action));
+    if (admission != ::ForgeConductor::Hosts::App::AppActionAdmission::Started) {
+        if (admission == ::ForgeConductor::Hosts::App::AppActionAdmission::Queued) {
+            const auto queued = L"Queued behind the current Manager command.";
+            if (runAction) RunState().Text(queued);
+            else if (projectAction) ProjectState().Text(queued);
+            else if (lmStudioAction) LmStudioRegistrationState().Text(queued);
+            else if (toolsAction) ToolsState().Text(queued);
+            else if (operationalAction) OperationalState().Text(queued);
+            else if (settingsAction) SettingsState().Text(queued);
+            else if (maintenanceAction) MaintenanceState().Text(queued);
+            else if (action == Action::ProviderLoad ||
+                     action == Action::ProviderSave ||
+                     action == Action::ProviderTest) ProviderState().Text(queued);
+            else ManagerState().Text(queued);
+        } else if (admission ==
+                ::ForgeConductor::Hosts::App::AppActionAdmission::Rejected) {
+            GenericState().Text(
+                L"The bounded Manager command queue is full; this action was not accepted. Retry after the current command completes.");
+        }
+        co_return;
+    }
     winrt::apartment_context ui;
     if (runAction) {
         RunState().Text(L"Contacting the Manager…");
@@ -1249,9 +1284,17 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
         } else if (settingsAction) {
             if (action == Action::SettingsLoad && loaded.loaded) {
+                std::string providerFormError;
+                std::string settingsFormError;
+                const auto pendingProvider = ReadProviderForm(providerFormError);
+                const auto pendingSettings = ReadSettingsForm(settingsFormError);
+                const bool providerEdited = !providerSettings_ || !pendingProvider ||
+                    *pendingProvider != *providerSettings_;
+                const bool settingsEdited = !providerSettings_ || !pendingSettings ||
+                    *pendingSettings != *providerSettings_;
                 providerSettings_ = loaded.settings;
-                ApplyProviderForm(*providerSettings_);
-                ApplySettingsForm(*providerSettings_);
+                if (!providerEdited) ApplyProviderForm(*providerSettings_);
+                if (!settingsEdited) ApplySettingsForm(*providerSettings_);
                 SettingsState().Text(winrt::to_hstring(
                     "Effective settings read back from the Manager. Dashboard " +
                     loaded.settings.dashboardHost + ":" +
@@ -1260,7 +1303,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     std::to_string(loaded.settings.localModelPort) +
                     "; model " + (loaded.settings.localModelName.empty()
                         ? std::string{"automatic (first loaded model)"}
-                        : loaded.settings.localModelName) + "."));
+                        : loaded.settings.localModelName) + "." +
+                    (providerEdited || settingsEdited
+                        ? " Pending form edits were preserved; use Revert to replace them."
+                        : "")));
             } else {
                 SettingsState().Text(winrt::to_hstring(message));
                 if (action == Action::SettingsSave ||
@@ -1279,8 +1325,16 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
             action == Action::ProviderTest) {
             if (action == Action::ProviderLoad && loaded.loaded) {
+                std::string formError;
+                const auto pending = ReadProviderForm(formError);
+                const bool edited = !providerSettings_ || !pending ||
+                    *pending != *providerSettings_;
                 providerSettings_ = loaded.settings;
-                ApplyProviderForm(*providerSettings_);
+                if (!edited) {
+                    ApplyProviderForm(*providerSettings_);
+                } else {
+                    message += " Pending provider edits were preserved; reload after saving or reverting.";
+                }
             } else if (action == Action::ProviderSave && submitted && !failed) {
                 providerSettings_ = submitted;
             }
@@ -1297,10 +1351,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             GenericState().Text(winrt::to_hstring(message));
         }
     }
-    busy_ = false;
-    if (action == Action::Start || action == Action::Stop ||
-        action == Action::Restart) {
-        telemetryTimer_.Start();
+    const auto scheduled = actionScheduler_.complete(lane);
+    if (scheduled) RunAction(static_cast<Action>(*scheduled));
+    if (action == Action::Start || action == Action::Restart) {
+        RunAction(Action::Refresh);
     }
     if (followUp) RunAction(*followUp);
 }

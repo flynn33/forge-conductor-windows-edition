@@ -161,14 +161,22 @@ void enforceBounds(const Json& value, const std::size_t depth, std::size_t& node
 
 [[nodiscard]] const char* roleText(const Domain::LMStudioConnectorRole role) noexcept
 {
-    return role == Domain::LMStudioConnectorRole::Primary ? "primary" : "fallback";
+    switch (role) {
+    case Domain::LMStudioConnectorRole::Primary: return "primary";
+    case Domain::LMStudioConnectorRole::Fallback: return "fallback";
+    case Domain::LMStudioConnectorRole::Clu: return "clu";
+    }
+    return "primary";
 }
 
 [[nodiscard]] const char* serverId(const Domain::LMStudioConnectorRole role) noexcept
 {
-    return role == Domain::LMStudioConnectorRole::Primary
-        ? LMStudioPrimaryServerId
-        : LMStudioFallbackServerId;
+    switch (role) {
+    case Domain::LMStudioConnectorRole::Primary: return LMStudioPrimaryServerId;
+    case Domain::LMStudioConnectorRole::Fallback: return LMStudioFallbackServerId;
+    case Domain::LMStudioConnectorRole::Clu: return LMStudioCluServerId;
+    }
+    return LMStudioPrimaryServerId;
 }
 
 [[nodiscard]] std::optional<std::string> stringMember(
@@ -382,28 +390,34 @@ Domain::Result<LMStudioConfigurationInspection> LMStudioConfigurationCodec::insp
         const Json& servers = serversMember == root.end() ? emptyServers : *serversMember;
 
         LMStudioConfigurationInspection inspection;
-        inspection.roles.reserve(2U);
+        inspection.roles.reserve(3U);
         inspection.roles.push_back(inspectRole(
             servers, Domain::LMStudioConnectorRole::Primary, expectedBinary, expectedForgeHome));
         inspection.roles.push_back(inspectRole(
             servers, Domain::LMStudioConnectorRole::Fallback, expectedBinary, expectedForgeHome));
+        inspection.roles.push_back(inspectRole(
+            servers, Domain::LMStudioConnectorRole::Clu, expectedBinary, expectedForgeHome));
 
         const auto& primary = inspection.roles[0];
         const auto& fallback = inspection.roles[1];
-        if (!primary.valid || !fallback.valid) {
-            inspection.detail = primary.valid ? fallback.detail : primary.detail;
+        const auto& clu = inspection.roles[2];
+        if (!primary.valid || !fallback.valid || !clu.valid) {
+            inspection.detail = !primary.valid ? primary.detail
+                : !fallback.valid ? fallback.detail
+                                  : clu.detail;
             return Domain::Result<LMStudioConfigurationInspection>::success(
                 std::move(inspection));
         }
-        if (!primary.deploymentId || !fallback.deploymentId ||
-            primary.deploymentId.value() != fallback.deploymentId.value()) {
-            inspection.detail = "primary and fallback do not share one nonempty deployment revision";
+        if (!primary.deploymentId || !fallback.deploymentId || !clu.deploymentId ||
+            primary.deploymentId.value() != fallback.deploymentId.value() ||
+            primary.deploymentId.value() != clu.deploymentId.value()) {
+            inspection.detail = "primary, fallback, and CLU do not share one nonempty deployment revision";
             return Domain::Result<LMStudioConfigurationInspection>::success(
                 std::move(inspection));
         }
         inspection.registered = true;
         inspection.deploymentId = primary.deploymentId;
-        inspection.detail = "primary and fallback registrations share the selected binary and revision";
+        inspection.detail = "primary, fallback, and CLU registrations share the selected binary and revision";
         return Domain::Result<LMStudioConfigurationInspection>::success(
             std::move(inspection));
     } catch (const ConfigurationCodecException& error) {
@@ -441,6 +455,8 @@ Domain::Result<std::vector<std::byte>> LMStudioConfigurationCodec::mergeForgeSer
         removeLegacyForgeLaunchers(servers, forgeHome);
         mergeRole(servers, Domain::LMStudioConnectorRole::Fallback,
                   binary, forgeHome, deploymentId);
+        mergeRole(servers, Domain::LMStudioConnectorRole::Clu,
+                  binary, forgeHome, deploymentId);
         mergeRole(servers, Domain::LMStudioConnectorRole::Primary,
                   binary, forgeHome, deploymentId);
         auto encoded = root.dump(2, ' ', false, Json::error_handler_t::strict);
@@ -463,7 +479,7 @@ Domain::Result<std::vector<std::byte>> LMStudioConfigurationCodec::mergeForgeSer
             inspected.value().deploymentId.value() != deploymentId) {
             return Domain::Result<std::vector<std::byte>>::failure(Domain::makeError(
                 Domain::ErrorCodes::IntegrityFailure,
-                "Merged LM Studio MCP configuration did not retain both exact Forge registrations."));
+                "Merged LM Studio MCP configuration did not retain all three exact Forge registrations."));
         }
         return Domain::Result<std::vector<std::byte>>::success(std::move(candidate));
     } catch (const ConfigurationCodecException& error) {

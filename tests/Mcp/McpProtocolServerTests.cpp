@@ -590,7 +590,8 @@ struct SessionResult final {
 
 void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
 {
-    for (const auto role : {Domain::McpRole::Primary, Domain::McpRole::Fallback}) {
+    for (const auto role : {Domain::McpRole::Primary, Domain::McpRole::Fallback,
+                            Domain::McpRole::Clu}) {
         RouterFake router;
         ResolverFake resolver;
         SequenceUuidGenerator uuids;
@@ -620,16 +621,54 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
                     std::string{Mcp::McpProtocol::SupportedVersions[index]});
         }
         const auto response = parse(session.output.front());
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.0.0");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.1.0");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"
-                 : "forge-conductor-fallback"));
+                 : role == Domain::McpRole::Fallback
+                     ? "forge-conductor-fallback"
+                     : "forge-conductor-clu"));
         REQUIRE(response.at("result").at("capabilities").at("tools").at("listChanged") == false);
         REQUIRE(response.at("result").at("capabilities").at("projectMemory").at("capabilityVersion") == 1U);
         REQUIRE(parse(session.output.back()).at("result").at("protocolVersion") ==
                 std::string{Mcp::McpProtocol::SupportedVersions.front()});
     }
+}
+
+void testCluRoleExactInventoryAndDenial(Contracts::IToolCatalog& catalog)
+{
+    RouterFake router;
+    ResolverFake resolver;
+    SequenceUuidGenerator uuids;
+    auto session = serve(
+        catalog,
+        router,
+        resolver,
+        uuids,
+        Domain::McpRole::Clu,
+        {
+            Inbound::json(request(1, "tools/list")),
+            Inbound::json(request(
+                2, "tools/call",
+                Json{{"arguments", Json::object()}, {"name", "fs_read"}})),
+            Inbound::json(request(
+                3, "tools/call",
+                Json{{"arguments", Json::object()}, {"name", "clu_capabilities"}})),
+        },
+        3U);
+    REQUIRE(session.result.hasValue());
+    const auto tools = parse(session.output[0]).at("result").at("tools");
+    REQUIRE(tools.size() == 4U);
+    REQUIRE(tools[0].at("name") == "clu_cancel");
+    REQUIRE(tools[1].at("name") == "clu_capabilities");
+    REQUIRE(tools[2].at("name") == "clu_start_handoff");
+    REQUIRE(tools[3].at("name") == "clu_status");
+    REQUIRE(parse(session.output[1]).at("result").at("isError") == true);
+    REQUIRE(parse(session.output[1]).at("result").at("structuredContent").at("code") ==
+            "tool_not_allowed");
+    REQUIRE(router.calls() == 1U);
+    REQUIRE(resolver.calls() == 1U);
+    REQUIRE(parse(session.output[2]).at("result").at("isError") == false);
 }
 
 void testMethodsNotificationsAndExactList(Contracts::IToolCatalog& catalog)
@@ -1171,6 +1210,7 @@ int main()
         auto catalog = take(Mcp::McpToolCatalog::create());
         testInitializeNegotiationAndRoles(*catalog);
         testMethodsNotificationsAndExactList(*catalog);
+        testCluRoleExactInventoryAndDenial(*catalog);
         testMalformedAndTransportRecovery(*catalog);
         testToolSuccessFailureAndAuthority(*catalog);
         testRouterPayloadBoundsAndRecovery(*catalog);

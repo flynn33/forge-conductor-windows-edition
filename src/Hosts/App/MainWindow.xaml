@@ -161,10 +161,10 @@
      </Border>
       <Border Padding="18" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
        <StackPanel Spacing="10">
-        <TextBlock Text="Manager connection" Style="{ThemeResource SubtitleTextBlockStyle}" />
-        <TextBlock x:Name="ManagerState" Text="Start the manager or refresh to read its current status." TextWrapping="Wrap" />
+        <TextBlock Text="Manager connection and advanced controls" Style="{ThemeResource SubtitleTextBlockStyle}" />
+        <TextBlock x:Name="ManagerState" Text="Forge Conductor is establishing the per-user Manager automatically." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
        <StackPanel Orientation="Horizontal" Spacing="12">
-        <Button Content="Start manager" Click="StartClicked" />
+        <Button Content="Ensure manager" Click="StartClicked" />
         <Button Content="Stop service" Click="StopClicked" />
         <Button Content="Restart service" Click="RestartClicked" />
         <Button Content="Refresh" Click="RefreshClicked" />
@@ -193,11 +193,11 @@
      </Grid>
      <TextBlock Text="Rollover begins only when observed context plus the next-response, handoff, and safety reserves reaches the effective capacity." TextWrapping="Wrap" Opacity="0.72" />
      <StackPanel Orientation="Horizontal" Spacing="12">
-      <Button Content="Load saved settings" Click="ProviderLoadClicked" />
+      <Button Content="Reload effective settings" Click="ProviderLoadClicked" />
       <Button Content="Save" Click="ProviderSaveClicked" />
       <Button Content="Test connection" Click="ProviderTestClicked" />
      </StackPanel>
-     <TextBlock x:Name="ProviderState" Text="Load saved settings to begin." TextWrapping="Wrap" />
+     <TextBlock x:Name="ProviderState" Text="Validated defaults load immediately; effective Manager settings replace them after connection." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
     </StackPanel>
 
     <StackPanel x:Name="AutonomyPanel" Spacing="14" Visibility="Collapsed">
@@ -206,10 +206,10 @@
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <TextBox x:Name="RunProjectId" Header="Project ID" PlaceholderText="Project UUID" />
-      <TextBox x:Name="RunClientId" Grid.Column="1" Header="Client ID" Text="forge-conductor-manager" />
-      <NumberBox x:Name="RunAuthorityGeneration" Grid.Row="1" Header="Authority generation" Minimum="1" Maximum="4294967295" Value="1" SpinButtonPlacementMode="Compact" />
-      <TextBox x:Name="RunId" Grid.Row="1" Grid.Column="1" Header="Run ID" PlaceholderText="Filled after Start; paste to reattach" />
+      <TextBox x:Name="RunProjectId" Visibility="Collapsed" />
+      <TextBox x:Name="RunClientId" Grid.Column="1" Visibility="Collapsed" Text="forge-conductor-manager" />
+      <NumberBox x:Name="RunAuthorityGeneration" Grid.Row="1" Visibility="Collapsed" Value="0" />
+      <TextBox x:Name="RunId" Grid.Row="1" Grid.Column="1" Header="Current run" PlaceholderText="Filled automatically after Start" IsReadOnly="True" />
       <TextBox x:Name="RunTask" Grid.Row="2" Grid.ColumnSpan="2" Header="Task" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
      </Grid>
      <StackPanel Orientation="Horizontal" Spacing="12">
@@ -294,7 +294,7 @@
      <TextBlock x:Name="ToolsState" Text="Load the catalog to begin." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
      <Button Content="Load tool catalog" HorizontalAlignment="Left" Click="ToolsRefreshClicked" />
      <TextBlock x:Name="ToolsCatalog" Text="No tools loaded." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-     <TextBox x:Name="ToolProjectId" Header="Project ID" PlaceholderText="Uses the selected Projects identity" />
+     <TextBox x:Name="ToolProjectId" Visibility="Collapsed" />
      <TextBox x:Name="ToolName" Header="Tool name" PlaceholderText="For example fs_list or git_status" />
      <TextBox x:Name="ToolArguments" Header="JSON arguments" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" />
      <Button Content="Run selected tool" HorizontalAlignment="Left" Click="ToolInvokeClicked" />

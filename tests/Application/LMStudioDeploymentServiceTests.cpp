@@ -676,7 +676,9 @@ public:
             }
             return Domain::Result<Domain::LMStudioConnectorHealth>::success(
                 Domain::LMStudioConnectorHealth{
-                    role, true, std::string{"2025-11-25"}, 53U, "ready"});
+                    role, true, std::string{"2025-11-25"},
+                    role == Domain::LMStudioConnectorRole::Clu ? 4U : 57U,
+                    "ready"});
         } catch (...) {
             return Domain::Result<Domain::LMStudioConnectorHealth>::failure(
                 Domain::makeError(Domain::ErrorCodes::InternalFailure,
@@ -1078,9 +1080,11 @@ void testTransactionalDeployPreservesForeignAndOrdersFallbackFirst()
     require(roles == std::vector<Domain::LMStudioConnectorRole>{
                          Domain::LMStudioConnectorRole::Primary,
                          Domain::LMStudioConnectorRole::Fallback,
+                         Domain::LMStudioConnectorRole::Clu,
                          Domain::LMStudioConnectorRole::Primary,
-                         Domain::LMStudioConnectorRole::Fallback},
-            "The service did not pre-smoke and post-smoke both exact roles.");
+                         Domain::LMStudioConnectorRole::Fallback,
+                         Domain::LMStudioConnectorRole::Clu},
+            "The service did not pre-smoke and post-smoke all three exact roles.");
     const auto maintenanceRoots = fixture.verifier.lastAuthorityRoots();
     require(fixture.verifier.lastAuthorityGeneration() ==
                 fixture.authority.generation() + 1U &&
@@ -1159,7 +1163,7 @@ void testConfigurationFileObjectTransactionCommitsAndRollsBackByMove()
     const auto baseline = fixture.storage.snapshot();
     fixture.storage.resetMutationObservations();
     fixture.verifier.failAt(
-        fixture.verifier.calls() + 3U,
+        fixture.verifier.calls() + 4U,
         Domain::makeError(Domain::ErrorCodes::IntegrityFailure,
                           "Injected post-configuration smoke failure."));
     require(!fixture.deploy(fixture.context()),
@@ -1312,6 +1316,7 @@ void testEveryMutationBoundaryEitherRollsBackOrSurfacesCommittedCleanup()
             const auto status = take(fixture.service.status(
                 fixture.request(), fixture.authority, fixture.context()));
             require(status.primaryPluginInstalled && status.fallbackPluginInstalled &&
+                        status.continuityPluginInstalled &&
                         status.mcpConfigurationRegistered && status.deploymentId &&
                         status.deploymentId->value() ==
                             "97000000-0000-4000-8000-000000000002",
@@ -1325,7 +1330,7 @@ void testEveryMutationBoundaryEitherRollsBackOrSurfacesCommittedCleanup()
 
         require(reachedSuccessfulCallBeyondMatrix,
                 "The storage mutation boundary matrix did not reach an unfaulted deployment.");
-        require(exactRollbacks == 17U && committedCleanupFailures == 1U,
+        require(exactRollbacks == 23U && committedCleanupFailures == 1U,
                 "The storage mutation boundary matrix did not cover every rollback and cleanup boundary exactly.");
     }
 }
@@ -1340,7 +1345,7 @@ void testRollbackAndPostCommitCleanupFailuresAreTypedAndDiagnosed()
             fixture.storage.fileIdentity(fixture.configurationPath.value());
         require(originalConfigurationIdentity.has_value(),
                 "The rollback-failure fixture has no live configuration identity.");
-        const auto postPrimaryCall = fixture.verifier.calls() + 3U;
+        const auto postPrimaryCall = fixture.verifier.calls() + 4U;
         fixture.verifier.failAt(
             postPrimaryCall,
             Domain::makeError(
@@ -1473,7 +1478,7 @@ void testCancelledAndExpiredPostCommitFaultsUseFreshRollbackContext()
         const auto baseline = fixture.storage.snapshot();
         std::stop_source cancellation;
         fixture.verifier.failAt(
-            fixture.verifier.calls() + 3U,
+            fixture.verifier.calls() + 4U,
             Domain::makeError(Domain::ErrorCodes::Cancelled,
                               "Injected post-commit cancellation."));
         fixture.verifier.onCall = [&](const std::size_t call) {
@@ -1495,7 +1500,7 @@ void testCancelledAndExpiredPostCommitFaultsUseFreshRollbackContext()
         static_cast<void>(take(fixture.deploy(fixture.context())));
         const auto baseline = fixture.storage.snapshot();
         fixture.verifier.failAt(
-            fixture.verifier.calls() + 3U,
+            fixture.verifier.calls() + 4U,
             Domain::makeError(Domain::ErrorCodes::DeadlineExceeded,
                               "Injected post-commit deadline."));
         fixture.verifier.onCall = [&](const std::size_t call) {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 — Windows product recovery
+
+- Removed the global WinUI busy gate. Live telemetry now coalesces independently while user commands retain a bounded FIFO disposition, and closing the window cancels both lanes.
+- Made ordinary GUI startup attach to an existing matching Manager or launch the packaged sibling Manager automatically, then verify the authenticated pipe handshake before reporting success.
+- Preserved pending Provider and Settings edits across delayed Manager readback, and derived run/project authority internally instead of asking users for client IDs, generations, or other plumbing identifiers.
+- Added the dedicated `clu` LM Studio MCP role with the exact four continuity-control tools, strict closed schemas, fail-closed shared-MCP behavior, three-role transactional deployment, and three-role health reporting.
+- Raised the stable runtime and package version to 1.1.0 / `1.1.0.0`; Release packaging remains bound to a clean committed source tree and exact four-executable payload receipt.
+
 ## 1.0.0 — Windows production release
 
 - Promoted runtime and package identity to stable 1.0.0 / `ForgeConductor.Windows`.

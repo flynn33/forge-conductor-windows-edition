@@ -184,7 +184,12 @@ std::string_view wireName(const LogLevel level) noexcept
 
 std::string_view wireName(const McpRole role) noexcept
 {
-    return role == McpRole::Fallback ? "fallback" : "primary";
+    switch (role) {
+    case McpRole::Primary: return "primary";
+    case McpRole::Fallback: return "fallback";
+    case McpRole::Clu: return "clu";
+    }
+    return "primary";
 }
 
 } // namespace ForgeConductor::Domain
