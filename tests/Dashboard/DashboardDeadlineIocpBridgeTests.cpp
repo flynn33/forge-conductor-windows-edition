@@ -430,7 +430,14 @@ public:
                 ++failureCount_;
             }
             if (delivered && value.has_value()) {
-                latestDeadline_ = value;
+                // The worker pool may finish observer callbacks out of reap
+                // order. Production owners fence stale arm sequences, so this
+                // probe must retain the greatest delivered sequence rather
+                // than letting a late older callback hide it.
+                if (!latestDeadline_.has_value() ||
+                    value->armSequence > latestDeadline_->armSequence) {
+                    latestDeadline_ = value;
+                }
                 ++deliveryCount_;
             }
             if (inFlight_ == 0U) {
