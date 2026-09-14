@@ -30,6 +30,13 @@ using Json = nlohmann::json;
 constexpr auto ProductVersion = Domain::ProductVersion;
 constexpr std::string_view PrimaryServerName = "forge-conductor";
 constexpr std::string_view FallbackServerName = "forge-conductor-fallback";
+constexpr std::string_view CluServerName = "forge-conductor-clu";
+
+[[nodiscard]] bool isCluControl(const std::string_view name) noexcept
+{
+    return name == "clu_capabilities" || name == "clu_start_handoff" ||
+        name == "clu_status" || name == "clu_cancel";
+}
 
 [[nodiscard]] Json jsonRpcError(
     const std::optional<Json>& id,
@@ -155,6 +162,14 @@ constexpr std::string_view FallbackServerName = "forge-conductor-fallback";
     const Domain::McpRole role,
     const std::string_view protocolVersion)
 {
+    const auto serverName = [&]() -> std::string_view {
+        switch (role) {
+        case Domain::McpRole::Primary: return PrimaryServerName;
+        case Domain::McpRole::Fallback: return FallbackServerName;
+        case Domain::McpRole::Clu: return CluServerName;
+        }
+        return PrimaryServerName;
+    }();
     return Json{
         {"capabilities",
          Json{
@@ -167,10 +182,7 @@ constexpr std::string_view FallbackServerName = "forge-conductor-fallback";
         {"protocolVersion", protocolVersion},
         {"serverInfo",
          Json{
-             {"name",
-              role == Domain::McpRole::Fallback
-                  ? FallbackServerName
-                  : PrimaryServerName},
+             {"name", serverName},
              {"version", ProductVersion}}}};
 }
 
@@ -550,7 +562,7 @@ private:
             return;
         }
         if (methodName == "tools/list") {
-            auto listed = toolsList();
+            auto listed = toolsList(role);
             if (!listed) {
                 sendResponse(
                     transport,
@@ -592,6 +604,7 @@ private:
                 parsed,
                 externalId,
                 transport,
+                role,
                 clientId,
                 transportContext);
             return;
@@ -666,6 +679,7 @@ private:
         const Json& message,
         const Json& externalId,
         Contracts::IMcpTransport& transport,
+        const Domain::McpRole role,
         const Domain::ClientId& clientId,
         const Domain::OperationContext& transportContext)
     {
@@ -708,6 +722,19 @@ private:
                 return;
             }
             arguments = *suppliedArguments;
+        }
+
+        if (role == Domain::McpRole::Clu &&
+            !isCluControl(name->get_ref<const std::string&>())) {
+            sendResponse(
+                transport,
+                domainFailureResponse(
+                    externalId,
+                    Domain::makeError(
+                        "tool_not_allowed",
+                        "This tool is not available through the CLU role.")),
+                transportContext);
+            return;
         }
 
         const auto descriptor = std::find_if(
@@ -867,12 +894,17 @@ private:
         }
     }
 
-    [[nodiscard]] Domain::Result<Json> toolsList() const noexcept
+    [[nodiscard]] Domain::Result<Json> toolsList(
+        const Domain::McpRole role) const noexcept
     {
         try {
             Json tools = Json::array();
             tools.get_ref<Json::array_t&>().reserve(catalog_.tools().size());
             for (const auto& descriptor : catalog_.tools()) {
+                if (role == Domain::McpRole::Clu &&
+                    !isCluControl(descriptor.tool.name)) {
+                    continue;
+                }
                 auto schema = Json::parse(
                     descriptor.inputSchema.begin(),
                     descriptor.inputSchema.end(),

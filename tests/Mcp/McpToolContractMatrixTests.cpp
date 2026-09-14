@@ -305,6 +305,19 @@ void runMatrix(const Json& fixture)
     Contract::McpToolContractFixture catalogFixture{
         Contract::DependencyMode::Happy};
     auto catalogNames = catalogFixture.catalogToolNames();
+    const std::set<std::string> continuityControlNames{
+        "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"};
+    std::set<std::string> observedControlNames;
+    std::erase_if(catalogNames, [&](const std::string& name) {
+        if (!continuityControlNames.contains(name)) {
+            return false;
+        }
+        observedControlNames.insert(name);
+        return true;
+    });
+    require(
+        observedControlNames == continuityControlNames,
+        "The real MCP catalog must contain the exact four CLU controls");
     std::sort(catalogNames.begin(), catalogNames.end());
 
     std::vector<std::string> fixtureNames;

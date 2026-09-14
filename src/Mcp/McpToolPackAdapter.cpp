@@ -1719,7 +1719,8 @@ public:
             const bool ok = payload.value().value("ok", true);
             const bool continuityTool =
                 selected->tool.pack == "ContinuityToolPack" ||
-                selected->tool.pack == "ContinuityLifecycleToolPack";
+                selected->tool.pack == "ContinuityLifecycleToolPack" ||
+                selected->tool.pack == "ContinuityControlToolPack";
             auto observation = !continuityTool
                 ? continuityObservation.finish()
                 : std::optional<Domain::ToolContinuityObservation>{};
@@ -1805,6 +1806,9 @@ private:
         std::optional<Domain::ContextRecoveryReceipt>& contextRecovery)
     {
         const auto& name = call.toolName();
+        if (name.starts_with("clu_")) {
+            return continuityControl(name, arguments);
+        }
         if (name == "forge_status" || name.starts_with("agent_")) {
             return agents(
                 name, call, authority, arguments, context, observation);
@@ -1848,6 +1852,146 @@ private:
         return failure<Json>(
             Domain::ErrorCodes::InvalidRequest,
             "The requested MCP tool has no registered adapter.");
+    }
+
+    [[nodiscard]] Domain::Result<Json> continuityControl(
+        const std::string_view name,
+        const Json& arguments) const
+    {
+        const auto controlFailure = [](const std::string_view code,
+                                       const std::string_view field,
+                                       const std::string_view message,
+                                       const bool retryable = false) {
+            return Domain::Result<Json>::success(Json{
+                {"ok", false},
+                {"schema_version", 1},
+                {"code", code},
+                {"field", field.empty() ? Json(nullptr) : Json(field)},
+                {"message", message},
+                {"retryable", retryable}});
+        };
+        if (name == "clu_capabilities") {
+            return Domain::Result<Json>::success(Json{
+                {"ok", true},
+                {"schema_version", 1},
+                {"deployed", nullptr},
+                {"connected", true},
+                {"ready", false},
+                {"automatic_handoff_enabled", nullptr},
+                {"exact_id_support", true},
+                {"provider_mode", "external_chat"},
+                {"task_identity", "unavailable"},
+                {"role", "clu"},
+                {"deployment_id", nullptr},
+                {"build_version", dependencies_.productVersion},
+                {"qualification",
+                 Json{{"native_api", "unqualified"},
+                      {"desktop_new_chat", "not_observed"},
+                      {"gui_closed_recovery", "not_observed"},
+                      {"later_rollover", "not_observed"}}},
+                {"limits",
+                 Json{{"continuity_id_bytes", 128},
+                      {"idempotency_key_bytes", 256},
+                      {"reason_bytes", 512},
+                      {"maximum_response_bytes", 32'768}}},
+                {"reasons",
+                 Json::array({"task_identity_unavailable",
+                              "deployment_not_observed"})}});
+        }
+
+        if (name == "clu_start_handoff") {
+            const auto continuityId = strictString(arguments, "continuity_id");
+            const auto validContinuityId = [&] {
+                if (!continuityId || continuityId->empty() ||
+                    continuityId->size() > 128U || *continuityId == "." ||
+                    *continuityId == "..") {
+                    return false;
+                }
+                return std::all_of(
+                    continuityId->begin(), continuityId->end(),
+                    [](const char c) {
+                        return (c >= 'a' && c <= 'z') ||
+                            (c >= 'A' && c <= 'Z') ||
+                            (c >= '0' && c <= '9') || c == '_' || c == '.' ||
+                            c == '-';
+                    });
+            }();
+            if (!validContinuityId) {
+                return controlFailure(
+                    "invalid_request", "continuity_id",
+                    "The CLU request does not match the supported schema.");
+            }
+            for (const auto field : {"idempotency_key", "reason"}) {
+                const auto value = strictString(arguments, field);
+                if (!value) {
+                    continue;
+                }
+                const auto maximum = std::string_view{field} == "reason"
+                    ? 512U
+                    : 256U;
+                const auto hasBoundaryWhitespace = [](const std::string_view text) {
+                    const auto asciiWhitespace = [](const unsigned char c) {
+                        return c == 0x20U || (c >= 0x09U && c <= 0x0DU);
+                    };
+                    if (asciiWhitespace(static_cast<unsigned char>(text.front())) ||
+                        asciiWhitespace(static_cast<unsigned char>(text.back()))) {
+                        return true;
+                    }
+                    // Match Foundation's Unicode whitespace-and-newline trimming
+                    // for the non-ASCII scalars used by the pinned macOS contract.
+                    static constexpr std::array<std::string_view, 11> spaces{
+                        "\xC2\x85", "\xC2\xA0", "\xE1\x9A\x80", "\xE2\x80\xA8",
+                        "\xE2\x80\xA9", "\xE2\x80\xAF", "\xE2\x81\x9F",
+                        "\xE3\x80\x80", "\xEF\xBB\xBF", "\xE2\x80\x8B",
+                        "\xE2\x81\xA0"};
+                    for (const auto scalar : spaces) {
+                        if (text.starts_with(scalar) || text.ends_with(scalar)) {
+                            return true;
+                        }
+                    }
+                    // U+2000 through U+200A are a contiguous UTF-8 range.
+                    const auto isU2000Space = [](const std::string_view edge) {
+                        return edge.size() >= 3U &&
+                            static_cast<unsigned char>(edge[0]) == 0xE2U &&
+                            static_cast<unsigned char>(edge[1]) == 0x80U &&
+                            static_cast<unsigned char>(edge[2]) >= 0x80U &&
+                            static_cast<unsigned char>(edge[2]) <= 0x8AU;
+                    };
+                    return isU2000Space(text) ||
+                        (text.size() >= 3U && isU2000Space(text.substr(text.size() - 3U)));
+                };
+                const auto hasControl = [](const std::string_view text) {
+                    for (std::size_t index = 0; index < text.size(); ++index) {
+                        const auto c = static_cast<unsigned char>(text[index]);
+                        if (c < 0x20U || c == 0x7FU ||
+                            (c == 0xC2U && index + 1U < text.size() &&
+                             static_cast<unsigned char>(text[index + 1U]) >= 0x80U &&
+                             static_cast<unsigned char>(text[index + 1U]) <= 0x9FU)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                const bool invalid = value->empty() || value->size() > maximum ||
+                    hasBoundaryWhitespace(*value) || hasControl(*value);
+                if (invalid) {
+                    return controlFailure(
+                        "invalid_request", field,
+                        "The CLU request does not match the supported schema.");
+                }
+            }
+        }
+        if (name == "clu_status" || name == "clu_cancel") {
+            const auto operationId = strictString(arguments, "operation_id");
+            if (!operationId || !Domain::OperationId::parse(*operationId)) {
+                return controlFailure(
+                    "invalid_request", "operation_id",
+                    "The CLU request does not match the supported schema.");
+            }
+        }
+        return controlFailure(
+            "task_identity_unavailable", {},
+            "This request needs an authenticated native task connection. A shared MCP connection cannot select a task.");
     }
 
     [[nodiscard]] Domain::Result<Json> agents(

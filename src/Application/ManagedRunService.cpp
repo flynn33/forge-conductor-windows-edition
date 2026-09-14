@@ -83,10 +83,21 @@ public:
     ~Impl() noexcept { shutdown(); }
 
     [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> start(
-        const Domain::ManagedRunStartRequest& request,
+        const Domain::ManagedRunStartRequest& requested,
         const Domain::OperationContext& context) noexcept
     {
         try {
+            auto request = requested;
+            if (request.authorityGeneration == 0U && tools_.workspaceAuthority) {
+                auto resolved = tools_.workspaceAuthority->authorityFor(
+                    request.projectId, context);
+                if (!resolved) {
+                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                        std::move(resolved).error());
+                }
+                request.authorityGeneration = resolved.value().generation();
+                request.clientId = resolved.value().callerId();
+            }
             if (auto valid = validate(request, context); !valid) {
                 return Domain::Result<Domain::ManagedRunSnapshot>::failure(
                     std::move(valid).error());

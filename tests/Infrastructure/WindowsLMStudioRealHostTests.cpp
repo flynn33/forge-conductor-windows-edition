@@ -676,6 +676,7 @@ struct ForeignConfigurationSnapshot final {
     }
     servers->erase(Windows::LMStudioPrimaryServerId);
     servers->erase(Windows::LMStudioFallbackServerId);
+    servers->erase(Windows::LMStudioCluServerId);
     for (auto iterator = servers->begin(); iterator != servers->end();) {
         if (legacyForgeLauncher(iterator.key(), iterator.value(), forgeHome)) {
             iterator = servers->erase(iterator);
@@ -701,7 +702,8 @@ struct ForeignConfigurationSnapshot final {
 [[nodiscard]] bool ownedPluginName(const std::wstring_view name) noexcept
 {
     return equalPluginName(name, L"forge-conductor") ||
-        equalPluginName(name, L"forge-conductor-fallback");
+        equalPluginName(name, L"forge-conductor-fallback") ||
+        equalPluginName(name, L"forge-conductor-clu");
 }
 
 [[nodiscard]] bool transactionPluginName(const std::wstring_view name) noexcept
@@ -928,7 +930,7 @@ struct SynchronizationVerification final {
     const auto inspectionMatches = [&](const auto& inspection) {
         return inspection.registered && inspection.deploymentId &&
             inspection.deploymentId.value() == deploymentId &&
-            inspection.roles.size() == 2U &&
+            inspection.roles.size() == 3U &&
             std::all_of(
                 inspection.roles.begin(), inspection.roles.end(),
                 [](const auto& role) {
@@ -952,7 +954,9 @@ struct SynchronizationVerification final {
     const auto& liveRoles = roleObjects(live.root);
     const auto& synchronizedRoles = roleObjects(synchronized.root);
     for (const auto* const id :
-         {Windows::LMStudioPrimaryServerId, Windows::LMStudioFallbackServerId}) {
+         {Windows::LMStudioPrimaryServerId,
+          Windows::LMStudioFallbackServerId,
+          Windows::LMStudioCluServerId}) {
         const auto liveRole = liveRoles.find(id);
         const auto synchronizedRole = synchronizedRoles.find(id);
         if (liveRole == liveRoles.end() || synchronizedRole == synchronizedRoles.end() ||
@@ -1025,6 +1029,7 @@ struct SynchronizationVerification final {
     return Json{
         {"primary_installed", status.primaryPluginInstalled},
         {"fallback_installed", status.fallbackPluginInstalled},
+        {"clu_installed", status.continuityPluginInstalled},
         {"configuration_registered", status.mcpConfigurationRegistered},
         {"binary_executable", status.binaryExecutable},
         {"lm_studio_present", status.lmStudioPresent},
@@ -1387,7 +1392,7 @@ void runQualification(
         !equalPath(
             std::filesystem::path{utf8ToWide(deployment.binaryPath.value())},
             preferredBinary) ||
-        deployment.pluginsWritten.size() != 2U) {
+        deployment.pluginsWritten.size() != 3U) {
         fail("deploy_lmstudio_plugins", Domain::ErrorCodes::IntegrityFailure,
              "Deployment returned an incomplete or mismatched committed result.");
     }
@@ -1398,6 +1403,7 @@ void runQualification(
         writeDeploymentService.status(request, writeAuthority, statusContext),
         "status_after_deployment");
     if (!statusAfter.primaryPluginInstalled || !statusAfter.fallbackPluginInstalled ||
+        !statusAfter.continuityPluginInstalled ||
         !statusAfter.mcpConfigurationRegistered || !statusAfter.binaryExecutable ||
         !statusAfter.deploymentId ||
         statusAfter.deploymentId.value() != deployment.deploymentId) {

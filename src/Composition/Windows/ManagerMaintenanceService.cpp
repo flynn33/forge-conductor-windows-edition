@@ -58,6 +58,7 @@ private:
     return status.lmStudioPresent &&
         (!status.primaryPluginInstalled ||
          !status.fallbackPluginInstalled ||
+         !status.continuityPluginInstalled ||
          !status.mcpConfigurationRegistered ||
          !status.binaryExecutable ||
          !status.deploymentId.has_value());
@@ -204,7 +205,7 @@ Domain::Result<void> ManagerMaintenanceService::reconcileLmStudio(
     if (!deployed) {
         return Domain::Result<void>::failure(std::move(deployed).error());
     }
-    if (!deployed.value().ok || deployed.value().pluginsWritten.size() != 2U) {
+    if (!deployed.value().ok || deployed.value().pluginsWritten.size() != 3U) {
         return Domain::Result<void>::failure(maintenanceError(
             Domain::ErrorCodes::IntegrityFailure,
             "LM Studio maintenance returned an incomplete deployment result."));

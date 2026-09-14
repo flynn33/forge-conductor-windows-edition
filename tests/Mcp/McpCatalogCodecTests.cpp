@@ -63,9 +63,10 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 53U> ExpectedNames{
+    constexpr std::array<std::string_view, 57U> ExpectedNames{
         "agent_context", "agent_get", "agent_list", "agent_recommend",
         "agent_run_complete", "agent_run_start", "agent_run_status",
+        "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status",
         "context_get", "context_list", "continuity.acknowledge_handoff",
         "continuity.checkpoint", "continuity.get_pending_handoff",
         "continuity.prepare_handoff", "continuity.request_rollover",
@@ -110,8 +111,8 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 23U);
-    REQUIRE(writeEffects == 30U);
+    REQUIRE(readEffects == 25U);
+    REQUIRE(writeEffects == 32U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "project_memory.export").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "fs_read").tool.description.find("next_offset") !=
@@ -127,6 +128,19 @@ void testSourceSchemasAndWindowsDelta()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
+
+    REQUIRE(schema(tools, "clu_capabilities") == Json({
+        {"additionalProperties", false},
+        {"properties", Json::object()},
+        {"required", Json::array()},
+        {"type", "object"}}));
+    const auto cluStart = schema(tools, "clu_start_handoff");
+    REQUIRE(cluStart.at("additionalProperties") == false);
+    REQUIRE(cluStart.at("required") == Json::array({"continuity_id"}));
+    REQUIRE(cluStart.at("properties").at("continuity_id").at("maxLength") == 128U);
+    REQUIRE(cluStart.at("properties").at("idempotency_key").at("maxLength") == 256U);
+    REQUIRE(cluStart.at("properties").at("reason").at("maxLength") == 512U);
+    REQUIRE(schema(tools, "clu_status") == schema(tools, "clu_cancel"));
 
     const auto agentList = schema(tools, "agent_list");
     REQUIRE(agentList == Json({

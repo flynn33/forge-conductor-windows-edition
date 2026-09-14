@@ -1,5 +1,6 @@
 #pragma once
 #include "MainWindow.g.h"
+#include "AppActionScheduler.h"
 #include "ManagerConnection.h"
 
 #include <memory>
@@ -96,7 +97,7 @@ private:
     bool rebuildingProjects_{};
     ::ForgeConductor::Manager::ManagerOperationalArea operationalArea_{
         ::ForgeConductor::Manager::ManagerOperationalArea::Agents};
-    bool busy_{};
+    ::ForgeConductor::Hosts::App::AppActionScheduler actionScheduler_;
 };
 }
 

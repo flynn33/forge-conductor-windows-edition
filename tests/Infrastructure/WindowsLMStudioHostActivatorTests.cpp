@@ -29,6 +29,7 @@ namespace ForgeConductor::Tests {
 namespace {
 
 using Infrastructure::Windows::LMStudioFallbackServerId;
+using Infrastructure::Windows::LMStudioCluServerId;
 using Infrastructure::Windows::LMStudioPrimaryServerId;
 using Infrastructure::Windows::WindowsLMStudioHostActivator;
 using Infrastructure::Windows::WindowsLMStudioHostActivatorOptions;
@@ -346,7 +347,8 @@ struct Fixture final {
     Json servers = Json::object();
     for (const auto [id, role] : {
              std::pair<std::string_view, std::string_view>{LMStudioPrimaryServerId, "primary"},
-             std::pair<std::string_view, std::string_view>{LMStudioFallbackServerId, "fallback"}}) {
+             std::pair<std::string_view, std::string_view>{LMStudioFallbackServerId, "fallback"},
+             std::pair<std::string_view, std::string_view>{LMStudioCluServerId, "clu"}}) {
         servers[id] = Json{
             {"command", "C:\\Forge\\forge-conductor.exe"},
             {"args", Json::array({"serve"})},

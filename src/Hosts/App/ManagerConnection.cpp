@@ -73,7 +73,7 @@ struct NativeHandle final {
 [[nodiscard]] Domain::OperationContext operationContext(
     const std::shared_ptr<W::SystemClock>& clock,
     const std::stop_token cancellation,
-    const std::chrono::seconds timeout = std::chrono::seconds{5})
+    const std::chrono::milliseconds timeout = std::chrono::seconds{5})
 {
     W::WindowsUuidGenerator ids;
     auto id = ids.next();
@@ -119,7 +119,7 @@ connectManager(
         return Domain::Result<std::unique_ptr<W::WindowsManagerNamedPipeClient>>::failure(
             Domain::makeError(
                 Domain::ErrorCodes::SessionNotFound,
-                "Manager is not initialized. Select Start manager."));
+                "Manager authentication is not initialized."));
     }
     return W::WindowsManagerNamedPipeClient::create(
         clock, std::wstring{names.value().pipeName()}, *nonce.value());
@@ -833,10 +833,46 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
     try {
         if (!profileError_.empty()) return profileError_;
         if (cancellation.stop_requested()) return "Cancelled.";
+        auto clock = std::make_shared<W::SystemClock>();
+        std::string lastConnectionError;
+        const auto readyManager = [&]() -> std::optional<std::string> {
+            try {
+                auto context = operationContext(
+                    clock, cancellation, std::chrono::milliseconds{750});
+                auto created = connectManager(alphaProfile_, context, clock);
+                if (!created) {
+                    lastConnectionError = created.error().message;
+                    return std::nullopt;
+                }
+                auto client = std::move(created).value();
+                auto status = client->status(context);
+                client->shutdown();
+                if (!status) {
+                    lastConnectionError = status.error().message;
+                    return std::nullopt;
+                }
+                const auto& value = status.value();
+                return "Manager ready and authenticated. PID " +
+                    std::to_string(value.processId) + ", version " +
+                    value.version + ", service " +
+                    (value.serviceActive ? "active." : "inactive.");
+            } catch (const std::exception& error) {
+                lastConnectionError = error.what();
+                return std::nullopt;
+            }
+        };
+        if (auto existing = readyManager()) {
+            return "Attached to the existing " + *existing;
+        }
         std::array<wchar_t, 32768> path{};
         const auto length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
         if (!length || length >= path.size()) return "Cannot resolve the installed application directory.";
         const auto executable = std::filesystem::path{path.data()}.parent_path() / L"ForgeConductor.Manager.exe";
+        std::error_code executableError;
+        if (!std::filesystem::is_regular_file(executable, executableError)) {
+            return "Manager could not start because the verified installed sibling is missing: " +
+                executable.string();
+        }
         std::wstring arguments = L"\"" + executable.wstring() + L"\"";
         if (alphaProfile_) {
             arguments.append(L" --alpha-root \"");
@@ -887,43 +923,72 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
             return "Manager could not start. Windows error " + std::to_string(error) +
                 ". Verify the manager executable is installed beside the app.";
         }
-        const DWORD startupState = WaitForSingleObject(process.value.hProcess, 2'000U);
-        if (startupState == WAIT_OBJECT_0) {
-            DWORD exitCode{};
-            if (!GetExitCodeProcess(process.value.hProcess, &exitCode)) {
+        const auto readyDeadline = GetTickCount64() + 10'000ULL;
+        std::optional<DWORD> observedExitCode;
+        while (GetTickCount64() < readyDeadline) {
+            if (cancellation.stop_requested()) {
                 discardStartupLog();
-                return "Manager exited during startup and Windows could not read its exit code.";
+                return "Manager startup was cancelled; the independently owned process was left unchanged.";
             }
-            if (exitCode == static_cast<DWORD>(
-                    Manager::ManagerUnsupportedDataStoreExitCode)) {
+            if (auto attached = readyManager()) {
                 discardStartupLog();
-                return "The default Forge Conductor data store is newer than this build "
-                    "supports and was left unchanged. Install a build that supports that "
-                    "store, or launch ForgeConductorApp.exe with --alpha-root followed by "
-                    "an absolute empty folder to use an explicitly isolated profile.";
+                return "Started and attached to the " + *attached;
             }
-            startupOutput.close();
-            const auto detail = managerStartupDetail(startupLog);
+            const auto processState = WaitForSingleObject(process.value.hProcess, 0U);
+            if (processState == WAIT_OBJECT_0) {
+                DWORD exitCode{};
+                if (GetExitCodeProcess(process.value.hProcess, &exitCode)) {
+                    observedExitCode = exitCode;
+                }
+                // A concurrent launch may have won the per-user lease. Give its
+                // authenticated endpoint a brief opportunity to become ready.
+                if (GetTickCount64() + 1'000ULL < readyDeadline) {
+                    const auto concurrentDeadline = GetTickCount64() + 1'000ULL;
+                    while (GetTickCount64() < concurrentDeadline) {
+                        if (auto attached = readyManager()) {
+                            discardStartupLog();
+                            return "Attached to the concurrently established " + *attached;
+                        }
+                        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+                    }
+                }
+                break;
+            }
+            if (processState == WAIT_FAILED) {
+                const auto error = GetLastError();
+                discardStartupLog();
+                return "Manager started, but Windows could not observe its startup state (error " +
+                    std::to_string(error) + ").";
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        }
+        if (auto attached = readyManager()) {
             discardStartupLog();
-            return "Manager exited during startup with code " +
+            return "Started and attached to the " + *attached;
+        }
+        startupOutput.close();
+        const auto detail = managerStartupDetail(startupLog);
+        if (observedExitCode == static_cast<DWORD>(
+                Manager::ManagerUnsupportedDataStoreExitCode)) {
+            discardStartupLog();
+            return "The default Forge Conductor data store is newer than this build "
+                "supports and was left unchanged. Install a build that supports that "
+                "store, or use an explicitly isolated profile for testing.";
+        }
+        if (observedExitCode) {
+            const auto exitCode = *observedExitCode;
+            discardStartupLog();
+            return "Manager exited during automatic startup with code " +
                 std::to_string(exitCode) +
                 (detail.empty()
                     ? ". Open Diagnostics for recovery details."
                     : ". " + detail);
         }
-        if (startupState == WAIT_FAILED) {
-            const auto error = GetLastError();
-            discardStartupLog();
-            return "Manager started, but Windows could not observe its startup state (error " +
-                std::to_string(error) + "). Select Refresh to attach.";
-        }
         discardStartupLog();
-        // The manager is independently owned. Closing this connection never terminates it.
-        return alphaProfile_
-            ? "Isolated manager start requested for " +
-                alphaProfile_->dataRoot().value() +
-                ". Select Refresh to attach and read its status."
-            : "Manager start requested. Select Refresh to attach and read its status.";
+        return "Manager did not complete its authenticated ready handshake within 10 seconds" +
+            (lastConnectionError.empty()
+                ? std::string{"."}
+                : std::string{". Last connection error: "} + lastConnectionError);
     } catch (const std::exception& error) { return error.what(); }
       catch (...) { return "Could not start manager."; }
 }

@@ -114,6 +114,87 @@
       "name": "agent_run_status"
     },
     {
+      "description": "Request cancellation of one caller-authorized CLU operation while preserving committed effects and recovery.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id"
+        ],
+        "type": "object"
+      },
+      "name": "clu_cancel"
+    },
+    {
+      "description": "Read CLU deployment, connection, exact-task readiness and observed qualification limits.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "clu_capabilities"
+    },
+    {
+      "description": "Submit one exact authorized handoff durably and return its operation handle without starting a provider inline.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "continuity_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "not": {
+              "enum": [
+                ".",
+                ".."
+              ]
+            },
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "description": "At most 256 UTF-8 bytes; no control characters or surrounding whitespace.",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "description": "At most 512 UTF-8 bytes; no control characters or surrounding whitespace.",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "continuity_id"
+        ],
+        "type": "object"
+      },
+      "name": "clu_start_handoff"
+    },
+    {
+      "description": "Read durable progress or the terminal receipt for one caller-authorized CLU operation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id"
+        ],
+        "type": "object"
+      },
+      "name": "clu_status"
+    },
+    {
       "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",
       "inputSchema": {
         "properties": {

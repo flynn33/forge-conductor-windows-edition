@@ -281,12 +281,14 @@ public:
     return Domain::LMStudioPluginStatus{
         primary,
         fallback,
+        true,
         registered,
         path("C:\\Forge\\bin\\forge.exe"),
         executable,
         true,
         path("C:\\Forge\\lmstudio\\primary"),
         path("C:\\Forge\\lmstudio\\fallback"),
+        path("C:\\Forge\\lmstudio\\clu"),
         path("C:\\Forge\\lmstudio\\mcp.json"),
         std::nullopt,
         "ready"};

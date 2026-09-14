@@ -757,6 +757,7 @@ private:
         bool connectionCheckPerformed{};
         bool primaryReady{};
         bool fallbackReady{};
+        bool continuityReady{};
         if (activate) {
             if (!inspected.value().deploymentId) {
                 return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
@@ -807,6 +808,11 @@ private:
                 activated.value().readyRoles.end(),
                 Domain::LMStudioConnectorRole::Fallback) !=
                 activated.value().readyRoles.end();
+            continuityReady = std::find(
+                activated.value().readyRoles.begin(),
+                activated.value().readyRoles.end(),
+                Domain::LMStudioConnectorRole::Clu) !=
+                activated.value().readyRoles.end();
             actionDetail = activated.value().detail;
         }
 
@@ -816,16 +822,19 @@ private:
                 status.lmStudioPresent,
                 status.primaryPluginInstalled,
                 status.fallbackPluginInstalled,
+                status.continuityPluginInstalled,
                 status.mcpConfigurationRegistered,
                 status.binaryExecutable,
                 status.binaryPath.value(),
                 status.primaryPluginPath.value(),
                 status.fallbackPluginPath.value(),
+                status.continuityPluginPath.value(),
                 status.mcpConfigurationPath.value(),
                 status.deploymentId,
                 connectionCheckPerformed,
                 primaryReady,
                 fallbackReady,
+                continuityReady,
                 false,
                 sources.continuityAutomation == nullptr
                     ? 0U
