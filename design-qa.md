@@ -41,10 +41,11 @@ R30–R43 remain incomplete. Capture each current installed-package view at a co
 
 ## Build, package, and interaction verification
 
-- Full Release x64 Product All build passed after the visual refinements and Feed timestamp projection. Four focused Manager protocol/dispatcher and app presentation/scheduler tests passed after that build. A fresh signed package is required.
-- Signed 1.1.4 MSIX was produced and validated, but install failed with `0x80073D02`: the existing 1.1.3 Manager process still owns the package. Its own Stop service command left the process alive, and the service was restored. No forced termination was performed.
+- Full Release x64 Product All build passed after the visual refinements and Feed timestamp projection. Four focused Manager protocol/dispatcher and app presentation/scheduler tests passed after that build.
+- A fresh development-signed 1.1.4 MSIX was produced from commit `5f380b9001489488f7d3ac2ed8f0a860974b9108` at `out/dist/release-1.1.4.0-20260915-103446/ForgeConductor-1.1.4.0-x64.msix`; SHA-256 `830dc00c5a4d2d34358a85f0c359f5d30c72be924020c2752a79da078195500d`, signature Valid.
+- Installation again failed with `0x80073D02`: AppX deployment identified the 1.1.3 package app as still running. `tasklist` confirmed installed Manager PID 44464 remains alive. Its own Stop service command previously left the process alive, and the service was restored. No forced termination was performed.
 - Full Release x64 CTest: 150/151 passed. `ForgeConductor.Manager.CompositionLifecycleTests` refused to run while the installed Manager owned its hardcoded port 7788; the service was not displaced for a test.
-- The staged MSIX predates the width correction. A new package is required after verification, and 1.1.4 is not installed.
+- The current signed MSIX contains the width, empty-state, role-card, adaptive-navigation, and Feed changes, but 1.1.4 is not installed.
 - Historical 1.1.3 focused verification passed 7/7:
   - `ForgeConductor.Telemetry.WindowsTests`
   - `ForgeConductor.App.TelemetryPresentationTests`
