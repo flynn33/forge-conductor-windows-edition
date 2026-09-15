@@ -45,6 +45,7 @@ struct MainWindow : MainWindowT<MainWindow> {
     void OpenAutonomyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenFeedClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenSettingsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OpenToolsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenProjectsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -58,6 +59,9 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProjectRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSearchClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectRememberClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectUpdateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectForgetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectEditCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void LmStudioInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -84,7 +88,7 @@ private:
         ProviderModels,
         SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
-        ProjectList, ProjectRegister, ProjectLoad, ProjectRemember,
+        ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
         LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
         OperationalInspect, OperationalPrune, OperationalClose
     };
@@ -103,6 +107,8 @@ private:
         const ::ForgeConductor::Manager::ManagerProjectsSnapshot& snapshot);
     void ApplyProjectWorkspace(
         const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
+    void SelectMemoryRecord(
+        const ::ForgeConductor::Manager::ManagerProjectMemoryRecord& record);
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
     void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
     void FilterTools();
@@ -123,6 +129,8 @@ private:
     std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
         telemetrySnapshot_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
+    std::optional<::ForgeConductor::Manager::ManagerProjectMemoryRecord> selectedMemoryRecord_;
+    std::string selectedMemoryProjectId_;
     std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
     struct ToolField final {
         std::string name;

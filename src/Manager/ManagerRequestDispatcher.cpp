@@ -970,6 +970,13 @@ private:
                     (session.summary ? "\n" + *session.summary : ""));
             }
             lines.push_back("Recent sessions: " + std::to_string(sessions.value().recent.size()));
+            for (const auto& session : sessions.value().recent) {
+                lines.push_back(session.id.value() + " · " + session.agentId.value() +
+                    " · " + std::string{Domain::wireName(session.status)} +
+                    " · recent" +
+                    (session.clientId ? " · client " + session.clientId->value() : "") +
+                    (session.summary ? "\n" + *session.summary : ""));
+            }
             return Domain::Result<ManagerOperationalSnapshot>::success(
                 {request.area, "Agents and sessions", std::move(lines)});
         }
@@ -1016,6 +1023,14 @@ private:
         lines.push_back("Open repositories/databases: " +
             std::to_string(runtime.openRepositories) + "/" +
             std::to_string(runtime.openDatabases));
+        if (request.area == ManagerOperationalArea::Runtimes) {
+            auto settings = controller_->settings(context);
+            if (!settings) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(settings).error());
+            lines.push_back(std::string{"Effective shell policy: "} +
+                (settings.value().shellEnabled ? "enabled" : "disabled"));
+            lines.push_back("Job inventory: not exposed by this Manager operational projection");
+        }
         if (request.area == ManagerOperationalArea::Manager) {
             auto manager = controller_->status(context);
             if (!manager) return Domain::Result<ManagerOperationalSnapshot>::failure(

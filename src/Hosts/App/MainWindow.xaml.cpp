@@ -469,6 +469,8 @@ void MainWindow::OpenFeedClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Feed"); }
 void MainWindow::OpenSettingsClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Settings"); }
+void MainWindow::OpenToolsClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Tools"); }
 void MainWindow::OpenProjectsClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Projects"); }
 
@@ -546,6 +548,18 @@ void MainWindow::ProjectSearchClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectLoad); }
 void MainWindow::ProjectRememberClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectRemember); }
+void MainWindow::ProjectUpdateClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectUpdate); }
+void MainWindow::ProjectForgetClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectForget); }
+void MainWindow::ProjectEditCloseClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    selectedMemoryRecord_.reset();
+    selectedMemoryProjectId_.clear();
+    ProjectForgetConfirmation().Text(L"");
+    ProjectEditCard().Visibility(Visibility::Collapsed);
+}
 void MainWindow::LmStudioInspectClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::LmStudioInspect); }
 void MainWindow::LmStudioRepairClicked(Windows::Foundation::IInspectable const&,
@@ -676,7 +690,12 @@ void MainWindow::ProjectSelectionChanged(
     const auto index = ProjectSelector().SelectedIndex();
     if (index < 0 || static_cast<std::size_t>(index) >= projects_.size()) return;
     const auto nextProjectId = projects_[static_cast<std::size_t>(index)].id.value();
-    if (nextProjectId != selectedProjectId_) ClearSelectedRun();
+    if (nextProjectId != selectedProjectId_) {
+        ClearSelectedRun();
+        selectedMemoryRecord_.reset();
+        selectedMemoryProjectId_.clear();
+        ProjectEditCard().Visibility(Visibility::Collapsed);
+    }
     selectedProjectId_ = nextProjectId;
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
@@ -697,6 +716,7 @@ void MainWindow::NavigationChanged(
     PageTitle().Text(tag);
     if (telemetryUiInitialized_) {
         storeSavedText(selectedPageValueName_.c_str(), tag);
+        MainScrollViewer().ChangeView(nullptr, 0.0, nullptr, true);
     }
     const bool provider = tag == L"Provider";
     const bool settings = tag == L"Settings";
@@ -749,6 +769,10 @@ void MainWindow::NavigationChanged(
             ? Visibility::Visible : Visibility::Collapsed);
         OperationalListViewport().Height(runtimes || tag == L"Manager" ? 235.0 : 545.0);
         OperationalManagerCard().Visibility(tag == L"Manager" ? Visibility::Visible : Visibility::Collapsed);
+        OperationalRuntimePolicyCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
+        OperationalAgentInsightsCard().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+        OperationalDiagnosticsCard().Visibility(tag == L"Diagnostics"
+            ? Visibility::Visible : Visibility::Collapsed);
         OperationalCards().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalList().Visibility(agents ? Visibility::Collapsed : Visibility::Visible);
         OperationalEmptyTitle().Text(L"Live inventory unavailable");
@@ -1061,17 +1085,21 @@ void MainWindow::ApplyTelemetryPresentation(
             : "Native Manager unavailable"));
     HeroManagerLabel().Text(snapshot.manager.serviceActive
         ? L"Service active" : L"Service unavailable");
-    ProviderHealth().Text(winrt::to_hstring(presentation.providerStatus));
     const auto providerEndpoint = std::string{snapshot.provider.secure ? "https://" : "http://"} +
         snapshot.provider.host + ':' + std::to_string(snapshot.provider.port);
+    const auto providerDiscovered = providerEndpoint == providerDiscoveredEndpoint_;
+    ProviderHealth().Text(winrt::to_hstring(
+        std::string{providerDiscovered ? "Model discovery verified · " :
+            "Endpoint configured · discovery not verified · "} +
+        presentation.providerStatus));
     ProviderActiveEndpoint().Text(winrt::to_hstring(providerEndpoint + " · Manager readback"));
     ProviderActiveModel().Text(snapshot.provider.model
         ? winrt::to_hstring(*snapshot.provider.model)
         : L"Automatic · first compatible loaded model");
-    ProviderConnectionBadge().Text(providerEndpoint == providerDiscoveredEndpoint_
+    ProviderConnectionBadge().Text(providerDiscovered
         ? L"DISCOVERED" : L"CONFIGURED");
     ProviderConnectionBadge().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
-        providerEndpoint == providerDiscoveredEndpoint_
+        providerDiscovered
             ? Windows::UI::Color{255, 61, 220, 151}
             : Windows::UI::Color{255, 43, 168, 255}});
     StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
@@ -1082,16 +1110,21 @@ void MainWindow::ApplyTelemetryPresentation(
     SamplingStrip().Text(winrt::to_hstring(presentation.samplingStatus));
     DiskState().Text(winrt::to_hstring(presentation.diskStatus));
     WorkflowStatus().Text(winrt::to_hstring(presentation.managerStatus));
-    NavigationManagerState().Text(L"System online");
+    NavigationManagerState().Text(snapshot.manager.serviceActive
+        ? L"System online" : L"Manager unavailable");
     LastUpdatedText().Text(currentLocalTime());
     const auto online = Microsoft::UI::Xaml::Media::SolidColorBrush{
         Windows::UI::Color{255, 61, 220, 151}};
-    NavigationStatusDot().Fill(online);
-    HeroManagerDot().Fill(online);
-    WorkflowDot().Fill(online);
-    ProviderDot().Fill(online);
-    ContinuityDot().Fill(online);
-    StoreDot().Fill(online);
+    const auto configured = Microsoft::UI::Xaml::Media::SolidColorBrush{
+        Windows::UI::Color{255, 43, 168, 255}};
+    const auto attention = Microsoft::UI::Xaml::Media::SolidColorBrush{
+        Windows::UI::Color{255, 255, 200, 87}};
+    NavigationStatusDot().Fill(snapshot.manager.serviceActive ? online : attention);
+    HeroManagerDot().Fill(snapshot.manager.serviceActive ? online : attention);
+    WorkflowDot().Fill(snapshot.manager.serviceActive ? online : attention);
+    ProviderDot().Fill(providerDiscovered ? online : configured);
+    ContinuityDot().Fill(snapshot.selectedRun ? online : configured);
+    StoreDot().Fill(snapshot.storeHealthy.value.value_or(false) ? online : attention);
 
     const auto applyRows = [](const Microsoft::UI::Xaml::Controls::StackPanel& panel,
                               const std::vector<std::string>& rows,
@@ -1119,26 +1152,159 @@ void MainWindow::ApplyTelemetryPresentation(
         row.Opacity(0.72);
         CpuCoreRows().Children().Append(row);
     } else {
+        using namespace Microsoft::UI::Xaml;
+        using namespace Microsoft::UI::Xaml::Controls;
+        Grid tiles;
+        tiles.ColumnSpacing(8);
+        tiles.RowSpacing(8);
+        for (int column{}; column < 4; ++column) {
+            ColumnDefinition definition;
+            definition.Width(GridLength{1.0, GridUnitType::Star});
+            tiles.ColumnDefinitions().Append(definition);
+        }
         for (std::size_t index{}; index < presentation.cpuLogicalRows.size(); ++index) {
-            Microsoft::UI::Xaml::Controls::StackPanel row;
-            row.Spacing(2.0);
-            Microsoft::UI::Xaml::Controls::TextBlock label;
-            label.Text(winrt::to_hstring(presentation.cpuLogicalRows[index]));
-            label.IsTextSelectionEnabled(true);
-            Microsoft::UI::Xaml::Controls::ProgressBar gauge;
+            if (index % 4U == 0U) {
+                RowDefinition definition;
+                definition.Height(GridLength{1.0, GridUnitType::Auto});
+                tiles.RowDefinitions().Append(definition);
+            }
+            const auto value = index < presentation.cpuLogicalValues.size()
+                ? std::clamp(presentation.cpuLogicalValues[index], 0.0, 100.0)
+                : 0.0;
+            auto frequency = snapshot.resources.cpuFrequencyMhz.value.value_or(0U);
+            if (const auto& perCore = snapshot.resources.cpuPerLogicalFrequencyMhz.value;
+                perCore && index < perCore->size()) frequency = (*perCore)[index];
+            Border tile;
+            tile.Padding(Thickness{9.0, 8.0, 9.0, 8.0});
+            tile.CornerRadius(CornerRadius{8.0});
+            tile.Background(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 21, 39, 58}});
+            tile.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 51, 75, 99}});
+            tile.BorderThickness(Thickness{1.0});
+            StackPanel content;
+            content.Spacing(3);
+            Grid heading;
+            TextBlock name;
+            name.Text(winrt::to_hstring("LOGICAL " + std::to_string(index)));
+            name.FontSize(11);
+            name.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 157, 179, 200}});
+            heading.Children().Append(name);
+            TextBlock percent;
+            percent.Text(winrt::to_hstring(std::to_string(
+                static_cast<int>(std::round(value))) + "%"));
+            percent.HorizontalAlignment(HorizontalAlignment::Right);
+            percent.FontSize(15);
+            percent.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+            heading.Children().Append(percent);
+            content.Children().Append(heading);
+            ProgressBar gauge;
             gauge.Minimum(0.0);
             gauge.Maximum(100.0);
-            gauge.Value(index < presentation.cpuLogicalValues.size()
-                ? presentation.cpuLogicalValues[index] : 0.0);
+            gauge.Value(value);
             Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
                 gauge, winrt::to_hstring(presentation.cpuLogicalRows[index]));
-            row.Children().Append(label);
-            row.Children().Append(gauge);
-            CpuCoreRows().Children().Append(row);
+            content.Children().Append(gauge);
+            TextBlock clock;
+            clock.Text(frequency == 0U ? L"Frequency unavailable"
+                : winrt::to_hstring(std::to_string(frequency) + " MHz"));
+            clock.FontSize(11);
+            clock.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 157, 179, 200}});
+            content.Children().Append(clock);
+            tile.Child(content);
+            Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+                tile, winrt::to_hstring(presentation.cpuLogicalRows[index]));
+            Grid::SetRow(tile, static_cast<int>(index / 4U));
+            Grid::SetColumn(tile, static_cast<int>(index % 4U));
+            tiles.Children().Append(tile);
+        }
+        CpuCoreRows().Children().Append(tiles);
+    }
+    GpuAdapterRows().Children().Clear();
+    if (snapshot.resources.gpus.empty()) {
+        applyRows(GpuAdapterRows(), {}, L"No hardware GPU adapter was reported.");
+    } else {
+        using namespace Microsoft::UI::Xaml;
+        using namespace Microsoft::UI::Xaml::Controls;
+        for (const auto& adapter : snapshot.resources.gpus) {
+            TextBlock title;
+            title.Text(winrt::to_hstring(adapter.name));
+            title.FontSize(15);
+            title.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+            title.TextWrapping(TextWrapping::Wrap);
+            GpuAdapterRows().Children().Append(title);
+            TextBlock memory;
+            memory.Text(winrt::to_hstring(
+                adapter.dedicatedBytesTotal
+                    ? ::ForgeConductor::Hosts::App::bytesText(
+                        adapter.dedicatedBytesUsed.value_or(0U)) + " / " +
+                        ::ForgeConductor::Hosts::App::bytesText(*adapter.dedicatedBytesTotal) +
+                        " dedicated · " + adapter.utilizationSource
+                    : adapter.utilizationSource));
+            memory.FontSize(11);
+            memory.TextWrapping(TextWrapping::Wrap);
+            memory.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 157, 179, 200}});
+            GpuAdapterRows().Children().Append(memory);
+            if (adapter.engines.empty()) continue;
+            Grid engines;
+            engines.ColumnSpacing(8);
+            engines.RowSpacing(8);
+            for (int column{}; column < 2; ++column) {
+                ColumnDefinition definition;
+                definition.Width(GridLength{1.0, GridUnitType::Star});
+                engines.ColumnDefinitions().Append(definition);
+            }
+            for (std::size_t index{}; index < adapter.engines.size(); ++index) {
+                if (index % 2U == 0U) {
+                    RowDefinition definition;
+                    definition.Height(GridLength{1.0, GridUnitType::Auto});
+                    engines.RowDefinitions().Append(definition);
+                }
+                const auto& engine = adapter.engines[index];
+                Border tile;
+                tile.Padding(Thickness{9.0, 7.0, 9.0, 7.0});
+                tile.CornerRadius(CornerRadius{8.0});
+                tile.Background(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                    Windows::UI::Color{255, 21, 39, 58}});
+                tile.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                    Windows::UI::Color{255, 51, 75, 99}});
+                tile.BorderThickness(Thickness{1.0});
+                StackPanel content;
+                content.Spacing(4);
+                Grid heading;
+                TextBlock name;
+                name.Text(winrt::to_hstring(engine.name));
+                name.FontSize(12);
+                name.TextTrimming(TextTrimming::CharacterEllipsis);
+                name.Margin(Thickness{0.0, 0.0, 48.0, 0.0});
+                heading.Children().Append(name);
+                TextBlock percent;
+                percent.Text(winrt::to_hstring(std::to_string(
+                    static_cast<int>(std::round(engine.utilizationPercent))) + "%"));
+                percent.FontSize(12);
+                percent.HorizontalAlignment(HorizontalAlignment::Right);
+                percent.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                    Windows::UI::Color{255, 56, 214, 233}});
+                heading.Children().Append(percent);
+                content.Children().Append(heading);
+                ProgressBar gauge;
+                gauge.Minimum(0.0);
+                gauge.Maximum(100.0);
+                gauge.Value(std::clamp(engine.utilizationPercent, 0.0, 100.0));
+                Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+                    gauge, winrt::to_hstring(engine.name + " GPU engine utilization"));
+                content.Children().Append(gauge);
+                tile.Child(content);
+                Grid::SetRow(tile, static_cast<int>(index / 2U));
+                Grid::SetColumn(tile, static_cast<int>(index % 2U));
+                engines.Children().Append(tile);
+            }
+            GpuAdapterRows().Children().Append(engines);
         }
     }
-    applyRows(GpuAdapterRows(), presentation.gpuRows,
-              L"No hardware GPU adapter was reported.");
     applyRows(VolumeRows(), presentation.volumeRows,
               L"No mounted fixed or removable volume was reported.");
     applyRows(ProcessRows(), presentation.processRows,
@@ -1434,6 +1600,9 @@ void MainWindow::ClearSelectedRun()
 void MainWindow::ClearSelectedProject()
 {
     ClearSelectedRun();
+    selectedMemoryRecord_.reset();
+    selectedMemoryProjectId_.clear();
+    ProjectEditCard().Visibility(Visibility::Collapsed);
     selectedProjectId_.clear();
     clearSavedText(selectedProjectValueName_.c_str());
     RunProjectId().Text(L"");
@@ -1447,6 +1616,11 @@ void MainWindow::ClearSelectedProject()
 void MainWindow::ApplyProjectWorkspace(
     const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot)
 {
+    if (selectedMemoryProjectId_ != snapshot.project.id.value()) {
+        selectedMemoryRecord_.reset();
+        selectedMemoryProjectId_.clear();
+        ProjectEditCard().Visibility(Visibility::Collapsed);
+    }
     if (!selectedProjectId_.empty() && selectedProjectId_ != snapshot.project.id.value())
         ClearSelectedRun();
     selectedProjectId_ = snapshot.project.id.value();
@@ -1529,6 +1703,13 @@ void MainWindow::ApplyProjectWorkspace(
         meta.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
             Windows::UI::Color{255,43,168,255}));
         content.Children().Append(meta);
+        Microsoft::UI::Xaml::Controls::Button select;
+        select.Content(box_value(L"Inspect & edit this record"));
+        const auto weak = get_weak();
+        select.Click([weak, record](auto const&, auto const&) {
+            if (const auto self = weak.get()) self->SelectMemoryRecord(record);
+        });
+        content.Children().Append(select);
         Microsoft::UI::Xaml::Controls::Expander detail;
         detail.Header(box_value(L"Record detail & identity"));
         Microsoft::UI::Xaml::Controls::TextBlock body;
@@ -1720,6 +1901,7 @@ void MainWindow::BuildToolForm(
         if (!required.is_array()) throw std::runtime_error{"Invalid required fields."};
         for (auto it = schema.at("properties").begin();
              it != schema.at("properties").end(); ++it) {
+            if (tool.requiresProject && it.key() == "project_id") continue;
             if (!it.value().is_object()) throw std::runtime_error{"Unsupported field schema."};
             const auto& property = it.value();
             ToolField field;
@@ -1778,9 +1960,11 @@ void MainWindow::BuildToolForm(
             toolFields_.push_back(std::move(field));
         }
         toolFormSupported_ = true;
-        ToolFormState().Text(toolFields_.empty()
-            ? L"This capability has no arguments. Select Run to invoke it."
-            : L"Complete the fields below. The Manager validates the canonical request before execution.");
+        ToolFormState().Text(tool.requiresProject
+            ? L"Project identity comes from the selected authorized project. Complete the remaining fields below."
+            : toolFields_.empty()
+                ? L"This capability has no arguments. Select Run to invoke it."
+                : L"Complete the fields below. The Manager validates the canonical request before execution.");
     } catch (...) {
         ToolFormFields().Children().Clear();
         toolFields_.clear();
@@ -1789,13 +1973,48 @@ void MainWindow::BuildToolForm(
     }
 }
 
+void MainWindow::SelectMemoryRecord(
+    const ::ForgeConductor::Manager::ManagerProjectMemoryRecord& record)
+{
+    if (selectedProjectId_.empty()) return;
+    selectedMemoryRecord_ = record;
+    selectedMemoryProjectId_ = selectedProjectId_;
+    ProjectEditTitle().Text(winrt::to_hstring(record.title));
+    ProjectEditBinding().Text(winrt::to_hstring(
+        "Selected in " + winrt::to_string(ProjectHeroName().Text()) +
+        " · version " + std::to_string(record.version) +
+        " · Manager checks this exact record before saving."));
+    ProjectEditName().Text(winrt::to_hstring(record.title));
+    ProjectEditSummary().Text(winrt::to_hstring(record.summary));
+    ProjectEditBody().Text(winrt::to_hstring(record.body.value_or(std::string{})));
+    std::string tags;
+    for (const auto& tag : record.tags) {
+        if (!tags.empty()) tags += ", ";
+        tags += tag;
+    }
+    ProjectEditTags().Text(winrt::to_hstring(tags));
+    ProjectForgetConfirmation().Text(L"");
+    ProjectMemoryActionState().Text(L"No edit submitted. Changes remain pending until Manager readback.");
+    ProjectEditCard().Visibility(Visibility::Visible);
+    ProjectEditCard().StartBringIntoView();
+}
+
 std::optional<std::string> MainWindow::ToolCanonicalArguments()
 {
     using Json = nlohmann::json;
+    const auto selected = ToolList().SelectedIndex();
+    const auto requiresProject = selected >= 0 &&
+        static_cast<std::size_t>(selected) < visibleTools_.size() &&
+        tools_[visibleTools_[static_cast<std::size_t>(selected)]].requiresProject;
+    if (requiresProject && selectedProjectId_.empty()) {
+        ToolFormState().Text(L"Select an authorized project in Projects first.");
+        return std::nullopt;
+    }
     if (ToolAdvancedMode().IsOn() || !toolFormSupported_) {
         try {
-            const auto parsed = Json::parse(winrt::to_string(ToolArguments().Text()));
+            auto parsed = Json::parse(winrt::to_string(ToolArguments().Text()));
             if (!parsed.is_object()) throw std::runtime_error{"Arguments must be a JSON object."};
+            if (requiresProject) parsed["project_id"] = selectedProjectId_;
             return parsed.dump();
         } catch (...) {
             ToolFormState().Text(L"Advanced arguments must be a valid JSON object.");
@@ -1803,6 +2022,7 @@ std::optional<std::string> MainWindow::ToolCanonicalArguments()
         }
     }
     Json arguments = Json::object();
+    if (requiresProject) arguments["project_id"] = selectedProjectId_;
     for (const auto& field : toolFields_) {
         const auto value = field.text ? winrt::to_string(field.text.Text()) : std::string{};
         if (field.choice) {
@@ -2067,10 +2287,35 @@ void MainWindow::ApplyOperational(
             OperationalStatusValue2().Text(winrt::to_hstring(valueAfter("Child processes: ")));
             OperationalStatusValue3().Text(winrt::to_hstring(
                 valueAfter("Open repositories/databases: ")));
+            OperationalShellPolicy().Text(winrt::to_hstring(
+                valueAfter("Effective shell policy: ")));
+            OperationalJobState().Text(winrt::to_hstring(
+                valueAfter("Job inventory: ")));
         }
     }
     std::string summary;
     bool hasOpenSessions{};
+    if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents) {
+        const auto countAfter = [&snapshot](std::string_view prefix) {
+            for (const auto& line : snapshot.lines)
+                if (line.starts_with(prefix)) return winrt::to_hstring(
+                    line.substr(prefix.size()));
+            return winrt::hstring{L"—"};
+        };
+        OperationalAgentDefinitionCount().Text(countAfter("Agent definitions: "));
+        OperationalAgentOpenCount().Text(countAfter("Open sessions: "));
+        OperationalAgentRecentCount().Text(countAfter("Recent sessions: "));
+    }
+    if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Diagnostics) {
+        const auto passed = std::count_if(snapshot.lines.begin(), snapshot.lines.end(),
+            [](const auto& line) { return line.starts_with("PASS "); });
+        const auto failed = std::count_if(snapshot.lines.begin(), snapshot.lines.end(),
+            [](const auto& line) { return line.starts_with("FAIL "); });
+        OperationalDoctorPassed().Text(winrt::to_hstring(std::to_string(passed)));
+        OperationalDoctorFailed().Text(winrt::to_hstring(std::to_string(failed)));
+        OperationalDoctorState().Text(failed == 0 ? L"Doctor checks passing"
+            : L"Doctor checks need attention");
+    }
     auto query = winrt::to_string(OperationalAgentSearch().Text());
     std::transform(query.begin(), query.end(), query.begin(),
         [](const unsigned char character) { return static_cast<char>(std::tolower(character)); });
@@ -2081,6 +2326,9 @@ void MainWindow::ApplyOperational(
     for (const auto& line : snapshot.lines) {
         auto text = winrt::to_string(OperationalState().Text());
         OperationalState().Text(winrt::to_hstring(text + "\n\n" + line));
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes &&
+            (line.starts_with("Effective shell policy: ") ||
+             line.starts_with("Job inventory: "))) continue;
         if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
             (line.starts_with("Agent definitions:") ||
              line.starts_with("Open sessions:") ||
@@ -2328,6 +2576,12 @@ void MainWindow::ApplyOperational(
                 ? std::string{"AUDIT ONLY"}
                 : std::to_string(visibleOperationalIndices_.size()) + " AUDIT"
             : std::to_string(visibleOperationalIndices_.size()) + " RECORDS"));
+    if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes ||
+        snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Manager) {
+        OperationalListViewport().Height(std::clamp(
+            20.0 + static_cast<double>(visibleOperationalIndices_.size()) * 40.0,
+            110.0, 235.0));
+    }
     OperationalSessionCard().Visibility(
         snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
             hasOpenSessions ? Visibility::Visible : Visibility::Collapsed);
@@ -2369,7 +2623,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         action == Action::RunResume || action == Action::RunCancel;
     const bool projectAction = action == Action::ProjectList ||
         action == Action::ProjectRegister || action == Action::ProjectLoad ||
-        action == Action::ProjectRemember;
+        action == Action::ProjectRemember || action == Action::ProjectUpdate ||
+        action == Action::ProjectForget;
     const bool lmStudioAction = action == Action::LmStudioInspect ||
         action == Action::LmStudioRepair || action == Action::LmStudioActivate;
     const bool toolsAction = action == Action::ToolsList || action == Action::ToolInvoke;
@@ -2387,6 +2642,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string projectPath;
     std::string projectDisplayName;
     std::string projectQuery;
+    std::string requestedProjectId;
     std::string memoryTitle;
     std::string memorySummary;
     std::string memoryBody;
@@ -2394,6 +2650,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string toolProject;
     std::string toolName;
     std::string toolArguments;
+    std::string editedProjectId;
+    std::string editedRecordId;
     std::string operationalSessionId;
     std::string operationalSummary;
     ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
@@ -2463,6 +2721,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 co_return;
             }
             projectQuery = winrt::to_string(ProjectMemoryQuery().Text());
+            requestedProjectId = selectedProjectId_;
             if (action == Action::ProjectRemember) {
                 memoryTitle = winrt::to_string(ProjectMemoryTitle().Text());
                 memorySummary = winrt::to_string(ProjectMemorySummary().Text());
@@ -2477,7 +2736,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
     }
     if (action == Action::ToolInvoke) {
-        toolProject = winrt::to_string(ToolProjectId().Text());
+        toolProject = selectedProjectId_;
         toolName = winrt::to_string(ToolName().Text());
         const auto index = ToolList().SelectedIndex();
         if (index < 0 || static_cast<std::size_t>(index) >= visibleTools_.size() ||
@@ -2495,6 +2754,50 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             co_return;
         }
         toolArguments = *canonical;
+    }
+    if (action == Action::ProjectUpdate || action == Action::ProjectForget) {
+        if (!selectedMemoryRecord_ || selectedProjectId_.empty() ||
+            selectedMemoryProjectId_ != selectedProjectId_) {
+            ProjectMemoryActionState().Text(
+                L"Select a current record in the authorized project first.");
+            co_return;
+        }
+        if (action == Action::ProjectForget &&
+            ProjectForgetConfirmation().Text() != L"FORGET") {
+            ProjectMemoryActionState().Text(
+                L"Type FORGET exactly before tombstoning this selected record.");
+            co_return;
+        }
+        nlohmann::json arguments = {
+            {"project_id", selectedProjectId_},
+            {"id", selectedMemoryRecord_->id.value()}};
+        editedProjectId = selectedProjectId_;
+        editedRecordId = selectedMemoryRecord_->id.value();
+        toolProject = selectedProjectId_;
+        toolName = action == Action::ProjectUpdate
+            ? "project_memory.update" : "project_memory.forget";
+        if (action == Action::ProjectUpdate) {
+            const auto title = winrt::to_string(ProjectEditName().Text());
+            const auto summary = winrt::to_string(ProjectEditSummary().Text());
+            if (title.empty() || summary.empty()) {
+                ProjectMemoryActionState().Text(L"Title and summary cannot be empty.");
+                co_return;
+            }
+            arguments["expected_version"] = selectedMemoryRecord_->version;
+            arguments["title"] = title;
+            arguments["summary"] = summary;
+            arguments["body"] = winrt::to_string(ProjectEditBody().Text());
+            arguments["tags"] = nlohmann::json::array();
+            std::stringstream stream{winrt::to_string(ProjectEditTags().Text())};
+            std::string tag;
+            while (std::getline(stream, tag, ',')) {
+                const auto start = tag.find_first_not_of(" \t\r\n");
+                if (start == std::string::npos) continue;
+                const auto end = tag.find_last_not_of(" \t\r\n");
+                arguments["tags"].push_back(tag.substr(start, end - start + 1));
+            }
+        }
+        toolArguments = arguments.dump();
     }
     if (action == Action::OperationalClose) {
         operationalSessionId = winrt::to_string(OperationalSessionId().Text());
@@ -2536,7 +2839,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         if (admission == ::ForgeConductor::Hosts::App::AppActionAdmission::Queued) {
             const auto queued = L"Queued behind the current Manager command.";
             if (runAction) RunState().Text(queued);
-            else if (projectAction) ProjectState().Text(queued);
+            else if (projectAction) {
+                ProjectState().Text(queued);
+                if (action == Action::ProjectUpdate || action == Action::ProjectForget)
+                    ProjectMemoryActionState().Text(queued);
+            }
             else if (lmStudioAction) LmStudioRegistrationState().Text(queued);
             else if (toolsAction) ToolsState().Text(queued);
             else if (operationalAction) OperationalState().Text(queued);
@@ -2559,6 +2866,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         RunState().Text(L"Contacting the Manager…");
     } else if (projectAction) {
         ProjectState().Text(L"Contacting the Manager…");
+        if (action == Action::ProjectUpdate || action == Action::ProjectForget)
+            ProjectMemoryActionState().Text(L"Validating exact project and record binding…");
     } else if (lmStudioAction) {
         LmStudioRegistrationState().Text(L"Contacting the Manager…");
     } else if (toolsAction) {
@@ -2713,13 +3022,13 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             break;
         case Action::ProjectLoad:
             projectView = connection_->projectMemory(
-                selectedProjectId_, std::move(projectQuery),
+                requestedProjectId, std::move(projectQuery),
                 cancellation_.get_token());
             message = projectView.message;
             break;
         case Action::ProjectRemember:
             projectView = connection_->rememberProjectMemory(
-                selectedProjectId_, std::move(memoryTitle),
+                requestedProjectId, std::move(memoryTitle),
                 std::move(memorySummary), std::move(memoryBody),
                 std::move(memoryTags), cancellation_.get_token());
             message = projectView.message;
@@ -2739,6 +3048,13 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             message = toolsView.message;
             break;
         case Action::ToolInvoke:
+            toolOutcomeView = connection_->invokeTool(
+                std::move(toolProject), std::move(toolName), std::move(toolArguments),
+                cancellation_.get_token());
+            message = toolOutcomeView.message;
+            break;
+        case Action::ProjectUpdate:
+        case Action::ProjectForget:
             toolOutcomeView = connection_->invokeTool(
                 std::move(toolProject), std::move(toolName), std::move(toolArguments),
                 cancellation_.get_token());
@@ -2798,7 +3114,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ApplyProjectList(*projectsView.snapshot);
                 if (!selectedProjectId_.empty()) followUp = Action::ProjectLoad;
             }
-            if (projectView.loaded && projectView.snapshot) {
+            if (projectView.loaded && projectView.snapshot &&
+                ((action != Action::ProjectLoad && action != Action::ProjectRemember) ||
+                    (selectedProjectId_ == requestedProjectId &&
+                     projectView.snapshot->project.id.value() == requestedProjectId))) {
                 ApplyProjectWorkspace(*projectView.snapshot);
                 if (action == Action::ProjectRegister) {
                     followUp = Action::ProjectList;
@@ -2812,7 +3131,28 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ProjectMemoryTags().Text(L"");
                 }
             }
-            ProjectState().Text(winrt::to_hstring(message));
+            if (action == Action::ProjectUpdate || action == Action::ProjectForget) {
+                const auto bindingCurrent = selectedProjectId_ == editedProjectId &&
+                    selectedMemoryProjectId_ == editedProjectId &&
+                    selectedMemoryRecord_ &&
+                    selectedMemoryRecord_->id.value() == editedRecordId;
+                if (!bindingCurrent) {
+                    ProjectState().Text(
+                        L"A previous project-memory command returned after the selection changed. The current editor was left untouched; refresh to inspect the stored result.");
+                } else {
+                    ProjectState().Text(winrt::to_hstring(message));
+                    ProjectMemoryActionState().Text(winrt::to_hstring(message));
+                }
+                if (bindingCurrent && toolOutcomeView.snapshot &&
+                    toolOutcomeView.snapshot->ok &&
+                    toolOutcomeView.snapshot->projectId.value() == editedProjectId) {
+                    selectedMemoryRecord_.reset();
+                    selectedMemoryProjectId_.clear();
+                    ProjectForgetConfirmation().Text(L"");
+                    ProjectEditCard().Visibility(Visibility::Collapsed);
+                    followUp = Action::ProjectLoad;
+                }
+            } else ProjectState().Text(winrt::to_hstring(message));
         } else if (lmStudioAction) {
             if (lmStudioView.snapshot) ApplyLmStudio(*lmStudioView.snapshot);
             if (!lmStudioView.loaded) {

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.11 — Operator detail and truthful runtime states
+
+- Correct Provider, Continuity, and Store status colors to distinguish configured or absent dependencies from verified healthy states.
+- Bound high-density CPU-core and GPU-engine details into responsive telemetry tiles rather than unbounded diagnostic text.
+- Compose Runtimes from the effective shell policy and owned resource readback, with an explicit unavailable-job state and a compact inventory.
+- Add Manager-bound project-memory edit and confirm-to-forget controls, project-scoped guided tool arguments, recent agent sessions, and useful Agents/Diagnostics detail cards.
+- Reset the shared page scroll position on navigation so each destination opens with its title and primary controls visible.
+- Keep installed feature and all-view visual acceptance open pending signed Windows verification.
+
 ## 1.1.10 — DPI-aware cold launch
 
 - Convert the intended console dimensions from Windows layout units to monitor physical pixels before resizing the native window.
