@@ -14,6 +14,11 @@
                 <GradientStop Color="#FF091726" Offset="0.38" />
                 <GradientStop Color="#FF07111E" Offset="1" />
             </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ForgeContentBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#FF132942" Offset="0" />
+                <GradientStop Color="#FF0E2034" Offset="0.38" />
+                <GradientStop Color="#FF091625" Offset="1" />
+            </LinearGradientBrush>
             <SolidColorBrush x:Key="ForgePaneBackgroundBrush" Color="#FF081522" />
             <SolidColorBrush x:Key="ForgeSurfaceBrush" Color="#F5121F2E" />
             <SolidColorBrush x:Key="ForgeSurfaceRaisedBrush" Color="#FF18283B" />

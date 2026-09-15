@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.31 — Evidence presentation and Direction A lighting
+
+- Replace the flat main console canvas with a blue-lit native gradient shared by every view, tuned against the approved Direction A visual language.
+- Present exact-project durable runs through compact identity and digest tiles, with complete provenance and SHA-256 values available under an explicit disclosure. Preserve the separate native-record-integrity and task-outcome states and local redacted export.
+- Correct stale Evidence labels that implied no durable projection existed, including singular run counts. Installed populated visual, scaling, and interaction review remains required before parity acceptance.
+
 ## 1.1.30 — Durable run evidence readback
 
 - Seal terminal Manager-owned run summaries with an unkeyed SHA-256 consistency digest and validate saved metadata on native read; report legacy-unsealed and mismatch without promoting model text to a trusted task result.

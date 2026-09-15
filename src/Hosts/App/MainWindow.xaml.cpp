@@ -1074,12 +1074,12 @@ void MainWindow::NavigationChanged(
         const bool diagnostics = tag == L"Diagnostics";
         OperationalHeading().Text(agents ? L"Agent playbooks & sessions" :
             feed ? L"Recent tool activity" :
-            evidence ? L"Activity & evidence boundary" :
+            evidence ? L"Native evidence chain" :
             runtimes ? L"Native runtime inventory" :
             diagnostics ? L"Health & diagnostics" : L"Manager ownership");
         OperationalSubtitle().Text(agents ? L"Inspect available specialists and exact session identities." :
             feed ? L"Manager-owned chronological audit outcomes." :
-            evidence ? L"Audit activity is visible; durable evidence requires a separate verified projection." :
+            evidence ? L"Inspect project-bound audit, sealed run provenance, and independent task verification." :
             runtimes ? L"Owned operations, threads, processes, repositories and databases." :
             diagnostics ? L"Doctor checks and bounded diagnostic output." :
             L"Current service identity and owned runtime resources.");
@@ -2853,6 +2853,14 @@ void MainWindow::ApplyEvidence(
 {
     OperationalEvidenceRunRows().Children().Clear();
     evidenceSnapshot_.reset();
+    OperationalEvidenceRunIdentity().Text(L"No run selected");
+    OperationalEvidenceProviderIdentity().Text(L"Not recorded");
+    OperationalEvidenceTaskHash().Text(L"—");
+    OperationalEvidenceOutputHash().Text(L"—");
+    OperationalEvidenceIntegrityNote().Text(L"Native record integrity has not been read.");
+    OperationalEvidenceTrustNote().Text(
+        L"Task outcome requires an independently approved native check.");
+    OperationalEvidenceDigestDetail().Text(L"No exact provenance selected.");
     if (snapshot.area != ::ForgeConductor::Manager::ManagerOperationalArea::Evidence ||
         selectedProjectId_.empty()) {
         OperationalEvidenceState().Text(L"Exact-project evidence readback was not returned.");
@@ -2909,7 +2917,8 @@ void MainWindow::ApplyEvidence(
             (evidenceSnapshot_->lines.size() == 1U ? "" : "s") +
             " for this exact project"));
         OperationalEvidenceArtifactCount().Text(winrt::to_hstring(
-            std::to_string(evidenceSnapshot_->lines.size()) + " project runs"));
+            std::to_string(evidenceSnapshot_->lines.size()) + " project run" +
+            (evidenceSnapshot_->lines.size() == 1U ? "" : "s")));
         if (evidenceSnapshot_->lines.empty()) {
             selectedEvidenceRunId_.clear();
             selectedEvidenceProjectId_.clear();
@@ -2972,6 +2981,30 @@ void MainWindow::SelectEvidenceRun(const std::string_view runId)
                     ? record[key].get<std::string>()
                     : std::string{"not recorded"};
             };
+            const auto compactDigest = [&optionalText](const char* key) {
+                const auto value = optionalText(key);
+                return value.size() == 64U
+                    ? value.substr(0U, 16U) + "…" : value;
+            };
+            OperationalEvidenceRunIdentity().Text(
+                winrt::to_hstring(selectedEvidenceRunId_));
+            OperationalEvidenceProviderIdentity().Text(winrt::to_hstring(
+                optionalText("provider_response_id")));
+            OperationalEvidenceTaskHash().Text(winrt::to_hstring(
+                compactDigest("task_sha256")));
+            OperationalEvidenceOutputHash().Text(winrt::to_hstring(
+                compactDigest("stored_output_sha256")));
+            OperationalEvidenceIntegrityNote().Text(winrt::to_hstring(
+                integrity == "verified"
+                    ? "Native durable record seal matches readback. This is metadata consistency, not task success."
+                    : integrity == "legacy_unsealed"
+                        ? "Legacy run has no native record seal; stored provenance cannot be integrity-checked."
+                        : integrity == "mismatch"
+                            ? "Native durable record seal mismatch. Do not rely on this record."
+                            : "Native record integrity is not yet verified."));
+            OperationalEvidenceTrustNote().Text(winrt::to_hstring(record.value(
+                "task_outcome_detail", std::string{
+                    "No approved native task check was attached; model output is not verified completion."})));
             const auto detail =
                 "Run · " + selectedEvidenceRunId_ +
                 "\nProject · " + selectedProjectId_ +
@@ -3388,7 +3421,7 @@ void MainWindow::ApplyOperational(
     OperationalCount().Text(winrt::to_hstring(
         snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
             ? winrt::to_string(PageTitle().Text()) == "Events & Evidence"
-                ? std::string{"AUDIT ONLY"}
+                ? std::string{"NATIVE EVIDENCE"}
                 : std::to_string(visibleOperationalIndices_.size()) + " AUDIT"
             : snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes
                 ? std::string{"LIVE RESOURCE STATE"}

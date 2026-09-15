@@ -71,7 +71,7 @@
     </Grid>
    </Border>
   </NavigationView.PaneFooter>
-  <ScrollViewer x:Name="MainScrollViewer" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Auto">
+  <ScrollViewer x:Name="MainScrollViewer" Background="{StaticResource ForgeContentBackgroundBrush}" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Auto">
    <StackPanel x:Name="PageContent" Padding="26,22,26,36" Spacing="14" HorizontalAlignment="Stretch">
     <Grid x:Name="HeaderGrid" ColumnSpacing="20">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="HeaderProfileColumn" Width="Auto"/></Grid.ColumnDefinitions>
@@ -395,7 +395,21 @@
        <TextBlock x:Name="OperationalEvidenceProject" Text="Select an authorized project in Projects to inspect durable run evidence." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
        <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="5*"/><ColumnDefinition Width="7*"/></Grid.ColumnDefinitions>
         <Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><StackPanel Spacing="8"><TextBlock Text="MANAGER-OWNED RUNS" Foreground="{StaticResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><ScrollViewer MaxHeight="235" VerticalScrollBarVisibility="Auto"><StackPanel x:Name="OperationalEvidenceRunRows" Spacing="7" AutomationProperties.Name="Exact-project durable run selection"/></ScrollViewer></StackPanel></Border>
-        <Border Grid.Column="1" Style="{StaticResource ForgeInsetStyle}" Padding="12"><StackPanel Spacing="8"><TextBlock x:Name="OperationalEvidenceSelectedState" Text="Select a run to inspect its provenance." FontFamily="Segoe UI Variable Display" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock x:Name="OperationalEvidenceDigestDetail" Text="A native record seal protects stored metadata consistency. An approved native task check is required before task success can be called verified." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/><Button Content="Save redacted evidence…" HorizontalAlignment="Left" Click="EvidenceExportClicked"/></StackPanel></Border>
+        <Border Grid.Column="1" Style="{StaticResource ForgeInsetStyle}" Padding="14"><StackPanel Spacing="9">
+         <TextBlock x:Name="OperationalEvidenceSelectedState" Text="Select a run to inspect its provenance." FontFamily="Segoe UI Variable Display" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+         <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Border Style="{StaticResource ForgeInsetStyle}" Padding="10,8"><StackPanel Spacing="3"><TextBlock Text="EXACT RUN" Foreground="{StaticResource ForgeAccentBrush}" FontSize="10" FontWeight="SemiBold"/><TextBlock x:Name="OperationalEvidenceRunIdentity" Text="No run selected" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/></StackPanel></Border>
+          <Border Grid.Column="1" Style="{StaticResource ForgeInsetStyle}" Padding="10,8"><StackPanel Spacing="3"><TextBlock Text="PROVIDER RESPONSE" Foreground="{StaticResource ForgeAccentBrush}" FontSize="10" FontWeight="SemiBold"/><TextBlock x:Name="OperationalEvidenceProviderIdentity" Text="Not recorded" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/></StackPanel></Border>
+         </Grid>
+         <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Border Style="{StaticResource ForgeInsetStyle}" Padding="10,8"><StackPanel Spacing="3"><TextBlock Text="TASK DIGEST" Style="{StaticResource ForgeCaptionStyle}" FontSize="10"/><TextBlock x:Name="OperationalEvidenceTaskHash" Text="—" FontFamily="Cascadia Mono" FontSize="12" TextTrimming="CharacterEllipsis"/></StackPanel></Border>
+          <Border Grid.Column="1" Style="{StaticResource ForgeInsetStyle}" Padding="10,8"><StackPanel Spacing="3"><TextBlock Text="STORED OUTPUT DIGEST" Style="{StaticResource ForgeCaptionStyle}" FontSize="10"/><TextBlock x:Name="OperationalEvidenceOutputHash" Text="—" FontFamily="Cascadia Mono" FontSize="12" TextTrimming="CharacterEllipsis"/></StackPanel></Border>
+         </Grid>
+         <TextBlock x:Name="OperationalEvidenceIntegrityNote" Text="Native record integrity has not been read." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+         <TextBlock x:Name="OperationalEvidenceTrustNote" Text="Task outcome requires an independently approved native check." Foreground="{StaticResource ForgeWarningBrush}" FontSize="12" TextWrapping="Wrap"/>
+         <Expander Header="Exact provenance &amp; SHA-256 detail" IsExpanded="False"><Border Style="{StaticResource ForgeInsetStyle}" Padding="10"><TextBlock x:Name="OperationalEvidenceDigestDetail" Text="No exact provenance selected." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></Border></Expander>
+         <Button Content="Save redacted evidence…" HorizontalAlignment="Left" Click="EvidenceExportClicked"/>
+        </StackPanel></Border>
        </Grid>
        <TextBlock x:Name="OperationalEvidenceState" Text="Awaiting exact-project Manager evidence readback." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
       </StackPanel>
