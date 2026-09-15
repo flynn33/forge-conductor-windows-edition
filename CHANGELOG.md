@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.20 — Bound LM Studio activation to the native deployment tool
+
+- Use the same `install-lmstudio-plugin` capability name for both Manager-issued repair (Write effect) and connector activation (Execute effect), matching the deployment service's exact tool-name check. The separate Execute-scoped authority remains mandatory for activation.
+- A signed installed 1.1.19 activation passed Manager authorization but failed the service's exact-name check before launching LM Studio. Registration of all three roles was observed; connected-client verification remains pending.
+
 ## 1.1.19 — Execute-scoped LM Studio connector activation
 
 - Issue a separate narrow Execute-intent Manager authority for activating the already registered LM Studio connectors. Repair retains its distinct Write-intent authority; a Write token cannot authorize an Execute-effect native action merely because Execute is among its grants.

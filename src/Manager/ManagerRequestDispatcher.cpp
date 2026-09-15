@@ -810,7 +810,7 @@ private:
                     authority.callerId(),
                     authority.projectId(),
                     "2025-11-25"},
-                "activate-lmstudio-connectors",
+                "install-lmstudio-plugin",
                 "{\"deployment_id\":\"" + deploymentId.value() + "\"}"};
             auto authorized = sources.toolAuthorizer->authorize(
                 Domain::ToolAuthorizationRequest{
