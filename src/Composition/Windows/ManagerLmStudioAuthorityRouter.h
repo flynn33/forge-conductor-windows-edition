@@ -8,8 +8,8 @@
 
 namespace ForgeConductor::Composition::Windows {
 
-// Adapts the two independently issued Manager LM Studio capabilities to the
-// single authority dependency required by the deployment service. Both
+// Adapts the three independently issued Manager LM Studio capabilities to the
+// single authority dependency required by the deployment service. All
 // issuers are borrowed and must outlive this router.
 class ManagerLmStudioAuthorityRouter final
     : public Contracts::IWorkspaceAuthority {
@@ -18,7 +18,9 @@ public:
         Infrastructure::Windows::WindowsWorkspaceAuthority& readIssuer,
         Contracts::WorkspaceAuthority readAuthority,
         Infrastructure::Windows::WindowsWorkspaceAuthority& writeIssuer,
-        Contracts::WorkspaceAuthority writeAuthority);
+        Contracts::WorkspaceAuthority writeAuthority,
+        Infrastructure::Windows::WindowsWorkspaceAuthority& executeIssuer,
+        Contracts::WorkspaceAuthority executeAuthority);
     ~ManagerLmStudioAuthorityRouter() noexcept override = default;
 
     ManagerLmStudioAuthorityRouter(
@@ -40,6 +42,12 @@ public:
         const noexcept
     {
         return writeAuthority_;
+    }
+
+    [[nodiscard]] const Contracts::WorkspaceAuthority& executeAuthority()
+        const noexcept
+    {
+        return executeAuthority_;
     }
 
     // Both injected issuers intentionally bind the same maintenance project.
@@ -65,8 +73,10 @@ public:
 private:
     Infrastructure::Windows::WindowsWorkspaceAuthority& readIssuer_;
     Infrastructure::Windows::WindowsWorkspaceAuthority& writeIssuer_;
+    Infrastructure::Windows::WindowsWorkspaceAuthority& executeIssuer_;
     const Contracts::WorkspaceAuthority readAuthority_;
     const Contracts::WorkspaceAuthority writeAuthority_;
+    const Contracts::WorkspaceAuthority executeAuthority_;
 };
 
 } // namespace ForgeConductor::Composition::Windows

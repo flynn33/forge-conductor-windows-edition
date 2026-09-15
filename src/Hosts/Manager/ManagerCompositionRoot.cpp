@@ -1291,7 +1291,8 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
         lmStudioAuthorityRouter_ = std::make_unique<
             CompositionWindows::ManagerLmStudioAuthorityRouter>(
             lmStudioReadScope_->issuer(), *lmStudioReadAuthority_,
-            *lmStudioWriteIssuer_, *lmStudioWriteAuthority_);
+            *lmStudioWriteIssuer_, *lmStudioWriteAuthority_,
+            *lmStudioActivationIssuer_, *lmStudioActivationAuthority_);
 
         lmStudioEnvironment_ = std::make_unique<
             InfrastructureWindows::WindowsLMStudioEnvironment>(

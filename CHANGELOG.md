@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.21 — Routed non-writing LM Studio activation authority
+
+- Route the distinct Read, Write, and Execute Manager LM Studio capabilities through their exact issuers. The native deployment service and host activator can now authorize application/configuration paths and narrow an Execute authority for activation without admitting Write, Create, or Delete.
+- Test the router's Execute and Read-under-Execute paths, denial of Write, generation-preserving narrowing, and rejection of a write-capable activation policy. Signed installed client verification is still required.
+
 ## 1.1.20 — Bound LM Studio activation to the native deployment tool
 
 - Use the same `install-lmstudio-plugin` capability name for both Manager-issued repair (Write effect) and connector activation (Execute effect), matching the deployment service's exact tool-name check. The separate Execute-scoped authority remains mandatory for activation.

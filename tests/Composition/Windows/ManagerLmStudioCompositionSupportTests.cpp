@@ -121,6 +121,12 @@ template <typename Identifier>
         "44444444-4444-4444-8444-444444444444");
 }
 
+[[nodiscard]] Domain::AuthorityId executeAuthorityId()
+{
+    return parse<Domain::AuthorityId>(
+        "77777777-7777-4777-8777-777777777777");
+}
+
 [[nodiscard]] Domain::OperationContext routerContext(
     const std::stop_token cancellation = {})
 {
@@ -234,6 +240,26 @@ private:
         11U};
 }
 
+[[nodiscard]] Infrastructure::WindowsWorkspaceAuthorityPolicy executePolicy(
+    const Domain::PathText& root,
+    const Domain::AuthorityId& authorityId = executeAuthorityId(),
+    const Domain::ProjectId& project = projectId(),
+    const Domain::ClientId& caller = callerId())
+{
+    return Infrastructure::WindowsWorkspaceAuthorityPolicy{
+        authorityId,
+        project,
+        caller,
+        {root},
+        Domain::FileAccess::Execute,
+        {Domain::FileAccess::Read, Domain::FileAccess::Execute},
+        {Domain::FileAccess::Write,
+         Domain::FileAccess::Create,
+         Domain::FileAccess::Delete},
+        true,
+        13U};
+}
+
 class AuthorityFixture final {
 public:
     AuthorityFixture()
@@ -243,9 +269,13 @@ public:
           writeIssuer_{std::vector<
               Infrastructure::WindowsWorkspaceAuthorityPolicy>{
               writePolicy(directory_.root())}},
+          executeIssuer_{std::vector<
+              Infrastructure::WindowsWorkspaceAuthorityPolicy>{
+              executePolicy(directory_.root())}},
           read_{take(readIssuer_.authorityFor(projectId(), routerContext()))},
           write_{take(writeIssuer_.authorityFor(projectId(), routerContext()))},
-          router_{readIssuer_, read_, writeIssuer_, write_}
+          execute_{take(executeIssuer_.authorityFor(projectId(), routerContext()))},
+          router_{readIssuer_, read_, writeIssuer_, write_, executeIssuer_, execute_}
     {
     }
 
@@ -257,8 +287,10 @@ public:
     ScopedTestDirectory directory_;
     Infrastructure::WindowsWorkspaceAuthority readIssuer_;
     Infrastructure::WindowsWorkspaceAuthority writeIssuer_;
+    Infrastructure::WindowsWorkspaceAuthority executeIssuer_;
     Contracts::WorkspaceAuthority read_;
     Contracts::WorkspaceAuthority write_;
+    Contracts::WorkspaceAuthority execute_;
     Composition::ManagerLmStudioAuthorityRouter router_;
 };
 
@@ -274,6 +306,10 @@ void routesOnlyByDistinctCapabilityIdentity()
         fixture.router_.writeAuthority().authorityId() ==
             fixture.write_.authorityId(),
         "router changed the deployment capability identity");
+    require(
+        fixture.router_.executeAuthority().authorityId() ==
+            fixture.execute_.authorityId(),
+        "router changed the activation capability identity");
 
     requireError(
         fixture.router_.authorityFor(projectId(), routerContext()),
@@ -312,6 +348,33 @@ void routesOnlyByDistinctCapabilityIdentity()
             writePath.access() == Domain::FileAccess::Write,
         "deployment authorization was not delegated to its issuer");
 
+    const auto executePath = take(fixture.router_.authorize(
+        fixture.execute_,
+        Domain::PathAuthorizationRequest{
+            fixture.root(), std::nullopt, Domain::FileAccess::Execute, false},
+        routerContext()));
+    require(
+        executePath.authorityId() == fixture.execute_.authorityId() &&
+            executePath.access() == Domain::FileAccess::Execute,
+        "activation authorization was not delegated to its issuer");
+    const auto activationRead = take(fixture.router_.authorize(
+        fixture.execute_,
+        Domain::PathAuthorizationRequest{
+            fixture.root(), std::nullopt, Domain::FileAccess::Read, false},
+        routerContext()));
+    require(
+        activationRead.authorityId() == fixture.execute_.authorityId() &&
+            activationRead.access() == Domain::FileAccess::Read,
+        "activation discovery could not read through its Execute authority");
+    requireError(
+        fixture.router_.authorize(
+            fixture.execute_,
+            Domain::PathAuthorizationRequest{
+                fixture.root(), std::nullopt, Domain::FileAccess::Write, false},
+            routerContext()),
+        Domain::ErrorCodes::Unauthorized,
+        "router widened the activation capability to Write");
+
     requireError(
         fixture.router_.authorize(
             fixture.read_,
@@ -343,6 +406,15 @@ void routesOnlyByDistinctCapabilityIdentity()
         narrowedWrite.authorityId() == fixture.write_.authorityId() &&
             narrowedWrite.generation() == fixture.write_.generation() + 1U,
         "deployment narrowing was not delegated by capability identity");
+
+    const auto narrowedExecute = take(fixture.router_.narrow(
+        fixture.execute_, {fixture.execute_.trustedRoots().front()},
+        {Domain::FileAccess::Read, Domain::FileAccess::Execute},
+        true, fixture.execute_.generation() + 1U, routerContext()));
+    require(
+        narrowedExecute.authorityId() == fixture.execute_.authorityId() &&
+            narrowedExecute.generation() == fixture.execute_.generation() + 1U,
+        "activation narrowing was not delegated by capability identity");
 
     Infrastructure::WindowsWorkspaceAuthority foreignIssuer{
         std::vector<Infrastructure::WindowsWorkspaceAuthorityPolicy>{
@@ -378,11 +450,13 @@ void rejectsNoncanonicalOrAmbiguousRouterConstruction()
                                    const Contracts::WorkspaceAuthority& read,
                                    Infrastructure::WindowsWorkspaceAuthority& writeIssuer,
                                    const Contracts::WorkspaceAuthority& write,
+                                   Infrastructure::WindowsWorkspaceAuthority& executeIssuer,
+                                   const Contracts::WorkspaceAuthority& execute,
                                    const std::string_view message) {
         bool rejected{};
         try {
             Composition::ManagerLmStudioAuthorityRouter invalid{
-                readIssuer, read, writeIssuer, write};
+                readIssuer, read, writeIssuer, write, executeIssuer, execute};
         } catch (const std::invalid_argument&) {
             rejected = true;
         }
@@ -391,6 +465,7 @@ void rejectsNoncanonicalOrAmbiguousRouterConstruction()
 
     expectInvalid(
         fixture.readIssuer_, fixture.read_, fixture.readIssuer_, fixture.write_,
+        fixture.executeIssuer_, fixture.execute_,
         "router accepted one concrete issuer twice");
 
     Infrastructure::WindowsWorkspaceAuthority duplicateIdIssuer{
@@ -400,6 +475,7 @@ void rejectsNoncanonicalOrAmbiguousRouterConstruction()
         duplicateIdIssuer.authorityFor(projectId(), routerContext()));
     expectInvalid(
         fixture.readIssuer_, fixture.read_, duplicateIdIssuer, duplicateId,
+        fixture.executeIssuer_, fixture.execute_,
         "router accepted one identifier for two capabilities");
 
     Infrastructure::WindowsWorkspaceAuthority otherProjectIssuer{
@@ -410,6 +486,7 @@ void rejectsNoncanonicalOrAmbiguousRouterConstruction()
         otherProjectId(), routerContext()));
     expectInvalid(
         fixture.readIssuer_, fixture.read_, otherProjectIssuer, otherProject,
+        fixture.executeIssuer_, fixture.execute_,
         "router accepted mismatched maintenance projects");
 
     Infrastructure::WindowsWorkspaceAuthority otherCallerIssuer{
@@ -421,6 +498,7 @@ void rejectsNoncanonicalOrAmbiguousRouterConstruction()
         otherCallerIssuer.authorityFor(projectId(), routerContext()));
     expectInvalid(
         fixture.readIssuer_, fixture.read_, otherCallerIssuer, otherCaller,
+        fixture.executeIssuer_, fixture.execute_,
         "router accepted mismatched maintenance callers");
 
     auto broadReadPolicy = readPolicy(fixture.root());
@@ -437,6 +515,7 @@ void rejectsNoncanonicalOrAmbiguousRouterConstruction()
         broadReadIssuer.authorityFor(projectId(), routerContext()));
     expectInvalid(
         broadReadIssuer, broadRead, fixture.writeIssuer_, fixture.write_,
+        fixture.executeIssuer_, fixture.execute_,
         "router accepted a broadened read capability");
 
     auto narrowWritePolicy = writePolicy(fixture.root());
@@ -453,7 +532,24 @@ void rejectsNoncanonicalOrAmbiguousRouterConstruction()
         narrowWriteIssuer.authorityFor(projectId(), routerContext()));
     expectInvalid(
         fixture.readIssuer_, fixture.read_, narrowWriteIssuer, narrowWrite,
+        fixture.executeIssuer_, fixture.execute_,
         "router accepted an incomplete deployment capability");
+
+    auto writeEnabledExecutePolicy = executePolicy(fixture.root());
+    writeEnabledExecutePolicy.grants = {
+        Domain::FileAccess::Read, Domain::FileAccess::Write,
+        Domain::FileAccess::Execute};
+    writeEnabledExecutePolicy.denials = {
+        Domain::FileAccess::Create, Domain::FileAccess::Delete};
+    Infrastructure::WindowsWorkspaceAuthority writeEnabledExecuteIssuer{
+        std::vector<Infrastructure::WindowsWorkspaceAuthorityPolicy>{
+            std::move(writeEnabledExecutePolicy)}};
+    const auto writeEnabledExecute = take(
+        writeEnabledExecuteIssuer.authorityFor(projectId(), routerContext()));
+    expectInvalid(
+        fixture.readIssuer_, fixture.read_, fixture.writeIssuer_, fixture.write_,
+        writeEnabledExecuteIssuer, writeEnabledExecute,
+        "router accepted a write-capable activation authority");
 }
 
 class Clock final : public Contracts::IClock {
