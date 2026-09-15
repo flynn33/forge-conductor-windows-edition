@@ -935,6 +935,13 @@ public:
         std::vector<Domain::DiagnosticField> fields = {}) noexcept
     {
         try {
+            // Diagnostic append is best-effort for this workflow. Manager data
+            // stores can retain a write-capable ancestor; that contention must
+            // not consume the deployment's native verification deadline.
+            auto diagnosticContext = context;
+            diagnosticContext.deadline = (std::min)(
+                context.deadline,
+                clock.monotonicNow() + std::chrono::milliseconds{250});
             static_cast<void>(diagnostics.record(
                 Domain::DiagnosticEnvelope{
                     clock.utcNow(),
@@ -944,7 +951,7 @@ public:
                     ::GetCurrentProcessId(),
                     Domain::DiagnosticCategory::LmStudio,
                     std::move(fields)},
-                context));
+                diagnosticContext));
         } catch (...) {
         }
     }

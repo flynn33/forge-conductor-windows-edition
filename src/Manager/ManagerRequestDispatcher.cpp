@@ -708,13 +708,19 @@ private:
         const auto trace = [&](const std::string_view event) noexcept {
             if (!repair || sources.diagnostics == nullptr) return;
             try {
+                // A contested diagnostic ancestor must not consume the repair
+                // deadline before native admission or connector verification.
+                auto diagnosticContext = context;
+                diagnosticContext.deadline = (std::min)(
+                    context.deadline,
+                    clock_->monotonicNow() + std::chrono::milliseconds{250});
                 static_cast<void>(sources.diagnostics->record(
                     Domain::DiagnosticEnvelope{
                         clock_->utcNow(), std::string{event},
                         Domain::DiagnosticSeverity::Info, "manager",
                         ::GetCurrentProcessId(),
                         Domain::DiagnosticCategory::LmStudio, {}},
-                    context));
+                    diagnosticContext));
             } catch (...) {
             }
         };

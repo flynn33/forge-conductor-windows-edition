@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.17 — Bounded native repair diagnostics and visible action state
+
+- Bound best-effort LM Studio repair and deployment diagnostics to a quarter-second child deadline. A Manager-held write-capable data-root anchor currently contests the diagnostic writer's strict ancestor anchor; diagnostic contention can no longer consume the full native repair deadline. The diagnostic storage contention itself remains open.
+- Put queued, active, and failed LM Studio action feedback in the hero and Connection & authority card instead of hiding it in Advanced registration detail. Compact the three native actions into one aligned lane.
+- Add a regression for the competing database-like ancestor anchor while retaining the diagnostic sink's strict no-write/no-delete root-anchor tests.
+
 ## 1.1.16 — Evidence-chain composition and repair tracing
 
 - Give Events & Evidence its own three-stage trust composition while keeping current Manager audit outcomes visibly distinct from unprojected durable artifacts and unperformed native verification.

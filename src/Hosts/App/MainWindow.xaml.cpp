@@ -2019,6 +2019,7 @@ void MainWindow::ApplyLmStudio(
     LmStudioContinuityState().Text(winrt::to_hstring(
         "Manager continuity projects active: " +
         std::to_string(snapshot.managedContinuityProjects)));
+    LmStudioActionStatus().Text(winrt::to_hstring(snapshot.actionDetail));
     LmStudioPaths().Text(winrt::to_hstring(
         "Binary: " + snapshot.binaryPath + "\nPrimary: " + snapshot.primaryPluginPath +
         "\nFallback: " + snapshot.fallbackPluginPath +
@@ -3120,7 +3121,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 if (action == Action::ProjectUpdate || action == Action::ProjectForget)
                     ProjectMemoryActionState().Text(queued);
             }
-            else if (lmStudioAction) LmStudioRegistrationState().Text(queued);
+            else if (lmStudioAction) {
+                LmStudioRegistrationState().Text(queued);
+                LmStudioActionStatus().Text(queued);
+                LmStudioOverview().Text(L"Native command queued behind current Manager work");
+                LmStudioBadge().Text(L"QUEUED");
+            }
             else if (toolsAction) ToolsState().Text(queued);
             else if (operationalAction) OperationalState().Text(queued);
             else if (historyAction) RunHistoryState().Text(queued);
@@ -3135,6 +3141,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ::ForgeConductor::Hosts::App::AppActionAdmission::Rejected) {
             GenericState().Text(
                 L"The bounded Manager command queue is full; this action was not accepted. Retry after the current command completes.");
+            if (lmStudioAction) {
+                LmStudioActionStatus().Text(L"Manager command queue full · retry after current work");
+                LmStudioOverview().Text(L"Native command was not accepted");
+                LmStudioBadge().Text(L"WAITING");
+            }
         }
         co_return;
     }
@@ -3146,9 +3157,15 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         if (action == Action::ProjectUpdate || action == Action::ProjectForget)
             ProjectMemoryActionState().Text(L"Validating exact project and record binding…");
     } else if (lmStudioAction) {
-        LmStudioRegistrationState().Text(action == Action::LmStudioRepair
-            ? L"Verifying three native roles before and after a preserved registration update. This may take up to two minutes…"
-            : L"Contacting the Manager…");
+        const auto pending = action == Action::LmStudioRepair
+            ? L"Repairing native registration · preserving foreign MCP entries · up to two minutes…"
+            : action == Action::LmStudioActivate
+                ? L"Activating and verifying three registered connectors…"
+                : L"Inspecting native registration without changes…";
+        LmStudioRegistrationState().Text(pending);
+        LmStudioActionStatus().Text(pending);
+        LmStudioOverview().Text(pending);
+        LmStudioBadge().Text(action == Action::LmStudioRepair ? L"REPAIRING" : L"INSPECTING");
     } else if (toolsAction) {
         ToolsState().Text(L"Contacting the Manager…");
     } else if (historyAction) {
@@ -3447,8 +3464,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (!lmStudioView.loaded) {
                 if (lmStudioSnapshot_) ApplyLmStudio(*lmStudioSnapshot_);
                 LmStudioRegistrationState().Text(winrt::to_hstring(message));
+                LmStudioActionStatus().Text(winrt::to_hstring(message));
                 if (lmStudioSnapshot_) {
-                    LmStudioOverview().Text(L"Command failed · last inspected registration retained");
+                    LmStudioOverview().Text(winrt::to_hstring(
+                        "Command failed · " + message + " · last inspected state retained"));
+                    LmStudioBadge().Text(L"ATTENTION");
                 } else {
                     LmStudioOverview().Text(winrt::to_hstring(message));
                     LmStudioBadge().Text(L"UNAVAILABLE");
