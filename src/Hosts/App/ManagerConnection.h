@@ -154,6 +154,7 @@ public:
         Manager::ManagerOperationalAction action,
         std::string sessionId,
         std::string summary,
+        std::optional<std::string> projectId,
         std::stop_token cancellation) noexcept = 0;
     virtual MaintenanceView resetData(
         Manager::ManagerMaintenanceScope scope,
@@ -229,6 +230,7 @@ public:
         Manager::ManagerOperationalAction action,
         std::string sessionId,
         std::string summary,
+        std::optional<std::string> projectId,
         std::stop_token cancellation) noexcept override;
     MaintenanceView resetData(
         Manager::ManagerMaintenanceScope scope,

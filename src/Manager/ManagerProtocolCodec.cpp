@@ -1304,6 +1304,7 @@ void validateSettingsUpdateOutcome(
                 case ManagerOperationalArea::Runtimes: params["area"] = "runtimes"; break;
                 case ManagerOperationalArea::Diagnostics: params["area"] = "diagnostics"; break;
                 case ManagerOperationalArea::Manager: params["area"] = "manager"; break;
+                case ManagerOperationalArea::Runs: params["area"] = "runs"; break;
                 }
                 switch (payload.action) {
                 case ManagerOperationalAction::Inspect: params["action"] = "inspect"; break;
@@ -1313,6 +1314,8 @@ void validateSettingsUpdateOutcome(
                 params["session_id"] = payload.sessionId
                     ? Json(payload.sessionId->value()) : Json(nullptr);
                 params["summary"] = payload.summary;
+                params["project_id"] = payload.projectId
+                    ? Json(payload.projectId->value()) : Json(nullptr);
             } else if constexpr (
                 std::is_same_v<Payload, ManagerMaintenanceRequest>) {
                 method = "maintenance.reset";
@@ -1476,7 +1479,7 @@ void validateSettingsUpdateOutcome(
             stringMember(params, "arguments")};
     } else if (method == "operations.page") {
         requireExactFields(
-            params, {"action", "area", "session_id", "summary"},
+            params, {"action", "area", "project_id", "session_id", "summary"},
             "operations.page params");
         const auto& areaText = stringMember(params, "area");
         ManagerOperationalArea area;
@@ -1485,6 +1488,7 @@ void validateSettingsUpdateOutcome(
         else if (areaText == "runtimes") area = ManagerOperationalArea::Runtimes;
         else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
         else if (areaText == "manager") area = ManagerOperationalArea::Manager;
+        else if (areaText == "runs") area = ManagerOperationalArea::Runs;
         else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
         const auto& actionText = stringMember(params, "action");
         ManagerOperationalAction action;
@@ -1500,7 +1504,12 @@ void validateSettingsUpdateOutcome(
                 [](const Json& object, const std::string_view name) {
                     return identifierMember<Domain::SessionId>(object, name);
                 }),
-            stringMember(params, "summary")};
+            stringMember(params, "summary"),
+            optionalField<Domain::ProjectId>(
+                params, "project_id",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::ProjectId>(object, name);
+                })};
     } else if (method == "maintenance.reset") {
         requireExactFields(
             params, {"confirmation_token", "project_id", "scope"},
@@ -2950,6 +2959,7 @@ template <typename T, typename Parser>
     case ManagerOperationalArea::Runtimes: return "runtimes";
     case ManagerOperationalArea::Diagnostics: return "diagnostics";
     case ManagerOperationalArea::Manager: return "manager";
+    case ManagerOperationalArea::Runs: return "runs";
     }
     return "manager";
 }
@@ -2971,6 +2981,7 @@ template <typename T, typename Parser>
     else if (areaText == "runtimes") area = ManagerOperationalArea::Runtimes;
     else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
     else if (areaText == "manager") area = ManagerOperationalArea::Manager;
+    else if (areaText == "runs") area = ManagerOperationalArea::Runs;
     else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
     return ManagerOperationalSnapshot{
         area,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.12 — Project run history and sharper native readback
+
+- Add a Manager-backed recent-run timeline to Autonomy and Continuity, filtered by the exact selected project and attachable through the existing verified run path.
+- Improve miniature Rig telemetry trends while preserving absolute values in the main chart and gauges; show measured CPU frequency in the primary instrument card.
+- Tighten sparse Tools/Runtimes layouts and clarify that optional unavailable LM Studio doctor checks do not negate verified core Manager health.
+- Add a local, user-chosen Diagnostics support snapshot export containing the bounded Manager readback; it is explicitly not verified run evidence and is never transmitted automatically.
+- Keep installed all-view visual, scaled/accessibility and remaining feature acceptance open until signed-release verification.
+
 ## 1.1.11 — Operator detail and truthful runtime states
 
 - Correct Provider, Continuity, and Store status colors to distinguish configured or absent dependencies from verified healthy states.

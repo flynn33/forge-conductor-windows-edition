@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -25,6 +26,7 @@
 namespace {
 
 namespace Contracts = ForgeConductor::Contracts;
+namespace Dashboard = ForgeConductor::Dashboard;
 namespace Domain = ForgeConductor::Domain;
 namespace Manager = ForgeConductor::Manager;
 namespace TestFakes = ForgeConductor::Tests::Fakes;
@@ -372,6 +374,10 @@ public:
     {
         ++statusCalls;
         auto value = snapshotFor(runId, Domain::ManagedRunState::Completed);
+        if (const auto found = projectByRun.find(runId.value());
+            found != projectByRun.end()) {
+            value.record.projectId = found->second;
+        }
         value.record.providerResponseId =
             Domain::ProviderSessionId::parse("response-authoritative-1").value();
         value.record.inputTokens = 101U;
@@ -415,6 +421,7 @@ public:
     void shutdown() noexcept override { ++shutdownCalls; }
 
     std::optional<Domain::ManagedRunStartRequest> lastStart;
+    std::map<std::string, Domain::ProjectId> projectByRun;
     std::optional<Domain::OperationId> lastContextOperation;
     std::atomic_size_t startCalls{};
     std::atomic_size_t statusCalls{};
@@ -465,6 +472,53 @@ private:
                 "fixture managed task"},
             state);
     }
+};
+
+class FakeOperationalSessions final : public Dashboard::IDashboardOperationalService {
+public:
+    Dashboard::DashboardSessionListing listing;
+    std::size_t sessionCalls{};
+    [[nodiscard]] Domain::Result<Dashboard::DashboardStatusData> status(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Dashboard::DashboardStatusData>::failure(
+            Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Unexpected status in run-history test."));
+    }
+    [[nodiscard]] Domain::Result<Domain::DoctorReport> doctor(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Domain::DoctorReport>::failure(
+            Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Unexpected doctor in run-history test."));
+    }
+    [[nodiscard]] Domain::Result<std::vector<Domain::AgentSpec>> agents(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::vector<Domain::AgentSpec>>::success({}); }
+    [[nodiscard]] Domain::Result<Dashboard::DashboardSessionListing> sessions(
+        const Domain::OperationContext&) noexcept override
+    {
+        ++sessionCalls;
+        return Domain::Result<Dashboard::DashboardSessionListing>::success(listing);
+    }
+    [[nodiscard]] Domain::Result<std::vector<Domain::AuditEvent>> audit(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::vector<Domain::AuditEvent>>::success({}); }
+    [[nodiscard]] Domain::Result<std::vector<std::string>> diagnosticLines(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::vector<std::string>>::success({}); }
+    [[nodiscard]] Domain::Result<std::size_t> pruneSessions(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::size_t>::success(0U); }
+    [[nodiscard]] Domain::Result<Domain::AgentSession> closeSession(
+        const Dashboard::DashboardSessionCloseRequest&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Domain::AgentSession>::failure(
+            Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Unexpected close in run-history test."));
+    }
+    void shutdown() noexcept override {}
 };
 
 class FakeTelemetryService final : public Contracts::ITelemetryService {
@@ -674,6 +728,74 @@ void testManagedRunDispatchAndIdentity()
             *clock, 75U, Manager::ManagedRunStatusRequest{runId})),
         Domain::ErrorCodes::InvalidRequest,
         "managed run unavailable composition");
+}
+
+void testRunHistoryIsBoundToSelectedProject()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    auto managedRuns = std::make_shared<FakeManagedRuns>();
+    FakeOperationalSessions operational;
+    const auto projectA = Domain::ProjectId::parse(uuidText(701U)).value();
+    const auto projectB = Domain::ProjectId::parse(uuidText(702U)).value();
+    const auto managedAgent = Domain::AgentId::parse("forge-managed-run").value();
+    const auto otherAgent = Domain::AgentId::parse("other-agent").value();
+    const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
+    const auto aOpen = Domain::SessionId::parse(uuidText(710U)).value();
+    const auto bRecent = Domain::SessionId::parse(uuidText(711U)).value();
+    const auto aRecent = Domain::SessionId::parse(uuidText(712U)).value();
+    operational.listing.open.push_back({
+        aOpen, managedAgent, std::nullopt, Domain::SessionStatus::Open,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        bRecent, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        aRecent, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        Domain::SessionId::parse(uuidText(713U)).value(), otherAgent,
+        std::nullopt, Domain::SessionStatus::Completed, std::nullopt, time, time});
+    managedRuns->projectByRun.emplace(bRecent.value(), projectB);
+    Manager::ManagerTelemetrySources sources;
+    sources.operational = &operational;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, managedRuns, sources};
+
+    const auto aResponse = dispatcher.dispatch(request(*clock, 91U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectA}));
+    const auto* aHistory = responseValue<Manager::ManagerOperationalSnapshot>(aResponse);
+    require(aHistory != nullptr && aHistory->lines.size() == 2U,
+        "run history includes only selected project A");
+    require(aHistory->lines[0].find(aOpen.value()) != std::string::npos &&
+            aHistory->lines[1].find(aRecent.value()) != std::string::npos,
+        "project A run identities are preserved");
+    require(aHistory->lines[0].find(bRecent.value()) == std::string::npos &&
+            aHistory->lines[1].find(bRecent.value()) == std::string::npos,
+        "project B run identity never leaks into A");
+
+    const auto bResponse = dispatcher.dispatch(request(*clock, 92U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectB}));
+    const auto* bHistory = responseValue<Manager::ManagerOperationalSnapshot>(bResponse);
+    require(bHistory != nullptr && bHistory->lines.size() == 1U &&
+            bHistory->lines[0].find(bRecent.value()) != std::string::npos,
+        "project B history retains only its exact run");
+    require(operational.sessionCalls == 2U,
+        "one bounded session listing is read per authorized inspection");
+    requireError(dispatcher.dispatch(request(*clock, 93U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, std::nullopt})),
+        Domain::ErrorCodes::InvalidRequest, "unbound run history");
+    require(operational.sessionCalls == 2U,
+        "unbound inspection does not read sessions");
 }
 
 void testProjectWorkflowKeepsExactProjectIdentity()
@@ -1143,6 +1265,7 @@ int main()
     try {
         testPayloadMappingAndControllerFailures();
         testManagedRunDispatchAndIdentity();
+        testRunHistoryIsBoundToSelectedProject();
         testProjectWorkflowKeepsExactProjectIdentity();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetrySnapshotUsesManagerOwnedRunValues();
@@ -1152,7 +1275,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 11 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 12 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

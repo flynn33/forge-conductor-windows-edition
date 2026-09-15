@@ -10,6 +10,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <stop_token>
 #include <stdexcept>
 #include <string_view>
@@ -928,6 +929,55 @@ private:
         }
         auto& service = *telemetrySources_.operational;
         std::vector<std::string> lines;
+        if (request.area == ManagerOperationalArea::Runs) {
+            if (request.action != ManagerOperationalAction::Inspect ||
+                !request.projectId || !managedRuns_) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "A project-bound managed-run history inspection is required."));
+            }
+            auto sessions = service.sessions(context);
+            if (!sessions) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(sessions).error());
+            std::set<std::string> seen;
+            const auto append = [&](const Domain::AgentSession& session)
+                -> Domain::Result<void> {
+                if (session.agentId.value() != "forge-managed-run" ||
+                    !seen.insert(session.id.value()).second) {
+                    return Domain::Result<void>::success();
+                }
+                auto run = managedRuns_->status(session.id, context);
+                if (!run) return Domain::Result<void>::failure(std::move(run).error());
+                const auto& record = run.value().record;
+                if (record.projectId != *request.projectId) {
+                    return Domain::Result<void>::success();
+                }
+                const char* state = "unknown";
+                switch (record.state) {
+                case Domain::ManagedRunState::Running: state = "running"; break;
+                case Domain::ManagedRunState::Paused: state = "paused"; break;
+                case Domain::ManagedRunState::Cancelling: state = "stopping"; break;
+                case Domain::ManagedRunState::Completed: state = "completed"; break;
+                case Domain::ManagedRunState::Failed: state = "failed"; break;
+                case Domain::ManagedRunState::Cancelled: state = "stopped"; break;
+                }
+                lines.push_back(record.runId.value() + " · " + state + "\n" +
+                    record.task);
+                return Domain::Result<void>::success();
+            };
+            for (const auto& session : sessions.value().open) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            for (const auto& session : sessions.value().recent) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            return Domain::Result<ManagerOperationalSnapshot>::success(
+                {request.area, "Recent Manager-owned runs · selected project", std::move(lines)});
+        }
         if (request.action == ManagerOperationalAction::PruneSessions) {
             auto pruned = service.pruneSessions(context);
             if (!pruned) return Domain::Result<ManagerOperationalSnapshot>::failure(

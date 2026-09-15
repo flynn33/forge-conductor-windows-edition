@@ -148,6 +148,27 @@ void applyMetric(
     return points;
 }
 
+[[nodiscard]] Microsoft::UI::Xaml::Media::PointCollection sparklinePoints(
+    const std::vector<double>& observations,
+    const double width,
+    const double height)
+{
+    if (observations.empty()) return {};
+    const auto [minimum, maximum] = std::minmax_element(
+        observations.begin(), observations.end());
+    // The main chart and gauge retain the absolute 0–100% scale. A miniature
+    // sparkline shows only the measured local trend, centered on its range.
+    const auto span = std::max(0.5, *maximum - *minimum);
+    const auto midpoint = (*minimum + *maximum) / 2.0;
+    std::vector<double> normalized;
+    normalized.reserve(observations.size());
+    for (const auto value : observations) {
+        normalized.push_back(std::clamp(
+            100.0 * (value - (midpoint - span / 2.0)) / span, 0.0, 100.0));
+    }
+    return chartPoints(normalized, width, height);
+}
+
 [[nodiscard]] std::vector<double> calmHistory(const std::vector<double>& values)
 {
     constexpr std::size_t targetPoints = 72U;
@@ -489,6 +510,17 @@ void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStart); }
 void MainWindow::RunStatusClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStatus); }
+void MainWindow::RunHistoryRefreshClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunHistory); }
+void MainWindow::RunHistoryAttachClicked(Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    const auto button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>();
+    if (!button || selectedProjectId_.empty()) return;
+    const auto runId = winrt::unbox_value<winrt::hstring>(button.Tag());
+    RunId().Text(runId);
+    RunAction(Action::RunStatus);
+}
 void MainWindow::RunPauseClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunPause); }
 void MainWindow::RunResumeClicked(Windows::Foundation::IInspectable const&,
@@ -592,6 +624,85 @@ void MainWindow::ToolSelectionChanged(Windows::Foundation::IInspectable const&,
 }
 void MainWindow::OperationalRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalInspect); }
+void MainWindow::OperationalExportClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (!operationalSnapshot_ || operationalSnapshot_->area !=
+        ::ForgeConductor::Manager::ManagerOperationalArea::Diagnostics) {
+        OperationalExportState().Text(
+            L"Refresh Diagnostics and wait for Manager readback before saving a snapshot.");
+        return;
+    }
+    try {
+        auto nativeWindow = this->m_inner.as<::IWindowNative>();
+        HWND hwnd{};
+        winrt::check_hresult(nativeWindow->get_WindowHandle(&hwnd));
+        winrt::com_ptr<::IFileSaveDialog> dialog;
+        winrt::check_hresult(::CoCreateInstance(CLSID_FileSaveDialog, nullptr,
+            CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.put())));
+        DWORD options{};
+        winrt::check_hresult(dialog->GetOptions(&options));
+        winrt::check_hresult(dialog->SetOptions(options | FOS_FORCEFILESYSTEM |
+            FOS_PATHMUSTEXIST | FOS_OVERWRITEPROMPT));
+        const COMDLG_FILTERSPEC filter{L"JSON support snapshot", L"*.json"};
+        winrt::check_hresult(dialog->SetFileTypes(1, &filter));
+        winrt::check_hresult(dialog->SetDefaultExtension(L"json"));
+        winrt::check_hresult(dialog->SetFileName(
+            L"ForgeConductor-support-snapshot.json"));
+        winrt::check_hresult(dialog->SetTitle(
+            L"Save local Forge Conductor support snapshot"));
+        const auto shown = dialog->Show(hwnd);
+        if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+        winrt::check_hresult(shown);
+        winrt::com_ptr<::IShellItem> destination;
+        winrt::check_hresult(dialog->GetResult(destination.put()));
+        PWSTR allocatedPath{};
+        winrt::check_hresult(destination->GetDisplayName(
+            SIGDN_FILESYSPATH, &allocatedPath));
+        const std::wstring path{allocatedPath};
+        ::CoTaskMemFree(allocatedPath);
+        SYSTEMTIME utc{};
+        ::GetSystemTime(&utc);
+        char capturedAt[40]{};
+        sprintf_s(capturedAt, "%04u-%02u-%02uT%02u:%02u:%02uZ",
+            utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute,
+            utc.wSecond);
+        const nlohmann::json snapshot{
+            {"format", "forge-conductor-diagnostic-support-snapshot"},
+            {"product_version", std::string{::ForgeConductor::Domain::ProductVersion}},
+            {"captured_at_utc", capturedAt},
+            {"source", "bounded Manager doctor and diagnostic readback"},
+            {"verified_run_evidence", false},
+            {"automatic_transmission", false},
+            {"lines", operationalSnapshot_->lines}};
+        const auto data = snapshot.dump(2);
+        if (data.size() > (std::numeric_limits<DWORD>::max)()) {
+            OperationalExportState().Text(L"Support snapshot exceeded the local file limit.");
+            return;
+        }
+        const auto file = ::CreateFileW(path.c_str(), GENERIC_WRITE,
+            FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+        if (file == INVALID_HANDLE_VALUE) {
+            winrt::check_hresult(HRESULT_FROM_WIN32(::GetLastError()));
+        }
+        DWORD written{};
+        const auto saved = ::WriteFile(file, data.data(),
+            static_cast<DWORD>(data.size()), &written, nullptr);
+        const auto writeError = saved ? ERROR_SUCCESS : ::GetLastError();
+        ::CloseHandle(file);
+        if (!saved || written != data.size()) {
+            winrt::check_hresult(HRESULT_FROM_WIN32(
+                writeError == ERROR_SUCCESS ? ERROR_WRITE_FAULT : writeError));
+        }
+        OperationalExportState().Text(
+            L"Local support snapshot saved. Review its diagnostic context before sharing; no data was transmitted.");
+    } catch (const winrt::hresult_error& error) {
+        OperationalExportState().Text(L"Support export failed: " + error.message());
+    } catch (...) {
+        OperationalExportState().Text(L"Support export failed safely.");
+    }
+}
 void MainWindow::OperationalPruneClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalPrune); }
 void MainWindow::OperationalCloseClicked(Windows::Foundation::IInspectable const&,
@@ -795,6 +906,7 @@ void MainWindow::NavigationChanged(
     UpdateRunProjectLabel();
     RunControlHeading().Text(continuityPage ? L"Attach & control exact run" : L"Mission & run control");
     RunStateHeading().Text(continuityPage ? L"Latest run readback" : L"Live run");
+    RunHistoryCard().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
     ProjectsPanel().Visibility(projects ? Visibility::Visible : Visibility::Collapsed);
     LmStudioMcpPanel().Visibility(lmStudioMcp ? Visibility::Visible : Visibility::Collapsed);
@@ -814,6 +926,7 @@ void MainWindow::NavigationChanged(
         PageDescription().Text(continuityPage
             ? L"Inspect retained context and control the exact Manager-owned run."
             : L"Start, attach, pause, resume, and stop Manager-owned work.");
+        RunAction(Action::RunHistory);
     } else if (tag == L"Projects") {
         PageDescription().Text(L"Register authorized folders, select exact project identities, and read or write persistent project memory.");
         RunAction(Action::ProjectList);
@@ -1018,6 +1131,12 @@ void MainWindow::ApplyTelemetryPresentation(
     const auto presentation =
         ::ForgeConductor::Hosts::App::makeTelemetryPresentation(snapshot);
     applyMetric(CpuValue(), CpuState(), CpuGauge(), presentation.cpu);
+    if (snapshot.resources.cpuFrequencyMhz.value &&
+        snapshot.resources.cpuFrequencyMhz.availability ==
+            ::ForgeConductor::Domain::TelemetryMetricAvailability::Available) {
+        CpuState().Text(winrt::to_hstring(presentation.cpu.state + " · " +
+            std::to_string(*snapshot.resources.cpuFrequencyMhz.value) + " MHz"));
+    }
     applyMetric(RamValue(), RamState(), RamGauge(), presentation.ram);
     applyMetric(GpuValue(), GpuState(), GpuGauge(), presentation.gpu);
     applyMetric(
@@ -1315,13 +1434,13 @@ void MainWindow::ApplyTelemetryPresentation(
     CpuHistoryLine().Points(chartPoints(calmHistory(presentation.cpuHistory), width, height));
     RamHistoryLine().Points(chartPoints(calmHistory(presentation.ramHistory), width, height));
     GpuHistoryLine().Points(chartPoints(calmHistory(presentation.gpuHistory), width, height));
-    MiniCpuLine().Points(chartPoints(presentation.cpuHistory,
+    MiniCpuLine().Points(sparklinePoints(calmHistory(presentation.cpuHistory),
         std::max(1.0, MiniCpuCanvas().ActualWidth()),
         std::max(1.0, MiniCpuCanvas().ActualHeight())));
-    MiniRamLine().Points(chartPoints(presentation.ramHistory,
+    MiniRamLine().Points(sparklinePoints(calmHistory(presentation.ramHistory),
         std::max(1.0, MiniRamCanvas().ActualWidth()),
         std::max(1.0, MiniRamCanvas().ActualHeight())));
-    MiniGpuLine().Points(chartPoints(presentation.gpuHistory,
+    MiniGpuLine().Points(sparklinePoints(calmHistory(presentation.gpuHistory),
         std::max(1.0, MiniGpuCanvas().ActualWidth()),
         std::max(1.0, MiniGpuCanvas().ActualHeight())));
     if (presentation.cpuHistory.empty()) {
@@ -2087,6 +2206,10 @@ void MainWindow::RenderToolOutcome(
         " · " + snapshot.toolName + " · " +
         (snapshot.elapsed.count() == 0 ? std::string{"<1 ms"}
             : std::to_string(snapshot.elapsed.count()) + " ms")));
+    ToolLatestBadge().Text(L"LAST RESULT · " + ToolOutcomeStatus().Text());
+    ToolLatestBadge().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+        snapshot.ok ? Windows::UI::Color{255, 61, 220, 151}
+                    : Windows::UI::Color{255, 255, 200, 87}});
     ToolOutcomeStatus().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
         snapshot.ok ? Windows::UI::Color{255, 61, 220, 151}
                     : Windows::UI::Color{255, 255, 200, 87}});
@@ -2243,6 +2366,9 @@ void MainWindow::FilterTools()
     }
     ToolsState().Text(winrt::to_hstring(std::to_string(visibleTools_.size()) +
         " of " + std::to_string(tools_.size()) + " Manager-owned tools · select a row for details"));
+    ToolListViewport().Height(std::clamp(
+        72.0 + static_cast<double>(visibleTools_.size()) * 76.0,
+        148.0, 570.0));
     ToolEmptyState().Visibility(visibleTools_.empty()
         ? Visibility::Visible : Visibility::Collapsed);
     ToolEmptyTitle().Text(tools_.empty() ? L"Catalog unavailable" : L"No matching tools");
@@ -2250,6 +2376,61 @@ void MainWindow::FilterTools()
         ? L"Connect to the Manager and reload its registered capabilities."
         : L"Try another name, capability, or pack filter.");
     if (!visibleTools_.empty()) ToolList().SelectedIndex(0);
+}
+
+void MainWindow::ApplyRunHistory(
+    const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot)
+{
+    RunHistoryRows().Children().Clear();
+    if (snapshot.area != ::ForgeConductor::Manager::ManagerOperationalArea::Runs)
+        return;
+    RunHistoryState().Text(snapshot.lines.empty()
+        ? L"No recent Manager-owned runs were found for this project. Start a mission above to create one."
+        : winrt::to_hstring("Showing " + std::to_string(snapshot.lines.size()) +
+            " Manager-owned project runs from the bounded recent-session window."));
+    for (const auto& line : snapshot.lines) {
+        const auto firstEnd = line.find('\n');
+        const auto first = line.substr(0, firstEnd);
+        const auto separator = first.find(" · ");
+        if (separator == std::string::npos) continue;
+        const auto id = first.substr(0, separator);
+        const auto state = first.substr(separator + std::string{" · "}.size());
+        Microsoft::UI::Xaml::Controls::StackPanel content;
+        content.Spacing(6);
+        Microsoft::UI::Xaml::Controls::StackPanel heading;
+        heading.Orientation(Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+        heading.Spacing(12);
+        Microsoft::UI::Xaml::Controls::Button attach;
+        attach.Content(box_value(L"Attach run"));
+        attach.Tag(box_value(winrt::to_hstring(id)));
+        attach.Click({this, &MainWindow::RunHistoryAttachClicked});
+        heading.Children().Append(attach);
+        Microsoft::UI::Xaml::Controls::TextBlock identity;
+        identity.Text(winrt::to_hstring(state + " · " + id));
+        identity.FontSize(14);
+        identity.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+        identity.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+        identity.VerticalAlignment(Microsoft::UI::Xaml::VerticalAlignment::Center);
+        heading.Children().Append(identity);
+        content.Children().Append(heading);
+        Microsoft::UI::Xaml::Controls::TextBlock task;
+        task.Text(firstEnd == std::string::npos ? L"No task summary was projected."
+            : winrt::to_hstring(line.substr(firstEnd + 1U)));
+        task.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        task.MaxLines(2);
+        task.FontSize(13);
+        content.Children().Append(task);
+        Microsoft::UI::Xaml::Controls::Border row;
+        row.Padding(Microsoft::UI::Xaml::Thickness{12});
+        row.CornerRadius(Microsoft::UI::Xaml::CornerRadius{9});
+        row.BorderThickness(Microsoft::UI::Xaml::Thickness{1});
+        row.Background(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{255, 13, 27, 42}));
+        row.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{90, 102, 128, 153}));
+        row.Child(content);
+        RunHistoryRows().Children().Append(row);
+    }
 }
 
 void MainWindow::ApplyOperational(
@@ -2313,8 +2494,11 @@ void MainWindow::ApplyOperational(
             [](const auto& line) { return line.starts_with("FAIL "); });
         OperationalDoctorPassed().Text(winrt::to_hstring(std::to_string(passed)));
         OperationalDoctorFailed().Text(winrt::to_hstring(std::to_string(failed)));
-        OperationalDoctorState().Text(failed == 0 ? L"Doctor checks passing"
-            : L"Doctor checks need attention");
+        const auto coreHealthy = std::any_of(snapshot.lines.begin(), snapshot.lines.end(),
+            [](const auto& line) { return line == "Overall health: healthy"; });
+        OperationalDoctorState().Text(coreHealthy
+            ? failed == 0 ? L"Core health verified" : L"Core healthy · integrations unavailable"
+            : L"Core health needs attention");
     }
     auto query = winrt::to_string(OperationalAgentSearch().Text());
     std::transform(query.begin(), query.end(), query.begin(),
@@ -2630,6 +2814,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool toolsAction = action == Action::ToolsList || action == Action::ToolInvoke;
     const bool operationalAction = action == Action::OperationalInspect ||
         action == Action::OperationalPrune || action == Action::OperationalClose;
+    const bool historyAction = action == Action::RunHistory;
     const bool settingsAction = action == Action::SettingsLoad ||
         action == Action::SettingsSave || action == Action::SettingsTest ||
         action == Action::SettingsRestart;
@@ -2654,6 +2839,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string editedRecordId;
     std::string operationalSessionId;
     std::string operationalSummary;
+    std::string requestedHistoryProject;
     ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
         ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectMemory};
     std::optional<std::string> maintenanceProject;
@@ -2755,6 +2941,14 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
         toolArguments = *canonical;
     }
+    if (historyAction) {
+        requestedHistoryProject = selectedProjectId_;
+        if (requestedHistoryProject.empty()) {
+            RunHistoryRows().Children().Clear();
+            RunHistoryState().Text(L"Choose a project to inspect its recent Manager-owned runs.");
+            co_return;
+        }
+    }
     if (action == Action::ProjectUpdate || action == Action::ProjectForget) {
         if (!selectedMemoryRecord_ || selectedProjectId_.empty() ||
             selectedMemoryProjectId_ != selectedProjectId_) {
@@ -2847,6 +3041,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             else if (lmStudioAction) LmStudioRegistrationState().Text(queued);
             else if (toolsAction) ToolsState().Text(queued);
             else if (operationalAction) OperationalState().Text(queued);
+            else if (historyAction) RunHistoryState().Text(queued);
             else if (settingsAction) SettingsState().Text(queued);
             else if (maintenanceAction) MaintenanceState().Text(queued);
             else if (action == Action::ProviderLoad ||
@@ -2872,6 +3067,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         LmStudioRegistrationState().Text(L"Contacting the Manager…");
     } else if (toolsAction) {
         ToolsState().Text(L"Contacting the Manager…");
+    } else if (historyAction) {
+        RunHistoryState().Text(L"Reading project-bound run history from the Manager…");
     } else if (operationalAction) {
         OperationalState().Text(L"Contacting the Manager…");
     } else if (settingsAction) {
@@ -3062,13 +3259,17 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             break;
         case Action::OperationalInspect:
         case Action::OperationalPrune:
-        case Action::OperationalClose: {
+        case Action::OperationalClose:
+        case Action::RunHistory: {
             using OpAction = ::ForgeConductor::Manager::ManagerOperationalAction;
             const auto op = action == Action::OperationalPrune ? OpAction::PruneSessions :
                 action == Action::OperationalClose ? OpAction::CloseSession : OpAction::Inspect;
             operationalView = connection_->operational(
-                operationalArea_, op, std::move(operationalSessionId),
-                std::move(operationalSummary), cancellation_.get_token());
+                historyAction ? ::ForgeConductor::Manager::ManagerOperationalArea::Runs
+                    : operationalArea_, op, std::move(operationalSessionId),
+                std::move(operationalSummary), historyAction
+                    ? std::optional<std::string>{requestedHistoryProject} : std::nullopt,
+                cancellation_.get_token());
             message = operationalView.message;
             break;
         }
@@ -3092,6 +3293,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (runView.snapshot) {
                 if (runView.snapshot->record.projectId.value() == selectedProjectId_) {
                     ApplyRunReadback(*runView.snapshot);
+                    if (action == Action::RunStart) followUp = Action::RunHistory;
                 } else {
                     RunPauseButton().IsEnabled(false);
                     RunResumeButton().IsEnabled(false);
@@ -3171,6 +3373,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ToolOutcomeStatus().Text(L"Invocation unavailable");
                 ToolOutcomeSummary().Text(winrt::to_hstring(message));
                 ToolOutcome().Text(L"No canonical Manager payload was returned.");
+            }
+        } else if (historyAction) {
+            if (requestedHistoryProject == selectedProjectId_) {
+                if (operationalView.snapshot) ApplyRunHistory(*operationalView.snapshot);
+                else RunHistoryState().Text(winrt::to_hstring(
+                    "Run history unavailable · " + message));
             }
         } else if (operationalAction) {
             if (operationalView.snapshot) {

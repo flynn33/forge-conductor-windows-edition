@@ -626,6 +626,39 @@ void testMaintenanceRoundTrips()
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 
+void testProjectRunHistoryRoundTrips()
+{
+    const auto project = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    const auto framed = take(Manager::ManagerProtocolCodec::encodeRequest(request(
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, project})));
+    const auto decoded = take(Manager::ManagerProtocolCodec::decodeRequest(framed));
+    const auto& operation = std::get<Manager::ManagerOperationalRequest>(
+        decoded.payload);
+    REQUIRE(operation.area == Manager::ManagerOperationalArea::Runs);
+    REQUIRE(operation.projectId == project);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(decoded)) == framed);
+    const auto root = Json::parse(payloadText(framed));
+    REQUIRE(root.at("params").at("project_id").get<std::string>() ==
+        project.value());
+
+    const Manager::ManagerOperationalSnapshot history{
+        Manager::ManagerOperationalArea::Runs,
+        "Recent Manager-owned runs · selected project",
+        {"20000000-0000-4000-8000-000000000001 · completed\nfixture task"}};
+    const auto responseFrame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{history})));
+    const auto responseDecoded = take(
+        Manager::ManagerProtocolCodec::decodeResponse(responseFrame));
+    const auto& result = std::get<Manager::ManagerOperationalSnapshot>(
+        std::get<Manager::ManagerResult>(responseDecoded.body));
+    REQUIRE(result.area == Manager::ManagerOperationalArea::Runs);
+    REQUIRE(result.lines == history.lines);
+}
+
 void testProjectWorkflowRoundTrips()
 {
     const Domain::ProjectMemoryDescriptor descriptor{
@@ -1388,6 +1421,7 @@ int main()
         {"tool-outcome-duration", testToolOutcomePreservesMeasuredDuration},
         {"project-workflow-round-trips", testProjectWorkflowRoundTrips},
         {"maintenance-round-trips", testMaintenanceRoundTrips},
+        {"project-run-history-round-trips", testProjectRunHistoryRoundTrips},
         {"settings-update-outcome-round-trips",
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},

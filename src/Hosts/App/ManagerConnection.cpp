@@ -568,6 +568,7 @@ OperationalView ManagerConnection::operational(
     const Manager::ManagerOperationalAction action,
     std::string sessionId,
     std::string summary,
+    std::optional<std::string> projectId,
     const std::stop_token cancellation) noexcept
 {
     try {
@@ -578,6 +579,12 @@ OperationalView ManagerConnection::operational(
             if (!value) return {false, value.error().message, std::nullopt};
             parsed = std::move(value).value();
         }
+        std::optional<Domain::ProjectId> parsedProject;
+        if (projectId) {
+            auto value = Domain::ProjectId::parse(*projectId);
+            if (!value) return {false, value.error().message, std::nullopt};
+            parsedProject = std::move(value).value();
+        }
         auto clock = std::make_shared<W::SystemClock>();
         auto context = operationContext(clock, cancellation, std::chrono::seconds{15});
         auto created = connectManager(alphaProfile_, context, clock);
@@ -585,7 +592,8 @@ OperationalView ManagerConnection::operational(
         auto client = std::move(created).value();
         auto result = client->operational(
             Manager::ManagerOperationalRequest{
-                area, action, std::move(parsed), std::move(summary)}, context);
+                area, action, std::move(parsed), std::move(summary),
+                std::move(parsedProject)}, context);
         client->shutdown();
         if (!result) return {false, result.error().message, std::nullopt};
         auto snapshot = std::move(result).value();
