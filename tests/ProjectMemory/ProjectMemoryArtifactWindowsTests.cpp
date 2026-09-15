@@ -1070,9 +1070,23 @@ void snapshotRoundTripSecurityAndRollback()
                 operationContext("artifact-status-after-preview", fixture.now)))
                 .recordCount == 0U);
 
+    const auto changedSincePreview = fixture.repository->importMemory(
+        Domain::ImportProjectMemoryRequest{
+            projectId, exported.artifact, false, false,
+            parse<Domain::Sha256Digest>(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")},
+        operationContext("artifact-preview-checksum-mismatch", fixture.now));
+    REQUIRE(!changedSincePreview);
+    REQUIRE(changedSincePreview.error().code == Domain::ErrorCodes::IntegrityFailure);
+    REQUIRE(std::filesystem::exists(artifact));
+    REQUIRE(take(fixture.repository->status(
+                Domain::ProjectMemoryStatusRequest{projectId},
+                operationContext("artifact-status-after-mismatch", fixture.now)))
+                .recordCount == 0U);
+
     const auto imported = take(fixture.repository->importMemory(
         Domain::ImportProjectMemoryRequest{
-            projectId, exported.artifact, false, false},
+            projectId, exported.artifact, false, false, preview.checksum},
         operationContext("artifact-import", fixture.now)));
     REQUIRE(imported.disposition == Domain::ImportDisposition::Imported);
     REQUIRE(imported.imported.size() == 51U);

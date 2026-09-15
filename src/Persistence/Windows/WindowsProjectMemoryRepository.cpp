@@ -4843,6 +4843,12 @@ WindowsProjectMemoryRepository::importMemory(
             fail(std::move(validationError));
         }
         auto validated = take(std::move(validationResult));
+        if (request.expectedChecksum &&
+            validated.checksum != *request.expectedChecksum) {
+            fail(Domain::makeError(
+                Domain::ErrorCodes::IntegrityFailure,
+                "The project-memory artifact no longer matches the preview checksum. Preview it again before importing."));
+        }
         if (request.preview) {
             return Domain::ProjectMemoryImport{
                 request.projectId,

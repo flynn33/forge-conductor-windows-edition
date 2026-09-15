@@ -300,6 +300,7 @@ void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
     if (telemetryTimer_) telemetryTimer_.Stop();
     actionScheduler_.cancel();
     cancellation_.request_stop();
+    providerContractCancellation_.request_stop();
 }
 
 void MainWindow::WindowContentLoaded(
@@ -467,6 +468,13 @@ void MainWindow::ProviderDiscoverClicked(Windows::Foundation::IInspectable const
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderModels); }
 void MainWindow::ProviderContractClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderContract); }
+void MainWindow::ProviderContractCancelClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    providerContractCancellation_.request_stop();
+    ProviderContractCancelButton().IsEnabled(false);
+    ProviderContractState().Text(L"Cancellation requested. Waiting for the bounded provider request to stop.");
+}
 void MainWindow::ProviderModelSelectionChanged(
     Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
@@ -610,6 +618,46 @@ void MainWindow::ProjectEditCloseClicked(Windows::Foundation::IInspectable const
     selectedMemoryProjectId_.clear();
     ProjectForgetConfirmation().Text(L"");
     ProjectEditCard().Visibility(Visibility::Collapsed);
+}
+void MainWindow::ProjectArchiveExportClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectArchiveExport); }
+void MainWindow::ProjectArchivePreviewClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectArchivePreview); }
+void MainWindow::ProjectArchiveImportClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectArchiveImport); }
+void MainWindow::ProjectArchivePathChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
+{
+    ClearArchivePreview();
+    ProjectArchivePreviewState().Text(L"Artifact selection changed. Verify it again before importing.");
+}
+void MainWindow::ProjectArchiveBrowseClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    try {
+        auto nativeWindow = this->m_inner.as<::IWindowNative>();
+        HWND hwnd{};
+        winrt::check_hresult(nativeWindow->get_WindowHandle(&hwnd));
+        winrt::com_ptr<::IFileDialog> dialog;
+        winrt::check_hresult(::CoCreateInstance(CLSID_FileOpenDialog, nullptr,
+            CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.put())));
+        DWORD options{};
+        winrt::check_hresult(dialog->GetOptions(&options));
+        winrt::check_hresult(dialog->SetOptions(options | FOS_FORCEFILESYSTEM | FOS_FILEMUSTEXIST));
+        winrt::check_hresult(dialog->SetTitle(L"Choose a project-memory export artifact"));
+        const auto shown = dialog->Show(hwnd);
+        if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+        winrt::check_hresult(shown);
+        winrt::com_ptr<::IShellItem> file;
+        winrt::check_hresult(dialog->GetResult(file.put()));
+        PWSTR path{};
+        winrt::check_hresult(file->GetDisplayName(SIGDN_FILESYSPATH, &path));
+        ProjectArchivePath().Text(path);
+        ::CoTaskMemFree(path);
+        ProjectArchiveState().Text(L"Artifact selected. Verify and preview it before importing.");
+    } catch (const winrt::hresult_error& error) {
+        ProjectArchiveState().Text(L"The Windows artifact picker failed: " + error.message());
+    }
 }
 void MainWindow::LmStudioInspectClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::LmStudioInspect); }
@@ -831,6 +879,9 @@ void MainWindow::ProjectSelectionChanged(
     const auto nextProjectId = projects_[static_cast<std::size_t>(index)].id.value();
     if (nextProjectId != selectedProjectId_) {
         ClearSelectedRun();
+        ClearArchivePreview();
+        ProjectArchiveExportState().Text(L"No archive created for this selection.");
+        ProjectArchivePreviewState().Text(L"Project selection changed. Verify an artifact for this project.");
         selectedMemoryRecord_.reset();
         selectedMemoryProjectId_.clear();
         ProjectEditCard().Visibility(Visibility::Collapsed);
@@ -1781,6 +1832,9 @@ void MainWindow::ClearSelectedRun()
 void MainWindow::ClearSelectedProject()
 {
     ClearSelectedRun();
+    ClearArchivePreview();
+    ProjectArchiveExportState().Text(L"No archive created for this selection.");
+    ProjectArchivePreviewState().Text(L"No artifact verified for this project.");
     selectedMemoryRecord_.reset();
     selectedMemoryProjectId_.clear();
     ProjectEditCard().Visibility(Visibility::Collapsed);
@@ -2093,6 +2147,14 @@ void MainWindow::ApplyLmStudio(
         "\nCLU: " + snapshot.continuityPluginPath +
         "\nConfiguration: " + snapshot.mcpConfigurationPath));
     ApplyLmStudioIdentities();
+}
+
+void MainWindow::ClearArchivePreview()
+{
+    archivePreviewProjectId_.clear();
+    archivePreviewPath_.clear();
+    archivePreviewChecksum_.clear();
+    ProjectArchiveImportButton().IsEnabled(false);
 }
 
 void MainWindow::ApplyLmStudioIdentities()
@@ -3082,7 +3144,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool projectAction = action == Action::ProjectList ||
         action == Action::ProjectRegister || action == Action::ProjectLoad ||
         action == Action::ProjectRemember || action == Action::ProjectUpdate ||
-        action == Action::ProjectForget;
+        action == Action::ProjectForget ||
+        action == Action::ProjectArchiveExport ||
+        action == Action::ProjectArchivePreview ||
+        action == Action::ProjectArchiveImport;
     const bool lmStudioAction = action == Action::LmStudioInspect ||
         action == Action::LmStudioRepair || action == Action::LmStudioActivate;
     const bool toolsAction = action == Action::ToolsList || action == Action::ToolInvoke;
@@ -3112,6 +3177,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string toolArguments;
     std::string editedProjectId;
     std::string editedRecordId;
+    std::string archiveProject;
+    std::string archivePath;
+    std::string archiveChecksum;
     std::string operationalSessionId;
     std::string operationalSummary;
     const auto requestedOperationalArea = operationalArea_;
@@ -3274,6 +3342,41 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
         toolArguments = arguments.dump();
     }
+    if (action == Action::ProjectArchiveExport ||
+        action == Action::ProjectArchivePreview ||
+        action == Action::ProjectArchiveImport) {
+        archiveProject = selectedProjectId_;
+        if (archiveProject.empty()) {
+            ProjectArchiveState().Text(L"Select an authorized project before using its archive.");
+            co_return;
+        }
+        toolProject = archiveProject;
+        toolName = action == Action::ProjectArchiveExport
+            ? "project_memory.export" : "project_memory.import";
+        nlohmann::json arguments = {{"project_id", archiveProject}};
+        if (action != Action::ProjectArchiveExport) {
+            archivePath = winrt::to_string(ProjectArchivePath().Text());
+            if (archivePath.empty()) {
+                ProjectArchiveState().Text(L"Choose a project-memory export artifact first.");
+                co_return;
+            }
+            arguments["artifact"] = archivePath;
+            arguments["preview"] = action == Action::ProjectArchivePreview;
+            if (action == Action::ProjectArchiveImport) {
+                if (archivePreviewProjectId_ != archiveProject ||
+                    archivePreviewPath_ != archivePath ||
+                    archivePreviewChecksum_.empty() ||
+                    ProjectArchiveConfirmation().Text() != L"IMPORT") {
+                    ProjectArchiveState().Text(
+                        L"Verify this exact project and artifact, then type IMPORT before applying records.");
+                    co_return;
+                }
+                archiveChecksum = archivePreviewChecksum_;
+                arguments["expected_checksum"] = archiveChecksum;
+            }
+        }
+        toolArguments = arguments.dump();
+    }
     if (action == Action::OperationalClose) {
         operationalSessionId = winrt::to_string(OperationalSessionId().Text());
         operationalSummary = winrt::to_string(OperationalSummary().Text());
@@ -3318,6 +3421,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ProjectState().Text(queued);
                 if (action == Action::ProjectUpdate || action == Action::ProjectForget)
                     ProjectMemoryActionState().Text(queued);
+                if (action == Action::ProjectArchiveExport ||
+                    action == Action::ProjectArchivePreview ||
+                    action == Action::ProjectArchiveImport)
+                    ProjectArchiveState().Text(queued);
             }
             else if (lmStudioAction) {
                 LmStudioRegistrationState().Text(queued);
@@ -3358,6 +3465,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         ProjectState().Text(L"Contacting the Manager…");
         if (action == Action::ProjectUpdate || action == Action::ProjectForget)
             ProjectMemoryActionState().Text(L"Validating exact project and record binding…");
+        if (action == Action::ProjectArchiveExport)
+            ProjectArchiveState().Text(L"Exporting a bounded, redacted project snapshot…");
+        else if (action == Action::ProjectArchivePreview)
+            ProjectArchiveState().Text(L"Verifying project scope and artifact checksum without changes…");
+        else if (action == Action::ProjectArchiveImport)
+            ProjectArchiveState().Text(L"Rechecking preview checksum, then importing exact project records…");
     } else if (lmStudioAction) {
         const auto pending = action == Action::LmStudioRepair
             ? L"Repairing native registration · preserving foreign MCP entries · up to two minutes…"
@@ -3382,8 +3495,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         action == Action::ProviderTest || action == Action::ProviderModels ||
         action == Action::ProviderContract) {
         ProviderState().Text(L"Working…");
-        if (action == Action::ProviderContract)
+        if (action == Action::ProviderContract) {
+            providerContractCancellation_ = std::stop_source{};
+            ProviderContractCancelButton().IsEnabled(true);
             ProviderContractState().Text(L"Waiting for a disposable model-only response…");
+        }
     } else {
         ManagerState().Text(L"Connecting…");
         GenericState().Text(L"Connecting…");
@@ -3452,7 +3568,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             break;
         case Action::ProviderContract:
             message = connection_->probeProviderContract(
-                *submitted, cancellation_.get_token());
+                *submitted, providerContractCancellation_.get_token());
             break;
         case Action::SettingsLoad:
             loaded = connection_->providerSettings(cancellation_.get_token());
@@ -3562,6 +3678,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             break;
         case Action::ProjectUpdate:
         case Action::ProjectForget:
+        case Action::ProjectArchiveExport:
+        case Action::ProjectArchivePreview:
+        case Action::ProjectArchiveImport:
             toolOutcomeView = connection_->invokeTool(
                 std::move(toolProject), std::move(toolName), std::move(toolArguments),
                 cancellation_.get_token());
@@ -3671,6 +3790,109 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ProjectForgetConfirmation().Text(L"");
                     ProjectEditCard().Visibility(Visibility::Collapsed);
                     followUp = Action::ProjectLoad;
+                }
+            } else if (action == Action::ProjectArchiveExport ||
+                action == Action::ProjectArchivePreview ||
+                action == Action::ProjectArchiveImport) {
+                const auto bindingCurrent = archiveProject == selectedProjectId_ &&
+                    (action == Action::ProjectArchiveExport ||
+                     archivePath == winrt::to_string(ProjectArchivePath().Text()));
+                if (!bindingCurrent) {
+                    ProjectArchiveState().Text(
+                        L"Archive command returned after the project or artifact changed. The current selection was left untouched.");
+                } else {
+                    ProjectArchiveState().Text(winrt::to_hstring(message));
+                    ProjectState().Text(winrt::to_hstring(message));
+                    const auto* outcome = toolOutcomeView.snapshot
+                        ? &*toolOutcomeView.snapshot : nullptr;
+                    if (!outcome || !outcome->ok ||
+                        outcome->projectId.value() != archiveProject ||
+                        outcome->toolName != toolName) {
+                        if (action == Action::ProjectArchivePreview) {
+                            ClearArchivePreview();
+                            ProjectArchivePreviewState().Text(winrt::to_hstring(
+                                "Verification failed · " + message));
+                        } else if (action == Action::ProjectArchiveImport) {
+                            ClearArchivePreview();
+                            ProjectArchivePreviewState().Text(winrt::to_hstring(
+                                "Import not confirmed · " + message +
+                                ". Verify again before retrying."));
+                        } else {
+                            ProjectArchiveExportState().Text(winrt::to_hstring(
+                                "Export unavailable · " + message));
+                        }
+                    } else {
+                        try {
+                        const auto payload = nlohmann::json::parse(
+                            outcome->canonicalPayload, nullptr, false);
+                        const auto valid = payload.is_object() &&
+                            payload.value("ok", false) &&
+                            payload.value("project_id", std::string{}) == archiveProject;
+                        if (!valid) {
+                            ClearArchivePreview();
+                            ProjectArchiveState().Text(L"The Manager returned an invalid archive readback.");
+                        } else if (action == Action::ProjectArchiveExport) {
+                            const auto artifact = payload.value("artifact", std::string{});
+                            const auto checksum = payload.value("checksum", std::string{});
+                            const auto count = payload.value("record_count", 0U);
+                            if (artifact.empty() || checksum.size() != 64U) {
+                                ProjectArchiveExportState().Text(L"Export readback lacks an artifact or checksum.");
+                            } else {
+                                ProjectArchiveExportState().Text(winrt::to_hstring(
+                                    std::to_string(count) + " records · SHA-256 " + checksum +
+                                    "\n" + artifact));
+                                ProjectArchivePath().Text(winrt::to_hstring(artifact));
+                                ProjectArchivePreviewState().Text(
+                                    L"Export created. Verify and preview it before importing.");
+                            }
+                        } else if (action == Action::ProjectArchivePreview) {
+                            const auto checksum = payload.value("checksum", std::string{});
+                            const auto count = payload.value("record_count", 0U);
+                            const auto importable = payload.value("importable_count", 0U);
+                            if (!payload.value("preview", false) ||
+                                payload.value("disposition", std::string{}) != "preview" ||
+                                checksum.size() != 64U || importable > count) {
+                                ClearArchivePreview();
+                                ProjectArchivePreviewState().Text(
+                                    L"The preview did not return a valid project-bound verification.");
+                            } else {
+                                archivePreviewProjectId_ = archiveProject;
+                                archivePreviewPath_ = archivePath;
+                                archivePreviewChecksum_ = checksum;
+                                ProjectArchiveImportButton().IsEnabled(importable > 0U);
+                                ProjectArchivePreviewState().Text(winrt::to_hstring(
+                                    "Verified SHA-256 " + checksum + " · " +
+                                    std::to_string(count) + " records, " +
+                                    std::to_string(importable) +
+                                    " importable. No records changed." +
+                                    (importable ? " Type IMPORT to apply." : " Nothing to import.")));
+                            }
+                        } else {
+                            if (!payload.contains("count") ||
+                                !payload.at("count").is_number_unsigned() ||
+                                !payload.contains("results") ||
+                                !payload.at("results").is_array() ||
+                                payload.at("results").size() !=
+                                    payload.at("count").get<std::size_t>()) {
+                                ClearArchivePreview();
+                                ProjectArchiveState().Text(
+                                    L"Import readback lacks a verified record count. Refresh project memory to inspect it.");
+                            } else {
+                                const auto count = payload.at("count").get<std::size_t>();
+                                ClearArchivePreview();
+                                ProjectArchiveConfirmation().Text(L"");
+                                ProjectArchivePreviewState().Text(winrt::to_hstring(
+                                    "Manager imported " + std::to_string(count) +
+                                    " project-memory records after checksum revalidation. Preview again for another import."));
+                                followUp = Action::ProjectLoad;
+                            }
+                        }
+                        } catch (const std::exception&) {
+                            ClearArchivePreview();
+                            ProjectArchiveState().Text(
+                                L"The Manager returned a malformed archive readback. Refresh before another action.");
+                        }
+                    }
                 }
             } else ProjectState().Text(winrt::to_hstring(message));
         } else if (lmStudioAction) {
@@ -3844,8 +4066,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 providerSettings_ = submitted;
             }
             ProviderState().Text(winrt::to_hstring(message));
-            if (action == Action::ProviderContract)
+            if (action == Action::ProviderContract) {
+                ProviderContractCancelButton().IsEnabled(false);
                 ProviderContractState().Text(winrt::to_hstring(message));
+            }
             if (action == Action::ProviderSave) followUp = Action::ProviderLoad;
         } else {
             if (action == Action::Refresh && telemetryView.snapshot) {

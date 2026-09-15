@@ -385,6 +385,7 @@ void addProjectProperty(Json& properties)
         properties["artifact"] = string;
         properties["preview"] = primitive("boolean");
         properties["merge_policy"] = string;
+        properties["expected_checksum"] = string;
         properties["deadline_ms"] = primitive("integer");
         return closedObjectFromProperties(
             std::move(properties), {"project_id", "artifact"});

@@ -1,11 +1,18 @@
 # Changelog
 
+## 1.1.27 — Project archive preview fence
+
+- Add a full-width Projects archive workflow for exact-project export, artifact selection, non-mutating verification preview, and confirmed import. The import command carries the preview's checksum; the repository rejects a changed valid artifact before a write and requires a fresh preview.
+- Read import artifacts from the application's exact project-owned exports directory rather than an unrelated authorized workspace root. The artifact store still rejects foreign project paths, non-immediate children, and unsafe filesystem links.
+- Add a cancellable disposable Responses contract probe. Archive output is labeled as memory integrity, not managed-run completion evidence.
+- Focused artifact, MCP contract, and native app compilation passed. Signed installed archive interaction and final all-view acceptance remain open.
+
 ## 1.1.26 — Runtime layout and Responses contract readback
 
 - Move exact project-bound managed jobs and stored results into a full-width Runtimes card. Exclude the inventory summary from job-row parsing; installed 1.1.25 exposed a phantom job row despite correct counts.
 - Add a separate disposable, model-only Responses contract probe in Provider. It validates an actual response ID and token usage without treating model discovery, a managed run, or a desktop chat as the same result. Clear Provider's stale “Working…” label when discovery finishes.
 - Installed 1.1.25 recorded a read-only `agent_list` primary MCP result in the exact Manager deployment after an LM Studio desktop model call and following answer. This establishes only the observed native call, not source-to-successor desktop continuity or trusted completion.
-- Native app compilation passed for the layout and probe changes. Full release, signed install, and final view acceptance for 1.1.26 remain open.
+- Full Release tests passed (151/151). A signed 1.1.26 MSIX was unpacked and verified (324 payload files), installed over a checked backup, and inspected in the native app: two exact-project runtime job rows without the phantom summary; Provider discovery and a disposable real Responses ID/usage probe worked. Final all-view and continuity/evidence acceptance remain open.
 
 ## 1.1.25 — Project-bound runtime job results
 

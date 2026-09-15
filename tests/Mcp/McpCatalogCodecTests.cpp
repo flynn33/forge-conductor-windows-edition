@@ -186,6 +186,11 @@ void testSourceSchemasAndWindowsDelta()
     REQUIRE(exported.at("properties").size() == 2U);
     REQUIRE(exported.at("properties").contains("deadline_ms"));
 
+    const auto imported = schema(tools, "project_memory.import");
+    REQUIRE(imported.at("additionalProperties") == false);
+    REQUIRE(imported.at("required") == Json::array({"project_id", "artifact"}));
+    REQUIRE(imported.at("properties").at("expected_checksum").at("type") == "string");
+
     const auto checkpoint = schema(tools, "continuity.checkpoint");
     REQUIRE(checkpoint.at("additionalProperties") == false);
     REQUIRE(checkpoint.at("required") ==

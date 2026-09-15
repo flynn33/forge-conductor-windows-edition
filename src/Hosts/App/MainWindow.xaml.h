@@ -33,6 +33,7 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProviderTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderDiscoverClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderContractClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProviderContractCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderModelSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void SettingsLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -65,6 +66,12 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProjectUpdateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectForgetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectEditCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectArchiveExportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectArchiveBrowseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectArchivePathChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+    void ProjectArchivePreviewClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectArchiveImportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void LmStudioInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -94,6 +101,7 @@ private:
         SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
+        ProjectArchiveExport, ProjectArchivePreview, ProjectArchiveImport,
         LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
         OperationalInspect, OperationalPrune, OperationalClose, RunHistory
     };
@@ -129,6 +137,7 @@ private:
     void UpdateRunProjectLabel();
     void ClearSelectedRun();
     void ClearSelectedProject();
+    void ClearArchivePreview();
     void SelectPage(const winrt::hstring& tag);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
@@ -165,6 +174,9 @@ private:
     bool feedDisplayPaused_{};
     bool rebuildingTools_{};
     std::string selectedProjectId_;
+    std::string archivePreviewProjectId_;
+    std::string archivePreviewPath_;
+    std::string archivePreviewChecksum_;
     std::string verifiedRunId_;
     std::string verifiedRunProjectId_;
     std::wstring selectedPageValueName_{L"SelectedPage"};
@@ -172,6 +184,7 @@ private:
     std::wstring selectedRunValueName_{L"SelectedRunId"};
     std::wstring selectedRunProjectValueName_{L"SelectedRunProjectId"};
     std::stop_source cancellation_;
+    std::stop_source providerContractCancellation_;
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};
     bool rebuildingProjects_{};
