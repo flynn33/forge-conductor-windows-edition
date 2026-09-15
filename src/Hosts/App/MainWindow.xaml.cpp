@@ -11,6 +11,7 @@
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <ctime>
 #include <limits>
 #include <optional>
 #include <sstream>
@@ -140,6 +141,34 @@ void applyMetric(
             static_cast<float>(x), static_cast<float>(y)});
     }
     return points;
+}
+
+[[nodiscard]] std::vector<double> calmHistory(const std::vector<double>& values)
+{
+    constexpr std::size_t targetPoints = 72U;
+    if (values.size() <= targetPoints) return values;
+    std::vector<double> result;
+    result.reserve(targetPoints);
+    for (std::size_t index{}; index < targetPoints; ++index) {
+        const auto begin = index * values.size() / targetPoints;
+        const auto end = (index + 1U) * values.size() / targetPoints;
+        double total{};
+        for (auto sample = begin; sample < end; ++sample) total += values[sample];
+        result.push_back(total / static_cast<double>(end - begin));
+    }
+    return result;
+}
+
+[[nodiscard]] hstring eventLocalTime(
+    const ::ForgeConductor::Domain::UtcTimePoint timestamp)
+{
+    const auto instant = std::chrono::system_clock::to_time_t(timestamp);
+    std::tm local{};
+    if (::localtime_s(&local, &instant) != 0) return L"--:--:--";
+    wchar_t text[16]{};
+    static_cast<void>(swprintf_s(text, L"%02d:%02d:%02d",
+        local.tm_hour, local.tm_min, local.tm_sec));
+    return hstring{text};
 }
 
 [[nodiscard]] hstring currentLocalTime()
@@ -294,6 +323,12 @@ void MainWindow::OpenProviderClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Provider"); }
 void MainWindow::OpenManagerClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Manager"); }
+void MainWindow::OpenAutonomyClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Autonomy"); }
+void MainWindow::OpenFeedClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Feed"); }
+void MainWindow::OpenSettingsClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Settings"); }
 
 void MainWindow::SelectPage(const winrt::hstring& tag)
 {
@@ -458,6 +493,7 @@ void MainWindow::NavigationChanged(
             diagnostics ? L"\uE713" : L"\uE77B");
         OperationalPruneButton().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalSessionCard().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+        OperationalManagerCard().Visibility(tag == L"Manager" ? Visibility::Visible : Visibility::Collapsed);
         OperationalCards().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalList().Visibility(agents ? Visibility::Collapsed : Visibility::Visible);
         OperationalEmptyTitle().Text(L"Live inventory unavailable");
@@ -526,6 +562,13 @@ void MainWindow::NavigationChanged(
 }
 
 void MainWindow::TelemetryChartSizeChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::SizeChangedEventArgs const&)
+{
+    if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
+}
+
+void MainWindow::TelemetryGaugeSizeChanged(
     Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::SizeChangedEventArgs const&)
 {
@@ -666,16 +709,35 @@ void MainWindow::ApplyTelemetryPresentation(
     applyMetric(GpuValue(), GpuState(), GpuGauge(), presentation.gpu);
     applyMetric(
         ContextValue(), ContextState(), ContextGauge(), presentation.context);
+    const auto updateFill = [](const Microsoft::UI::Xaml::Controls::Border& track,
+                               const Microsoft::UI::Xaml::Controls::Border& fill,
+                               const ::ForgeConductor::Hosts::App::MetricPresentation& metric) {
+        fill.Width(metric.gaugePercent
+            ? track.ActualWidth() * std::clamp(*metric.gaugePercent, 0.0, 100.0) / 100.0
+            : 0.0);
+    };
+    updateFill(CpuGaugeTrack(), CpuGaugeFill(), presentation.cpu);
+    updateFill(RamGaugeTrack(), RamGaugeFill(), presentation.ram);
+    updateFill(GpuGaugeTrack(), GpuGaugeFill(), presentation.gpu);
+    updateFill(ContextGaugeTrack(), ContextGaugeFill(), presentation.context);
     ContinuityContextState().Text(winrt::to_hstring(
         presentation.context.value + " · " + presentation.context.state));
-    ManagerHealth().Text(winrt::to_hstring(presentation.managerStatus));
+    ManagerHealth().Text(winrt::to_hstring(
+        snapshot.manager.serviceActive
+            ? "PID " + std::to_string(snapshot.manager.processId) +
+                " · Native Manager online"
+            : "Native Manager unavailable"));
+    HeroManagerLabel().Text(snapshot.manager.serviceActive
+        ? L"Service active" : L"Service unavailable");
     ProviderHealth().Text(winrt::to_hstring(presentation.providerStatus));
     StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
     ContinuityHealth().Text(winrt::to_hstring(presentation.continuityStatus));
-    SystemStrip().Text(winrt::to_hstring(presentation.systemStatus));
+    SystemStrip().Text(winrt::to_hstring(snapshot.resources.host));
+    HeroOsText().Text(winrt::to_hstring(
+        snapshot.resources.platform + " · " + snapshot.resources.architecture));
     SamplingStrip().Text(winrt::to_hstring(presentation.samplingStatus));
     DiskState().Text(winrt::to_hstring(presentation.diskStatus));
-    WorkflowStatus().Text(winrt::to_hstring(presentation.workflowStatus));
+    WorkflowStatus().Text(winrt::to_hstring(presentation.managerStatus));
     NavigationManagerState().Text(L"System online");
     LastUpdatedText().Text(currentLocalTime());
     const auto online = Microsoft::UI::Xaml::Media::SolidColorBrush{
@@ -740,9 +802,9 @@ void MainWindow::ApplyTelemetryPresentation(
 
     const auto width = std::max(320.0, HistoryCanvas().ActualWidth());
     const auto height = std::max(1.0, HistoryCanvas().ActualHeight());
-    CpuHistoryLine().Points(chartPoints(presentation.cpuHistory, width, height));
-    RamHistoryLine().Points(chartPoints(presentation.ramHistory, width, height));
-    GpuHistoryLine().Points(chartPoints(presentation.gpuHistory, width, height));
+    CpuHistoryLine().Points(chartPoints(calmHistory(presentation.cpuHistory), width, height));
+    RamHistoryLine().Points(chartPoints(calmHistory(presentation.ramHistory), width, height));
+    GpuHistoryLine().Points(chartPoints(calmHistory(presentation.gpuHistory), width, height));
     MiniCpuLine().Points(chartPoints(presentation.cpuHistory,
         std::max(1.0, MiniCpuCanvas().ActualWidth()),
         std::max(1.0, MiniCpuCanvas().ActualHeight())));
@@ -807,11 +869,40 @@ void MainWindow::ApplyTelemetryPresentation(
     }
 
     ActivityTimeline().Children().Clear();
-    for (const auto& item : presentation.timeline) {
-        Microsoft::UI::Xaml::Controls::TextBlock row;
-        row.Text(winrt::to_hstring(item));
-        row.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
-        row.IsTextSelectionEnabled(true);
+    if (snapshot.recentEvents.empty()) {
+        Microsoft::UI::Xaml::Controls::TextBlock empty;
+        empty.Text(L"No audited tool activity yet. New outcomes appear here live.");
+        empty.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{255, 153, 173, 196}});
+        ActivityTimeline().Children().Append(empty);
+    }
+    for (const auto& event : snapshot.recentEvents) {
+        Microsoft::UI::Xaml::Controls::StackPanel row;
+        row.Orientation(Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+        row.Spacing(9);
+        Microsoft::UI::Xaml::Controls::TextBlock timestamp;
+        timestamp.Text(eventLocalTime(event.timestamp));
+        timestamp.Width(76);
+        timestamp.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{255, 153, 173, 196}});
+        row.Children().Append(timestamp);
+        Microsoft::UI::Xaml::Shapes::Ellipse dot;
+        dot.Width(7);
+        dot.Height(7);
+        dot.VerticalAlignment(Microsoft::UI::Xaml::VerticalAlignment::Center);
+        const bool failed = event.error.has_value() || event.status == "error";
+        dot.Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            failed ? Windows::UI::Color{255, 255, 115, 113}
+                : Windows::UI::Color{255, 61, 220, 151}});
+        row.Children().Append(dot);
+        Microsoft::UI::Xaml::Controls::TextBlock outcome;
+        auto label = event.tool + " · " + event.status;
+        if (event.duration) label += " · " +
+            std::to_string(event.duration->count()) + " ms";
+        outcome.Text(winrt::to_hstring(label));
+        outcome.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+        outcome.Width(430);
+        row.Children().Append(outcome);
         ActivityTimeline().Children().Append(row);
     }
 
@@ -939,11 +1030,17 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
     applyMetric(RamValue(), RamState(), RamGauge(), unavailable);
     applyMetric(GpuValue(), GpuState(), GpuGauge(), unavailable);
     applyMetric(ContextValue(), ContextState(), ContextGauge(), unavailable);
+    CpuGaugeFill().Width(0);
+    RamGaugeFill().Width(0);
+    GpuGaugeFill().Width(0);
+    ContextGaugeFill().Width(0);
     ManagerHealth().Text(winrt::to_hstring("Disconnected · " + explanation));
+    HeroManagerLabel().Text(L"Service unavailable");
     ProviderHealth().Text(L"Unavailable while Manager is disconnected");
     StoreHealth().Text(L"Unavailable while Manager is disconnected");
     ContinuityHealth().Text(L"Unavailable while Manager is disconnected");
     SystemStrip().Text(L"System telemetry disconnected");
+    HeroOsText().Text(L"Waiting for native host identity");
     SamplingStrip().Text(winrt::to_hstring(explanation));
     DiskState().Text(winrt::to_hstring(explanation));
     WorkflowStatus().Text(winrt::to_hstring(explanation));

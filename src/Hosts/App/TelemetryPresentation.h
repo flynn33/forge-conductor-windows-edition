@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <chrono>
 #include <cstdint>
 #include <cwchar>
 #include <iomanip>
@@ -212,10 +211,7 @@ struct TelemetryPresentation final {
                  << *snapshot.resources.measuredSampleIntervalMilliseconds;
         presentation.samplingStatus += " · measured " + interval.str() + " ms";
     }
-    presentation.samplingStatus += " · " + snapshot.resources.samplingPolicy;
-    presentation.samplingStatus += " · captured UTC ms " + std::to_string(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            snapshot.capturedAt.time_since_epoch()).count());
+    presentation.samplingStatus += " · native resource sample";
 
     if (snapshot.resources.cpuPerLogicalProcessor.value) {
         const auto& logical = *snapshot.resources.cpuPerLogicalProcessor.value;
@@ -286,7 +282,9 @@ struct TelemetryPresentation final {
     presentation.ramHistory.reserve(snapshot.resources.history.size());
     presentation.gpuHistory.reserve(snapshot.resources.history.size());
     presentation.diskHistoryBytesPerSecond.reserve(snapshot.resources.history.size());
+    const auto chartStart = snapshot.resources.capturedAt - std::chrono::seconds{60};
     for (const auto& point : snapshot.resources.history) {
+        if (point.timestamp < chartStart) continue;
         presentation.cpuHistory.push_back(std::clamp(point.cpuPercent, 0.0, 100.0));
         presentation.ramHistory.push_back(std::clamp(point.ramPercent, 0.0, 100.0));
         presentation.gpuHistory.push_back(std::clamp(

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.5 — Direction A live-view finish
+
+- Strengthen the native Rig hierarchy with a distinct machine identity, full-height meters, a readable 60-second chart, and structured recent outcomes.
+- Put run and log navigation in the command center while retaining service lifecycle controls on Manager.
+- Refine the remaining operational views and validate them against installed production-data screenshots.
+
 ## 1.1.4 — Structured native view refinement
 
 - Replace generic operational text dumps with selectable native records, context-specific status headers, detail readback, and an advanced canonical projection.
