@@ -5,6 +5,7 @@
 #include "ForgeConductor/Domain/ProductIdentity.h"
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Windowing.h>
+#include <winrt/Windows.ApplicationModel.h>
 #include <winrt/Windows.Graphics.h>
 #include <winrt/Windows.UI.h>
 #include <winrt/Windows.UI.Text.h>
@@ -169,9 +170,9 @@ void applyMetric(
     return chartPoints(normalized, width, height);
 }
 
-[[nodiscard]] std::vector<double> calmHistory(const std::vector<double>& values)
+[[nodiscard]] std::vector<double> calmHistory(
+    const std::vector<double>& values, const std::size_t targetPoints = 72U)
 {
-    constexpr std::size_t targetPoints = 72U;
     if (values.size() <= targetPoints) return values;
     std::vector<double> result;
     result.reserve(targetPoints);
@@ -183,6 +184,19 @@ void applyMetric(
         result.push_back(total / static_cast<double>(end - begin));
     }
     return result;
+}
+
+[[nodiscard]] std::string currentProductVersion()
+{
+    try {
+        const auto version = Windows::ApplicationModel::Package::Current()
+            .Id().Version();
+        return std::to_string(version.Major) + "." +
+            std::to_string(version.Minor) + "." +
+            std::to_string(version.Build);
+    } catch (...) {
+        return std::string{::ForgeConductor::Domain::ProductVersion};
+    }
 }
 
 [[nodiscard]] std::vector<std::string> dotFields(const std::string_view line)
@@ -360,6 +374,10 @@ void MainWindow::WindowContentLoaded(
             RunId().Text(*savedRun);
         }
     }
+    // The restored page may immediately enqueue a Manager readback. Attach or
+    // launch the authenticated Manager first so a cold-launch catalog does not
+    // time out behind startup.
+    RunAction(Action::Start);
     if (const auto saved = loadSavedText(selectedPageValueName_.c_str())) {
         const auto items = RootNavigation().MenuItems();
         for (std::uint32_t index{}; index < items.Size(); ++index) {
@@ -377,7 +395,6 @@ void MainWindow::WindowContentLoaded(
     telemetryTimer_.Tick([weak](auto const&, auto const&) {
         if (const auto self = weak.get()) self->RunAction(Action::Refresh);
     });
-    RunAction(Action::Start);
     RunAction(Action::SettingsLoad);
     RunAction(Action::ProjectList);
     RunAction(Action::Refresh);
@@ -669,7 +686,7 @@ void MainWindow::OperationalExportClicked(Windows::Foundation::IInspectable cons
             utc.wSecond);
         const nlohmann::json snapshot{
             {"format", "forge-conductor-diagnostic-support-snapshot"},
-            {"product_version", std::string{::ForgeConductor::Domain::ProductVersion}},
+            {"product_version", currentProductVersion()},
             {"captured_at_utc", capturedAt},
             {"source", "bounded Manager doctor and diagnostic readback"},
             {"verified_run_evidence", false},
@@ -1434,13 +1451,13 @@ void MainWindow::ApplyTelemetryPresentation(
     CpuHistoryLine().Points(chartPoints(calmHistory(presentation.cpuHistory), width, height));
     RamHistoryLine().Points(chartPoints(calmHistory(presentation.ramHistory), width, height));
     GpuHistoryLine().Points(chartPoints(calmHistory(presentation.gpuHistory), width, height));
-    MiniCpuLine().Points(sparklinePoints(calmHistory(presentation.cpuHistory),
+    MiniCpuLine().Points(sparklinePoints(calmHistory(presentation.cpuHistory, 30U),
         std::max(1.0, MiniCpuCanvas().ActualWidth()),
         std::max(1.0, MiniCpuCanvas().ActualHeight())));
-    MiniRamLine().Points(sparklinePoints(calmHistory(presentation.ramHistory),
+    MiniRamLine().Points(sparklinePoints(calmHistory(presentation.ramHistory, 30U),
         std::max(1.0, MiniRamCanvas().ActualWidth()),
         std::max(1.0, MiniRamCanvas().ActualHeight())));
-    MiniGpuLine().Points(sparklinePoints(calmHistory(presentation.gpuHistory),
+    MiniGpuLine().Points(sparklinePoints(calmHistory(presentation.gpuHistory, 30U),
         std::max(1.0, MiniGpuCanvas().ActualWidth()),
         std::max(1.0, MiniGpuCanvas().ActualHeight())));
     if (presentation.cpuHistory.empty()) {
@@ -2366,7 +2383,7 @@ void MainWindow::FilterTools()
     }
     ToolsState().Text(winrt::to_hstring(std::to_string(visibleTools_.size()) +
         " of " + std::to_string(tools_.size()) + " Manager-owned tools · select a row for details"));
-    ToolListViewport().Height(std::clamp(
+    ToolListViewport().Height(visibleTools_.empty() ? 285.0 : std::clamp(
         72.0 + static_cast<double>(visibleTools_.size()) * 76.0,
         148.0, 570.0));
     ToolEmptyState().Visibility(visibleTools_.empty()
@@ -2459,7 +2476,7 @@ void MainWindow::ApplyOperational(
             const auto pid = valueAfter("Manager PID ");
             OperationalStatusValue0().Text(winrt::to_hstring(pid.substr(0, pid.find(" · "))));
             OperationalStatusValue1().Text(winrt::to_hstring(
-                std::string{::ForgeConductor::Domain::ProductVersion}));
+                currentProductVersion()));
             OperationalStatusValue2().Text(winrt::to_hstring(valueAfter("Owned operations: ")));
             OperationalStatusValue3().Text(currentDataRoot());
         } else {
@@ -3365,7 +3382,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         } else if (toolsAction) {
             if (toolsView.snapshot) ApplyTools(*toolsView.snapshot);
             ToolsState().Text(winrt::to_hstring(message));
-            if (!toolsView.snapshot && tools_.empty()) ToolEmptyBody().Text(winrt::to_hstring(message));
+            if (!toolsView.snapshot && tools_.empty()) {
+                ToolListViewport().Height(285.0);
+                ToolEmptyState().Visibility(Visibility::Visible);
+                ToolEmptyBody().Text(winrt::to_hstring(message));
+            }
             if (toolOutcomeView.snapshot) {
                 RenderToolOutcome(*toolOutcomeView.snapshot, message);
             } else if (action == Action::ToolInvoke) {

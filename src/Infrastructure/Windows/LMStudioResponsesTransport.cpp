@@ -406,7 +406,7 @@ public:
         : configuration_{validateConfiguration(std::move(configuration))},
           host_{Detail::strictUtf8ToUtf16(configuration_.loopbackHost).value()},
           session_{std::make_shared<InternetHandle>(WinHttpOpen(
-              L"Forge Conductor LM Studio Responses/1.1.12",
+              L"Forge Conductor LM Studio Responses/1.1.13",
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,

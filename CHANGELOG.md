@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.13 — Cold-launch catalog and installed-version correction
+
+- Start and authenticate the Manager before restoring a page that immediately needs its catalog; keep the empty Tools state compact and explicitly recoverable if readback fails.
+- Show the actual installed package version in Manager and locally exported Diagnostics context, instead of relying on a potentially stale compiled label.
+- Smooth only the miniature Rig trend readbacks; leave the measured telemetry values and absolute main chart intact.
+- Continue signed installed all-view and feature acceptance before calling any screenshot final proof.
+
 ## 1.1.12 — Project run history and sharper native readback
 
 - Add a Manager-backed recent-run timeline to Autonomy and Continuity, filtered by the exact selected project and attachable through the existing verified run path.
