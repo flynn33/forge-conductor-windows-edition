@@ -922,6 +922,60 @@ private:
                     "Live MCP role readback unavailable; no session is claimed.";
             }
         }
+        bool toolAuditChecked{};
+        bool primaryToolRecorded{};
+        bool fallbackToolRecorded{};
+        bool continuityToolRecorded{};
+        std::string toolAuditDetail{
+            "No deployment-scoped MCP tool audit was inspected."};
+        if (status.deploymentId && sources.audit != nullptr) {
+            auto recentAudit = sources.audit->recent(200U, context);
+            if (!recentAudit) {
+                toolAuditDetail =
+                    "MCP tool audit readback unavailable; no outcome is claimed.";
+            } else {
+                toolAuditChecked = true;
+                toolAuditDetail =
+                    "No successful native MCP tool outcome is recorded for this exact deployment in the bounded audit readback.";
+                for (const auto& event : recentAudit.value()) {
+                    if (!event.deploymentId ||
+                        *event.deploymentId != *status.deploymentId ||
+                        !event.mcpRole || !event.clientId ||
+                        event.status != "ok") {
+                        continue;
+                    }
+                    bool* recorded{};
+                    std::string_view lane;
+                    switch (*event.mcpRole) {
+                    case Domain::McpRole::Primary:
+                        recorded = &primaryToolRecorded;
+                        lane = "Primary";
+                        break;
+                    case Domain::McpRole::Fallback:
+                        recorded = &fallbackToolRecorded;
+                        lane = "Fallback";
+                        break;
+                    case Domain::McpRole::Clu:
+                        recorded = &continuityToolRecorded;
+                        lane = "CLU";
+                        break;
+                    }
+                    if (recorded == nullptr || *recorded) continue;
+                    *recorded = true;
+                    if (toolAuditDetail.starts_with("No successful")) {
+                        toolAuditDetail = "Recorded native MCP tool success: ";
+                    } else {
+                        toolAuditDetail += " · ";
+                    }
+                    toolAuditDetail += std::string{lane} + " " + event.tool;
+                }
+                if (primaryToolRecorded || fallbackToolRecorded ||
+                    continuityToolRecorded) {
+                    toolAuditDetail +=
+                        ". Audit is not verified evidence or proof of the external caller.";
+                }
+            }
+        }
         return Domain::Result<ManagerLmStudioSnapshot>::success(
             ManagerLmStudioSnapshot{
                 status.lmStudioPresent,
@@ -945,7 +999,12 @@ private:
                     ? 0U
                     : sources.continuityAutomation->trackedProjectCount(),
                 status.detail,
-                std::move(actionDetail)});
+                std::move(actionDetail),
+                toolAuditChecked,
+                primaryToolRecorded,
+                fallbackToolRecorded,
+                continuityToolRecorded,
+                std::move(toolAuditDetail)});
     }
 
     [[nodiscard]] Domain::Result<ManagerToolsSnapshot> toolsSnapshot() const

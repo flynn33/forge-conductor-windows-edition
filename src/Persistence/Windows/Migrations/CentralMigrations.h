@@ -5,7 +5,7 @@
 namespace ForgeConductor::Persistence::Windows::Migrations {
 
 inline constexpr int CentralSourceVersion = 5;
-inline constexpr int CentralPhysicalVersion = 9;
+inline constexpr int CentralPhysicalVersion = 10;
 
 [[nodiscard]] std::span<const MigrationStep> centralMigrationSteps() noexcept;
 [[nodiscard]] std::span<const SchemaObject> centralRequiredSchema() noexcept;

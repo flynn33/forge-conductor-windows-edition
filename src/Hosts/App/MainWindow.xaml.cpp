@@ -953,8 +953,9 @@ void MainWindow::NavigationChanged(
         PageDescription().Text(L"Register authorized folders, select exact project identities, and read or write persistent project memory.");
         RunAction(Action::ProjectList);
     } else if (lmStudioMcp) {
-        PageDescription().Text(L"Inspect, repair, activate, and verify the LM Studio MCP registration.");
+        PageDescription().Text(L"Inspect, repair, and synchronize the native LM Studio MCP registration.");
         RunAction(Action::LmStudioInspect);
+        if (telemetryUiInitialized_ && loadedModels_.empty()) RunAction(Action::ProviderModels);
     } else if (tools) {
         PageDescription().Text(L"Inspect and run the Manager-owned native tool catalog.");
         if (!selectedProjectId_.empty()) {
@@ -1599,6 +1600,7 @@ void MainWindow::ApplyTelemetryPresentation(
         page != "Provider") {
         GenericState().Text(winrt::to_hstring(detail));
     }
+    ApplyLmStudioIdentities();
 }
 
 void MainWindow::ApplyRunReadback(
@@ -1968,6 +1970,9 @@ void MainWindow::ApplyLmStudio(
         snapshot.fallbackPluginInstalled && snapshot.continuityPluginInstalled &&
         snapshot.mcpConfigurationRegistered &&
         snapshot.binaryExecutable;
+    const bool anyRecordedTool = snapshot.primaryToolOutcomeRecorded ||
+        snapshot.fallbackToolOutcomeRecorded ||
+        snapshot.continuityToolOutcomeRecorded;
     LmStudioBadge().Text(installed ? L"REGISTERED" : L"ATTENTION");
     LmStudioHostReadiness().Text(snapshot.lmStudioPresent && snapshot.binaryExecutable
         ? L"LM Studio detected · Forge CLI ready"
@@ -1980,28 +1985,35 @@ void MainWindow::ApplyLmStudio(
         ? L"Live role check not yet run"
         : snapshot.primaryConnectorReady && snapshot.fallbackConnectorReady &&
             snapshot.continuityConnectorReady && snapshot.connectedClientObserved
-            ? L"Three role hosts live · tool call unproven"
+            ? (anyRecordedTool ? L"Three role hosts live · MCP result recorded"
+                : L"Three role hosts live · no recorded tool result")
             : snapshot.connectedClientObserved
-                ? L"Role host live · tool call unproven"
-                : L"No live role host · tool call unproven");
+                ? (anyRecordedTool ? L"Role host live · MCP result recorded"
+                    : L"Role host live · no recorded tool result")
+                : (anyRecordedTool ? L"No live role host · prior MCP result recorded"
+                    : L"No live role host · no recorded tool result"));
     LmStudioOverview().Text(winrt::to_hstring(
         std::string{installed ? "Three native roles registered" : "Registration requires attention"} +
-        " · " + (snapshot.connectedClientObserved ? "live MCP role host observed" : "no live MCP role host")));
+        " · " + (snapshot.connectedClientObserved ? "live MCP role host observed" : "no live MCP role host") +
+        (anyRecordedTool ? " · audited MCP result" : "")));
     LmStudioPrimaryRole().Text(winrt::to_hstring(
         std::string{snapshot.primaryPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
             ? (snapshot.primaryConnectorReady ? "role host live" : "role host not live")
-            : "not yet verified")));
+            : "not yet verified") +
+        (snapshot.primaryToolOutcomeRecorded ? " · tool result recorded" : "")));
     LmStudioFallbackRole().Text(winrt::to_hstring(
         std::string{snapshot.fallbackPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
             ? (snapshot.fallbackConnectorReady ? "role host live" : "role host not live")
-            : "not yet verified")));
+            : "not yet verified") +
+        (snapshot.fallbackToolOutcomeRecorded ? " · tool result recorded" : "")));
     LmStudioCluRole().Text(winrt::to_hstring(
         std::string{snapshot.continuityPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
             ? (snapshot.continuityConnectorReady ? "role host live" : "role host not live")
-            : "not yet verified")));
+            : "not yet verified") +
+        (snapshot.continuityToolOutcomeRecorded ? " · tool result recorded" : "")));
     LmStudioRegistrationState().Text(winrt::to_hstring(
         std::string{"Installed registration: "} + (installed ? "complete" : "incomplete") +
         "\nPrimary: " + (snapshot.primaryPluginInstalled ? "installed" : "missing") +
@@ -2009,16 +2021,17 @@ void MainWindow::ApplyLmStudio(
         " · CLU: " + (snapshot.continuityPluginInstalled ? "installed" : "missing") +
         " · MCP config: " + (snapshot.mcpConfigurationRegistered ? "registered" : "missing") +
         "\n" + snapshot.detail + "\n" + snapshot.actionDetail));
-    LmStudioConnectionState().Text(winrt::to_hstring(
-        snapshot.connectionCheckPerformed
+    const auto connectionDetail = snapshot.connectionCheckPerformed
             ? std::string{"Live MCP role hosts: primary "} +
                 (snapshot.primaryConnectorReady ? "yes" : "no") +
                 ", fallback " + (snapshot.fallbackConnectorReady ? "yes" : "no") +
                 ", CLU " + (snapshot.continuityConnectorReady ? "yes" : "no") +
                 ". At least one live role host: " +
                 (snapshot.connectedClientObserved ? "yes" : "no") +
-                ". Actual LM Studio tool invocation: not verified."
-            : "Live role check: not run. Actual LM Studio tool invocation: not verified."));
+                ". External LM Studio caller: not verified."
+            : std::string{"Live role check: not run. External LM Studio caller: not verified."};
+    LmStudioConnectionState().Text(winrt::to_hstring(
+        connectionDetail + "\n" + snapshot.toolAuditDetail));
     LmStudioContinuityState().Text(winrt::to_hstring(
         "Manager continuity projects active: " +
         std::to_string(snapshot.managedContinuityProjects)));
@@ -2028,6 +2041,77 @@ void MainWindow::ApplyLmStudio(
         "\nFallback: " + snapshot.fallbackPluginPath +
         "\nCLU: " + snapshot.continuityPluginPath +
         "\nConfiguration: " + snapshot.mcpConfigurationPath));
+    ApplyLmStudioIdentities();
+}
+
+void MainWindow::ApplyLmStudioIdentities()
+{
+    if (!telemetrySnapshot_) {
+        LmStudioModelIdentity().Text(L"Model discovery not yet run");
+        LmStudioBackendIdentity().Text(L"Reading Manager configuration");
+        LmStudioProcessIdentity().Text(L"Awaiting native process sample");
+        return;
+    }
+
+    const auto& telemetry = *telemetrySnapshot_;
+    std::string model;
+    if (!loadedModels_.empty()) {
+        model = loadedModels_.front();
+        if (loadedModels_.size() > 1U) {
+            model += " +" + std::to_string(loadedModels_.size() - 1U);
+        }
+        model += " · endpoint discovered";
+    } else if (telemetry.provider.model) {
+        model = *telemetry.provider.model + " · configured, load unverified";
+    } else {
+        model = "Automatic · load discovery not run";
+    }
+    LmStudioModelIdentity().Text(winrt::to_hstring(model));
+
+    const auto& provider = telemetry.provider;
+    const auto backend = provider.host.empty() || provider.port == 0U
+        ? std::string{"No Manager endpoint configured"}
+        : std::string{provider.secure ? "HTTPS · " : "HTTP · "} +
+            provider.host + ":" + std::to_string(provider.port) +
+            " · configured";
+    LmStudioBackendIdentity().Text(winrt::to_hstring(backend));
+
+    std::optional<std::uint32_t> lmStudioProcess;
+    std::vector<std::uint32_t> roleProcesses;
+    for (const auto& process : telemetry.resources.processes) {
+        auto name = process.name;
+        std::transform(name.begin(), name.end(), name.begin(),
+            [](const unsigned char value) {
+                return static_cast<char>(std::tolower(value));
+            });
+        if (name.find("lm studio") != std::string::npos ||
+            name.find("lmstudio") != std::string::npos) {
+            lmStudioProcess = process.processId;
+        } else if (name.find("forge-conductor") != std::string::npos &&
+                   roleProcesses.size() < 3U) {
+            roleProcesses.push_back(process.processId);
+        }
+    }
+    std::string processes = telemetry.manager.serviceActive
+        ? "Manager PID " + std::to_string(telemetry.manager.processId)
+        : "Manager not active in sample";
+    if (lmStudioProcess) {
+        processes += " · LM Studio PID " +
+            std::to_string(*lmStudioProcess);
+    } else {
+        processes += " · LM Studio not in sample";
+    }
+    if (!roleProcesses.empty()) {
+        processes += " · CLI PID";
+        processes += roleProcesses.size() == 1U ? " " : "s ";
+        for (std::size_t index{}; index < roleProcesses.size(); ++index) {
+            if (index > 0U) {
+                processes += ", ";
+            }
+            processes += std::to_string(roleProcesses[index]);
+        }
+    }
+    LmStudioProcessIdentity().Text(winrt::to_hstring(processes));
 }
 
 void MainWindow::ApplyTools(

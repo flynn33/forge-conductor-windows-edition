@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ForgeConductor/Domain/ConfigurationModels.h"
 #include "ForgeConductor/Domain/TelemetryModels.h"
 
 #include <chrono>
@@ -68,6 +69,8 @@ struct AuditEvent final {
     std::string status;
     std::optional<std::chrono::milliseconds> duration;
     std::optional<std::string> error;
+    std::optional<McpRole> mcpRole;
+    std::optional<DeploymentId> deploymentId;
 };
 
 struct DoctorCheck final {

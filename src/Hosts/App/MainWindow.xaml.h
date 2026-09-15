@@ -113,6 +113,7 @@ private:
     void SelectMemoryRecord(
         const ::ForgeConductor::Manager::ManagerProjectMemoryRecord& record);
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
+    void ApplyLmStudioIdentities();
     void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
     void FilterTools();
     void BuildToolForm(const ::ForgeConductor::Manager::ManagerToolDescriptor& tool);

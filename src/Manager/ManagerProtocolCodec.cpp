@@ -2822,7 +2822,12 @@ template <typename T, typename Parser>
         {"connected_client_observed", snapshot.connectedClientObserved},
         {"managed_continuity_projects", snapshot.managedContinuityProjects},
         {"detail", snapshot.detail},
-        {"action_detail", snapshot.actionDetail}};
+        {"action_detail", snapshot.actionDetail},
+        {"tool_audit_checked", snapshot.toolAuditChecked},
+        {"primary_tool_outcome_recorded", snapshot.primaryToolOutcomeRecorded},
+        {"fallback_tool_outcome_recorded", snapshot.fallbackToolOutcomeRecorded},
+        {"continuity_tool_outcome_recorded", snapshot.continuityToolOutcomeRecorded},
+        {"tool_audit_detail", snapshot.toolAuditDetail}};
 }
 
 [[nodiscard]] ManagerLmStudioSnapshot parseLmStudioSnapshot(const Json& value)
@@ -2836,7 +2841,9 @@ template <typename T, typename Parser>
          "fallback_plugin_path", "lmstudio_present", "managed_continuity_projects",
          "mcp_configuration_path", "mcp_configuration_registered",
          "primary_connector_ready", "primary_plugin_installed",
-         "primary_plugin_path"},
+         "primary_plugin_path", "tool_audit_checked",
+         "primary_tool_outcome_recorded", "fallback_tool_outcome_recorded",
+         "continuity_tool_outcome_recorded", "tool_audit_detail"},
         "Manager LM Studio snapshot");
     return ManagerLmStudioSnapshot{
         booleanMember(value, "lmstudio_present"),
@@ -2862,7 +2869,12 @@ template <typename T, typename Parser>
         booleanMember(value, "connected_client_observed"),
         sizeMember(value, "managed_continuity_projects"),
         stringMember(value, "detail"),
-        stringMember(value, "action_detail")};
+        stringMember(value, "action_detail"),
+        booleanMember(value, "tool_audit_checked"),
+        booleanMember(value, "primary_tool_outcome_recorded"),
+        booleanMember(value, "fallback_tool_outcome_recorded"),
+        booleanMember(value, "continuity_tool_outcome_recorded"),
+        stringMember(value, "tool_audit_detail")};
 }
 
 [[nodiscard]] Json toolDescriptorJson(const ManagerToolDescriptor& descriptor)

@@ -1460,7 +1460,8 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             continuity_.get(),
             diagnosticSink_.get(),
             lmStudioActivationAuthority_ ? &*lmStudioActivationAuthority_ : nullptr,
-            clientPresenceRepository_.get()});
+            clientPresenceRepository_.get(),
+            auditRepository_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

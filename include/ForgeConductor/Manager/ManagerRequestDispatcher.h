@@ -40,6 +40,7 @@ struct ManagerTelemetrySources final {
     Contracts::IDiagnosticSink* diagnostics{};
     const Contracts::WorkspaceAuthority* lmStudioActivationAuthority{};
     Contracts::IClientPresenceRepository* clientPresence{};
+    Contracts::IAuditRepository* audit{};
 };
 
 class ManagerRequestDispatcher final {

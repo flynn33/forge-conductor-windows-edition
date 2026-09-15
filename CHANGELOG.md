@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.23 — Deployment-scoped MCP outcome readback and LM Studio identities
+
+- Record the native MCP role and exact deployment ID with newly routed tool outcomes. A nullable C010 migration preserves historical audit rows without manufacturing provenance; focused persistence and protocol tests cover readback and pairing.
+- Let Manager distinguish live role-host presence from a bounded, deployment-scoped successful MCP tool audit. The audit proves neither the external LM Studio caller nor durable verified completion evidence.
+- Add local model policy/discovery, Manager-configured backend, and sampled local process identities to the LM Studio command center. Labels distinguish configuration, endpoint discovery, prior audited result, and live process state.
+- The signed installed 1.1.22 visual sweep reached all fourteen destinations. Autonomy lacked an attached run, Runtimes lacked jobs/results, and Events & Evidence lacked a verified artifact chain; final screenshot acceptance remains open.
+
 ## 1.1.22 — Honest MCP role presence and command-center LM Studio view
 
 - Read a bounded, deployment-specific recent presence set from the shared native MCP ledger. Manager status reports a role host only while its heartbeat is fresh and its owning PID is still running from the exact packaged CLI image; a tool call remains a separate proof.

@@ -621,7 +621,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
                     std::string{Mcp::McpProtocol::SupportedVersions[index]});
         }
         const auto response = parse(session.output.front());
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.1.22");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.1.23");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"
@@ -784,6 +784,9 @@ void testToolSuccessFailureAndAuthority(Contracts::IToolCatalog& catalog)
     REQUIRE(uuids.consumed() == 6U);
     REQUIRE(resolver.lastRequest().has_value());
     REQUIRE(resolver.lastRequest()->metadata.requestId.value().size() == 36U);
+    REQUIRE(resolver.lastRequest()->metadata.role == Domain::McpRole::Primary);
+    REQUIRE(resolver.lastRequest()->metadata.deploymentId ==
+            id<Domain::DeploymentId>("test-deployment"));
     const auto success = parse(session.output[0]);
     REQUIRE(success.at("id").is_number());
     REQUIRE(success.at("result").at("isError") == false);

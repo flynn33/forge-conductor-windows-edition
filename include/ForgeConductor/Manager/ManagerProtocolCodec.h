@@ -153,6 +153,11 @@ struct ManagerLmStudioSnapshot final {
     std::size_t managedContinuityProjects{};
     std::string detail;
     std::string actionDetail;
+    bool toolAuditChecked{};
+    bool primaryToolOutcomeRecorded{};
+    bool fallbackToolOutcomeRecorded{};
+    bool continuityToolOutcomeRecorded{};
+    std::string toolAuditDetail;
 };
 
 struct ManagerToolDescriptor final {

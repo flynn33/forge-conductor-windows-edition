@@ -745,7 +745,9 @@ private:
                 argumentsDigest,
                 std::move(status),
                 elapsed,
-                std::move(error)};
+                std::move(error),
+                request.metadata.role,
+                request.metadata.deploymentId};
             const auto now = clock_.monotonicNow();
             const Domain::OperationContext auditContext{
                 context.operationId,
