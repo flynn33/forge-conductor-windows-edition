@@ -79,7 +79,7 @@ struct ManagerToolInvokeRequest final {
 };
 
 enum class ManagerOperationalArea { Agents, Feed, Runtimes, Diagnostics, Manager, Runs, Evidence };
-enum class ManagerOperationalAction { Inspect, PruneSessions, CloseSession };
+enum class ManagerOperationalAction { Inspect, PruneSessions, CloseSession, VerifyTask };
 
 struct ManagerOperationalRequest final {
     ManagerOperationalArea area{ManagerOperationalArea::Agents};

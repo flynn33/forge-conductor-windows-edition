@@ -94,6 +94,7 @@ struct MainWindow : MainWindowT<MainWindow> {
     void OperationalFeedSeverityChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void OperationalFeedPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void EvidenceRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void EvidenceVerifyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void EvidenceRunInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void EvidenceExportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
@@ -106,7 +107,7 @@ private:
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
         ProjectArchiveExport, ProjectArchivePreview, ProjectArchiveImport,
         LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
-        OperationalInspect, OperationalPrune, OperationalClose, RunHistory, EvidenceLoad
+        OperationalInspect, OperationalPrune, OperationalClose, RunHistory, EvidenceLoad, EvidenceVerify
     };
     winrt::fire_and_forget RunAction(Action action);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>

@@ -1083,6 +1083,7 @@ private:
     }
 
     [[nodiscard]] Domain::Result<ManagerOperationalSnapshot> operationalSnapshot(
+        const ManagerRequest& managerRequest,
         const ManagerOperationalRequest& request,
         const Domain::OperationContext& context)
     {
@@ -1094,13 +1095,137 @@ private:
         auto& service = *telemetrySources_.operational;
         std::vector<std::string> lines;
         if (request.area == ManagerOperationalArea::Evidence) {
-            if (request.action != ManagerOperationalAction::Inspect ||
-                !request.projectId ||
+            if (!request.projectId ||
                 !telemetrySources_.durableManagedRunStore ||
                 !telemetrySources_.evidenceHasher) {
                 return Domain::Result<ManagerOperationalSnapshot>::failure(error(
                     Domain::ErrorCodes::InvalidRequest,
                     "An exact project and native durable evidence services are required."));
+            }
+            if (request.action == ManagerOperationalAction::VerifyTask) {
+                std::lock_guard checkGuard{evidenceCheckMutex_};
+                if (!request.sessionId || request.summary.empty() ||
+                    request.summary.size() > 1'024U ||
+                    !telemetrySources_.shellEnabled ||
+                    !telemetrySources_.toolRouter ||
+                    !telemetrySources_.projectWorkspaceAuthority) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "An exact completed run, bounded check command and enabled native shell authority are required."));
+                }
+                auto loaded = telemetrySources_.durableManagedRunStore->load(
+                    *request.sessionId, context);
+                if (!loaded) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(loaded).error());
+                if (!loaded.value() ||
+                    loaded.value()->projectId != *request.projectId ||
+                    loaded.value()->state != Domain::ManagedRunState::Completed ||
+                    loaded.value()->evidenceIntegrity !=
+                        Domain::ManagedRunEvidenceIntegrity::Verified ||
+                    loaded.value()->nativeTaskChecks.size() >= 8U) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::Conflict,
+                        "The exact project run is not a verified completed record with check capacity."));
+                }
+                auto authority = telemetrySources_.projectWorkspaceAuthority->authorityFor(
+                    *request.projectId, context);
+                if (!authority) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(authority).error());
+                const nlohmann::json arguments{
+                    {"command", request.summary}, {"timeout_sec", 60}};
+                Domain::ToolCallRequest call{
+                    Domain::McpRequestMetadata{
+                        managerRequest.requestId,
+                        context.correlationId,
+                        authority.value().callerId(),
+                        *request.projectId,
+                        "2025-11-25"},
+                    "shell_exec", arguments.dump()};
+                auto outcome = telemetrySources_.toolRouter->invoke(
+                    call, authority.value(), context);
+                if (!outcome) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(outcome).error());
+                nlohmann::json process;
+                try {
+                    process = nlohmann::json::parse(outcome.value().canonicalPayload);
+                    if (!process.is_object() ||
+                        !process.contains("exit_code") ||
+                        !process["exit_code"].is_number_integer() ||
+                        !process.contains("ok") || !process["ok"].is_boolean() ||
+                        !process.contains("timed_out") ||
+                        !process["timed_out"].is_boolean() ||
+                        !process.contains("cancelled") ||
+                        !process["cancelled"].is_boolean() ||
+                        !process.contains("termination_confirmed") ||
+                        !process["termination_confirmed"].is_boolean() ||
+                        !process.contains("elapsed_ms") ||
+                        !process["elapsed_ms"].is_number_integer() ||
+                        process["elapsed_ms"].get<std::int64_t>() < 0 ||
+                        (process.contains("stdout_truncated") &&
+                         !process["stdout_truncated"].is_boolean()) ||
+                        (process.contains("stderr_truncated") &&
+                         !process["stderr_truncated"].is_boolean()) ||
+                        !process.contains("stdout") ||
+                        !process["stdout"].is_string() ||
+                        !process.contains("stderr") ||
+                        !process["stderr"].is_string() ||
+                        !process.contains("command") ||
+                        process["command"] != request.summary) {
+                        throw std::runtime_error{"Native check result is incomplete."};
+                    }
+                } catch (...) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The native check returned an invalid process receipt."));
+                }
+                const auto digest = [&](const std::string& value)
+                    -> Domain::Result<Domain::Sha256Digest> {
+                    return telemetrySources_.evidenceHasher->sha256(
+                        std::as_bytes(std::span<const char>{
+                            value.data(), value.size()}));
+                };
+                auto commandDigest = digest(request.summary);
+                auto stdoutDigest = digest(process["stdout"].get<std::string>());
+                auto stderrDigest = digest(process["stderr"].get<std::string>());
+                if (!commandDigest || !stdoutDigest || !stderrDigest) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::InternalFailure,
+                        "Native check digests could not be computed."));
+                }
+                auto checked = std::move(*loaded.value());
+                const bool timedOut = process.value("timed_out", false);
+                const bool cancelled = process.value("cancelled", false);
+                const bool terminated = process.value("termination_confirmed", false);
+                const bool outputTruncated = process.value("stdout_truncated", false) ||
+                    process.value("stderr_truncated", false);
+                const int exitCode = process["exit_code"].get<int>();
+                const auto elapsed = process.value("elapsed_ms", 0ULL);
+                checked.nativeTaskChecks.push_back(Domain::ManagedNativeTaskCheck{
+                    std::move(commandDigest).value(),
+                    std::move(stdoutDigest).value(),
+                    std::move(stderrDigest).value(),
+                    exitCode,
+                    outcome.value().receipt.ok && process.value("ok", false) &&
+                        exitCode == 0 && !timedOut && !cancelled && terminated &&
+                        !outputTruncated,
+                    timedOut, cancelled, terminated, elapsed,
+                    clock_->utcNow()});
+                checked.updatedAt = clock_->utcNow();
+                auto saved = telemetrySources_.durableManagedRunStore->save(
+                    checked, context);
+                if (!saved) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(saved).error());
+                return operationalSnapshot(managerRequest,
+                    ManagerOperationalRequest{
+                        ManagerOperationalArea::Evidence,
+                        ManagerOperationalAction::Inspect,
+                        std::nullopt, {}, request.projectId},
+                    context);
+            }
+            if (request.action != ManagerOperationalAction::Inspect) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The evidence action is not supported."));
             }
             auto sessions = service.sessions(context);
             if (!sessions) {
@@ -1161,6 +1286,36 @@ private:
                 case Domain::ManagedRunEvidenceIntegrity::Mismatch:
                     integrity = "mismatch"; break;
                 }
+                nlohmann::json nativeCheck = nullptr;
+                std::string taskVerification{"not_configured"};
+                std::string taskDetail{
+                    "No approved native task check was attached to this run; model text is not a verified task outcome."};
+                if (!record.nativeTaskChecks.empty()) {
+                    const auto& check = record.nativeTaskChecks.back();
+                    nativeCheck = nlohmann::json{
+                        {"kind", "operator_authorized_post_run_shell_check"},
+                        {"check_count", record.nativeTaskChecks.size()},
+                        {"command_sha256", check.commandDigest.value()},
+                        {"stdout_sha256", check.stdoutDigest.value()},
+                        {"stderr_sha256", check.stderrDigest.value()},
+                        {"exit_code", check.exitCode},
+                        {"passed", check.passed},
+                        {"timed_out", check.timedOut},
+                        {"cancelled", check.cancelled},
+                        {"termination_confirmed", check.terminationConfirmed},
+                        {"elapsed_ms", check.elapsedMilliseconds},
+                        {"checked_at_utc_ms", std::chrono::duration_cast<
+                            std::chrono::milliseconds>(
+                                check.checkedAt.time_since_epoch()).count()}};
+                    taskVerification = integrity == std::string_view{"verified"}
+                        ? check.passed ? "native_check_passed" : "native_check_failed"
+                        : "record_integrity_unverified";
+                    taskDetail = integrity != std::string_view{"verified"}
+                        ? "The stored native check cannot be trusted while durable record integrity is unverified."
+                        : check.passed
+                            ? "The requested post-run native check passed. This verifies the specified check only, not every assignment requirement."
+                            : "The requested post-run native check did not pass. Model text cannot override its result.";
+                }
                 const nlohmann::json evidence{
                     {"format", "forge-conductor-managed-run-evidence-v1"},
                     {"run_id", record.runId.value()},
@@ -1182,9 +1337,9 @@ private:
                         ? nlohmann::json(record.evidenceSeal->value())
                         : nlohmann::json{nullptr}},
                     {"native_record_integrity", integrity},
-                    {"task_outcome_verification", "not_configured"},
-                    {"task_outcome_detail",
-                        "No approved native task check was attached to this run; model text is not a verified task outcome."}};
+                    {"native_check", std::move(nativeCheck)},
+                    {"task_outcome_verification", std::move(taskVerification)},
+                    {"task_outcome_detail", std::move(taskDetail)}};
                 lines.push_back(evidence.dump());
                 return Domain::Result<void>::success();
             };
@@ -1703,7 +1858,7 @@ private:
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerOperationalRequest>) {
                     return controllerResponse(
-                        request, operationalSnapshot(payload, context));
+                        request, operationalSnapshot(request, payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerMaintenanceRequest>) {
                     return controllerResponse(
@@ -1837,6 +1992,7 @@ private:
     ManagerTransportLimits limits_;
     std::shared_ptr<Contracts::IManagedRunService> managedRuns_;
     ManagerTelemetrySources telemetrySources_;
+    std::mutex evidenceCheckMutex_;
 
     mutable std::mutex stateMutex_;
     std::condition_variable stateChanged_;

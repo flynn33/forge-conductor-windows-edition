@@ -2,7 +2,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include <chrono>
 #include <span>
+#include <stdexcept>
 #include <utility>
 
 namespace ForgeConductor::Application {
@@ -104,6 +106,26 @@ namespace {
     } else {
         value["error"] = nullptr;
     }
+    if (record.nativeTaskChecks.size() > 8U) {
+        return Domain::Result<std::optional<std::string>>::failure(
+            Domain::makeError(Domain::ErrorCodes::LimitExceeded,
+                "The durable run has too many native task checks."));
+    }
+    value["native_task_checks"] = nlohmann::json::array();
+    for (const auto& check : record.nativeTaskChecks) {
+        value["native_task_checks"].push_back(nlohmann::json{
+            {"command_sha256", check.commandDigest.value()},
+            {"stdout_sha256", check.stdoutDigest.value()},
+            {"stderr_sha256", check.stderrDigest.value()},
+            {"exit_code", check.exitCode},
+            {"passed", check.passed},
+            {"timed_out", check.timedOut},
+            {"cancelled", check.cancelled},
+            {"termination_confirmed", check.terminationConfirmed},
+            {"elapsed_ms", check.elapsedMilliseconds},
+            {"checked_at_utc_ms", std::chrono::duration_cast<
+                std::chrono::milliseconds>(check.checkedAt.time_since_epoch()).count()}});
+    }
     if (isTerminal(record.state)) {
         auto seal = evidenceDigest(record, value, hasher);
         if (!seal) {
@@ -181,6 +203,37 @@ void applySummary(
                     ? "The recovered managed run has pending tool effects and requires review before retry."
                     : "The recovered managed run stopped before a terminal provider result.",
                 true);
+        }
+        if (value.contains("native_task_checks")) {
+            if (!value["native_task_checks"].is_array() ||
+                value["native_task_checks"].size() > 8U) {
+                throw std::runtime_error{"Native task checks are malformed."};
+            }
+            for (const auto& item : value["native_task_checks"]) {
+                if (!item.is_object()) {
+                    throw std::runtime_error{"Native task check is malformed."};
+                }
+                const auto command = Domain::Sha256Digest::parse(
+                    item.at("command_sha256").get<std::string>());
+                const auto stdoutDigestResult = Domain::Sha256Digest::parse(
+                    item.at("stdout_sha256").get<std::string>());
+                const auto stderrDigestResult = Domain::Sha256Digest::parse(
+                    item.at("stderr_sha256").get<std::string>());
+                if (!command || !stdoutDigestResult || !stderrDigestResult) {
+                    throw std::runtime_error{"Native task check digest is malformed."};
+                }
+                record.nativeTaskChecks.push_back(Domain::ManagedNativeTaskCheck{
+                    command.value(), stdoutDigestResult.value(),
+                    stderrDigestResult.value(),
+                    item.at("exit_code").get<int>(),
+                    item.at("passed").get<bool>(),
+                    item.at("timed_out").get<bool>(),
+                    item.at("cancelled").get<bool>(),
+                    item.at("termination_confirmed").get<bool>(),
+                    item.at("elapsed_ms").get<std::uint64_t>(),
+                    Domain::UtcTimePoint{std::chrono::milliseconds{
+                        item.at("checked_at_utc_ms").get<std::int64_t>()}}});
+            }
         }
         if (isTerminal(record.state)) {
             record.evidenceIntegrity =

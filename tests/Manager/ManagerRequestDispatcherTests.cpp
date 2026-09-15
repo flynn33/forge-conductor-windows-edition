@@ -2,6 +2,7 @@
 #include "../Fakes/ProjectRepositoryFakes.h"
 #include "../Fakes/RecordingProjectMemoryService.h"
 #include "../Fakes/RecordingContinuityCoordinator.h"
+#include "../Fakes/DeterministicWorkspaceAuthority.h"
 
 #include <algorithm>
 #include <atomic>
@@ -514,6 +515,41 @@ public:
     }
 };
 
+class FakeNativeCheckToolRouter final : public Contracts::IToolRouter {
+public:
+    int exitCode{};
+    std::size_t calls{};
+    std::string lastCommand;
+    Domain::ProjectId lastProject = Domain::ProjectId::parse(uuidText(1U)).value();
+
+    [[nodiscard]] Domain::Result<Domain::ToolCallOutcome> invoke(
+        const Domain::ToolCallRequest& call,
+        const Contracts::WorkspaceAuthority& authority,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++calls;
+        lastProject = authority.projectId();
+        lastCommand = call.canonicalArguments.find("Write-Output OK") !=
+            std::string::npos ? "Write-Output OK" : "exit 1";
+        const auto payload = std::string{"{\"ok\":"} +
+            (exitCode == 0 ? "true" : "false") +
+            ",\"command\":\"" + lastCommand +
+            "\",\"exit_code\":" + std::to_string(exitCode) +
+            ",\"stdout\":\"native stdout\",\"stderr\":\"" +
+            (exitCode == 0 ? "" : "native stderr") +
+            "\",\"timed_out\":false,\"cancelled\":false," +
+            "\"termination_confirmed\":true,\"elapsed_ms\":13}";
+        return Domain::Result<Domain::ToolCallOutcome>::success(
+            Domain::ToolCallOutcome{
+                Domain::ToolExecutionReceipt{
+                    call.metadata.requestId, call.toolName, exitCode == 0,
+                    std::nullopt, 13ms},
+                payload, std::nullopt, std::nullopt});
+    }
+    void cancel(const Domain::OperationId&) noexcept override {}
+    void shutdown() noexcept override {}
+};
+
 class FakeOperationalSessions final : public Dashboard::IDashboardOperationalService {
 public:
     Dashboard::DashboardSessionListing listing;
@@ -943,6 +979,102 @@ void testDurableEvidenceIsRedactedAndProjectBound()
         Domain::ErrorCodes::InvalidRequest, "evidence needs exact project");
     require(operational.sessionCalls == 1U,
         "unbound evidence never reads the session window");
+}
+
+void testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    FakeOperationalSessions operational;
+    FakeDurableManagedRunStore durable;
+    FakeEvidenceHasher hasher;
+    FakeNativeCheckToolRouter nativeTool;
+    const auto projectA = Domain::ProjectId::parse(uuidText(731U)).value();
+    const auto projectB = Domain::ProjectId::parse(uuidText(732U)).value();
+    const auto runA = Domain::SessionId::parse(uuidText(733U)).value();
+    const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
+    operational.listing.recent.push_back({
+        runA, Domain::AgentId::parse("forge-managed-run").value(),
+        std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    Domain::ManagedRunRecord record{
+        runA, projectA, Domain::ClientId::parse("native-check-fixture").value(),
+        "private mission", 0U, Domain::ManagedRunState::Completed,
+        std::nullopt, 3U, 2U, std::nullopt, "private model output",
+        std::nullopt, {}, time, time, false};
+    record.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Verified;
+    record.evidenceSeal = Domain::Sha256Digest::parse(std::string(64U, 'b')).value();
+    durable.records.emplace(runA.value(), record);
+    TestFakes::DeterministicWorkspaceAuthority authority{
+        Domain::AuthorityId::parse(uuidText(734U)).value(),
+        Domain::ClientId::parse("native-check-fixture").value(),
+        {Domain::PathText::create("D:\\NativeFixture").value()},
+        Domain::FileAccess::Execute, {Domain::FileAccess::Execute}, {}, true, 0U};
+    Manager::ManagerTelemetrySources sources;
+    sources.operational = &operational;
+    sources.durableManagedRunStore = &durable;
+    sources.evidenceHasher = &hasher;
+    sources.projectWorkspaceAuthority = &authority;
+    sources.toolRouter = &nativeTool;
+    sources.shellEnabled = true;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    requireError(dispatcher.dispatch(request(*clock, 97U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "Write-Output OK", projectB})),
+        Domain::ErrorCodes::Conflict, "foreign-project native check denied");
+    require(nativeTool.calls == 0U, "foreign run never reaches native router");
+    durable.records.at(runA.value()).evidenceIntegrity =
+        Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed;
+    requireError(dispatcher.dispatch(request(*clock, 98U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "Write-Output OK", projectA})),
+        Domain::ErrorCodes::Conflict, "unsealed native check denied");
+    require(nativeTool.calls == 0U, "unsealed run never reaches native router");
+    durable.records.at(runA.value()).evidenceIntegrity =
+        Domain::ManagedRunEvidenceIntegrity::Verified;
+
+    const auto passed = dispatcher.dispatch(request(*clock, 99U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "Write-Output OK", projectA}));
+    const auto* passedSnapshot = responseValue<Manager::ManagerOperationalSnapshot>(passed);
+    require(passedSnapshot && passedSnapshot->lines.size() == 1U &&
+        passedSnapshot->lines.front().find("native_check_passed") !=
+            std::string::npos,
+        "passing native check projected separately from model result");
+    require(nativeTool.calls == 1U && nativeTool.lastProject == projectA &&
+        nativeTool.lastCommand == "Write-Output OK",
+        "exact-project command routes through authorized native tool");
+    require(durable.records.at(runA.value()).nativeTaskChecks.size() == 1U &&
+        durable.records.at(runA.value()).nativeTaskChecks.front().passed,
+        "passing receipt stored in durable run");
+    require(passedSnapshot->lines.front().find("Write-Output OK") ==
+            std::string::npos &&
+        passedSnapshot->lines.front().find("native stdout") ==
+            std::string::npos &&
+        passedSnapshot->lines.front().find("private mission") ==
+            std::string::npos,
+        "evidence projection omits command, output and mission text");
+
+    nativeTool.exitCode = 1;
+    const auto failed = dispatcher.dispatch(request(*clock, 100U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "exit 1", projectA}));
+    const auto* failedSnapshot = responseValue<Manager::ManagerOperationalSnapshot>(failed);
+    require(failedSnapshot && failedSnapshot->lines.front().find(
+        "native_check_failed") != std::string::npos &&
+        durable.records.at(runA.value()).nativeTaskChecks.size() == 2U &&
+        !durable.records.at(runA.value()).nativeTaskChecks.back().passed,
+        "failing check is durable and never upgraded by model completion");
 }
 
 void testProjectWorkflowKeepsExactProjectIdentity()
@@ -1414,6 +1546,7 @@ int main()
         testManagedRunDispatchAndIdentity();
         testRunHistoryIsBoundToSelectedProject();
         testDurableEvidenceIsRedactedAndProjectBound();
+        testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt();
         testProjectWorkflowKeepsExactProjectIdentity();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetrySnapshotUsesManagerOwnedRunValues();
@@ -1423,7 +1556,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 12 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 13 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

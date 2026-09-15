@@ -767,6 +767,22 @@ int main()
     assert(sealedLoaded.value()->evidenceSeal);
     assert(sealedLoaded.value()->evidenceIntegrity ==
         Domain::ManagedRunEvidenceIntegrity::Verified);
+    auto checkedRecord = *sealedLoaded.value();
+    checkedRecord.nativeTaskChecks.push_back(Domain::ManagedNativeTaskCheck{
+        parsed(Domain::Sha256Digest::parse(std::string(64U, 'a'))),
+        parsed(Domain::Sha256Digest::parse(std::string(64U, 'b'))),
+        parsed(Domain::Sha256Digest::parse(std::string(64U, 'c'))),
+        0, true, false, false, true, 17U,
+        Domain::UtcTimePoint{std::chrono::milliseconds{1'700'000'000'000}}});
+    assert(durableStore.save(checkedRecord, admissionContext));
+    const auto checkedLoaded = durableStore.load(
+        checkedRecord.runId, admissionContext);
+    assert(checkedLoaded && checkedLoaded.value());
+    assert(checkedLoaded.value()->nativeTaskChecks.size() == 1U);
+    assert(checkedLoaded.value()->nativeTaskChecks.front().passed);
+    assert(checkedLoaded.value()->nativeTaskChecks.front().exitCode == 0);
+    assert(checkedLoaded.value()->evidenceIntegrity ==
+        Domain::ManagedRunEvidenceIntegrity::Verified);
     admissionRepository.corruptSealedSummary();
     const auto alteredLoaded = durableStore.load(
         sealedRecord.runId, admissionContext);

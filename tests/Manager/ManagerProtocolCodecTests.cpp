@@ -690,6 +690,25 @@ void testProjectRunHistoryRoundTrips()
         std::get<Manager::ManagerResult>(parsedEvidence.body));
     REQUIRE(evidenceResult.area == Manager::ManagerOperationalArea::Evidence);
     REQUIRE(evidenceResult.lines == evidence.lines);
+    const auto exactRun = identifier<Domain::SessionId>(
+        "20000000-0000-4000-8000-000000000003");
+    const auto verifyFrame = take(
+        Manager::ManagerProtocolCodec::encodeRequest(request(
+            Manager::ManagerOperationalRequest{
+                Manager::ManagerOperationalArea::Evidence,
+                Manager::ManagerOperationalAction::VerifyTask,
+                exactRun, "Write-Output CHECK_OK", project})));
+    const auto verifyDecoded = take(
+        Manager::ManagerProtocolCodec::decodeRequest(verifyFrame));
+    const auto& verify = std::get<Manager::ManagerOperationalRequest>(
+        verifyDecoded.payload);
+    REQUIRE(verify.area == Manager::ManagerOperationalArea::Evidence);
+    REQUIRE(verify.action == Manager::ManagerOperationalAction::VerifyTask);
+    REQUIRE(verify.projectId == project);
+    REQUIRE(verify.sessionId == exactRun);
+    REQUIRE(verify.summary == "Write-Output CHECK_OK");
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(
+        verifyDecoded)) == verifyFrame);
 }
 
 void testProjectWorkflowRoundTrips()

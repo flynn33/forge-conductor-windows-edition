@@ -1311,6 +1311,7 @@ void validateSettingsUpdateOutcome(
                 case ManagerOperationalAction::Inspect: params["action"] = "inspect"; break;
                 case ManagerOperationalAction::PruneSessions: params["action"] = "prune_sessions"; break;
                 case ManagerOperationalAction::CloseSession: params["action"] = "close_session"; break;
+                case ManagerOperationalAction::VerifyTask: params["action"] = "verify_task"; break;
                 }
                 params["session_id"] = payload.sessionId
                     ? Json(payload.sessionId->value()) : Json(nullptr);
@@ -1498,6 +1499,7 @@ void validateSettingsUpdateOutcome(
         if (actionText == "inspect") action = ManagerOperationalAction::Inspect;
         else if (actionText == "prune_sessions") action = ManagerOperationalAction::PruneSessions;
         else if (actionText == "close_session") action = ManagerOperationalAction::CloseSession;
+        else if (actionText == "verify_task") action = ManagerOperationalAction::VerifyTask;
         else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational action is unknown.");
         payload = ManagerOperationalRequest{
             area,

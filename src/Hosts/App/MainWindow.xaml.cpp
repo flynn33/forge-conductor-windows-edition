@@ -811,6 +811,25 @@ void MainWindow::EvidenceRefreshClicked(Windows::Foundation::IInspectable const&
     RunAction(Action::EvidenceLoad);
 }
 
+void MainWindow::EvidenceVerifyClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (!evidenceSnapshot_ || selectedEvidenceRunId_.empty() ||
+        selectedEvidenceProjectId_ != selectedProjectId_) {
+        OperationalEvidenceState().Text(
+            L"Select a current exact-project completed run before checking it.");
+        return;
+    }
+    const auto approval = OperationalEvidenceCheckApproval().IsChecked();
+    if (!approval || !approval.Value() ||
+        OperationalEvidenceCheckCommand().Text().empty()) {
+        OperationalEvidenceState().Text(
+            L"Enter a native check command and explicitly approve its workspace execution.");
+        return;
+    }
+    RunAction(Action::EvidenceVerify);
+}
+
 void MainWindow::EvidenceRunInspectClicked(
     Windows::Foundation::IInspectable const& sender,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
@@ -2860,6 +2879,8 @@ void MainWindow::ApplyEvidence(
     OperationalEvidenceIntegrityNote().Text(L"Native record integrity has not been read.");
     OperationalEvidenceTrustNote().Text(
         L"Task outcome requires an independently approved native check.");
+    OperationalEvidenceCheckResult().Text(L"No native check attached to this run.");
+    OperationalEvidenceCheckButton().IsEnabled(false);
     OperationalEvidenceDigestDetail().Text(L"No exact provenance selected.");
     if (snapshot.area != ::ForgeConductor::Manager::ManagerOperationalArea::Evidence ||
         selectedProjectId_.empty()) {
@@ -2973,9 +2994,20 @@ void MainWindow::SelectEvidenceRun(const std::string_view runId)
             const auto state = record.value("state", std::string{"unknown"});
             const auto integrity = record.value(
                 "native_record_integrity", std::string{"unavailable"});
+            const auto verification = record.value(
+                "task_outcome_verification", std::string{"not_configured"});
             OperationalEvidenceSelectedState().Text(winrt::to_hstring(
                 state + " · record seal " + integrity));
-            OperationalEvidenceVerifyState().Text(L"Task unverified");
+            OperationalEvidenceVerifyState().Text(winrt::to_hstring(
+                verification == "native_check_passed" ? "Specified check passed" :
+                verification == "native_check_failed" ? "Specified check failed" :
+                verification == "record_integrity_unverified" ? "Record integrity failed" :
+                "Task unverified"));
+            const bool canCheck = state == "completed" && integrity == "verified" &&
+                (!record.contains("native_check") || record["native_check"].is_null() ||
+                    (record["native_check"].is_object() &&
+                     record["native_check"].value("check_count", 8U) < 8U));
+            OperationalEvidenceCheckButton().IsEnabled(canCheck);
             const auto optionalText = [&record](const char* key) {
                 return record.contains(key) && record[key].is_string()
                     ? record[key].get<std::string>()
@@ -3005,6 +3037,36 @@ void MainWindow::SelectEvidenceRun(const std::string_view runId)
             OperationalEvidenceTrustNote().Text(winrt::to_hstring(record.value(
                 "task_outcome_detail", std::string{
                     "No approved native task check was attached; model output is not verified completion."})));
+            std::string nativeDetail{
+                canCheck ? "No native check attached to this run. The command and its output are not saved in evidence; only the native receipt digests and exit state are." :
+                    "Native checks require a completed, sealed run with check capacity."};
+            if (record.contains("native_check") &&
+                record["native_check"].is_object()) {
+                const auto& check = record["native_check"];
+                nativeDetail = std::string{check.value("passed", false)
+                    ? "Latest specified native check passed" :
+                        "Latest specified native check did not pass"} +
+                    " · exit " + std::to_string(check.value("exit_code", -1)) +
+                    " · " + std::to_string(check.value("elapsed_ms", 0ULL)) +
+                    " ms · " + std::to_string(check.value("check_count", 0U)) +
+                    " total check(s). A passing check does not certify every assignment requirement.";
+            }
+            OperationalEvidenceCheckResult().Text(winrt::to_hstring(nativeDetail));
+            std::string checkDigests;
+            if (record.contains("native_check") &&
+                record["native_check"].is_object()) {
+                const auto& check = record["native_check"];
+                const auto safeString = [&check](const char* key) {
+                    return check.contains(key) && check[key].is_string()
+                        ? check[key].get<std::string>() : std::string{"not recorded"};
+                };
+                checkDigests = "\nLatest native check command SHA-256 · " +
+                    safeString("command_sha256") +
+                    "\nLatest native check stdout SHA-256 · " +
+                    safeString("stdout_sha256") +
+                    "\nLatest native check stderr SHA-256 · " +
+                    safeString("stderr_sha256");
+            }
             const auto detail =
                 "Run · " + selectedEvidenceRunId_ +
                 "\nProject · " + selectedProjectId_ +
@@ -3015,8 +3077,9 @@ void MainWindow::SelectEvidenceRun(const std::string_view runId)
                 "\nNative record seal · " +
                     optionalText("evidence_seal_sha256") +
                 "\nNative record integrity · " + integrity +
-                "\nTask outcome verification · not configured" +
-                "\nNo approved native task check was attached; model text is not a verified assignment result.";
+                "\nTask outcome verification · " + verification +
+                checkDigests +
+                "\nOnly the specified native check is verified; model text is not a verified assignment result.";
             OperationalEvidenceDigestDetail().Text(winrt::to_hstring(detail));
             return;
         }
@@ -3484,7 +3547,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool operationalAction = action == Action::OperationalInspect ||
         action == Action::OperationalPrune || action == Action::OperationalClose;
     const bool historyAction = action == Action::RunHistory;
-    const bool evidenceAction = action == Action::EvidenceLoad;
+    const bool evidenceAction = action == Action::EvidenceLoad ||
+        action == Action::EvidenceVerify;
     const bool settingsAction = action == Action::SettingsLoad ||
         action == Action::SettingsSave || action == Action::SettingsTest ||
         action == Action::SettingsRestart;
@@ -3520,6 +3584,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             ? std::optional<std::string>{selectedProjectId_} : std::nullopt;
     std::string requestedHistoryProject;
     const std::string requestedEvidenceProject = selectedProjectId_;
+    const std::string requestedEvidenceRun = selectedEvidenceRunId_;
+    std::string requestedEvidenceCommand;
     if (evidenceAction && requestedEvidenceProject.empty()) {
         evidenceSnapshot_.reset();
         OperationalEvidenceRunRows().Children().Clear();
@@ -3530,6 +3596,24 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             L"Select an authorized project in Projects to inspect durable run evidence.");
         OperationalEvidenceState().Text(L"No project identity is selected.");
         co_return;
+    }
+    if (action == Action::EvidenceVerify) {
+        const auto approval = OperationalEvidenceCheckApproval().IsChecked();
+        if (!evidenceSnapshot_ || requestedEvidenceRun.empty() ||
+            selectedEvidenceProjectId_ != requestedEvidenceProject ||
+            !approval || !approval.Value()) {
+            OperationalEvidenceState().Text(
+                L"Refresh and approve a current exact-project run before a native check.");
+            co_return;
+        }
+        requestedEvidenceCommand = winrt::to_string(
+            OperationalEvidenceCheckCommand().Text());
+        if (requestedEvidenceCommand.empty() ||
+            requestedEvidenceCommand.size() > 1'024U) {
+            OperationalEvidenceState().Text(
+                L"A native check command must be 1–1024 UTF-8 bytes.");
+            co_return;
+        }
     }
     ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
         ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectMemory};
@@ -3830,7 +3914,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     } else if (historyAction) {
         RunHistoryState().Text(L"Reading project-bound run history from the Manager…");
     } else if (evidenceAction) {
-        OperationalEvidenceState().Text(L"Verifying durable records for the exact selected project…");
+        OperationalEvidenceState().Text(action == Action::EvidenceVerify
+            ? L"Running the approved native check and sealing its result for the exact run…"
+            : L"Verifying durable records for the exact selected project…");
     } else if (operationalAction) {
         OperationalState().Text(L"Contacting the Manager…");
     } else if (settingsAction) {
@@ -4036,15 +4122,20 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         case Action::OperationalPrune:
         case Action::OperationalClose:
         case Action::RunHistory:
-        case Action::EvidenceLoad: {
+        case Action::EvidenceLoad:
+        case Action::EvidenceVerify: {
             using OpAction = ::ForgeConductor::Manager::ManagerOperationalAction;
             const auto op = action == Action::OperationalPrune ? OpAction::PruneSessions :
-                action == Action::OperationalClose ? OpAction::CloseSession : OpAction::Inspect;
+                action == Action::OperationalClose ? OpAction::CloseSession :
+                action == Action::EvidenceVerify ? OpAction::VerifyTask : OpAction::Inspect;
             operationalView = connection_->operational(
                 evidenceAction ? ::ForgeConductor::Manager::ManagerOperationalArea::Evidence
                     : historyAction ? ::ForgeConductor::Manager::ManagerOperationalArea::Runs
-                    : requestedOperationalArea, op, std::move(operationalSessionId),
-                std::move(operationalSummary), evidenceAction
+                    : requestedOperationalArea, op,
+                action == Action::EvidenceVerify ? requestedEvidenceRun
+                    : std::move(operationalSessionId),
+                action == Action::EvidenceVerify ? std::move(requestedEvidenceCommand)
+                    : std::move(operationalSummary), evidenceAction
                     ? std::optional<std::string>{requestedEvidenceProject}
                     : historyAction
                         ? std::optional<std::string>{requestedHistoryProject}
@@ -4299,10 +4390,20 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
         } else if (evidenceAction) {
             if (requestedEvidenceProject == selectedProjectId_ &&
+                (action != Action::EvidenceVerify ||
+                    requestedEvidenceRun == selectedEvidenceRunId_) &&
                 PageTitle().Text() == L"Events & Evidence") {
-                if (operationalView.snapshot) ApplyEvidence(*operationalView.snapshot);
+                if (operationalView.snapshot) {
+                    ApplyEvidence(*operationalView.snapshot);
+                    if (action == Action::EvidenceVerify) {
+                        OperationalEvidenceCheckApproval().IsChecked(false);
+                        OperationalEvidenceCheckCommand().Text(L"");
+                    }
+                }
                 else OperationalEvidenceState().Text(winrt::to_hstring(
-                    "Durable evidence readback unavailable · " + message));
+                    (action == Action::EvidenceVerify
+                        ? "Native check unavailable · "
+                        : "Durable evidence readback unavailable · ") + message));
             }
         } else if (historyAction) {
             if (requestedHistoryProject == selectedProjectId_) {

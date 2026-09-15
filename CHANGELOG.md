@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.32 — Exact-run native check receipt
+
+- Add a bounded post-run native check action for an exact completed, sealed project run. It uses the project's authorized native shell route and persists a sealed receipt with command/stdout/stderr digests, exit state, elapsed time and check timestamp; command and output text are not included in the redacted evidence projection.
+- Events & Evidence now requires an explicit approval in the installed UI, separates the specified native check result from durable metadata integrity and model output, and permits local export of the redacted receipt. A passing check verifies only that command, not every assignment requirement.
+- Add protocol, cross-project, legacy-unsealed, passing/failing receipt, and durable-seal regressions. Installed passing/failing check and all-view visual acceptance remain required.
+
 ## 1.1.31 — Evidence presentation and Direction A lighting
 
 - Replace the flat main console canvas with a blue-lit native gradient shared by every view, tuned against the approved Direction A visual language.
