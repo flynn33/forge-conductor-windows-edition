@@ -757,6 +757,53 @@ std::string ManagerConnection::testProvider(
     }
 }
 
+std::string ManagerConnection::probeProviderContract(
+    const Domain::ManagerSettings& settings,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        auto valid = Domain::validateManagerSettings(settings);
+        if (!valid) return "Responses probe blocked: " + valid.error().message;
+        W::LMStudioResponsesTransportConfiguration configuration;
+        configuration.loopbackHost = settings.localModelHost;
+        configuration.port = settings.localModelPort;
+        configuration.secure = settings.localModelSecure;
+        if (!settings.localModelName.empty()) configuration.model = settings.localModelName;
+        W::LMStudioResponsesTransport transport{std::move(configuration)};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation, std::chrono::seconds{90});
+        W::WindowsUuidGenerator ids;
+        const auto nextId = [&ids]() {
+            auto next = ids.next();
+            if (!next) throw std::runtime_error{next.error().message};
+            return next.value().value();
+        };
+        Domain::ManagedProviderTurnRequest request{
+            Domain::ProjectId::parse(nextId()).value(),
+            Domain::SessionId::parse(nextId()).value(),
+            1U,
+            "For a disposable Responses contract check, reply with exactly OK. Do not call tools.",
+            std::nullopt,
+            {},
+            {}};
+        auto response = transport.complete(request, context);
+        transport.shutdown();
+        if (!response) return "Responses contract failed: " + response.error().message;
+        if (!response.value().functionCalls.empty()) {
+            return "Responses protocol returned a response ID, but the probe unexpectedly requested a function call. No function was executed.";
+        }
+        return "Responses contract passed: fresh response " +
+            response.value().responseId.value() + " · " +
+            std::to_string(response.value().inputTokens) + " input / " +
+            std::to_string(response.value().outputTokens) +
+            " output tokens. This disposable API response is not a desktop chat or a managed project run.";
+    } catch (const std::exception& error) {
+        return "Responses contract failed: " + std::string{error.what()};
+    } catch (...) {
+        return "Responses contract failed safely.";
+    }
+}
+
 ManagedRunView ManagerConnection::startManagedRun(
     std::string projectId,
     std::string clientId,

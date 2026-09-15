@@ -465,6 +465,8 @@ void MainWindow::ProviderTestClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderTest); }
 void MainWindow::ProviderDiscoverClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderModels); }
+void MainWindow::ProviderContractClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderContract); }
 void MainWindow::ProviderModelSelectionChanged(
     Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
@@ -908,6 +910,7 @@ void MainWindow::NavigationChanged(
             ? Visibility::Visible : Visibility::Collapsed);
         OperationalListCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
         OperationalRuntimeCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
+        OperationalRuntimeJobsCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
         OperationalDetailCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
         OperationalListViewport().Height(runtimes || tag == L"Manager" ? 235.0 :
             evidence ? 355.0 : 545.0);
@@ -2691,7 +2694,8 @@ void MainWindow::ApplyOperational(
                 valueAfter("Job inventory: ")));
             OperationalRuntimeJobRows().Children().Clear();
             for (const auto& line : snapshot.lines) {
-                if (!line.starts_with("Job ")) continue;
+                if (!line.starts_with("Job ") ||
+                    line.starts_with("Job inventory: ")) continue;
                 const auto firstEnd = line.find('\n');
                 const auto first = line.substr(4U, firstEnd - 4U);
                 const auto separator = first.find(" · ");
@@ -3124,7 +3128,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         runId = winrt::to_string(RunId().Text());
     }
     if (action == Action::ProviderSave || action == Action::ProviderTest ||
-        action == Action::ProviderModels) {
+        action == Action::ProviderModels || action == Action::ProviderContract) {
         std::string error;
         submitted = ReadProviderForm(error);
         if (!submitted) {
@@ -3329,7 +3333,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             else if (action == Action::ProviderLoad ||
                       action == Action::ProviderSave ||
                       action == Action::ProviderTest ||
-                      action == Action::ProviderModels) ProviderState().Text(queued);
+                      action == Action::ProviderModels ||
+                      action == Action::ProviderContract) {
+                ProviderState().Text(queued);
+                if (action == Action::ProviderContract) ProviderContractState().Text(queued);
+            }
             else ManagerState().Text(queued);
         } else if (admission ==
                 ::ForgeConductor::Hosts::App::AppActionAdmission::Rejected) {
@@ -3371,8 +3379,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     } else if (maintenanceAction) {
         MaintenanceState().Text(L"The Manager is fencing the selected data scope…");
     } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
-        action == Action::ProviderTest || action == Action::ProviderModels) {
+        action == Action::ProviderTest || action == Action::ProviderModels ||
+        action == Action::ProviderContract) {
         ProviderState().Text(L"Working…");
+        if (action == Action::ProviderContract)
+            ProviderContractState().Text(L"Waiting for a disposable model-only response…");
     } else {
         ManagerState().Text(L"Connecting…");
         GenericState().Text(L"Connecting…");
@@ -3438,6 +3449,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             modelsView = connection_->providerModels(
                 *submitted, cancellation_.get_token());
             message = modelsView.message;
+            break;
+        case Action::ProviderContract:
+            message = connection_->probeProviderContract(
+                *submitted, cancellation_.get_token());
             break;
         case Action::SettingsLoad:
             loaded = connection_->providerSettings(cancellation_.get_token());
@@ -3781,7 +3796,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ? Action::ProjectList : Action::ProjectLoad;
             }
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
-            action == Action::ProviderTest || action == Action::ProviderModels) {
+            action == Action::ProviderTest || action == Action::ProviderModels ||
+            action == Action::ProviderContract) {
             if (action == Action::ProviderModels) {
                 providerDiscoveryAttempted_ = true;
                 providerDiscoverySucceeded_ = modelsView.loaded;
@@ -3827,8 +3843,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             } else if (action == Action::ProviderSave && submitted && !failed) {
                 providerSettings_ = submitted;
             }
-            if (action != Action::ProviderModels)
-                ProviderState().Text(winrt::to_hstring(message));
+            ProviderState().Text(winrt::to_hstring(message));
+            if (action == Action::ProviderContract)
+                ProviderContractState().Text(winrt::to_hstring(message));
             if (action == Action::ProviderSave) followUp = Action::ProviderLoad;
         } else {
             if (action == Action::Refresh && telemetryView.snapshot) {

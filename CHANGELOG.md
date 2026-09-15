@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.26 — Runtime layout and Responses contract readback
+
+- Move exact project-bound managed jobs and stored results into a full-width Runtimes card. Exclude the inventory summary from job-row parsing; installed 1.1.25 exposed a phantom job row despite correct counts.
+- Add a separate disposable, model-only Responses contract probe in Provider. It validates an actual response ID and token usage without treating model discovery, a managed run, or a desktop chat as the same result. Clear Provider's stale “Working…” label when discovery finishes.
+- Installed 1.1.25 recorded a read-only `agent_list` primary MCP result in the exact Manager deployment after an LM Studio desktop model call and following answer. This establishes only the observed native call, not source-to-successor desktop continuity or trusted completion.
+- Native app compilation passed for the layout and probe changes. Full release, signed install, and final view acceptance for 1.1.26 remain open.
+
 ## 1.1.25 — Project-bound runtime job results
 
 - Project the bounded recent managed-run window into Runtimes using the Manager's persisted run owner. Exact project filtering protects other projects' missions and results; the view reports real active, completed, failed, and stopped states without inventing a queued-job service.

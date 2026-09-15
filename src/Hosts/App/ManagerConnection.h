@@ -107,6 +107,12 @@ public:
     virtual std::string testProvider(
         const Domain::ManagerSettings& settings,
         std::stop_token cancellation) noexcept = 0;
+    virtual std::string probeProviderContract(
+        const Domain::ManagerSettings&,
+        std::stop_token) noexcept
+    {
+        return "The Responses contract probe is unavailable.";
+    }
     virtual ProviderModelsView providerModels(
         const Domain::ManagerSettings&,
         std::stop_token) noexcept
@@ -186,6 +192,9 @@ public:
         const Domain::ManagerSettingsPatch& patch,
         std::stop_token cancellation) noexcept override;
     std::string testProvider(
+        const Domain::ManagerSettings& settings,
+        std::stop_token cancellation) noexcept override;
+    std::string probeProviderContract(
         const Domain::ManagerSettings& settings,
         std::stop_token cancellation) noexcept override;
     ProviderModelsView providerModels(
