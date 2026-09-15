@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3 — All-view visual finish
+
+- Finished the tool workbench and operational destinations with the same layered command-center cards, structured actions, bounded live-data panes, and monospace technical readouts used by the Rig dashboard.
+
 ## 1.1.2 — Command center fit and finish
 
 - Tightened the Rig viewport so the complete operational action cluster remains above the fold at the reference desktop size.
