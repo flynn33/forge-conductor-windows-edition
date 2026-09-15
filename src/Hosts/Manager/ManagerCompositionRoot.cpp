@@ -625,8 +625,11 @@ private:
         lmStudioUnavailableReadIssuer_;
     std::unique_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
         lmStudioWriteIssuer_;
+    std::unique_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
+        lmStudioActivationIssuer_;
     std::optional<Contracts::WorkspaceAuthority> lmStudioReadAuthority_;
     std::optional<Contracts::WorkspaceAuthority> lmStudioWriteAuthority_;
+    std::optional<Contracts::WorkspaceAuthority> lmStudioActivationAuthority_;
     std::unique_ptr<CompositionWindows::ManagerLmStudioAuthorityRouter>
         lmStudioAuthorityRouter_;
     std::unique_ptr<InfrastructureWindows::WindowsLMStudioEnvironment>
@@ -1218,6 +1221,8 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
             nextUuid(*uuidGenerator_)};
         const Domain::AuthorityId writeAuthorityId{
             nextUuid(*uuidGenerator_)};
+        const Domain::AuthorityId activationAuthorityId{
+            nextUuid(*uuidGenerator_)};
         lmStudioSelectionIssuer_ = std::make_unique<
             InfrastructureWindows::WindowsWorkspaceAuthority>(
             std::vector<
@@ -1268,6 +1273,21 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
         lmStudioWriteAuthority_.emplace(take(
             lmStudioWriteIssuer_->authorityFor(
                 maintenanceProjectId, context)));
+        lmStudioActivationIssuer_ = std::make_unique<
+            InfrastructureWindows::WindowsWorkspaceAuthority>(
+            std::vector<
+                InfrastructureWindows::WindowsWorkspaceAuthorityPolicy>{
+                authorityPolicy(
+                    activationAuthorityId, maintenanceProjectId,
+                    *managerClientId_,
+                    lmStudioReadAuthority_->trustedRoots(),
+                    Domain::FileAccess::Execute,
+                    {Domain::FileAccess::Read, Domain::FileAccess::Execute},
+                    {Domain::FileAccess::Write, Domain::FileAccess::Create,
+                     Domain::FileAccess::Delete}, true)});
+        lmStudioActivationAuthority_.emplace(take(
+            lmStudioActivationIssuer_->authorityFor(
+                maintenanceProjectId, context)));
         lmStudioAuthorityRouter_ = std::make_unique<
             CompositionWindows::ManagerLmStudioAuthorityRouter>(
             lmStudioReadScope_->issuer(), *lmStudioReadAuthority_,
@@ -1314,6 +1334,8 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
             lmStudioEnvironment_.reset();
         }
         lmStudioAuthorityRouter_.reset();
+        lmStudioActivationAuthority_.reset();
+        lmStudioActivationIssuer_.reset();
         lmStudioWriteAuthority_.reset();
         lmStudioReadAuthority_.reset();
         lmStudioWriteIssuer_.reset();
@@ -1430,7 +1452,8 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             process.cliExecutable(),
             initialConfiguration_->shell.enabled,
             continuity_.get(),
-            diagnosticSink_.get()});
+            diagnosticSink_.get(),
+            lmStudioActivationAuthority_ ? &*lmStudioActivationAuthority_ : nullptr});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

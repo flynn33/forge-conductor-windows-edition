@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.19 — Execute-scoped LM Studio connector activation
+
+- Issue a separate narrow Execute-intent Manager authority for activating the already registered LM Studio connectors. Repair retains its distinct Write-intent authority; a Write token cannot authorize an Execute-effect native action merely because Execute is among its grants.
+- Keep LM Studio's registration and connected-client states separate. A cold 1.1.18 installed readback observed all three Forge roles in production `mcp.json` with both foreign entries semantically unchanged, but no client was observed and activation was rejected before launch by the previous Write-intent policy.
+
 ## 1.1.18 — Isolated LM Studio smoke working directory
 
 - Bind all three pre/post native serve probes to the selected Forge CLI installation directory, not the live Manager's write-anchored data root. Each probe still receives an exact per-operation `--home` under `.serve-verifier`, so it cannot use the production SQLite store or inherit an unrelated workspace.

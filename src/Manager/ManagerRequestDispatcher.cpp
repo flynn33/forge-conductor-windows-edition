@@ -796,7 +796,12 @@ private:
                     Domain::ErrorCodes::Conflict,
                     "LM Studio must have a complete Forge Conductor deployment before connector activation."));
             }
-            const auto& authority = *sources.lmStudioWriteAuthority;
+            if (sources.lmStudioActivationAuthority == nullptr) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "LM Studio connector activation has no Execute-scoped Manager authority."));
+            }
+            const auto& authority = *sources.lmStudioActivationAuthority;
             const auto deploymentId = *inspected.value().deploymentId;
             Domain::ToolCallRequest call{
                 Domain::McpRequestMetadata{

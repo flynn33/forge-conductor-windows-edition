@@ -37,6 +37,7 @@ struct ManagerTelemetrySources final {
     bool shellEnabled{};
     Contracts::IContinuityCoordinator* continuity{};
     Contracts::IDiagnosticSink* diagnostics{};
+    const Contracts::WorkspaceAuthority* lmStudioActivationAuthority{};
 };
 
 class ManagerRequestDispatcher final {
