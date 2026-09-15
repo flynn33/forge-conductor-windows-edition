@@ -762,6 +762,7 @@ ManagedRunView ManagerConnection::startManagedRun(
     std::string clientId,
     const std::uint64_t authorityGeneration,
     std::string task,
+    const bool allowTools,
     const std::stop_token cancellation) noexcept
 {
     try {
@@ -791,7 +792,8 @@ ManagedRunView ManagerConnection::startManagedRun(
                 context.operationId,
                 context.correlationId,
                 authorityGeneration,
-                std::move(task)},
+                std::move(task),
+                allowTools},
             context);
         manager->shutdown();
         return managedView(std::move(result));

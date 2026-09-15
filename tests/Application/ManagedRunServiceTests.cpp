@@ -242,6 +242,7 @@ public:
             lastProject = request.projectId.value();
             lastRun = request.runId.value();
             lastGeneration = request.authorityGeneration;
+            lastToolCount = request.tools.size();
         }
         if (mode == Mode::Block) {
             std::unique_lock lock{mutex_};
@@ -359,6 +360,7 @@ public:
     std::string lastProject;
     std::string lastRun;
     std::uint64_t lastGeneration{};
+    std::size_t lastToolCount{};
     bool sawToolDescriptor{};
     bool sawToolOutput{};
     bool sawSuccessorPrompt{};
@@ -420,6 +422,7 @@ private:
 
 class WorkspaceAuthority final : public Contracts::IWorkspaceAuthority {
 public:
+    std::size_t calls{};
     WorkspaceAuthority(Domain::ProjectId projectId, Domain::ClientId clientId)
         : projectId_{std::move(projectId)}, clientId_{std::move(clientId)}
     {
@@ -429,6 +432,7 @@ public:
         const Domain::ProjectId& projectId,
         const Domain::OperationContext&) noexcept override
     {
+        ++calls;
         if (projectId != projectId_) {
             return Domain::Result<Contracts::WorkspaceAuthority>::failure(
                 Domain::makeError(Domain::ErrorCodes::ProjectScopeMismatch,
@@ -716,7 +720,8 @@ int main()
         std::nullopt,
         {},
         admittedAt,
-        admittedAt};
+        admittedAt,
+        false};
     const auto admissionContext = context(
         "30303030-3030-4030-8030-303030303030",
         "managed-admission-test");
@@ -733,6 +738,7 @@ int main()
     assert(durableLoaded.value()->lastError->code == Domain::ErrorCodes::Conflict);
     assert(durableLoaded.value()->authorityGeneration == 3U);
     assert(durableLoaded.value()->task == durableRecord.task);
+    assert(!durableLoaded.value()->allowTools);
 
     Clock clock;
     Store store;
@@ -815,6 +821,41 @@ int main()
     assert(store.saves >= 6U);
 
     service.shutdown();
+
+    Store modelOnlyStore;
+    Transport modelOnlyTransport;
+    ToolCatalog modelOnlyCatalog;
+    ToolRouter modelOnlyRouter;
+    auto modelOnlyRequest = request(
+        "d0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0",
+        "d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1",
+        "Respond without native tools.");
+    modelOnlyRequest.allowTools = false;
+    WorkspaceAuthority modelOnlyAuthority{
+        modelOnlyRequest.projectId, modelOnlyRequest.clientId};
+    Application::ManagedRunService modelOnlyService{
+        modelOnlyTransport, modelOnlyStore, clock,
+        Application::ManagedRunToolDependencies{
+            &modelOnlyCatalog, &modelOnlyRouter, &modelOnlyAuthority}};
+    const auto modelOnlyContext = context(
+        "d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1",
+        "managed-run-model-only");
+    assert(modelOnlyService.start(modelOnlyRequest, modelOnlyContext));
+    const auto modelOnlyCompleted = waitForTerminal(
+        modelOnlyService, modelOnlyRequest.runId);
+    assert(modelOnlyCompleted.record.state ==
+           Domain::ManagedRunState::Completed);
+    assert(!modelOnlyCompleted.record.allowTools);
+    assert(modelOnlyTransport.lastToolCount == 0U);
+    assert(modelOnlyAuthority.calls == 1U);
+    assert(modelOnlyRouter.calls == 0U);
+    auto expandedRequest = modelOnlyRequest;
+    expandedRequest.allowTools = true;
+    const auto expanded = modelOnlyService.start(
+        expandedRequest, modelOnlyContext);
+    assert(!expanded && expanded.error().code ==
+           Domain::ErrorCodes::Conflict);
+    modelOnlyService.shutdown();
 
     Store toolStore;
     Transport toolTransport;

@@ -221,6 +221,7 @@ struct ManagedRunStartRequest final {
     Domain::ClientId clientId;
     std::uint64_t authorityGeneration{};
     std::string task;
+    bool allowTools{true};
 };
 
 struct ManagedRunStatusRequest final {

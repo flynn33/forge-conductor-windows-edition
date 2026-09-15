@@ -69,6 +69,7 @@ struct ManagedRunRecord final {
     std::vector<ManagedFunctionCall> pendingFunctionCalls;
     UtcTimePoint createdAt;
     UtcTimePoint updatedAt;
+    bool allowTools{true};
 };
 
 struct ManagedRunStartRequest final {
@@ -79,6 +80,7 @@ struct ManagedRunStartRequest final {
     CorrelationId correlationId;
     std::uint64_t authorityGeneration{};
     std::string task;
+    bool allowTools{true};
 };
 
 struct ManagedRunSnapshot final {

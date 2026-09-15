@@ -406,7 +406,7 @@ public:
         : configuration_{validateConfiguration(std::move(configuration))},
           host_{Detail::strictUtf8ToUtf16(configuration_.loopbackHost).value()},
           session_{std::make_shared<InternetHandle>(WinHttpOpen(
-              L"Forge Conductor LM Studio Responses/1.1.23",
+              L"Forge Conductor LM Studio Responses/1.1.24",
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,
@@ -1050,11 +1050,16 @@ private:
         void* payload = body.empty()
             ? WINHTTP_NO_REQUEST_DATA
             : const_cast<char*>(body.data());
-        if (!WinHttpSendRequest(
-                request->get(), headers.c_str(), static_cast<DWORD>(-1L),
-                payload, static_cast<DWORD>(body.size()),
-                static_cast<DWORD>(body.size()), 0U) ||
-            !WinHttpReceiveResponse(request->get(), nullptr)) {
+        const bool sent = WinHttpSendRequest(
+            request->get(), headers.c_str(), static_cast<DWORD>(-1L),
+            payload, static_cast<DWORD>(body.size()),
+            static_cast<DWORD>(body.size()), 0U) != 0;
+        const DWORD sendError = sent ? ERROR_SUCCESS : GetLastError();
+        const bool received = sent &&
+            WinHttpReceiveResponse(request->get(), nullptr) != 0;
+        const DWORD exchangeError = sent
+            ? (received ? ERROR_SUCCESS : GetLastError()) : sendError;
+        if (!received) {
             if (context.isCancellationRequested() ||
                 wasCancelled(context.operationId.value())) {
                 return failure<HttpResponse>(
@@ -1066,9 +1071,19 @@ private:
                     Domain::ErrorCodes::DeadlineExceeded,
                     "The LM Studio Responses request exceeded its deadline.", true);
             }
+            const std::string stage = sent ? "receive response" : "send request";
+            if (exchangeError == ERROR_WINHTTP_TIMEOUT) {
+                return failure<HttpResponse>(
+                    Domain::ErrorCodes::DeadlineExceeded,
+                    "The LM Studio Responses " + stage +
+                        " timed out before a provider response (WinHTTP 12002).",
+                    true);
+            }
             return failure<HttpResponse>(
                 Domain::ErrorCodes::InternalFailure,
-                "The LM Studio Responses HTTP exchange failed.", true);
+                "The LM Studio Responses " + stage +
+                    " failed (WinHTTP " + std::to_string(exchangeError) + ").",
+                true);
         }
         DWORD status{};
         DWORD statusBytes = sizeof(status);

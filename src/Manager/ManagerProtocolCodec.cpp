@@ -1341,6 +1341,7 @@ void validateSettingsUpdateOutcome(
                 std::is_same_v<Payload, ManagedRunStartRequest>) {
                 method = "managed_run.start";
                 params["authority_generation"] = payload.authorityGeneration;
+                params["allow_tools"] = payload.allowTools;
                 params["client_id"] = payload.clientId.value();
                 params["project_id"] = payload.projectId.value();
                 params["run_id"] = payload.runId.value();
@@ -1542,16 +1543,26 @@ void validateSettingsUpdateOutcome(
             parsePatch(member(params, "patch")),
             booleanMember(params, "apply_immediately")};
     } else if (method == "managed_run.start") {
-        requireExactFields(
-            params,
-            {"authority_generation", "client_id", "project_id", "run_id", "task"},
-            "managed_run.start params");
+        if (params.contains("allow_tools")) {
+            requireExactFields(
+                params,
+                {"allow_tools", "authority_generation", "client_id", "project_id",
+                 "run_id", "task"},
+                "managed_run.start params");
+        } else {
+            requireExactFields(
+                params,
+                {"authority_generation", "client_id", "project_id", "run_id", "task"},
+                "managed_run.start params");
+        }
         payload = ManagedRunStartRequest{
             identifierMember<Domain::SessionId>(params, "run_id"),
             identifierMember<Domain::ProjectId>(params, "project_id"),
             identifierMember<Domain::ClientId>(params, "client_id"),
             uint64Member(params, "authority_generation"),
-            stringMember(params, "task")};
+            stringMember(params, "task"),
+            params.contains("allow_tools") ? booleanMember(params, "allow_tools")
+                                           : true};
     } else if (method == "managed_run.status") {
         requireExactFields(params, {"run_id"}, "managed_run.status params");
         payload = ManagedRunStatusRequest{
@@ -1640,6 +1651,7 @@ void validateSettingsUpdateOutcome(
     const auto& record = snapshot.record;
     Json value = Json::object();
     value["authority_generation"] = record.authorityGeneration;
+    value["allow_tools"] = record.allowTools;
     value["cancellation_requested"] = snapshot.cancellationRequested;
     value["client_id"] = record.clientId.value();
     value["created_at_utc_ms"] = epochMilliseconds(record.createdAt);
@@ -1681,14 +1693,25 @@ void validateSettingsUpdateOutcome(
 [[nodiscard]] Domain::ManagedRunSnapshot parseManagedRunSnapshot(
     const Json& value)
 {
-    requireExactFields(
-        value,
-        {"authority_generation", "cancellation_requested", "client_id", "created_at_utc_ms",
-         "input_tokens", "last_error", "manager_owned", "output_text",
-         "output_tokens", "pause_requested", "pending_function_calls", "project_id", "provider_response_id",
-         "retained_context_tokens", "run_id", "state", "task",
-         "updated_at_utc_ms"},
-        "Managed run snapshot");
+    if (value.contains("allow_tools")) {
+        requireExactFields(
+            value,
+            {"allow_tools", "authority_generation", "cancellation_requested", "client_id",
+             "created_at_utc_ms", "input_tokens", "last_error", "manager_owned",
+             "output_text", "output_tokens", "pause_requested", "pending_function_calls",
+             "project_id", "provider_response_id", "retained_context_tokens", "run_id",
+             "state", "task", "updated_at_utc_ms"},
+            "Managed run snapshot");
+    } else {
+        requireExactFields(
+            value,
+            {"authority_generation", "cancellation_requested", "client_id", "created_at_utc_ms",
+             "input_tokens", "last_error", "manager_owned", "output_text",
+             "output_tokens", "pause_requested", "pending_function_calls", "project_id", "provider_response_id",
+             "retained_context_tokens", "run_id", "state", "task",
+             "updated_at_utc_ms"},
+            "Managed run snapshot");
+    }
     const auto providerResponseId = optionalField<Domain::ProviderSessionId>(
         value,
         "provider_response_id",
@@ -1747,7 +1770,9 @@ void validateSettingsUpdateOutcome(
             utcTimePointFromMilliseconds(
                 nonnegativeIntegerMember(value, "created_at_utc_ms")),
             utcTimePointFromMilliseconds(
-                nonnegativeIntegerMember(value, "updated_at_utc_ms"))},
+                nonnegativeIntegerMember(value, "updated_at_utc_ms")),
+            value.contains("allow_tools") ? booleanMember(value, "allow_tools")
+                                           : true},
         booleanMember(value, "manager_owned"),
         booleanMember(value, "cancellation_requested"),
         booleanMember(value, "pause_requested")};

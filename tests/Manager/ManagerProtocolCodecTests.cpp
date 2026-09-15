@@ -209,7 +209,8 @@ void replaceOne(
             std::nullopt,
             {},
             Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'600'123LL}},
-            Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'601'456LL}}},
+            Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'601'456LL}},
+            false},
         true,
         false};
 }
@@ -503,11 +504,13 @@ void testEveryRequestMethodRoundTripsDeterministically()
                 identifier<Domain::ClientId>(
                     "20000000-0000-4000-8000-000000000003"),
                 9U,
-                "Run the ordinary managed turn."})))));
+                "Run the ordinary managed turn.",
+                false})))));
     const auto& managedPayload =
         std::get<Manager::ManagedRunStartRequest>(managedStart.payload);
     REQUIRE(managedPayload.authorityGeneration == 9U);
     REQUIRE(managedPayload.task == "Run the ordinary managed turn.");
+    REQUIRE(!managedPayload.allowTools);
 }
 
 void testManagedRunResultRoundTrips()
@@ -516,7 +519,8 @@ void testManagedRunResultRoundTrips()
         response(Manager::ManagerResult{sampleManagedRun()})));
     const auto root = Json::parse(payloadText(frame));
     REQUIRE(root.at("result").at("type") == "managed_run");
-    REQUIRE(root.at("result").at("value").size() == 18U);
+    REQUIRE(root.at("result").at("value").size() == 19U);
+    REQUIRE(root.at("result").at("value").at("allow_tools") == false);
     const auto decoded = take(
         Manager::ManagerProtocolCodec::decodeResponse(frame));
     const auto& actual = std::get<Domain::ManagedRunSnapshot>(
@@ -528,6 +532,7 @@ void testManagedRunResultRoundTrips()
             sampleManagedRun().record.providerResponseId);
     REQUIRE(actual.record.retainedContextTokens == 4096U);
     REQUIRE(actual.record.outputText == "The managed result.");
+    REQUIRE(!actual.record.allowTools);
     REQUIRE(actual.managerOwned);
     REQUIRE(!actual.cancellationRequested);
     REQUIRE(!actual.pauseRequested);

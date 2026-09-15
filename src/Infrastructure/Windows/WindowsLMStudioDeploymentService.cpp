@@ -495,9 +495,14 @@ struct PluginLayout final {
     const Domain::DeploymentId& deploymentId)
 {
     const auto at = state.find("at");
-    return stringEquals(state, "by", InstallerId) &&
-        stringEquals(state, "deploymentID", deploymentId.value()) &&
-        at != state.end() && at->is_number_integer();
+    if (at == state.end() || !at->is_number_integer()) {
+        return false;
+    }
+    if (stringEquals(state, "by", InstallerId)) {
+        return stringEquals(state, "deploymentID", deploymentId.value());
+    }
+    return stringEquals(state, "by", "mcp-bridge-v1") &&
+        state.find("deploymentID") == state.end();
 }
 
 [[nodiscard]] bool exactAuthorization(

@@ -171,6 +171,11 @@ struct TelemetryPresentation final {
                     " tokens available after reserves"
                 : "No remaining headroom after reserves",
             percent};
+    } else if (snapshot.continuity.runId) {
+        presentation.context = MetricPresentation{
+            "Awaiting run context",
+            "Exact run selected; the provider has not returned authoritative retained usage yet.",
+            std::nullopt};
     } else {
         presentation.context = MetricPresentation{
             "No selected run",

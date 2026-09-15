@@ -894,7 +894,8 @@ WindowsManagerNamedPipeClient::startManagedRun(
             request.projectId,
             request.clientId,
             request.authorityGeneration,
-            request.task},
+            request.task,
+            request.allowTools},
         context);
 }
 

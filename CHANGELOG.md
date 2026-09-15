@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.24 — Model-only run scope and live registration repair
+
+- Treat LM Studio's own runtime `install-state.json` marker as a valid bridge receipt while still validating the exact deployed manifest, binary, role, home, and deployment ID. A mismatched bridge deployment remains rejected.
+- Make native tool access an explicit, durable per-run choice. The desktop starts model-only by default; authorized tool runs still use the canonical Manager catalog and authority boundary. Scope survives Manager protocol readback and run recovery.
+- Distinguish provider endpoint failure from an empty model list, clear stale Manager operational telemetry after disconnect, and retain an exact selected Continuity run as awaiting usage when the provider has not returned token counts.
+- Report WinHTTP send/receive stage and numeric error on a failed LM Studio Responses exchange. Focused source tests pass; the signed installed run and final all-view screenshot acceptance are still pending.
+
 ## 1.1.23 — Deployment-scoped MCP outcome readback and LM Studio identities
 
 - Record the native MCP role and exact deployment ID with newly routed tool outcomes. A nullable C010 migration preserves historical audit rows without manufacturing provenance; focused persistence and protocol tests cover readback and pairing.

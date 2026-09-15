@@ -941,7 +941,7 @@ void MainWindow::NavigationChanged(
     if (provider) {
         PageDescription().Text(L"Choose a loaded model and inspect the Manager-owned Responses endpoint.");
         if (!providerSettings_) RunAction(Action::ProviderLoad);
-        if (telemetryUiInitialized_ && loadedModels_.empty()) RunAction(Action::ProviderModels);
+        if (telemetryUiInitialized_ && !providerDiscoveryAttempted_) RunAction(Action::ProviderModels);
     } else if (rig) {
         PageDescription().Text(L"Read and control the current native Manager runtime.");
     } else if (autonomy) {
@@ -955,7 +955,7 @@ void MainWindow::NavigationChanged(
     } else if (lmStudioMcp) {
         PageDescription().Text(L"Inspect, repair, and synchronize the native LM Studio MCP registration.");
         RunAction(Action::LmStudioInspect);
-        if (telemetryUiInitialized_ && loadedModels_.empty()) RunAction(Action::ProviderModels);
+        if (telemetryUiInitialized_ && !providerDiscoveryAttempted_) RunAction(Action::ProviderModels);
     } else if (tools) {
         PageDescription().Text(L"Inspect and run the Manager-owned native tool catalog.");
         if (!selectedProjectId_.empty()) {
@@ -1189,7 +1189,8 @@ void MainWindow::ApplyTelemetryPresentation(
     ContinuityRetainedValue().Text(winrt::to_hstring(
         snapshot.context.authoritative && snapshot.context.retainedTokens
             ? std::to_string(*snapshot.context.retainedTokens)
-            : std::string{"No run"}));
+            : snapshot.continuity.runId
+                ? std::string{"Awaiting usage"} : std::string{"No run"}));
     ContinuitySourceState().Text(winrt::to_hstring(
         snapshot.continuity.runId
             ? "Run " + snapshot.continuity.runId->value()
@@ -1638,6 +1639,9 @@ void MainWindow::ApplyRunReadback(
         std::string{"Exact run verified for this project · "} +
         (run.providerResponseId ? "provider response observed" :
             "waiting for provider response")));
+    RunToolScopeReadback().Text(run.allowTools
+        ? L"Tool scope · authorized native catalog"
+        : L"Tool scope · model-only, no native tools");
     RunTokensValue().Text(winrt::to_hstring(
         std::to_string(run.inputTokens) + " / " +
         std::to_string(run.outputTokens) + " tokens"));
@@ -1667,7 +1671,8 @@ void MainWindow::ApplyRunReadback(
         "\nAuthority generation: " +
             std::to_string(run.authorityGeneration) +
         "\nClient ID: " + run.clientId.value() +
-        "\nManager owned: " + (snapshot.managerOwned ? "yes" : "no");
+        "\nManager owned: " + (snapshot.managerOwned ? "yes" : "no") +
+        "\nNative tools allowed: " + (run.allowTools ? "yes" : "no");
     if (run.providerResponseId) exact +=
         "\nCanonical provider response: " + run.providerResponseId->value();
     for (const auto& call : run.pendingFunctionCalls)
@@ -1953,6 +1958,38 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
     ProviderDot().Fill(unavailableBrush);
     ContinuityDot().Fill(unavailableBrush);
     StoreDot().Fill(unavailableBrush);
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Manager ||
+        operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes) {
+        operationalSnapshot_.reset();
+        operationalLines_.clear();
+        visibleOperationalIndices_.clear();
+        OperationalList().Items().Clear();
+        OperationalCards().Items().Clear();
+        OperationalStatusValue0().Text(L"Unavailable");
+        OperationalStatusValue1().Text(operationalArea_ ==
+            ::ForgeConductor::Manager::ManagerOperationalArea::Manager
+                ? winrt::to_hstring(currentProductVersion()) : L"Unavailable");
+        OperationalStatusValue2().Text(L"Unavailable");
+        OperationalStatusValue3().Text(operationalArea_ ==
+            ::ForgeConductor::Manager::ManagerOperationalArea::Manager
+                ? currentDataRoot() : L"Unavailable");
+        OperationalState().Text(winrt::to_hstring(
+            "Live Manager readback unavailable · " + explanation));
+        OperationalListSummary().Text(L"Last Manager ownership and resource sample was invalidated on disconnect.");
+        OperationalCount().Text(L"UNAVAILABLE");
+        OperationalDetailTitle().Text(L"Live readback unavailable");
+        OperationalDetailBody().Text(winrt::to_hstring(explanation));
+        OperationalEmptyState().Visibility(Microsoft::UI::Xaml::Visibility::Visible);
+        OperationalEmptyTitle().Text(L"Live inventory unavailable");
+        OperationalEmptyBody().Text(winrt::to_hstring(explanation));
+        OperationalRuntimeReadiness().Text(L"Runtime readback unavailable");
+        OperationalRuntimeOwnership().Text(winrt::to_hstring(explanation));
+        OperationalRuntimeExecution().Text(L"Owned operations unavailable");
+        OperationalRuntimeStores().Text(L"Open stores unavailable");
+        OperationalRuntimeJobs().Text(L"Job state unavailable until the Manager reconnects.");
+        OperationalShellPolicy().Text(L"Unavailable");
+        OperationalJobState().Text(L"Unavailable until the Manager reconnects.");
+    }
     if (telemetrySnapshot_) {
         HistoryEquivalentText().Text(
             L"Last measured CPU/RAM history is stale because the Manager is disconnected.");
@@ -2061,6 +2098,10 @@ void MainWindow::ApplyLmStudioIdentities()
             model += " +" + std::to_string(loadedModels_.size() - 1U);
         }
         model += " · endpoint discovered";
+    } else if (providerDiscoveryAttempted_) {
+        model = providerDiscoverySucceeded_
+            ? "No loaded model · endpoint discovered"
+            : "Model endpoint unavailable · discovery failed";
     } else if (telemetry.provider.model) {
         model = *telemetry.provider.model + " · configured, load unverified";
     } else {
@@ -2994,6 +3035,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string runTask;
     std::string runId;
     std::uint64_t runGeneration{};
+    bool runAllowTools{};
     std::string projectPath;
     std::string projectDisplayName;
     std::string projectQuery;
@@ -3033,6 +3075,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             runClient = "forge-conductor-manager";
             runTask = winrt::to_string(RunTask().Text());
             runGeneration = 0U;
+            runAllowTools = RunAllowNativeTools().IsOn();
             if (runProject.empty()) {
                 RunState().Text(L"Select a named project before starting work.");
                 co_return;
@@ -3378,7 +3421,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         case Action::RunStart:
             runView = connection_->startManagedRun(
                 std::move(runProject), std::move(runClient), runGeneration,
-                std::move(runTask), cancellation_.get_token());
+                std::move(runTask), runAllowTools, cancellation_.get_token());
             message = runView.message;
             break;
         case Action::RunStatus:
@@ -3481,7 +3524,14 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (runView.snapshot) {
                 if (runView.snapshot->record.projectId.value() == selectedProjectId_) {
                     ApplyRunReadback(*runView.snapshot);
-                    if (action == Action::RunStart) followUp = Action::RunHistory;
+                    if (action == Action::RunStart ||
+                        (action == Action::RunStatus &&
+                         runView.snapshot->record.state !=
+                             ::ForgeConductor::Domain::ManagedRunState::Running &&
+                         runView.snapshot->record.state !=
+                             ::ForgeConductor::Domain::ManagedRunState::Paused)) {
+                        followUp = Action::RunHistory;
+                    }
                 } else {
                     RunPauseButton().IsEnabled(false);
                     RunResumeButton().IsEnabled(false);
@@ -3664,6 +3714,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
             action == Action::ProviderTest || action == Action::ProviderModels) {
             if (action == Action::ProviderModels) {
+                providerDiscoveryAttempted_ = true;
+                providerDiscoverySucceeded_ = modelsView.loaded;
                 rebuildingProviderModels_ = true;
                 loadedModels_ = modelsView.loaded ? std::move(modelsView.models)
                     : std::vector<std::string>{};

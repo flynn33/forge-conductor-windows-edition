@@ -137,7 +137,8 @@ public:
                     persisted.value()->clientId == request.clientId &&
                     persisted.value()->task == request.task &&
                     persisted.value()->authorityGeneration ==
-                        request.authorityGeneration) {
+                        request.authorityGeneration &&
+                    persisted.value()->allowTools == request.allowTools) {
                     return Domain::Result<Domain::ManagedRunSnapshot>::success(
                         snapshot(*persisted.value(), false));
                 }
@@ -163,7 +164,8 @@ public:
                 std::nullopt,
                 {},
                 now,
-                now};
+                now,
+                request.allowTools};
             if (auto saved = store_.save(record, context); !saved) {
                 return Domain::Result<Domain::ManagedRunSnapshot>::failure(
                     std::move(saved).error());
@@ -418,7 +420,8 @@ private:
             left.clientId == right.clientId &&
             left.operationId == right.operationId &&
             left.authorityGeneration == right.authorityGeneration &&
-            left.task == right.task;
+            left.task == right.task &&
+            left.allowTools == right.allowTools;
     }
 
     void publishActive(const Domain::ManagedRunRecord& record) noexcept
@@ -679,7 +682,8 @@ private:
 
         std::optional<Contracts::WorkspaceAuthority> authority;
         std::vector<Domain::McpToolDescriptor> descriptors;
-        if (tools_.catalog && tools_.router && tools_.workspaceAuthority) {
+        if (tools_.workspaceAuthority &&
+            (!request.allowTools || (tools_.catalog && tools_.router))) {
             auto resolved = tools_.workspaceAuthority->authorityFor(
                 request.projectId, providerContext);
             if (!resolved) {
@@ -693,9 +697,11 @@ private:
                     "The managed run authority generation or client is stale.");
                 record.state = Domain::ManagedRunState::Failed;
             } else {
-                authority.emplace(std::move(resolved).value());
-                const auto available = tools_.catalog->tools();
-                descriptors.assign(available.begin(), available.end());
+                if (request.allowTools) {
+                    authority.emplace(std::move(resolved).value());
+                    const auto available = tools_.catalog->tools();
+                    descriptors.assign(available.begin(), available.end());
+                }
             }
         }
 

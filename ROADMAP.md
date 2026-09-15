@@ -2,7 +2,9 @@
 
 ## 1.1 product recovery
 
-The 1.1 line restores routine native operation: independent telemetry and command scheduling, automatic Manager startup, delayed-readback edit preservation, plumbing-free project/run controls, and synchronized primary/fallback/CLU LM Studio registration. It also adds the exact four-tool continuity-control role without claiming desktop-chat takeover that has not been observed end to end.
+The 1.1 line restores routine native operation: independent telemetry and command scheduling, automatic Manager startup, delayed-readback edit preservation, plumbing-free project/run controls, and synchronized primary/fallback/CLU LM Studio registration. It also adds the exact four-tool continuity-control role. Desktop-chat takeover and source-to-successor restoration remain separate live qualification gates; neither role registration nor a read-only tool result closes them.
+
+The current engineering candidate is 1.1.24. Its model-only run scope, deployment-marker compatibility, disconnect invalidation, and sparse Continuity wording have focused source coverage. A signed installed managed response, desktop source handoff, runtime jobs/results, durable evidence-chain inspection, all-view visual proof, and the complete installed acceptance matrix remain open. No package is release-ready until those gates are evidenced on the same final bytes.
 
 ## 1.0 completion
 
@@ -20,4 +22,4 @@ The earlier R0–R7 plan is complete and retained under [historical delivery rec
 
 ## After 1.1
 
-Future work is versioned enhancement, not unfinished 1.0 scope. Candidate themes include additional processor architectures, more provider integrations, expanded performance telemetry, and Store distribution. Any such work must preserve the native C++20/WinUI architecture, Manager ownership boundaries, project isolation, and migration compatibility.
+Additional processor architectures, provider integrations, expanded performance telemetry, and Store distribution are future enhancements. They do not substitute for the open 1.1 installed acceptance gates above. Any work must preserve the native C++20/WinUI architecture, Manager ownership boundaries, project isolation, and migration compatibility.

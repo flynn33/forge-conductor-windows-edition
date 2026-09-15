@@ -118,6 +118,7 @@ public:
         std::string clientId,
         std::uint64_t authorityGeneration,
         std::string task,
+        bool allowTools,
         std::stop_token cancellation) noexcept = 0;
     virtual ManagedRunView controlManagedRun(
         std::string runId,
@@ -195,6 +196,7 @@ public:
         std::string clientId,
         std::uint64_t authorityGeneration,
         std::string task,
+        bool allowTools,
         std::stop_token cancellation) noexcept override;
     ManagedRunView controlManagedRun(
         std::string runId,

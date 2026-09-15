@@ -1218,6 +1218,43 @@ void testRepeatedDeployUsesFreshRevisionAndStatusDetectsDrift()
             "Status accepted a wrong role or stale shared configuration revision.");
 }
 
+void testLmStudioOwnedInstallStatePreservesExactBridgeRegistration()
+{
+    Fixture fixture;
+    seedForeignState(fixture);
+    const auto deployed = take(fixture.deploy(fixture.context()));
+    const std::array<std::string, 3> pluginDirectories{
+        "C:\\fixture\\.lmstudio\\extensions\\plugins\\mcp\\forge-conductor",
+        "C:\\fixture\\.lmstudio\\extensions\\plugins\\mcp\\forge-conductor-fallback",
+        "C:\\fixture\\.lmstudio\\extensions\\plugins\\mcp\\forge-conductor-clu"};
+    for (const auto& directory : pluginDirectories) {
+        fixture.storage.seedFile(
+            directory + "\\install-state.json",
+            R"({"by":"mcp-bridge-v1","at":1789500145341})");
+    }
+    const auto acknowledged = take(fixture.service.status(
+        fixture.request(), fixture.authority, fixture.context()));
+    require(acknowledged.primaryPluginInstalled &&
+                acknowledged.fallbackPluginInstalled &&
+                acknowledged.continuityPluginInstalled &&
+                acknowledged.mcpConfigurationRegistered &&
+                acknowledged.deploymentId == deployed.deploymentId,
+            "LM Studio's runtime install marker hid an exact three-role deployment.");
+
+    auto bridge = Json::parse(fixture.storage.fileText(
+        pluginDirectories.front() + "\\mcp-bridge-config.json").value());
+    bridge["env"]["FORGE_DEPLOYMENT_ID"] =
+        "00000000-0000-4000-8000-000000000000";
+    fixture.storage.seedFile(
+        pluginDirectories.front() + "\\mcp-bridge-config.json", bridge.dump());
+    const auto drifted = take(fixture.service.status(
+        fixture.request(), fixture.authority, fixture.context()));
+    require(!drifted.primaryPluginInstalled &&
+                drifted.fallbackPluginInstalled &&
+                drifted.continuityPluginInstalled,
+            "LM Studio's runtime marker bypassed exact bridge revision validation.");
+}
+
 void testPluginAndConfigurationCommitMoveFaultsRestoreExactSnapshot()
 {
     Fixture fixture;
@@ -1654,6 +1691,8 @@ void registerLMStudioDeploymentServiceTests(TestRegistry& tests)
             testConfigurationFileObjectTransactionCommitsAndRollsBackByMove);
     addTest(tests, "lmstudio.deploy.fresh-revision-and-drift",
             testRepeatedDeployUsesFreshRevisionAndStatusDetectsDrift);
+    addTest(tests, "lmstudio.deploy.lmstudio-runtime-marker",
+            testLmStudioOwnedInstallStatePreservesExactBridgeRegistration);
     addTest(tests, "lmstudio.deploy.commit-move-rollback",
             testPluginAndConfigurationCommitMoveFaultsRestoreExactSnapshot);
     addTest(tests, "lmstudio.deploy.fresh-and-ambiguous-move-rollback",

@@ -151,6 +151,8 @@ private:
     std::vector<ToolField> toolFields_;
     bool toolFormSupported_{};
     std::vector<std::string> loadedModels_;
+    bool providerDiscoveryAttempted_{};
+    bool providerDiscoverySucceeded_{};
     bool rebuildingProviderModels_{};
     std::string providerDiscoveredEndpoint_;
     std::vector<std::size_t> visibleTools_;

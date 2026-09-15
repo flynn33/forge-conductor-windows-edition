@@ -1569,7 +1569,8 @@ private:
                                 context.operationId,
                                 context.correlationId,
                                 payload.authorityGeneration,
-                                payload.task},
+                                payload.task,
+                                payload.allowTools},
                             context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagedRunStatusRequest>) {
