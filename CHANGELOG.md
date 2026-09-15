@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.16 — Evidence-chain composition and repair tracing
+
+- Give Events & Evidence its own three-stage trust composition while keeping current Manager audit outcomes visibly distinct from unprojected durable artifacts and unperformed native verification.
+- Add bounded, local Manager diagnostic breadcrumbs around LM Studio repair receipt, read inspection, authorization, and deployment admission to locate the live pre-transaction stall without logging configuration contents.
+- Describe the three Forge LM Studio roles accurately in the desktop action guidance.
+
 ## 1.1.15 — Bounded LM Studio repair and retained inspection state
 
 - Give the six-stage native MCP repair workflow a two-minute desktop request deadline instead of the previous thirty seconds; keep the Manager's transport and each smoke probe independently bounded.

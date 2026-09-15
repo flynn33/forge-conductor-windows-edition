@@ -3,6 +3,11 @@
 #include "ForgeConductor/Manager/ManagerDeadlineMapper.h"
 #include "ForgeConductor/Dashboard/DashboardSessionCloseRequest.h"
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
@@ -700,6 +705,20 @@ private:
         const Domain::OperationContext& context)
     {
         const auto& sources = telemetrySources_;
+        const auto trace = [&](const std::string_view event) noexcept {
+            if (!repair || sources.diagnostics == nullptr) return;
+            try {
+                static_cast<void>(sources.diagnostics->record(
+                    Domain::DiagnosticEnvelope{
+                        clock_->utcNow(), std::string{event},
+                        Domain::DiagnosticSeverity::Info, "manager",
+                        ::GetCurrentProcessId(),
+                        Domain::DiagnosticCategory::LmStudio, {}},
+                    context));
+            } catch (...) {
+            }
+        };
+        trace("lmstudio_repair_request_received");
         if (sources.lmStudioDeployment == nullptr ||
             sources.lmStudioReadAuthority == nullptr ||
             sources.lmStudioWriteAuthority == nullptr ||
@@ -717,6 +736,7 @@ private:
             return Domain::Result<ManagerLmStudioSnapshot>::failure(
                 std::move(inspected).error());
         }
+        trace("lmstudio_repair_inspection_complete");
 
         std::string actionDetail{"Registration inspected without changing LM Studio."};
         if (repair) {
@@ -742,12 +762,15 @@ private:
                 return Domain::Result<ManagerLmStudioSnapshot>::failure(
                     std::move(authorized).error());
             }
+            trace("lmstudio_repair_authorized");
+            trace("lmstudio_repair_deployment_requested");
             auto deployed = sources.lmStudioDeployment->deploy(
                 deploymentRequest, authority, authorized.value(), context);
             if (!deployed) {
                 return Domain::Result<ManagerLmStudioSnapshot>::failure(
                     std::move(deployed).error());
             }
+            trace("lmstudio_repair_deployment_complete");
             actionDetail = deployed.value().message;
             inspected = sources.lmStudioDeployment->status(
                 deploymentRequest, *sources.lmStudioReadAuthority, context);

@@ -5,6 +5,6 @@
 namespace ForgeConductor::Domain {
 
 inline constexpr std::string_view ProductName{"Forge Conductor"};
-inline constexpr std::string_view ProductVersion{"1.1.15"};
+inline constexpr std::string_view ProductVersion{"1.1.16"};
 
 } // namespace ForgeConductor::Domain

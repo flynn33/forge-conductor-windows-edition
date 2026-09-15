@@ -1429,7 +1429,8 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             continuityAutomation_.get(),
             process.cliExecutable(),
             initialConfiguration_->shell.enabled,
-            continuity_.get()});
+            continuity_.get(),
+            diagnosticSink_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

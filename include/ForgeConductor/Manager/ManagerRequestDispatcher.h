@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/IFoundationServices.h"
+#include "ForgeConductor/Contracts/IDiagnosticsServices.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
 #include "ForgeConductor/Contracts/IContinuityAutomation.h"
@@ -35,6 +36,7 @@ struct ManagerTelemetrySources final {
     std::optional<Domain::PathText> preferredForgeBinary;
     bool shellEnabled{};
     Contracts::IContinuityCoordinator* continuity{};
+    Contracts::IDiagnosticSink* diagnostics{};
 };
 
 class ManagerRequestDispatcher final {

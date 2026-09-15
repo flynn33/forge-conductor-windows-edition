@@ -951,7 +951,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.1.15");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.1.16");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
 
     const auto& listed = responseFor(frames, 2);

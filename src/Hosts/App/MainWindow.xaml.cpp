@@ -893,12 +893,14 @@ void MainWindow::NavigationChanged(
         OperationalAgentSearch().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalFeedFilters().Visibility(feed || evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalEvidenceCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
+        OperationalEvidencePath().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalStatusGrid().Visibility(runtimes || tag == L"Manager"
             ? Visibility::Visible : Visibility::Collapsed);
         OperationalListCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
         OperationalRuntimeCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
         OperationalDetailCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
-        OperationalListViewport().Height(runtimes || tag == L"Manager" ? 235.0 : 545.0);
+        OperationalListViewport().Height(runtimes || tag == L"Manager" ? 235.0 :
+            evidence ? 355.0 : 545.0);
         OperationalManagerCard().Visibility(tag == L"Manager" ? Visibility::Visible : Visibility::Collapsed);
         OperationalRuntimePolicyCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
         OperationalAgentInsightsCard().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
@@ -2826,6 +2828,9 @@ void MainWindow::ApplyOperational(
             std::to_string(operationalLines_.size()) +
             " bounded Manager audit outcomes · newest first" +
             (feedDisplayPaused_ ? " · display paused" : "");
+    if (winrt::to_string(PageTitle().Text()) == "Events & Evidence")
+        OperationalEvidenceAuditCount().Text(winrt::to_hstring(
+            std::to_string(operationalLines_.size()) + " bounded outcomes"));
     OperationalListSummary().Text(winrt::to_hstring(summary.empty()
         ? std::to_string(operationalLines_.size()) + " records from the live Manager projection"
         : summary));
