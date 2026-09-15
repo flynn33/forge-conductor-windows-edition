@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cstddef>
 #include <condition_variable>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -152,6 +153,26 @@ struct BoundedJsonRejected final {};
     result.push_back('-');
     result += roleText(role);
     return result;
+}
+
+[[nodiscard]] Domain::Result<Domain::PathText> installationDirectory(
+    const Domain::PathText& binaryPath)
+{
+    auto wide = Detail::strictUtf8ToUtf16(binaryPath.value());
+    if (!wide) {
+        return Domain::Result<Domain::PathText>::failure(std::move(wide).error());
+    }
+    const auto directory = std::filesystem::path{wide.value()}.parent_path();
+    if (directory.empty()) {
+        return Domain::Result<Domain::PathText>::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The Forge CLI executable has no installation directory."));
+    }
+    auto utf8 = Detail::strictUtf16ToUtf8(directory.native());
+    if (!utf8) {
+        return Domain::Result<Domain::PathText>::failure(std::move(utf8).error());
+    }
+    return Domain::PathText::create(utf8.value());
 }
 
 [[nodiscard]] Domain::Result<std::string> executableSearchPath() noexcept
@@ -583,12 +604,16 @@ public:
         const auto probeHome = verificationHome(forgeHome, context, role);
         Domain::ProcessRequest request{binaryPath};
         request.arguments = {"serve", "--home", probeHome};
-        // The serve composition root adopts its current directory as a durable
-        // project. Binding that directory to Forge home prevents a smoke probe
-        // from inheriting and persisting an unrelated caller workspace. The
-        // probe receives a per-operation data home so it cannot contend with
-        // the running Manager's production SQLite store.
-        request.workingDirectory = forgeHome;
+        // The serve composition root adopts its current directory as a project.
+        // Use the selected Forge installation directory, not an unrelated caller
+        // workspace or the live Manager's write-anchored database root. The
+        // isolated --home still keeps every probe store out of production.
+        auto workingDirectory = installationDirectory(binaryPath);
+        if (!workingDirectory) {
+            return Domain::Result<Domain::LMStudioConnectorHealth>::failure(
+                std::move(workingDirectory).error());
+        }
+        request.workingDirectory = std::move(workingDirectory).value();
         request.environment = {
             Domain::EnvironmentVariable{"FORGE_CONDUCTOR_HOME", probeHome},
             Domain::EnvironmentVariable{"FORGE_MCP_ROLE", std::string{roleText(role)}},

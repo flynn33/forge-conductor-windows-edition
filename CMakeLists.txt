@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.1.17
+    VERSION 1.1.18
     LANGUAGES CXX RC
 )
 

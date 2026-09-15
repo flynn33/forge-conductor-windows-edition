@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.18 — Isolated LM Studio smoke working directory
+
+- Bind all three pre/post native serve probes to the selected Forge CLI installation directory, not the live Manager's write-anchored data root. Each probe still receives an exact per-operation `--home` under `.serve-verifier`, so it cannot use the production SQLite store or inherit an unrelated workspace.
+- Preserve the process supervisor's strict no-write path anchors and update the verifier request-shape regression. Live packaged registration and connected-client qualification remain required.
+
 ## 1.1.17 — Bounded native repair diagnostics and visible action state
 
 - Bound best-effort LM Studio repair and deployment diagnostics to a quarter-second child deadline. A Manager-held write-capable data-root anchor currently contests the diagnostic writer's strict ancestor anchor; diagnostic contention can no longer consume the full native repair deadline. The diagnostic storage contention itself remains open.
