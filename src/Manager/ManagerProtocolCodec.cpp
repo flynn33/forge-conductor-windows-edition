@@ -2918,14 +2918,15 @@ template <typename T, typename Parser>
         {"tool_name", snapshot.toolName},
         {"ok", snapshot.ok},
         {"canonical_payload", snapshot.canonicalPayload},
-        {"error", snapshot.error ? errorJson(*snapshot.error) : Json(nullptr)}};
+        {"error", snapshot.error ? errorJson(*snapshot.error) : Json(nullptr)},
+        {"elapsed_ms", snapshot.elapsed.count()}};
 }
 
 [[nodiscard]] ManagerToolOutcomeSnapshot parseToolOutcomeSnapshot(const Json& value)
 {
     requireExactFields(
         value,
-        {"canonical_payload", "error", "ok", "project_id", "tool_name"},
+        {"canonical_payload", "elapsed_ms", "error", "ok", "project_id", "tool_name"},
         "Manager tool outcome");
     return ManagerToolOutcomeSnapshot{
         identifierMember<Domain::ProjectId>(value, "project_id"),
@@ -2936,7 +2937,8 @@ template <typename T, typename Parser>
             value, "error",
             [](const Json& object, const std::string_view name) {
                 return parseError(member(object, name));
-            })};
+            }),
+        std::chrono::milliseconds{nonnegativeIntegerMember(value, "elapsed_ms")}};
 }
 
 [[nodiscard]] std::string_view operationalAreaName(

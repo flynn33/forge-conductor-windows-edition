@@ -583,6 +583,26 @@ void testManagerTelemetryRoundTripsWithoutLosingAvailability()
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 
+void testToolOutcomePreservesMeasuredDuration()
+{
+    const Manager::ManagerToolOutcomeSnapshot snapshot{
+        identifier<Domain::ProjectId>(
+            "30000000-0000-4000-8000-000000000001"),
+        "agent_list", true, "{\"agents\":[]}", std::nullopt,
+        std::chrono::milliseconds{47}};
+    const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{snapshot})));
+    const auto root = Json::parse(payloadText(frame));
+    REQUIRE(root.at("result").at("type") == "tool_outcome");
+    REQUIRE(root.at("result").at("value").at("elapsed_ms") == 47);
+    const auto decoded = take(Manager::ManagerProtocolCodec::decodeResponse(frame));
+    const auto& actual = std::get<Manager::ManagerToolOutcomeSnapshot>(
+        std::get<Manager::ManagerResult>(decoded.body));
+    REQUIRE(actual.elapsed == std::chrono::milliseconds{47});
+    REQUIRE(actual.canonicalPayload == snapshot.canonicalPayload);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+}
+
 void testMaintenanceRoundTrips()
 {
     const Manager::ManagerMaintenanceSnapshot snapshot{
@@ -1365,6 +1385,7 @@ int main()
         {"managed-run-round-trips", testManagedRunResultRoundTrips},
         {"manager-telemetry-round-trips",
          testManagerTelemetryRoundTripsWithoutLosingAvailability},
+        {"tool-outcome-duration", testToolOutcomePreservesMeasuredDuration},
         {"project-workflow-round-trips", testProjectWorkflowRoundTrips},
         {"maintenance-round-trips", testMaintenanceRoundTrips},
         {"settings-update-outcome-round-trips",

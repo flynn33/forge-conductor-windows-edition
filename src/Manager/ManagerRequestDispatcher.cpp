@@ -913,7 +913,8 @@ private:
                 request.toolName,
                 outcome.value().receipt.ok,
                 std::move(outcome.value().canonicalPayload),
-                std::move(outcome.value().receipt.error)});
+                std::move(outcome.value().receipt.error),
+                outcome.value().receipt.elapsed});
     }
 
     [[nodiscard]] Domain::Result<ManagerOperationalSnapshot> operationalSnapshot(

@@ -732,7 +732,7 @@ void MainWindow::NavigationChanged(
         }
         RunAction(Action::ToolsList);
     } else if (settings) {
-        PageDescription().Text(L"Edit effective Manager, dashboard, provider, context, logging, and runtime preferences without editing configuration files.");
+        PageDescription().Text(L"Edit and verify Manager-owned preferences without editing files.");
         const auto project = selectedProjectId_.empty()
             ? std::string{"<select a project first>"} : selectedProjectId_;
         MaintenanceState().Text(winrt::to_hstring(
@@ -899,6 +899,14 @@ void MainWindow::ApplySettingsForm(
     SettingsResponseReserve().Value(settings.nextResponseReserve);
     SettingsHandoffReserve().Value(settings.handoffReserve);
     SettingsSafetyMargin().Value(settings.estimationSafetyMargin);
+    SettingsHeroReadback().Text(L"Prepared settings · awaiting Manager verification");
+    SettingsDashboardSummary().Text(winrt::to_hstring(
+        settings.dashboardHost + ':' + std::to_string(settings.dashboardPort)));
+    SettingsProviderSummary().Text(winrt::to_hstring(
+        settings.localModelHost + ':' + std::to_string(settings.localModelPort)));
+    SettingsContextSummary().Text(winrt::to_hstring(
+        std::to_string(settings.effectiveContextCapacity)));
+    SettingsShellSummary().Text(settings.shellEnabled ? L"ENABLED" : L"DISABLED");
 }
 
 void MainWindow::ApplyTelemetryPresentation(
@@ -1775,6 +1783,123 @@ std::optional<std::string> MainWindow::ToolCanonicalArguments()
     return arguments.dump();
 }
 
+void MainWindow::RenderToolOutcome(
+    const ::ForgeConductor::Manager::ManagerToolOutcomeSnapshot& snapshot,
+    const std::string_view message)
+{
+    using Json = nlohmann::json;
+    using namespace Microsoft::UI::Xaml::Controls;
+    ToolOutcomeRecords().Children().Clear();
+    ToolOutcome().Text(winrt::to_hstring(snapshot.canonicalPayload));
+    ToolOutcomeStatus().Text(winrt::to_hstring(
+        std::string{snapshot.ok ? "Completed" : "Did not complete"} +
+        " · " + snapshot.toolName + " · " +
+        std::to_string(snapshot.elapsed.count()) + " ms"));
+    ToolOutcomeStatus().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+        snapshot.ok ? Windows::UI::Color{255, 61, 220, 151}
+                    : Windows::UI::Color{255, 255, 200, 87}});
+    ToolOutcomeSummary().Text(winrt::to_hstring(message));
+
+    const auto addRecord = [this](const std::string& title, const std::string& body) {
+        Border card;
+        card.Background(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{255, 21, 42, 63}});
+        card.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{110, 75, 109, 142}});
+        card.BorderThickness(Microsoft::UI::Xaml::Thickness{1});
+        card.CornerRadius(Microsoft::UI::Xaml::CornerRadius{8});
+        card.Padding(Microsoft::UI::Xaml::Thickness{12, 9, 12, 9});
+        StackPanel content;
+        content.Spacing(3);
+        TextBlock heading;
+        heading.Text(winrt::to_hstring(title));
+        heading.FontFamily(Microsoft::UI::Xaml::Media::FontFamily{L"Segoe UI Variable Display"});
+        heading.FontSize(14);
+        heading.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+        heading.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        content.Children().Append(heading);
+        if (!body.empty()) {
+            TextBlock detail;
+            detail.Text(winrt::to_hstring(body));
+            detail.FontSize(12);
+            detail.MaxLines(3);
+            detail.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+            detail.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+            detail.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 184, 197, 211}});
+            content.Children().Append(detail);
+        }
+        card.Child(content);
+        ToolOutcomeRecords().Children().Append(card);
+    };
+    const auto displayValue = [](const Json& value) -> std::string {
+        if (value.is_string()) return value.get<std::string>();
+        if (value.is_primitive()) return value.dump();
+        return {};
+    };
+    const auto firstValue = [&displayValue](const Json& object,
+        const std::initializer_list<std::string_view> keys) -> std::string {
+        if (!object.is_object()) return displayValue(object);
+        for (const auto key : keys) {
+            const auto found = object.find(std::string{key});
+            if (found != object.end()) {
+                const auto value = displayValue(*found);
+                if (!value.empty()) return value;
+            }
+        }
+        return {};
+    };
+    try {
+        const auto payload = Json::parse(snapshot.canonicalPayload);
+        const Json* records = payload.is_array() ? &payload : nullptr;
+        std::string group;
+        if (payload.is_object()) {
+            for (auto it = payload.begin(); it != payload.end(); ++it) {
+                if (it.value().is_array()) {
+                    records = &it.value();
+                    group = it.key();
+                    break;
+                }
+            }
+        }
+        if (records) {
+            ToolOutcomeSummary().Text(winrt::to_hstring(
+                std::to_string(records->size()) + " " +
+                (group.empty() ? "returned records" : group) +
+                " · Manager-owned result"));
+            const auto limit = std::min<std::size_t>(records->size(), 8U);
+            for (std::size_t index{}; index < limit; ++index) {
+                const auto& record = records->at(index);
+                auto title = firstValue(record,
+                    {"display_name", "name", "title", "agent_id", "id", "tool"});
+                if (title.empty()) title = "Record " + std::to_string(index + 1U);
+                auto body = firstValue(record,
+                    {"description", "summary", "status", "message", "detail"});
+                if (body.empty() && !record.is_object()) body = displayValue(record);
+                addRecord(title, body);
+            }
+            if (records->size() > limit) addRecord(
+                std::to_string(records->size() - limit) + " more records",
+                "Open Advanced for the complete canonical Manager result.");
+        } else if (payload.is_object()) {
+            std::size_t shown{};
+            for (auto it = payload.begin(); it != payload.end() && shown < 8U; ++it) {
+                const auto value = displayValue(it.value());
+                if (value.empty()) continue;
+                addRecord(it.key(), value);
+                ++shown;
+            }
+            if (!shown) addRecord("Structured Manager result",
+                "Open Advanced for the complete canonical payload.");
+        } else {
+            addRecord("Manager result", displayValue(payload));
+        }
+    } catch (...) {
+        addRecord("Manager result available",
+            "The returned payload is not a JSON object. Open Advanced to inspect it exactly.");
+    }
+}
+
 void MainWindow::FilterTools()
 {
     if (rebuildingTools_ || !ToolList()) return;
@@ -2628,10 +2753,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             ToolsState().Text(winrt::to_hstring(message));
             if (!toolsView.snapshot && tools_.empty()) ToolEmptyBody().Text(winrt::to_hstring(message));
             if (toolOutcomeView.snapshot) {
-                ToolOutcome().Text(winrt::to_hstring(
-                    message + "\n" + toolOutcomeView.snapshot->canonicalPayload));
+                RenderToolOutcome(*toolOutcomeView.snapshot, message);
             } else if (action == Action::ToolInvoke) {
-                ToolOutcome().Text(winrt::to_hstring(message));
+                ToolOutcomeRecords().Children().Clear();
+                ToolOutcomeStatus().Text(L"Invocation unavailable");
+                ToolOutcomeSummary().Text(winrt::to_hstring(message));
+                ToolOutcome().Text(L"No canonical Manager payload was returned.");
             }
         } else if (operationalAction) {
             if (operationalView.snapshot) {
@@ -2664,6 +2791,18 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 providerSettings_ = loaded.settings;
                 if (!providerEdited) ApplyProviderForm(*providerSettings_);
                 if (!settingsEdited) ApplySettingsForm(*providerSettings_);
+                SettingsHeroReadback().Text(providerEdited || settingsEdited
+                    ? L"Effective Manager readback · pending edits preserved"
+                    : L"Effective Manager readback · verified");
+                SettingsDashboardSummary().Text(winrt::to_hstring(
+                    loaded.settings.dashboardHost + ':' +
+                    std::to_string(loaded.settings.dashboardPort)));
+                SettingsProviderSummary().Text(winrt::to_hstring(
+                    loaded.settings.localModelHost + ':' +
+                    std::to_string(loaded.settings.localModelPort)));
+                SettingsContextSummary().Text(winrt::to_hstring(
+                    std::to_string(loaded.settings.effectiveContextCapacity)));
+                SettingsShellSummary().Text(loaded.settings.shellEnabled ? L"ENABLED" : L"DISABLED");
                 SettingsState().Text(winrt::to_hstring(
                     "Effective settings read back from the Manager. Dashboard " +
                     loaded.settings.dashboardHost + ":" +
@@ -2736,7 +2875,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             } else if (action == Action::ProviderSave && submitted && !failed) {
                 providerSettings_ = submitted;
             }
-            ProviderState().Text(winrt::to_hstring(message));
+            if (action != Action::ProviderModels)
+                ProviderState().Text(winrt::to_hstring(message));
             if (action == Action::ProviderSave) followUp = Action::ProviderLoad;
         } else {
             if (action == Action::Refresh && telemetryView.snapshot) {

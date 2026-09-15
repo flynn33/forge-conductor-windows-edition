@@ -13,13 +13,15 @@
 - Rig had the intended broad grid but fell short of the selected concept in hero identity, thin meters, noisy unscaled chart, plain event dumps and lifecycle-centric command-center actions. Agents and Feed were still dense native data panes rather than polished operational compositions. Tools was functional but its invocation path remained an advanced JSON form.
 - Signed 1.1.5 was installed and authenticated to the production Manager. At 1666 × 827, Rig aligned its broad grid and meter treatment more closely with Direction A, but hierarchy, type size, history labeling and recent-event treatment still missed the selected concept. The fourteen destinations were inspected live; Agents, Feed, Projects, Provider, Autonomy/Continuity, Runtimes, Events & Evidence, Diagnostics and Manager remained too thin or generic for a finish claim.
 - Signed 1.1.6 was installed and connected to the production Manager. The live sweep showed genuine improvement in Rig, Projects, Provider, Autonomy/Continuity, Feed and Agents, but Tools still required JSON, Manager/Runtimes had an oversized empty inventory, some record counters misleadingly said LIVE, and Provider exposed raw telemetry. The 1.1.7 source pass addresses these specific misses; it is not installed visual proof until packaged and inspected.
-- Empty/disconnected, compact viewport, scaling, keyboard, contrast, long-identifier and long-error checks remain to be recorded. Feature gaps, particularly tool typed controls, actual run history/continuity restoration, durable evidence, and diagnostic support export, are not waived by visual improvement.
+- Signed 1.1.7 installed live. Guided tool arguments successfully invoked a read-only native catalog action through the production Manager. Its latest result still exposed raw JSON, and Settings remained a long, flat form. The 1.1.8 source pass replaces the result with bounded cards and composes effective Settings readback; installed visual proof is still pending.
+- Empty/disconnected, compact viewport, scaling, keyboard, contrast, long-identifier and long-error checks remain to be recorded. Feature gaps, particularly actual run history/continuity restoration, durable evidence, and diagnostic support export, are not waived by visual improvement.
 
 ## Build and package verification
 
 - Full Release x64 Product All build and `ForgeConductor.App.TelemetryPresentationTests` passed for 1.1.5. The signed 1.1.5 package was valid, installed, and connected to live Manager telemetry; its visual audit is explicitly blocked above.
 - The 1.1.6 Release x64 Product All build, focused native tests, signed package validation and installed production Manager inspection passed; design QA remained blocked.
-- The 1.1.7 Release x64 Product All build and six focused test groups passed. Signed packaging and installed all-view visual QA are pending.
+- The 1.1.7 Release x64 Product All build, six focused test groups, signed package validation and installed production Manager/tool inspection passed; design QA remained blocked.
+- The 1.1.8 Release x64 Product All build and eight focused Manager/MCP/host/infrastructure tests passed. Signed package and installed all-view visual QA are pending.
 - Previous full CTest result was 150/151. `ForgeConductor.Manager.CompositionLifecycleTests` cannot run while the live installed Manager owns its hardcoded port 7788; displacement requires a bounded service pause and restoration.
 
 ## Final result

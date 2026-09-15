@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.8 — Structured result and configuration composition
+
+- Present native tool outcomes as bounded records with clear completion and invocation duration; retain exact payload in Advanced.
+- Use the Manager's measured tool receipt duration in the typed desktop response.
+- Compose Settings around effective endpoint, context and shell readback, with detailed sections and destructive maintenance behind clear expansion.
+- Keep visual QA open until the signed install and all required feature outcomes are verified.
+
 ## 1.1.7 — Guided workbench and density corrections
 
 - Render Manager tool schemas as guided native argument controls; keep canonical JSON in Advanced for complex forms.

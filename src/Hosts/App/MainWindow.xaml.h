@@ -106,6 +106,9 @@ private:
     void FilterTools();
     void BuildToolForm(const ::ForgeConductor::Manager::ManagerToolDescriptor& tool);
     std::optional<std::string> ToolCanonicalArguments();
+    void RenderToolOutcome(
+        const ::ForgeConductor::Manager::ManagerToolOutcomeSnapshot& snapshot,
+        std::string_view message);
     void ApplyOperational(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
     void SelectOperationalRecord(std::size_t index);
     void UpdateRunProjectLabel();

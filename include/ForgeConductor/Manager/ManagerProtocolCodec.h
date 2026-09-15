@@ -7,6 +7,7 @@
 #include "ForgeConductor/Domain/ProjectMemoryModels.h"
 #include "ForgeConductor/Domain/ToolModels.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -175,6 +176,7 @@ struct ManagerToolOutcomeSnapshot final {
     bool ok{};
     std::string canonicalPayload;
     std::optional<Domain::Error> error;
+    std::chrono::milliseconds elapsed{};
 };
 
 struct ManagerOperationalSnapshot final {
