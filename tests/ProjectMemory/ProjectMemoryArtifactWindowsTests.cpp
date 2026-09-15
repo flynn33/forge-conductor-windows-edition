@@ -1011,6 +1011,23 @@ void snapshotRoundTripSecurityAndRollback()
     REQUIRE(artifact.parent_path() == directory.path() / L"exports");
     const std::string originalArtifact = readText(artifact);
 
+    const auto repeatContext = operationContext(
+        "artifact-repeat-export", fixture.now);
+    const auto repeatCapability = exportCapability(
+        projectId,
+        Support::pathText(directory.path()),
+        repeatContext,
+        Domain::ToolEffect::Write);
+    const auto repeated = take(fixture.repository->exportMemory(
+        Domain::ExportProjectMemoryRequest{projectId},
+        repeatCapability.authority,
+        repeatCapability.authorization,
+        repeatContext));
+    REQUIRE(repeated.recordCount == exported.recordCount);
+    REQUIRE(repeated.artifact.value() != exported.artifact.value());
+    REQUIRE(std::filesystem::exists(nativePath(repeated.artifact)));
+    REQUIRE(readText(nativePath(repeated.artifact)) == originalArtifact);
+
     const auto hardLink = artifact.parent_path() / L"hard-link.json";
     REQUIRE(::CreateHardLinkW(hardLink.c_str(), artifact.c_str(), nullptr) != FALSE);
     const auto hardLinkRejected = fixture.repository->importMemory(

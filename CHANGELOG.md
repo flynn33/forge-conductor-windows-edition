@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.29 — Repeatable project archive export
+
+- Retain an existing project-owned exports directory with only the permissions needed to create and inspect artifact files. A second installed-profile export under inherited Modify permissions no longer fails because of an unnecessary delete-child access request.
+- Add a repeated-export repository regression: successive snapshots remain separately retained and byte-equivalent for the same project state. Installed archive preview and confirmed import remain acceptance checks before all-view visual proof.
+
 ## 1.1.28 — Archive readback and profile truth
 
 - Correct the Projects archive result check to compare the Manager's exact tool name with the action's stable expected name after background argument transfer. Installed 1.1.27 completed an export but displayed “Export unavailable” because the local comparison string was moved.

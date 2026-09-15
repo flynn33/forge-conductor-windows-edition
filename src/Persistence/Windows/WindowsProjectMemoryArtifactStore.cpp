@@ -403,7 +403,7 @@ struct ArtifactCandidate final {
         DWORD desiredAccess =
             FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES;
         if (create) {
-            desiredAccess |= FILE_ADD_FILE | FILE_DELETE_CHILD;
+            desiredAccess |= FILE_ADD_FILE;
         }
         if (allowChildCreation) {
             desiredAccess |= FILE_ADD_SUBDIRECTORY;
