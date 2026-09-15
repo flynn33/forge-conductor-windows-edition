@@ -51,9 +51,14 @@ struct MainWindow : MainWindowT<MainWindow> {
     void LmStudioActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ToolsRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ToolInvokeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ToolFilterChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+    void ToolPackFilterChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void ToolSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void OperationalRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OperationalPruneClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OperationalCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OperationalSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void OperationalCardSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
 
 private:
     enum class Action {
@@ -80,6 +85,9 @@ private:
         const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
     void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
+    void FilterTools();
+    void ApplyOperational(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
+    void SelectOperationalRecord(std::size_t index);
     void ClearSelectedProject();
     void SelectPage(const winrt::hstring& tag);
 
@@ -88,6 +96,10 @@ private:
     std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
         telemetrySnapshot_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
+    std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
+    std::vector<std::size_t> visibleTools_;
+    std::vector<std::string> operationalLines_;
+    bool rebuildingTools_{};
     std::string selectedProjectId_;
     std::wstring selectedPageValueName_{L"SelectedPage"};
     std::wstring selectedProjectValueName_{L"SelectedProjectId"};

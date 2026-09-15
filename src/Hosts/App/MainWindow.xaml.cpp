@@ -5,8 +5,10 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Windowing.h>
 #include <winrt/Windows.UI.h>
+#include <winrt/Windows.UI.Text.h>
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <limits>
@@ -332,12 +334,58 @@ void MainWindow::ToolsRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ToolsList); }
 void MainWindow::ToolInvokeClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ToolInvoke); }
+void MainWindow::ToolFilterChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&) { FilterTools(); }
+void MainWindow::ToolPackFilterChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&) { FilterTools(); }
+void MainWindow::ToolSelectionChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    const auto index = ToolList().SelectedIndex();
+    if (index < 0 || static_cast<std::size_t>(index) >= visibleTools_.size()) return;
+    const auto& tool = tools_[visibleTools_[static_cast<std::size_t>(index)]];
+    ToolName().Text(winrt::to_hstring(tool.name));
+    ToolDetailName().Text(winrt::to_hstring(tool.name));
+    ToolDetailPack().Text(winrt::to_hstring(tool.pack + " · Manager-owned capability"));
+    ToolDetailDescription().Text(winrt::to_hstring(tool.description));
+    ToolDetailPolicy().Text(winrt::to_hstring(
+        std::string{tool.requiresProject ? "Selected project authority required" : "No project binding required"} +
+        (tool.requiresShell ? " · shell policy applies" : "") +
+        ". Canonical arguments are validated by the Manager."));
+}
 void MainWindow::OperationalRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalInspect); }
 void MainWindow::OperationalPruneClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalPrune); }
 void MainWindow::OperationalCloseClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalClose); }
+void MainWindow::OperationalSelectionChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    const auto index = OperationalList().SelectedIndex();
+    if (index >= 0) SelectOperationalRecord(static_cast<std::size_t>(index));
+}
+void MainWindow::OperationalCardSelectionChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    const auto index = OperationalCards().SelectedIndex();
+    if (index >= 0) SelectOperationalRecord(static_cast<std::size_t>(index));
+}
+void MainWindow::SelectOperationalRecord(const std::size_t index)
+{
+    if (index >= operationalLines_.size()) return;
+    const auto& line = operationalLines_[index];
+    const auto separator = line.find('\n');
+    OperationalDetailTitle().Text(winrt::to_hstring(line.substr(0, separator)));
+    OperationalDetailBody().Text(winrt::to_hstring(
+        separator == std::string::npos ? line : line.substr(separator + 1)));
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Agents) {
+        const auto idEnd = line.find(" · ");
+        if (idEnd != std::string::npos && line.find("Tools: ") == std::string::npos) {
+            OperationalSessionId().Text(winrt::to_hstring(line.substr(0, idEnd)));
+        }
+    }
+}
 
 void MainWindow::ProjectSelectionChanged(
     Windows::Foundation::IInspectable const&,
@@ -369,6 +417,7 @@ void MainWindow::NavigationChanged(
     const bool provider = tag == L"Provider";
     const bool settings = tag == L"Settings";
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
+    const bool continuityPage = tag == L"Continuity";
     const bool rig = tag == L"Rig";
     const bool projects = tag == L"Projects";
     const bool lmStudioMcp = tag == L"LM Studio MCP";
@@ -381,8 +430,43 @@ void MainWindow::NavigationChanged(
     else if (tag == L"Runtimes") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes;
     else if (tag == L"Diagnostics") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Diagnostics;
     else if (tag == L"Manager") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Manager;
+    if (operational) {
+        const bool agents = tag == L"Agents";
+        const bool feed = tag == L"Feed";
+        const bool evidence = tag == L"Events & Evidence";
+        const bool runtimes = tag == L"Runtimes";
+        const bool diagnostics = tag == L"Diagnostics";
+        OperationalHeading().Text(agents ? L"Agent playbooks & sessions" :
+            feed ? L"Recent tool activity" :
+            evidence ? L"Activity & evidence boundary" :
+            runtimes ? L"Native runtime inventory" :
+            diagnostics ? L"Health & diagnostics" : L"Manager ownership");
+        OperationalSubtitle().Text(agents ? L"Inspect available specialists and exact session identities." :
+            feed ? L"Manager-owned chronological audit outcomes." :
+            evidence ? L"Audit activity is visible; durable evidence requires a separate verified projection." :
+            runtimes ? L"Owned operations, threads, processes, repositories and databases." :
+            diagnostics ? L"Doctor checks and bounded diagnostic output." :
+            L"Current service identity and owned runtime resources.");
+        OperationalListTitle().Text(agents ? L"Available specialists & sessions" :
+            feed ? L"Recent outcomes" :
+            evidence ? L"Audited outcomes" :
+            runtimes ? L"Resource inventory" :
+            diagnostics ? L"Doctor checks" : L"Manager state");
+        OperationalHeroIcon().Glyph(agents ? L"\uE716" :
+            feed || evidence ? L"\uE8D4" :
+            runtimes ? L"\uE7F4" :
+            diagnostics ? L"\uE713" : L"\uE77B");
+        OperationalPruneButton().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+        OperationalSessionCard().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+        OperationalCards().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+        OperationalList().Visibility(agents ? Visibility::Collapsed : Visibility::Visible);
+    }
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
+    AutonomyOverviewCard().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
+    ContinuityOverviewCard().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
+    RunControlHeading().Text(continuityPage ? L"Exact run handoff controls" : L"Run control");
+    RunStateHeading().Text(continuityPage ? L"Latest continuity readback" : L"Run and continuity state");
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
     ProjectsPanel().Visibility(projects ? Visibility::Visible : Visibility::Collapsed);
     LmStudioMcpPanel().Visibility(lmStudioMcp ? Visibility::Visible : Visibility::Collapsed);
@@ -398,7 +482,9 @@ void MainWindow::NavigationChanged(
     } else if (rig) {
         PageDescription().Text(L"Read and control the current native Manager runtime.");
     } else if (autonomy) {
-        PageDescription().Text(L"Start, attach, pause, resume, and stop Manager-owned work while observing retained context.");
+        PageDescription().Text(continuityPage
+            ? L"Inspect retained context and control the exact Manager-owned run."
+            : L"Start, attach, pause, resume, and stop Manager-owned work.");
     } else if (tag == L"Projects") {
         PageDescription().Text(L"Register authorized folders, select exact project identities, and read or write persistent project memory.");
         RunAction(Action::ProjectList);
@@ -423,12 +509,13 @@ void MainWindow::NavigationChanged(
             "\nAll registered project data: RESET ALL PROJECT DATA"));
         RunAction(Action::SettingsLoad);
     } else if (operational) {
-        PageDescription().Text(L"Inspect authoritative Manager-owned operational data and available session actions.");
+        PageDescription().Text(tag == L"Agents" ? L"Browse native specialists and their live sessions." :
+            tag == L"Feed" ? L"Read recent Manager-owned tool outcomes." :
+            tag == L"Events & Evidence" ? L"Distinguish audited activity from durable trusted evidence." :
+            tag == L"Runtimes" ? L"Inspect native resource ownership and service state." :
+            tag == L"Diagnostics" ? L"Run through health checks and diagnostic readback." :
+            L"Inspect Manager ownership and runtime state.");
         RunAction(Action::OperationalInspect);
-    } else if (tag == L"Events & Evidence" || tag == L"Feed") {
-        PageDescription().Text(L"Inspect recent operational activity and measured tool durations.");
-    } else if (tag == L"Runtimes") {
-        PageDescription().Text(L"Inspect the native telemetry runtime, process resources, threads, repositories, and databases.");
     } else {
         PageDescription().Text(L"Inspect the current typed Manager operational snapshot.");
     }
@@ -576,6 +663,8 @@ void MainWindow::ApplyTelemetryPresentation(
     applyMetric(GpuValue(), GpuState(), GpuGauge(), presentation.gpu);
     applyMetric(
         ContextValue(), ContextState(), ContextGauge(), presentation.context);
+    ContinuityContextState().Text(winrt::to_hstring(
+        presentation.context.value + " · " + presentation.context.state));
     ManagerHealth().Text(winrt::to_hstring(presentation.managerStatus));
     ProviderHealth().Text(winrt::to_hstring(presentation.providerStatus));
     StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
@@ -882,6 +971,25 @@ void MainWindow::ApplyLmStudio(
         snapshot.fallbackPluginInstalled && snapshot.continuityPluginInstalled &&
         snapshot.mcpConfigurationRegistered &&
         snapshot.binaryExecutable;
+    LmStudioBadge().Text(installed ? L"REGISTERED" : L"ATTENTION");
+    LmStudioOverview().Text(winrt::to_hstring(
+        std::string{installed ? "Three native roles registered" : "Registration requires attention"} +
+        " · " + (snapshot.connectedClientObserved ? "client observed" : "no connected client observed")));
+    LmStudioPrimaryRole().Text(winrt::to_hstring(
+        std::string{snapshot.primaryPluginInstalled ? "Installed" : "Missing"} +
+        " · " + (snapshot.connectionCheckPerformed
+            ? (snapshot.primaryConnectorReady ? "connector ready" : "connector not ready")
+            : "not yet verified")));
+    LmStudioFallbackRole().Text(winrt::to_hstring(
+        std::string{snapshot.fallbackPluginInstalled ? "Installed" : "Missing"} +
+        " · " + (snapshot.connectionCheckPerformed
+            ? (snapshot.fallbackConnectorReady ? "connector ready" : "connector not ready")
+            : "not yet verified")));
+    LmStudioCluRole().Text(winrt::to_hstring(
+        std::string{snapshot.continuityPluginInstalled ? "Installed" : "Missing"} +
+        " · " + (snapshot.connectionCheckPerformed
+            ? (snapshot.continuityConnectorReady ? "connector ready" : "connector not ready")
+            : "not yet verified")));
     LmStudioRegistrationState().Text(winrt::to_hstring(
         std::string{"Installed registration: "} + (installed ? "complete" : "incomplete") +
         "\nPrimary: " + (snapshot.primaryPluginInstalled ? "installed" : "missing") +
@@ -911,6 +1019,7 @@ void MainWindow::ApplyLmStudio(
 void MainWindow::ApplyTools(
     const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot)
 {
+    tools_ = snapshot.tools;
     std::string text = "Shell preference: ";
     text += snapshot.shellEnabled ? "enabled" : "disabled";
     for (const auto& tool : snapshot.tools) {
@@ -919,6 +1028,169 @@ void MainWindow::ApplyTools(
         text += "\n" + tool.description + "\nSchema: " + tool.inputSchema;
     }
     ToolsCatalog().Text(winrt::to_hstring(text));
+    rebuildingTools_ = true;
+    ToolPackFilter().Items().Clear();
+    Microsoft::UI::Xaml::Controls::ComboBoxItem all;
+    all.Content(box_value(L"All packs"));
+    ToolPackFilter().Items().Append(all);
+    std::vector<std::string> packs;
+    for (const auto& tool : tools_) {
+        if (std::find(packs.begin(), packs.end(), tool.pack) == packs.end())
+            packs.push_back(tool.pack);
+    }
+    std::sort(packs.begin(), packs.end());
+    for (const auto& pack : packs) {
+        Microsoft::UI::Xaml::Controls::ComboBoxItem item;
+        item.Content(box_value(winrt::to_hstring(pack)));
+        ToolPackFilter().Items().Append(item);
+    }
+    ToolPackFilter().SelectedIndex(0);
+    rebuildingTools_ = false;
+    FilterTools();
+}
+
+void MainWindow::FilterTools()
+{
+    if (rebuildingTools_ || !ToolList()) return;
+    const auto search = winrt::to_string(ToolFilter().Text());
+    std::string needle = search;
+    std::transform(needle.begin(), needle.end(), needle.begin(),
+        [](const unsigned char value) { return static_cast<char>(std::tolower(value)); });
+    std::string pack;
+    if (const auto item = ToolPackFilter().SelectedItem().try_as<
+            Microsoft::UI::Xaml::Controls::ComboBoxItem>()) {
+        pack = winrt::to_string(unbox_value_or<hstring>(item.Content(), L""));
+    }
+    ToolList().Items().Clear();
+    visibleTools_.clear();
+    for (std::size_t i = 0; i < tools_.size(); ++i) {
+        const auto& tool = tools_[i];
+        if (!pack.empty() && pack != "All packs" && pack != tool.pack) continue;
+        auto haystack = tool.name + " " + tool.pack + " " + tool.description;
+        std::transform(haystack.begin(), haystack.end(), haystack.begin(),
+            [](const unsigned char value) { return static_cast<char>(std::tolower(value)); });
+        if (!needle.empty() && haystack.find(needle) == std::string::npos) continue;
+        Microsoft::UI::Xaml::Controls::StackPanel row;
+        row.Spacing(4);
+        row.Padding(Microsoft::UI::Xaml::Thickness{12, 10, 12, 10});
+        Microsoft::UI::Xaml::Controls::TextBlock name;
+        name.Text(winrt::to_hstring(tool.name));
+        name.FontFamily(Microsoft::UI::Xaml::Media::FontFamily{L"Cascadia Mono"});
+        name.FontSize(13);
+        name.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+        row.Children().Append(name);
+        Microsoft::UI::Xaml::Controls::TextBlock description;
+        description.Text(winrt::to_hstring(tool.description));
+        description.FontSize(12);
+        description.MaxLines(2);
+        description.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+        description.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{255, 168, 179, 199}});
+        row.Children().Append(description);
+        Microsoft::UI::Xaml::Controls::TextBlock metadata;
+        metadata.Text(winrt::to_hstring(tool.pack +
+            (tool.requiresProject ? " · project scope" : "") +
+            (tool.requiresShell ? " · shell policy" : "")));
+        metadata.FontSize(11);
+        metadata.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{255, 87, 166, 255}});
+        row.Children().Append(metadata);
+        ToolList().Items().Append(row);
+        visibleTools_.push_back(i);
+    }
+    ToolsState().Text(winrt::to_hstring(std::to_string(visibleTools_.size()) +
+        " of " + std::to_string(tools_.size()) + " Manager-owned tools · select a row for details"));
+    if (!visibleTools_.empty()) ToolList().SelectedIndex(0);
+}
+
+void MainWindow::ApplyOperational(
+    const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot)
+{
+    operationalLines_.clear();
+    OperationalList().Items().Clear();
+    OperationalCards().Items().Clear();
+    OperationalState().Text(winrt::to_hstring(snapshot.title));
+    std::string summary;
+    for (const auto& line : snapshot.lines) {
+        auto text = winrt::to_string(OperationalState().Text());
+        OperationalState().Text(winrt::to_hstring(text + "\n\n" + line));
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
+            (line.starts_with("Agent definitions:") ||
+             line.starts_with("Open sessions:") ||
+             line.starts_with("Recent sessions:"))) {
+            if (!summary.empty()) summary += "  ·  ";
+            summary += line;
+            continue;
+        }
+        operationalLines_.push_back(line);
+        const auto separator = line.find('\n');
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents) {
+            Microsoft::UI::Xaml::Controls::StackPanel cardContent;
+            cardContent.Spacing(10);
+            Microsoft::UI::Xaml::Controls::TextBlock name;
+            name.Text(winrt::to_hstring(line.substr(0, separator)));
+            name.FontSize(16);
+            name.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+            name.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+            cardContent.Children().Append(name);
+            Microsoft::UI::Xaml::Controls::TextBlock description;
+            description.Text(winrt::to_hstring(separator == std::string::npos
+                ? "Manager-owned session or inventory entry" : line.substr(separator + 1)));
+            description.FontSize(12);
+            description.MaxLines(4);
+            description.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+            description.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 168, 179, 199}});
+            cardContent.Children().Append(description);
+            Microsoft::UI::Xaml::Controls::Border card;
+            card.Width(280);
+            card.MinHeight(145);
+            card.Padding(Microsoft::UI::Xaml::Thickness{16, 16, 16, 16});
+            card.CornerRadius(Microsoft::UI::Xaml::CornerRadius{12});
+            card.Background(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 18, 23, 34}});
+            card.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 52, 67, 94}});
+            card.BorderThickness(Microsoft::UI::Xaml::Thickness{1});
+            card.Child(cardContent);
+            OperationalCards().Items().Append(card);
+            continue;
+        }
+        Microsoft::UI::Xaml::Controls::StackPanel row;
+        row.Spacing(5);
+        row.Padding(Microsoft::UI::Xaml::Thickness{12, 11, 12, 11});
+        Microsoft::UI::Xaml::Controls::TextBlock heading;
+        heading.Text(winrt::to_hstring(line.substr(0, separator)));
+        heading.FontSize(13);
+        heading.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+        heading.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        row.Children().Append(heading);
+        if (separator != std::string::npos) {
+            Microsoft::UI::Xaml::Controls::TextBlock detail;
+            detail.Text(winrt::to_hstring(line.substr(separator + 1)));
+            detail.FontSize(12);
+            detail.MaxLines(2);
+            detail.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+            detail.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 168, 179, 199}});
+            row.Children().Append(detail);
+        }
+        OperationalList().Items().Append(row);
+    }
+    OperationalListSummary().Text(winrt::to_hstring(summary.empty()
+        ? std::to_string(operationalLines_.size()) + " records from the live Manager projection"
+        : summary));
+    OperationalCount().Text(winrt::to_hstring(
+        std::to_string(operationalLines_.size()) + " LIVE"));
+    if (!operationalLines_.empty()) {
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents)
+            OperationalCards().SelectedIndex(0);
+        else OperationalList().SelectedIndex(0);
+    }
+    else {
+        OperationalDetailTitle().Text(L"No records");
+        OperationalDetailBody().Text(L"The Manager returned no entries for this view.");
+    }
 }
 
 winrt::fire_and_forget MainWindow::RunAction(const Action action)
@@ -1343,13 +1615,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
         } else if (operationalAction) {
             if (operationalView.snapshot) {
-                std::string text = operationalView.snapshot->title;
-                for (const auto& line : operationalView.snapshot->lines) {
-                    text += "\n\n" + line;
-                }
-                OperationalState().Text(winrt::to_hstring(text));
+                ApplyOperational(*operationalView.snapshot);
             } else {
                 OperationalState().Text(winrt::to_hstring(message));
+                OperationalListSummary().Text(winrt::to_hstring(message));
             }
         } else if (settingsAction) {
             if (action == Action::SettingsLoad && loaded.loaded) {

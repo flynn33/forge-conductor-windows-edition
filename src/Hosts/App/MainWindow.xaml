@@ -261,9 +261,22 @@
     <StackPanel x:Name="AutonomyPanel" Spacing="14" Visibility="Collapsed">
      <InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
        Title="Manager-owned execution" Message="The Manager keeps running when this window closes. Reopen the app and use the run ID to attach again." />
+     <Border x:Name="ContinuityOverviewCard" Style="{StaticResource ForgeHeroCardStyle}" Visibility="Collapsed" Padding="20">
+      <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="240"/></Grid.ColumnDefinitions>
+       <Border Width="52" Height="52" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE8F1;" FontSize="24" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
+       <StackPanel Grid.Column="1" Spacing="5"><TextBlock Text="Retained context &amp; handoff" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="Manager-owned continuity is attached to the exact selected project and run." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+       <StackPanel Grid.Column="2" Spacing="5"><TextBlock Text="CURRENT CAPACITY" Style="{StaticResource ForgeCaptionStyle}"/><TextBlock x:Name="ContinuityContextState" Text="No selected run" TextWrapping="Wrap" FontWeight="SemiBold"/></StackPanel>
+      </Grid>
+     </Border>
+     <Border x:Name="AutonomyOverviewCard" Style="{StaticResource ForgeHeroCardStyle}" Padding="20">
+      <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <Border Width="52" Height="52" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE768;" FontSize="24" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
+       <StackPanel Grid.Column="1" Spacing="5"><TextBlock Text="Native managed run" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="A project-scoped task travels through the typed Manager run path." Style="{StaticResource ForgeCaptionStyle}"/></StackPanel>
+      </Grid>
+     </Border>
      <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="12">
-       <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Run control" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
+       <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock x:Name="RunControlHeading" Text="Run control" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -284,7 +297,7 @@
      </Border>
      <Border Style="{StaticResource ForgeCardStyle}">
       <StackPanel Spacing="8">
-       <TextBlock Text="Run and continuity state" Style="{ThemeResource SubtitleTextBlockStyle}" />
+       <TextBlock x:Name="RunStateHeading" Text="Run and continuity state" Style="{ThemeResource SubtitleTextBlockStyle}" />
        <TextBlock x:Name="RunState" Text="Enter a project and task, or paste a run ID to attach." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
       </StackPanel>
      </Border>
@@ -336,19 +349,25 @@
     <StackPanel x:Name="LmStudioMcpPanel" Spacing="14" Visibility="Collapsed">
      <InfoBar IsOpen="True" Severity="Informational" Title="Manager-owned LM Studio integration"
       Message="Inspection is read-only. Repair writes both Forge registrations while preserving unrelated MCP entries. Activate verifies the registered connectors." />
-     <StackPanel Orientation="Horizontal" Spacing="8">
-      <Button Content="Inspect registration" Click="LmStudioInspectClicked" />
-      <Button Content="Repair registration" Click="LmStudioRepairClicked" />
-      <Button Content="Activate and verify" Click="LmStudioActivateClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
-     </StackPanel>
-     <Border Style="{StaticResource ForgeCardStyle}">
-      <StackPanel Spacing="8">
-       <TextBlock x:Name="LmStudioRegistrationState" Text="Inspect to read installed registration." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
-       <TextBlock x:Name="LmStudioConnectionState" Text="Connected client has not been observed." TextWrapping="Wrap" />
-       <TextBlock x:Name="LmStudioContinuityState" Text="Managed continuity state has not been read." TextWrapping="Wrap" />
-       <TextBlock x:Name="LmStudioPaths" Text="No registration paths loaded." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-      </StackPanel>
+     <Border Style="{StaticResource ForgeHeroCardStyle}" Padding="20">
+      <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <Border Width="52" Height="52" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE71B;" FontSize="24" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
+       <StackPanel Grid.Column="1" Spacing="5"><TextBlock Text="Local model connector" FontSize="20" FontWeight="SemiBold"/><TextBlock x:Name="LmStudioOverview" Text="Reading registration and connection state…" Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+       <TextBlock x:Name="LmStudioBadge" Grid.Column="2" Text="INSPECTING" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource ForgeAccentBrush}" VerticalAlignment="Center"/>
+      </Grid>
      </Border>
+     <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="8"><FontIcon Glyph="&#xE8A7;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Primary" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioPrimaryRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Border>
+      <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="8"><FontIcon Glyph="&#xE8D4;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Fallback" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioFallbackRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Border>
+      <Border Grid.Column="2" Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="8"><FontIcon Glyph="&#xE8F1;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Continuity · CLU" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioCluRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Border>
+     </Grid>
+     <Border Style="{StaticResource ForgeCardStyle}">
+      <Grid ColumnSpacing="20"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <StackPanel Spacing="8"><TextBlock Text="Connection &amp; authority" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioConnectionState" Text="Connected client has not been observed." TextWrapping="Wrap"/><TextBlock x:Name="LmStudioContinuityState" Text="Managed continuity state has not been read." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+       <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center"><Button Content="Inspect registration" Click="LmStudioInspectClicked"/><Button Content="Repair registration" Click="LmStudioRepairClicked"/><Button Content="Activate and verify" Click="LmStudioActivateClicked" Style="{StaticResource ForgeAccentButtonStyle}"/></StackPanel>
+      </Grid>
+     </Border>
+     <Expander Header="Advanced · registration detail and paths" IsExpanded="False"><Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><StackPanel Spacing="12"><TextBlock x:Name="LmStudioRegistrationState" Text="Inspect to read installed registration." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/><TextBlock x:Name="LmStudioPaths" Text="No registration paths loaded." TextWrapping="Wrap" IsTextSelectionEnabled="True"/></StackPanel></Border></Expander>
     </StackPanel>
 
     <StackPanel x:Name="ToolsPanel" Spacing="14" Visibility="Collapsed">
@@ -358,52 +377,89 @@
      <Grid ColumnSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="7*"/><ColumnDefinition Width="5*"/></Grid.ColumnDefinitions>
       <Border Style="{StaticResource ForgeCardStyle}">
-       <Grid RowSpacing="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE943;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Tool catalog" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><Button Content="Reload catalog" HorizontalAlignment="Right" Click="ToolsRefreshClicked"/></Grid>
-        <TextBlock x:Name="ToolsState" Grid.Row="1" Text="Load the catalog to begin." Style="{StaticResource ForgeCaptionStyle}" AutomationProperties.LiveSetting="Polite"/>
-        <Border Grid.Row="2" Style="{StaticResource ForgeInsetStyle}" Padding="12"><ScrollViewer Height="570" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="ToolsCatalog" Text="No tools loaded." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer></Border>
+       <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE943;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Registered tools" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><Button Content="Reload catalog" HorizontalAlignment="Right" Click="ToolsRefreshClicked"/></Grid>
+        <Grid Grid.Row="1" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/></Grid.ColumnDefinitions>
+         <TextBox x:Name="ToolFilter" PlaceholderText="Search names, packs, capabilities" TextChanged="ToolFilterChanged" AutomationProperties.Name="Filter registered tools"/>
+         <ComboBox x:Name="ToolPackFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="ToolPackFilterChanged" AutomationProperties.Name="Filter by tool pack"><ComboBoxItem Content="All packs"/></ComboBox>
+        </Grid>
+        <TextBlock x:Name="ToolsState" Grid.Row="2" Text="Load the catalog to begin." Style="{StaticResource ForgeCaptionStyle}" AutomationProperties.LiveSetting="Polite"/>
+        <Border Grid.Row="3" Style="{StaticResource ForgeInsetStyle}" Padding="0"><ListView x:Name="ToolList" Height="570" SelectionChanged="ToolSelectionChanged" AutomationProperties.Name="Registered native tools"/></Border>
        </Grid>
       </Border>
-      <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}" VerticalAlignment="Top">
-       <StackPanel Spacing="12">
-        <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Invoke a tool" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
-        <TextBox x:Name="ToolName" Header="Tool name" PlaceholderText="For example fs_list or git_status" />
-        <TextBox x:Name="ToolArguments" Header="JSON arguments" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="130" />
-        <Button Content="Run selected tool" HorizontalAlignment="Stretch" Click="ToolInvokeClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
-        <TextBlock Text="Latest result" Style="{StaticResource ForgeSectionTitleStyle}" Margin="0,6,0,0"/>
-        <Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="ToolOutcome" Text="No tool result." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer></Border>
-       </StackPanel>
-      </Border>
+      <StackPanel Grid.Column="1" Spacing="12">
+       <Border Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="10">
+         <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE8A7;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Selected capability" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
+         <TextBlock x:Name="ToolDetailName" Text="Select a tool from the catalog" FontFamily="Cascadia Mono" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+         <TextBlock x:Name="ToolDetailPack" Text="Pack and availability will appear here" Style="{StaticResource ForgeCaptionStyle}"/>
+         <TextBlock x:Name="ToolDetailDescription" Text="The selected tool's purpose, permissions, and arguments will appear here." TextWrapping="Wrap" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="13"/>
+         <TextBlock x:Name="ToolDetailPolicy" Text="Manager authorization applies at invocation." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+        </StackPanel>
+       </Border>
+       <Border Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="11">
+         <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Invoke a tool" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
+         <TextBox x:Name="ToolName" Header="Tool name" PlaceholderText="Select a catalog row or enter a canonical name" />
+         <TextBox x:Name="ToolArguments" Header="JSON arguments · advanced" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" />
+         <Button Content="Run selected tool" HorizontalAlignment="Stretch" Click="ToolInvokeClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
+         <TextBlock Text="Latest result" Style="{StaticResource ForgeSectionTitleStyle}" Margin="0,5,0,0"/>
+         <Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="ToolOutcome" Text="No tool result." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer></Border>
+        </StackPanel>
+       </Border>
+      </StackPanel>
      </Grid>
+     <Expander Header="Advanced · canonical catalog and schemas" IsExpanded="False"><Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><ScrollViewer MaxHeight="350" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="ToolsCatalog" Text="No tools loaded." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer></Border></Expander>
     </StackPanel>
 
     <StackPanel x:Name="OperationalPanel" Spacing="14" Visibility="Collapsed">
-     <Grid ColumnSpacing="12">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="7*"/><ColumnDefinition Width="5*"/></Grid.ColumnDefinitions>
+     <Border Style="{StaticResource ForgeHeroCardStyle}" Padding="20" MinHeight="95">
+      <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+       <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}"><FontIcon x:Name="OperationalHeroIcon" Glyph="&#xE77B;" FontSize="22" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
+       <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock x:Name="OperationalHeading" Text="Operational overview" FontFamily="Segoe UI Variable Display" FontSize="21" FontWeight="SemiBold"/><TextBlock x:Name="OperationalSubtitle" Text="Manager-owned live state" Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+       <TextBlock x:Name="OperationalCount" Grid.Column="2" Text="LIVE" Foreground="{StaticResource ForgeSuccessBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+      </Grid>
+     </Border>
+     <Grid x:Name="OperationalGrid" ColumnSpacing="12">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="8*"/><ColumnDefinition Width="4*"/></Grid.ColumnDefinitions>
       <Border Style="{StaticResource ForgeCardStyle}">
-       <Grid RowSpacing="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE9D9;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Live operational data" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"><Button Content="Refresh" Click="OperationalRefreshClicked" Style="{StaticResource ForgeAccentButtonStyle}"/><Button Content="Prune stale" Click="OperationalPruneClicked"/></StackPanel></Grid>
-        <Border Grid.Row="1" Style="{StaticResource ForgeInsetStyle}" Padding="14"><ScrollViewer Height="610" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="OperationalState" Text="Refresh to load Manager-owned data." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/></ScrollViewer></Border>
+       <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE9D9;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock x:Name="OperationalListTitle" Text="Live inventory" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"><Button Content="Refresh" Click="OperationalRefreshClicked" Style="{StaticResource ForgeAccentButtonStyle}"/><Button x:Name="OperationalPruneButton" Content="Prune stale" Click="OperationalPruneClicked"/></StackPanel></Grid>
+        <TextBlock x:Name="OperationalListSummary" Grid.Row="1" Text="Waiting for a Manager snapshot." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+        <Border Grid.Row="2" Style="{StaticResource ForgeInsetStyle}" Padding="0"><Grid>
+         <ListView x:Name="OperationalList" Height="545" SelectionChanged="OperationalSelectionChanged" AutomationProperties.Name="Manager operational records"/>
+         <GridView x:Name="OperationalCards" Height="545" Visibility="Collapsed" SelectionChanged="OperationalCardSelectionChanged" AutomationProperties.Name="Agent playbook cards"/>
+        </Grid></Border>
        </Grid>
       </Border>
-      <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}" VerticalAlignment="Top">
-       <StackPanel Spacing="12">
-        <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE8D7;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Close a session" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
-        <TextBlock Text="End one exact Manager-owned session without disturbing other work." Style="{StaticResource ForgeCaptionStyle}"/>
-        <TextBox x:Name="OperationalSessionId" Header="Session ID" PlaceholderText="Paste the exact session identifier" />
-        <TextBox x:Name="OperationalSummary" Header="Close reason" Text="Closed from native app" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90"/>
-        <Button Content="Close session" HorizontalAlignment="Stretch" Click="OperationalCloseClicked" />
-        <Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><StackPanel Spacing="5"><TextBlock Text="Safe operation" FontWeight="SemiBold"/><TextBlock Text="The Manager validates identity and ownership before closing a session." Style="{StaticResource ForgeCaptionStyle}"/></StackPanel></Border>
-       </StackPanel>
-      </Border>
+      <StackPanel Grid.Column="1" Spacing="12">
+       <Border Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="9">
+         <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE8A7;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Record detail" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
+         <TextBlock x:Name="OperationalDetailTitle" Text="Select a record" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/>
+         <TextBlock x:Name="OperationalDetailBody" Text="Select an item to inspect the full Manager-owned detail." Foreground="{StaticResource ForgeTextSecondaryBrush}" FontSize="13" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+        </StackPanel>
+       </Border>
+       <Border x:Name="OperationalSessionCard" Style="{StaticResource ForgeCardStyle}">
+        <StackPanel Spacing="10">
+         <TextBlock Text="Session maintenance" Style="{StaticResource ForgeSectionTitleStyle}"/>
+         <TextBlock Text="Only the exact selected Manager-owned session can be closed." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+         <TextBox x:Name="OperationalSessionId" Header="Session ID" PlaceholderText="Select a session or paste its identifier" />
+         <TextBox x:Name="OperationalSummary" Header="Close reason" Text="Closed from native app" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="66"/>
+         <Button Content="Close session" HorizontalAlignment="Stretch" Click="OperationalCloseClicked" />
+        </StackPanel>
+       </Border>
+      </StackPanel>
      </Grid>
+     <Expander Header="Advanced · raw Manager projection" IsExpanded="False"><Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><ScrollViewer MaxHeight="340" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="OperationalState" Text="Refresh to load Manager-owned data." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/></ScrollViewer></Border></Expander>
     </StackPanel>
 
     <StackPanel x:Name="SettingsPanel" Spacing="18" Visibility="Collapsed">
      <InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
       Title="Manager-owned settings"
       Message="Values on this page are loaded from and saved by the Manager. Save performs an effective readback; Revert discards pending edits." />
-     <TextBlock Text="Manager and dashboard" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     <Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <TextBlock Text="Manager and dashboard" Style="{StaticResource ForgeSectionTitleStyle}" />
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -421,7 +477,9 @@
       <ComboBoxItem Content="Trace"/><ComboBoxItem Content="Debug"/><ComboBoxItem Content="Information"/>
       <ComboBoxItem Content="Warning"/><ComboBoxItem Content="Error"/><ComboBoxItem Content="Critical"/>
      </ComboBox>
-     <TextBlock Text="LM Studio provider" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     </StackPanel></Border>
+     <Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <TextBlock Text="LM Studio provider" Style="{StaticResource ForgeSectionTitleStyle}" />
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -431,7 +489,9 @@
       <ToggleSwitch x:Name="SettingsProviderSecure" Grid.Row="2" Header="Use HTTPS" OffContent="HTTP" OnContent="HTTPS" />
      </Grid>
      <TextBlock Text="LM Studio is a loopback provider and does not require a stored credential. Test connection discovers the currently loaded model without starting a response." TextWrapping="Wrap" Opacity="0.72" />
-     <TextBlock Text="Context rollover" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     </StackPanel></Border>
+     <Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <TextBlock Text="Context rollover" Style="{StaticResource ForgeSectionTitleStyle}" />
      <TextBlock Text="The effective capacity is Forge Conductor's operating threshold. It may be lower than the model's loaded capacity. Rollover begins when observed context plus all three reserves reaches this threshold." TextWrapping="Wrap" Opacity="0.72" />
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/></Grid.ColumnDefinitions>
@@ -445,7 +505,9 @@
       <Slider x:Name="SettingsSafetyMarginSlider" Grid.Row="3" Header="Estimation safety margin" Minimum="1" Maximum="65536" StepFrequency="256" Value="{Binding Value, ElementName=SettingsSafetyMargin, Mode=TwoWay}" AutomationProperties.Name="Estimation safety margin slider" />
       <NumberBox x:Name="SettingsSafetyMargin" Grid.Row="3" Grid.Column="1" Header="Exact tokens" Minimum="1" Maximum="1048575" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact estimation safety margin in tokens" />
      </Grid>
-     <TextBlock Text="Data maintenance" Style="{ThemeResource SubtitleTextBlockStyle}" />
+     </StackPanel></Border>
+     <Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <TextBlock Text="Data maintenance" Style="{StaticResource ForgeSectionTitleStyle}" />
      <InfoBar IsOpen="True" Severity="Warning" IsClosable="False" Title="Exact confirmation required"
       Message="Project resets affect only the exact selected project ID. All-project reset affects every registered project in this profile. Source folders are never deleted." />
      <ComboBox x:Name="MaintenanceScope" Header="Reset scope" Width="360" HorizontalAlignment="Left" SelectedIndex="0" AutomationProperties.Name="Data reset scope">
@@ -457,6 +519,9 @@
      <TextBox x:Name="MaintenanceConfirmation" Header="Type the exact confirmation shown below" AutomationProperties.Name="Exact reset confirmation" />
      <Button Content="Run confirmed reset" HorizontalAlignment="Left" Click="MaintenanceResetClicked" />
      <TextBlock x:Name="MaintenanceState" Text="Select a project on the Projects page, then return here to see the exact confirmation." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
+     </StackPanel></Border>
+     <Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="12">
+     <TextBlock Text="Apply and verify" Style="{StaticResource ForgeSectionTitleStyle}"/>
      <StackPanel Orientation="Horizontal" Spacing="10">
       <Button Content="Load effective settings" Click="SettingsLoadClicked" />
       <Button Content="Save and read back" Click="SettingsSaveClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
@@ -469,6 +534,7 @@
       <Button Content="Open Manager status and controls" Click="OpenManagerClicked" />
      </StackPanel>
      <TextBlock x:Name="SettingsState" Text="Load effective settings to begin." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True" />
+     </StackPanel></Border>
     </StackPanel>
 
     <StackPanel x:Name="GenericPanel" Spacing="14" Visibility="Collapsed">

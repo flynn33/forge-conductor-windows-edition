@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.4 — Structured native view refinement
+
+- Replace generic operational text dumps with selectable native records, context-specific status headers, detail readback, and an advanced canonical projection.
+- Add tool search, pack filtering, capability selection and details while retaining the Manager-owned invocation path.
+- Give LM Studio MCP explicit Primary, Fallback, and CLU role status cards; distinguish Autonomy from retained-context Continuity.
+- Group persistent Settings into readable configuration, rollover, maintenance, and verification surfaces.
+
 ## 1.1.3 — All-view visual finish
 
 - Finished the tool workbench and operational destinations with the same layered command-center cards, structured actions, bounded live-data panes, and monospace technical readouts used by the Rig dashboard.
