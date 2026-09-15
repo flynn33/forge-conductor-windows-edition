@@ -18,6 +18,12 @@ struct ProviderSettingsView final {
     Domain::ManagerSettings settings;
 };
 
+struct ProviderModelsView final {
+    bool loaded{};
+    std::string message;
+    std::vector<std::string> models;
+};
+
 enum class ManagedRunAction { Status, Pause, Resume, Cancel };
 
 struct ManagedRunView final {
@@ -101,6 +107,12 @@ public:
     virtual std::string testProvider(
         const Domain::ManagerSettings& settings,
         std::stop_token cancellation) noexcept = 0;
+    virtual ProviderModelsView providerModels(
+        const Domain::ManagerSettings&,
+        std::stop_token) noexcept
+    {
+        return {false, "Loaded-model discovery is unavailable.", {}};
+    }
     virtual ManagedRunView startManagedRun(
         std::string projectId,
         std::string clientId,
@@ -172,6 +184,9 @@ public:
         const Domain::ManagerSettingsPatch& patch,
         std::stop_token cancellation) noexcept override;
     std::string testProvider(
+        const Domain::ManagerSettings& settings,
+        std::stop_token cancellation) noexcept override;
+    ProviderModelsView providerModels(
         const Domain::ManagerSettings& settings,
         std::stop_token cancellation) noexcept override;
     ManagedRunView startManagedRun(

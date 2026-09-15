@@ -9,7 +9,11 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <SolidColorBrush x:Key="ForgeAppBackgroundBrush" Color="#FF07111E" />
+            <LinearGradientBrush x:Key="ForgeAppBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#FF0B1B2E" Offset="0" />
+                <GradientStop Color="#FF091726" Offset="0.38" />
+                <GradientStop Color="#FF07111E" Offset="1" />
+            </LinearGradientBrush>
             <SolidColorBrush x:Key="ForgePaneBackgroundBrush" Color="#FF081522" />
             <SolidColorBrush x:Key="ForgeSurfaceBrush" Color="#F5121F2E" />
             <SolidColorBrush x:Key="ForgeSurfaceRaisedBrush" Color="#FF18283B" />
@@ -71,18 +75,18 @@
             <Style x:Key="ForgeMetricValueStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource ForgeTextPrimaryBrush}" />
                 <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
-                <Setter Property="FontSize" Value="29" />
+                <Setter Property="FontSize" Value="34" />
                 <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
             <Style x:Key="ForgeSectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource ForgeTextPrimaryBrush}" />
                 <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
-                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontSize" Value="17" />
                 <Setter Property="FontWeight" Value="SemiBold" />
             </Style>
             <Style x:Key="ForgeCaptionStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource ForgeTextSecondaryBrush}" />
-                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontSize" Value="13" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
             <Style x:Key="ForgeAccentButtonStyle" TargetType="Button">

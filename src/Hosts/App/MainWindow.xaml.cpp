@@ -2,10 +2,13 @@
 #include "MainWindow.xaml.h"
 #include "MainWindow.g.cpp"
 #include "TelemetryPresentation.h"
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Windowing.h>
 #include <winrt/Windows.UI.h>
 #include <winrt/Windows.UI.Text.h>
+#include <microsoft.ui.xaml.window.h>
+#include <shobjidl.h>
 
 #include <algorithm>
 #include <cctype>
@@ -159,6 +162,21 @@ void applyMetric(
     return result;
 }
 
+[[nodiscard]] std::vector<std::string> dotFields(const std::string_view line)
+{
+    constexpr std::string_view separator{" · "};
+    std::vector<std::string> result;
+    std::size_t begin{};
+    while (begin < line.size()) {
+        const auto end = line.find(separator, begin);
+        result.emplace_back(line.substr(begin,
+            end == std::string_view::npos ? line.size() - begin : end - begin));
+        if (end == std::string_view::npos) break;
+        begin = end + separator.size();
+    }
+    return result;
+}
+
 [[nodiscard]] hstring eventLocalTime(
     const ::ForgeConductor::Domain::UtcTimePoint timestamp)
 {
@@ -188,6 +206,30 @@ void applyMetric(
     if (::GetComputerNameW(name, &size) && size != 0U) return hstring{name, size};
     return L"Windows workstation";
 }
+
+[[nodiscard]] hstring currentDataRoot()
+{
+    wchar_t path[32768]{};
+    const auto length = ::GetEnvironmentVariableW(L"LOCALAPPDATA", path,
+        static_cast<DWORD>(std::size(path)));
+    if (length == 0U || length >= std::size(path))
+        return L"%LOCALAPPDATA%\\Forge Conductor";
+    std::wstring result{path};
+    result += L"\\Forge Conductor";
+    return hstring{result};
+}
+
+[[nodiscard]] hstring compactBytes(const std::uint64_t bytes)
+{
+    if (bytes < 1024U) return winrt::to_hstring(std::to_string(bytes) + " B");
+    const auto amount = bytes >= 1024U * 1024U
+        ? static_cast<double>(bytes) / (1024.0 * 1024.0)
+        : static_cast<double>(bytes) / 1024.0;
+    std::ostringstream text;
+    text.precision(1);
+    text << std::fixed << amount << (bytes >= 1024U * 1024U ? " MB" : " KB");
+    return winrt::to_hstring(text.str());
+}
 }
 
 MainWindow::MainWindow()
@@ -207,6 +249,12 @@ MainWindow::MainWindow(
     selectedProjectValueName_ =
         ::ForgeConductor::Hosts::App::scopedViewStateValueName(
             L"SelectedProjectId", scope);
+    selectedRunValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"SelectedRunId", scope);
+    selectedRunProjectValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"SelectedRunProjectId", scope);
 }
 
 void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
@@ -251,6 +299,12 @@ void MainWindow::WindowContentLoaded(
             selectedProjectValueName_.c_str())) {
         selectedProjectId_ = winrt::to_string(*savedProject);
         RunProjectId().Text(*savedProject);
+        const auto savedRunProject = loadSavedText(
+            selectedRunProjectValueName_.c_str());
+        const auto savedRun = loadSavedText(selectedRunValueName_.c_str());
+        if (savedRunProject && savedRun && *savedRunProject == *savedProject) {
+            RunId().Text(*savedRun);
+        }
     }
     if (const auto saved = loadSavedText(selectedPageValueName_.c_str())) {
         const auto items = RootNavigation().MenuItems();
@@ -299,6 +353,20 @@ void MainWindow::ProviderSaveClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderSave); }
 void MainWindow::ProviderTestClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderTest); }
+void MainWindow::ProviderDiscoverClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProviderModels); }
+void MainWindow::ProviderModelSelectionChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    if (rebuildingProviderModels_) return;
+    const auto index = ProviderLoadedModels().SelectedIndex();
+    if (index < 0) return;
+    if (index > 0 && static_cast<std::size_t>(index - 1) >= loadedModels_.size()) return;
+    ProviderModel().Text(index == 0 ? L"" :
+        winrt::to_hstring(loadedModels_[static_cast<std::size_t>(index - 1)]));
+    ProviderState().Text(L"Model selection is pending. Save and read back to make it effective.");
+}
 void MainWindow::SettingsLoadClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsLoad); }
 void MainWindow::SettingsSaveClicked(Windows::Foundation::IInspectable const&,
@@ -329,6 +397,8 @@ void MainWindow::OpenFeedClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Feed"); }
 void MainWindow::OpenSettingsClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Settings"); }
+void MainWindow::OpenProjectsClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Projects"); }
 
 void MainWindow::SelectPage(const winrt::hstring& tag)
 {
@@ -351,8 +421,53 @@ void MainWindow::RunResumeClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunResume); }
 void MainWindow::RunCancelClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunCancel); }
+void MainWindow::RunIdTextChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
+{
+    if (winrt::to_string(RunId().Text()) == verifiedRunId_) return;
+    verifiedRunId_.clear();
+    verifiedRunProjectId_.clear();
+    RunPauseButton().IsEnabled(false);
+    RunResumeButton().IsEnabled(false);
+    RunCancelButton().IsEnabled(false);
+    RunTokensValue().Text(L"— / — tokens");
+    RunPendingCalls().Text(L"No pending tool activity");
+    RunOutcomeText().Text(L"Refresh to inspect output from this exact run.");
+    if (!RunId().Text().empty()) {
+        RunState().Text(L"Unverified run identity · refresh to attach and check its project.");
+    }
+}
 void MainWindow::ProjectRegisterClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectRegister); }
+void MainWindow::ProjectBrowseClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    try {
+        auto nativeWindow = this->m_inner.as<::IWindowNative>();
+        HWND hwnd{};
+        winrt::check_hresult(nativeWindow->get_WindowHandle(&hwnd));
+        winrt::com_ptr<::IFileDialog> dialog;
+        winrt::check_hresult(::CoCreateInstance(CLSID_FileOpenDialog, nullptr,
+            CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.put())));
+        DWORD options{};
+        winrt::check_hresult(dialog->GetOptions(&options));
+        winrt::check_hresult(dialog->SetOptions(options | FOS_PICKFOLDERS |
+            FOS_FORCEFILESYSTEM));
+        winrt::check_hresult(dialog->SetTitle(L"Choose an authorized project folder"));
+        const auto shown = dialog->Show(hwnd);
+        if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+        winrt::check_hresult(shown);
+        winrt::com_ptr<::IShellItem> folder;
+        winrt::check_hresult(dialog->GetResult(folder.put()));
+        PWSTR path{};
+        winrt::check_hresult(folder->GetDisplayName(SIGDN_FILESYSPATH, &path));
+        ProjectPath().Text(path);
+        ::CoTaskMemFree(path);
+        ProjectState().Text(L"Folder chosen. Register it to authorize this work scope.");
+    } catch (const winrt::hresult_error& error) {
+        ProjectState().Text(L"The Windows folder picker failed: " + error.message());
+    }
+}
 void MainWindow::ProjectRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectList); }
 void MainWindow::ProjectSearchClicked(Windows::Foundation::IInspectable const&,
@@ -398,19 +513,77 @@ void MainWindow::OperationalSelectionChanged(Windows::Foundation::IInspectable c
     Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
 {
     const auto index = OperationalList().SelectedIndex();
-    if (index >= 0) SelectOperationalRecord(static_cast<std::size_t>(index));
+    if (index >= 0 && static_cast<std::size_t>(index) < visibleOperationalIndices_.size())
+        SelectOperationalRecord(visibleOperationalIndices_[static_cast<std::size_t>(index)]);
 }
 void MainWindow::OperationalCardSelectionChanged(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
 {
     const auto index = OperationalCards().SelectedIndex();
-    if (index >= 0) SelectOperationalRecord(static_cast<std::size_t>(index));
+    if (index >= 0 && static_cast<std::size_t>(index) < visibleOperationalIndices_.size())
+        SelectOperationalRecord(visibleOperationalIndices_[static_cast<std::size_t>(index)]);
+}
+void MainWindow::OperationalAgentSearchChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
+{
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
+        operationalSnapshot_) {
+        const auto snapshot = *operationalSnapshot_;
+        ApplyOperational(snapshot);
+    }
+}
+void MainWindow::OperationalFeedFilterChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
+{
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Feed &&
+        operationalSnapshot_) {
+        const auto snapshot = *operationalSnapshot_;
+        ApplyOperational(snapshot);
+    }
+}
+void MainWindow::OperationalFeedSeverityChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Feed &&
+        operationalSnapshot_) {
+        const auto snapshot = *operationalSnapshot_;
+        ApplyOperational(snapshot);
+    }
+}
+void MainWindow::OperationalFeedPauseClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    feedDisplayPaused_ = !feedDisplayPaused_;
+    OperationalFeedPause().Content(box_value(
+        feedDisplayPaused_ ? L"Resume display" : L"Pause display"));
+    if (!feedDisplayPaused_ && pendingFeedSnapshot_) {
+        const auto latest = *pendingFeedSnapshot_;
+        pendingFeedSnapshot_.reset();
+        ApplyOperational(latest);
+    }
 }
 void MainWindow::SelectOperationalRecord(const std::size_t index)
 {
     if (index >= operationalLines_.size()) return;
     const auto& line = operationalLines_[index];
     const auto separator = line.find('\n');
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Feed) {
+        const auto fields = dotFields(std::string_view{line}.substr(0, separator));
+        if (fields.size() >= 3U) {
+            OperationalDetailTitle().Text(winrt::to_hstring(
+                fields[1] + " · " + fields[2]));
+            auto detail = "Observed: " + fields[0];
+            for (std::size_t field = 3U; field < fields.size(); ++field) {
+                detail += fields[field].ends_with(" ms")
+                    ? "\nDuration: " + fields[field]
+                    : "\nClient identity: " + fields[field];
+            }
+            if (separator != std::string::npos)
+                detail += "\nOutcome detail: " + line.substr(separator + 1);
+            OperationalDetailBody().Text(winrt::to_hstring(detail));
+            return;
+        }
+    }
     OperationalDetailTitle().Text(winrt::to_hstring(line.substr(0, separator)));
     OperationalDetailBody().Text(winrt::to_hstring(
         separator == std::string::npos ? line : line.substr(separator + 1)));
@@ -429,12 +602,15 @@ void MainWindow::ProjectSelectionChanged(
     if (rebuildingProjects_) return;
     const auto index = ProjectSelector().SelectedIndex();
     if (index < 0 || static_cast<std::size_t>(index) >= projects_.size()) return;
-    selectedProjectId_ = projects_[static_cast<std::size_t>(index)].id.value();
+    const auto nextProjectId = projects_[static_cast<std::size_t>(index)].id.value();
+    if (nextProjectId != selectedProjectId_) ClearSelectedRun();
+    selectedProjectId_ = nextProjectId;
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
     RunProjectId().Text(selected);
     ToolProjectId().Text(selected);
     RunAction(Action::ProjectLoad);
+    UpdateRunProjectLabel();
 }
 
 void MainWindow::NavigationChanged(
@@ -484,7 +660,7 @@ void MainWindow::NavigationChanged(
             L"Current service identity and owned runtime resources.");
         OperationalListTitle().Text(agents ? L"Available specialists & sessions" :
             feed ? L"Recent outcomes" :
-            evidence ? L"Audited outcomes" :
+            evidence ? L"Audit trail · not durable evidence" :
             runtimes ? L"Resource inventory" :
             diagnostics ? L"Doctor checks" : L"Manager state");
         OperationalHeroIcon().Glyph(agents ? L"\uE716" :
@@ -492,7 +668,12 @@ void MainWindow::NavigationChanged(
             runtimes ? L"\uE7F4" :
             diagnostics ? L"\uE713" : L"\uE77B");
         OperationalPruneButton().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
-        OperationalSessionCard().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+        OperationalSessionCard().Visibility(Visibility::Collapsed);
+        OperationalAgentSearch().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+        OperationalFeedFilters().Visibility(feed || evidence ? Visibility::Visible : Visibility::Collapsed);
+        OperationalEvidenceCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
+        OperationalStatusGrid().Visibility(runtimes || tag == L"Manager"
+            ? Visibility::Visible : Visibility::Collapsed);
         OperationalManagerCard().Visibility(tag == L"Manager" ? Visibility::Visible : Visibility::Collapsed);
         OperationalCards().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalList().Visibility(agents ? Visibility::Collapsed : Visibility::Visible);
@@ -504,8 +685,18 @@ void MainWindow::NavigationChanged(
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     AutonomyOverviewCard().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
     ContinuityOverviewCard().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
-    RunControlHeading().Text(continuityPage ? L"Exact run handoff controls" : L"Run control");
-    RunStateHeading().Text(continuityPage ? L"Latest continuity readback" : L"Run and continuity state");
+    ContinuityMetrics().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
+    ContinuityTimelineCard().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
+    RunMissionCard().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
+    Microsoft::UI::Xaml::Controls::Grid::SetColumn(RunReadbackCard(),
+        continuityPage ? 0 : 1);
+    Microsoft::UI::Xaml::Controls::Grid::SetColumnSpan(RunReadbackCard(),
+        continuityPage ? 2 : 1);
+    RunTask().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
+    RunStartButton().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
+    UpdateRunProjectLabel();
+    RunControlHeading().Text(continuityPage ? L"Attach & control exact run" : L"Mission & run control");
+    RunStateHeading().Text(continuityPage ? L"Latest run readback" : L"Live run");
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
     ProjectsPanel().Visibility(projects ? Visibility::Visible : Visibility::Collapsed);
     LmStudioMcpPanel().Visibility(lmStudioMcp ? Visibility::Visible : Visibility::Collapsed);
@@ -516,8 +707,9 @@ void MainWindow::NavigationChanged(
         !provider && !settings && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
             ? Visibility::Visible : Visibility::Collapsed);
     if (provider) {
-        PageDescription().Text(L"Configure and test the Manager-owned LM Studio Responses endpoint.");
+        PageDescription().Text(L"Choose a loaded model and inspect the Manager-owned Responses endpoint.");
         if (!providerSettings_) RunAction(Action::ProviderLoad);
+        if (telemetryUiInitialized_ && loadedModels_.empty()) RunAction(Action::ProviderModels);
     } else if (rig) {
         PageDescription().Text(L"Read and control the current native Manager runtime.");
     } else if (autonomy) {
@@ -609,7 +801,22 @@ void MainWindow::ApplyProviderForm(
     ProviderPort().Value(settings.localModelPort);
     ProviderSecure().IsOn(settings.localModelSecure);
     ProviderModel().Text(winrt::to_hstring(settings.localModelName));
+    rebuildingProviderModels_ = true;
+    auto modelIndex = 0;
+    for (std::size_t index{}; index < loadedModels_.size(); ++index) {
+        if (loadedModels_[index] == settings.localModelName) {
+            modelIndex = static_cast<int>(index + 1U);
+            break;
+        }
+    }
+    ProviderLoadedModels().SelectedIndex(modelIndex);
+    rebuildingProviderModels_ = false;
+    if (!settings.localModelName.empty() && modelIndex == 0) {
+        ProviderModelsState().Text(L"Saved model ID is not in the current discovery list. Discover to verify it.");
+    }
     ContextCapacity().Value(settings.effectiveContextCapacity);
+    ProviderCapacityValue().Text(winrt::to_hstring(
+        std::to_string(settings.effectiveContextCapacity)));
     ResponseReserve().Value(settings.nextResponseReserve);
     HandoffReserve().Value(settings.handoffReserve);
     SafetyMargin().Value(settings.estimationSafetyMargin);
@@ -709,6 +916,9 @@ void MainWindow::ApplyTelemetryPresentation(
     applyMetric(GpuValue(), GpuState(), GpuGauge(), presentation.gpu);
     applyMetric(
         ContextValue(), ContextState(), ContextGauge(), presentation.context);
+    HistoryCpuLegend().Text(winrt::to_hstring("CPU " + presentation.cpu.value));
+    HistoryRamLegend().Text(winrt::to_hstring("RAM " + presentation.ram.value));
+    HistoryGpuLegend().Text(winrt::to_hstring("GPU " + presentation.gpu.value));
     const auto updateFill = [](const Microsoft::UI::Xaml::Controls::Border& track,
                                const Microsoft::UI::Xaml::Controls::Border& fill,
                                const ::ForgeConductor::Hosts::App::MetricPresentation& metric) {
@@ -722,6 +932,46 @@ void MainWindow::ApplyTelemetryPresentation(
     updateFill(ContextGaugeTrack(), ContextGaugeFill(), presentation.context);
     ContinuityContextState().Text(winrt::to_hstring(
         presentation.context.value + " · " + presentation.context.state));
+    ContinuityCapacityValue().Text(winrt::to_hstring(
+        std::to_string(snapshot.context.capacityTokens)));
+    ContinuityResponseReserveValue().Text(winrt::to_hstring(
+        std::to_string(snapshot.context.nextResponseReserveTokens)));
+    ContinuityHandoffReserveValue().Text(winrt::to_hstring(
+        std::to_string(snapshot.context.handoffReserveTokens)));
+    ContinuityRetainedValue().Text(winrt::to_hstring(
+        snapshot.context.authoritative && snapshot.context.retainedTokens
+            ? std::to_string(*snapshot.context.retainedTokens)
+            : std::string{"No run"}));
+    ContinuitySourceState().Text(winrt::to_hstring(
+        snapshot.continuity.runId
+            ? "Run " + snapshot.continuity.runId->value()
+            : std::string{"Awaiting an exact run identity"}));
+    ContinuityPolicyState().Text(winrt::to_hstring(
+        std::string{snapshot.continuity.contextOnly ? "Context-only" : "Broader handoff"} +
+        (snapshot.continuity.managerOwned ? " · Manager-owned" : " · ownership unavailable")));
+    ContinuityRestorationState().Text(winrt::to_hstring(
+        snapshot.continuity.canonicalResponseId
+            ? "Canonical response " + snapshot.continuity.canonicalResponseId->value() +
+                " · no verified successor projected"
+            : std::string{"No verified successor projected"}));
+    RunSelectedModel().Text(snapshot.provider.model
+        ? winrt::to_hstring(*snapshot.provider.model)
+        : L"Automatic · first compatible loaded model");
+    if (snapshot.selectedRun && !selectedProjectId_.empty() &&
+        snapshot.selectedRun->record.projectId.value() == selectedProjectId_ &&
+        (RunId().Text().empty() || winrt::to_string(RunId().Text()) ==
+            snapshot.selectedRun->record.runId.value())) {
+        ApplyRunReadback(*snapshot.selectedRun);
+    } else if (snapshot.selectedRun) {
+        RunTelemetryState().Text(
+            L"This run is not bound to the selected project. Control is disabled.");
+        RunStatusDot().Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{255, 255, 200, 87}});
+    } else {
+        RunTelemetryState().Text(L"No Manager-owned run is currently attached.");
+        RunStatusDot().Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{255, 255, 200, 87}});
+    }
     ManagerHealth().Text(winrt::to_hstring(
         snapshot.manager.serviceActive
             ? "PID " + std::to_string(snapshot.manager.processId) +
@@ -730,6 +980,18 @@ void MainWindow::ApplyTelemetryPresentation(
     HeroManagerLabel().Text(snapshot.manager.serviceActive
         ? L"Service active" : L"Service unavailable");
     ProviderHealth().Text(winrt::to_hstring(presentation.providerStatus));
+    const auto providerEndpoint = std::string{snapshot.provider.secure ? "https://" : "http://"} +
+        snapshot.provider.host + ':' + std::to_string(snapshot.provider.port);
+    ProviderActiveEndpoint().Text(winrt::to_hstring(providerEndpoint + " · Manager readback"));
+    ProviderActiveModel().Text(snapshot.provider.model
+        ? winrt::to_hstring(*snapshot.provider.model)
+        : L"Automatic · first compatible loaded model");
+    ProviderConnectionBadge().Text(providerEndpoint == providerDiscoveredEndpoint_
+        ? L"DISCOVERED" : L"CONFIGURED");
+    ProviderConnectionBadge().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+        providerEndpoint == providerDiscoveredEndpoint_
+            ? Windows::UI::Color{255, 61, 220, 151}
+            : Windows::UI::Color{255, 43, 168, 255}});
     StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
     ContinuityHealth().Text(winrt::to_hstring(presentation.continuityStatus));
     SystemStrip().Text(winrt::to_hstring(snapshot.resources.host));
@@ -869,19 +1131,14 @@ void MainWindow::ApplyTelemetryPresentation(
     }
 
     ActivityTimeline().Children().Clear();
-    if (snapshot.recentEvents.empty()) {
-        Microsoft::UI::Xaml::Controls::TextBlock empty;
-        empty.Text(L"No audited tool activity yet. New outcomes appear here live.");
-        empty.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
-            Windows::UI::Color{255, 153, 173, 196}});
-        ActivityTimeline().Children().Append(empty);
-    }
-    for (const auto& event : snapshot.recentEvents) {
+    const auto appendEvent = [this](const hstring& time,
+                                    const std::string& label,
+                                    const bool failed) {
         Microsoft::UI::Xaml::Controls::StackPanel row;
         row.Orientation(Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
         row.Spacing(9);
         Microsoft::UI::Xaml::Controls::TextBlock timestamp;
-        timestamp.Text(eventLocalTime(event.timestamp));
+        timestamp.Text(time);
         timestamp.Width(76);
         timestamp.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
             Windows::UI::Color{255, 153, 173, 196}});
@@ -890,20 +1147,41 @@ void MainWindow::ApplyTelemetryPresentation(
         dot.Width(7);
         dot.Height(7);
         dot.VerticalAlignment(Microsoft::UI::Xaml::VerticalAlignment::Center);
-        const bool failed = event.error.has_value() || event.status == "error";
         dot.Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
             failed ? Windows::UI::Color{255, 255, 115, 113}
                 : Windows::UI::Color{255, 61, 220, 151}});
         row.Children().Append(dot);
         Microsoft::UI::Xaml::Controls::TextBlock outcome;
+        outcome.Text(winrt::to_hstring(label));
+        outcome.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+        outcome.Width(510);
+        row.Children().Append(outcome);
+        ActivityTimeline().Children().Append(row);
+    };
+    const auto sampleTime = eventLocalTime(snapshot.capturedAt);
+    appendEvent(sampleTime,
+        snapshot.manager.serviceActive
+            ? "Native Manager active · PID " + std::to_string(snapshot.manager.processId)
+            : "Native Manager unavailable",
+        !snapshot.manager.serviceActive);
+    if (snapshot.storeHealthy.value) {
+        appendEvent(sampleTime,
+            *snapshot.storeHealthy.value
+                ? "Operational store health check succeeded"
+                : "Operational store health check failed",
+            !*snapshot.storeHealthy.value);
+    }
+    appendEvent(sampleTime,
+        "Provider endpoint configured · " +
+            std::string{snapshot.provider.secure ? "HTTPS " : "HTTP "} +
+            snapshot.provider.host + ":" + std::to_string(snapshot.provider.port),
+        false);
+    for (const auto& event : snapshot.recentEvents) {
         auto label = event.tool + " · " + event.status;
         if (event.duration) label += " · " +
             std::to_string(event.duration->count()) + " ms";
-        outcome.Text(winrt::to_hstring(label));
-        outcome.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
-        outcome.Width(430);
-        row.Children().Append(outcome);
-        ActivityTimeline().Children().Append(row);
+        appendEvent(eventLocalTime(event.timestamp), label,
+            event.error.has_value() || event.status == "error");
     }
 
     const auto page = winrt::to_string(PageTitle().Text());
@@ -916,6 +1194,78 @@ void MainWindow::ApplyTelemetryPresentation(
     }
 }
 
+void MainWindow::ApplyRunReadback(
+    const ::ForgeConductor::Domain::ManagedRunSnapshot& snapshot)
+{
+    const auto& run = snapshot.record;
+    if (selectedProjectId_.empty() || run.projectId.value() != selectedProjectId_)
+        return;
+    using ::ForgeConductor::Domain::ManagedRunState;
+    const auto state = [&] {
+        switch (run.state) {
+        case ManagedRunState::Running: return L"RUNNING";
+        case ManagedRunState::Cancelling: return L"STOPPING";
+        case ManagedRunState::Completed: return L"COMPLETED";
+        case ManagedRunState::Failed: return L"FAILED";
+        case ManagedRunState::Cancelled: return L"STOPPED";
+        case ManagedRunState::Paused: return L"PAUSED";
+        }
+        return L"UNKNOWN";
+    }();
+    const auto runId = winrt::to_hstring(run.runId.value());
+    if (RunId().Text() != runId) RunId().Text(runId);
+    const bool newlyVerified = verifiedRunId_ != run.runId.value() ||
+        verifiedRunProjectId_ != run.projectId.value();
+    verifiedRunId_ = run.runId.value();
+    verifiedRunProjectId_ = run.projectId.value();
+    if (newlyVerified) {
+        storeSavedText(selectedRunValueName_.c_str(), runId);
+        storeSavedText(selectedRunProjectValueName_.c_str(),
+            winrt::to_hstring(verifiedRunProjectId_));
+    }
+    RunState().Text(hstring{state} +
+        (snapshot.pauseRequested ? L" · pause requested" : L" · Manager-owned"));
+    RunTelemetryState().Text(winrt::to_hstring(
+        std::string{"Exact run verified for this project · "} +
+        (run.providerResponseId ? "provider response observed" :
+            "waiting for provider response")));
+    RunTokensValue().Text(winrt::to_hstring(
+        std::to_string(run.inputTokens) + " / " +
+        std::to_string(run.outputTokens) + " tokens"));
+    RunPendingCalls().Text(winrt::to_hstring(
+        run.pendingFunctionCalls.empty()
+            ? std::string{"No pending tool activity"}
+            : std::to_string(run.pendingFunctionCalls.size()) +
+                " pending provider tool call" +
+                (run.pendingFunctionCalls.size() == 1U ? "" : "s")));
+    RunOutcomeText().Text(winrt::to_hstring(
+        run.lastError ? "Error: " + run.lastError->message :
+        run.outputText && !run.outputText->empty() ? *run.outputText :
+        std::string{"No model output from this run yet."}));
+    const bool running = run.state == ManagedRunState::Running;
+    const bool paused = run.state == ManagedRunState::Paused;
+    RunPauseButton().IsEnabled(running);
+    RunResumeButton().IsEnabled(paused);
+    RunCancelButton().IsEnabled(running || paused);
+    RunStatusDot().Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
+        run.state == ManagedRunState::Failed || run.state == ManagedRunState::Cancelled
+            ? Windows::UI::Color{255, 255, 115, 113}
+            : run.state == ManagedRunState::Cancelling
+                ? Windows::UI::Color{255, 255, 200, 87}
+                : Windows::UI::Color{255, 61, 220, 151}});
+    std::string exact = "Run ID: " + run.runId.value() +
+        "\nProject ID: " + run.projectId.value() +
+        "\nAuthority generation: " +
+            std::to_string(run.authorityGeneration) +
+        "\nClient ID: " + run.clientId.value() +
+        "\nManager owned: " + (snapshot.managerOwned ? "yes" : "no");
+    if (run.providerResponseId) exact +=
+        "\nCanonical provider response: " + run.providerResponseId->value();
+    for (const auto& call : run.pendingFunctionCalls)
+        exact += "\nPending call: " + call.name + " · " + call.callId;
+    RunRawDetail().Text(winrt::to_hstring(exact));
+}
+
 void MainWindow::ApplyProjectList(
     const ::ForgeConductor::Manager::ManagerProjectsSnapshot& snapshot)
 {
@@ -926,7 +1276,7 @@ void MainWindow::ApplyProjectList(
     for (std::size_t index{}; index < projects_.size(); ++index) {
         const auto& project = projects_[index];
         ProjectSelector().Items().Append(box_value(winrt::to_hstring(
-            project.displayName + " · " + project.id.value())));
+            project.displayName)));
         if (project.id.value() == selectedProjectId_) {
             selectedIndex = static_cast<std::int32_t>(index);
         }
@@ -935,13 +1285,26 @@ void MainWindow::ApplyProjectList(
     rebuildingProjects_ = false;
 
     if (selectedIndex >= 0) {
-        selectedProjectId_ = projects_[static_cast<std::size_t>(selectedIndex)].id.value();
+        const auto& project = projects_[static_cast<std::size_t>(selectedIndex)];
+        selectedProjectId_ = project.id.value();
         const auto selected = winrt::to_hstring(selectedProjectId_);
         storeSavedText(selectedProjectValueName_.c_str(), selected);
         RunProjectId().Text(selected);
         ToolProjectId().Text(selected);
+        ProjectHeroName().Text(winrt::to_hstring(project.displayName));
+        ProjectHeroScope().Text(project.aliases.empty()
+            ? L"Authorized folder pending"
+            : winrt::to_hstring(project.aliases.front().value()));
     } else {
         ClearSelectedProject();
+        ProjectHeroName().Text(L"Choose an authorized project");
+        ProjectHeroScope().Text(L"No project selected");
+        ProjectRecordCount().Text(L"—");
+        ProjectEventCount().Text(L"—");
+        ProjectStoreSize().Text(L"—");
+        ProjectIntegrityValue().Text(L"PENDING");
+        ProjectIntegrityValue().Foreground(
+            Microsoft::UI::Xaml::Media::SolidColorBrush(Windows::UI::Color{255,255,200,87}));
         ProjectIdentity().Text(L"No registered project is selected.");
         ProjectFolders().Text(L"Register an authorized folder to begin.");
         ProjectPersistence().Text(L"No project memory store is active.");
@@ -949,12 +1312,52 @@ void MainWindow::ApplyProjectList(
     }
 }
 
+void MainWindow::UpdateRunProjectLabel()
+{
+    if (selectedProjectId_.empty()) {
+        RunSelectedProject().Text(
+            L"No project selected · choose an authorized project before starting");
+        RunControlProjectLabel().Text(L"Select a project to bind run control.");
+        return;
+    }
+    for (const auto& project : projects_) {
+        if (project.id.value() == selectedProjectId_) {
+            RunSelectedProject().Text(winrt::to_hstring(
+                project.displayName));
+            RunControlProjectLabel().Text(winrt::to_hstring(
+                "Bound to " + project.displayName + " · the Manager verifies an exact run before control."));
+            return;
+        }
+    }
+    RunSelectedProject().Text(L"Loading selected project readback");
+    RunControlProjectLabel().Text(L"Loading exact project binding from the Manager.");
+}
+
+void MainWindow::ClearSelectedRun()
+{
+    verifiedRunId_.clear();
+    verifiedRunProjectId_.clear();
+    clearSavedText(selectedRunValueName_.c_str());
+    clearSavedText(selectedRunProjectValueName_.c_str());
+    RunId().Text(L"");
+    RunPauseButton().IsEnabled(false);
+    RunResumeButton().IsEnabled(false);
+    RunCancelButton().IsEnabled(false);
+    RunState().Text(L"No Manager-owned run is currently attached.");
+    RunTokensValue().Text(L"— / — tokens");
+    RunPendingCalls().Text(L"No pending tool activity");
+    RunOutcomeText().Text(L"No output from an attached run.");
+    RunRawDetail().Text(L"No exact run detail has been read.");
+}
+
 void MainWindow::ClearSelectedProject()
 {
+    ClearSelectedRun();
     selectedProjectId_.clear();
     clearSavedText(selectedProjectValueName_.c_str());
     RunProjectId().Text(L"");
     ToolProjectId().Text(L"");
+    UpdateRunProjectLabel();
     MaintenanceState().Text(
         L"Select the exact project on the Projects page first.\n"
         L"All registered project data: RESET ALL PROJECT DATA");
@@ -963,11 +1366,25 @@ void MainWindow::ClearSelectedProject()
 void MainWindow::ApplyProjectWorkspace(
     const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot)
 {
+    if (!selectedProjectId_.empty() && selectedProjectId_ != snapshot.project.id.value())
+        ClearSelectedRun();
     selectedProjectId_ = snapshot.project.id.value();
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
     RunProjectId().Text(selected);
     ToolProjectId().Text(selected);
+    UpdateRunProjectLabel();
+    ProjectHeroName().Text(winrt::to_hstring(snapshot.project.displayName));
+    ProjectHeroScope().Text(snapshot.project.aliases.empty()
+        ? L"Authorized folder pending"
+        : winrt::to_hstring(snapshot.project.aliases.front().value()));
+    ProjectRecordCount().Text(winrt::to_hstring(std::to_string(snapshot.recordCount)));
+    ProjectEventCount().Text(winrt::to_hstring(std::to_string(snapshot.eventCount)));
+    ProjectStoreSize().Text(compactBytes(snapshot.databaseBytes));
+    ProjectIntegrityValue().Text(snapshot.integrityOk ? L"VERIFIED" : L"ATTENTION");
+    ProjectIntegrityValue().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
+        snapshot.integrityOk ? Windows::UI::Color{255,61,220,151}
+            : Windows::UI::Color{255,255,200,87}));
 
     std::string identity = "Active project: " + snapshot.project.displayName +
         "\nExact ID: " + selectedProjectId_;
@@ -997,24 +1414,58 @@ void MainWindow::ApplyProjectWorkspace(
     if (snapshot.records.empty()) {
         Microsoft::UI::Xaml::Controls::TextBlock empty;
         empty.Text(L"No matching project memory records.");
+        empty.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{255,184,197,211}));
         ProjectMemoryRecords().Children().Append(empty);
     }
     for (const auto& record : snapshot.records) {
-        std::string text = record.title + "\n" + record.summary;
-        if (record.body && !record.body->empty()) text += "\n\n" + *record.body;
-        text += "\n\n" + record.kind + " · v" +
-            std::to_string(record.version) + " · " + record.id.value();
+        Microsoft::UI::Xaml::Controls::StackPanel content;
+        content.Spacing(6);
+        Microsoft::UI::Xaml::Controls::TextBlock title;
+        title.Text(winrt::to_hstring(record.title));
+        title.FontSize(16);
+        title.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+        title.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        content.Children().Append(title);
+        Microsoft::UI::Xaml::Controls::TextBlock summary;
+        summary.Text(winrt::to_hstring(record.summary));
+        summary.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{255,184,197,211}));
+        summary.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        content.Children().Append(summary);
+        std::string metadata = record.kind + " · v" +
+            std::to_string(record.version);
         if (!record.tags.empty()) {
-            text += "\nTags: ";
+            metadata += " · ";
             for (std::size_t index{}; index < record.tags.size(); ++index) {
-                if (index != 0U) text += ", ";
-                text += record.tags[index];
+                if (index != 0U) metadata += ", ";
+                metadata += record.tags[index];
             }
         }
-        Microsoft::UI::Xaml::Controls::TextBlock row;
-        row.Text(winrt::to_hstring(text));
-        row.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
-        row.IsTextSelectionEnabled(true);
+        Microsoft::UI::Xaml::Controls::TextBlock meta;
+        meta.Text(winrt::to_hstring(metadata));
+        meta.FontSize(12);
+        meta.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{255,43,168,255}));
+        content.Children().Append(meta);
+        Microsoft::UI::Xaml::Controls::Expander detail;
+        detail.Header(box_value(L"Record detail & identity"));
+        Microsoft::UI::Xaml::Controls::TextBlock body;
+        body.Text(winrt::to_hstring((record.body ? *record.body : std::string{}) +
+            "\n\nExact record ID: " + record.id.value()));
+        body.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        body.IsTextSelectionEnabled(true);
+        detail.Content(body);
+        content.Children().Append(detail);
+        Microsoft::UI::Xaml::Controls::Border row;
+        row.Padding(Microsoft::UI::Xaml::Thickness{12});
+        row.CornerRadius(Microsoft::UI::Xaml::CornerRadius{9});
+        row.BorderThickness(Microsoft::UI::Xaml::Thickness{1});
+        row.Background(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{255,13,27,42}));
+        row.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{90,102,128,153}));
+        row.Child(content);
         ProjectMemoryRecords().Children().Append(row);
     }
 }
@@ -1030,13 +1481,31 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
     applyMetric(RamValue(), RamState(), RamGauge(), unavailable);
     applyMetric(GpuValue(), GpuState(), GpuGauge(), unavailable);
     applyMetric(ContextValue(), ContextState(), ContextGauge(), unavailable);
+    HistoryCpuLegend().Text(L"CPU unavailable");
+    HistoryRamLegend().Text(L"RAM unavailable");
+    HistoryGpuLegend().Text(L"GPU unavailable");
     CpuGaugeFill().Width(0);
     RamGaugeFill().Width(0);
     GpuGaugeFill().Width(0);
     ContextGaugeFill().Width(0);
+    ContinuityCapacityValue().Text(L"Unavailable");
+    ContinuityResponseReserveValue().Text(L"Unavailable");
+    ContinuityHandoffReserveValue().Text(L"Unavailable");
+    ContinuityRetainedValue().Text(L"Unavailable");
+    ContinuitySourceState().Text(L"Manager connection unavailable");
+    ContinuityPolicyState().Text(L"Manager-owned policy unavailable");
+    ContinuityRestorationState().Text(L"No verified successor projected");
+    RunTelemetryState().Text(L"Manager run readback unavailable while disconnected.");
+    RunStatusDot().Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
+        Windows::UI::Color{255, 255, 200, 87}});
     ManagerHealth().Text(winrt::to_hstring("Disconnected · " + explanation));
     HeroManagerLabel().Text(L"Service unavailable");
     ProviderHealth().Text(L"Unavailable while Manager is disconnected");
+    ProviderActiveEndpoint().Text(L"Manager readback unavailable · endpoint not verified");
+    ProviderActiveModel().Text(L"Manager readback unavailable");
+    ProviderConnectionBadge().Text(L"UNAVAILABLE");
+    ProviderConnectionBadge().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+        Windows::UI::Color{255, 255, 200, 87}});
     StoreHealth().Text(L"Unavailable while Manager is disconnected");
     ContinuityHealth().Text(L"Unavailable while Manager is disconnected");
     SystemStrip().Text(L"System telemetry disconnected");
@@ -1212,11 +1681,49 @@ void MainWindow::FilterTools()
 void MainWindow::ApplyOperational(
     const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot)
 {
+    operationalSnapshot_ = snapshot;
     operationalLines_.clear();
+    visibleOperationalIndices_.clear();
     OperationalList().Items().Clear();
     OperationalCards().Items().Clear();
     OperationalState().Text(winrt::to_hstring(snapshot.title));
+    if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Manager ||
+        snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes) {
+        const auto valueAfter = [&snapshot](const std::string_view prefix) {
+            for (const auto& line : snapshot.lines)
+                if (line.starts_with(prefix)) return line.substr(prefix.size());
+            return std::string{"—"};
+        };
+        const bool manager = snapshot.area ==
+            ::ForgeConductor::Manager::ManagerOperationalArea::Manager;
+        OperationalStatusLabel0().Text(manager ? L"Manager process" : L"Owned operations");
+        OperationalStatusLabel1().Text(manager ? L"Product version" : L"Background threads");
+        OperationalStatusLabel2().Text(manager ? L"Owned operations" : L"Child processes");
+        OperationalStatusLabel3().Text(manager ? L"Data root" : L"Open stores");
+        if (manager) {
+            const auto pid = valueAfter("Manager PID ");
+            OperationalStatusValue0().Text(winrt::to_hstring(pid.substr(0, pid.find(" · "))));
+            OperationalStatusValue1().Text(winrt::to_hstring(
+                std::string{::ForgeConductor::Domain::ProductVersion}));
+            OperationalStatusValue2().Text(winrt::to_hstring(valueAfter("Owned operations: ")));
+            OperationalStatusValue3().Text(currentDataRoot());
+        } else {
+            OperationalStatusValue0().Text(winrt::to_hstring(valueAfter("Owned operations: ")));
+            OperationalStatusValue1().Text(winrt::to_hstring(valueAfter("Background threads: ")));
+            OperationalStatusValue2().Text(winrt::to_hstring(valueAfter("Child processes: ")));
+            OperationalStatusValue3().Text(winrt::to_hstring(
+                valueAfter("Open repositories/databases: ")));
+        }
+    }
     std::string summary;
+    bool hasOpenSessions{};
+    auto query = winrt::to_string(OperationalAgentSearch().Text());
+    std::transform(query.begin(), query.end(), query.begin(),
+        [](const unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    auto feedQuery = winrt::to_string(OperationalFeedSearch().Text());
+    std::transform(feedQuery.begin(), feedQuery.end(), feedQuery.begin(),
+        [](const unsigned char character) { return static_cast<char>(std::tolower(character)); });
+    const auto statusFilter = OperationalFeedSeverity().SelectedIndex();
     for (const auto& line : snapshot.lines) {
         auto text = winrt::to_string(OperationalState().Text());
         OperationalState().Text(winrt::to_hstring(text + "\n\n" + line));
@@ -1224,42 +1731,209 @@ void MainWindow::ApplyOperational(
             (line.starts_with("Agent definitions:") ||
              line.starts_with("Open sessions:") ||
              line.starts_with("Recent sessions:"))) {
+            if (line.starts_with("Open sessions: "))
+                hasOpenSessions = line != "Open sessions: 0";
             if (!summary.empty()) summary += "  ·  ";
             summary += line;
             continue;
         }
         operationalLines_.push_back(line);
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
+            !query.empty()) {
+            auto searchable = line;
+            std::transform(searchable.begin(), searchable.end(), searchable.begin(),
+                [](const unsigned char character) { return static_cast<char>(std::tolower(character)); });
+            if (searchable.find(query) == std::string::npos) continue;
+        }
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed) {
+            const auto headerEnd = line.find('\n');
+            const auto fields = dotFields(std::string_view{line}.substr(0, headerEnd));
+            const auto status = fields.size() >= 3U ? fields[2] : std::string{};
+            if ((statusFilter == 1 && status != "error") ||
+                (statusFilter == 2 && status != "denied") ||
+                (statusFilter == 3 && status != "ok" && status != "success"))
+                continue;
+            if (!feedQuery.empty()) {
+                auto searchable = line;
+                std::transform(searchable.begin(), searchable.end(), searchable.begin(),
+                    [](const unsigned char character) { return static_cast<char>(std::tolower(character)); });
+                if (searchable.find(feedQuery) == std::string::npos) continue;
+            }
+        }
+        visibleOperationalIndices_.push_back(operationalLines_.size() - 1U);
         const auto separator = line.find('\n');
         if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents) {
             Microsoft::UI::Xaml::Controls::StackPanel cardContent;
-            cardContent.Spacing(10);
+            cardContent.Spacing(12);
+            const auto body = separator == std::string::npos
+                ? std::string{"Manager-owned session or inventory entry"}
+                : line.substr(separator + 1);
+            const auto toolsMarker = body.rfind("\nTools: ");
+            const auto isPlaybook = toolsMarker != std::string::npos;
+            const auto availableWidth = OperationalCards().ActualWidth();
+            const auto proposedWidth = availableWidth <= 0.0 ? 390.0
+                : availableWidth >= 600.0
+                    ? (availableWidth - 38.0) / 2.0
+                    : availableWidth - 24.0;
+            const auto cardWidth = std::clamp(proposedWidth, 240.0, 410.0);
+            Microsoft::UI::Xaml::Controls::StackPanel heading;
+            heading.Orientation(Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+            heading.Spacing(11);
+            Microsoft::UI::Xaml::Controls::Border iconChip;
+            iconChip.Width(34);
+            iconChip.Height(34);
+            iconChip.CornerRadius(Microsoft::UI::Xaml::CornerRadius{9});
+            iconChip.Background(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 25, 67, 108}});
+            Microsoft::UI::Xaml::Controls::FontIcon icon;
+            icon.Glyph(isPlaybook ? L"\uE716" : L"\uE8A7");
+            icon.FontSize(17);
+            icon.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 84, 189, 255}});
+            icon.HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Center);
+            icon.VerticalAlignment(Microsoft::UI::Xaml::VerticalAlignment::Center);
+            iconChip.Child(icon);
+            heading.Children().Append(iconChip);
             Microsoft::UI::Xaml::Controls::TextBlock name;
             name.Text(winrt::to_hstring(line.substr(0, separator)));
-            name.FontSize(16);
+            name.FontSize(17);
             name.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
             name.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
-            cardContent.Children().Append(name);
+            name.MaxWidth(cardWidth - 87.0);
+            name.VerticalAlignment(Microsoft::UI::Xaml::VerticalAlignment::Center);
+            heading.Children().Append(name);
+            cardContent.Children().Append(heading);
             Microsoft::UI::Xaml::Controls::TextBlock description;
-            description.Text(winrt::to_hstring(separator == std::string::npos
-                ? "Manager-owned session or inventory entry" : line.substr(separator + 1)));
-            description.FontSize(12);
-            description.MaxLines(4);
+            description.Text(winrt::to_hstring(isPlaybook
+                ? body.substr(0, toolsMarker) : body));
+            description.FontSize(13);
+            description.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+            description.MaxLines(3);
             description.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
             description.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
-                Windows::UI::Color{255, 168, 179, 199}});
+                Windows::UI::Color{255, 183, 199, 216}});
             cardContent.Children().Append(description);
+            Microsoft::UI::Xaml::Controls::TextBlock coverage;
+            coverage.Text(winrt::to_hstring(isPlaybook
+                ? "MANAGER PLAYBOOK  ·  " + body.substr(toolsMarker + 1)
+                : "LIVE SESSION  ·  exact identity in detail"));
+            coverage.FontSize(11);
+            coverage.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+            coverage.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                Windows::UI::Color{255, 84, 189, 255}});
+            cardContent.Children().Append(coverage);
             Microsoft::UI::Xaml::Controls::Border card;
-            card.Width(280);
-            card.MinHeight(145);
-            card.Padding(Microsoft::UI::Xaml::Thickness{16, 16, 16, 16});
+            card.Width(cardWidth);
+            card.MinHeight(160);
+            card.Padding(Microsoft::UI::Xaml::Thickness{18, 18, 18, 18});
             card.CornerRadius(Microsoft::UI::Xaml::CornerRadius{12});
             card.Background(Microsoft::UI::Xaml::Media::SolidColorBrush{
-                Windows::UI::Color{255, 18, 23, 34}});
+                Windows::UI::Color{255, 20, 35, 52}});
             card.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush{
-                Windows::UI::Color{255, 52, 67, 94}});
+                Windows::UI::Color{255, 59, 88, 119}});
             card.BorderThickness(Microsoft::UI::Xaml::Thickness{1});
             card.Child(cardContent);
             OperationalCards().Items().Append(card);
+            continue;
+        }
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed) {
+            const auto fields = dotFields(std::string_view{line}.substr(0, separator));
+            if (fields.size() >= 3U) {
+                const auto failed = fields[2] == "error";
+                const auto denied = fields[2] == "denied";
+                const auto color = failed ? Windows::UI::Color{255, 255, 115, 113}
+                    : denied ? Windows::UI::Color{255, 255, 200, 87}
+                    : Windows::UI::Color{255, 61, 220, 151};
+                Microsoft::UI::Xaml::Controls::StackPanel row;
+                row.Spacing(5);
+                row.Padding(Microsoft::UI::Xaml::Thickness{13, 11, 13, 11});
+                Microsoft::UI::Xaml::Controls::StackPanel heading;
+                heading.Orientation(Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+                heading.Spacing(10);
+                Microsoft::UI::Xaml::Controls::TextBlock timestamp;
+                timestamp.Text(winrt::to_hstring(fields[0]));
+                timestamp.Width(183);
+                timestamp.FontSize(12);
+                timestamp.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                    Windows::UI::Color{255, 153, 173, 196}});
+                heading.Children().Append(timestamp);
+                Microsoft::UI::Xaml::Shapes::Ellipse dot;
+                dot.Width(8);
+                dot.Height(8);
+                dot.Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{color});
+                dot.VerticalAlignment(Microsoft::UI::Xaml::VerticalAlignment::Center);
+                heading.Children().Append(dot);
+                Microsoft::UI::Xaml::Controls::TextBlock tool;
+                tool.Text(winrt::to_hstring(fields[1]));
+                tool.FontSize(15);
+                tool.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+                tool.Width(180);
+                tool.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+                heading.Children().Append(tool);
+                Microsoft::UI::Xaml::Controls::TextBlock status;
+                status.Text(winrt::to_hstring(fields[2]));
+                status.FontSize(12);
+                status.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+                status.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{color});
+                status.Width(54);
+                heading.Children().Append(status);
+                if (fields.back().ends_with(" ms")) {
+                    Microsoft::UI::Xaml::Controls::TextBlock duration;
+                    duration.Text(winrt::to_hstring(fields.back()));
+                    duration.FontSize(12);
+                    duration.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                        Windows::UI::Color{255, 153, 173, 196}});
+                    heading.Children().Append(duration);
+                }
+                row.Children().Append(heading);
+                if (separator != std::string::npos) {
+                    Microsoft::UI::Xaml::Controls::TextBlock error;
+                    error.Text(winrt::to_hstring(line.substr(separator + 1)));
+                    error.FontSize(12);
+                    error.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                        Windows::UI::Color{255, 153, 173, 196}});
+                    error.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+                    error.MaxLines(1);
+                    row.Children().Append(error);
+                }
+                OperationalList().Items().Append(row);
+                continue;
+            }
+        }
+        if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Diagnostics &&
+            (line.starts_with("PASS ") || line.starts_with("FAIL "))) {
+            const auto passed = line.starts_with("PASS ");
+            const auto check = line.substr(5);
+            const auto detailMarker = check.find(" — ");
+            Microsoft::UI::Xaml::Controls::StackPanel row;
+            row.Spacing(5);
+            row.Padding(Microsoft::UI::Xaml::Thickness{13, 11, 13, 11});
+            Microsoft::UI::Xaml::Controls::StackPanel heading;
+            heading.Orientation(Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+            heading.Spacing(10);
+            Microsoft::UI::Xaml::Shapes::Ellipse dot;
+            dot.Width(8);
+            dot.Height(8);
+            dot.VerticalAlignment(Microsoft::UI::Xaml::VerticalAlignment::Center);
+            dot.Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                passed ? Windows::UI::Color{255, 61, 220, 151}
+                    : Windows::UI::Color{255, 255, 115, 113}});
+            heading.Children().Append(dot);
+            Microsoft::UI::Xaml::Controls::TextBlock name;
+            name.Text(winrt::to_hstring(check.substr(0, detailMarker)));
+            name.FontSize(15);
+            name.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+            heading.Children().Append(name);
+            row.Children().Append(heading);
+            if (detailMarker != std::string::npos) {
+                Microsoft::UI::Xaml::Controls::TextBlock detail;
+                detail.Text(winrt::to_hstring(check.substr(detailMarker + 5)));
+                detail.FontSize(12);
+                detail.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
+                    Windows::UI::Color{255, 153, 173, 196}});
+                row.Children().Append(detail);
+            }
+            OperationalList().Items().Append(row);
             continue;
         }
         Microsoft::UI::Xaml::Controls::StackPanel row;
@@ -1283,23 +1957,50 @@ void MainWindow::ApplyOperational(
         }
         OperationalList().Items().Append(row);
     }
+    if (!summary.empty() && !query.empty()) summary += "  ·  Showing " +
+        std::to_string(visibleOperationalIndices_.size()) + " of " +
+        std::to_string(operationalLines_.size());
+    if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed)
+        summary = std::to_string(visibleOperationalIndices_.size()) + " of " +
+            std::to_string(operationalLines_.size()) +
+            " bounded Manager audit outcomes · newest first" +
+            (feedDisplayPaused_ ? " · display paused" : "");
     OperationalListSummary().Text(winrt::to_hstring(summary.empty()
         ? std::to_string(operationalLines_.size()) + " records from the live Manager projection"
         : summary));
     OperationalCount().Text(winrt::to_hstring(
-        std::to_string(operationalLines_.size()) + " LIVE"));
-    OperationalEmptyState().Visibility(operationalLines_.empty()
+        snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
+            ? winrt::to_string(PageTitle().Text()) == "Events & Evidence"
+                ? std::string{"AUDIT ONLY"}
+                : std::to_string(visibleOperationalIndices_.size()) + " AUDIT"
+            : std::to_string(visibleOperationalIndices_.size()) + " LIVE"));
+    OperationalSessionCard().Visibility(
+        snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
+            hasOpenSessions ? Visibility::Visible : Visibility::Collapsed);
+    OperationalEmptyState().Visibility(visibleOperationalIndices_.empty()
         ? Visibility::Visible : Visibility::Collapsed);
-    OperationalEmptyTitle().Text(L"No records yet");
-    OperationalEmptyBody().Text(L"The Manager returned no entries for this view. Refresh to check again.");
-    if (!operationalLines_.empty()) {
+    const auto filtered = snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
+        ? !feedQuery.empty() || statusFilter != 0 : !query.empty();
+    OperationalEmptyTitle().Text(!filtered ? L"No records yet" :
+        snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
+            ? L"No matching audit outcomes" : L"No matching specialists");
+    OperationalEmptyBody().Text(!filtered
+        ? L"The Manager returned no entries for this view. Refresh to check again."
+        : snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
+            ? L"Try another tool, client, or severity filter."
+            : L"Try a different playbook, tool, or session search.");
+    if (!visibleOperationalIndices_.empty()) {
         if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents)
             OperationalCards().SelectedIndex(0);
         else OperationalList().SelectedIndex(0);
     }
     else {
         OperationalDetailTitle().Text(L"No records");
-        OperationalDetailBody().Text(L"The Manager returned no entries for this view.");
+        OperationalDetailBody().Text(!filtered
+            ? L"The Manager returned no entries for this view."
+            : snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
+                ? L"No audited outcome matches the active filters."
+                : L"No specialist or session matches the search.");
     }
 }
 
@@ -1348,7 +2049,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (action == Action::Refresh) {
         runId = winrt::to_string(RunId().Text());
     }
-    if (action == Action::ProviderSave || action == Action::ProviderTest) {
+    if (action == Action::ProviderSave || action == Action::ProviderTest ||
+        action == Action::ProviderModels) {
         std::string error;
         submitted = ReadProviderForm(error);
         if (!submitted) {
@@ -1367,8 +2069,20 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 RunState().Text(L"Select a named project before starting work.");
                 co_return;
             }
+            if (runTask.empty()) {
+                RunState().Text(L"Describe a mission for the selected project first.");
+                co_return;
+            }
         } else if (runId.empty()) {
             RunState().Text(L"Enter a run ID to attach or control a Manager-owned run.");
+            co_return;
+        } else if (selectedProjectId_.empty()) {
+            RunState().Text(L"Select the project before attaching an exact run.");
+            co_return;
+        } else if (action != Action::RunStatus &&
+            (runId != verifiedRunId_ || selectedProjectId_ != verifiedRunProjectId_)) {
+            RunState().Text(
+                L"Refresh this exact run first. The Manager must verify its project before control.");
             co_return;
         }
     }
@@ -1464,8 +2178,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             else if (settingsAction) SettingsState().Text(queued);
             else if (maintenanceAction) MaintenanceState().Text(queued);
             else if (action == Action::ProviderLoad ||
-                     action == Action::ProviderSave ||
-                     action == Action::ProviderTest) ProviderState().Text(queued);
+                      action == Action::ProviderSave ||
+                      action == Action::ProviderTest ||
+                      action == Action::ProviderModels) ProviderState().Text(queued);
             else ManagerState().Text(queued);
         } else if (admission ==
                 ::ForgeConductor::Hosts::App::AppActionAdmission::Rejected) {
@@ -1490,7 +2205,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     } else if (maintenanceAction) {
         MaintenanceState().Text(L"The Manager is fencing the selected data scope…");
     } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
-        action == Action::ProviderTest) {
+        action == Action::ProviderTest || action == Action::ProviderModels) {
         ProviderState().Text(L"Working…");
     } else {
         ManagerState().Text(L"Connecting…");
@@ -1499,6 +2214,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
 
     std::string message;
     ::ForgeConductor::Hosts::App::ProviderSettingsView loaded;
+    ::ForgeConductor::Hosts::App::ProviderModelsView modelsView;
     ::ForgeConductor::Hosts::App::ManagedRunView runView;
     ::ForgeConductor::Hosts::App::TelemetryView telemetryView;
     ::ForgeConductor::Hosts::App::ProjectsView projectsView;
@@ -1551,6 +2267,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         case Action::ProviderTest:
             message = connection_->testProvider(
                 *submitted, cancellation_.get_token());
+            break;
+        case Action::ProviderModels:
+            modelsView = connection_->providerModels(
+                *submitted, cancellation_.get_token());
+            message = modelsView.message;
             break;
         case Action::SettingsLoad:
             loaded = connection_->providerSettings(cancellation_.get_token());
@@ -1688,10 +2409,25 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (!cancellation_.stop_requested()) {
         if (runAction) {
             if (runView.snapshot) {
-                RunId().Text(winrt::to_hstring(
-                    runView.snapshot->record.runId.value()));
+                if (runView.snapshot->record.projectId.value() == selectedProjectId_) {
+                    ApplyRunReadback(*runView.snapshot);
+                } else {
+                    RunPauseButton().IsEnabled(false);
+                    RunResumeButton().IsEnabled(false);
+                    RunCancelButton().IsEnabled(false);
+                    RunState().Text(
+                        L"Run readback belongs to a different project. No control was bound.");
+                    RunRawDetail().Text(winrt::to_hstring(message));
+                }
+            } else {
+                verifiedRunId_.clear();
+                verifiedRunProjectId_.clear();
+                RunPauseButton().IsEnabled(false);
+                RunResumeButton().IsEnabled(false);
+                RunCancelButton().IsEnabled(false);
+                RunState().Text(winrt::to_hstring("Run readback unavailable · " + message));
+                RunRawDetail().Text(winrt::to_hstring(message));
             }
-            RunState().Text(winrt::to_hstring(message));
         } else if (projectAction) {
             if (projectsView.loaded && projectsView.snapshot) {
                 ApplyProjectList(*projectsView.snapshot);
@@ -1701,6 +2437,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ApplyProjectWorkspace(*projectView.snapshot);
                 if (action == Action::ProjectRegister) {
                     followUp = Action::ProjectList;
+                } else if (action == Action::ProjectLoad &&
+                    !RunId().Text().empty() && verifiedRunId_.empty()) {
+                    followUp = Action::RunStatus;
                 } else if (action == Action::ProjectRemember) {
                     ProjectMemoryTitle().Text(L"");
                     ProjectMemorySummary().Text(L"");
@@ -1728,7 +2467,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             }
         } else if (operationalAction) {
             if (operationalView.snapshot) {
-                ApplyOperational(*operationalView.snapshot);
+                if (feedDisplayPaused_ && operationalView.snapshot->area ==
+                    ::ForgeConductor::Manager::ManagerOperationalArea::Feed) {
+                    pendingFeedSnapshot_ = *operationalView.snapshot;
+                } else {
+                    ApplyOperational(*operationalView.snapshot);
+                }
             } else {
                 OperationalState().Text(winrt::to_hstring(message));
                 OperationalListSummary().Text(winrt::to_hstring(message));
@@ -1780,7 +2524,36 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ? Action::ProjectList : Action::ProjectLoad;
             }
         } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
-            action == Action::ProviderTest) {
+            action == Action::ProviderTest || action == Action::ProviderModels) {
+            if (action == Action::ProviderModels) {
+                rebuildingProviderModels_ = true;
+                loadedModels_ = modelsView.loaded ? std::move(modelsView.models)
+                    : std::vector<std::string>{};
+                ProviderLoadedModels().Items().Clear();
+                ProviderLoadedModels().Items().Append(box_value(
+                    L"Automatic · first compatible loaded model"));
+                auto selectedIndex = 0;
+                const auto pendingModel = winrt::to_string(ProviderModel().Text());
+                for (std::size_t index{}; index < loadedModels_.size(); ++index) {
+                    ProviderLoadedModels().Items().Append(box_value(
+                        winrt::to_hstring(loadedModels_[index])));
+                    if (loadedModels_[index] == pendingModel) {
+                        selectedIndex = static_cast<int>(index + 1U);
+                    }
+                }
+                ProviderLoadedModels().SelectedIndex(selectedIndex);
+                rebuildingProviderModels_ = false;
+                ProviderLoadedCount().Text(modelsView.loaded
+                    ? winrt::to_hstring(std::to_string(loadedModels_.size()))
+                    : L"—");
+                ProviderModelsState().Text(winrt::to_hstring(message));
+                providerDiscoveredEndpoint_ = modelsView.loaded && submitted
+                    ? std::string{submitted->localModelSecure ? "https://" : "http://"} +
+                        submitted->localModelHost + ':' +
+                        std::to_string(submitted->localModelPort)
+                    : std::string{};
+                if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
+            }
             if (action == Action::ProviderLoad && loaded.loaded) {
                 std::string formError;
                 const auto pending = ReadProviderForm(formError);

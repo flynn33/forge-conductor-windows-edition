@@ -1,10 +1,18 @@
 # Changelog
 
+## 1.1.6 — Direction A operational composition pass
+
+- Make Projects a selected-scope and memory-health workbench with a native Windows folder picker; keep project identity internal in routine selection.
+- Add a model-first Provider screen with bounded discovery of actual loaded LM Studio models and distinct configured versus discovered states.
+- Give Autonomy a mission, live run readback, output and token/tool-activity composition; let the Manager resolve project authority and guard run controls by exact project verification.
+- Give Continuity a dedicated capacity and handoff-state composition while clearly labeling desktop capability gaps.
+- Improve typography, color, feed filtering, agent search, and Manager/Runtimes status cards; installed all-view QA remains required.
+
 ## 1.1.5 — Direction A live-view finish
 
 - Strengthen the native Rig hierarchy with a distinct machine identity, full-height meters, a readable 60-second chart, and structured recent outcomes.
 - Put run and log navigation in the command center while retaining service lifecycle controls on Manager.
-- Refine the remaining operational views and validate them against installed production-data screenshots.
+- Continue operational-view refinement; installed production-data inspection identified follow-on work.
 
 ## 1.1.4 — Structured native view refinement
 

@@ -8,7 +8,10 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 #include "ForgeConductor/Manager/ManagerProcessExitCodes.h"
+#include "ForgeConductor/Domain/Utf8.h"
 #include <windows.h>
+#include <winhttp.h>
+#include <nlohmann/json.hpp>
 #include <array>
 #include <chrono>
 #include <filesystem>
@@ -44,6 +47,11 @@ struct NativeHandle final {
         if (valid()) CloseHandle(value);
         value = INVALID_HANDLE_VALUE;
     }
+};
+
+struct InternetHandle final {
+    HINTERNET value{};
+    ~InternetHandle() { if (value) ::WinHttpCloseHandle(value); }
 };
 
 [[nodiscard]] std::string managerStartupDetail(
@@ -753,10 +761,8 @@ ManagedRunView ManagerConnection::startManagedRun(
         auto clientIdValue = Domain::ClientId::parse(clientId);
         if (!project) return {false, project.error().message, std::nullopt};
         if (!clientIdValue) return {false, clientIdValue.error().message, std::nullopt};
-        if (authorityGeneration == 0U || task.empty()) {
-            return {false,
-                "Project authority generation and task are required.",
-                std::nullopt};
+        if (task.empty()) {
+            return {false, "A mission is required.", std::nullopt};
         }
         auto clock = std::make_shared<W::SystemClock>();
         auto context = operationContext(clock, cancellation, std::chrono::seconds{15});
@@ -991,5 +997,89 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
                 : std::string{". Last connection error: "} + lastConnectionError);
     } catch (const std::exception& error) { return error.what(); }
       catch (...) { return "Could not start manager."; }
+}
+
+ProviderModelsView ManagerConnection::providerModels(
+    const Domain::ManagerSettings& settings,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        const auto valid = Domain::validateManagerSettings(settings);
+        if (!valid) return {false, valid.error().message, {}};
+        if (cancellation.stop_requested()) return {false, "Model discovery cancelled.", {}};
+        const std::wstring host{settings.localModelHost.begin(),
+            settings.localModelHost.end()};
+        InternetHandle session{::WinHttpOpen(L"Forge Conductor/1.1",
+            WINHTTP_ACCESS_TYPE_NO_PROXY, WINHTTP_NO_PROXY_NAME,
+            WINHTTP_NO_PROXY_BYPASS, 0)};
+        if (!session.value) return {false, "Could not initialize local model discovery.", {}};
+        if (!::WinHttpSetTimeouts(session.value, 2000, 2000, 2000, 2000))
+            return {false, "Could not set a bounded model-discovery timeout.", {}};
+        InternetHandle connection{::WinHttpConnect(session.value, host.c_str(),
+            static_cast<INTERNET_PORT>(settings.localModelPort), 0)};
+        if (!connection.value) return {false, "Could not connect to the configured loopback endpoint.", {}};
+        InternetHandle request{::WinHttpOpenRequest(connection.value, L"GET",
+            L"/v1/models", nullptr, WINHTTP_NO_REFERER,
+            WINHTTP_DEFAULT_ACCEPT_TYPES,
+            settings.localModelSecure ? WINHTTP_FLAG_SECURE : 0)};
+        if (!request.value || !::WinHttpSendRequest(request.value,
+                WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA,
+                0, 0, 0) || !::WinHttpReceiveResponse(request.value, nullptr)) {
+            return {false, "LM Studio /v1/models is not reachable at the configured endpoint.", {}};
+        }
+        DWORD status{}, statusBytes{sizeof(status)};
+        if (!::WinHttpQueryHeaders(request.value,
+                WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusBytes,
+                WINHTTP_NO_HEADER_INDEX) || status != 200U) {
+            return {false, "LM Studio model discovery returned HTTP " +
+                std::to_string(status) + ".", {}};
+        }
+        std::string body;
+        while (!cancellation.stop_requested()) {
+            DWORD available{};
+            if (!::WinHttpQueryDataAvailable(request.value, &available))
+                return {false, "Could not read LM Studio model metadata.", {}};
+            if (available == 0U) break;
+            if (available > 65536U - body.size())
+                return {false, "LM Studio model metadata exceeded the safe display limit.", {}};
+            const auto begin = body.size();
+            body.resize(begin + available);
+            DWORD read{};
+            if (!::WinHttpReadData(request.value, body.data() + begin,
+                    available, &read)) {
+                return {false, "Could not read LM Studio model metadata.", {}};
+            }
+            body.resize(begin + read);
+            if (read == 0U) break;
+        }
+        if (cancellation.stop_requested()) return {false, "Model discovery cancelled.", {}};
+        const auto document = nlohmann::json::parse(body);
+        if (!document.is_object() || !document.contains("data") ||
+            !document.at("data").is_array()) {
+            return {false, "LM Studio returned no model collection.", {}};
+        }
+        std::vector<std::string> models;
+        for (const auto& item : document.at("data")) {
+            if (!item.is_object() || !item.contains("id") ||
+                !item.at("id").is_string()) continue;
+            auto id = item.at("id").get<std::string>();
+            if (id.empty() || id.size() > 256U || id.find('\0') != std::string::npos ||
+                !Domain::isValidUtf8(id)) continue;
+            if (std::find(models.begin(), models.end(), id) == models.end())
+                models.push_back(std::move(id));
+            if (models.size() == 128U) break;
+        }
+        return {true, models.empty()
+            ? "LM Studio has no valid loaded model for Responses."
+            : std::to_string(models.size()) + " loaded model" +
+                (models.size() == 1U ? "" : "s") + " discovered.",
+            std::move(models)};
+    } catch (const std::exception& error) {
+        return {false, "LM Studio model discovery failed: " +
+            std::string{error.what()}, {}};
+    } catch (...) {
+        return {false, "LM Studio model discovery failed safely.", {}};
+    }
 }
 }

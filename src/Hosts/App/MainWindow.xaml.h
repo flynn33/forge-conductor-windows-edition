@@ -29,6 +29,9 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProviderLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderSaveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProviderTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProviderDiscoverClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProviderModelSelectionChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void SettingsLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsSaveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsRevertClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -40,12 +43,16 @@ struct MainWindow : MainWindowT<MainWindow> {
     void OpenAutonomyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenFeedClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenSettingsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OpenProjectsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunResumeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void RunIdTextChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
     void ProjectRegisterClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectBrowseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSearchClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectRememberClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -64,10 +71,15 @@ struct MainWindow : MainWindowT<MainWindow> {
     void OperationalCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OperationalSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void OperationalCardSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void OperationalAgentSearchChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+    void OperationalFeedFilterChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+    void OperationalFeedSeverityChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void OperationalFeedPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
+        ProviderModels,
         SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember,
@@ -83,6 +95,7 @@ private:
     void ApplySettingsForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
     void ApplyTelemetryPresentation(
         const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot);
+    void ApplyRunReadback(const ::ForgeConductor::Domain::ManagedRunSnapshot& snapshot);
     void ApplyDisconnectedTelemetry(std::string_view reason);
     void ApplyProjectList(
         const ::ForgeConductor::Manager::ManagerProjectsSnapshot& snapshot);
@@ -93,6 +106,8 @@ private:
     void FilterTools();
     void ApplyOperational(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
     void SelectOperationalRecord(std::size_t index);
+    void UpdateRunProjectLabel();
+    void ClearSelectedRun();
     void ClearSelectedProject();
     void SelectPage(const winrt::hstring& tag);
 
@@ -102,12 +117,23 @@ private:
         telemetrySnapshot_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
     std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
+    std::vector<std::string> loadedModels_;
+    bool rebuildingProviderModels_{};
+    std::string providerDiscoveredEndpoint_;
     std::vector<std::size_t> visibleTools_;
     std::vector<std::string> operationalLines_;
+    std::vector<std::size_t> visibleOperationalIndices_;
+    std::optional<::ForgeConductor::Manager::ManagerOperationalSnapshot> operationalSnapshot_;
+    std::optional<::ForgeConductor::Manager::ManagerOperationalSnapshot> pendingFeedSnapshot_;
+    bool feedDisplayPaused_{};
     bool rebuildingTools_{};
     std::string selectedProjectId_;
+    std::string verifiedRunId_;
+    std::string verifiedRunProjectId_;
     std::wstring selectedPageValueName_{L"SelectedPage"};
     std::wstring selectedProjectValueName_{L"SelectedProjectId"};
+    std::wstring selectedRunValueName_{L"SelectedRunId"};
+    std::wstring selectedRunProjectValueName_{L"SelectedRunProjectId"};
     std::stop_source cancellation_;
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};
