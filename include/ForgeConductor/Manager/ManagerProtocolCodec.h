@@ -78,7 +78,7 @@ struct ManagerToolInvokeRequest final {
     std::string canonicalArguments;
 };
 
-enum class ManagerOperationalArea { Agents, Feed, Runtimes, Diagnostics, Manager, Runs };
+enum class ManagerOperationalArea { Agents, Feed, Runtimes, Diagnostics, Manager, Runs, Evidence };
 enum class ManagerOperationalAction { Inspect, PruneSessions, CloseSession };
 
 struct ManagerOperationalRequest final {

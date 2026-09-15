@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/IAgentServices.h"
+#include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
 
 #include <memory>
@@ -15,7 +16,8 @@ class AgentRepositoryManagedRunStore final
 public:
     AgentRepositoryManagedRunStore(
         Contracts::IAgentSessionRepository& repository,
-        Domain::AgentId managedAgentId);
+        Domain::AgentId managedAgentId,
+        Contracts::IHasher& hasher);
     ~AgentRepositoryManagedRunStore() noexcept override;
 
     AgentRepositoryManagedRunStore(

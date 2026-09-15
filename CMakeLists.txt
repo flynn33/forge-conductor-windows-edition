@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.1.29
+    VERSION 1.1.30
     LANGUAGES CXX RC
 )
 
@@ -2968,7 +2968,8 @@ if(BUILD_TESTING)
         ForgeConductor.ManagedRun.ServiceTests)
     target_link_libraries(
         ForgeConductor.ManagedRun.ServiceTests PRIVATE
-        ForgeConductor::Application)
+        ForgeConductor::Application
+        ForgeConductor::Infrastructure.Windows)
 
     add_test(
         NAME ForgeConductor.ManagedRun.ServiceTests

@@ -41,6 +41,8 @@ struct ManagerTelemetrySources final {
     const Contracts::WorkspaceAuthority* lmStudioActivationAuthority{};
     Contracts::IClientPresenceRepository* clientPresence{};
     Contracts::IAuditRepository* audit{};
+    Contracts::IManagedRunStore* durableManagedRunStore{};
+    Contracts::IHasher* evidenceHasher{};
 };
 
 class ManagerRequestDispatcher final {

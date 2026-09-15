@@ -2,6 +2,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <span>
 #include <utility>
 
 namespace ForgeConductor::Application {
@@ -40,8 +41,34 @@ namespace {
     }
 }
 
-[[nodiscard]] std::optional<std::string> summary(
-    const Domain::ManagedRunRecord& record)
+[[nodiscard]] bool isTerminal(const Domain::ManagedRunState state) noexcept
+{
+    return state == Domain::ManagedRunState::Completed ||
+        state == Domain::ManagedRunState::Failed ||
+        state == Domain::ManagedRunState::Cancelled;
+}
+
+[[nodiscard]] Domain::Result<Domain::Sha256Digest> evidenceDigest(
+    const Domain::ManagedRunRecord& record,
+    const nlohmann::json& persistedSummary,
+    Contracts::IHasher& hasher)
+{
+    auto summaryWithoutSeal = persistedSummary;
+    summaryWithoutSeal.erase("evidence_seal_sha256");
+    const nlohmann::json envelope{
+        {"client_id", record.clientId.value()},
+        {"project_id", record.projectId.value()},
+        {"run_id", record.runId.value()},
+        {"summary", std::move(summaryWithoutSeal)},
+        {"task", record.task}};
+    const auto encoded = envelope.dump();
+    return hasher.sha256(std::as_bytes(std::span<const char>{
+        encoded.data(), encoded.size()}));
+}
+
+[[nodiscard]] Domain::Result<std::optional<std::string>> summary(
+    const Domain::ManagedRunRecord& record,
+    Contracts::IHasher& hasher)
 {
     nlohmann::json value{
         {"allow_tools", record.allowTools},
@@ -77,12 +104,21 @@ namespace {
     } else {
         value["error"] = nullptr;
     }
-    return value.dump();
+    if (isTerminal(record.state)) {
+        auto seal = evidenceDigest(record, value, hasher);
+        if (!seal) {
+            return Domain::Result<std::optional<std::string>>::failure(
+                std::move(seal).error());
+        }
+        value["evidence_seal_sha256"] = seal.value().value();
+    }
+    return Domain::Result<std::optional<std::string>>::success(value.dump());
 }
 
 void applySummary(
     const std::optional<std::string>& encoded,
-    Domain::ManagedRunRecord& record)
+    Domain::ManagedRunRecord& record,
+    Contracts::IHasher& hasher)
 {
     if (!encoded || !encoded->starts_with('{')) return;
     try {
@@ -91,6 +127,16 @@ void applySummary(
                 "forge_managed_run" || value.value("version", 0U) != 1U) {
             return;
         }
+        const auto sealText = value.contains("evidence_seal_sha256") &&
+            value["evidence_seal_sha256"].is_string()
+                ? std::optional<std::string>{
+                      value["evidence_seal_sha256"].get<std::string>()}
+                : std::nullopt;
+        const auto persistedDigest = sealText
+            ? Domain::Sha256Digest::parse(*sealText)
+            : Domain::Result<Domain::Sha256Digest>::failure(
+                  Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                      "The run evidence seal is absent."));
         record.authorityGeneration =
             value.value("authority_generation", 0ULL);
         record.allowTools = value.value("allow_tools", true);
@@ -136,8 +182,26 @@ void applySummary(
                     : "The recovered managed run stopped before a terminal provider result.",
                 true);
         }
+        if (isTerminal(record.state)) {
+            record.evidenceIntegrity =
+                Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed;
+            if (sealText) {
+                if (persistedDigest) {
+                    record.evidenceSeal = persistedDigest.value();
+                    auto recomputed = evidenceDigest(record, value, hasher);
+                    record.evidenceIntegrity = recomputed &&
+                        recomputed.value() == persistedDigest.value()
+                            ? Domain::ManagedRunEvidenceIntegrity::Verified
+                            : Domain::ManagedRunEvidenceIntegrity::Mismatch;
+                } else {
+                    record.evidenceIntegrity =
+                        Domain::ManagedRunEvidenceIntegrity::Mismatch;
+                }
+            }
+        }
     } catch (...) {
         record.state = Domain::ManagedRunState::Failed;
+        record.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Mismatch;
         record.lastError = Domain::makeError(
             Domain::ErrorCodes::IntegrityFailure,
             "The durable managed-run summary is malformed.");
@@ -150,8 +214,10 @@ class AgentRepositoryManagedRunStore::Impl final {
 public:
     Impl(
         Contracts::IAgentSessionRepository& repository,
-        Domain::AgentId managedAgentId)
-        : repository_{repository}, managedAgentId_{std::move(managedAgentId)}
+        Domain::AgentId managedAgentId,
+        Contracts::IHasher& hasher)
+        : repository_{repository}, managedAgentId_{std::move(managedAgentId)},
+          hasher_{hasher}
     {
     }
 
@@ -194,7 +260,7 @@ public:
             {},
             run.session.createdAt,
             run.session.updatedAt};
-        applySummary(run.session.summary, record);
+        applySummary(run.session.summary, record, hasher_);
         return Domain::Result<
             std::optional<Domain::ManagedRunRecord>>::success(
             std::move(record));
@@ -210,12 +276,17 @@ public:
                 return Domain::Result<void>::failure(
                     std::move(loaded).error());
             }
+            auto encodedSummary = summary(record, hasher_);
+            if (!encodedSummary) {
+                return Domain::Result<void>::failure(
+                    std::move(encodedSummary).error());
+            }
             Domain::AgentSession session{
                 record.runId,
                 managedAgentId_,
                 record.clientId,
                 sessionStatus(record.state),
-                summary(record),
+                std::move(encodedSummary).value(),
                 record.createdAt,
                 record.updatedAt};
             if (!loaded.value()) {
@@ -270,14 +341,17 @@ public:
 private:
     Contracts::IAgentSessionRepository& repository_;
     Domain::AgentId managedAgentId_;
+    Contracts::IHasher& hasher_;
 };
 
 AgentRepositoryManagedRunStore::AgentRepositoryManagedRunStore(
     Contracts::IAgentSessionRepository& repository,
-    Domain::AgentId managedAgentId)
+    Domain::AgentId managedAgentId,
+    Contracts::IHasher& hasher)
     : implementation_{std::make_unique<Impl>(
           repository,
-          std::move(managedAgentId))}
+          std::move(managedAgentId),
+          hasher)}
 {
 }
 

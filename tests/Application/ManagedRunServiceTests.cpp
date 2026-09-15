@@ -1,5 +1,6 @@
 #include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
 #include "ForgeConductor/Application/ManagedRunService.h"
+#include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -215,6 +216,16 @@ public:
     bool admittedWithoutSummary{};
     bool admittedWithBinding{};
     std::size_t sessionSaves{};
+
+    void corruptSealedSummary()
+    {
+        assert(run_ && run_->session.summary);
+        auto& encoded = *run_->session.summary;
+        const auto position = encoded.find("sealed result");
+        assert(position != std::string::npos);
+        encoded.replace(position, std::string{"sealed result"}.size(),
+            "altered result");
+    }
 
 private:
     template <typename T>
@@ -699,9 +710,11 @@ public:
 int main()
 {
     AdmissionRepository admissionRepository;
+    ForgeConductor::Infrastructure::Windows::BCryptSha256Hasher hasher;
     Application::AgentRepositoryManagedRunStore durableStore{
         admissionRepository,
-        parsed(Domain::AgentId::parse("forge-managed-run"))};
+        parsed(Domain::AgentId::parse("forge-managed-run")),
+        hasher};
     const auto admittedAt = Domain::UtcTimePoint{};
     const Domain::ManagedRunRecord durableRecord{
         parsed(Domain::SessionId::parse(
@@ -739,6 +752,28 @@ int main()
     assert(durableLoaded.value()->authorityGeneration == 3U);
     assert(durableLoaded.value()->task == durableRecord.task);
     assert(!durableLoaded.value()->allowTools);
+
+    auto sealedRecord = durableRecord;
+    sealedRecord.state = Domain::ManagedRunState::Completed;
+    sealedRecord.providerResponseId = parsed(
+        Domain::ProviderSessionId::parse("resp_sealed_result"));
+    sealedRecord.outputText = "sealed result";
+    sealedRecord.inputTokens = 12U;
+    sealedRecord.outputTokens = 3U;
+    assert(durableStore.save(sealedRecord, admissionContext));
+    const auto sealedLoaded = durableStore.load(
+        sealedRecord.runId, admissionContext);
+    assert(sealedLoaded && sealedLoaded.value());
+    assert(sealedLoaded.value()->evidenceSeal);
+    assert(sealedLoaded.value()->evidenceIntegrity ==
+        Domain::ManagedRunEvidenceIntegrity::Verified);
+    admissionRepository.corruptSealedSummary();
+    const auto alteredLoaded = durableStore.load(
+        sealedRecord.runId, admissionContext);
+    assert(alteredLoaded && alteredLoaded.value());
+    assert(alteredLoaded.value()->state == Domain::ManagedRunState::Completed);
+    assert(alteredLoaded.value()->evidenceIntegrity ==
+        Domain::ManagedRunEvidenceIntegrity::Mismatch);
 
     Clock clock;
     Store store;

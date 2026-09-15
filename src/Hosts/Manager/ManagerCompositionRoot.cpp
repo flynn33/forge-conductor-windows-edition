@@ -1042,7 +1042,8 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     managedRunStore_ = std::make_unique<
         Application::AgentRepositoryManagedRunStore>(
         *agentSessionRepository_,
-        take(Domain::AgentId::parse("forge-managed-run")));
+        take(Domain::AgentId::parse("forge-managed-run")),
+        *hasher_);
     nativeSessionAdapter_ = std::make_unique<
         NativeSessionHost::ForgeNativeSessionHostAdapter>(
         take(Domain::AdapterId::parse(
@@ -1461,7 +1462,9 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             diagnosticSink_.get(),
             lmStudioActivationAuthority_ ? &*lmStudioActivationAuthority_ : nullptr,
             clientPresenceRepository_.get(),
-            auditRepository_.get()});
+            auditRepository_.get(),
+            managedRunStore_.get(),
+            hasher_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

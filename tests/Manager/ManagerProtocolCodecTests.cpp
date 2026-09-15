@@ -662,6 +662,34 @@ void testProjectRunHistoryRoundTrips()
         std::get<Manager::ManagerResult>(responseDecoded.body));
     REQUIRE(result.area == Manager::ManagerOperationalArea::Runs);
     REQUIRE(result.lines == history.lines);
+
+    const auto evidenceFrame = take(
+        Manager::ManagerProtocolCodec::encodeRequest(request(
+            Manager::ManagerOperationalRequest{
+                Manager::ManagerOperationalArea::Evidence,
+                Manager::ManagerOperationalAction::Inspect,
+                std::nullopt, {}, project})));
+    const auto evidenceDecoded = take(
+        Manager::ManagerProtocolCodec::decodeRequest(evidenceFrame));
+    const auto& evidenceRequest = std::get<Manager::ManagerOperationalRequest>(
+        evidenceDecoded.payload);
+    REQUIRE(evidenceRequest.area == Manager::ManagerOperationalArea::Evidence);
+    REQUIRE(evidenceRequest.projectId == project);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(
+        evidenceDecoded)) == evidenceFrame);
+    const Manager::ManagerOperationalSnapshot evidence{
+        Manager::ManagerOperationalArea::Evidence,
+        "Durable Manager-owned runs · exact selected project",
+        {"{\"format\":\"forge-conductor-managed-run-evidence-v1\"}"}};
+    const auto evidenceResponse = take(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{evidence})));
+    const auto parsedEvidence = take(
+        Manager::ManagerProtocolCodec::decodeResponse(evidenceResponse));
+    const auto& evidenceResult = std::get<Manager::ManagerOperationalSnapshot>(
+        std::get<Manager::ManagerResult>(parsedEvidence.body));
+    REQUIRE(evidenceResult.area == Manager::ManagerOperationalArea::Evidence);
+    REQUIRE(evidenceResult.lines == evidence.lines);
 }
 
 void testProjectWorkflowRoundTrips()

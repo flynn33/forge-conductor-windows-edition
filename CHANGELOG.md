@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.30 — Durable run evidence readback
+
+- Seal terminal Manager-owned run summaries with an unkeyed SHA-256 consistency digest and validate saved metadata on native read; report legacy-unsealed and mismatch without promoting model text to a trusted task result.
+- Add an exact-project Events & Evidence run selector with provider provenance, task and stored-output digests, native record-integrity status, and local redacted JSON export. The Manager excludes other projects and raw mission/output text.
+- Retry only the transient same-project repository-opening race during automatic Projects readback. Protocol, redaction, project-boundary and altered-summary regressions accompany the new projection; installed visual and end-to-end checks remain required.
+
 ## 1.1.29 — Repeatable project archive export
 
 - Retain an existing project-owned exports directory with only the permissions needed to create and inspect artifact files. A second installed-profile export under inherited Modify permissions no longer fails because of an unnecessary delete-child access request.

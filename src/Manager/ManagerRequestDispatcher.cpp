@@ -7,6 +7,7 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -17,6 +18,7 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <span>
 #include <stop_token>
 #include <stdexcept>
 #include <string_view>
@@ -1091,6 +1093,115 @@ private:
         }
         auto& service = *telemetrySources_.operational;
         std::vector<std::string> lines;
+        if (request.area == ManagerOperationalArea::Evidence) {
+            if (request.action != ManagerOperationalAction::Inspect ||
+                !request.projectId ||
+                !telemetrySources_.durableManagedRunStore ||
+                !telemetrySources_.evidenceHasher) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "An exact project and native durable evidence services are required."));
+            }
+            auto sessions = service.sessions(context);
+            if (!sessions) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(sessions).error());
+            }
+            std::set<std::string> seen;
+            const auto hashText = [&](const std::string& source)
+                -> Domain::Result<Domain::Sha256Digest> {
+                return telemetrySources_.evidenceHasher->sha256(
+                    std::as_bytes(std::span<const char>{
+                        source.data(), source.size()}));
+            };
+            const auto append = [&](const Domain::AgentSession& session)
+                -> Domain::Result<void> {
+                if (session.agentId.value() != "forge-managed-run" ||
+                    !seen.insert(session.id.value()).second) {
+                    return Domain::Result<void>::success();
+                }
+                auto loaded = telemetrySources_.durableManagedRunStore->load(
+                    session.id, context);
+                if (!loaded) return Domain::Result<void>::failure(
+                    std::move(loaded).error());
+                if (!loaded.value()) return Domain::Result<void>::failure(error(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "A managed-run evidence identity has no durable record."));
+                const auto& record = *loaded.value();
+                if (record.projectId != *request.projectId) {
+                    return Domain::Result<void>::success();
+                }
+                auto taskDigest = hashText(record.task);
+                if (!taskDigest) return Domain::Result<void>::failure(
+                    std::move(taskDigest).error());
+                std::optional<Domain::Sha256Digest> outputDigest;
+                if (record.outputText) {
+                    auto computed = hashText(*record.outputText);
+                    if (!computed) return Domain::Result<void>::failure(
+                        std::move(computed).error());
+                    outputDigest = std::move(computed).value();
+                }
+                const char* state = "unknown";
+                switch (record.state) {
+                case Domain::ManagedRunState::Running: state = "running"; break;
+                case Domain::ManagedRunState::Cancelling: state = "stopping"; break;
+                case Domain::ManagedRunState::Completed: state = "completed"; break;
+                case Domain::ManagedRunState::Failed: state = "failed"; break;
+                case Domain::ManagedRunState::Cancelled: state = "stopped"; break;
+                case Domain::ManagedRunState::Paused: state = "paused"; break;
+                }
+                const char* integrity = "not_terminal";
+                switch (record.evidenceIntegrity) {
+                case Domain::ManagedRunEvidenceIntegrity::NotTerminal:
+                    integrity = "not_terminal"; break;
+                case Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed:
+                    integrity = "legacy_unsealed"; break;
+                case Domain::ManagedRunEvidenceIntegrity::Verified:
+                    integrity = "verified"; break;
+                case Domain::ManagedRunEvidenceIntegrity::Mismatch:
+                    integrity = "mismatch"; break;
+                }
+                const nlohmann::json evidence{
+                    {"format", "forge-conductor-managed-run-evidence-v1"},
+                    {"run_id", record.runId.value()},
+                    {"project_id", record.projectId.value()},
+                    {"state", state},
+                    {"manager_owned", true},
+                    {"provider_response_id", record.providerResponseId
+                        ? nlohmann::json(record.providerResponseId->value())
+                        : nlohmann::json{nullptr}},
+                    {"authority_generation", record.authorityGeneration},
+                    {"native_tools_allowed", record.allowTools},
+                    {"input_tokens", record.inputTokens},
+                    {"output_tokens", record.outputTokens},
+                    {"task_sha256", taskDigest.value().value()},
+                    {"stored_output_sha256", outputDigest
+                        ? nlohmann::json(outputDigest->value())
+                        : nlohmann::json{nullptr}},
+                    {"evidence_seal_sha256", record.evidenceSeal
+                        ? nlohmann::json(record.evidenceSeal->value())
+                        : nlohmann::json{nullptr}},
+                    {"native_record_integrity", integrity},
+                    {"task_outcome_verification", "not_configured"},
+                    {"task_outcome_detail",
+                        "No approved native task check was attached to this run; model text is not a verified task outcome."}};
+                lines.push_back(evidence.dump());
+                return Domain::Result<void>::success();
+            };
+            for (const auto& session : sessions.value().open) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            for (const auto& session : sessions.value().recent) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            return Domain::Result<ManagerOperationalSnapshot>::success(
+                {request.area, "Durable Manager-owned runs · exact selected project",
+                    std::move(lines)});
+        }
         if (request.area == ManagerOperationalArea::Runs) {
             if (request.action != ManagerOperationalAction::Inspect ||
                 !request.projectId || !managedRuns_) {

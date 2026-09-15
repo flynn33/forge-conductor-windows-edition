@@ -14,6 +14,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <stop_token>
 #include <string>
@@ -480,6 +481,39 @@ private:
     }
 };
 
+class FakeDurableManagedRunStore final : public Contracts::IManagedRunStore {
+public:
+    std::map<std::string, Domain::ManagedRunRecord> records;
+
+    [[nodiscard]] Domain::Result<std::optional<Domain::ManagedRunRecord>> load(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext&) noexcept override
+    {
+        const auto found = records.find(runId.value());
+        return Domain::Result<std::optional<Domain::ManagedRunRecord>>::success(
+            found == records.end()
+                ? std::optional<Domain::ManagedRunRecord>{}
+                : std::optional<Domain::ManagedRunRecord>{found->second});
+    }
+
+    [[nodiscard]] Domain::Result<void> save(
+        const Domain::ManagedRunRecord& record,
+        const Domain::OperationContext&) noexcept override
+    {
+        records.insert_or_assign(record.runId.value(), record);
+        return Domain::Result<void>::success();
+    }
+};
+
+class FakeEvidenceHasher final : public Contracts::IHasher {
+public:
+    [[nodiscard]] Domain::Result<Domain::Sha256Digest> sha256(
+        std::span<const std::byte>) noexcept override
+    {
+        return Domain::Sha256Digest::parse(std::string(64U, 'a'));
+    }
+};
+
 class FakeOperationalSessions final : public Dashboard::IDashboardOperationalService {
 public:
     Dashboard::DashboardSessionListing listing;
@@ -832,6 +866,83 @@ void testRunHistoryIsBoundToSelectedProject()
         "runtime inventory never projects another project's run or result");
     require(operational.sessionCalls == 3U,
         "runtime jobs read one bounded persisted session window");
+}
+
+void testDurableEvidenceIsRedactedAndProjectBound()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    FakeOperationalSessions operational;
+    FakeDurableManagedRunStore durable;
+    FakeEvidenceHasher hasher;
+    const auto projectA = Domain::ProjectId::parse(uuidText(721U)).value();
+    const auto projectB = Domain::ProjectId::parse(uuidText(722U)).value();
+    const auto runA = Domain::SessionId::parse(uuidText(723U)).value();
+    const auto runB = Domain::SessionId::parse(uuidText(724U)).value();
+    const auto managedAgent = Domain::AgentId::parse("forge-managed-run").value();
+    const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
+    operational.listing.recent.push_back({
+        runA, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        runB, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    Domain::ManagedRunRecord a{
+        runA, projectA, Domain::ClientId::parse("evidence-fixture").value(),
+        "private project A mission", 7U, Domain::ManagedRunState::Completed,
+        Domain::ProviderSessionId::parse("resp_evidence_a").value(),
+        20U, 4U, std::nullopt, std::string{"private project A model output"},
+        std::nullopt, {}, time, time, false};
+    a.evidenceSeal = Domain::Sha256Digest::parse(std::string(64U, 'b')).value();
+    a.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Verified;
+    durable.records.emplace(runA.value(), a);
+    auto b = a;
+    b.runId = runB;
+    b.projectId = projectB;
+    b.task = "private project B mission";
+    b.outputText = "private project B model output";
+    durable.records.emplace(runB.value(), b);
+    Manager::ManagerTelemetrySources sources;
+    sources.operational = &operational;
+    sources.durableManagedRunStore = &durable;
+    sources.evidenceHasher = &hasher;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    const auto responseA = dispatcher.dispatch(request(*clock, 95U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectA}));
+    const auto* evidenceA = responseValue<Manager::ManagerOperationalSnapshot>(
+        responseA);
+    require(evidenceA && evidenceA->lines.size() == 1U,
+        "evidence returns one exact-project durable run");
+    const auto& row = evidenceA->lines.front();
+    require(row.find("\"run_id\":\"" + runA.value() + "\"") !=
+                std::string::npos &&
+            row.find("\"project_id\":\"" + projectA.value() + "\"") !=
+                std::string::npos &&
+            row.find("\"native_record_integrity\":\"verified\"") !=
+                std::string::npos &&
+            row.find("\"task_outcome_verification\":\"not_configured\"") !=
+                std::string::npos,
+        "evidence carries native provenance without claiming task success");
+    require(row.find("\"task_sha256\":\"" + std::string(64U, 'a') +
+                "\"") != std::string::npos &&
+            row.find("\"stored_output_sha256\":\"" +
+                std::string(64U, 'a') + "\"") != std::string::npos &&
+            row.find("private project A") == std::string::npos &&
+            row.find(runB.value()) == std::string::npos,
+        "redacted evidence omits mission and model text and foreign identity");
+    requireError(dispatcher.dispatch(request(*clock, 96U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, std::nullopt})),
+        Domain::ErrorCodes::InvalidRequest, "evidence needs exact project");
+    require(operational.sessionCalls == 1U,
+        "unbound evidence never reads the session window");
 }
 
 void testProjectWorkflowKeepsExactProjectIdentity()
@@ -1302,6 +1413,7 @@ int main()
         testPayloadMappingAndControllerFailures();
         testManagedRunDispatchAndIdentity();
         testRunHistoryIsBoundToSelectedProject();
+        testDurableEvidenceIsRedactedAndProjectBound();
         testProjectWorkflowKeepsExactProjectIdentity();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetrySnapshotUsesManagerOwnedRunValues();

@@ -412,10 +412,18 @@ ProjectWorkspaceView ManagerConnection::projectMemory(
         auto created = connectManager(alphaProfile_, context, clock);
         if (!created) return {false, created.error().message, std::nullopt};
         auto client = std::move(created).value();
-        auto result = client->projectMemory(
-            Manager::ManagerProjectMemoryRequest{
-                std::move(parsed).value(), std::move(query), 20U},
-            context);
+        const auto request = Manager::ManagerProjectMemoryRequest{
+            parsed.value(), query, 20U};
+        auto result = client->projectMemory(request, context);
+        for (std::size_t retry{}; retry < 4U && !result &&
+             !cancellation.stop_requested() &&
+             result.error().code == Domain::ErrorCodes::DatabaseBusy &&
+             result.error().message ==
+                 "The selected project repository is already opening.";
+             ++retry) {
+            std::this_thread::sleep_for(std::chrono::milliseconds{80});
+            result = client->projectMemory(request, context);
+        }
         client->shutdown();
         if (!result) return {false, result.error().message, std::nullopt};
         auto snapshot = std::move(result).value();

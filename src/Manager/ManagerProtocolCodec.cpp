@@ -1305,6 +1305,7 @@ void validateSettingsUpdateOutcome(
                 case ManagerOperationalArea::Diagnostics: params["area"] = "diagnostics"; break;
                 case ManagerOperationalArea::Manager: params["area"] = "manager"; break;
                 case ManagerOperationalArea::Runs: params["area"] = "runs"; break;
+                case ManagerOperationalArea::Evidence: params["area"] = "evidence"; break;
                 }
                 switch (payload.action) {
                 case ManagerOperationalAction::Inspect: params["action"] = "inspect"; break;
@@ -1490,6 +1491,7 @@ void validateSettingsUpdateOutcome(
         else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
         else if (areaText == "manager") area = ManagerOperationalArea::Manager;
         else if (areaText == "runs") area = ManagerOperationalArea::Runs;
+        else if (areaText == "evidence") area = ManagerOperationalArea::Evidence;
         else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
         const auto& actionText = stringMember(params, "action");
         ManagerOperationalAction action;
@@ -2997,6 +2999,7 @@ template <typename T, typename Parser>
     case ManagerOperationalArea::Diagnostics: return "diagnostics";
     case ManagerOperationalArea::Manager: return "manager";
     case ManagerOperationalArea::Runs: return "runs";
+    case ManagerOperationalArea::Evidence: return "evidence";
     }
     return "manager";
 }
@@ -3019,6 +3022,7 @@ template <typename T, typename Parser>
     else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
     else if (areaText == "manager") area = ManagerOperationalArea::Manager;
     else if (areaText == "runs") area = ManagerOperationalArea::Runs;
+    else if (areaText == "evidence") area = ManagerOperationalArea::Evidence;
     else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
     return ManagerOperationalSnapshot{
         area,

@@ -93,6 +93,9 @@ struct MainWindow : MainWindowT<MainWindow> {
     void OperationalFeedFilterChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
     void OperationalFeedSeverityChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void OperationalFeedPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void EvidenceRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void EvidenceRunInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void EvidenceExportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
     enum class Action {
@@ -103,7 +106,7 @@ private:
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
         ProjectArchiveExport, ProjectArchivePreview, ProjectArchiveImport,
         LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
-        OperationalInspect, OperationalPrune, OperationalClose, RunHistory
+        OperationalInspect, OperationalPrune, OperationalClose, RunHistory, EvidenceLoad
     };
     winrt::fire_and_forget RunAction(Action action);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
@@ -133,6 +136,8 @@ private:
         std::string_view message);
     void ApplyOperational(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
     void ApplyRunHistory(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
+    void ApplyEvidence(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
+    void SelectEvidenceRun(std::string_view runId);
     void SelectOperationalRecord(std::size_t index);
     void UpdateRunProjectLabel();
     void ClearSelectedRun();
@@ -170,6 +175,9 @@ private:
     std::vector<std::string> operationalLines_;
     std::vector<std::size_t> visibleOperationalIndices_;
     std::optional<::ForgeConductor::Manager::ManagerOperationalSnapshot> operationalSnapshot_;
+    std::optional<::ForgeConductor::Manager::ManagerOperationalSnapshot> evidenceSnapshot_;
+    std::string selectedEvidenceRunId_;
+    std::string selectedEvidenceProjectId_;
     std::optional<::ForgeConductor::Manager::ManagerOperationalSnapshot> pendingFeedSnapshot_;
     bool feedDisplayPaused_{};
     bool rebuildingTools_{};
@@ -183,6 +191,8 @@ private:
     std::wstring selectedProjectValueName_{L"SelectedProjectId"};
     std::wstring selectedRunValueName_{L"SelectedRunId"};
     std::wstring selectedRunProjectValueName_{L"SelectedRunProjectId"};
+    std::wstring selectedEvidenceRunValueName_{L"SelectedEvidenceRunId"};
+    std::wstring selectedEvidenceProjectValueName_{L"SelectedEvidenceProjectId"};
     std::stop_source cancellation_;
     std::stop_source providerContractCancellation_;
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};

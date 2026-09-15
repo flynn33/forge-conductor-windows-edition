@@ -23,6 +23,13 @@ enum class ManagedRunState {
     Paused
 };
 
+enum class ManagedRunEvidenceIntegrity {
+    NotTerminal,
+    LegacyUnsealed,
+    Verified,
+    Mismatch
+};
+
 struct ManagedFunctionCall final {
     std::string callId;
     std::string name;
@@ -70,6 +77,9 @@ struct ManagedRunRecord final {
     UtcTimePoint createdAt;
     UtcTimePoint updatedAt;
     bool allowTools{true};
+    std::optional<Sha256Digest> evidenceSeal;
+    ManagedRunEvidenceIntegrity evidenceIntegrity{
+        ManagedRunEvidenceIntegrity::NotTerminal};
 };
 
 struct ManagedRunStartRequest final {

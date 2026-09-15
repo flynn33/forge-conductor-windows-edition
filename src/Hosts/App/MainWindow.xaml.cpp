@@ -21,6 +21,7 @@
 #include <limits>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <vector>
 #include <windows.h>
 
@@ -292,6 +293,12 @@ MainWindow::MainWindow(
     selectedRunProjectValueName_ =
         ::ForgeConductor::Hosts::App::scopedViewStateValueName(
             L"SelectedRunProjectId", scope);
+    selectedEvidenceRunValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"SelectedEvidenceRunId", scope);
+    selectedEvidenceProjectValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"SelectedEvidenceProjectId", scope);
 }
 
 void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
@@ -383,6 +390,15 @@ void MainWindow::WindowContentLoaded(
         const auto savedRun = loadSavedText(selectedRunValueName_.c_str());
         if (savedRunProject && savedRun && *savedRunProject == *savedProject) {
             RunId().Text(*savedRun);
+        }
+        const auto savedEvidenceProject = loadSavedText(
+            selectedEvidenceProjectValueName_.c_str());
+        const auto savedEvidenceRun = loadSavedText(
+            selectedEvidenceRunValueName_.c_str());
+        if (savedEvidenceProject && savedEvidenceRun &&
+            *savedEvidenceProject == *savedProject) {
+            selectedEvidenceProjectId_ = winrt::to_string(*savedProject);
+            selectedEvidenceRunId_ = winrt::to_string(*savedEvidenceRun);
         }
     }
     // The restored page may immediately enqueue a Manager readback. Attach or
@@ -789,6 +805,117 @@ void MainWindow::OperationalExportClicked(Windows::Foundation::IInspectable cons
         OperationalExportState().Text(L"Support export failed safely.");
     }
 }
+void MainWindow::EvidenceRefreshClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    RunAction(Action::EvidenceLoad);
+}
+
+void MainWindow::EvidenceRunInspectClicked(
+    Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    const auto button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>();
+    if (!button) return;
+    SelectEvidenceRun(winrt::to_string(
+        winrt::unbox_value<winrt::hstring>(button.Tag())));
+}
+
+void MainWindow::EvidenceExportClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (!evidenceSnapshot_ || selectedEvidenceRunId_.empty() ||
+        selectedEvidenceProjectId_ != selectedProjectId_) {
+        OperationalEvidenceState().Text(
+            L"Select a current exact-project durable run before saving evidence.");
+        return;
+    }
+    try {
+        std::optional<nlohmann::json> record;
+        for (const auto& line : evidenceSnapshot_->lines) {
+            const auto candidate = nlohmann::json::parse(line);
+            if (candidate.value("run_id", std::string{}) == selectedEvidenceRunId_ &&
+                candidate.value("project_id", std::string{}) == selectedProjectId_) {
+                record = candidate;
+                break;
+            }
+        }
+        if (!record) {
+            OperationalEvidenceState().Text(
+                L"The selected run is no longer in current Manager readback. Refresh first.");
+            return;
+        }
+        auto nativeWindow = this->m_inner.as<::IWindowNative>();
+        HWND hwnd{};
+        winrt::check_hresult(nativeWindow->get_WindowHandle(&hwnd));
+        winrt::com_ptr<::IFileSaveDialog> dialog;
+        winrt::check_hresult(::CoCreateInstance(CLSID_FileSaveDialog, nullptr,
+            CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.put())));
+        DWORD options{};
+        winrt::check_hresult(dialog->GetOptions(&options));
+        winrt::check_hresult(dialog->SetOptions(options | FOS_FORCEFILESYSTEM |
+            FOS_PATHMUSTEXIST | FOS_OVERWRITEPROMPT));
+        const COMDLG_FILTERSPEC filter{L"Redacted run evidence", L"*.json"};
+        winrt::check_hresult(dialog->SetFileTypes(1, &filter));
+        winrt::check_hresult(dialog->SetDefaultExtension(L"json"));
+        winrt::check_hresult(dialog->SetFileName(
+            L"ForgeConductor-run-evidence-redacted.json"));
+        winrt::check_hresult(dialog->SetTitle(
+            L"Save local redacted run evidence"));
+        const auto shown = dialog->Show(hwnd);
+        if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+        winrt::check_hresult(shown);
+        winrt::com_ptr<::IShellItem> destination;
+        winrt::check_hresult(dialog->GetResult(destination.put()));
+        PWSTR allocatedPath{};
+        winrt::check_hresult(destination->GetDisplayName(
+            SIGDN_FILESYSPATH, &allocatedPath));
+        const std::wstring path{allocatedPath};
+        ::CoTaskMemFree(allocatedPath);
+        SYSTEMTIME utc{};
+        ::GetSystemTime(&utc);
+        char capturedAt[40]{};
+        sprintf_s(capturedAt, "%04u-%02u-%02uT%02u:%02u:%02uZ",
+            utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute,
+            utc.wSecond);
+        const nlohmann::json exportDocument{
+            {"format", "forge-conductor-redacted-run-evidence-v1"},
+            {"product_version", currentProductVersion()},
+            {"captured_at_utc", capturedAt},
+            {"source", "native Manager durable run repository readback"},
+            {"redacted", true},
+            {"automatic_transmission", false},
+            {"task_text_included", false},
+            {"model_output_included", false},
+            {"evidence", *record}};
+        const auto data = exportDocument.dump(2);
+        if (data.size() > (std::numeric_limits<DWORD>::max)()) {
+            OperationalEvidenceState().Text(L"Redacted export exceeded the local file limit.");
+            return;
+        }
+        const auto file = ::CreateFileW(path.c_str(), GENERIC_WRITE,
+            FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+        if (file == INVALID_HANDLE_VALUE) {
+            winrt::check_hresult(HRESULT_FROM_WIN32(::GetLastError()));
+        }
+        DWORD written{};
+        const auto saved = ::WriteFile(file, data.data(),
+            static_cast<DWORD>(data.size()), &written, nullptr);
+        const auto writeError = saved ? ERROR_SUCCESS : ::GetLastError();
+        ::CloseHandle(file);
+        if (!saved || written != data.size()) {
+            winrt::check_hresult(HRESULT_FROM_WIN32(
+                writeError == ERROR_SUCCESS ? ERROR_WRITE_FAULT : writeError));
+        }
+        OperationalEvidenceState().Text(
+            L"Redacted evidence saved locally. The stored seal is not task-outcome verification; review before sharing.");
+    } catch (const winrt::hresult_error& error) {
+        OperationalEvidenceState().Text(L"Evidence export failed: " + error.message());
+    } catch (...) {
+        OperationalEvidenceState().Text(L"Evidence export failed safely.");
+    }
+}
 void MainWindow::OperationalPruneClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalPrune); }
 void MainWindow::OperationalCloseClicked(Windows::Foundation::IInspectable const&,
@@ -971,6 +1098,7 @@ void MainWindow::NavigationChanged(
         OperationalFeedFilters().Visibility(feed || evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalEvidenceCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalEvidencePath().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
+        OperationalEvidenceRunsCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalStatusGrid().Visibility(runtimes || tag == L"Manager"
             ? Visibility::Visible : Visibility::Collapsed);
         OperationalListCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
@@ -1059,6 +1187,7 @@ void MainWindow::NavigationChanged(
             tag == L"Diagnostics" ? L"Run through health checks and diagnostic readback." :
             L"Inspect Manager ownership and runtime state.");
         RunAction(Action::OperationalInspect);
+        if (tag == L"Events & Evidence") RunAction(Action::EvidenceLoad);
     } else {
         PageDescription().Text(L"Inspect the current typed Manager operational snapshot.");
     }
@@ -2719,6 +2848,153 @@ void MainWindow::ApplyRunHistory(
     }
 }
 
+void MainWindow::ApplyEvidence(
+    const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot)
+{
+    OperationalEvidenceRunRows().Children().Clear();
+    evidenceSnapshot_.reset();
+    if (snapshot.area != ::ForgeConductor::Manager::ManagerOperationalArea::Evidence ||
+        selectedProjectId_.empty()) {
+        OperationalEvidenceState().Text(L"Exact-project evidence readback was not returned.");
+        return;
+    }
+    try {
+        auto accepted = snapshot;
+        accepted.lines.clear();
+        for (const auto& line : snapshot.lines) {
+            const auto record = nlohmann::json::parse(line);
+            if (!record.is_object() ||
+                record.value("format", std::string{}) !=
+                    "forge-conductor-managed-run-evidence-v1" ||
+                record.value("project_id", std::string{}) != selectedProjectId_ ||
+                record.value("run_id", std::string{}).empty()) {
+                throw std::runtime_error{"Evidence readback has an invalid project or run identity."};
+            }
+            accepted.lines.push_back(line);
+            const auto state = record.value("state", std::string{"unknown"});
+            const auto integrity = record.value(
+                "native_record_integrity", std::string{"unavailable"});
+            const auto id = record.value("run_id", std::string{});
+            Microsoft::UI::Xaml::Controls::Button inspect;
+            inspect.HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Stretch);
+            inspect.Tag(box_value(winrt::to_hstring(id)));
+            inspect.Click({this, &MainWindow::EvidenceRunInspectClicked});
+            Microsoft::UI::Xaml::Controls::StackPanel content;
+            content.Spacing(3);
+            Microsoft::UI::Xaml::Controls::TextBlock title;
+            title.Text(winrt::to_hstring(state + " · " + integrity));
+            title.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+            title.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+            content.Children().Append(title);
+            Microsoft::UI::Xaml::Controls::TextBlock identity;
+            identity.Text(winrt::to_hstring(id));
+            identity.FontSize(11);
+            identity.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
+            content.Children().Append(identity);
+            inspect.Content(content);
+            OperationalEvidenceRunRows().Children().Append(inspect);
+        }
+        evidenceSnapshot_ = std::move(accepted);
+        auto projectName = selectedProjectId_;
+        for (const auto& project : projects_) {
+            if (project.id.value() == selectedProjectId_) {
+                projectName = project.displayName;
+                break;
+            }
+        }
+        OperationalEvidenceProject().Text(winrt::to_hstring(
+            projectName + " · " +
+            std::to_string(evidenceSnapshot_->lines.size()) +
+            " durable Manager-owned run" +
+            (evidenceSnapshot_->lines.size() == 1U ? "" : "s") +
+            " for this exact project"));
+        OperationalEvidenceArtifactCount().Text(winrt::to_hstring(
+            std::to_string(evidenceSnapshot_->lines.size()) + " project runs"));
+        if (evidenceSnapshot_->lines.empty()) {
+            selectedEvidenceRunId_.clear();
+            selectedEvidenceProjectId_.clear();
+            OperationalEvidenceSelectedState().Text(L"No durable run found.");
+            OperationalEvidenceVerifyState().Text(L"No run selected");
+            OperationalEvidenceState().Text(
+                L"Start a Manager-owned mission in Autonomy to create a durable run. Audit entries alone are not run evidence.");
+            return;
+        }
+        bool restored{};
+        if (selectedEvidenceProjectId_ == selectedProjectId_) {
+            for (const auto& line : evidenceSnapshot_->lines) {
+                const auto record = nlohmann::json::parse(line);
+                if (record.value("run_id", std::string{}) == selectedEvidenceRunId_) {
+                    restored = true;
+                    break;
+                }
+            }
+        }
+        const auto first = nlohmann::json::parse(evidenceSnapshot_->lines.front());
+        SelectEvidenceRun(restored ? selectedEvidenceRunId_ :
+            first.value("run_id", std::string{}));
+        OperationalEvidenceState().Text(
+            L"Native durable-store readback is current. Stored integrity and task outcome are separate checks.");
+    } catch (...) {
+        evidenceSnapshot_.reset();
+        OperationalEvidenceRunRows().Children().Clear();
+        OperationalEvidenceArtifactCount().Text(L"Readback invalid");
+        OperationalEvidenceVerifyState().Text(L"Not verified");
+        OperationalEvidenceSelectedState().Text(L"Evidence projection rejected.");
+        OperationalEvidenceState().Text(
+            L"The Manager evidence projection contained malformed or foreign-project data. No run was selected.");
+    }
+}
+
+void MainWindow::SelectEvidenceRun(const std::string_view runId)
+{
+    if (!evidenceSnapshot_ || selectedProjectId_.empty()) return;
+    try {
+        for (const auto& line : evidenceSnapshot_->lines) {
+            const auto record = nlohmann::json::parse(line);
+            if (record.value("run_id", std::string{}) != runId ||
+                record.value("project_id", std::string{}) != selectedProjectId_) {
+                continue;
+            }
+            selectedEvidenceRunId_ = std::string{runId};
+            selectedEvidenceProjectId_ = selectedProjectId_;
+            storeSavedText(selectedEvidenceRunValueName_.c_str(),
+                winrt::to_hstring(selectedEvidenceRunId_));
+            storeSavedText(selectedEvidenceProjectValueName_.c_str(),
+                winrt::to_hstring(selectedEvidenceProjectId_));
+            const auto state = record.value("state", std::string{"unknown"});
+            const auto integrity = record.value(
+                "native_record_integrity", std::string{"unavailable"});
+            OperationalEvidenceSelectedState().Text(winrt::to_hstring(
+                state + " · record seal " + integrity));
+            OperationalEvidenceVerifyState().Text(L"Task unverified");
+            const auto optionalText = [&record](const char* key) {
+                return record.contains(key) && record[key].is_string()
+                    ? record[key].get<std::string>()
+                    : std::string{"not recorded"};
+            };
+            const auto detail =
+                "Run · " + selectedEvidenceRunId_ +
+                "\nProject · " + selectedProjectId_ +
+                "\nProvider response · " + optionalText("provider_response_id") +
+                "\nTask SHA-256 · " + optionalText("task_sha256") +
+                "\nStored output SHA-256 · " +
+                    optionalText("stored_output_sha256") +
+                "\nNative record seal · " +
+                    optionalText("evidence_seal_sha256") +
+                "\nNative record integrity · " + integrity +
+                "\nTask outcome verification · not configured" +
+                "\nNo approved native task check was attached; model text is not a verified assignment result.";
+            OperationalEvidenceDigestDetail().Text(winrt::to_hstring(detail));
+            return;
+        }
+        OperationalEvidenceState().Text(
+            L"That run is not present for the current exact project. Refresh evidence first.");
+    } catch (...) {
+        OperationalEvidenceState().Text(
+            L"The selected run evidence could not be parsed safely.");
+    }
+}
+
 void MainWindow::ApplyOperational(
     const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot)
 {
@@ -3175,6 +3451,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool operationalAction = action == Action::OperationalInspect ||
         action == Action::OperationalPrune || action == Action::OperationalClose;
     const bool historyAction = action == Action::RunHistory;
+    const bool evidenceAction = action == Action::EvidenceLoad;
     const bool settingsAction = action == Action::SettingsLoad ||
         action == Action::SettingsSave || action == Action::SettingsTest ||
         action == Action::SettingsRestart;
@@ -3209,6 +3486,18 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         !selectedProjectId_.empty()
             ? std::optional<std::string>{selectedProjectId_} : std::nullopt;
     std::string requestedHistoryProject;
+    const std::string requestedEvidenceProject = selectedProjectId_;
+    if (evidenceAction && requestedEvidenceProject.empty()) {
+        evidenceSnapshot_.reset();
+        OperationalEvidenceRunRows().Children().Clear();
+        OperationalEvidenceArtifactCount().Text(L"Choose a project");
+        OperationalEvidenceVerifyState().Text(L"No run selected");
+        OperationalEvidenceSelectedState().Text(L"Choose a project in Projects first.");
+        OperationalEvidenceProject().Text(
+            L"Select an authorized project in Projects to inspect durable run evidence.");
+        OperationalEvidenceState().Text(L"No project identity is selected.");
+        co_return;
+    }
     ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
         ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectMemory};
     std::optional<std::string> maintenanceProject;
@@ -3456,6 +3745,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             else if (toolsAction) ToolsState().Text(queued);
             else if (operationalAction) OperationalState().Text(queued);
             else if (historyAction) RunHistoryState().Text(queued);
+            else if (evidenceAction) OperationalEvidenceState().Text(queued);
             else if (settingsAction) SettingsState().Text(queued);
             else if (maintenanceAction) MaintenanceState().Text(queued);
             else if (action == Action::ProviderLoad ||
@@ -3506,6 +3796,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         ToolsState().Text(L"Contacting the Manager…");
     } else if (historyAction) {
         RunHistoryState().Text(L"Reading project-bound run history from the Manager…");
+    } else if (evidenceAction) {
+        OperationalEvidenceState().Text(L"Verifying durable records for the exact selected project…");
     } else if (operationalAction) {
         OperationalState().Text(L"Contacting the Manager…");
     } else if (settingsAction) {
@@ -3710,16 +4002,20 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         case Action::OperationalInspect:
         case Action::OperationalPrune:
         case Action::OperationalClose:
-        case Action::RunHistory: {
+        case Action::RunHistory:
+        case Action::EvidenceLoad: {
             using OpAction = ::ForgeConductor::Manager::ManagerOperationalAction;
             const auto op = action == Action::OperationalPrune ? OpAction::PruneSessions :
                 action == Action::OperationalClose ? OpAction::CloseSession : OpAction::Inspect;
             operationalView = connection_->operational(
-                historyAction ? ::ForgeConductor::Manager::ManagerOperationalArea::Runs
+                evidenceAction ? ::ForgeConductor::Manager::ManagerOperationalArea::Evidence
+                    : historyAction ? ::ForgeConductor::Manager::ManagerOperationalArea::Runs
                     : requestedOperationalArea, op, std::move(operationalSessionId),
-                std::move(operationalSummary), historyAction
-                    ? std::optional<std::string>{requestedHistoryProject}
-                    : requestedOperationalProject,
+                std::move(operationalSummary), evidenceAction
+                    ? std::optional<std::string>{requestedEvidenceProject}
+                    : historyAction
+                        ? std::optional<std::string>{requestedHistoryProject}
+                        : requestedOperationalProject,
                 cancellation_.get_token());
             message = operationalView.message;
             break;
@@ -3968,6 +4264,13 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ToolOutcomeSummary().Text(winrt::to_hstring(message));
                 ToolOutcome().Text(L"No canonical Manager payload was returned.");
             }
+        } else if (evidenceAction) {
+            if (requestedEvidenceProject == selectedProjectId_ &&
+                PageTitle().Text() == L"Events & Evidence") {
+                if (operationalView.snapshot) ApplyEvidence(*operationalView.snapshot);
+                else OperationalEvidenceState().Text(winrt::to_hstring(
+                    "Durable evidence readback unavailable · " + message));
+            }
         } else if (historyAction) {
             if (requestedHistoryProject == selectedProjectId_) {
                 if (operationalView.snapshot) ApplyRunHistory(*operationalView.snapshot);
@@ -4124,6 +4427,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         RunAction(Action::Refresh);
         if (!failed && OperationalPanel().Visibility() == Visibility::Visible)
             RunAction(Action::OperationalInspect);
+        if (!failed && PageTitle().Text() == L"Events & Evidence")
+            RunAction(Action::EvidenceLoad);
     }
     if (followUp) RunAction(*followUp);
 }
