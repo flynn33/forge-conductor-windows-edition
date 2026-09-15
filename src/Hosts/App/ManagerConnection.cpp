@@ -479,7 +479,8 @@ LmStudioView ManagerConnection::lmStudio(
         if (!profileError_.empty()) return {false, profileError_, std::nullopt};
         auto clock = std::make_shared<W::SystemClock>();
         auto context = operationContext(
-            clock, cancellation, std::chrono::seconds{30});
+            clock, cancellation, action == LmStudioAction::Repair
+                ? std::chrono::seconds{120} : std::chrono::seconds{30});
         auto created = connectManager(alphaProfile_, context, clock);
         if (!created) return {false, created.error().message, std::nullopt};
         auto client = std::move(created).value();

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.15 — Bounded LM Studio repair and retained inspection state
+
+- Give the six-stage native MCP repair workflow a two-minute desktop request deadline instead of the previous thirty seconds; keep the Manager's transport and each smoke probe independently bounded.
+- Explain the pending repair check in the UI and retain the last valid host and registration inspection when a command fails or times out.
+- Distinguish the discovered LM Studio application from the separate packaged Forge CLI executable in the readiness path.
+
 ## 1.1.14 — Distinct sparse-state compositions
 
 - Give LM Studio MCP separate host, registration, and connector-readiness stages without implying a working client when it is absent.

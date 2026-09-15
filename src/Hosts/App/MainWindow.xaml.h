@@ -132,6 +132,8 @@ private:
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;
     std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
         telemetrySnapshot_;
+    std::optional<::ForgeConductor::Manager::ManagerLmStudioSnapshot>
+        lmStudioSnapshot_;
     std::string activityTimelineKey_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
     std::optional<::ForgeConductor::Manager::ManagerProjectMemoryRecord> selectedMemoryRecord_;

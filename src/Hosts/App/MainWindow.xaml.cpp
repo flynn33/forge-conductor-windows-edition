@@ -1968,8 +1968,8 @@ void MainWindow::ApplyLmStudio(
         snapshot.binaryExecutable;
     LmStudioBadge().Text(installed ? L"REGISTERED" : L"ATTENTION");
     LmStudioHostReadiness().Text(snapshot.lmStudioPresent && snapshot.binaryExecutable
-        ? L"LM Studio detected · executable"
-        : snapshot.lmStudioPresent ? L"Host found · binary unavailable"
+        ? L"LM Studio detected · Forge CLI ready"
+        : snapshot.lmStudioPresent ? L"LM Studio detected · Forge CLI unavailable"
             : L"LM Studio not detected on this host");
     LmStudioRegistrationReadiness().Text(installed
         ? L"Primary, fallback & CLU registered"
@@ -3141,7 +3141,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         if (action == Action::ProjectUpdate || action == Action::ProjectForget)
             ProjectMemoryActionState().Text(L"Validating exact project and record binding…");
     } else if (lmStudioAction) {
-        LmStudioRegistrationState().Text(L"Contacting the Manager…");
+        LmStudioRegistrationState().Text(action == Action::LmStudioRepair
+            ? L"Verifying three native roles before and after a preserved registration update. This may take up to two minutes…"
+            : L"Contacting the Manager…");
     } else if (toolsAction) {
         ToolsState().Text(L"Contacting the Manager…");
     } else if (historyAction) {
@@ -3433,14 +3435,22 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 }
             } else ProjectState().Text(winrt::to_hstring(message));
         } else if (lmStudioAction) {
-            if (lmStudioView.snapshot) ApplyLmStudio(*lmStudioView.snapshot);
+            if (lmStudioView.snapshot) {
+                lmStudioSnapshot_ = *lmStudioView.snapshot;
+                ApplyLmStudio(*lmStudioView.snapshot);
+            }
             if (!lmStudioView.loaded) {
+                if (lmStudioSnapshot_) ApplyLmStudio(*lmStudioSnapshot_);
                 LmStudioRegistrationState().Text(winrt::to_hstring(message));
-                LmStudioOverview().Text(winrt::to_hstring(message));
-                LmStudioBadge().Text(L"UNAVAILABLE");
-                LmStudioHostReadiness().Text(L"Host inspection unavailable");
-                LmStudioRegistrationReadiness().Text(L"Registration not read");
-                LmStudioConnectorReadiness().Text(L"Connection not verified");
+                if (lmStudioSnapshot_) {
+                    LmStudioOverview().Text(L"Command failed · last inspected registration retained");
+                } else {
+                    LmStudioOverview().Text(winrt::to_hstring(message));
+                    LmStudioBadge().Text(L"UNAVAILABLE");
+                    LmStudioHostReadiness().Text(L"Host inspection unavailable");
+                    LmStudioRegistrationReadiness().Text(L"Registration not read");
+                    LmStudioConnectorReadiness().Text(L"Connection not verified");
+                }
             }
         } else if (toolsAction) {
             if (toolsView.snapshot) ApplyTools(*toolsView.snapshot);
