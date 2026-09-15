@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.33 — Direction A shell and contrast-theme pass
+
+- Give the active native navigation destination the approved blue treatment and give Tools the same hero-led hierarchy as the other work surfaces.
+- Place the exact-run native check and approval controls ahead of provenance digests so the action is visible at a normal desktop viewport; color the latest check state distinctly from unverified or failed outcomes.
+- Use runtime theme resources for the console's semantic brushes, with system-color mappings for contrast themes. Installed populated-view, scale, keyboard, and contrast qualification remains required.
+
 ## 1.1.32 — Exact-run native check receipt
 
 - Add a bounded post-run native check action for an exact completed, sealed project run. It uses the project's authorized native shell route and persists a sealed receipt with command/stdout/stderr digests, exit state, elapsed time and check timestamp; command and output text are not included in the redacted evidence projection.

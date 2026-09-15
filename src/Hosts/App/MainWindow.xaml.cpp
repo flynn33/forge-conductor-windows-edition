@@ -31,6 +31,27 @@ using Visibility = Microsoft::UI::Xaml::Visibility;
 constexpr wchar_t ViewSettingsKey[] =
     L"Software\\Forge Conductor\\Windows";
 
+[[nodiscard]] Windows::UI::Color evidenceColor(
+    const std::string_view verification) noexcept
+{
+    HIGHCONTRASTW contrast{};
+    contrast.cbSize = sizeof(contrast);
+    if (::SystemParametersInfoW(SPI_GETHIGHCONTRAST, contrast.cbSize,
+            &contrast, 0) && (contrast.dwFlags & HCF_HIGHCONTRASTON)) {
+        const auto systemColor = ::GetSysColor(COLOR_WINDOWTEXT);
+        return Windows::UI::Color{255,
+            GetRValue(systemColor), GetGValue(systemColor), GetBValue(systemColor)};
+    }
+    if (verification == "native_check_passed") {
+        return Windows::UI::Color{255, 61, 220, 151};
+    }
+    if (verification == "native_check_failed" ||
+        verification == "record_integrity_unverified") {
+        return Windows::UI::Color{255, 255, 107, 122};
+    }
+    return Windows::UI::Color{255, 255, 200, 87};
+}
+
 struct RegistryKey final {
     HKEY value{};
     ~RegistryKey() { if (value) ::RegCloseKey(value); }
@@ -2879,6 +2900,12 @@ void MainWindow::ApplyEvidence(
     OperationalEvidenceIntegrityNote().Text(L"Native record integrity has not been read.");
     OperationalEvidenceTrustNote().Text(
         L"Task outcome requires an independently approved native check.");
+    const auto unverifiedBrush =
+        Microsoft::UI::Xaml::Media::SolidColorBrush(
+            evidenceColor("not_configured"));
+    OperationalEvidenceNativeStageLabel().Foreground(unverifiedBrush);
+    OperationalEvidenceVerifyState().Foreground(unverifiedBrush);
+    OperationalEvidenceTrustNote().Foreground(unverifiedBrush);
     OperationalEvidenceCheckResult().Text(L"No native check attached to this run.");
     OperationalEvidenceCheckButton().IsEnabled(false);
     OperationalEvidenceDigestDetail().Text(L"No exact provenance selected.");
@@ -3003,6 +3030,12 @@ void MainWindow::SelectEvidenceRun(const std::string_view runId)
                 verification == "native_check_failed" ? "Specified check failed" :
                 verification == "record_integrity_unverified" ? "Record integrity failed" :
                 "Task unverified"));
+            const auto verificationBrush =
+                Microsoft::UI::Xaml::Media::SolidColorBrush(
+                    evidenceColor(verification));
+            OperationalEvidenceNativeStageLabel().Foreground(verificationBrush);
+            OperationalEvidenceVerifyState().Foreground(verificationBrush);
+            OperationalEvidenceTrustNote().Foreground(verificationBrush);
             const bool canCheck = state == "completed" && integrity == "verified" &&
                 (!record.contains("native_check") || record["native_check"].is_null() ||
                     (record["native_check"].is_object() &&
