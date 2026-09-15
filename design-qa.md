@@ -4,34 +4,57 @@
 
 - Selected direction: Direction A — Obsidian Command Center.
 - Reference: `C:\Users\james\.codex\generated_images\01a09f83-2027-77e3-a87d-18dd99de82ed\exec-2dd3f5cc-e935-4dd9-904e-2815b3ba4d3a.png`
-- Implementation capture: `.superdesign/qa/direction-a-implementation-final.png`
-- Full-view comparison: `.superdesign/qa/direction-a-comparison-final.png`
-- Viewport: 1680 × 945 logical pixels. The native window was captured at 2520 × 1417 physical pixels with Windows at 150% display scaling, then normalized to 1680 × 945 for comparison.
-- State: Rig dashboard, dark theme, Production profile. The unpackaged development executable cannot authenticate to the installed Manager's per-user named pipe, so the capture correctly shows the unavailable telemetry state instead of fabricated sample data.
+- Installed implementation: Forge Conductor `1.1.3.0`, packaged from commit `aa309d6ba837c468de82732df689230ede3306d8`.
+- Final comparison: `.superdesign/qa/direction-a-comparison-final.png`.
+- All-view contact sheet: `.superdesign/qa/all-views-contact-sheet.png`.
+- Viewport: 1680 × 945 logical pixels at 150% Windows display scaling; native proof captures are 2520 × 1417 physical pixels.
+- Capture method: each installed-app view was captured with `PrintWindow`, preserving the complete window without a taskbar overlay.
+- Runtime state: Production profile with live, authenticated Manager telemetry and real local provider data.
+
+## All-view proof set
+
+The final installed package was captured in every navigation view:
+
+1. `.superdesign/qa/views/01-rig.png`
+2. `.superdesign/qa/views/02-lm-studio-mcp.png`
+3. `.superdesign/qa/views/03-agents.png`
+4. `.superdesign/qa/views/04-tools.png`
+5. `.superdesign/qa/views/05-feed.png`
+6. `.superdesign/qa/views/06-projects.png`
+7. `.superdesign/qa/views/07-autonomy.png`
+8. `.superdesign/qa/views/08-continuity.png`
+9. `.superdesign/qa/views/09-runtimes.png`
+10. `.superdesign/qa/views/10-provider.png`
+11. `.superdesign/qa/views/11-events-evidence.png`
+12. `.superdesign/qa/views/12-diagnostics.png`
+13. `.superdesign/qa/views/13-manager.png`
+14. `.superdesign/qa/views/14-settings.png`
 
 ## Comparison findings
 
-The implementation matches the selected direction's core visual system: an obsidian navigation rail, layered blue-black surfaces, restrained electric-blue emphasis, compact typography, a prominent system-health hero, four equal telemetry cards, a two-column runtime/utilization workspace, and adjacent activity/action panels. The native WinUI shell, existing information architecture, all named controls, and all command handlers were retained.
+The installed Rig implementation closely matches the selected reference's composition and visual language: integrated dark window chrome, a branded obsidian navigation rail, a compact command header, a blue system-health hero, four live telemetry cards with sparklines, runtime configuration beside a real utilization chart, and adjacent recent-event and 2 × 2 action panels.
 
-Intentional product adaptations are limited to the existing native control model. The concept's top command strip is represented by the Production profile card and existing page-specific actions. The implementation also retains the app's deeper navigation and diagnostics surfaces instead of hiding functional product areas to imitate the static reference.
+The same visual system now carries through the full product. Tooling uses a purpose-built catalog/invocation workbench; operational views use live-data and session-control columns; provider, autonomy, project, and settings forms use consistent section cards, control rhythm, borders, typography, and electric-blue action emphasis.
 
-## Issue history
+Intentional adaptations preserve the native WinUI application architecture and actual product semantics. Labels and actions represent real Manager capabilities rather than mock-only content, and every displayed runtime value comes from the installed application's authenticated local data path.
 
-- P2 — The first capture appeared horizontally clipped because the capture process was DPI-unaware. Fixed by capturing per-monitor-DPI-aware at the target logical viewport.
-- P2 — The first dashboard pass left excessive unused width and pushed live utilization below the primary viewport. Fixed by placing runtime configuration and utilization in a 5:7 workspace grid.
-- P2 — Disk and latency histories consumed too much vertical space. Fixed by placing them side by side beneath the primary utilization chart.
-- P2 — Activity and service actions were separated from the operational workspace. Fixed by promoting them into an adjacent two-column row before system-detail diagnostics.
+No actionable P0, P1, or P2 visual issues remain. Native-resolution review found no overlapping controls, broken layout, clipped interactive controls, unreadable contrast, or inconsistent navigation state. Long pages such as Settings remain correctly scrollable below the initial viewport.
 
-No actionable P0, P1, or P2 visual issues remain. The unavailable numeric state in the development capture is runtime-authentication evidence, not a visual defect; the installed package supplies live values through the authenticated Manager channel.
+## Build, package, and interaction verification
 
-## Interaction and build verification
-
-- Native Release x64 application build passed.
-- Rig → LM Studio MCP → Rig navigation passed using the rendered application.
-- LM Studio MCP page layout and primary action hierarchy were visually verified.
-- `ForgeConductor.Telemetry.WindowsTests` passed.
-- `ForgeConductor.App.TelemetryPresentationTests` passed.
-- `ForgeConductor.App.ActionSchedulerTests` passed.
+- Full Release x64 product build passed from the final implementation commit.
+- Signed MSIX signature status is valid.
+- Forge Conductor `1.1.3.0` installed successfully and remained open after QA on the Rig view.
+- All 14 navigation destinations rendered successfully from the installed package.
+- Live Manager and provider state rendered through the authenticated production connection.
+- Focused verification suite passed 7/7:
+  - `ForgeConductor.Telemetry.WindowsTests`
+  - `ForgeConductor.App.TelemetryPresentationTests`
+  - `ForgeConductor.App.ActionSchedulerTests`
+  - `ForgeConductor.Mcp.ProtocolServerTests`
+  - `ForgeConductor.Mcp.ServeProcessSnapshotTests`
+  - `ForgeConductor.Infrastructure.UnitTests`
+  - `ForgeConductor.SessionHost.PluginSmokeTests`
 
 ## Final result
 
