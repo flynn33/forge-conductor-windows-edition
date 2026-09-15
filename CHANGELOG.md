@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.22 — Honest MCP role presence and command-center LM Studio view
+
+- Read a bounded, deployment-specific recent presence set from the shared native MCP ledger. Manager status reports a role host only while its heartbeat is fresh and its owning PID is still running from the exact packaged CLI image; a tool call remains a separate proof.
+- Give LM Studio's three roles, deployment posture, connection boundary, and actions a Direction A composition. Label host launch and synchronization accurately instead of suggesting that activation itself proves a working client.
+- On signed installed 1.1.21, LM Studio's existing Qwen3 Coder 30B model invoked the read-only CLU `clu_capabilities` control and received a native MCP response. The earlier Qwen3.8 27B model displayed the CLU catalog but did not make a tool call. This live result does not yet verify Primary or Fallback calls, installed 1.1.22 UI, or all-view visual acceptance.
+
 ## 1.1.21 — Routed non-writing LM Studio activation authority
 
 - Route the distinct Read, Write, and Execute Manager LM Studio capabilities through their exact issuers. The native deployment service and host activator can now authorize application/configuration paths and narrow an Execute authority for activation without admitting Write, Create, or Delete.

@@ -5,6 +5,7 @@
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
 #include "ForgeConductor/Contracts/IContinuityAutomation.h"
+#include "ForgeConductor/Contracts/IClientPresenceRepository.h"
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/ILMStudioDeploymentService.h"
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
@@ -38,6 +39,7 @@ struct ManagerTelemetrySources final {
     Contracts::IContinuityCoordinator* continuity{};
     Contracts::IDiagnosticSink* diagnostics{};
     const Contracts::WorkspaceAuthority* lmStudioActivationAuthority{};
+    Contracts::IClientPresenceRepository* clientPresence{};
 };
 
 class ManagerRequestDispatcher final {

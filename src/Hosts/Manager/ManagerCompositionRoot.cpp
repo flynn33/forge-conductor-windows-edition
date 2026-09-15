@@ -561,6 +561,8 @@ private:
         legacyContinuityRepository_;
     std::shared_ptr<PersistenceWindows::WindowsForgeStatusRepository>
         forgeStatusRepository_;
+    std::shared_ptr<PersistenceWindows::WindowsClientPresenceRepository>
+        clientPresenceRepository_;
     std::shared_ptr<PersistenceWindows::WindowsAuditRepository> auditRepository_;
     std::shared_ptr<
         PersistenceWindows::WindowsDashboardOperationalRepository>
@@ -904,6 +906,9 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             centralDatabase_));
     forgeStatusRepository_ = take(
         PersistenceWindows::WindowsForgeStatusRepository::attach(
+            centralDatabase_));
+    clientPresenceRepository_ = take(
+        PersistenceWindows::WindowsClientPresenceRepository::attach(
             centralDatabase_));
 
     const auto registryPath =
@@ -1454,7 +1459,8 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             initialConfiguration_->shell.enabled,
             continuity_.get(),
             diagnosticSink_.get(),
-            lmStudioActivationAuthority_ ? &*lmStudioActivationAuthority_ : nullptr});
+            lmStudioActivationAuthority_ ? &*lmStudioActivationAuthority_ : nullptr,
+            clientPresenceRepository_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(
@@ -1702,6 +1708,9 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         }
         if (forgeStatusRepository_) {
             forgeStatusRepository_->close();
+        }
+        if (clientPresenceRepository_) {
+            clientPresenceRepository_->close();
         }
         if (legacyContinuityRepository_) {
             legacyContinuityRepository_->close();

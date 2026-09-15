@@ -1977,28 +1977,30 @@ void MainWindow::ApplyLmStudio(
         ? L"Primary, fallback & CLU registered"
         : L"Native registration incomplete");
     LmStudioConnectorReadiness().Text(!snapshot.connectionCheckPerformed
-        ? L"Connector check not yet run"
+        ? L"Live role check not yet run"
         : snapshot.primaryConnectorReady && snapshot.fallbackConnectorReady &&
             snapshot.continuityConnectorReady && snapshot.connectedClientObserved
-            ? L"Three connectors ready · client observed"
-            : L"Working client not yet demonstrated");
+            ? L"Three role hosts live · tool call unproven"
+            : snapshot.connectedClientObserved
+                ? L"Role host live · tool call unproven"
+                : L"No live role host · tool call unproven");
     LmStudioOverview().Text(winrt::to_hstring(
         std::string{installed ? "Three native roles registered" : "Registration requires attention"} +
-        " · " + (snapshot.connectedClientObserved ? "client observed" : "no connected client observed")));
+        " · " + (snapshot.connectedClientObserved ? "live MCP role host observed" : "no live MCP role host")));
     LmStudioPrimaryRole().Text(winrt::to_hstring(
         std::string{snapshot.primaryPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
-            ? (snapshot.primaryConnectorReady ? "connector ready" : "connector not ready")
+            ? (snapshot.primaryConnectorReady ? "role host live" : "role host not live")
             : "not yet verified")));
     LmStudioFallbackRole().Text(winrt::to_hstring(
         std::string{snapshot.fallbackPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
-            ? (snapshot.fallbackConnectorReady ? "connector ready" : "connector not ready")
+            ? (snapshot.fallbackConnectorReady ? "role host live" : "role host not live")
             : "not yet verified")));
     LmStudioCluRole().Text(winrt::to_hstring(
         std::string{snapshot.continuityPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
-            ? (snapshot.continuityConnectorReady ? "connector ready" : "connector not ready")
+            ? (snapshot.continuityConnectorReady ? "role host live" : "role host not live")
             : "not yet verified")));
     LmStudioRegistrationState().Text(winrt::to_hstring(
         std::string{"Installed registration: "} + (installed ? "complete" : "incomplete") +
@@ -2009,13 +2011,14 @@ void MainWindow::ApplyLmStudio(
         "\n" + snapshot.detail + "\n" + snapshot.actionDetail));
     LmStudioConnectionState().Text(winrt::to_hstring(
         snapshot.connectionCheckPerformed
-            ? std::string{"Connector verification: primary "} +
-                (snapshot.primaryConnectorReady ? "ready" : "not ready") +
-                ", fallback " + (snapshot.fallbackConnectorReady ? "ready" : "not ready") +
-                ", CLU " + (snapshot.continuityConnectorReady ? "ready" : "not ready") +
-                ". Connected LM Studio client observed: " +
-                (snapshot.connectedClientObserved ? "yes" : "no") + "."
-            : "Connector verification: not run. Connected LM Studio client observed: no."));
+            ? std::string{"Live MCP role hosts: primary "} +
+                (snapshot.primaryConnectorReady ? "yes" : "no") +
+                ", fallback " + (snapshot.fallbackConnectorReady ? "yes" : "no") +
+                ", CLU " + (snapshot.continuityConnectorReady ? "yes" : "no") +
+                ". At least one live role host: " +
+                (snapshot.connectedClientObserved ? "yes" : "no") +
+                ". Actual LM Studio tool invocation: not verified."
+            : "Live role check: not run. Actual LM Studio tool invocation: not verified."));
     LmStudioContinuityState().Text(winrt::to_hstring(
         "Manager continuity projects active: " +
         std::to_string(snapshot.managedContinuityProjects)));
@@ -3160,7 +3163,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         const auto pending = action == Action::LmStudioRepair
             ? L"Repairing native registration · preserving foreign MCP entries · up to two minutes…"
             : action == Action::LmStudioActivate
-                ? L"Activating and verifying three registered connectors…"
+                ? L"Launching LM Studio and synchronizing three registered roles…"
                 : L"Inspecting native registration without changes…";
         LmStudioRegistrationState().Text(pending);
         LmStudioActionStatus().Text(pending);

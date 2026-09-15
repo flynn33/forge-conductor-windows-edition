@@ -3,6 +3,8 @@
 #include "ForgeConductor/Domain/ClientPresenceModels.h"
 #include "ForgeConductor/Domain/OperationContext.h"
 
+#include <vector>
+
 namespace ForgeConductor::Contracts {
 
 class IClientPresenceRepository {
@@ -24,6 +26,14 @@ public:
     // Removal is compare-and-delete over the complete owner identity.
     [[nodiscard]] virtual Domain::Result<bool> remove(
         const Domain::ClientPresenceIdentity& identity,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    // A bounded readback of recent owners for one exact deployment. The
+    // caller must separately confirm each process is still the expected image.
+    [[nodiscard]] virtual Domain::Result<
+        std::vector<Domain::ClientPresenceIdentity>> recentForDeployment(
+        const Domain::DeploymentId& deploymentId,
+        Domain::UtcTimePoint notBefore,
         const Domain::OperationContext& context) noexcept = 0;
 
     virtual void close() noexcept = 0;

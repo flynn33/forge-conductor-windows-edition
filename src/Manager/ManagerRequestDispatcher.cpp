@@ -81,6 +81,47 @@ template <typename T>
     return rounded;
 }
 
+// Recent heartbeat rows are claims, not proof of a currently connected host.
+// Match both a live PID and the exact packaged CLI image before displaying one.
+[[nodiscard]] bool liveExpectedMcpProcess(
+    const std::uint32_t processId,
+    const Domain::PathText& expectedBinary) noexcept
+{
+    const auto& utf8 = expectedBinary.value();
+    const int expectedLength = ::MultiByteToWideChar(
+        CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(),
+        static_cast<int>(utf8.size()), nullptr, 0);
+    if (expectedLength <= 0) {
+        return false;
+    }
+    wchar_t expected[Domain::PathText::MaximumBytes + 1U]{};
+    if (::MultiByteToWideChar(
+            CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(),
+            static_cast<int>(utf8.size()), expected,
+            static_cast<int>(sizeof(expected) / sizeof(expected[0]))) !=
+        expectedLength) {
+        return false;
+    }
+    const HANDLE process = ::OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+    if (process == nullptr) {
+        return false;
+    }
+    DWORD exitCode{};
+    wchar_t actual[Domain::PathText::MaximumBytes + 1U]{};
+    DWORD actualLength = static_cast<DWORD>(
+        sizeof(actual) / sizeof(actual[0]));
+    const bool live = ::GetExitCodeProcess(process, &exitCode) != FALSE &&
+        exitCode == STILL_ACTIVE;
+    const bool queried = live &&
+        ::QueryFullProcessImageNameW(
+            process, 0, actual, &actualLength) != FALSE;
+    ::CloseHandle(process);
+    return queried && ::CompareStringOrdinal(
+        expected, expectedLength, actual,
+        static_cast<int>(actualLength), TRUE) == CSTR_EQUAL;
+}
+
 } // namespace
 
 class ManagerRequestDispatcher::Implementation final {
@@ -854,6 +895,33 @@ private:
         }
 
         const auto& status = inspected.value();
+        bool liveRoleHostObserved{};
+        if (status.deploymentId && sources.clientPresence != nullptr &&
+            sources.preferredForgeBinary) {
+            auto recent = sources.clientPresence->recentForDeployment(
+                *status.deploymentId,
+                clock_->utcNow() - std::chrono::seconds{25}, context);
+            if (recent) {
+                connectionCheckPerformed = true;
+                for (const auto& owner : recent.value()) {
+                    if (!owner.processId || !liveExpectedMcpProcess(
+                            *owner.processId,
+                            *sources.preferredForgeBinary)) {
+                        continue;
+                    }
+                    liveRoleHostObserved = true;
+                    primaryReady |= owner.role == "primary";
+                    fallbackReady |= owner.role == "fallback";
+                    continuityReady |= owner.role == "clu";
+                }
+            } else {
+                if (!actionDetail.empty()) {
+                    actionDetail += " ";
+                }
+                actionDetail +=
+                    "Live MCP role readback unavailable; no session is claimed.";
+            }
+        }
         return Domain::Result<ManagerLmStudioSnapshot>::success(
             ManagerLmStudioSnapshot{
                 status.lmStudioPresent,
@@ -872,7 +940,7 @@ private:
                 primaryReady,
                 fallbackReady,
                 continuityReady,
-                false,
+                liveRoleHostObserved,
                 sources.continuityAutomation == nullptr
                     ? 0U
                     : sources.continuityAutomation->trackedProjectCount(),
