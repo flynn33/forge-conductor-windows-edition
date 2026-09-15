@@ -356,9 +356,19 @@ void MainWindow::WindowContentLoaded(
         // Invalid monitor geometry must not prevent the native console from opening.
     }
     FooterMachineName().Text(currentMachineName());
-    ProfileState().Text(winrt::to_hstring(connection_
+    const auto profile = connection_
         ? connection_->profileSummary()
-        : std::string{"Deployment profile unavailable"}));
+        : std::string{"Deployment profile unavailable"};
+    ProfileState().Text(winrt::to_hstring(profile));
+    const auto dataMarker = profile.find("\nData: ");
+    const auto environment = dataMarker == std::string::npos
+        ? profile : profile.substr(0U, dataMarker);
+    const auto dataRoot = dataMarker == std::string::npos
+        ? std::string{"Data root unavailable"}
+        : profile.substr(dataMarker + 7U);
+    NavigationEnvironment().Text(winrt::to_hstring(environment));
+    HeaderEnvironment().Text(winrt::to_hstring(environment));
+    HeaderDataRoot().Text(winrt::to_hstring(dataRoot));
     providerSettings_.emplace();
     ApplyProviderForm(*providerSettings_);
     ApplySettingsForm(*providerSettings_);
@@ -887,6 +897,10 @@ void MainWindow::ProjectSelectionChanged(
         ProjectEditCard().Visibility(Visibility::Collapsed);
     }
     selectedProjectId_ = nextProjectId;
+    ProjectArchiveState().Text(winrt::to_hstring(
+        "Archive scope bound to " +
+        projects_[static_cast<std::size_t>(index)].displayName +
+        ". Export or verify a memory artifact for this exact project."));
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
     RunProjectId().Text(selected);
@@ -1835,6 +1849,7 @@ void MainWindow::ClearSelectedProject()
     ClearArchivePreview();
     ProjectArchiveExportState().Text(L"No archive created for this selection.");
     ProjectArchivePreviewState().Text(L"No artifact verified for this project.");
+    ProjectArchiveState().Text(L"Choose an authorized project to archive its memory.");
     selectedMemoryRecord_.reset();
     selectedMemoryProjectId_.clear();
     ProjectEditCard().Visibility(Visibility::Collapsed);
@@ -1859,6 +1874,12 @@ void MainWindow::ApplyProjectWorkspace(
     if (!selectedProjectId_.empty() && selectedProjectId_ != snapshot.project.id.value())
         ClearSelectedRun();
     selectedProjectId_ = snapshot.project.id.value();
+    if (ProjectArchiveState().Text() ==
+        L"Choose an authorized project to archive its memory.") {
+        ProjectArchiveState().Text(winrt::to_hstring(
+            "Archive scope bound to " + snapshot.project.displayName +
+            ". Export or verify a memory artifact for this exact project."));
+    }
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
     RunProjectId().Text(selected);
@@ -3807,7 +3828,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                         ? &*toolOutcomeView.snapshot : nullptr;
                     if (!outcome || !outcome->ok ||
                         outcome->projectId.value() != archiveProject ||
-                        outcome->toolName != toolName) {
+                        outcome->toolName != (action == Action::ProjectArchiveExport
+                            ? "project_memory.export" : "project_memory.import")) {
                         if (action == Action::ProjectArchivePreview) {
                             ClearArchivePreview();
                             ProjectArchivePreviewState().Text(winrt::to_hstring(
@@ -3879,11 +3901,25 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                                     L"Import readback lacks a verified record count. Refresh project memory to inspect it.");
                             } else {
                                 const auto count = payload.at("count").get<std::size_t>();
+                                std::size_t inserted{};
+                                std::size_t deduplicated{};
+                                std::size_t updated{};
+                                for (const auto& result : payload.at("results")) {
+                                    if (!result.is_object()) continue;
+                                    const auto disposition = result.value(
+                                        "disposition", std::string{});
+                                    if (disposition == "inserted") ++inserted;
+                                    else if (disposition == "deduplicated") ++deduplicated;
+                                    else if (disposition == "updated") ++updated;
+                                }
                                 ClearArchivePreview();
                                 ProjectArchiveConfirmation().Text(L"");
                                 ProjectArchivePreviewState().Text(winrt::to_hstring(
-                                    "Manager imported " + std::to_string(count) +
-                                    " project-memory records after checksum revalidation. Preview again for another import."));
+                                    "Manager processed " + std::to_string(count) +
+                                    " records after checksum revalidation: " +
+                                    std::to_string(inserted) + " inserted, " +
+                                    std::to_string(deduplicated) + " already present, " +
+                                    std::to_string(updated) + " updated. Preview again for another import."));
                                 followUp = Action::ProjectLoad;
                             }
                         }

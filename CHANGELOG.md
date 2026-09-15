@@ -1,11 +1,17 @@
 # Changelog
 
+## 1.1.28 — Archive readback and profile truth
+
+- Correct the Projects archive result check to compare the Manager's exact tool name with the action's stable expected name after background argument transfer. Installed 1.1.27 completed an export but displayed “Export unavailable” because the local comparison string was moved.
+- Replace the nonfunctional one-choice environment dropdown with a read-only active-profile chip. Sidebar and header now show the actual isolated or production profile and its effective data root, rather than hard-coded Production labels.
+- Bind the archive status to the selected project and report confirmed import dispositions separately: inserted, already present, and updated. Source compilation and signed installed interaction are required before visual acceptance.
+
 ## 1.1.27 — Project archive preview fence
 
 - Add a full-width Projects archive workflow for exact-project export, artifact selection, non-mutating verification preview, and confirmed import. The import command carries the preview's checksum; the repository rejects a changed valid artifact before a write and requires a fresh preview.
 - Read import artifacts from the application's exact project-owned exports directory rather than an unrelated authorized workspace root. The artifact store still rejects foreign project paths, non-immediate children, and unsafe filesystem links.
 - Add a cancellable disposable Responses contract probe. Archive output is labeled as memory integrity, not managed-run completion evidence.
-- Focused artifact, MCP contract, and native app compilation passed. Signed installed archive interaction and final all-view acceptance remain open.
+- Full Release tests passed (151/151), and a signed MSIX was unpacked and verified before installed interaction. In an isolated installed profile, native folder registration and durable memory creation worked; the Manager completed project export but the archive card's result-binding bug prevented end-to-end UI confirmation. Final all-view acceptance remains open.
 
 ## 1.1.26 — Runtime layout and Responses contract readback
 
