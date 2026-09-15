@@ -460,6 +460,9 @@ void MainWindow::NavigationChanged(
         OperationalSessionCard().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalCards().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalList().Visibility(agents ? Visibility::Collapsed : Visibility::Visible);
+        OperationalEmptyTitle().Text(L"Live inventory unavailable");
+        OperationalEmptyBody().Text(L"Connect to the Manager and refresh this view.");
+        OperationalCount().Text(L"WAITING");
     }
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
@@ -1100,6 +1103,12 @@ void MainWindow::FilterTools()
     }
     ToolsState().Text(winrt::to_hstring(std::to_string(visibleTools_.size()) +
         " of " + std::to_string(tools_.size()) + " Manager-owned tools · select a row for details"));
+    ToolEmptyState().Visibility(visibleTools_.empty()
+        ? Visibility::Visible : Visibility::Collapsed);
+    ToolEmptyTitle().Text(tools_.empty() ? L"Catalog unavailable" : L"No matching tools");
+    ToolEmptyBody().Text(tools_.empty()
+        ? L"Connect to the Manager and reload its registered capabilities."
+        : L"Try another name, capability, or pack filter.");
     if (!visibleTools_.empty()) ToolList().SelectedIndex(0);
 }
 
@@ -1182,6 +1191,10 @@ void MainWindow::ApplyOperational(
         : summary));
     OperationalCount().Text(winrt::to_hstring(
         std::to_string(operationalLines_.size()) + " LIVE"));
+    OperationalEmptyState().Visibility(operationalLines_.empty()
+        ? Visibility::Visible : Visibility::Collapsed);
+    OperationalEmptyTitle().Text(L"No records yet");
+    OperationalEmptyBody().Text(L"The Manager returned no entries for this view. Refresh to check again.");
     if (!operationalLines_.empty()) {
         if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents)
             OperationalCards().SelectedIndex(0);
@@ -1603,10 +1616,13 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (lmStudioView.snapshot) ApplyLmStudio(*lmStudioView.snapshot);
             if (!lmStudioView.loaded) {
                 LmStudioRegistrationState().Text(winrt::to_hstring(message));
+                LmStudioOverview().Text(winrt::to_hstring(message));
+                LmStudioBadge().Text(L"UNAVAILABLE");
             }
         } else if (toolsAction) {
             if (toolsView.snapshot) ApplyTools(*toolsView.snapshot);
             ToolsState().Text(winrt::to_hstring(message));
+            if (!toolsView.snapshot && tools_.empty()) ToolEmptyBody().Text(winrt::to_hstring(message));
             if (toolOutcomeView.snapshot) {
                 ToolOutcome().Text(winrt::to_hstring(
                     message + "\n" + toolOutcomeView.snapshot->canonicalPayload));
@@ -1619,6 +1635,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             } else {
                 OperationalState().Text(winrt::to_hstring(message));
                 OperationalListSummary().Text(winrt::to_hstring(message));
+                OperationalCount().Text(L"UNAVAILABLE");
+                if (operationalLines_.empty()) {
+                    OperationalEmptyState().Visibility(Visibility::Visible);
+                    OperationalEmptyTitle().Text(L"Live inventory unavailable");
+                    OperationalEmptyBody().Text(winrt::to_hstring(message));
+                }
             }
         } else if (settingsAction) {
             if (action == Action::SettingsLoad && loaded.loaded) {

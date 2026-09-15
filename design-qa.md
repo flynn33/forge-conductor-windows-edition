@@ -1,10 +1,11 @@
-# Direction A design QA
+# Direction A design QA — in progress
 
 ## Visual truth
 
 - Selected direction: Direction A — Obsidian Command Center.
 - Reference: `C:\Users\james\.codex\generated_images\01a09f83-2027-77e3-a87d-18dd99de82ed\exec-2dd3f5cc-e935-4dd9-904e-2815b3ba4d3a.png`
-- Installed implementation: Forge Conductor `1.1.3.0`, packaged from commit `aa309d6ba837c468de82732df689230ede3306d8`.
+- The 1.1.3 captures below are historical, not proof of the current implementation. The prior parity declaration was rejected by the user and is withdrawn.
+- The 1.1.4 development build introduces page-specific native layouts, but is not an installed all-view proof set.
 - Final comparison: `.superdesign/qa/direction-a-comparison-final.png`.
 - All-view contact sheet: `.superdesign/qa/all-views-contact-sheet.png`.
 - Viewport: 1680 × 945 logical pixels at 150% Windows display scaling; native proof captures are 2520 × 1417 physical pixels.
@@ -13,7 +14,7 @@
 
 ## All-view proof set
 
-The final installed package was captured in every navigation view:
+The previous 1.1.3 installed package was captured in every navigation view; these captures must not be presented as 1.1.4 proofs:
 
 1. `.superdesign/qa/views/01-rig.png`
 2. `.superdesign/qa/views/02-lm-studio-mcp.png`
@@ -32,22 +33,19 @@ The final installed package was captured in every navigation view:
 
 ## Comparison findings
 
-The installed Rig implementation closely matches the selected reference's composition and visual language: integrated dark window chrome, a branded obsidian navigation rail, a compact command header, a blue system-health hero, four live telemetry cards with sparklines, runtime configuration beside a real utilization chart, and adjacent recent-event and 2 × 2 action panels.
+The packet requires rendered comparison to the pinned Mac reference views R30–R43. Rendered captures for all 14 reference views are not present in the packet or workspace; the selected Direction A image depicts Rig only. Source-only inspection cannot establish visual parity.
 
-The same visual system now carries through the full product. Tooling uses a purpose-built catalog/invocation workbench; operational views use live-data and session-control columns; provider, autonomy, project, and settings forms use consistent section cards, control rhythm, borders, typography, and electric-blue action emphasis.
+The 1.1.4 development Rig, Agents, Tools and LM Studio MCP were inspected via native screenshots on 2026-09-15. The unpackaged build cannot authenticate to the installed Manager, so disconnected and empty states do not prove production-data parity. A wide-window defect left secondary pages in a narrow left column; shared content stretch sizing was corrected and rechecked. A compact-width check exposed clipping with an always-open navigation pane; adaptive pane behavior was enabled and the Tools view rechecked at 1138 × 912 without horizontal clipping. Purposeful inventory/catalog empty states and aligned MCP role cards were also rechecked. Rig's broad panel hierarchy follows the selected direction, but its disconnected hero, empty telemetry, and differing action/event detail are materially unlike the active-state mock. Agents' live specialist-card content and the pinned Mac rendered comparison remain unverified.
 
-Intentional adaptations preserve the native WinUI application architecture and actual product semantics. Labels and actions represent real Manager capabilities rather than mock-only content, and every displayed runtime value comes from the installed application's authenticated local data path.
-
-No actionable P0, P1, or P2 visual issues remain. Native-resolution review found no overlapping controls, broken layout, clipped interactive controls, unreadable contrast, or inconsistent navigation state. Long pages such as Settings remain correctly scrollable below the initial viewport.
+R30–R43 remain incomplete. Capture each current installed-package view at a controlled viewport and compare it to its rendered reference before declaring a pass.
 
 ## Build, package, and interaction verification
 
-- Full Release x64 product build passed from the final implementation commit.
-- Signed MSIX signature status is valid.
-- Forge Conductor `1.1.3.0` installed successfully and remained open after QA on the Rig view.
-- All 14 navigation destinations rendered successfully from the installed package.
-- Live Manager and provider state rendered through the authenticated production connection.
-- Focused verification suite passed 7/7:
+- Full Release x64 Product All build passed after the visual refinements and Feed timestamp projection. Four focused Manager protocol/dispatcher and app presentation/scheduler tests passed after that build. A fresh signed package is required.
+- Signed 1.1.4 MSIX was produced and validated, but install failed with `0x80073D02`: the existing 1.1.3 Manager process still owns the package. Its own Stop service command left the process alive, and the service was restored. No forced termination was performed.
+- Full Release x64 CTest: 150/151 passed. `ForgeConductor.Manager.CompositionLifecycleTests` refused to run while the installed Manager owned its hardcoded port 7788; the service was not displaced for a test.
+- The staged MSIX predates the width correction. A new package is required after verification, and 1.1.4 is not installed.
+- Historical 1.1.3 focused verification passed 7/7:
   - `ForgeConductor.Telemetry.WindowsTests`
   - `ForgeConductor.App.TelemetryPresentationTests`
   - `ForgeConductor.App.ActionSchedulerTests`
@@ -58,4 +56,4 @@ No actionable P0, P1, or P2 visual issues remain. Native-resolution review found
 
 ## Final result
 
-passed
+blocked

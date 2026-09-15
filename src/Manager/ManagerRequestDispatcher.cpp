@@ -4,7 +4,9 @@
 #include "ForgeConductor/Dashboard/DashboardSessionCloseRequest.h"
 
 #include <algorithm>
+#include <chrono>
 #include <condition_variable>
+#include <ctime>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -975,12 +977,16 @@ private:
             if (!audit) return Domain::Result<ManagerOperationalSnapshot>::failure(
                 std::move(audit).error());
             for (const auto& event : audit.value()) {
-                lines.push_back(event.tool + " · " + event.status +
+                const auto seconds = std::chrono::system_clock::to_time_t(event.timestamp);
+                std::tm utc{};
+                gmtime_s(&utc, &seconds);
+                char timestamp[32]{};
+                std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S UTC", &utc);
+                lines.push_back(std::string{timestamp} + " · " + event.tool + " · " + event.status +
                     (event.clientId ? " · " + event.clientId->value() : "") +
                     (event.duration ? " · " + std::to_string(event.duration->count()) + " ms" : "") +
                     (event.error ? "\n" + *event.error : ""));
             }
-            if (lines.empty()) lines.push_back("No recent audit activity.");
             return Domain::Result<ManagerOperationalSnapshot>::success(
                 {request.area, "Recent activity", std::move(lines)});
         }

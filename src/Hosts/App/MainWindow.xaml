@@ -8,11 +8,11 @@
    x:Name="RootNavigation"
    Background="{StaticResource ForgeAppBackgroundBrush}"
    PaneTitle=""
-   PaneDisplayMode="Left"
+   PaneDisplayMode="Auto"
    OpenPaneLength="286"
    CompactPaneLength="56"
-   CompactModeThresholdWidth="920"
-   ExpandedModeThresholdWidth="1180"
+   CompactModeThresholdWidth="1420"
+   ExpandedModeThresholdWidth="1600"
    IsBackButtonVisible="Collapsed"
    IsSettingsVisible="False"
    IsPaneToggleButtonVisible="True"
@@ -69,8 +69,8 @@
     </Grid>
    </Border>
   </NavigationView.PaneFooter>
-  <ScrollViewer x:Name="MainScrollViewer" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Left" VerticalScrollBarVisibility="Auto">
-   <StackPanel x:Name="PageContent" Padding="26,22,26,36" Spacing="14" HorizontalAlignment="Left">
+  <ScrollViewer x:Name="MainScrollViewer" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Auto">
+   <StackPanel x:Name="PageContent" Padding="26,22,26,36" Spacing="14" HorizontalAlignment="Stretch">
     <VisualStateManager.VisualStateGroups>
      <VisualStateGroup x:Name="ResponsiveStates">
       <VisualState x:Name="WideLayout">
@@ -357,9 +357,9 @@
       </Grid>
      </Border>
      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="8"><FontIcon Glyph="&#xE8A7;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Primary" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioPrimaryRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Border>
-      <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="8"><FontIcon Glyph="&#xE8D4;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Fallback" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioFallbackRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Border>
-      <Border Grid.Column="2" Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="8"><FontIcon Glyph="&#xE8F1;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Continuity · CLU" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioCluRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Border>
+      <Border Style="{StaticResource ForgeCardStyle}" MinHeight="112"><Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}" VerticalAlignment="Center"><FontIcon Glyph="&#xE8A7;" FontSize="21" Foreground="{StaticResource ForgeAccentBrush}"/></Border><StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center"><TextBlock Text="Primary" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioPrimaryRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Grid></Border>
+      <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}" MinHeight="112"><Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}" VerticalAlignment="Center"><FontIcon Glyph="&#xE8D4;" FontSize="21" Foreground="{StaticResource ForgeAccentBrush}"/></Border><StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center"><TextBlock Text="Fallback" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioFallbackRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Grid></Border>
+      <Border Grid.Column="2" Style="{StaticResource ForgeCardStyle}" MinHeight="112"><Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}" VerticalAlignment="Center"><FontIcon Glyph="&#xE8F1;" FontSize="21" Foreground="{StaticResource ForgeAccentBrush}"/></Border><StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center"><TextBlock Text="Continuity · CLU" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioCluRole" Text="Awaiting inspection" Foreground="{StaticResource ForgeTextSecondaryBrush}" TextWrapping="Wrap"/></StackPanel></Grid></Border>
      </Grid>
      <Border Style="{StaticResource ForgeCardStyle}">
       <Grid ColumnSpacing="20"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -384,7 +384,15 @@
          <ComboBox x:Name="ToolPackFilter" Grid.Column="1" SelectedIndex="0" SelectionChanged="ToolPackFilterChanged" AutomationProperties.Name="Filter by tool pack"><ComboBoxItem Content="All packs"/></ComboBox>
         </Grid>
         <TextBlock x:Name="ToolsState" Grid.Row="2" Text="Load the catalog to begin." Style="{StaticResource ForgeCaptionStyle}" AutomationProperties.LiveSetting="Polite"/>
-        <Border Grid.Row="3" Style="{StaticResource ForgeInsetStyle}" Padding="0"><ListView x:Name="ToolList" Height="570" SelectionChanged="ToolSelectionChanged" AutomationProperties.Name="Registered native tools"/></Border>
+        <Border Grid.Row="3" Style="{StaticResource ForgeInsetStyle}" Padding="0"><Grid Height="570">
+         <ListView x:Name="ToolList" SelectionChanged="ToolSelectionChanged" AutomationProperties.Name="Registered native tools"/>
+         <StackPanel x:Name="ToolEmptyState" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400" Margin="24" AutomationProperties.Name="Tool catalog empty state">
+          <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource ForgeAccentSoftBrush}" HorizontalAlignment="Center"><FontIcon Glyph="&#xE943;" FontSize="28" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
+          <TextBlock x:Name="ToolEmptyTitle" Text="Catalog unavailable" FontFamily="Segoe UI Variable Display" FontSize="21" FontWeight="SemiBold" TextAlignment="Center"/>
+          <TextBlock x:Name="ToolEmptyBody" Text="Connect to the Manager and reload its registered capabilities." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap" TextAlignment="Center"/>
+          <Button Content="Reload catalog" Click="ToolsRefreshClicked" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+         </StackPanel>
+        </Grid></Border>
        </Grid>
       </Border>
       <StackPanel Grid.Column="1" Spacing="12">
@@ -417,7 +425,7 @@
       <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
        <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}"><FontIcon x:Name="OperationalHeroIcon" Glyph="&#xE77B;" FontSize="22" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
        <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock x:Name="OperationalHeading" Text="Operational overview" FontFamily="Segoe UI Variable Display" FontSize="21" FontWeight="SemiBold"/><TextBlock x:Name="OperationalSubtitle" Text="Manager-owned live state" Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
-       <TextBlock x:Name="OperationalCount" Grid.Column="2" Text="LIVE" Foreground="{StaticResource ForgeSuccessBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+       <TextBlock x:Name="OperationalCount" Grid.Column="2" Text="WAITING" Foreground="{StaticResource ForgeTextSecondaryBrush}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
       </Grid>
      </Border>
      <Grid x:Name="OperationalGrid" ColumnSpacing="12">
@@ -426,9 +434,15 @@
        <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE9D9;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock x:Name="OperationalListTitle" Text="Live inventory" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"><Button Content="Refresh" Click="OperationalRefreshClicked" Style="{StaticResource ForgeAccentButtonStyle}"/><Button x:Name="OperationalPruneButton" Content="Prune stale" Click="OperationalPruneClicked"/></StackPanel></Grid>
         <TextBlock x:Name="OperationalListSummary" Grid.Row="1" Text="Waiting for a Manager snapshot." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
-        <Border Grid.Row="2" Style="{StaticResource ForgeInsetStyle}" Padding="0"><Grid>
-         <ListView x:Name="OperationalList" Height="545" SelectionChanged="OperationalSelectionChanged" AutomationProperties.Name="Manager operational records"/>
-         <GridView x:Name="OperationalCards" Height="545" Visibility="Collapsed" SelectionChanged="OperationalCardSelectionChanged" AutomationProperties.Name="Agent playbook cards"/>
+        <Border Grid.Row="2" Style="{StaticResource ForgeInsetStyle}" Padding="0"><Grid Height="545">
+         <ListView x:Name="OperationalList" SelectionChanged="OperationalSelectionChanged" AutomationProperties.Name="Manager operational records"/>
+         <GridView x:Name="OperationalCards" Visibility="Collapsed" SelectionChanged="OperationalCardSelectionChanged" AutomationProperties.Name="Agent playbook cards"/>
+         <StackPanel x:Name="OperationalEmptyState" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400" Margin="24" AutomationProperties.Name="Operational inventory empty state">
+          <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource ForgeAccentSoftBrush}" HorizontalAlignment="Center"><FontIcon Glyph="&#xE8D4;" FontSize="28" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
+          <TextBlock x:Name="OperationalEmptyTitle" Text="Live inventory unavailable" FontFamily="Segoe UI Variable Display" FontSize="21" FontWeight="SemiBold" TextAlignment="Center"/>
+          <TextBlock x:Name="OperationalEmptyBody" Text="Connect to the Manager and refresh this view." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap" TextAlignment="Center"/>
+          <Button Content="Refresh inventory" Click="OperationalRefreshClicked" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+         </StackPanel>
         </Grid></Border>
        </Grid>
       </Border>
