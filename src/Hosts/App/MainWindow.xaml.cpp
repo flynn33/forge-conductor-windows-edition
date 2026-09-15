@@ -299,9 +299,16 @@ void MainWindow::WindowContentLoaded(
                 monitor.rcWork.right - monitor.rcWork.left);
             const auto workHeight = static_cast<int>(
                 monitor.rcWork.bottom - monitor.rcWork.top);
-            const auto width = std::min(1680, workWidth - 40);
-            const auto height = std::min(920, workHeight);
-            if (width >= 760 && height >= 600) {
+            const auto dpi = ::GetDpiForWindow(hwnd);
+            const auto scale = dpi == 0U
+                ? 1.0 : static_cast<double>(dpi) / 96.0;
+            const auto physical = [scale](double logical) {
+                return static_cast<int>(logical * scale + 0.5);
+            };
+            const auto width = std::min(physical(1680.0),
+                workWidth - physical(40.0));
+            const auto height = std::min(physical(920.0), workHeight);
+            if (width >= physical(760.0) && height >= physical(600.0)) {
                 const auto window = AppWindow();
                 window.Resize(Windows::Graphics::SizeInt32{width, height});
                 window.Move(Windows::Graphics::PointInt32{
@@ -371,6 +378,7 @@ void MainWindow::ConsoleSizeChanged(
         RootNavigation().PaneDisplayMode(paneMode);
         RootNavigation().IsPaneOpen(!narrowPane);
     }
+    RootNavigation().IsPaneToggleButtonVisible(narrowPane);
 
     const auto compactCards = width < 1280.0;
     MetricColumn2().Width(compactCards

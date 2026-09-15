@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.10 — DPI-aware cold launch
+
+- Convert the intended console dimensions from Windows layout units to monitor physical pixels before resizing the native window.
+- Keep the wide left navigation permanently open; show an expandable compact rail after narrowing the viewport.
+- Continue signed installed and feature-parity QA before treating any view captures as proof.
+
 ## 1.1.9 — Adaptive native console
 
 - Size the native window to its current monitor's usable work area on launch, with a deliberate full-height command-center viewport.
