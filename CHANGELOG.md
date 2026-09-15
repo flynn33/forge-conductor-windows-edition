@@ -1,11 +1,17 @@
 # Changelog
 
+## 1.1.25 — Project-bound runtime job results
+
+- Project the bounded recent managed-run window into Runtimes using the Manager's persisted run owner. Exact project filtering protects other projects' missions and results; the view reports real active, completed, failed, and stopped states without inventing a queued-job service.
+- Show each run's stored mission and result/error in a compact native card, with an exact-run path to Autonomy for verified inspection and supported control. Disconnect and stale project replies invalidate the visible job rows.
+- A focused Manager regression covers persisted-state counting and cross-project result isolation. Installed visual and acceptance qualification for this candidate remain open.
+
 ## 1.1.24 — Model-only run scope and live registration repair
 
 - Treat LM Studio's own runtime `install-state.json` marker as a valid bridge receipt while still validating the exact deployed manifest, binary, role, home, and deployment ID. A mismatched bridge deployment remains rejected.
 - Make native tool access an explicit, durable per-run choice. The desktop starts model-only by default; authorized tool runs still use the canonical Manager catalog and authority boundary. Scope survives Manager protocol readback and run recovery.
 - Distinguish provider endpoint failure from an empty model list, clear stale Manager operational telemetry after disconnect, and retain an exact selected Continuity run as awaiting usage when the provider has not returned token counts.
-- Report WinHTTP send/receive stage and numeric error on a failed LM Studio Responses exchange. Focused source tests pass; the signed installed run and final all-view screenshot acceptance are still pending.
+- Report WinHTTP send/receive stage and numeric error on a failed LM Studio Responses exchange. Focused source tests and a signed installed model-only Qwen run passed; final all-view screenshot acceptance and tool-catalog provider exchange remain open.
 
 ## 1.1.23 — Deployment-scoped MCP outcome readback and LM Studio identities
 

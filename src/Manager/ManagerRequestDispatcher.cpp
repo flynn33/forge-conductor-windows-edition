@@ -12,6 +12,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <ctime>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -1240,7 +1241,66 @@ private:
                 std::move(settings).error());
             lines.push_back(std::string{"Effective shell policy: "} +
                 (settings.value().shellEnabled ? "enabled" : "disabled"));
-            lines.push_back("Job inventory: not exposed by this Manager operational projection");
+            if (!request.projectId || !managedRuns_) {
+                lines.push_back("Job inventory: select an authorized project to inspect persisted managed runs");
+            } else {
+                auto sessions = service.sessions(context);
+                if (!sessions) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(sessions).error());
+                std::set<std::string> seen;
+                std::vector<std::string> jobs;
+                std::size_t active{};
+                std::size_t completed{};
+                std::size_t failed{};
+                std::size_t stopped{};
+                const auto append = [&](const Domain::AgentSession& session)
+                    -> Domain::Result<void> {
+                    if (session.agentId.value() != "forge-managed-run" ||
+                        !seen.insert(session.id.value()).second) {
+                        return Domain::Result<void>::success();
+                    }
+                    auto run = managedRuns_->status(session.id, context);
+                    if (!run) return Domain::Result<void>::failure(std::move(run).error());
+                    const auto& record = run.value().record;
+                    if (record.projectId != *request.projectId)
+                        return Domain::Result<void>::success();
+                    const char* state = "unknown";
+                    switch (record.state) {
+                    case Domain::ManagedRunState::Running: state = "running"; ++active; break;
+                    case Domain::ManagedRunState::Paused: state = "paused"; ++active; break;
+                    case Domain::ManagedRunState::Cancelling: state = "stopping"; ++active; break;
+                    case Domain::ManagedRunState::Completed: state = "completed"; ++completed; break;
+                    case Domain::ManagedRunState::Failed: state = "failed"; ++failed; break;
+                    case Domain::ManagedRunState::Cancelled: state = "stopped"; ++stopped; break;
+                    }
+                    const auto outcome = record.lastError
+                        ? "Error · " + record.lastError->message
+                        : record.outputText && !record.outputText->empty()
+                            ? "Result · " + *record.outputText
+                            : "Result · not recorded yet";
+                    jobs.push_back("Job " + record.runId.value() + " · " + state +
+                        "\nMission · " + Domain::truncateAgentSummaryUtf8(record.task, 240U) +
+                        "\n" + Domain::truncateAgentSummaryUtf8(outcome, 800U));
+                    return Domain::Result<void>::success();
+                };
+                for (const auto& session : sessions.value().open) {
+                    auto appended = append(session);
+                    if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                        std::move(appended).error());
+                }
+                for (const auto& session : sessions.value().recent) {
+                    auto appended = append(session);
+                    if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                        std::move(appended).error());
+                }
+                lines.push_back("Job inventory: " + std::to_string(jobs.size()) +
+                    " recent selected-project runs · " + std::to_string(active) +
+                    " active · " + std::to_string(completed) + " completed · " +
+                    std::to_string(failed) + " failed · " +
+                    std::to_string(stopped) + " stopped");
+                lines.insert(lines.end(), std::make_move_iterator(jobs.begin()),
+                    std::make_move_iterator(jobs.end()));
+            }
         }
         if (request.area == ManagerOperationalArea::Manager) {
             auto manager = controller_->status(context);

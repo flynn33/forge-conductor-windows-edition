@@ -4,7 +4,7 @@
 
 The 1.1 line restores routine native operation: independent telemetry and command scheduling, automatic Manager startup, delayed-readback edit preservation, plumbing-free project/run controls, and synchronized primary/fallback/CLU LM Studio registration. It also adds the exact four-tool continuity-control role. Desktop-chat takeover and source-to-successor restoration remain separate live qualification gates; neither role registration nor a read-only tool result closes them.
 
-The current engineering candidate is 1.1.24. Its model-only run scope, deployment-marker compatibility, disconnect invalidation, and sparse Continuity wording have focused source coverage. A signed installed managed response, desktop source handoff, runtime jobs/results, durable evidence-chain inspection, all-view visual proof, and the complete installed acceptance matrix remain open. No package is release-ready until those gates are evidenced on the same final bytes.
+The current engineering candidate is 1.1.25. Signed installed 1.1.24 completed one model-only Qwen Responses run and recorded a read-only native CLU tool result in a desktop chat. The new project-bound runtime jobs/results projection has focused source coverage but is not yet installed-qualified. A primary/fallback live tool exchange with a following model turn, exact desktop source handoff, durable evidence-chain inspection, all-view visual proof, and the complete installed acceptance matrix remain open. No package is release-ready until those gates are evidenced on the same final bytes.
 
 ## 1.0 completion
 

@@ -641,6 +641,15 @@ void MainWindow::ToolSelectionChanged(Windows::Foundation::IInspectable const&,
 }
 void MainWindow::OperationalRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalInspect); }
+void MainWindow::RuntimeJobInspectClicked(Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    const auto button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>();
+    if (!button || selectedProjectId_.empty()) return;
+    RunId().Text(winrt::unbox_value<winrt::hstring>(button.Tag()));
+    SelectPage(L"Autonomy");
+    RunAction(Action::RunStatus);
+}
 void MainWindow::OperationalExportClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
@@ -831,6 +840,7 @@ void MainWindow::ProjectSelectionChanged(
     ToolProjectId().Text(selected);
     RunAction(Action::ProjectLoad);
     UpdateRunProjectLabel();
+    if (PageTitle().Text() == L"Runtimes") RunAction(Action::OperationalInspect);
 }
 
 void MainWindow::NavigationChanged(
@@ -1987,6 +1997,7 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
         OperationalRuntimeExecution().Text(L"Owned operations unavailable");
         OperationalRuntimeStores().Text(L"Open stores unavailable");
         OperationalRuntimeJobs().Text(L"Job state unavailable until the Manager reconnects.");
+        OperationalRuntimeJobRows().Children().Clear();
         OperationalShellPolicy().Text(L"Unavailable");
         OperationalJobState().Text(L"Unavailable until the Manager reconnects.");
     }
@@ -2678,6 +2689,53 @@ void MainWindow::ApplyOperational(
                 stores + " open stores"));
             OperationalRuntimeJobs().Text(winrt::to_hstring(
                 valueAfter("Job inventory: ")));
+            OperationalRuntimeJobRows().Children().Clear();
+            for (const auto& line : snapshot.lines) {
+                if (!line.starts_with("Job ")) continue;
+                const auto firstEnd = line.find('\n');
+                const auto first = line.substr(4U, firstEnd - 4U);
+                const auto separator = first.find(" · ");
+                if (separator == std::string::npos) continue;
+                const auto id = first.substr(0U, separator);
+                Microsoft::UI::Xaml::Controls::StackPanel content;
+                content.Spacing(7);
+                Microsoft::UI::Xaml::Controls::StackPanel heading;
+                heading.Orientation(Microsoft::UI::Xaml::Controls::Orientation::Horizontal);
+                heading.Spacing(11);
+                Microsoft::UI::Xaml::Controls::Button inspect;
+                inspect.Content(box_value(L"Inspect & control"));
+                inspect.Tag(box_value(winrt::to_hstring(id)));
+                inspect.Click({this, &MainWindow::RuntimeJobInspectClicked});
+                heading.Children().Append(inspect);
+                Microsoft::UI::Xaml::Controls::TextBlock identity;
+                identity.Text(winrt::to_hstring(first.substr(
+                    separator + std::string{" · "}.size()) + " · " + id));
+                identity.FontSize(14);
+                identity.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+                identity.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
+                    Windows::UI::Color{255, 43, 168, 255}));
+                identity.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+                identity.IsTextSelectionEnabled(true);
+                heading.Children().Append(identity);
+                content.Children().Append(heading);
+                Microsoft::UI::Xaml::Controls::TextBlock detail;
+                detail.Text(firstEnd == std::string::npos ? L"No job detail recorded."
+                    : winrt::to_hstring(line.substr(firstEnd + 1U)));
+                detail.FontSize(13);
+                detail.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+                detail.IsTextSelectionEnabled(true);
+                content.Children().Append(detail);
+                Microsoft::UI::Xaml::Controls::Border row;
+                row.Padding(Microsoft::UI::Xaml::Thickness{12});
+                row.CornerRadius(Microsoft::UI::Xaml::CornerRadius{9});
+                row.BorderThickness(Microsoft::UI::Xaml::Thickness{1});
+                row.Background(Microsoft::UI::Xaml::Media::SolidColorBrush(
+                    Windows::UI::Color{255, 13, 27, 42}));
+                row.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush(
+                    Windows::UI::Color{90, 102, 128, 153}));
+                row.Child(content);
+                OperationalRuntimeJobRows().Children().Append(row);
+            }
         }
     }
     std::string summary;
@@ -2718,7 +2776,8 @@ void MainWindow::ApplyOperational(
         OperationalState().Text(winrt::to_hstring(text + "\n\n" + line));
         if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes &&
             (line.starts_with("Effective shell policy: ") ||
-             line.starts_with("Job inventory: "))) continue;
+             line.starts_with("Job inventory: ") ||
+             line.starts_with("Job "))) continue;
         if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
             (line.starts_with("Agent definitions:") ||
              line.starts_with("Open sessions:") ||
@@ -3051,6 +3110,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string editedRecordId;
     std::string operationalSessionId;
     std::string operationalSummary;
+    const auto requestedOperationalArea = operationalArea_;
+    const auto requestedOperationalProject = requestedOperationalArea ==
+        ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes &&
+        !selectedProjectId_.empty()
+            ? std::optional<std::string>{selectedProjectId_} : std::nullopt;
     std::string requestedHistoryProject;
     ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
         ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectMemory};
@@ -3497,9 +3561,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 action == Action::OperationalClose ? OpAction::CloseSession : OpAction::Inspect;
             operationalView = connection_->operational(
                 historyAction ? ::ForgeConductor::Manager::ManagerOperationalArea::Runs
-                    : operationalArea_, op, std::move(operationalSessionId),
+                    : requestedOperationalArea, op, std::move(operationalSessionId),
                 std::move(operationalSummary), historyAction
-                    ? std::optional<std::string>{requestedHistoryProject} : std::nullopt,
+                    ? std::optional<std::string>{requestedHistoryProject}
+                    : requestedOperationalProject,
                 cancellation_.get_token());
             message = operationalView.message;
             break;
@@ -3636,7 +3701,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 else RunHistoryState().Text(winrt::to_hstring(
                     "Run history unavailable · " + message));
             }
-        } else if (operationalAction) {
+        } else if (operationalAction && requestedOperationalArea == operationalArea_ &&
+            (requestedOperationalArea !=
+                ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes ||
+             requestedOperationalProject.value_or("") == selectedProjectId_)) {
             if (operationalView.snapshot) {
                 if (feedDisplayPaused_ && operationalView.snapshot->area ==
                     ::ForgeConductor::Manager::ManagerOperationalArea::Feed) {
@@ -3650,6 +3718,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     OperationalRuntimeReadiness().Text(L"Runtime readback unavailable");
                     OperationalRuntimeOwnership().Text(winrt::to_hstring(message));
                     OperationalRuntimeJobs().Text(L"Job state cannot be inspected until the Manager reconnects.");
+                    OperationalRuntimeJobRows().Children().Clear();
                 }
                 OperationalListSummary().Text(winrt::to_hstring(message));
                 OperationalCount().Text(L"UNAVAILABLE");

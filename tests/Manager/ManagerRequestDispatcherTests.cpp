@@ -373,7 +373,9 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         ++statusCalls;
-        auto value = snapshotFor(runId, Domain::ManagedRunState::Completed);
+        const auto state = stateByRun.find(runId.value());
+        auto value = snapshotFor(runId, state == stateByRun.end()
+            ? Domain::ManagedRunState::Completed : state->second);
         if (const auto found = projectByRun.find(runId.value());
             found != projectByRun.end()) {
             value.record.projectId = found->second;
@@ -383,6 +385,8 @@ public:
         value.record.inputTokens = 101U;
         value.record.outputTokens = 37U;
         value.record.retainedContextTokens = 4'096U;
+        if (const auto found = outputByRun.find(runId.value());
+            found != outputByRun.end()) value.record.outputText = found->second;
         return Domain::Result<Domain::ManagedRunSnapshot>::success(
             std::move(value));
     }
@@ -422,6 +426,8 @@ public:
 
     std::optional<Domain::ManagedRunStartRequest> lastStart;
     std::map<std::string, Domain::ProjectId> projectByRun;
+    std::map<std::string, Domain::ManagedRunState> stateByRun;
+    std::map<std::string, std::string> outputByRun;
     std::optional<Domain::OperationId> lastContextOperation;
     std::atomic_size_t startCalls{};
     std::atomic_size_t statusCalls{};
@@ -478,9 +484,11 @@ class FakeOperationalSessions final : public Dashboard::IDashboardOperationalSer
 public:
     Dashboard::DashboardSessionListing listing;
     std::size_t sessionCalls{};
+    bool allowStatus{};
     [[nodiscard]] Domain::Result<Dashboard::DashboardStatusData> status(
         const Domain::OperationContext&) noexcept override
     {
+        if (allowStatus) return Domain::Result<Dashboard::DashboardStatusData>::success({});
         return Domain::Result<Dashboard::DashboardStatusData>::failure(
             Domain::makeError(Domain::ErrorCodes::InvalidRequest,
                 "Unexpected status in run-history test."));
@@ -796,6 +804,34 @@ void testRunHistoryIsBoundToSelectedProject()
         Domain::ErrorCodes::InvalidRequest, "unbound run history");
     require(operational.sessionCalls == 2U,
         "unbound inspection does not read sessions");
+    operational.allowStatus = true;
+    managedRuns->stateByRun.emplace(aOpen.value(), Domain::ManagedRunState::Running);
+    managedRuns->outputByRun.emplace(aRecent.value(), "OK from project A");
+    managedRuns->outputByRun.emplace(bRecent.value(), "private project B result");
+    const auto runtimeResponse = dispatcher.dispatch(request(*clock, 94U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runtimes,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectA}));
+    const auto* runtime = responseValue<Manager::ManagerOperationalSnapshot>(runtimeResponse);
+    require(runtime != nullptr, "project-bound runtime inventory succeeds");
+    const auto runtimeText = [&] {
+        std::string text;
+        for (const auto& line : runtime->lines) text += line + "\n";
+        return text;
+    }();
+    require(runtimeText.find("Job inventory: 2 recent selected-project runs · 1 active · 1 completed") !=
+            std::string::npos,
+        "runtime jobs use exact persisted run states");
+    require(runtimeText.find(aOpen.value()) != std::string::npos &&
+            runtimeText.find(aRecent.value()) != std::string::npos &&
+            runtimeText.find("Result · OK from project A") != std::string::npos,
+        "runtime inventory projects selected-project identities and outcomes");
+    require(runtimeText.find(bRecent.value()) == std::string::npos &&
+            runtimeText.find("private project B result") == std::string::npos,
+        "runtime inventory never projects another project's run or result");
+    require(operational.sessionCalls == 3U,
+        "runtime jobs read one bounded persisted session window");
 }
 
 void testProjectWorkflowKeepsExactProjectIdentity()
