@@ -237,8 +237,6 @@
     </StackPanel>
 
     <StackPanel x:Name="AutonomyPanel" Spacing="14" Visibility="Collapsed">
-     <InfoBar IsOpen="True" Severity="Informational" IsClosable="False"
-       Title="Manager-owned execution" Message="The Manager keeps running when this window closes. Reopen the app and use the run ID to attach again." />
      <Border x:Name="ContinuityOverviewCard" Style="{StaticResource ForgeHeroCardStyle}" Visibility="Collapsed" Padding="20">
       <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="240"/></Grid.ColumnDefinitions>
        <Border Width="52" Height="52" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE8F1;" FontSize="24" Foreground="{StaticResource ForgeAccentBrush}"/></Border>
@@ -280,7 +278,7 @@
        <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE8B7;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Project selection" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="Refresh" Click="ProjectRefreshClicked"/></Grid>
        <ComboBox x:Name="ProjectSelector" Header="Active project" HorizontalAlignment="Stretch" SelectionChanged="ProjectSelectionChanged" AutomationProperties.Name="Select active project"/>
        <TextBlock x:Name="ProjectState" Text="Loading registered projects." Style="{StaticResource ForgeCaptionStyle}" AutomationProperties.LiveSetting="Polite"/>
-       <Border Style="{StaticResource ForgeInsetStyle}"><StackPanel Spacing="8"><TextBlock Text="Register a folder" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock Text="Choose a folder you authorize the Manager to use for this project." Style="{StaticResource ForgeCaptionStyle}"/><Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="ProjectPath" PlaceholderText="Choose a folder…" AutomationProperties.Name="Authorized project folder"/><Button Grid.Column="1" Content="Browse…" Click="ProjectBrowseClicked" AutomationProperties.Name="Browse for project folder"/></Grid><TextBox x:Name="ProjectDisplayName" Header="Display name (optional)"/><Button Content="Register selected folder" Click="ProjectRegisterClicked" Style="{StaticResource ForgeAccentButtonStyle}" HorizontalAlignment="Left"/></StackPanel></Border>
+       <Expander Header="Register another authorized folder" IsExpanded="False"><Border Style="{StaticResource ForgeInsetStyle}"><StackPanel Spacing="8"><TextBlock Text="Choose a folder you authorize the Manager to use for this project." Style="{StaticResource ForgeCaptionStyle}"/><Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="ProjectPath" PlaceholderText="Choose a folder…" AutomationProperties.Name="Authorized project folder"/><Button Grid.Column="1" Content="Browse…" Click="ProjectBrowseClicked" AutomationProperties.Name="Browse for project folder"/></Grid><TextBox x:Name="ProjectDisplayName" Header="Display name (optional)"/><Button Content="Register selected folder" Click="ProjectRegisterClicked" Style="{StaticResource ForgeAccentButtonStyle}" HorizontalAlignment="Left"/></StackPanel></Border></Expander>
       </StackPanel></Border>
       <Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="11"><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE8D7;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Authorized scope" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><TextBlock x:Name="ProjectFolders" Text="No authorized folders" Style="{StaticResource ForgeCaptionStyle}" IsTextSelectionEnabled="True"/><Border Style="{StaticResource ForgeInsetStyle}"><StackPanel Spacing="8"><TextBlock Text="Binding &amp; store readback" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock x:Name="ProjectIdentity" Text="No active project" Style="{StaticResource ForgeCaptionStyle}" IsTextSelectionEnabled="True"/><TextBlock x:Name="ProjectPersistence" Text="Memory persistence has not been read." Style="{StaticResource ForgeCaptionStyle}"/></StackPanel></Border></StackPanel></Border>
      </Grid>
@@ -315,8 +313,6 @@
     </StackPanel>
 
     <StackPanel x:Name="ToolsPanel" Spacing="14" Visibility="Collapsed">
-     <InfoBar IsOpen="True" Severity="Informational" Title="Native tool workbench"
-      Message="Calls run through the Manager's project authority, canonical catalog, invocation guard and persisted shell preference." />
      <TextBox x:Name="ToolProjectId" Visibility="Collapsed" />
      <Grid ColumnSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="7*"/><ColumnDefinition Width="5*"/></Grid.ColumnDefinitions>
@@ -352,8 +348,10 @@
        <Border Style="{StaticResource ForgeCardStyle}">
         <StackPanel Spacing="11">
          <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock Text="Invoke a tool" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel>
-         <TextBox x:Name="ToolName" Header="Tool name" PlaceholderText="Select a catalog row or enter a canonical name" />
-         <TextBox x:Name="ToolArguments" Header="JSON arguments · advanced" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" />
+          <TextBox x:Name="ToolName" Visibility="Collapsed" Header="Tool name" />
+          <TextBlock x:Name="ToolFormState" Text="Select a catalog capability to see guided arguments." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+          <ScrollViewer MaxHeight="290" VerticalScrollBarVisibility="Auto"><StackPanel x:Name="ToolFormFields" Spacing="10"/></ScrollViewer>
+          <Expander Header="Advanced · raw canonical JSON" IsExpanded="False"><Border Style="{StaticResource ForgeInsetStyle}"><StackPanel Spacing="9"><ToggleSwitch x:Name="ToolAdvancedMode" Header="Use raw JSON instead of guided fields" OffContent="Guided" OnContent="Raw JSON"/><TextBox x:Name="ToolArguments" Header="JSON arguments" Text="{}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" /></StackPanel></Border></Expander>
          <Button Content="Run selected tool" HorizontalAlignment="Stretch" Click="ToolInvokeClicked" Style="{StaticResource ForgeAccentButtonStyle}" />
          <TextBlock Text="Latest result" Style="{StaticResource ForgeSectionTitleStyle}" Margin="0,5,0,0"/>
          <Border Style="{StaticResource ForgeInsetStyle}" Padding="12"><ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="ToolOutcome" Text="No tool result." FontFamily="Cascadia Mono" FontSize="11" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer></Border>
@@ -379,7 +377,7 @@
        <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE9D9;" Foreground="{StaticResource ForgeAccentBrush}"/><TextBlock x:Name="OperationalListTitle" Text="Live inventory" Style="{StaticResource ForgeSectionTitleStyle}"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"><Button Content="Refresh" Click="OperationalRefreshClicked" Style="{StaticResource ForgeAccentButtonStyle}"/><Button x:Name="OperationalPruneButton" Content="Prune stale" Click="OperationalPruneClicked"/></StackPanel></Grid>
         <StackPanel Grid.Row="1" Spacing="8"><TextBlock x:Name="OperationalListSummary" Text="Waiting for a Manager snapshot." Style="{StaticResource ForgeCaptionStyle}" TextWrapping="Wrap"/><TextBox x:Name="OperationalAgentSearch" Visibility="Collapsed" PlaceholderText="Search specialist playbooks or sessions" TextChanged="OperationalAgentSearchChanged" AutomationProperties.Name="Search agent playbooks and sessions"/><Grid x:Name="OperationalFeedFilters" Visibility="Collapsed" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="140"/></Grid.ColumnDefinitions><TextBox x:Name="OperationalFeedSearch" PlaceholderText="Search tools or clients" TextChanged="OperationalFeedFilterChanged" AutomationProperties.Name="Search audit outcomes"/><ComboBox x:Name="OperationalFeedSeverity" Grid.Column="1" SelectedIndex="0" SelectionChanged="OperationalFeedSeverityChanged" AutomationProperties.Name="Filter audit severity"><ComboBoxItem Content="All statuses"/><ComboBoxItem Content="Errors"/><ComboBoxItem Content="Denied"/><ComboBoxItem Content="Success"/></ComboBox><ToggleButton x:Name="OperationalFeedPause" Grid.Column="2" Content="Pause display" Click="OperationalFeedPauseClicked"/></Grid></StackPanel>
-        <Border Grid.Row="2" Style="{StaticResource ForgeInsetStyle}" Padding="0"><Grid Height="545">
+         <Border Grid.Row="2" Style="{StaticResource ForgeInsetStyle}" Padding="0"><Grid x:Name="OperationalListViewport" Height="545">
          <ListView x:Name="OperationalList" SelectionChanged="OperationalSelectionChanged" AutomationProperties.Name="Manager operational records"/>
          <GridView x:Name="OperationalCards" Visibility="Collapsed" SelectionChanged="OperationalCardSelectionChanged" AutomationProperties.Name="Agent playbook cards"/>
          <StackPanel x:Name="OperationalEmptyState" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400" Margin="24" AutomationProperties.Name="Operational inventory empty state">

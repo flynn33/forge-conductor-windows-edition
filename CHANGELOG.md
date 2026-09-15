@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.7 — Guided workbench and density corrections
+
+- Render Manager tool schemas as guided native argument controls; keep canonical JSON in Advanced for complex forms.
+- Tighten short Manager/Runtimes inventories, distinguish record counts from live resources, and preserve concise Provider state readback.
+- Collapse rarely used project registration, freeing the primary workspace for scope and memory work.
+- Continue installed all-view visual QA before treating screenshots as final proof.
+
 ## 1.1.6 — Direction A operational composition pass
 
 - Make Projects a selected-scope and memory-health workbench with a native Windows folder picker; keep project identity internal in routine selection.

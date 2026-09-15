@@ -104,6 +104,8 @@ private:
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
     void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
     void FilterTools();
+    void BuildToolForm(const ::ForgeConductor::Manager::ManagerToolDescriptor& tool);
+    std::optional<std::string> ToolCanonicalArguments();
     void ApplyOperational(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
     void SelectOperationalRecord(std::size_t index);
     void UpdateRunProjectLabel();
@@ -117,6 +119,16 @@ private:
         telemetrySnapshot_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
     std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
+    struct ToolField final {
+        std::string name;
+        std::string type;
+        bool required{};
+        Microsoft::UI::Xaml::Controls::TextBox text{nullptr};
+        Microsoft::UI::Xaml::Controls::ComboBox choice{nullptr};
+        Microsoft::UI::Xaml::Controls::ToggleSwitch toggle{nullptr};
+    };
+    std::vector<ToolField> toolFields_;
+    bool toolFormSupported_{};
     std::vector<std::string> loadedModels_;
     bool rebuildingProviderModels_{};
     std::string providerDiscoveredEndpoint_;

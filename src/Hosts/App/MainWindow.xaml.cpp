@@ -9,6 +9,7 @@
 #include <winrt/Windows.UI.Text.h>
 #include <microsoft.ui.xaml.window.h>
 #include <shobjidl.h>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -502,6 +503,7 @@ void MainWindow::ToolSelectionChanged(Windows::Foundation::IInspectable const&,
         std::string{tool.requiresProject ? "Selected project authority required" : "No project binding required"} +
         (tool.requiresShell ? " · shell policy applies" : "") +
         ". Canonical arguments are validated by the Manager."));
+    BuildToolForm(tool);
 }
 void MainWindow::OperationalRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::OperationalInspect); }
@@ -674,6 +676,7 @@ void MainWindow::NavigationChanged(
         OperationalEvidenceCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalStatusGrid().Visibility(runtimes || tag == L"Manager"
             ? Visibility::Visible : Visibility::Collapsed);
+        OperationalListViewport().Height(runtimes || tag == L"Manager" ? 235.0 : 545.0);
         OperationalManagerCard().Visibility(tag == L"Manager" ? Visibility::Visible : Visibility::Collapsed);
         OperationalCards().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalList().Visibility(agents ? Visibility::Collapsed : Visibility::Visible);
@@ -1187,9 +1190,8 @@ void MainWindow::ApplyTelemetryPresentation(
     const auto page = winrt::to_string(PageTitle().Text());
     const auto detail = ::ForgeConductor::Hosts::App::telemetryDetailText(
         snapshot, page);
-    if (page == "Provider") {
-        ProviderState().Text(winrt::to_hstring(detail));
-    } else if (page != "Rig" && page != "Autonomy" && page != "Continuity") {
+    if (page != "Rig" && page != "Autonomy" && page != "Continuity" &&
+        page != "Provider") {
         GenericState().Text(winrt::to_hstring(detail));
     }
 }
@@ -1618,6 +1620,161 @@ void MainWindow::ApplyTools(
     FilterTools();
 }
 
+void MainWindow::BuildToolForm(
+    const ::ForgeConductor::Manager::ManagerToolDescriptor& tool)
+{
+    using Json = nlohmann::json;
+    using namespace Microsoft::UI::Xaml::Controls;
+    ToolFormFields().Children().Clear();
+    toolFields_.clear();
+    toolFormSupported_ = false;
+    ToolAdvancedMode().IsOn(false);
+    ToolArguments().Text(L"{}");
+    try {
+        const auto schema = Json::parse(tool.inputSchema);
+        if (!schema.is_object() || schema.value("type", std::string{}) != "object" ||
+            !schema.contains("properties") || !schema.at("properties").is_object() ||
+            schema.at("properties").size() > 24U) {
+            throw std::runtime_error{"The schema needs advanced JSON arguments."};
+        }
+        const auto required = schema.value("required", Json::array());
+        if (!required.is_array()) throw std::runtime_error{"Invalid required fields."};
+        for (auto it = schema.at("properties").begin();
+             it != schema.at("properties").end(); ++it) {
+            if (!it.value().is_object()) throw std::runtime_error{"Unsupported field schema."};
+            const auto& property = it.value();
+            ToolField field;
+            field.name = it.key();
+            field.required = std::find(required.begin(), required.end(), field.name) != required.end();
+            field.type = property.value("type", std::string{});
+            if (field.type == "array" && property.contains("items") &&
+                property.at("items").is_object() &&
+                property.at("items").value("type", std::string{}) == "string") {
+                field.type = "string-array";
+            }
+            if (field.type != "string" && field.type != "integer" &&
+                field.type != "number" && field.type != "boolean" &&
+                field.type != "string-array" && field.type != "object") {
+                throw std::runtime_error{"This schema has a complex field."};
+            }
+            const auto title = field.name + (field.required ? " · required" : " · optional");
+            if (property.contains("enum") && property.at("enum").is_array() &&
+                !property.at("enum").empty() && field.type == "string") {
+                field.choice = ComboBox{};
+                field.choice.Header(box_value(winrt::to_hstring(title)));
+                field.choice.HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Stretch);
+                ComboBoxItem placeholder;
+                placeholder.Content(box_value(L"Select a value…"));
+                field.choice.Items().Append(placeholder);
+                for (const auto& value : property.at("enum")) {
+                    if (!value.is_string()) throw std::runtime_error{"Unsupported enum value."};
+                    ComboBoxItem item;
+                    item.Content(box_value(winrt::to_hstring(value.get<std::string>())));
+                    field.choice.Items().Append(item);
+                }
+                field.choice.SelectedIndex(0);
+                ToolFormFields().Children().Append(field.choice);
+            } else if (field.type == "boolean") {
+                field.toggle = ToggleSwitch{};
+                field.toggle.Header(box_value(winrt::to_hstring(title)));
+                field.toggle.OffContent(box_value(L"False"));
+                field.toggle.OnContent(box_value(L"True"));
+                ToolFormFields().Children().Append(field.toggle);
+            } else {
+                field.text = TextBox{};
+                field.text.Header(box_value(winrt::to_hstring(title)));
+                field.text.PlaceholderText(field.type == "string-array"
+                    ? L"Comma-separated values" : field.type == "object"
+                    ? L"JSON object · advanced field" : field.type == "integer" || field.type == "number"
+                    ? L"Enter a number" : L"Enter a value");
+                ToolFormFields().Children().Append(field.text);
+            }
+            if (property.contains("description") && property.at("description").is_string()) {
+                TextBlock description;
+                description.Text(winrt::to_hstring(property.at("description").get<std::string>()));
+                description.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+                description.FontSize(11);
+                ToolFormFields().Children().Append(description);
+            }
+            toolFields_.push_back(std::move(field));
+        }
+        toolFormSupported_ = true;
+        ToolFormState().Text(toolFields_.empty()
+            ? L"This capability has no arguments. Select Run to invoke it."
+            : L"Complete the fields below. The Manager validates the canonical request before execution.");
+    } catch (...) {
+        ToolFormFields().Children().Clear();
+        toolFields_.clear();
+        ToolAdvancedMode().IsOn(true);
+        ToolFormState().Text(L"This capability has nested or unsupported arguments. Open Advanced and provide canonical JSON.");
+    }
+}
+
+std::optional<std::string> MainWindow::ToolCanonicalArguments()
+{
+    using Json = nlohmann::json;
+    if (ToolAdvancedMode().IsOn() || !toolFormSupported_) {
+        try {
+            const auto parsed = Json::parse(winrt::to_string(ToolArguments().Text()));
+            if (!parsed.is_object()) throw std::runtime_error{"Arguments must be a JSON object."};
+            return parsed.dump();
+        } catch (...) {
+            ToolFormState().Text(L"Advanced arguments must be a valid JSON object.");
+            return std::nullopt;
+        }
+    }
+    Json arguments = Json::object();
+    for (const auto& field : toolFields_) {
+        const auto value = field.text ? winrt::to_string(field.text.Text()) : std::string{};
+        if (field.choice) {
+            if (field.choice.SelectedIndex() <= 0) {
+                if (field.required) {
+                    ToolFormState().Text(winrt::to_hstring("Choose " + field.name + " before running."));
+                    return std::nullopt;
+                }
+                continue;
+            }
+            const auto item = field.choice.SelectedItem().as<Microsoft::UI::Xaml::Controls::ComboBoxItem>();
+            arguments[field.name] = winrt::to_string(unbox_value<hstring>(item.Content()));
+        } else if (field.toggle) {
+            arguments[field.name] = field.toggle.IsOn();
+        } else if (value.empty()) {
+            if (field.required) {
+                ToolFormState().Text(winrt::to_hstring("Enter " + field.name + " before running."));
+                return std::nullopt;
+            }
+        } else if (field.type == "integer" || field.type == "number" || field.type == "object") {
+            try {
+                auto parsed = Json::parse(value);
+                if ((field.type == "integer" && !parsed.is_number_integer()) ||
+                    (field.type == "number" && !parsed.is_number()) ||
+                    (field.type == "object" && !parsed.is_object())) {
+                    throw std::runtime_error{"Wrong argument type."};
+                }
+                arguments[field.name] = std::move(parsed);
+            } catch (...) {
+                ToolFormState().Text(winrt::to_hstring("Check the value of " + field.name + "."));
+                return std::nullopt;
+            }
+        } else if (field.type == "string-array") {
+            Json values = Json::array();
+            std::stringstream stream{value};
+            std::string item;
+            while (std::getline(stream, item, ',')) {
+                const auto start = item.find_first_not_of(" \t\r\n");
+                if (start == std::string::npos) continue;
+                const auto end = item.find_last_not_of(" \t\r\n");
+                values.push_back(item.substr(start, end - start + 1));
+            }
+            arguments[field.name] = std::move(values);
+        } else {
+            arguments[field.name] = value;
+        }
+    }
+    ToolFormState().Text(L"Canonical arguments ready for Manager validation.");
+    return arguments.dump();
+}
+
 void MainWindow::FilterTools()
 {
     if (rebuildingTools_ || !ToolList()) return;
@@ -1973,7 +2130,7 @@ void MainWindow::ApplyOperational(
             ? winrt::to_string(PageTitle().Text()) == "Events & Evidence"
                 ? std::string{"AUDIT ONLY"}
                 : std::to_string(visibleOperationalIndices_.size()) + " AUDIT"
-            : std::to_string(visibleOperationalIndices_.size()) + " LIVE"));
+            : std::to_string(visibleOperationalIndices_.size()) + " RECORDS"));
     OperationalSessionCard().Visibility(
         snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents &&
             hasOpenSessions ? Visibility::Visible : Visibility::Collapsed);
@@ -2125,11 +2282,22 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (action == Action::ToolInvoke) {
         toolProject = winrt::to_string(ToolProjectId().Text());
         toolName = winrt::to_string(ToolName().Text());
-        toolArguments = winrt::to_string(ToolArguments().Text());
-        if (toolProject.empty() || toolName.empty() || toolArguments.empty()) {
-            ToolsState().Text(L"Project ID, tool name, and JSON arguments are required.");
+        const auto index = ToolList().SelectedIndex();
+        if (index < 0 || static_cast<std::size_t>(index) >= visibleTools_.size() ||
+            tools_[visibleTools_[static_cast<std::size_t>(index)]].name != toolName) {
+            ToolsState().Text(L"Select a registered capability from the catalog before invoking it.");
             co_return;
         }
+        if (toolProject.empty()) {
+            ToolsState().Text(L"Select an authorized project in Projects before invoking a tool.");
+            co_return;
+        }
+        const auto canonical = ToolCanonicalArguments();
+        if (!canonical) {
+            ToolsState().Text(L"Review the required tool arguments before invoking.");
+            co_return;
+        }
+        toolArguments = *canonical;
     }
     if (action == Action::OperationalClose) {
         operationalSessionId = winrt::to_string(OperationalSessionId().Text());
