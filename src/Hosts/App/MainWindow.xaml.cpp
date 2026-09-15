@@ -895,6 +895,9 @@ void MainWindow::NavigationChanged(
         OperationalEvidenceCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalStatusGrid().Visibility(runtimes || tag == L"Manager"
             ? Visibility::Visible : Visibility::Collapsed);
+        OperationalListCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
+        OperationalRuntimeCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
+        OperationalDetailCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
         OperationalListViewport().Height(runtimes || tag == L"Manager" ? 235.0 : 545.0);
         OperationalManagerCard().Visibility(tag == L"Manager" ? Visibility::Visible : Visibility::Collapsed);
         OperationalRuntimePolicyCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
@@ -1514,6 +1517,19 @@ void MainWindow::ApplyTelemetryPresentation(
             std::to_string(static_cast<std::uint64_t>(maximum)) + " ms"));
     }
 
+    std::string timelineKey = std::to_string(snapshot.manager.processId) +
+        (snapshot.manager.serviceActive ? ":active" : ":inactive") +
+        (snapshot.storeHealthy.value
+            ? (*snapshot.storeHealthy.value ? ":store-ok" : ":store-failed")
+            : ":store-unknown") +
+        snapshot.provider.host + ':' + std::to_string(snapshot.provider.port);
+    for (const auto& event : snapshot.recentEvents) {
+        timelineKey += event.tool + event.status +
+            std::to_string(event.timestamp.time_since_epoch().count()) +
+            (event.duration ? std::to_string(event.duration->count()) : "");
+    }
+    if (timelineKey != activityTimelineKey_) {
+    activityTimelineKey_ = std::move(timelineKey);
     ActivityTimeline().Children().Clear();
     const auto appendEvent = [this](const hstring& time,
                                     const std::string& label,
@@ -1540,22 +1556,27 @@ void MainWindow::ApplyTelemetryPresentation(
         outcome.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
         outcome.Width(510);
         row.Children().Append(outcome);
-        ActivityTimeline().Children().Append(row);
+        Microsoft::UI::Xaml::Controls::Border ruled;
+        ruled.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush{
+            Windows::UI::Color{70, 102, 128, 153}});
+        ruled.BorderThickness(Microsoft::UI::Xaml::Thickness{0, 0, 0, 1});
+        ruled.Padding(Microsoft::UI::Xaml::Thickness{0, 0, 0, 4});
+        ruled.Child(row);
+        ActivityTimeline().Children().Append(ruled);
     };
-    const auto sampleTime = eventLocalTime(snapshot.capturedAt);
-    appendEvent(sampleTime,
+    appendEvent(L"CURRENT",
         snapshot.manager.serviceActive
             ? "Native Manager active · PID " + std::to_string(snapshot.manager.processId)
             : "Native Manager unavailable",
         !snapshot.manager.serviceActive);
     if (snapshot.storeHealthy.value) {
-        appendEvent(sampleTime,
+        appendEvent(L"CURRENT",
             *snapshot.storeHealthy.value
                 ? "Operational store health check succeeded"
                 : "Operational store health check failed",
             !*snapshot.storeHealthy.value);
     }
-    appendEvent(sampleTime,
+    appendEvent(L"CURRENT",
         "Provider endpoint configured · " +
             std::string{snapshot.provider.secure ? "HTTPS " : "HTTP "} +
             snapshot.provider.host + ":" + std::to_string(snapshot.provider.port),
@@ -1566,6 +1587,7 @@ void MainWindow::ApplyTelemetryPresentation(
             std::to_string(event.duration->count()) + " ms";
         appendEvent(eventLocalTime(event.timestamp), label,
             event.error.has_value() || event.status == "error");
+    }
     }
 
     const auto page = winrt::to_string(PageTitle().Text());
@@ -1689,6 +1711,7 @@ void MainWindow::ApplyProjectList(
         ProjectIntegrityValue().Foreground(
             Microsoft::UI::Xaml::Media::SolidColorBrush(Windows::UI::Color{255,255,200,87}));
         ProjectIdentity().Text(L"No registered project is selected.");
+        ProjectTechnicalIdentity().Text(L"No exact binding loaded.");
         ProjectFolders().Text(L"Register an authorized folder to begin.");
         ProjectPersistence().Text(L"No project memory store is active.");
         ProjectMemoryRecords().Children().Clear();
@@ -1783,7 +1806,10 @@ void MainWindow::ApplyProjectWorkspace(
         identity += "\nRepository identity: " +
             *snapshot.project.repositoryIdentity;
     }
-    ProjectIdentity().Text(winrt::to_hstring(identity));
+    ProjectIdentity().Text(winrt::to_hstring(
+        std::string{snapshot.integrityOk ? "Verified Manager binding" : "Manager binding needs attention"} +
+        " · " + std::to_string(snapshot.project.aliases.size()) +
+        (snapshot.project.aliases.size() == 1U ? " authorized folder" : " authorized folders")));
 
     std::string folders = "Authorized folders";
     for (const auto& alias : snapshot.project.aliases) {
@@ -1796,10 +1822,12 @@ void MainWindow::ApplyProjectWorkspace(
         ? "full-text and lexical search"
         : "lexical search";
     ProjectPersistence().Text(winrt::to_hstring(
-        std::string{snapshot.integrityOk ? "Integrity verified" : "Integrity check failed"} +
-        " · " + std::to_string(snapshot.recordCount) + " active records · " +
-        std::to_string(snapshot.tombstoneCount) + " tombstones · " +
-        std::to_string(snapshot.databaseBytes) + " database bytes · " + searchMode));
+        std::to_string(snapshot.recordCount) + " active memory records · " +
+        searchMode + " available"));
+    ProjectTechnicalIdentity().Text(winrt::to_hstring(identity +
+        "\nStore: " + std::to_string(snapshot.tombstoneCount) +
+        " tombstones · " + std::to_string(snapshot.databaseBytes) +
+        " database bytes · " + searchMode));
 
     ProjectMemoryRecords().Children().Clear();
     if (snapshot.records.empty()) {
@@ -1939,6 +1967,19 @@ void MainWindow::ApplyLmStudio(
         snapshot.mcpConfigurationRegistered &&
         snapshot.binaryExecutable;
     LmStudioBadge().Text(installed ? L"REGISTERED" : L"ATTENTION");
+    LmStudioHostReadiness().Text(snapshot.lmStudioPresent && snapshot.binaryExecutable
+        ? L"LM Studio detected · executable"
+        : snapshot.lmStudioPresent ? L"Host found · binary unavailable"
+            : L"LM Studio not detected on this host");
+    LmStudioRegistrationReadiness().Text(installed
+        ? L"Primary, fallback & CLU registered"
+        : L"Native registration incomplete");
+    LmStudioConnectorReadiness().Text(!snapshot.connectionCheckPerformed
+        ? L"Connector check not yet run"
+        : snapshot.primaryConnectorReady && snapshot.fallbackConnectorReady &&
+            snapshot.continuityConnectorReady && snapshot.connectedClientObserved
+            ? L"Three connectors ready · client observed"
+            : L"Working client not yet demonstrated");
     LmStudioOverview().Text(winrt::to_hstring(
         std::string{installed ? "Three native roles registered" : "Registration requires attention"} +
         " · " + (snapshot.connectedClientObserved ? "client observed" : "no connected client observed")));
@@ -2489,6 +2530,23 @@ void MainWindow::ApplyOperational(
                 valueAfter("Effective shell policy: ")));
             OperationalJobState().Text(winrt::to_hstring(
                 valueAfter("Job inventory: ")));
+            const auto operations = valueAfter("Owned operations: ");
+            const auto threads = valueAfter("Background threads: ");
+            const auto children = valueAfter("Child processes: ");
+            const auto stores = valueAfter("Open repositories/databases: ");
+            OperationalRuntimeReadiness().Text(
+                operations == "0" && threads == "0" && children == "0"
+                    ? L"Ready · execution lane idle"
+                    : L"Manager resources are active");
+            OperationalRuntimeOwnership().Text(winrt::to_hstring(
+                threads + " background threads · " + children +
+                " child processes · " + stores + " open stores"));
+            OperationalRuntimeExecution().Text(winrt::to_hstring(
+                operations + " owned operations"));
+            OperationalRuntimeStores().Text(winrt::to_hstring(
+                stores + " open stores"));
+            OperationalRuntimeJobs().Text(winrt::to_hstring(
+                valueAfter("Job inventory: ")));
         }
     }
     std::string summary;
@@ -2776,6 +2834,8 @@ void MainWindow::ApplyOperational(
             ? winrt::to_string(PageTitle().Text()) == "Events & Evidence"
                 ? std::string{"AUDIT ONLY"}
                 : std::to_string(visibleOperationalIndices_.size()) + " AUDIT"
+            : snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes
+                ? std::string{"LIVE RESOURCE STATE"}
             : std::to_string(visibleOperationalIndices_.size()) + " RECORDS"));
     if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes ||
         snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Manager) {
@@ -3378,6 +3438,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 LmStudioRegistrationState().Text(winrt::to_hstring(message));
                 LmStudioOverview().Text(winrt::to_hstring(message));
                 LmStudioBadge().Text(L"UNAVAILABLE");
+                LmStudioHostReadiness().Text(L"Host inspection unavailable");
+                LmStudioRegistrationReadiness().Text(L"Registration not read");
+                LmStudioConnectorReadiness().Text(L"Connection not verified");
             }
         } else if (toolsAction) {
             if (toolsView.snapshot) ApplyTools(*toolsView.snapshot);
@@ -3411,6 +3474,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 }
             } else {
                 OperationalState().Text(winrt::to_hstring(message));
+                if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes) {
+                    OperationalRuntimeReadiness().Text(L"Runtime readback unavailable");
+                    OperationalRuntimeOwnership().Text(winrt::to_hstring(message));
+                    OperationalRuntimeJobs().Text(L"Job state cannot be inspected until the Manager reconnects.");
+                }
                 OperationalListSummary().Text(winrt::to_hstring(message));
                 OperationalCount().Text(L"UNAVAILABLE");
                 if (operationalLines_.empty()) {

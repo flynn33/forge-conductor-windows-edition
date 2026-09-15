@@ -132,6 +132,7 @@ private:
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;
     std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
         telemetrySnapshot_;
+    std::string activityTimelineKey_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
     std::optional<::ForgeConductor::Manager::ManagerProjectMemoryRecord> selectedMemoryRecord_;
     std::string selectedMemoryProjectId_;

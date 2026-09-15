@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.14 — Distinct sparse-state compositions
+
+- Give LM Studio MCP separate host, registration, and connector-readiness stages without implying a working client when it is absent.
+- Keep exact project UUID and repository hash under Advanced; lead with a verified human-facing binding and concise store readback.
+- Replace Runtimes' repeated four-line inventory with a Manager-owned execution topology while honestly labeling unavailable job inspection.
+- Tighten the Rig middle row for the usable Windows viewport and stop rebuilding the recent-activity timeline on every telemetry tick when its content has not changed.
+- Preserve open feature and installed all-view QA; audit activity is still not durable verified evidence.
+
 ## 1.1.13 — Cold-launch catalog and installed-version correction
 
 - Start and authenticate the Manager before restoring a page that immediately needs its catalog; keep the empty Tools state compact and explicitly recoverable if readback fails.
