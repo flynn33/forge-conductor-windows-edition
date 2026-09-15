@@ -5,6 +5,7 @@
 #include "ForgeConductor/Domain/ProductIdentity.h"
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Windowing.h>
+#include <winrt/Windows.Graphics.h>
 #include <winrt/Windows.UI.h>
 #include <winrt/Windows.UI.Text.h>
 #include <microsoft.ui.xaml.window.h>
@@ -287,6 +288,30 @@ void MainWindow::WindowContentLoaded(
     } catch (...) {
         // Title-bar theming is presentation-only; never block the runtime surface.
     }
+    try {
+        auto nativeWindow = this->m_inner.as<::IWindowNative>();
+        HWND hwnd{};
+        winrt::check_hresult(nativeWindow->get_WindowHandle(&hwnd));
+        MONITORINFO monitor{sizeof(MONITORINFO)};
+        if (::GetMonitorInfoW(::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST),
+                &monitor)) {
+            const auto workWidth = static_cast<int>(
+                monitor.rcWork.right - monitor.rcWork.left);
+            const auto workHeight = static_cast<int>(
+                monitor.rcWork.bottom - monitor.rcWork.top);
+            const auto width = std::min(1680, workWidth - 40);
+            const auto height = std::min(920, workHeight);
+            if (width >= 760 && height >= 600) {
+                const auto window = AppWindow();
+                window.Resize(Windows::Graphics::SizeInt32{width, height});
+                window.Move(Windows::Graphics::PointInt32{
+                    monitor.rcWork.left + (workWidth - width) / 2,
+                    monitor.rcWork.top});
+            }
+        }
+    } catch (...) {
+        // Invalid monitor geometry must not prevent the native console from opening.
+    }
     FooterMachineName().Text(currentMachineName());
     ProfileState().Text(winrt::to_hstring(connection_
         ? connection_->profileSummary()
@@ -329,6 +354,44 @@ void MainWindow::WindowContentLoaded(
     RunAction(Action::ProjectList);
     RunAction(Action::Refresh);
     telemetryTimer_.Start();
+}
+
+void MainWindow::ConsoleSizeChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+{
+    using namespace Microsoft::UI::Xaml;
+    using namespace Microsoft::UI::Xaml::Controls;
+    const auto width = args.NewSize().Width;
+    const auto narrowPane = width < 1400.0;
+    const auto paneMode = narrowPane
+        ? NavigationViewPaneDisplayMode::LeftCompact
+        : NavigationViewPaneDisplayMode::Left;
+    if (RootNavigation().PaneDisplayMode() != paneMode) {
+        RootNavigation().PaneDisplayMode(paneMode);
+        RootNavigation().IsPaneOpen(!narrowPane);
+    }
+
+    const auto compactCards = width < 1280.0;
+    MetricColumn2().Width(compactCards
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{1.0, GridUnitType::Star});
+    MetricColumn3().Width(compactCards
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{1.0, GridUnitType::Star});
+    Grid::SetRow(GpuMetricCard(), compactCards ? 1 : 0);
+    Grid::SetColumn(GpuMetricCard(), compactCards ? 0 : 2);
+    Grid::SetRow(ContextMetricCard(), compactCards ? 1 : 0);
+    Grid::SetColumn(ContextMetricCard(), compactCards ? 1 : 3);
+    HeaderProfileColumn().Width(compactCards
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{1.0, GridUnitType::Auto});
+    Grid::SetRow(ProfileCard(), compactCards ? 1 : 0);
+    Grid::SetColumn(ProfileCard(), compactCards ? 0 : 1);
+    ProfileCard().MinWidth(compactCards ? 0.0 : 610.0);
+    ProfileCard().Margin(compactCards
+        ? Thickness{0.0, 14.0, 0.0, 0.0}
+        : Thickness{0.0, 0.0, 0.0, 0.0});
 }
 
 void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,
@@ -1794,7 +1857,8 @@ void MainWindow::RenderToolOutcome(
     ToolOutcomeStatus().Text(winrt::to_hstring(
         std::string{snapshot.ok ? "Completed" : "Did not complete"} +
         " · " + snapshot.toolName + " · " +
-        std::to_string(snapshot.elapsed.count()) + " ms"));
+        (snapshot.elapsed.count() == 0 ? std::string{"<1 ms"}
+            : std::to_string(snapshot.elapsed.count()) + " ms")));
     ToolOutcomeStatus().Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{
         snapshot.ok ? Windows::UI::Color{255, 61, 220, 151}
                     : Windows::UI::Color{255, 255, 200, 87}});
@@ -2893,6 +2957,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (scheduled) RunAction(static_cast<Action>(*scheduled));
     if (action == Action::Start || action == Action::Restart) {
         RunAction(Action::Refresh);
+        if (!failed && OperationalPanel().Visibility() == Visibility::Visible)
+            RunAction(Action::OperationalInspect);
     }
     if (followUp) RunAction(*followUp);
 }

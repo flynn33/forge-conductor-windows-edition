@@ -16,6 +16,8 @@ struct MainWindow : MainWindowT<MainWindow> {
         Microsoft::UI::Xaml::WindowEventArgs const&);
     void WindowContentLoaded(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ConsoleSizeChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::SizeChangedEventArgs const&);
     void RefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void StartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void StopClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);

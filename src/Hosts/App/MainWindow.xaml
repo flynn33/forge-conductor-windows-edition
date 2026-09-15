@@ -8,7 +8,7 @@
    x:Name="RootNavigation"
    Background="{StaticResource ForgeAppBackgroundBrush}"
    PaneTitle=""
-   PaneDisplayMode="Auto"
+   PaneDisplayMode="LeftCompact"
    OpenPaneLength="286"
    CompactPaneLength="56"
    CompactModeThresholdWidth="1420"
@@ -18,7 +18,8 @@
    IsPaneToggleButtonVisible="True"
    IsTitleBarAutoPaddingEnabled="True"
    SelectionChanged="NavigationChanged"
-   Loaded="WindowContentLoaded">
+   Loaded="WindowContentLoaded"
+   SizeChanged="ConsoleSizeChanged">
   <NavigationView.PaneHeader>
    <StackPanel Margin="10,4,10,14" Spacing="10">
     <StackPanel Orientation="Horizontal" Spacing="9" Margin="38,0,0,0">
@@ -71,28 +72,6 @@
   </NavigationView.PaneFooter>
   <ScrollViewer x:Name="MainScrollViewer" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Auto">
    <StackPanel x:Name="PageContent" Padding="26,22,26,36" Spacing="14" HorizontalAlignment="Stretch">
-    <VisualStateManager.VisualStateGroups>
-     <VisualStateGroup x:Name="ResponsiveStates">
-      <VisualState x:Name="WideLayout">
-       <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1260" /></VisualState.StateTriggers>
-      </VisualState>
-      <VisualState x:Name="CompactLayout">
-       <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers>
-       <VisualState.Setters>
-        <Setter Target="MetricColumn2.Width" Value="0" />
-        <Setter Target="MetricColumn3.Width" Value="0" />
-        <Setter Target="GpuMetricCard.(Grid.Column)" Value="0" />
-        <Setter Target="GpuMetricCard.(Grid.Row)" Value="1" />
-        <Setter Target="ContextMetricCard.(Grid.Column)" Value="1" />
-        <Setter Target="ContextMetricCard.(Grid.Row)" Value="1" />
-        <Setter Target="HeaderProfileColumn.Width" Value="0" />
-        <Setter Target="ProfileCard.(Grid.Column)" Value="0" />
-        <Setter Target="ProfileCard.(Grid.Row)" Value="1" />
-        <Setter Target="ProfileCard.Margin" Value="0,14,0,0" />
-       </VisualState.Setters>
-      </VisualState>
-     </VisualStateGroup>
-    </VisualStateManager.VisualStateGroups>
     <Grid x:Name="HeaderGrid" ColumnSpacing="20">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="HeaderProfileColumn" Width="Auto"/></Grid.ColumnDefinitions>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -418,7 +397,7 @@
      <Border Style="{StaticResource ForgeHeroCardStyle}" MinHeight="118" Padding="20"><Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="12" Background="{StaticResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE713;" FontSize="24" Foreground="{StaticResource ForgeAccentBrush}"/></Border><StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center"><TextBlock Text="Effective configuration" FontFamily="Segoe UI Variable Display" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="The Manager owns these preferences. Save includes an effective readback." Style="{StaticResource ForgeCaptionStyle}"/></StackPanel><StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center"><TextBlock Text="SOURCE OF TRUTH" Style="{StaticResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsHeroReadback" Text="Awaiting Manager settings" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel></Grid></Border>
      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{StaticResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Dashboard" Style="{StaticResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsDashboardSummary" Text="—" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Local control endpoint" Style="{StaticResource ForgeCaptionStyle}"/></StackPanel></Border><Border Grid.Column="1" Style="{StaticResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Model endpoint" Style="{StaticResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsProviderSummary" Text="—" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Loopback Responses" Style="{StaticResource ForgeCaptionStyle}"/></StackPanel></Border><Border Grid.Column="2" Style="{StaticResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Context threshold" Style="{StaticResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsContextSummary" Text="—" Style="{StaticResource ForgeMetricValueStyle}" FontSize="27"/><TextBlock Text="Effective tokens" Style="{StaticResource ForgeCaptionStyle}"/></StackPanel></Border><Border Grid.Column="3" Style="{StaticResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Shell policy" Style="{StaticResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsShellSummary" Text="—" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="Manager invocation guard" Style="{StaticResource ForgeCaptionStyle}"/></StackPanel></Border></Grid>
      <Border Style="{StaticResource ForgeCardStyle}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="5"><TextBlock Text="Apply &amp; verify" Style="{StaticResource ForgeSectionTitleStyle}"/><TextBlock Text="Unsaved edits remain pending until the Manager accepts and reads them back." Style="{StaticResource ForgeCaptionStyle}"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="Reload" Click="SettingsLoadClicked"/><Button Content="Revert" Click="SettingsRevertClicked"/><Button Content="Save &amp; read back" Click="SettingsSaveClicked" Style="{StaticResource ForgeAccentButtonStyle}"/></StackPanel></Grid></Border>
-     <Expander Header="Manager &amp; dashboard controls" IsExpanded="True"><Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <Expander Header="Manager &amp; dashboard controls" IsExpanded="True" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><Border Style="{StaticResource ForgeCardStyle}" HorizontalAlignment="Stretch"><StackPanel Spacing="14" HorizontalAlignment="Stretch">
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -437,7 +416,7 @@
       <ComboBoxItem Content="Warning"/><ComboBoxItem Content="Error"/><ComboBoxItem Content="Critical"/>
      </ComboBox>
      </StackPanel></Border></Expander>
-     <Expander Header="LM Studio provider controls" IsExpanded="False"><Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <Expander Header="LM Studio provider controls" IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><Border Style="{StaticResource ForgeCardStyle}" HorizontalAlignment="Stretch"><StackPanel Spacing="14" HorizontalAlignment="Stretch">
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -448,7 +427,7 @@
      </Grid>
      <TextBlock Text="LM Studio is a loopback provider and does not require a stored credential. Test connection discovers the currently loaded model without starting a response." TextWrapping="Wrap" Opacity="0.72" />
      </StackPanel></Border></Expander>
-     <Expander Header="Context rollover policy" IsExpanded="False"><Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <Expander Header="Context rollover policy" IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><Border Style="{StaticResource ForgeCardStyle}" HorizontalAlignment="Stretch"><StackPanel Spacing="14" HorizontalAlignment="Stretch">
      <TextBlock Text="The effective capacity is Forge Conductor's operating threshold. It may be lower than the model's loaded capacity. Rollover begins when observed context plus all three reserves reaches this threshold." TextWrapping="Wrap" Opacity="0.72" />
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/></Grid.ColumnDefinitions>
@@ -463,7 +442,7 @@
       <NumberBox x:Name="SettingsSafetyMargin" Grid.Row="3" Grid.Column="1" Header="Exact tokens" Minimum="1" Maximum="1048575" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Exact estimation safety margin in tokens" />
      </Grid>
      </StackPanel></Border></Expander>
-     <Expander Header="Data maintenance · destructive actions" IsExpanded="False"><Border Style="{StaticResource ForgeCardStyle}"><StackPanel Spacing="14">
+     <Expander Header="Data maintenance · destructive actions" IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><Border Style="{StaticResource ForgeCardStyle}" HorizontalAlignment="Stretch"><StackPanel Spacing="14" HorizontalAlignment="Stretch">
      <InfoBar IsOpen="True" Severity="Warning" IsClosable="False" Title="Exact confirmation required"
       Message="Project resets affect only the exact selected project ID. All-project reset affects every registered project in this profile. Source folders are never deleted." />
      <ComboBox x:Name="MaintenanceScope" Header="Reset scope" Width="360" HorizontalAlignment="Left" SelectedIndex="0" AutomationProperties.Name="Data reset scope">

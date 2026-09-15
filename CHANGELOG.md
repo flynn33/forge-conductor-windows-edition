@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.9 — Adaptive native console
+
+- Size the native window to its current monitor's usable work area on launch, with a deliberate full-height command-center viewport.
+- Use a compact left rail and two-row Rig metrics on narrower displays; keep the full navigation pane and four-card instrument row on wide displays.
+- Stretch detailed Settings controls across the available content width and show sub-millisecond tool outcomes accurately.
+- Automatically retry selected operational readback after Manager ensure or restart; installed feature and visual QA remain open.
+
 ## 1.1.8 — Structured result and configuration composition
 
 - Present native tool outcomes as bounded records with clear completion and invocation duration; retain exact payload in Advanced.
