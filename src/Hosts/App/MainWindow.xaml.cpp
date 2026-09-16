@@ -477,6 +477,16 @@ void MainWindow::ConsoleSizeChanged(
     Grid::SetColumn(GpuMetricCard(), compactCards ? 0 : 2);
     Grid::SetRow(ContextMetricCard(), compactCards ? 1 : 0);
     Grid::SetColumn(ContextMetricCard(), compactCards ? 1 : 3);
+    SettingsSummaryColumn2().Width(compactCards
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{1.0, GridUnitType::Star});
+    SettingsSummaryColumn3().Width(compactCards
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{1.0, GridUnitType::Star});
+    Grid::SetRow(SettingsContextCard(), compactCards ? 1 : 0);
+    Grid::SetColumn(SettingsContextCard(), compactCards ? 0 : 2);
+    Grid::SetRow(SettingsShellCard(), compactCards ? 1 : 0);
+    Grid::SetColumn(SettingsShellCard(), compactCards ? 1 : 3);
     HeaderProfileColumn().Width(compactCards
         ? GridLength{0.0, GridUnitType::Pixel}
         : GridLength{1.0, GridUnitType::Auto});

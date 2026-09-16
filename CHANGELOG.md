@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.39 — Large-text responsive refinement
+
+- Reflow the Settings summary cards into a balanced two-by-two composition at compact width, matching the Rig telemetry treatment instead of compressing four cards into one row.
+- Allow environment and last-updated metadata to wrap to two lines so Windows 200% text scaling preserves complete values without overlapping adjacent header controls.
+- Carry forward the signed installed 1.1.38 Direction A visual sweep and its compact, ultrawide, filtered-empty, and High Contrast evidence. Desktop-source handoff remains a separate qualification gate.
+
 ## 1.1.38 — Direction A depth and compact Rig composition
 
 - Give the native shell and cards layered graphite-to-blue gradients, directional borders, and a brighter hero edge; retain system-color brushes in High Contrast.
