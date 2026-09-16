@@ -2370,6 +2370,8 @@ template <typename T, typename Parser>
         {"duration_ms", event.duration
              ? Json(event.duration->count()) : Json(nullptr)},
         {"error", optionalString(event.error)},
+        {"project_id", event.projectId
+             ? Json(event.projectId->value()) : Json(nullptr)},
         {"status", event.status},
         {"timestamp_utc_ms", epochMilliseconds(event.timestamp)},
         {"tool", event.tool}};
@@ -2379,7 +2381,7 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"arguments_digest", "client_id", "duration_ms", "error", "status",
+        {"arguments_digest", "client_id", "duration_ms", "error", "project_id", "status",
          "timestamp_utc_ms", "tool"},
         "Manager telemetry audit event");
     return Domain::AuditEvent{
@@ -2400,7 +2402,13 @@ template <typename T, typename Parser>
                 return std::chrono::milliseconds{
                     nonnegativeIntegerMember(object, name)};
             }),
-        optionalField<std::string>(value, "error", stringMember)};
+        optionalField<std::string>(value, "error", stringMember),
+        std::nullopt,
+        std::nullopt,
+        optionalField<Domain::ProjectId>(value, "project_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::ProjectId>(object, name);
+            })};
 }
 
 [[nodiscard]] Json managerTelemetrySnapshotJson(

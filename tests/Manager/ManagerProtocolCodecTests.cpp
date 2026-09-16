@@ -308,7 +308,10 @@ void replaceOne(
             identifier<Domain::Sha256Digest>(std::string(64U, 'b')),
             "success",
             25ms,
-            std::nullopt}},
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            run.record.projectId}},
         Domain::makeUnavailableTelemetryMetric<bool>(
             Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
             capturedAt,
@@ -582,6 +585,7 @@ void testManagerTelemetryRoundTripsWithoutLosingAvailability()
     REQUIRE(actual.projects.size() == 1U);
     REQUIRE(actual.tools.size() == 2U);
     REQUIRE(actual.recentEvents.size() == 1U);
+    REQUIRE(actual.recentEvents[0].projectId == sampleManagedRun().record.projectId);
     REQUIRE(!actual.storeHealthy.value);
     REQUIRE(actual.storeHealthy.availability ==
             Domain::TelemetryMetricAvailability::TemporarilyUnavailable);

@@ -10,7 +10,7 @@
    PaneTitle=""
    PaneDisplayMode="Left"
    IsPaneOpen="True"
-   OpenPaneLength="286"
+    OpenPaneLength="232"
    CompactPaneLength="56"
    CompactModeThresholdWidth="1420"
    ExpandedModeThresholdWidth="1600"
@@ -26,14 +26,14 @@
     <ResourceDictionary.ThemeDictionaries>
      <ResourceDictionary x:Key="Default">
       <LinearGradientBrush x:Key="NavigationViewItemBackgroundSelected" StartPoint="0,0" EndPoint="1,1">
-       <GradientStop Color="#FF123E6C" Offset="0" />
-       <GradientStop Color="#FF163C68" Offset="0.65" />
-       <GradientStop Color="#FF174579" Offset="1" />
+        <GradientStop Color="#FF18263F" Offset="0" />
+        <GradientStop Color="#FF1B2D4B" Offset="0.65" />
+        <GradientStop Color="#FF203759" Offset="1" />
       </LinearGradientBrush>
-      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="#FF1B4B7D" />
-      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="#FF18416B" />
-      <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="#FFF4F8FC" />
-      <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="#FF2BA8FF" />
+       <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="#FF253D62" />
+       <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="#FF1B2D4B" />
+       <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="#FFF3F7FF" />
+       <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="#FF57A6FF" />
      </ResourceDictionary>
      <ResourceDictionary x:Key="HighContrast">
       <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="{ThemeResource SystemColorHighlightColor}" />
@@ -96,12 +96,12 @@
    </Border>
   </NavigationView.PaneFooter>
   <ScrollViewer x:Name="MainScrollViewer" Background="{ThemeResource ForgeContentBackgroundBrush}" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch" VerticalScrollBarVisibility="Auto">
-   <StackPanel x:Name="PageContent" Padding="26,22,26,36" Spacing="14" HorizontalAlignment="Stretch">
+    <StackPanel x:Name="PageContent" Padding="32,26,32,40" Spacing="16" HorizontalAlignment="Stretch">
     <Grid x:Name="HeaderGrid" ColumnSpacing="20">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="HeaderProfileColumn" Width="Auto"/></Grid.ColumnDefinitions>
      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
      <StackPanel Spacing="4">
-      <TextBlock x:Name="PageTitle" Text="Rig" FontFamily="Segoe UI Variable Display" FontSize="30" FontWeight="SemiBold" Foreground="{ThemeResource ForgeTextPrimaryBrush}" />
+       <TextBlock x:Name="PageTitle" Text="Rig" FontFamily="Segoe UI Variable Display" FontSize="32" FontWeight="SemiBold" Foreground="{ThemeResource ForgeTextPrimaryBrush}" />
       <TextBlock x:Name="PageDescription" Text="Manager, runtime, and provider health." TextWrapping="Wrap" Foreground="{ThemeResource ForgeTextSecondaryBrush}" FontSize="14" />
      </StackPanel>
      <Border x:Name="ProfileCard" Grid.Column="1" Background="Transparent" Padding="0" MinWidth="610" VerticalAlignment="Center">
@@ -466,7 +466,19 @@
       <Border x:Name="OperationalListCard" Style="{ThemeResource ForgeCardStyle}">
        <Grid RowSpacing="12"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE9D9;" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock x:Name="OperationalListTitle" Text="Live inventory" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right"><Button Content="Refresh" Click="OperationalRefreshClicked" Style="{ThemeResource ForgeAccentButtonStyle}"/><Button x:Name="OperationalPruneButton" Content="Prune stale" Click="OperationalPruneClicked"/></StackPanel></Grid>
-        <StackPanel Grid.Row="1" Spacing="8"><TextBlock x:Name="OperationalListSummary" Text="Waiting for a Manager snapshot." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/><TextBox x:Name="OperationalAgentSearch" Visibility="Collapsed" PlaceholderText="Search specialist playbooks or sessions" TextChanged="OperationalAgentSearchChanged" AutomationProperties.Name="Search agent playbooks and sessions"/><Grid x:Name="OperationalFeedFilters" Visibility="Collapsed" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/><ColumnDefinition Width="140"/></Grid.ColumnDefinitions><TextBox x:Name="OperationalFeedSearch" PlaceholderText="Search tools or clients" TextChanged="OperationalFeedFilterChanged" AutomationProperties.Name="Search audit outcomes"/><ComboBox x:Name="OperationalFeedSeverity" Grid.Column="1" SelectedIndex="0" SelectionChanged="OperationalFeedSeverityChanged" AutomationProperties.Name="Filter audit severity"><ComboBoxItem Content="All statuses"/><ComboBoxItem Content="Errors"/><ComboBoxItem Content="Denied"/><ComboBoxItem Content="Success"/></ComboBox><ToggleButton x:Name="OperationalFeedPause" Grid.Column="2" Content="Pause display" Click="OperationalFeedPauseClicked"/></Grid></StackPanel>
+        <StackPanel Grid.Row="1" Spacing="8">
+         <TextBlock x:Name="OperationalListSummary" Text="Waiting for a Manager snapshot." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+         <TextBox x:Name="OperationalAgentSearch" Visibility="Collapsed" PlaceholderText="Search specialist playbooks or sessions" TextChanged="OperationalAgentSearchChanged" AutomationProperties.Name="Search agent playbooks and sessions"/>
+         <Grid x:Name="OperationalFeedFilters" Visibility="Collapsed" ColumnSpacing="8" RowSpacing="8">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBox x:Name="OperationalFeedSearch" Grid.ColumnSpan="2" PlaceholderText="Search tools or clients" TextChanged="OperationalFeedFilterChanged" AutomationProperties.Name="Search audit outcomes"/>
+          <ToggleButton x:Name="OperationalFeedPause" Grid.Column="2" Content="Pause display" Click="OperationalFeedPauseClicked"/>
+          <ComboBox x:Name="OperationalFeedSeverity" Grid.Row="1" SelectedIndex="0" SelectionChanged="OperationalFeedSeverityChanged" AutomationProperties.Name="Filter audit severity"><ComboBoxItem Content="All statuses"/><ComboBoxItem Content="Errors"/><ComboBoxItem Content="Denied"/><ComboBoxItem Content="Success"/></ComboBox>
+          <ComboBox x:Name="OperationalFeedCategory" Grid.Row="1" Grid.Column="1" SelectedIndex="0" SelectionChanged="OperationalFeedCategoryChanged" AutomationProperties.Name="Filter audit category"><ComboBoxItem Content="All categories"/><ComboBoxItem Content="Project memory"/><ComboBoxItem Content="Shell"/><ComboBoxItem Content="Agent"/><ComboBoxItem Content="Continuity"/><ComboBoxItem Content="Other tools"/></ComboBox>
+          <ComboBox x:Name="OperationalFeedProject" Grid.Row="1" Grid.Column="2" SelectedIndex="0" SelectionChanged="OperationalFeedProjectChanged" AutomationProperties.Name="Filter audit project"><ComboBoxItem Content="All projects"/><ComboBoxItem Content="Current project"/><ComboBoxItem Content="Unscoped"/></ComboBox>
+         </Grid>
+        </StackPanel>
          <Border Grid.Row="2" Style="{ThemeResource ForgeInsetStyle}" Padding="0"><Grid x:Name="OperationalListViewport" Height="545">
          <ListView x:Name="OperationalList" SelectionChanged="OperationalSelectionChanged" AutomationProperties.Name="Manager operational records"/>
          <GridView x:Name="OperationalCards" Visibility="Collapsed" SelectionChanged="OperationalCardSelectionChanged" AutomationProperties.Name="Agent playbook cards"/>

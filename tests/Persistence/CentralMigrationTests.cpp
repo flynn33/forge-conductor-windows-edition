@@ -48,7 +48,8 @@ constexpr std::string_view CentralLedger =
     "7:C007:e484d351fc622d0664bddeaa17a47b17929213a226341a98a9bed055df0864bd|"
     "8:C008:d4aff22aa147de43bfb77437762421f55c0c667e14a51f4e229ee1d1df9d5368|"
     "9:C009:3aadf0efc1844836e10bcab4927532767be92ed06b25cf9a12cb101c0dce6b11|"
-    "10:C010:9a75c71681d072ecddb28b021f8bd5578cc783307eac6511e13ddf192346a0ab";
+    "10:C010:9a75c71681d072ecddb28b021f8bd5578cc783307eac6511e13ddf192346a0ab|"
+    "11:C011:82bda99a53aec3474628ff80d3e23225f753b569ad43b8acccb8b631aec45830";
 
 const std::vector<std::string> CentralTables{
     "agent_sessions",
@@ -285,7 +286,7 @@ void requireCurrentSnapshot(
     const auto snapshot = take(database.schemaSnapshot(context));
     require(snapshot.kind == PersistenceWindows::DatabaseStoreKind::Central,
             "central facade reported the wrong database kind");
-    require(snapshot.physicalVersion == 10 &&
+    require(snapshot.physicalVersion == 11 &&
                 snapshot.sourceCompatibilityVersion == 5,
             "central facade reported the wrong schema versions");
     require(!snapshot.fts5Enabled,
@@ -309,9 +310,9 @@ void requireCurrentLedgerAndConstraints(
         *environment, WinsqliteOpenMode::ReadOnlyExisting, context);
 
     require(queryInteger(connection,
-                         "SELECT COUNT(*) FROM schema_version WHERE version = 10;",
+                         "SELECT COUNT(*) FROM schema_version WHERE version = 11;",
                          context) == 1,
-            "central target does not have exactly one version-10 marker");
+            "central target does not have exactly one version-11 marker");
     require(queryInteger(connection, "SELECT COUNT(*) FROM schema_version;", context) == 1,
             "central target retained an ambiguous version ledger");
     require(queryText(
@@ -352,7 +353,8 @@ void requireCurrentLedgerAndConstraints(
                 "8:error:TEXT:0:<null>:0:0|9:event_id:TEXT:0:<null>:0:0|"
                 "10:occurred_at:TEXT:0:<null>:0:0|11:arguments_json:TEXT:0:<null>:0:0|"
                 "12:error_code:TEXT:0:<null>:0:0|13:mutating:INTEGER:0:<null>:0:0|"
-                "14:mcp_role:TEXT:0:<null>:0:0|15:deployment_id:TEXT:0:<null>:0:0",
+                "14:mcp_role:TEXT:0:<null>:0:0|15:deployment_id:TEXT:0:<null>:0:0|"
+                "16:project_id:TEXT:0:<null>:0:0",
             "central audit-event columns changed");
     require(queryText(connection, columnSignatureSql("client_presence"), context) ==
                 "0:client_id:TEXT:0:<null>:1:0|1:role:TEXT:1:<null>:0:0|"
@@ -836,6 +838,10 @@ void testReleasedCentralVersion9UpgradesWithoutContentLoss(
                          "mcp_role IS NOT NULL OR deployment_id IS NOT NULL;",
                          context) == 0,
             "C010 fabricated provenance for historical audit rows");
+    require(queryInteger(connection,
+                         "SELECT COUNT(*) FROM audit_events WHERE project_id IS NOT NULL;",
+                         context) == 0,
+            "C011 fabricated project scope for historical audit rows");
     take(connection.close(context));
 }
 
@@ -881,12 +887,12 @@ void testCentralRejectsUnsupportedFutureAndAmbiguousLayouts(
         auto environment = KernelEnvironment::create(directory.path(), L"store.sqlite");
         auto connection = openDatabase(
             *environment, WinsqliteOpenMode::ReadWriteExisting, context);
-        take(connection.execute("UPDATE schema_version SET version = 11;", context));
+        take(connection.execute("UPDATE schema_version SET version = 12;", context));
         take(connection.close(context));
         environment.reset();
         requireRejectedWithoutMainMutation(
             directory.path(), Domain::ErrorCodes::UnsupportedVersion,
-            "schema-11 central store was not rejected without changing the main file");
+            "schema-12 central store was not rejected without changing the main file");
     }
     {
         ScopedTestDirectory directory{L"central-ambiguous"};

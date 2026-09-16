@@ -1469,6 +1469,7 @@ private:
                 char timestamp[32]{};
                 std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S UTC", &utc);
                 lines.push_back(std::string{timestamp} + " · " + event.tool + " · " + event.status +
+                    (event.projectId ? " · project " + event.projectId->value() : "") +
                     (event.clientId ? " · " + event.clientId->value() : "") +
                     (event.duration ? " · " + std::to_string(event.duration->count()) + " ms" : "") +
                     (event.error ? "\n" + *event.error : ""));

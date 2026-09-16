@@ -288,6 +288,8 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
     const auto client = take(Domain::ClientId::parse("mcp-primary-client"));
     const auto deployment = take(Domain::DeploymentId::parse(
         "11111111-1111-4111-8111-111111111111"));
+    const auto project = take(Domain::ProjectId::parse(
+        "22222222-2222-4222-8222-222222222222"));
     const auto digest = take(Domain::Sha256Digest::parse(
         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
     const Domain::AuditEvent first{
@@ -299,7 +301,8 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
         42ms,
         std::nullopt,
         Domain::McpRole::Primary,
-        deployment};
+        deployment,
+        project};
     const Domain::AuditEvent second{
         utcTime(1, 456),
         std::nullopt,
@@ -322,7 +325,8 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
                 recent[0].duration == second.duration &&
                 recent[0].error == second.error &&
                 !recent[0].clientId && !recent[0].argumentsDigest &&
-                !recent[0].mcpRole && !recent[0].deploymentId,
+                !recent[0].mcpRole && !recent[0].deploymentId &&
+                !recent[0].projectId,
             "newest audit row did not round-trip");
     require(recent[1].timestamp == first.timestamp &&
                 recent[1].clientId == first.clientId &&
@@ -332,7 +336,8 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
                 recent[1].duration == first.duration &&
                 !recent[1].error &&
                 recent[1].mcpRole == first.mcpRole &&
-                recent[1].deploymentId == first.deploymentId,
+                recent[1].deploymentId == first.deploymentId &&
+                recent[1].projectId == first.projectId,
             "older audit row did not round-trip");
     require(take(fixture.repository->recent(
                     0U, Support::activeContext("audit-recent-empty")))

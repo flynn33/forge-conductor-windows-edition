@@ -219,6 +219,15 @@ constexpr std::array AuditEventVersion10Columns{
     column("mcp_role", "TEXT"),        column("deployment_id", "TEXT"),
 };
 
+constexpr auto AuditEventVersion11Columns = [] {
+    std::array<ColumnSpec, AuditEventVersion10Columns.size() + 1U> columns{};
+    for (std::size_t index{}; index < AuditEventVersion10Columns.size(); ++index) {
+        columns[index] = AuditEventVersion10Columns[index];
+    }
+    columns.back() = column("project_id", "TEXT");
+    return columns;
+}();
+
 constexpr std::array ContextHandoffVersion3Columns{
     column("id", "TEXT", false, 1),
     column("created_at", "TEXT", true),
@@ -838,6 +847,12 @@ constexpr auto CentralVersion10Tables = [] {
     return tables;
 }();
 
+constexpr auto CentralVersion11Tables = [] {
+    auto tables = CentralVersion10Tables;
+    tables[1] = TableSpec{"audit_events", AuditEventVersion11Columns, {}};
+    return tables;
+}();
+
 constexpr std::array CentralVersion6Indexes{
     IndexSpec{"idx_audit_events_event_id", "audit_events", true, true, EventIdIndexColumns,
               "event_id IS NOT NULL"},
@@ -990,6 +1005,8 @@ constexpr auto CentralVersion10Indexes = [] {
         AuditDeploymentIndexColumns, {}};
     return indexes;
 }();
+
+constexpr auto CentralVersion11Indexes = CentralVersion10Indexes;
 
 constexpr std::array ProjectVersion1Tables{
     TableSpec{"artifacts", ArtifactColumns, {}},
@@ -1170,6 +1187,11 @@ constexpr LayoutSpec CentralVersion10Layout{
     CentralVersion10Tables, CentralVersion10Indexes,
 };
 
+constexpr LayoutSpec CentralVersion11Layout{
+    DatabaseKind::Central, SchemaLayout::CentralVersion11, 11, CentralPhysicalVersion, false, true,
+    CentralVersion11Tables, CentralVersion11Indexes,
+};
+
 constexpr LayoutSpec ProjectVersion1Layout{
     DatabaseKind::Project, SchemaLayout::ProjectVersion1, 1, ProjectPhysicalVersion, true, false,
     ProjectVersion1Tables, ProjectVersion1Indexes,
@@ -1296,7 +1318,8 @@ template <typename T>
                layout == SchemaLayout::CentralVersion7 ||
                layout == SchemaLayout::CentralVersion8 ||
                layout == SchemaLayout::CentralVersion9 ||
-               layout == SchemaLayout::CentralVersion10;
+               layout == SchemaLayout::CentralVersion10 ||
+               layout == SchemaLayout::CentralVersion11;
     }
     if (databaseKind == DatabaseKind::Project)
     {
@@ -2643,22 +2666,26 @@ template <typename Reader>
          layout.layout == SchemaLayout::CentralVersion7 ||
          layout.layout == SchemaLayout::CentralVersion8 ||
          layout.layout == SchemaLayout::CentralVersion9 ||
-         layout.layout == SchemaLayout::CentralVersion10);
+         layout.layout == SchemaLayout::CentralVersion10 ||
+         layout.layout == SchemaLayout::CentralVersion11);
     std::size_t expectedCheckCount{};
     bool requiredChecksPresent{true};
     if (centralLedgerLayout && table.name == "audit_events")
     {
-        expectedCheckCount = layout.layout == SchemaLayout::CentralVersion10
+        expectedCheckCount = (layout.layout == SchemaLayout::CentralVersion10 ||
+                              layout.layout == SchemaLayout::CentralVersion11)
             ? 2U : 1U;
         requiredChecksPresent =
             canonical.find("CHECK(MUTATINGIN(0,1))") != std::string::npos &&
-            (layout.layout != SchemaLayout::CentralVersion10 ||
+            ((layout.layout != SchemaLayout::CentralVersion10 &&
+              layout.layout != SchemaLayout::CentralVersion11) ||
              canonical.find("CHECK(MCP_ROLEIN('primary','fallback','clu'))") !=
                  std::string::npos);
     }
     else if ((layout.layout == SchemaLayout::CentralVersion8 ||
               layout.layout == SchemaLayout::CentralVersion9 ||
-              layout.layout == SchemaLayout::CentralVersion10) &&
+              layout.layout == SchemaLayout::CentralVersion10 ||
+              layout.layout == SchemaLayout::CentralVersion11) &&
              table.name == "clu_operations")
     {
         expectedCheckCount = 8U;
@@ -2674,7 +2701,8 @@ template <typename Reader>
     }
     else if ((layout.layout == SchemaLayout::CentralVersion8 ||
               layout.layout == SchemaLayout::CentralVersion9 ||
-              layout.layout == SchemaLayout::CentralVersion10) &&
+              layout.layout == SchemaLayout::CentralVersion10 ||
+              layout.layout == SchemaLayout::CentralVersion11) &&
              table.name == "clu_provider_receipts")
     {
         expectedCheckCount = 3U;
@@ -2939,9 +2967,13 @@ template <typename Reader>
         {
             layout = &CentralVersion9Layout;
         }
-        else if (sourceVersion.value() == CentralPhysicalVersion)
+        else if (sourceVersion.value() == 10)
         {
             layout = &CentralVersion10Layout;
+        }
+        else if (sourceVersion.value() == CentralPhysicalVersion)
+        {
+            layout = &CentralVersion11Layout;
         }
         else
         {
@@ -3515,7 +3547,7 @@ Domain::Result<SchemaAssessment> SchemaMigrator::migrate(
                                                      std::move(finalAssessment).error());
         }
         const SchemaLayout expectedCurrentLayout =
-            priorAssessment.databaseKind == DatabaseKind::Central ? SchemaLayout::CentralVersion10
+            priorAssessment.databaseKind == DatabaseKind::Central ? SchemaLayout::CentralVersion11
                                                                   : SchemaLayout::ProjectVersion3;
         if (finalAssessment.value().layout != expectedCurrentLayout ||
             finalAssessment.value().sourceVersion != priorAssessment.targetVersion ||

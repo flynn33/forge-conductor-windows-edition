@@ -612,6 +612,11 @@ void writeAuditEvent(
         if (event.clientId) writer.string(event.clientId->value());
         else writer.nullValue();
     }
+    if (event.projectId || preserveNullOptionals) {
+        writer.member(first, "project_id");
+        if (event.projectId) writer.string(event.projectId->value());
+        else writer.nullValue();
+    }
     writer.member(first, "tool");
     writer.string(event.tool);
     writer.member(first, "status");

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.35 — Project-scoped audit feed
+
+- Carry the Manager-verified typed project authority into bounded audit persistence, Manager telemetry and dashboard readback. Requests that claim a mismatched project remain unscoped; projectless requests bound to a verified authority acquire its actual scope. C011 adds only the nullable project column, and historical outcomes remain unscoped instead of acquiring a fabricated binding.
+- Give Feed native status, tool-family and current-project/unscoped filters. The current-project choice uses the persistent project selector; no project identifier has to be entered in the Feed.
+- Rebalance the fourteen-view native shell toward Direction A's graphite canvas, restrained indigo/azure surfaces, softer card strokes, narrower navigation and more confident page typography. Installed visual and accessibility acceptance still depends on the exact signed candidate.
+- Add migration, audit round-trip, tool-router, Manager protocol and dashboard JSON regressions. Installed filtered-feed interaction and the complete acceptance matrix remain separate qualification work.
+
 ## 1.1.34 — Audit and exact-run presentation
 
 - Show the bounded Manager audit window's success, error and denial mix, with its most recent observation, alongside selectable Feed detail and a direct path to project-bound durable evidence.

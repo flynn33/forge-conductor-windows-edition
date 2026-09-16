@@ -37,7 +37,7 @@ constexpr std::size_t MaximumErrorBytes = 4U * 1024U;
 constexpr std::string_view ProjectionColumns =
     "COALESCE(occurred_at,timestamp),client_id,tool,args_digest,"
     "COALESCE(status,'ok'),duration_ms,COALESCE(error_code,error),"
-    "mcp_role,deployment_id";
+    "mcp_role,deployment_id,project_id";
 
 static_assert(
     WindowsAuditRepository::MaximumRetainedEvents > 0U &&
@@ -391,6 +391,12 @@ void bindOptionalText(
     if (role.has_value() != deploymentId.has_value()) {
         integrity("Persisted audit MCP provenance is incomplete.");
     }
+    std::optional<Domain::ProjectId> projectId;
+    if (auto value = optionalPersistedText(statement, 9, 128U, "project_id")) {
+        auto parsed = Domain::ProjectId::parse(*value);
+        if (!parsed) integrity("A persisted audit project identifier is invalid.");
+        projectId.emplace(std::move(parsed).value());
+    }
     return Domain::AuditEvent{
         timestamp,
         std::move(clientId),
@@ -400,7 +406,8 @@ void bindOptionalText(
         duration,
         std::move(error),
         role,
-        std::move(deploymentId)};
+        std::move(deploymentId),
+        std::move(projectId)};
 }
 
 } // namespace
@@ -476,8 +483,8 @@ Domain::Result<void> WindowsAuditRepository::append(
                     auto statement = take(transaction.prepare(
                         "INSERT INTO audit_events("
                         "timestamp,client_id,tool,args_digest,status,duration_ms,"
-                        "error,occurred_at,error_code,mcp_role,deployment_id) "
-                        "VALUES(?,?,?,?,?,?,?,?,?,?,?)"));
+                        "error,occurred_at,error_code,mcp_role,deployment_id,project_id) "
+                        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"));
                     take(statement.bindText(1, timestamp));
                     if (event.clientId) {
                         take(statement.bindText(2, event.clientId->value()));
@@ -511,6 +518,11 @@ Domain::Result<void> WindowsAuditRepository::append(
                             11, event.deploymentId->value()));
                     } else {
                         take(statement.bindNull(11));
+                    }
+                    if (event.projectId) {
+                        take(statement.bindText(12, event.projectId->value()));
+                    } else {
+                        take(statement.bindNull(12));
                     }
                     stepDone(statement);
 

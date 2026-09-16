@@ -197,6 +197,12 @@ void requireError(
             : std::nullopt,
         includeOptionals
             ? std::optional<std::string>{"warning text"}
+            : std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        includeOptionals
+            ? std::optional<Domain::ProjectId>{take(Domain::ProjectId::parse(
+                  "20000000-0000-4000-8000-000000000002"))}
             : std::nullopt};
 }
 
@@ -300,6 +306,7 @@ void encodesApplicationStatusAndNullSemantics()
     REQUIRE(open.at("summary").is_null());
     const auto& recent = value.at("recent_audit").at(0);
     REQUIRE(recent.at("client_id").is_null());
+    REQUIRE(recent.at("project_id").is_null());
     REQUIRE(recent.at("duration_ms").is_null());
     REQUIRE(recent.at("error").is_null());
     REQUIRE(recent.at("args_json").is_null());
@@ -371,6 +378,7 @@ void distinguishesEndpointOmissionFromStatusNulls()
             std::set<std::string>{"status", "timestamp", "tool"});
     const auto& presentAudit = auditValue.at("events").at(1);
     REQUIRE(presentAudit.at("client_id") == "dashboard-client");
+    REQUIRE(presentAudit.at("project_id") == "20000000-0000-4000-8000-000000000002");
     REQUIRE(presentAudit.at("duration_ms") == 17);
     REQUIRE(presentAudit.at("error") == "warning text");
     REQUIRE(!presentAudit.contains("args_json"));

@@ -1004,6 +1004,24 @@ void MainWindow::OperationalFeedSeverityChanged(Windows::Foundation::IInspectabl
         ApplyOperational(snapshot);
     }
 }
+void MainWindow::OperationalFeedCategoryChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Feed &&
+        operationalSnapshot_) {
+        const auto snapshot = *operationalSnapshot_;
+        ApplyOperational(snapshot);
+    }
+}
+void MainWindow::OperationalFeedProjectChanged(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    if (operationalArea_ == ::ForgeConductor::Manager::ManagerOperationalArea::Feed &&
+        operationalSnapshot_) {
+        const auto snapshot = *operationalSnapshot_;
+        ApplyOperational(snapshot);
+    }
+}
 void MainWindow::OperationalFeedPauseClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
@@ -1030,6 +1048,8 @@ void MainWindow::SelectOperationalRecord(const std::size_t index)
             for (std::size_t field = 3U; field < fields.size(); ++field) {
                 detail += fields[field].ends_with(" ms")
                     ? "\nDuration: " + fields[field]
+                    : fields[field].starts_with("project ")
+                    ? "\nProject identity: " + fields[field].substr(8)
                     : "\nClient identity: " + fields[field];
             }
             if (separator != std::string::npos)
@@ -3292,6 +3312,8 @@ void MainWindow::ApplyOperational(
     std::transform(feedQuery.begin(), feedQuery.end(), feedQuery.begin(),
         [](const unsigned char character) { return static_cast<char>(std::tolower(character)); });
     const auto statusFilter = OperationalFeedSeverity().SelectedIndex();
+    const auto categoryFilter = OperationalFeedCategory().SelectedIndex();
+    const auto projectFilter = OperationalFeedProject().SelectedIndex();
     for (const auto& line : snapshot.lines) {
         auto text = winrt::to_string(OperationalState().Text());
         OperationalState().Text(winrt::to_hstring(text + "\n\n" + line));
@@ -3325,6 +3347,19 @@ void MainWindow::ApplyOperational(
                 (statusFilter == 2 && status != "denied") ||
                 (statusFilter == 3 && status != "ok" && status != "success"))
                 continue;
+            const auto tool = fields.size() >= 2U ? std::string_view{fields[1]} :
+                std::string_view{};
+            const auto category = tool.starts_with("project_memory.") ? 1 :
+                tool.starts_with("shell_") ? 2 :
+                tool.starts_with("agent_") ? 3 :
+                (tool.starts_with("continuity.") || tool.starts_with("clu_")) ? 4 : 5;
+            if (categoryFilter > 0 && categoryFilter != category) continue;
+            const auto projectField = std::find_if(fields.begin(), fields.end(),
+                [](const auto& field) { return field.starts_with("project "); });
+            if (projectFilter == 1 &&
+                (selectedProjectId_.empty() || projectField == fields.end() ||
+                 projectField->substr(8) != selectedProjectId_)) continue;
+            if (projectFilter == 2 && projectField != fields.end()) continue;
             if (!feedQuery.empty()) {
                 auto searchable = line;
                 std::transform(searchable.begin(), searchable.end(), searchable.begin(),
@@ -3536,6 +3571,8 @@ void MainWindow::ApplyOperational(
         summary = std::to_string(visibleOperationalIndices_.size()) + " of " +
             std::to_string(operationalLines_.size()) +
             " bounded Manager audit outcomes · newest first" +
+            (projectFilter == 1 ? " · current project" :
+             projectFilter == 2 ? " · unscoped" : "") +
             (feedDisplayPaused_ ? " · display paused" : "");
     if (winrt::to_string(PageTitle().Text()) == "Events & Evidence")
         OperationalEvidenceAuditCount().Text(winrt::to_hstring(

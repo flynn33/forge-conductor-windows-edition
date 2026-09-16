@@ -71,6 +71,7 @@ struct AuditEvent final {
     std::optional<std::string> error;
     std::optional<McpRole> mcpRole;
     std::optional<DeploymentId> deploymentId;
+    std::optional<ProjectId> projectId;
 };
 
 struct DoctorCheck final {
