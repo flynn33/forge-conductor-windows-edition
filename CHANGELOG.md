@@ -1,11 +1,18 @@
 # Changelog
 
+## 1.1.36 — Adaptive Direction A composition
+
+- Bound the native page canvas to a practical 1440-pixel content width on ultrawide displays while preserving full-width cards at normal windows.
+- Stack the operational detail and insights under the main panel when the window narrows below 1080 pixels; retain the desktop two-column composition above that breakpoint.
+- Make a category/project-filtered empty Feed explicitly say no audited outcome matched, and update the detail message without blaming the Manager for a zero-match filter.
+- Carry forward the installed 1.1.35 fourteen-view archive-profile visual sweep and its exact-project audit proof. A disposable unpackaged live model-only run completed and sealed an exact project record, but this is not desktop continuity or independently verified assignment work.
+
 ## 1.1.35 — Project-scoped audit feed
 
 - Carry the Manager-verified typed project authority into bounded audit persistence, Manager telemetry and dashboard readback. Requests that claim a mismatched project remain unscoped; projectless requests bound to a verified authority acquire its actual scope. C011 adds only the nullable project column, and historical outcomes remain unscoped instead of acquiring a fabricated binding.
 - Give Feed native status, tool-family and current-project/unscoped filters. The current-project choice uses the persistent project selector; no project identifier has to be entered in the Feed.
-- Rebalance the fourteen-view native shell toward Direction A's graphite canvas, restrained indigo/azure surfaces, softer card strokes, narrower navigation and more confident page typography. Installed visual and accessibility acceptance still depends on the exact signed candidate.
-- Add migration, audit round-trip, tool-router, Manager protocol and dashboard JSON regressions. Installed filtered-feed interaction and the complete acceptance matrix remain separate qualification work.
+- Rebalance the fourteen-view native shell toward Direction A's graphite canvas, restrained indigo/azure surfaces, softer card strokes, narrower navigation and more confident page typography. Signed installed archive-profile captures cover the visual iteration; production, scaled and accessibility acceptance remain separate.
+- Add migration, audit round-trip, tool-router, Manager protocol and dashboard JSON regressions. Installed exact-project filtered-feed interaction passed; the complete acceptance matrix remains separate qualification work.
 
 ## 1.1.34 — Audit and exact-run presentation
 

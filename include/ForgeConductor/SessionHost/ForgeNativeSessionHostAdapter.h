@@ -14,7 +14,7 @@ class ForgeNativeSessionHostAdapter final
 public:
     static constexpr std::string_view AdapterIdentifier =
         "forge.native-session-host";
-    static constexpr std::string_view AdapterVersion = "1.1.35";
+    static constexpr std::string_view AdapterVersion = "1.1.36";
     static constexpr std::uint32_t ProtocolVersion = 1U;
     static constexpr std::size_t MaximumRetries = 3U;
 

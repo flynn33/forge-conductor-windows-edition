@@ -486,6 +486,16 @@ void MainWindow::ConsoleSizeChanged(
     ProfileCard().Margin(compactCards
         ? Thickness{0.0, 14.0, 0.0, 0.0}
         : Thickness{0.0, 0.0, 0.0, 0.0});
+
+    const auto stackedOperational = width < 1080.0;
+    OperationalGrid().ColumnDefinitions().GetAt(0).Width(GridLength{
+        8.0, GridUnitType::Star});
+    OperationalGrid().ColumnDefinitions().GetAt(1).Width(stackedOperational
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{4.0, GridUnitType::Star});
+    Grid::SetRow(OperationalSupplementPanel(), stackedOperational ? 1 : 0);
+    Grid::SetColumn(OperationalSupplementPanel(), stackedOperational ? 0 : 1);
+    Grid::SetRow(OperationalRuntimeCard(), stackedOperational ? 2 : 1);
 }
 
 void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,
@@ -3600,14 +3610,16 @@ void MainWindow::ApplyOperational(
     OperationalEmptyState().Visibility(visibleOperationalIndices_.empty()
         ? Visibility::Visible : Visibility::Collapsed);
     const auto filtered = snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
-        ? !feedQuery.empty() || statusFilter != 0 : !query.empty();
+        ? !feedQuery.empty() || statusFilter != 0 || categoryFilter != 0 ||
+              projectFilter != 0
+        : !query.empty();
     OperationalEmptyTitle().Text(!filtered ? L"No records yet" :
         snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
             ? L"No matching audit outcomes" : L"No matching specialists");
     OperationalEmptyBody().Text(!filtered
         ? L"The Manager returned no entries for this view. Refresh to check again."
         : snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed
-            ? L"Try another tool, client, or severity filter."
+            ? L"Try another tool, client, status, category, or project filter."
             : L"Try a different playbook, tool, or session search.");
     if (!visibleOperationalIndices_.empty()) {
         if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Agents)
