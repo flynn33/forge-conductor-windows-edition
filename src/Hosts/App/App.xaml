@@ -13,20 +13,30 @@
              <ResourceDictionary x:Key="Default">
 
              <LinearGradientBrush x:Key="ForgeAppBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
-                 <GradientStop Color="#FF0E1119" Offset="0" />
-                 <GradientStop Color="#FF090B11" Offset="1" />
+                 <GradientStop Color="#FF141E2D" Offset="0" />
+                 <GradientStop Color="#FF0D1420" Offset="0.54" />
+                 <GradientStop Color="#FF090D16" Offset="1" />
              </LinearGradientBrush>
              <LinearGradientBrush x:Key="ForgeContentBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
-                 <GradientStop Color="#FF151A25" Offset="0" />
-                 <GradientStop Color="#FF0E1119" Offset="0.48" />
-                 <GradientStop Color="#FF090B11" Offset="1" />
+                 <GradientStop Color="#FF1B293D" Offset="0" />
+                 <GradientStop Color="#FF151E2D" Offset="0.36" />
+                 <GradientStop Color="#FF0C111B" Offset="1" />
              </LinearGradientBrush>
-             <SolidColorBrush x:Key="ForgePaneBackgroundBrush" Color="#FF0B0E16" />
+             <SolidColorBrush x:Key="ForgePaneBackgroundBrush" Color="#FF101827" />
              <SolidColorBrush x:Key="ForgeSurfaceBrush" Color="#F5121722" />
-             <SolidColorBrush x:Key="ForgeSurfaceRaisedBrush" Color="#FF171D2A" />
-             <SolidColorBrush x:Key="ForgeSurfaceSubtleBrush" Color="#FF101520" />
+             <SolidColorBrush x:Key="ForgeSurfaceRaisedBrush" Color="#FF1B2535" />
+             <SolidColorBrush x:Key="ForgeSurfaceSubtleBrush" Color="#FF111A28" />
              <SolidColorBrush x:Key="ForgeControlFillBrush" Color="#FF1D2535" />
-             <SolidColorBrush x:Key="ForgeBorderBrush" Color="#FF253044" />
+             <LinearGradientBrush x:Key="ForgeBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                 <GradientStop Color="#FF3B536E" Offset="0" />
+                 <GradientStop Color="#FF28384F" Offset="0.52" />
+                 <GradientStop Color="#FF243148" Offset="1" />
+             </LinearGradientBrush>
+             <LinearGradientBrush x:Key="ForgeHeroBorderBrush" StartPoint="0,0" EndPoint="1,1">
+                 <GradientStop Color="#FF4A80B4" Offset="0" />
+                 <GradientStop Color="#FF345A84" Offset="0.56" />
+                 <GradientStop Color="#FF29415F" Offset="1" />
+             </LinearGradientBrush>
              <SolidColorBrush x:Key="ForgeDividerBrush" Color="#FF253044" />
              <SolidColorBrush x:Key="ForgeTextPrimaryBrush" Color="#FFF3F7FF" />
              <SolidColorBrush x:Key="ForgeTextOnAccentBrush" Color="#FFFFFFFF" />
@@ -39,16 +49,18 @@
              <SolidColorBrush x:Key="ForgeSuccessSoftBrush" Color="#2649D3A0" />
              <SolidColorBrush x:Key="ForgeWarningBrush" Color="#FFF0B95B" />
              <SolidColorBrush x:Key="ForgeErrorBrush" Color="#FFFF6B7A" />
-             <SolidColorBrush x:Key="ForgeChartGridBrush" Color="#33253044" />
+             <SolidColorBrush x:Key="ForgeChartGridBrush" Color="#66506A87" />
 
             <LinearGradientBrush x:Key="ForgeCardGradientBrush" StartPoint="0,0" EndPoint="1,1">
-                 <GradientStop Color="#FF171D2A" Offset="0" />
-                 <GradientStop Color="#FF121722" Offset="1" />
+                 <GradientStop Color="#FF202C3E" Offset="0" />
+                 <GradientStop Color="#FF182232" Offset="0.42" />
+                 <GradientStop Color="#FF121926" Offset="1" />
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="ForgeHeroGradientBrush" StartPoint="0,0" EndPoint="1,1">
-                 <GradientStop Color="#FF1A2B47" Offset="0" />
-                 <GradientStop Color="#FF18263F" Offset="0.66" />
-                 <GradientStop Color="#FF151D2E" Offset="1" />
+                 <GradientStop Color="#FF244769" Offset="0" />
+                 <GradientStop Color="#FF1C3653" Offset="0.32" />
+                 <GradientStop Color="#FF182A42" Offset="0.72" />
+                 <GradientStop Color="#FF142137" Offset="1" />
             </LinearGradientBrush>
             <LinearGradientBrush x:Key="ForgeAccentButtonGradientBrush" StartPoint="0,0" EndPoint="1,1">
                  <GradientStop Color="#FF57A6FF" Offset="0" />
@@ -69,6 +81,7 @@
               <SolidColorBrush x:Key="ForgeSurfaceSubtleBrush" Color="{ThemeResource SystemColorWindowColor}" />
               <SolidColorBrush x:Key="ForgeControlFillBrush" Color="{ThemeResource SystemColorButtonFaceColor}" />
               <SolidColorBrush x:Key="ForgeBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+              <SolidColorBrush x:Key="ForgeHeroBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
               <SolidColorBrush x:Key="ForgeDividerBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
               <SolidColorBrush x:Key="ForgeTextPrimaryBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
               <SolidColorBrush x:Key="ForgeTextOnAccentBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
@@ -97,7 +110,7 @@
             </Style>
             <Style x:Key="ForgeHeroCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource ForgeHeroGradientBrush}" />
-                 <Setter Property="BorderBrush" Value="{ThemeResource ForgeBorderBrush}" />
+                 <Setter Property="BorderBrush" Value="{ThemeResource ForgeHeroBorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                  <Setter Property="CornerRadius" Value="14" />
                  <Setter Property="Padding" Value="20" />

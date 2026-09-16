@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.38 — Direction A depth and compact Rig composition
+
+- Give the native shell and cards layered graphite-to-blue gradients, directional borders, and a brighter hero edge; retain system-color brushes in High Contrast.
+- Align the desktop navigation width and mosaic mark with the selected Direction A concept, add chart time-grid lines and the Rig hero action glyph, and title the activity lane Recent events.
+- At compact width, stack Rig configuration, live chart, recent events and actions into full-width panels so titles and controls remain legible. Signed installed 1.1.37 and rebuilt staged 1.1.38 screenshots are visual iterations, not final feature or desktop-continuity acceptance.
+
 ## 1.1.37 — Correct operational card placement
 
 - Place Runtimes execution and operating policy beside each other on desktop, with project jobs below both; at compact width, present execution, policy, then jobs as a readable single-column sequence.

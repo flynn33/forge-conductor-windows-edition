@@ -10,7 +10,7 @@
    PaneTitle=""
    PaneDisplayMode="Left"
    IsPaneOpen="True"
-    OpenPaneLength="232"
+    OpenPaneLength="280"
    CompactPaneLength="56"
    CompactModeThresholdWidth="1420"
    ExpandedModeThresholdWidth="1600"
@@ -47,8 +47,15 @@
   </NavigationView.Resources>
   <NavigationView.PaneHeader>
    <StackPanel Margin="10,4,10,14" Spacing="10">
-    <StackPanel Orientation="Horizontal" Spacing="9" Margin="38,0,0,0">
-     <FontIcon Glyph="&#xE950;" FontSize="18" Foreground="{ThemeResource ForgeAccentBrush}" />
+    <StackPanel Orientation="Horizontal" Spacing="9" Margin="14,0,0,0">
+     <Grid Width="28" Height="28" VerticalAlignment="Center" AutomationProperties.Name="Forge Conductor mark">
+      <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Margin="0,0,2,2" CornerRadius="3" Background="#FF58C5FF"/>
+      <Border Grid.Column="1" Margin="2,0,0,2" CornerRadius="3" Background="#FF2F83FF"/>
+      <Border Grid.Row="1" Margin="0,2,2,0" CornerRadius="3" Background="#FF2676F5"/>
+      <Border Grid.Row="1" Grid.Column="1" Margin="2,2,0,0" CornerRadius="3" Background="#FF5AA6FF"/>
+     </Grid>
      <TextBlock Text="Forge Conductor" FontFamily="Segoe UI Variable Display" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
     </StackPanel>
     <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12">
@@ -150,7 +157,7 @@
          </StackPanel>
          <TextBlock x:Name="ManagerHealth" Text="Waiting for a sample" TextWrapping="Wrap" Foreground="{ThemeResource ForgeTextSecondaryBrush}" FontSize="12" MaxLines="2" AutomationProperties.LiveSetting="Polite" />
         </StackPanel>
-        <Button Grid.Column="4" Content="Open in Manager" Click="OpenManagerClicked" MinWidth="170" VerticalAlignment="Center" />
+        <Button Grid.Column="4" Click="OpenManagerClicked" MinWidth="170" VerticalAlignment="Center" AutomationProperties.Name="Open in Manager"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xE768;" FontSize="16"/><TextBlock Text="Open in Manager"/></StackPanel></Button>
        </Grid>
       </Border>
 
@@ -191,8 +198,9 @@
        </Border>
       </Grid>
 
-      <Grid ColumnSpacing="12">
-       <Grid.ColumnDefinitions><ColumnDefinition Width="5*"/><ColumnDefinition Width="7*"/></Grid.ColumnDefinitions>
+      <Grid x:Name="RigHealthHistoryGrid" ColumnSpacing="12" RowSpacing="12">
+       <Grid.ColumnDefinitions><ColumnDefinition x:Name="RigHistoryColumn0" Width="5*"/><ColumnDefinition x:Name="RigHistoryColumn1" Width="7*"/></Grid.ColumnDefinitions>
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
        <Border Style="{ThemeResource ForgeCardStyle}" MinHeight="250">
         <StackPanel Spacing="7">
          <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE713;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Runtime configuration" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="Edit configuration" Click="OpenSettingsClicked"/></Grid>
@@ -202,20 +210,21 @@
          <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE8B7;" Foreground="{ThemeResource ForgeTextSecondaryBrush}"/><TextBlock Grid.Column="1" Text="Store"/><Ellipse x:Name="StoreDot" Grid.Column="2" Width="8" Height="8" Fill="{ThemeResource ForgeSuccessBrush}" VerticalAlignment="Center"/><TextBlock x:Name="StoreHealth" Grid.Column="3" Margin="8,0,0,0" Text="Waiting for a sample" TextTrimming="CharacterEllipsis"/><FontIcon Grid.Column="4" Glyph="&#xE76C;" Foreground="{ThemeResource ForgeTextTertiaryBrush}"/></Grid></Border>
         </StackPanel>
        </Border>
-       <Border Grid.Column="1" Style="{ThemeResource ForgeCardStyle}" MinHeight="250">
+       <Border x:Name="RigHistoryCard" Grid.Column="1" Style="{ThemeResource ForgeCardStyle}" MinHeight="250">
         <Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
          <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE9D9;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Resource utilization" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Border HorizontalAlignment="Right" Background="{ThemeResource ForgeSurfaceSubtleBrush}" CornerRadius="7" Padding="10,5"><TextBlock Text="Last 60 seconds" Style="{ThemeResource ForgeCaptionStyle}"/></Border></Grid>
          <TextBlock x:Name="HistoryEquivalentText" Grid.Row="1" Text="No history samples" Style="{ThemeResource ForgeCaptionStyle}" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Resource history values"/>
-         <Grid Grid.Row="2" Height="144" ColumnSpacing="7"><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Spacing="15" VerticalAlignment="Center"><TextBlock Text="100%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="75%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="50%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="25%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="0%" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel><Grid Grid.Column="1" Background="{ThemeResource ForgeSurfaceSubtleBrush}"><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Border BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,0,1"/><Border Grid.Row="1" BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,0,1"/><Border Grid.Row="2" BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,0,1"/><Canvas x:Name="HistoryCanvas" Grid.RowSpan="4" MinWidth="320" Background="Transparent" AutomationProperties.Name="CPU RAM and GPU history chart" SizeChanged="TelemetryChartSizeChanged"><Polyline x:Name="CpuHistoryLine" Stroke="#FF39B8FF" StrokeThickness="3"/><Polyline x:Name="RamHistoryLine" Stroke="#FF7868FF" StrokeThickness="3"/><Polyline x:Name="GpuHistoryLine" Stroke="#FF37D5E9" StrokeThickness="2"/></Canvas></Grid></Grid>
+         <Grid Grid.Row="2" Height="144" ColumnSpacing="7"><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Spacing="15" VerticalAlignment="Center"><TextBlock Text="100%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="75%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="50%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="25%" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock Text="0%" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel><Grid Grid.Column="1" Background="{ThemeResource ForgeSurfaceSubtleBrush}"><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Border BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,0,1"/><Border Grid.Row="1" BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,0,1"/><Border Grid.Row="2" BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,0,1"/><Grid Grid.RowSpan="4" IsHitTestVisible="False"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,1,0"/><Border Grid.Column="1" BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,1,0"/><Border Grid.Column="2" BorderBrush="{ThemeResource ForgeChartGridBrush}" BorderThickness="0,0,1,0"/></Grid><Canvas x:Name="HistoryCanvas" Grid.RowSpan="4" MinWidth="320" Background="Transparent" AutomationProperties.Name="CPU RAM and GPU history chart" SizeChanged="TelemetryChartSizeChanged"><Polyline x:Name="CpuHistoryLine" Stroke="#FF39B8FF" StrokeThickness="3"/><Polyline x:Name="RamHistoryLine" Stroke="#FF7868FF" StrokeThickness="3"/><Polyline x:Name="GpuHistoryLine" Stroke="#FF37D5E9" StrokeThickness="2"/></Canvas></Grid></Grid>
          <Grid Grid.Row="3" ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal" Spacing="6"><Ellipse Width="8" Height="8" Fill="#FF39B8FF"/><TextBlock x:Name="HistoryCpuLegend" Text="CPU" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"><Ellipse Width="8" Height="8" Fill="#FF7868FF"/><TextBlock x:Name="HistoryRamLegend" Text="RAM" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel><StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"><Ellipse Width="8" Height="8" Fill="#FF37D5E9"/><TextBlock x:Name="HistoryGpuLegend" Text="GPU" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel><TextBlock Grid.Column="3" Text="−60s          −30s          now" Style="{ThemeResource ForgeCaptionStyle}" HorizontalAlignment="Right"/></Grid>
         </Grid>
        </Border>
       </Grid>
 
-      <Grid ColumnSpacing="12">
-       <Grid.ColumnDefinitions><ColumnDefinition Width="7*"/><ColumnDefinition Width="5*"/></Grid.ColumnDefinitions>
-       <Border Style="{ThemeResource ForgeCardStyle}" MinHeight="150"><StackPanel Spacing="8"><Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Recent activity" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="View all" Click="OpenFeedClicked"/></Grid><ScrollViewer MaxHeight="135" VerticalScrollBarVisibility="Auto"><StackPanel x:Name="ActivityTimeline" Spacing="4" AutomationProperties.Name="Recent Manager activity timeline"/></ScrollViewer></StackPanel></Border>
-       <Border Grid.Column="1" Style="{ThemeResource ForgeCardStyle}" MinHeight="150"><Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Actions" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Grid Grid.Row="1" ColumnSpacing="8" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Button Content="Open in Manager" Click="OpenManagerClicked" Style="{ThemeResource ForgeAccentButtonStyle}" HorizontalAlignment="Stretch"/><Button Grid.Column="1" Content="Start a run" Click="OpenAutonomyClicked" HorizontalAlignment="Stretch"/><Button Grid.Row="1" Content="Refresh" Click="RefreshClicked" HorizontalAlignment="Stretch"/><Button Grid.Row="1" Grid.Column="1" Content="View logs" Click="OpenFeedClicked" HorizontalAlignment="Stretch"/></Grid><TextBlock x:Name="ManagerState" Visibility="Collapsed" Text="Forge Conductor is establishing the per-user Manager automatically." AutomationProperties.LiveSetting="Polite"/></Grid></Border>
+      <Grid x:Name="RigActivityActionsGrid" ColumnSpacing="12" RowSpacing="12">
+       <Grid.ColumnDefinitions><ColumnDefinition x:Name="RigActivityColumn0" Width="7*"/><ColumnDefinition x:Name="RigActivityColumn1" Width="5*"/></Grid.ColumnDefinitions>
+       <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <Border Style="{ThemeResource ForgeCardStyle}" MinHeight="150"><StackPanel Spacing="8"><Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE823;" FontSize="16" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Recent events" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="View all" Click="OpenFeedClicked"/></Grid><ScrollViewer MaxHeight="135" VerticalScrollBarVisibility="Auto"><StackPanel x:Name="ActivityTimeline" Spacing="4" AutomationProperties.Name="Recent Manager activity timeline"/></ScrollViewer></StackPanel></Border>
+       <Border x:Name="RigActionsCard" Grid.Column="1" Style="{ThemeResource ForgeCardStyle}" MinHeight="150"><Grid RowSpacing="8"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Actions" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Grid Grid.Row="1" ColumnSpacing="8" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Button Content="Open in Manager" Click="OpenManagerClicked" Style="{ThemeResource ForgeAccentButtonStyle}" HorizontalAlignment="Stretch"/><Button Grid.Column="1" Content="Start a run" Click="OpenAutonomyClicked" HorizontalAlignment="Stretch"/><Button Grid.Row="1" Content="Refresh" Click="RefreshClicked" HorizontalAlignment="Stretch"/><Button Grid.Row="1" Grid.Column="1" Content="View logs" Click="OpenFeedClicked" HorizontalAlignment="Stretch"/></Grid><TextBlock x:Name="ManagerState" Visibility="Collapsed" Text="Forge Conductor is establishing the per-user Manager automatically." AutomationProperties.LiveSetting="Polite"/></Grid></Border>
       </Grid>
 
       <TextBlock Text="System detail" Style="{ThemeResource ForgeSectionTitleStyle}" Margin="2,8,0,0"/>

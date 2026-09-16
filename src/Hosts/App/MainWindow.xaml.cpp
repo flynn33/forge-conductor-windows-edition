@@ -488,6 +488,22 @@ void MainWindow::ConsoleSizeChanged(
         : Thickness{0.0, 0.0, 0.0, 0.0});
 
     const auto stackedOperational = width < 1080.0;
+    RigHistoryColumn0().Width(stackedOperational
+        ? GridLength{1.0, GridUnitType::Star}
+        : GridLength{5.0, GridUnitType::Star});
+    RigHistoryColumn1().Width(stackedOperational
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{7.0, GridUnitType::Star});
+    Grid::SetRow(RigHistoryCard(), stackedOperational ? 1 : 0);
+    Grid::SetColumn(RigHistoryCard(), stackedOperational ? 0 : 1);
+    RigActivityColumn0().Width(stackedOperational
+        ? GridLength{1.0, GridUnitType::Star}
+        : GridLength{7.0, GridUnitType::Star});
+    RigActivityColumn1().Width(stackedOperational
+        ? GridLength{0.0, GridUnitType::Pixel}
+        : GridLength{5.0, GridUnitType::Star});
+    Grid::SetRow(RigActionsCard(), stackedOperational ? 1 : 0);
+    Grid::SetColumn(RigActionsCard(), stackedOperational ? 0 : 1);
     OperationalGrid().ColumnDefinitions().GetAt(0).Width(GridLength{
         8.0, GridUnitType::Star});
     OperationalGrid().ColumnDefinitions().GetAt(1).Width(stackedOperational
