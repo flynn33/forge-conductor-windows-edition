@@ -39,6 +39,7 @@
             <SolidColorBrush x:Key="ForgeSuccessBrush" Color="#FF3DDC97" />
             <SolidColorBrush x:Key="ForgeSuccessSoftBrush" Color="#263DDC97" />
             <SolidColorBrush x:Key="ForgeWarningBrush" Color="#FFFFC857" />
+            <SolidColorBrush x:Key="ForgeErrorBrush" Color="#FFFF7371" />
             <SolidColorBrush x:Key="ForgeChartGridBrush" Color="#335B7794" />
 
             <LinearGradientBrush x:Key="ForgeCardGradientBrush" StartPoint="0,0" EndPoint="1,1">
@@ -80,6 +81,7 @@
               <SolidColorBrush x:Key="ForgeSuccessBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
               <SolidColorBrush x:Key="ForgeSuccessSoftBrush" Color="{ThemeResource SystemColorButtonFaceColor}" />
               <SolidColorBrush x:Key="ForgeWarningBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+              <SolidColorBrush x:Key="ForgeErrorBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
               <SolidColorBrush x:Key="ForgeChartGridBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
               <SolidColorBrush x:Key="ForgeCardGradientBrush" Color="{ThemeResource SystemColorWindowColor}" />
               <SolidColorBrush x:Key="ForgeHeroGradientBrush" Color="{ThemeResource SystemColorButtonFaceColor}" />

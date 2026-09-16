@@ -562,6 +562,8 @@ void MainWindow::OpenAutonomyClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Autonomy"); }
 void MainWindow::OpenFeedClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Feed"); }
+void MainWindow::OpenEvidenceClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Events & Evidence"); }
 void MainWindow::OpenSettingsClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Settings"); }
 void MainWindow::OpenToolsClicked(Windows::Foundation::IInspectable const&,
@@ -613,6 +615,7 @@ void MainWindow::RunIdTextChanged(Windows::Foundation::IInspectable const&,
     RunTokensValue().Text(L"— / — tokens");
     RunPendingCalls().Text(L"No pending tool activity");
     RunOutcomeText().Text(L"Refresh to inspect output from this exact run.");
+    RunReadbackIdentity().Text(L"Refresh to verify the exact run and project identity.");
     if (!RunId().Text().empty()) {
         RunState().Text(L"Unverified run identity · refresh to attach and check its project.");
     }
@@ -1136,6 +1139,8 @@ void MainWindow::NavigationChanged(
         OperationalSessionCard().Visibility(Visibility::Collapsed);
         OperationalAgentSearch().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
         OperationalFeedFilters().Visibility(feed || evidence ? Visibility::Visible : Visibility::Collapsed);
+        OperationalFeedInsightsCard().Visibility(feed ? Visibility::Visible : Visibility::Collapsed);
+        OperationalFeedBoundaryCard().Visibility(feed ? Visibility::Visible : Visibility::Collapsed);
         OperationalEvidenceCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalEvidencePath().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
         OperationalEvidenceRunsCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
@@ -1902,6 +1907,8 @@ void MainWindow::ApplyRunReadback(
         run.lastError ? "Error: " + run.lastError->message :
         run.outputText && !run.outputText->empty() ? *run.outputText :
         std::string{"No model output from this run yet."}));
+    RunReadbackIdentity().Text(winrt::to_hstring(
+        "Run " + run.runId.value() + " · project " + run.projectId.value()));
     const bool running = run.state == ManagedRunState::Running;
     const bool paused = run.state == ManagedRunState::Paused;
     RunPauseButton().IsEnabled(running);
@@ -2009,6 +2016,7 @@ void MainWindow::ClearSelectedRun()
     RunTokensValue().Text(L"— / — tokens");
     RunPendingCalls().Text(L"No pending tool activity");
     RunOutcomeText().Text(L"No output from an attached run.");
+    RunReadbackIdentity().Text(L"No exact run is attached.");
     RunRawDetail().Text(L"No exact run detail has been read.");
 }
 
@@ -2188,6 +2196,7 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
     ContinuityPolicyState().Text(L"Manager-owned policy unavailable");
     ContinuityRestorationState().Text(L"No verified successor projected");
     RunTelemetryState().Text(L"Manager run readback unavailable while disconnected.");
+    RunReadbackIdentity().Text(L"Exact run identity unavailable while disconnected.");
     RunStatusDot().Fill(Microsoft::UI::Xaml::Media::SolidColorBrush{
         Windows::UI::Color{255, 255, 200, 87}});
     ManagerHealth().Text(winrt::to_hstring("Disconnected · " + explanation));
@@ -2229,7 +2238,7 @@ void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
         OperationalStatusValue2().Text(L"Unavailable");
         OperationalStatusValue3().Text(operationalArea_ ==
             ::ForgeConductor::Manager::ManagerOperationalArea::Manager
-                ? currentDataRoot() : L"Unavailable");
+                ? HeaderDataRoot().Text() : L"Unavailable");
         OperationalState().Text(winrt::to_hstring(
             "Live Manager readback unavailable · " + explanation));
         OperationalListSummary().Text(L"Last Manager ownership and resource sample was invalidated on disconnect.");
@@ -3152,7 +3161,7 @@ void MainWindow::ApplyOperational(
             OperationalStatusValue1().Text(winrt::to_hstring(
                 currentProductVersion()));
             OperationalStatusValue2().Text(winrt::to_hstring(valueAfter("Owned operations: ")));
-            OperationalStatusValue3().Text(currentDataRoot());
+            OperationalStatusValue3().Text(HeaderDataRoot().Text());
         } else {
             OperationalStatusValue0().Text(winrt::to_hstring(valueAfter("Owned operations: ")));
             OperationalStatusValue1().Text(winrt::to_hstring(valueAfter("Background threads: ")));
@@ -3255,6 +3264,26 @@ void MainWindow::ApplyOperational(
         OperationalDoctorState().Text(coreHealthy
             ? failed == 0 ? L"Core health verified" : L"Core healthy · integrations unavailable"
             : L"Core health needs attention");
+    }
+    if (snapshot.area == ::ForgeConductor::Manager::ManagerOperationalArea::Feed) {
+        std::size_t successful{};
+        std::size_t failed{};
+        std::size_t denied{};
+        std::string latest{"No audited outcome in this bounded window"};
+        for (const auto& line : snapshot.lines) {
+            const auto fields = dotFields(std::string_view{line}.substr(0, line.find('\n')));
+            if (fields.size() < 3U) continue;
+            if (latest == "No audited outcome in this bounded window") latest = fields[0];
+            if (fields[2] == "ok" || fields[2] == "success") ++successful;
+            else if (fields[2] == "error") ++failed;
+            else if (fields[2] == "denied") ++denied;
+        }
+        OperationalFeedSuccessCount().Text(winrt::to_hstring(std::to_string(successful)));
+        OperationalFeedErrorCount().Text(winrt::to_hstring(std::to_string(failed)));
+        OperationalFeedDeniedCount().Text(winrt::to_hstring(std::to_string(denied)));
+        OperationalFeedWindowCount().Text(winrt::to_hstring(
+            std::to_string(snapshot.lines.size()) + " bounded Manager outcomes"));
+        OperationalFeedLatestTime().Text(winrt::to_hstring(latest));
     }
     auto query = winrt::to_string(OperationalAgentSearch().Text());
     std::transform(query.begin(), query.end(), query.begin(),

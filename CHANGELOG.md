@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.34 — Audit and exact-run presentation
+
+- Show the bounded Manager audit window's success, error and denial mix, with its most recent observation, alongside selectable Feed detail and a direct path to project-bound durable evidence.
+- Expose the verified run and project identity in Autonomy's live readback and keep the native-evidence path next to model output without implying that a completed response is a verified task result.
+- Display the active isolated profile's data root in the Manager card rather than the default production path. Installed visual and integrated acceptance still require review of this exact build.
+- Keep the dashboard real-socket smoke test's bounded loopback ports outside this host's reserved IPv6 TCP range so a valid listener is not mistaken for a product regression.
+
 ## 1.1.33 — Direction A shell and contrast-theme pass
 
 - Give the active native navigation destination the approved blue treatment and give Tools the same hero-led hierarchy as the other work surfaces.

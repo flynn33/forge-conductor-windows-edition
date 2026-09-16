@@ -1695,14 +1695,14 @@ void realSocketSmoke(
 void realIpv4CompositionSmoke()
 {
     const auto base = static_cast<std::uint16_t>(
-        52000U + (::GetCurrentProcessId() % 1000U));
+        42000U + (::GetCurrentProcessId() % 1000U));
     realSocketSmoke("127.0.0.1", AF_INET, base);
 }
 
 void realIpv6CompositionSmoke()
 {
     const auto base = static_cast<std::uint16_t>(
-        54000U + (::GetCurrentProcessId() % 1000U));
+        44000U + (::GetCurrentProcessId() % 1000U));
     realSocketSmoke("::1", AF_INET6, base);
 }
 
