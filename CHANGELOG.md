@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.37 — Correct operational card placement
+
+- Place Runtimes execution and operating policy beside each other on desktop, with project jobs below both; at compact width, present execution, policy, then jobs as a readable single-column sequence.
+- Preserve the 1.1.36 Feed filter truth and bounded ultrawide canvas. Signed installed 1.1.36 exposed a covered Runtimes execution card, so its all-view screenshots remain diagnostic iteration evidence rather than final acceptance.
+
 ## 1.1.36 — Adaptive Direction A composition
 
 - Bound the native page canvas to a practical 1440-pixel content width on ultrawide displays while preserving full-width cards at normal windows.

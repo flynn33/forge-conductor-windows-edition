@@ -495,7 +495,8 @@ void MainWindow::ConsoleSizeChanged(
         : GridLength{4.0, GridUnitType::Star});
     Grid::SetRow(OperationalSupplementPanel(), stackedOperational ? 1 : 0);
     Grid::SetColumn(OperationalSupplementPanel(), stackedOperational ? 0 : 1);
-    Grid::SetRow(OperationalRuntimeCard(), stackedOperational ? 2 : 1);
+    Grid::SetRow(OperationalRuntimeCard(), 0);
+    Grid::SetRow(OperationalRuntimeJobsCard(), stackedOperational ? 2 : 1);
 }
 
 void MainWindow::RefreshClicked(Windows::Foundation::IInspectable const&,

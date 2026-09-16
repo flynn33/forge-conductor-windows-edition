@@ -65,8 +65,8 @@ function Initialize-Session {
         }
     }
     $initialized = Read-Response $Process 1
-    if ($initialized.result.serverInfo.version -ne '1.1.36') {
-        throw 'The MCP server version was not 1.1.36.'
+    if ($initialized.result.serverInfo.version -ne '1.1.37') {
+        throw 'The MCP server version was not 1.1.37.'
     }
     Send-Frame $Process @{jsonrpc='2.0';method='notifications/initialized';params=@{}}
     Send-Frame $Process @{jsonrpc='2.0';id=2;method='tools/list';params=@{}}
