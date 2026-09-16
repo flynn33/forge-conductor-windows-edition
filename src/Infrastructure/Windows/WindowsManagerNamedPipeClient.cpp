@@ -1016,6 +1016,20 @@ WindowsManagerNamedPipeClient::rememberProjectMemory(
               "The manager client transport is unavailable."));
 }
 
+Domain::Result<Manager::ManagerInstructionPackageSnapshot>
+WindowsManagerNamedPipeClient::instructionPackage(
+    const Manager::ManagerInstructionPackageRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerInstructionPackageSnapshot>(
+              request, context)
+        : failure<Manager::ManagerInstructionPackageSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
 Domain::Result<Manager::ManagerLmStudioSnapshot>
 WindowsManagerNamedPipeClient::lmStudioStatus(
     const Domain::OperationContext& context) noexcept

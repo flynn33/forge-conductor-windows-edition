@@ -694,6 +694,59 @@ void MainWindow::ProjectSearchClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectLoad); }
 void MainWindow::ProjectRememberClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectRemember); }
+void MainWindow::InstructionPackagePreviewClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    RunAction(Action::InstructionPackagePreview);
+}
+void MainWindow::InstructionPackageActivateClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    RunAction(Action::InstructionPackageActivate);
+}
+void MainWindow::InstructionPackagePathChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
+{
+    ClearInstructionPackagePreview();
+    InstructionPackageState().Text(
+        L"Package selection changed. Validate this folder before activation.");
+}
+void MainWindow::InstructionPackageBrowseClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    try {
+        auto nativeWindow = this->m_inner.as<::IWindowNative>();
+        HWND hwnd{};
+        winrt::check_hresult(nativeWindow->get_WindowHandle(&hwnd));
+        winrt::com_ptr<::IFileDialog> dialog;
+        winrt::check_hresult(::CoCreateInstance(CLSID_FileOpenDialog, nullptr,
+            CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.put())));
+        DWORD options{};
+        winrt::check_hresult(dialog->GetOptions(&options));
+        winrt::check_hresult(dialog->SetOptions(options | FOS_PICKFOLDERS |
+            FOS_FORCEFILESYSTEM));
+        winrt::check_hresult(dialog->SetTitle(
+            L"Choose a project instruction package folder"));
+        const auto shown = dialog->Show(hwnd);
+        if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+        winrt::check_hresult(shown);
+        winrt::com_ptr<::IShellItem> folder;
+        winrt::check_hresult(dialog->GetResult(folder.put()));
+        PWSTR path{};
+        winrt::check_hresult(folder->GetDisplayName(SIGDN_FILESYSPATH, &path));
+        InstructionPackagePath().Text(path);
+        ::CoTaskMemFree(path);
+        InstructionPackageState().Text(
+            L"Folder chosen. Validate it through the Manager before activation.");
+    } catch (const winrt::hresult_error& error) {
+        InstructionPackageState().Text(
+            L"The Windows folder picker failed: " + error.message());
+    }
+}
 void MainWindow::ProjectUpdateClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectUpdate); }
 void MainWindow::ProjectForgetClicked(Windows::Foundation::IInspectable const&,
@@ -2081,6 +2134,12 @@ void MainWindow::ClearSelectedProject()
 {
     ClearSelectedRun();
     ClearArchivePreview();
+    ClearInstructionPackagePreview();
+    InstructionPackageRevision().Text(L"No revision activated");
+    InstructionPackageFileCount().Text(L"— files");
+    InstructionPackageFiles().Text(L"Validated file manifest will appear here.");
+    InstructionPackageState().Text(
+        L"Choose an authorized project and package folder to begin.");
     ProjectArchiveExportState().Text(L"No archive created for this selection.");
     ProjectArchivePreviewState().Text(L"No artifact verified for this project.");
     ProjectArchiveState().Text(L"Choose an authorized project to archive its memory.");
@@ -2105,8 +2164,15 @@ void MainWindow::ApplyProjectWorkspace(
         selectedMemoryProjectId_.clear();
         ProjectEditCard().Visibility(Visibility::Collapsed);
     }
-    if (!selectedProjectId_.empty() && selectedProjectId_ != snapshot.project.id.value())
+    if (!selectedProjectId_.empty() && selectedProjectId_ != snapshot.project.id.value()) {
         ClearSelectedRun();
+        ClearInstructionPackagePreview();
+        InstructionPackageRevision().Text(L"No revision activated");
+        InstructionPackageFileCount().Text(L"— files");
+        InstructionPackageFiles().Text(L"Validate a package for this project.");
+        InstructionPackageState().Text(
+            L"Project selection changed. Validate a package for this exact project.");
+    }
     selectedProjectId_ = snapshot.project.id.value();
     if (ProjectArchiveState().Text() ==
         L"Choose an authorized project to archive its memory.") {
@@ -2159,6 +2225,57 @@ void MainWindow::ApplyProjectWorkspace(
         "\nStore: " + std::to_string(snapshot.tombstoneCount) +
         " tombstones · " + std::to_string(snapshot.databaseBytes) +
         " database bytes · " + searchMode));
+
+    if (ProjectMemoryQuery().Text().empty() &&
+        instructionPreviewRevision_.empty()) {
+        const auto active = std::find_if(
+            snapshot.records.begin(), snapshot.records.end(),
+            [](const auto& record) {
+                return record.kind == "instruction_package" && record.body;
+            });
+        const auto* activeRecord = snapshot.activeInstructionManifest
+            ? &*snapshot.activeInstructionManifest
+            : active == snapshot.records.end() ? nullptr : &*active;
+        if (activeRecord == nullptr) {
+            InstructionPackageRevision().Text(L"No revision activated");
+            InstructionPackageFileCount().Text(L"— files");
+            InstructionPackageFiles().Text(
+                L"Validate a package folder to create the first active revision.");
+            InstructionPackageState().Text(
+                L"No active instruction manifest is stored for this project.");
+        } else {
+            try {
+                const auto manifest = nlohmann::json::parse(*activeRecord->body);
+                const auto revision = manifest.value(
+                    "revision", std::string{"unknown"});
+                const auto& files = manifest.at("files");
+                std::string fileList;
+                if (files.is_array()) {
+                    for (const auto& file : files) {
+                        if (!file.is_object() || !file.contains("path") ||
+                            !file.at("path").is_string()) continue;
+                        if (!fileList.empty()) fileList += "\n";
+                        fileList += "• " + file.at("path").get<std::string>();
+                    }
+                }
+                InstructionPackageRevision().Text(winrt::to_hstring(
+                    revision.substr(0U, (std::min)(
+                        revision.size(), std::size_t{16U})) +
+                    "… · ACTIVE"));
+                InstructionPackageFileCount().Text(winrt::to_hstring(
+                    std::to_string(files.is_array() ? files.size() : 0U) +
+                    " files"));
+                InstructionPackageFiles().Text(winrt::to_hstring(fileList));
+                InstructionPackageState().Text(winrt::to_hstring(
+                    "Active package " + activeRecord->title +
+                    " is automatically attached to new managed runs."));
+            } catch (...) {
+                InstructionPackageRevision().Text(L"Manifest needs attention");
+                InstructionPackageState().Text(
+                    L"The active instruction record could not be projected safely. Validate and activate the source folder again.");
+            }
+        }
+    }
 
     ProjectMemoryRecords().Children().Clear();
     if (snapshot.records.empty()) {
@@ -2411,6 +2528,14 @@ void MainWindow::ClearArchivePreview()
     archivePreviewPath_.clear();
     archivePreviewChecksum_.clear();
     ProjectArchiveImportButton().IsEnabled(false);
+}
+
+void MainWindow::ClearInstructionPackagePreview()
+{
+    instructionPreviewProjectId_.clear();
+    instructionPreviewPath_.clear();
+    instructionPreviewRevision_.clear();
+    InstructionPackageActivateButton().IsEnabled(false);
 }
 
 void MainWindow::ApplyLmStudioIdentities()
@@ -3678,7 +3803,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         action == Action::ProjectForget ||
         action == Action::ProjectArchiveExport ||
         action == Action::ProjectArchivePreview ||
-        action == Action::ProjectArchiveImport;
+        action == Action::ProjectArchiveImport ||
+        action == Action::InstructionPackagePreview ||
+        action == Action::InstructionPackageActivate;
     const bool lmStudioAction = action == Action::LmStudioInspect ||
         action == Action::LmStudioRepair || action == Action::LmStudioActivate;
     const bool toolsAction = action == Action::ToolsList || action == Action::ToolInvoke;
@@ -3713,6 +3840,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string archiveProject;
     std::string archivePath;
     std::string archiveChecksum;
+    std::string instructionProject;
+    std::string instructionPath;
     std::string operationalSessionId;
     std::string operationalSummary;
     const auto requestedOperationalArea = operationalArea_;
@@ -3907,6 +4036,29 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
         toolArguments = arguments.dump();
     }
+    if (action == Action::InstructionPackagePreview ||
+        action == Action::InstructionPackageActivate) {
+        instructionProject = selectedProjectId_;
+        instructionPath = winrt::to_string(InstructionPackagePath().Text());
+        if (instructionProject.empty()) {
+            InstructionPackageState().Text(
+                L"Select an authorized project before validating instructions.");
+            co_return;
+        }
+        if (instructionPath.empty()) {
+            InstructionPackageState().Text(
+                L"Choose an instruction package folder first.");
+            co_return;
+        }
+        if (action == Action::InstructionPackageActivate &&
+            (instructionPreviewProjectId_ != instructionProject ||
+             instructionPreviewPath_ != instructionPath ||
+             instructionPreviewRevision_.empty())) {
+            InstructionPackageState().Text(
+                L"Validate this exact project and folder before activation.");
+            co_return;
+        }
+    }
     if (action == Action::ProjectArchiveExport ||
         action == Action::ProjectArchivePreview ||
         action == Action::ProjectArchiveImport) {
@@ -3990,6 +4142,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     action == Action::ProjectArchivePreview ||
                     action == Action::ProjectArchiveImport)
                     ProjectArchiveState().Text(queued);
+                if (action == Action::InstructionPackagePreview ||
+                    action == Action::InstructionPackageActivate)
+                    InstructionPackageState().Text(queued);
             }
             else if (lmStudioAction) {
                 LmStudioRegistrationState().Text(queued);
@@ -4037,6 +4192,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             ProjectArchiveState().Text(L"Verifying project scope and artifact checksum without changes…");
         else if (action == Action::ProjectArchiveImport)
             ProjectArchiveState().Text(L"Rechecking preview checksum, then importing exact project records…");
+        else if (action == Action::InstructionPackagePreview)
+            InstructionPackageState().Text(
+                L"Manager is validating every supported file and computing the revision…");
+        else if (action == Action::InstructionPackageActivate)
+            InstructionPackageState().Text(
+                L"Manager is revalidating and binding this revision to the project…");
     } else if (lmStudioAction) {
         const auto pending = action == Action::LmStudioRepair
             ? L"Repairing native registration · preserving foreign MCP entries · up to two minutes…"
@@ -4082,6 +4243,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     ::ForgeConductor::Hosts::App::TelemetryView telemetryView;
     ::ForgeConductor::Hosts::App::ProjectsView projectsView;
     ::ForgeConductor::Hosts::App::ProjectWorkspaceView projectView;
+    ::ForgeConductor::Hosts::App::InstructionPackageView instructionView;
     ::ForgeConductor::Hosts::App::LmStudioView lmStudioView;
     ::ForgeConductor::Hosts::App::ToolsView toolsView;
     ::ForgeConductor::Hosts::App::ToolOutcomeView toolOutcomeView;
@@ -4226,6 +4388,16 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 std::move(memoryTags), cancellation_.get_token());
             message = projectView.message;
             break;
+        case Action::InstructionPackagePreview:
+        case Action::InstructionPackageActivate:
+            instructionView = connection_->instructionPackage(
+                instructionProject, instructionPath,
+                action == Action::InstructionPackageActivate,
+                action == Action::InstructionPackageActivate
+                    ? instructionPreviewRevision_ : std::string{},
+                cancellation_.get_token());
+            message = instructionView.message;
+            break;
         case Action::LmStudioInspect:
         case Action::LmStudioRepair:
         case Action::LmStudioActivate: {
@@ -4349,7 +4521,55 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ProjectMemoryTags().Text(L"");
                 }
             }
-            if (action == Action::ProjectUpdate || action == Action::ProjectForget) {
+            if (action == Action::InstructionPackagePreview ||
+                action == Action::InstructionPackageActivate) {
+                const auto bindingCurrent =
+                    instructionProject == selectedProjectId_ &&
+                    instructionPath == winrt::to_string(
+                        InstructionPackagePath().Text());
+                if (!bindingCurrent) {
+                    ClearInstructionPackagePreview();
+                    InstructionPackageState().Text(
+                        L"Instruction validation returned after the project or folder changed. Current controls were left untouched.");
+                } else if (!instructionView.loaded || !instructionView.snapshot ||
+                    instructionView.snapshot->projectId.value() !=
+                        instructionProject) {
+                    ClearInstructionPackagePreview();
+                    InstructionPackageState().Text(winrt::to_hstring(
+                        "Instruction package failed · " + message));
+                } else {
+                    const auto& package = *instructionView.snapshot;
+                    std::string files;
+                    for (const auto& file : package.files) {
+                        if (!files.empty()) files += "\n";
+                        files += "• " + file;
+                    }
+                    InstructionPackageFiles().Text(winrt::to_hstring(files));
+                    InstructionPackageRevision().Text(winrt::to_hstring(
+                        package.revision.value().substr(0U, 16U) + "…"));
+                    InstructionPackageFileCount().Text(winrt::to_hstring(
+                        std::to_string(package.fileCount) + " files · " +
+                        std::to_string(package.contentBytes / 1024U) + " KiB"));
+                    InstructionPackageState().Text(winrt::to_hstring(message +
+                        (package.ignoredFileCount == 0U
+                            ? std::string{}
+                            : " " + std::to_string(package.ignoredFileCount) +
+                                " unsupported file(s) were ignored.")));
+                    if (action == Action::InstructionPackagePreview) {
+                        instructionPreviewProjectId_ = instructionProject;
+                        instructionPreviewPath_ = instructionPath;
+                        instructionPreviewRevision_ = package.revision.value();
+                        InstructionPackageActivateButton().IsEnabled(true);
+                    } else {
+                        ClearInstructionPackagePreview();
+                        InstructionPackageRevision().Text(winrt::to_hstring(
+                            package.revision.value().substr(0U, 16U) +
+                            "… · ACTIVE"));
+                        followUp = Action::ProjectLoad;
+                    }
+                    ProjectState().Text(winrt::to_hstring(message));
+                }
+            } else if (action == Action::ProjectUpdate || action == Action::ProjectForget) {
                 const auto bindingCurrent = selectedProjectId_ == editedProjectId &&
                     selectedMemoryProjectId_ == editedProjectId &&
                     selectedMemoryRecord_ &&

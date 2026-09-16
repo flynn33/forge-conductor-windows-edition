@@ -64,6 +64,11 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProjectRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSearchClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectRememberClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionPackageBrowseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionPackagePathChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
+    void InstructionPackagePreviewClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionPackageActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectUpdateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectForgetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectEditCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -109,6 +114,7 @@ private:
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
         ProjectArchiveExport, ProjectArchivePreview, ProjectArchiveImport,
+        InstructionPackagePreview, InstructionPackageActivate,
         LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
         OperationalInspect, OperationalPrune, OperationalClose, RunHistory, EvidenceLoad, EvidenceVerify
     };
@@ -147,6 +153,7 @@ private:
     void ClearSelectedRun();
     void ClearSelectedProject();
     void ClearArchivePreview();
+    void ClearInstructionPackagePreview();
     void SelectPage(const winrt::hstring& tag);
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
@@ -189,6 +196,9 @@ private:
     std::string archivePreviewProjectId_;
     std::string archivePreviewPath_;
     std::string archivePreviewChecksum_;
+    std::string instructionPreviewProjectId_;
+    std::string instructionPreviewPath_;
+    std::string instructionPreviewRevision_;
     std::string verifiedRunId_;
     std::string verifiedRunProjectId_;
     std::wstring selectedPageValueName_{L"SelectedPage"};

@@ -479,6 +479,54 @@ ProjectWorkspaceView ManagerConnection::rememberProjectMemory(
     }
 }
 
+InstructionPackageView ManagerConnection::instructionPackage(
+    std::string projectId,
+    std::string packagePath,
+    const bool activate,
+    std::string expectedRevision,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto project = Domain::ProjectId::parse(projectId);
+        if (!project) return {false, project.error().message, std::nullopt};
+        auto path = Domain::PathText::create(packagePath);
+        if (!path) return {false, path.error().message, std::nullopt};
+        std::optional<Domain::Sha256Digest> expected;
+        if (!expectedRevision.empty()) {
+            auto parsed = Domain::Sha256Digest::parse(expectedRevision);
+            if (!parsed) return {false, parsed.error().message, std::nullopt};
+            expected = std::move(parsed).value();
+        }
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{60});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->instructionPackage(
+            Manager::ManagerInstructionPackageRequest{
+                std::move(project).value(), std::move(path).value(), activate,
+                std::move(expected)},
+            context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        const auto message = activate
+            ? "Activated instruction revision " +
+                snapshot.revision.value().substr(0U, 16U) + " for " +
+                std::to_string(snapshot.fileCount) + " files."
+            : "Validated " + std::to_string(snapshot.fileCount) +
+                " instruction files as revision " +
+                snapshot.revision.value().substr(0U, 16U) + ".";
+        return {true, message, std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not process the instruction package.", std::nullopt};
+    }
+}
+
 LmStudioView ManagerConnection::lmStudio(
     const LmStudioAction action,
     const std::stop_token cancellation) noexcept

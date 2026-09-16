@@ -312,6 +312,23 @@
       <Border Grid.Column="2" Style="{ThemeResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Store footprint" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock x:Name="ProjectStoreSize" Text="—" Style="{ThemeResource ForgeMetricValueStyle}" FontSize="27"/><TextBlock Text="Database on this host" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border>
       <Border Grid.Column="3" Style="{ThemeResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Integrity" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock x:Name="ProjectIntegrityValue" Text="PENDING" Foreground="{ThemeResource ForgeWarningBrush}" FontFamily="Segoe UI Variable Display" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Manager verification" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border>
      </Grid>
+     <Border Style="{ThemeResource ForgeCardStyle}" Padding="18">
+      <Grid ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+       <StackPanel Spacing="12">
+        <Grid><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="34" Height="34" CornerRadius="9" Background="{ThemeResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE8A5;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/></Border><StackPanel Spacing="2"><TextBlock Text="Instruction package" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Bind a verified folder of project guidance to every new managed run." Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></StackPanel><Border HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="10" Padding="10,5" Background="#192BD4B6"><TextBlock Text="MANAGER OWNED" Foreground="#FF55E2C1" FontSize="10" FontWeight="SemiBold"/></Border></Grid>
+        <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="InstructionPackagePath" PlaceholderText="Choose an instruction package folder…" TextChanged="InstructionPackagePathChanged" AutomationProperties.Name="Instruction package folder"/><Button Grid.Column="1" Content="Browse…" Click="InstructionPackageBrowseClicked"/></Grid>
+        <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Validate package" Click="InstructionPackagePreviewClicked"/><Button x:Name="InstructionPackageActivateButton" Content="Activate revision" Click="InstructionPackageActivateClicked" Style="{ThemeResource ForgeAccentButtonStyle}" IsEnabled="False"/></StackPanel>
+        <TextBlock Text="Supported: Markdown, text, JSON, YAML, TOML, and CSV · up to 32 files / 212 KiB. Validation reads without changing project memory." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+       </StackPanel>
+       <Border Grid.Column="1" Style="{ThemeResource ForgeInsetStyle}" Padding="14">
+        <StackPanel Spacing="10">
+         <Grid><StackPanel Spacing="3"><TextBlock Text="ACTIVE REVISION" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="10" FontWeight="SemiBold"/><TextBlock x:Name="InstructionPackageRevision" Text="No revision activated" FontFamily="Cascadia Mono" FontSize="14" FontWeight="SemiBold"/></StackPanel><TextBlock x:Name="InstructionPackageFileCount" HorizontalAlignment="Right" VerticalAlignment="Center" Text="— files" Style="{ThemeResource ForgeCaptionStyle}"/></Grid>
+         <TextBlock x:Name="InstructionPackageState" Text="Choose a project and package folder to begin." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+         <ScrollViewer MaxHeight="92" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="InstructionPackageFiles" Text="Validated file manifest will appear here." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer>
+        </StackPanel>
+       </Border>
+      </Grid>
+     </Border>
      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="1.2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Border Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="11">
        <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE8B7;" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Project selection" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="Refresh" Click="ProjectRefreshClicked"/></Grid>

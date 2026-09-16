@@ -2,6 +2,7 @@
 
 #include "ForgeConductor/Manager/ManagerDeadlineMapper.h"
 #include "ForgeConductor/Dashboard/DashboardSessionCloseRequest.h"
+#include "ForgeConductor/Domain/Utf8.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -11,14 +12,18 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <condition_variable>
 #include <ctime>
+#include <filesystem>
+#include <fstream>
 #include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <span>
+#include <sstream>
 #include <stop_token>
 #include <stdexcept>
 #include <string_view>
@@ -123,6 +128,78 @@ template <typename T>
     return queried && ::CompareStringOrdinal(
         expected, expectedLength, actual,
         static_cast<int>(actualLength), TRUE) == CSTR_EQUAL;
+}
+
+struct InstructionPackageFile final {
+    std::string relativePath;
+    std::string content;
+};
+
+struct ScannedInstructionPackage final {
+    std::string name;
+    Domain::PathText path;
+    Domain::Sha256Digest revision;
+    std::vector<InstructionPackageFile> files;
+    std::size_t ignoredFileCount{};
+    std::uint64_t contentBytes{};
+};
+
+[[nodiscard]] std::wstring utf8Path(const std::string_view value)
+{
+    if (value.empty()) return {};
+    const auto count = ::MultiByteToWideChar(
+        CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
+        static_cast<int>(value.size()), nullptr, 0);
+    if (count <= 0) {
+        throw std::runtime_error{"The instruction package path is not valid UTF-8."};
+    }
+    std::wstring result(static_cast<std::size_t>(count), L'\0');
+    if (::MultiByteToWideChar(
+            CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
+            static_cast<int>(value.size()), result.data(), count) != count) {
+        throw std::runtime_error{"The instruction package path could not be decoded."};
+    }
+    return result;
+}
+
+[[nodiscard]] std::string pathUtf8(const std::filesystem::path& value)
+{
+    const auto native = value.wstring();
+    if (native.empty()) return {};
+    const auto count = ::WideCharToMultiByte(
+        CP_UTF8, WC_ERR_INVALID_CHARS, native.data(),
+        static_cast<int>(native.size()), nullptr, 0, nullptr, nullptr);
+    if (count <= 0) {
+        throw std::runtime_error{"An instruction package file name is not valid Unicode."};
+    }
+    std::string result(static_cast<std::size_t>(count), '\0');
+    if (::WideCharToMultiByte(
+            CP_UTF8, WC_ERR_INVALID_CHARS, native.data(),
+            static_cast<int>(native.size()), result.data(), count,
+            nullptr, nullptr) != count) {
+        throw std::runtime_error{"An instruction package file name could not be encoded."};
+    }
+    std::replace(result.begin(), result.end(), '\\', '/');
+    return result;
+}
+
+[[nodiscard]] bool supportedInstructionExtension(std::string extension)
+{
+    std::transform(
+        extension.begin(), extension.end(), extension.begin(),
+        [](const unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
+    return extension == ".md" || extension == ".txt" ||
+        extension == ".json" || extension == ".yaml" ||
+        extension == ".yml" || extension == ".toml" ||
+        extension == ".csv";
+}
+
+[[nodiscard]] std::span<const std::byte> byteView(
+    const std::string& value) noexcept
+{
+    return std::as_bytes(std::span{value.data(), value.size()});
 }
 
 } // namespace
@@ -710,6 +787,28 @@ private:
                     "Project memory returned records from a different project identity."));
         }
 
+        auto activeManifestPage = telemetrySources_.projectMemory->listRecent(
+            Domain::ListRecentProjectMemoryRequest{
+                projectId, {"instruction_package"}, std::nullopt, 1U,
+                std::nullopt, true, 64U * 1024U},
+            context);
+        if (!activeManifestPage) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                std::move(activeManifestPage).error());
+        }
+        if (activeManifestPage.value().projectId != projectId ||
+            std::any_of(
+                activeManifestPage.value().records.begin(),
+                activeManifestPage.value().records.end(),
+                [&](const Domain::MemorySearchHit& hit) {
+                    return hit.record.projectId != projectId;
+                })) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::ProjectScopeMismatch,
+                    "The active instruction manifest returned a different project identity."));
+        }
+
         std::vector<ManagerProjectMemoryRecord> records;
         records.reserve(page.value().records.size());
         for (auto& hit : page.value().records) {
@@ -725,6 +824,20 @@ private:
                 record.updatedAt});
         }
 
+        std::optional<ManagerProjectMemoryRecord> activeInstructionManifest;
+        if (!activeManifestPage.value().records.empty()) {
+            auto& record = activeManifestPage.value().records.front().record;
+            activeInstructionManifest = ManagerProjectMemoryRecord{
+                record.id,
+                record.version,
+                std::move(record.kind),
+                std::move(record.title),
+                std::move(record.summary),
+                std::move(record.body),
+                std::move(record.tags),
+                record.updatedAt};
+        }
+
         const auto& memoryStatus = status.value();
         return Domain::Result<ManagerProjectWorkspaceSnapshot>::success(
             ManagerProjectWorkspaceSnapshot{
@@ -737,9 +850,431 @@ private:
                 memoryStatus.fullTextSearchAvailable,
                 memoryStatus.integrityOk,
                 std::move(records),
+                std::move(activeInstructionManifest),
                 std::move(page.value().nextCursor),
                 page.value().truncated,
                 std::move(writtenRecordId)});
+    }
+
+    [[nodiscard]] Domain::Result<ScannedInstructionPackage>
+    scanInstructionPackage(
+        const ManagerInstructionPackageRequest& request,
+        const Domain::OperationContext& context)
+    {
+        constexpr std::size_t maximumFiles = 32U;
+        constexpr std::uint64_t maximumContentBytes = 212U * 1024U;
+        constexpr std::uint64_t maximumFileBytes = 256U * 1024U;
+        if (telemetrySources_.projects == nullptr ||
+            telemetrySources_.projectMemory == nullptr ||
+            telemetrySources_.evidenceHasher == nullptr) {
+            return Domain::Result<ScannedInstructionPackage>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Instruction packages are unavailable in this Manager composition."));
+        }
+        if (auto current = validateContext(context); !current) {
+            return Domain::Result<ScannedInstructionPackage>::failure(
+                std::move(current).error());
+        }
+        auto descriptor = telemetrySources_.projects->descriptor(
+            request.projectId, context);
+        if (!descriptor) {
+            return Domain::Result<ScannedInstructionPackage>::failure(
+                std::move(descriptor).error());
+        }
+        try {
+            const std::filesystem::path root{utf8Path(request.packagePath.value())};
+            std::error_code pathError;
+            const auto canonicalRoot = std::filesystem::weakly_canonical(
+                root, pathError);
+            if (pathError || !std::filesystem::is_directory(canonicalRoot, pathError) ||
+                pathError) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "Choose an existing instruction package folder."));
+            }
+            const auto rootAttributes = ::GetFileAttributesW(canonicalRoot.c_str());
+            if (rootAttributes == INVALID_FILE_ATTRIBUTES ||
+                (rootAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::Unauthorized,
+                    "Instruction package roots cannot be links or reparse points."));
+            }
+
+            ScannedInstructionPackage scanned{
+                pathUtf8(canonicalRoot.filename()),
+                request.packagePath,
+                Domain::Sha256Digest::parse(std::string(64U, '0')).value(),
+                {}, 0U, 0U};
+            std::vector<std::filesystem::path> candidates;
+            for (std::filesystem::recursive_directory_iterator iterator{
+                     canonicalRoot,
+                     std::filesystem::directory_options::skip_permission_denied,
+                     pathError}, end;
+                 iterator != end; iterator.increment(pathError)) {
+                if (pathError) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The Manager could not enumerate the complete instruction package."));
+                }
+                if (context.cancellation.stop_requested()) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Cancelled,
+                        "Instruction package validation was cancelled."));
+                }
+                const auto attributes = ::GetFileAttributesW(iterator->path().c_str());
+                if (attributes == INVALID_FILE_ATTRIBUTES) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The Manager could not inspect an instruction package entry."));
+                }
+                if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "Instruction packages cannot contain links or reparse points."));
+                }
+                if (!iterator->is_regular_file(pathError)) {
+                    if (pathError) {
+                        return Domain::Result<ScannedInstructionPackage>::failure(error(
+                            Domain::ErrorCodes::Unauthorized,
+                            "The Manager could not inspect an instruction package file."));
+                    }
+                    continue;
+                }
+                if (!supportedInstructionExtension(
+                        pathUtf8(iterator->path().extension()))) {
+                    ++scanned.ignoredFileCount;
+                    continue;
+                }
+                candidates.push_back(iterator->path());
+            }
+            std::sort(candidates.begin(), candidates.end(),
+                [&](const auto& left, const auto& right) {
+                    return pathUtf8(std::filesystem::relative(left, canonicalRoot)) <
+                        pathUtf8(std::filesystem::relative(right, canonicalRoot));
+                });
+            if (candidates.empty()) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The folder contains no supported instruction files."));
+            }
+            if (candidates.size() > maximumFiles) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::PayloadTooLarge,
+                    "Instruction packages can contain at most 32 supported text files."));
+            }
+
+            std::string digestInput{"forge-instruction-package-v1\n"};
+            scanned.files.reserve(candidates.size());
+            for (const auto& candidate : candidates) {
+                const auto relative = pathUtf8(
+                    std::filesystem::relative(candidate, canonicalRoot, pathError));
+                if (pathError || relative.empty() || relative.size() > 512U) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "An instruction package relative path is invalid or too long."));
+                }
+                const auto size = std::filesystem::file_size(candidate, pathError);
+                if (pathError || size > maximumFileBytes ||
+                    scanned.contentBytes > maximumContentBytes - size) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::PayloadTooLarge,
+                        "Instruction package text exceeds the bounded 212 KiB package limit or 256 KiB file limit."));
+                }
+                std::ifstream input{candidate, std::ios::binary};
+                if (!input) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The Manager could not read an instruction package file."));
+                }
+                std::string content(
+                    static_cast<std::size_t>(size), '\0');
+                input.read(content.data(), static_cast<std::streamsize>(content.size()));
+                if (!input && static_cast<std::size_t>(input.gcount()) != content.size()) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "An instruction package file changed while it was being read."));
+                }
+                if (content.starts_with("\xEF\xBB\xBF")) content.erase(0U, 3U);
+                if (content.find('\0') != std::string::npos ||
+                    !Domain::isValidUtf8(content)) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "Instruction package files must be valid UTF-8 text without NUL bytes."));
+                }
+                scanned.contentBytes += content.size();
+                digestInput += relative + "\n" +
+                    std::to_string(content.size()) + "\n" + content + "\n";
+                scanned.files.push_back(
+                    InstructionPackageFile{relative, std::move(content)});
+            }
+            auto revision = telemetrySources_.evidenceHasher->sha256(
+                byteView(digestInput));
+            if (!revision) {
+                return Domain::Result<ScannedInstructionPackage>::failure(
+                    std::move(revision).error());
+            }
+            scanned.revision = std::move(revision).value();
+            return Domain::Result<ScannedInstructionPackage>::success(
+                std::move(scanned));
+        } catch (const std::exception&) {
+            return Domain::Result<ScannedInstructionPackage>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "The Manager could not validate the selected instruction package folder."));
+        }
+    }
+
+    [[nodiscard]] Domain::Result<ManagerInstructionPackageSnapshot>
+    instructionPackage(
+        const ManagerInstructionPackageRequest& request,
+        const Domain::OperationContext& context)
+    {
+        auto scannedResult = scanInstructionPackage(request, context);
+        if (!scannedResult) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                std::move(scannedResult).error());
+        }
+        auto scanned = std::move(scannedResult).value();
+        if (request.activate && !request.expectedRevision) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Activation requires the exact validated instruction revision."));
+        }
+        if (!request.activate && request.expectedRevision) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Validation cannot supply an activation revision."));
+        }
+        if (request.expectedRevision &&
+            *request.expectedRevision != scanned.revision) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(error(
+                Domain::ErrorCodes::Conflict,
+                "The instruction package changed after validation. Validate the folder again."));
+        }
+        std::vector<std::string> fileNames;
+        fileNames.reserve(scanned.files.size());
+        for (const auto& file : scanned.files) fileNames.push_back(file.relativePath);
+        std::optional<Domain::MemoryRecordId> manifestRecordId;
+        if (request.activate) {
+            std::vector<Domain::ProjectMemoryWrite> writes;
+            writes.reserve(scanned.files.size());
+            const auto revisionTag = "revision-" +
+                scanned.revision.value().substr(0U, 16U);
+            for (std::size_t index{}; index < scanned.files.size(); ++index) {
+                const auto& file = scanned.files[index];
+                auto idempotency = Domain::IdempotencyKey::create(
+                    "instruction-file:" + scanned.revision.value() + ":" +
+                    std::to_string(index));
+                if (!idempotency) {
+                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                        std::move(idempotency).error());
+                }
+                Domain::ProjectMemoryWrite write;
+                write.kind = "project_instruction";
+                write.title = file.relativePath;
+                write.summary = "Instruction package " + scanned.name +
+                    " · revision " + scanned.revision.value().substr(0U, 16U);
+                write.body = file.content;
+                write.tags = {"instruction-package", revisionTag};
+                write.importance = 1.0;
+                write.confidence = 1.0;
+                write.sourceKind = "manager_instruction_package";
+                write.sourceReference = file.relativePath;
+                write.idempotencyKey = std::move(idempotency).value();
+                writes.push_back(std::move(write));
+            }
+            auto remembered = telemetrySources_.projectMemory->rememberBatch(
+                Domain::RememberProjectMemoryBatchRequest{
+                    request.projectId, std::move(writes)},
+                context);
+            if (!remembered) {
+                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                    std::move(remembered).error());
+            }
+            nlohmann::json manifest{
+                {"schema", "forge-instruction-package-v1"},
+                {"package_name", scanned.name},
+                {"package_path", scanned.path.value()},
+                {"revision", scanned.revision.value()},
+                {"content_bytes", scanned.contentBytes},
+                {"files", nlohmann::json::array()}};
+            Domain::ProjectMemoryWrite manifestWrite;
+            manifestWrite.kind = "instruction_package";
+            manifestWrite.title = scanned.name;
+            manifestWrite.summary = std::to_string(scanned.files.size()) +
+                " files · " + std::to_string(scanned.contentBytes) +
+                " bytes · SHA-256 " + scanned.revision.value();
+            for (std::size_t index{};
+                 index < remembered.value().results.size(); ++index) {
+                const auto& outcome = remembered.value().results[index];
+                manifest["files"].push_back({
+                    {"path", scanned.files[index].relativePath},
+                    {"record_id", outcome.recordId.value()}});
+                manifestWrite.relatedIds.push_back(outcome.recordId);
+            }
+            manifestWrite.body = manifest.dump();
+            manifestWrite.tags = {"active-instructions", revisionTag};
+            manifestWrite.importance = 1.0;
+            manifestWrite.confidence = 1.0;
+            manifestWrite.sourceKind = "manager_instruction_package";
+            manifestWrite.sourceReference = scanned.path.value();
+            auto manifestKey = Domain::IdempotencyKey::create(
+                "instruction-manifest:" + scanned.revision.value());
+            if (!manifestKey) {
+                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                    std::move(manifestKey).error());
+            }
+            manifestWrite.idempotencyKey = std::move(manifestKey).value();
+            auto manifestOutcome = telemetrySources_.projectMemory->remember(
+                Domain::RememberProjectMemoryRequest{
+                    request.projectId, std::move(manifestWrite)},
+                context);
+            if (!manifestOutcome) {
+                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                    std::move(manifestOutcome).error());
+            }
+            manifestRecordId = manifestOutcome.value().recordId;
+        }
+        return Domain::Result<ManagerInstructionPackageSnapshot>::success(
+            ManagerInstructionPackageSnapshot{
+                request.projectId,
+                std::move(scanned.name),
+                std::move(scanned.path),
+                std::move(scanned.revision),
+                scanned.files.size(),
+                scanned.ignoredFileCount,
+                scanned.contentBytes,
+                std::move(fileNames),
+                request.activate,
+                std::move(manifestRecordId)});
+    }
+
+    [[nodiscard]] Domain::Result<std::string> managedRunTaskWithInstructions(
+        const Domain::ProjectId& projectId,
+        std::string task,
+        const bool allowTools,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.projectMemory == nullptr ||
+            task.size() >= Domain::MaximumManagedRunTaskBytes) {
+            return Domain::Result<std::string>::success(std::move(task));
+        }
+        auto manifests = telemetrySources_.projectMemory->listRecent(
+            Domain::ListRecentProjectMemoryRequest{
+                projectId, {"instruction_package"}, std::nullopt, 1U,
+                std::nullopt, true, 64U * 1024U},
+            context);
+        if (!manifests) {
+            return Domain::Result<std::string>::failure(
+                std::move(manifests).error());
+        }
+        if (manifests.value().records.empty() ||
+            !manifests.value().records.front().record.body) {
+            return Domain::Result<std::string>::success(std::move(task));
+        }
+        try {
+            const auto manifest = nlohmann::json::parse(
+                *manifests.value().records.front().record.body);
+            if (!manifest.is_object() ||
+                manifest.value("schema", std::string{}) !=
+                    "forge-instruction-package-v1" ||
+                !manifest.contains("files") || !manifest.at("files").is_array()) {
+                return Domain::Result<std::string>::failure(error(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The active instruction package manifest is malformed."));
+            }
+            std::vector<Domain::MemoryRecordId> ids;
+            std::vector<std::pair<std::string, std::string>> index;
+            for (const auto& file : manifest.at("files")) {
+                if (!file.is_object() || !file.contains("path") ||
+                    !file.at("path").is_string() ||
+                    !file.contains("record_id") ||
+                    !file.at("record_id").is_string()) {
+                    return Domain::Result<std::string>::failure(error(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The active instruction package file index is malformed."));
+                }
+                auto id = Domain::MemoryRecordId::parse(
+                    file.at("record_id").get<std::string>());
+                if (!id) {
+                    return Domain::Result<std::string>::failure(
+                        std::move(id).error());
+                }
+                index.emplace_back(
+                    file.at("path").get<std::string>(), id.value().value());
+                ids.push_back(std::move(id).value());
+            }
+            auto records = telemetrySources_.projectMemory->get(
+                Domain::GetProjectMemoryRequest{
+                    projectId, std::move(ids), true, 256U * 1024U},
+                context);
+            if (!records) {
+                return Domain::Result<std::string>::failure(
+                    std::move(records).error());
+            }
+            if (records.value().projectId != projectId) {
+                return Domain::Result<std::string>::failure(error(
+                    Domain::ErrorCodes::ProjectScopeMismatch,
+                    "The active instruction package crossed project scope."));
+            }
+            auto priority = [](std::string value) {
+                std::transform(value.begin(), value.end(), value.begin(),
+                    [](const unsigned char character) {
+                        return static_cast<char>(std::tolower(character));
+                    });
+                if (value == "agents.md") return 0;
+                if (value.find("start-here") != std::string::npos) return 1;
+                if (value.find("execution") != std::string::npos ||
+                    value.find("instruction") != std::string::npos) return 2;
+                if (value.find("readme") != std::string::npos) return 3;
+                return 4;
+            };
+            auto ordered = std::move(records).value().records;
+            std::stable_sort(ordered.begin(), ordered.end(),
+                [&](const auto& left, const auto& right) {
+                    return priority(left.title) < priority(right.title);
+                });
+
+            std::string enriched = "[USER MISSION]\n" + task +
+                "\n\n[ACTIVE PROJECT INSTRUCTION PACKAGE]\nPackage: " +
+                manifest.value("package_name", std::string{"unnamed"}) +
+                "\nRevision SHA-256: " +
+                manifest.value("revision", std::string{"unknown"}) +
+                "\nThe Manager has bound this revision to the exact project. "
+                "Follow these instructions for this run.\n";
+            if (allowTools) {
+                enriched += "Files not embedded below remain available through "
+                    "project_memory.get using this index:\n";
+                for (const auto& [path, id] : index) {
+                    enriched += "- " + path + " | " + id + "\n";
+                }
+            }
+            std::size_t embedded{};
+            const std::string footer =
+                "\n[END ACTIVE PROJECT INSTRUCTION PACKAGE]\n";
+            for (const auto& record : ordered) {
+                if (!record.body) continue;
+                const auto section = "\n[INSTRUCTION FILE: " + record.title +
+                    "]\n" + *record.body + "\n";
+                if (enriched.size() + section.size() + footer.size() >
+                    Domain::MaximumManagedRunTaskBytes) {
+                    continue;
+                }
+                enriched += section;
+                ++embedded;
+            }
+            enriched += "\nEmbedded " + std::to_string(embedded) + " of " +
+                std::to_string(index.size()) + " instruction files." + footer;
+            if (enriched.size() > Domain::MaximumManagedRunTaskBytes) {
+                return Domain::Result<std::string>::failure(error(
+                    Domain::ErrorCodes::PayloadTooLarge,
+                    "The mission leaves no safe context budget for the active instruction package index."));
+            }
+            return Domain::Result<std::string>::success(std::move(enriched));
+        } catch (const std::exception&) {
+            return Domain::Result<std::string>::failure(error(
+                Domain::ErrorCodes::IntegrityFailure,
+                "The active instruction package could not be assembled safely."));
+        }
     }
 
     [[nodiscard]] Domain::Result<ManagerLmStudioSnapshot> lmStudioWorkflow(
@@ -1838,6 +2373,10 @@ private:
                             payload.projectId, {}, 20U,
                             remembered.value().recordId, context));
                 } else if constexpr (
+                    std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
+                    return controllerResponse(
+                        request, instructionPackage(payload, context));
+                } else if constexpr (
                     std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                     return controllerResponse(
                         request, lmStudioWorkflow(request, false, false, context));
@@ -1886,6 +2425,13 @@ private:
                                 Domain::ErrorCodes::InvalidRequest,
                                 "Managed runs are unavailable in this Manager composition."));
                     }
+                    auto task = managedRunTaskWithInstructions(
+                        payload.projectId, payload.task,
+                        payload.allowTools, context);
+                    if (!task) {
+                        return responseWithError(
+                            request, std::move(task).error());
+                    }
                     return controllerResponse(
                         request,
                         managedRuns_->start(
@@ -1896,7 +2442,7 @@ private:
                                 context.operationId,
                                 context.correlationId,
                                 payload.authorityGeneration,
-                                payload.task,
+                                std::move(task).value(),
                                 payload.allowTools},
                             context));
                 } else if constexpr (

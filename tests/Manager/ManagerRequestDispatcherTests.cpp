@@ -10,6 +10,8 @@
 #include <condition_variable>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -480,6 +482,28 @@ private:
                 "fixture managed task"},
             state);
     }
+};
+
+class FixedHasher final : public Contracts::IHasher {
+public:
+    explicit FixedHasher(Domain::Sha256Digest digest)
+        : digest_{std::move(digest)}
+    {
+    }
+
+    [[nodiscard]] Domain::Result<Domain::Sha256Digest> sha256(
+        const std::span<const std::byte> bytes) noexcept override
+    {
+        ++calls;
+        lastByteCount = bytes.size();
+        return Domain::Result<Domain::Sha256Digest>::success(digest_);
+    }
+
+    std::size_t calls{};
+    std::size_t lastByteCount{};
+
+private:
+    Domain::Sha256Digest digest_;
 };
 
 class FakeDurableManagedRunStore final : public Contracts::IManagedRunStore {
@@ -1122,6 +1146,8 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         Domain::Result<Domain::ProjectMemoryStatus>::success(statusFor(projectB)));
     memory.searchResult.set(
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectB)));
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(pageFor(projectB)));
     const auto selectedB = dispatcher.dispatch(request(
         *clock,
         81U,
@@ -1147,6 +1173,8 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         Domain::Result<Domain::ProjectMemoryStatus>::success(statusFor(projectA)));
     memory.searchResult.set(
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
     const auto selectedA = dispatcher.dispatch(request(
         *clock,
         83U,
@@ -1155,6 +1183,191 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         responseValue<Manager::ManagerProjectWorkspaceSnapshot>(selectedA);
     require(workspaceA != nullptr && workspaceA->project.id == projectA,
             "project A selection remains isolated from project B");
+}
+
+void testInstructionPackagePreviewAndActivationStayProjectBound()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    const auto project = Domain::ProjectId::parse(uuidText(820U)).value();
+    const Domain::ProjectMemoryDescriptor descriptor{
+        project, "Instruction project", std::nullopt,
+        {Domain::PathText::create("D:\\Projects\\Instructions").value()}};
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(descriptor)),
+        "seed instruction project");
+    TestFakes::RecordingProjectMemoryService memory;
+    const auto revision = Domain::Sha256Digest::parse(
+        std::string(64U, 'a')).value();
+    FixedHasher hasher{revision};
+
+    const auto packageRoot = std::filesystem::temp_directory_path() /
+        "forge-instruction-package-dispatcher-test";
+    struct Cleanup final {
+        std::filesystem::path path;
+        ~Cleanup()
+        {
+            std::error_code ignored;
+            std::filesystem::remove_all(path, ignored);
+        }
+    } cleanup{packageRoot};
+    std::error_code ignored;
+    std::filesystem::remove_all(packageRoot, ignored);
+    std::filesystem::create_directories(packageRoot / "specs");
+    {
+        std::ofstream output{packageRoot / "START-HERE.md", std::ios::binary};
+        output << "# Start here\nFollow the project contract.\n";
+    }
+    {
+        std::ofstream output{packageRoot / "specs" / "policy.json",
+            std::ios::binary};
+        output << "{\"mode\":\"bounded\"}\n";
+    }
+    {
+        std::ofstream output{packageRoot / "ignored.bin", std::ios::binary};
+        output << "not ingested";
+    }
+    const auto packagePath = Domain::PathText::create(
+        packageRoot.string()).value();
+    Manager::ManagerTelemetrySources sources;
+    sources.projects = &registry;
+    sources.projectMemory = &memory;
+    sources.evidenceHasher = &hasher;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    const auto preview = dispatcher.dispatch(request(
+        *clock, 821U, Manager::ManagerInstructionPackageRequest{
+            project, packagePath, false, std::nullopt}));
+    const auto* previewSnapshot =
+        responseValue<Manager::ManagerInstructionPackageSnapshot>(preview);
+    require(previewSnapshot != nullptr &&
+        previewSnapshot->projectId == project &&
+        previewSnapshot->revision == revision &&
+        previewSnapshot->fileCount == 2U &&
+        previewSnapshot->ignoredFileCount == 1U &&
+        !previewSnapshot->activated &&
+        !previewSnapshot->manifestRecordId,
+        "instruction package preview is exact, bounded and read-only");
+    require(hasher.calls == 1U && hasher.lastByteCount > 0U,
+        "instruction preview hashes canonical package content");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 0U &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 0U,
+        "instruction preview does not mutate memory");
+
+    const auto fileA = Domain::MemoryRecordId::parse(uuidText(822U)).value();
+    const auto fileB = Domain::MemoryRecordId::parse(uuidText(823U)).value();
+    const auto manifest = Domain::MemoryRecordId::parse(uuidText(824U)).value();
+    const auto outcome = [&](const Domain::MemoryRecordId& id) {
+        return Domain::MemoryWriteOutcome{
+            project, id, 1U, Domain::MemoryWriteDisposition::Inserted,
+            revision, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion};
+    };
+    memory.rememberBatchResult.set(
+        Domain::Result<Domain::MemoryBatchOutcome>::success(
+            Domain::MemoryBatchOutcome{
+                project, {outcome(fileA), outcome(fileB)},
+                Domain::ProjectMemorySchemaVersion,
+                Domain::ProjectMemoryCapabilityVersion}));
+    memory.rememberResult.set(
+        Domain::Result<Domain::MemoryWriteOutcome>::success(outcome(manifest)));
+
+    const auto stale = Domain::Sha256Digest::parse(
+        std::string(64U, 'b')).value();
+    requireError(dispatcher.dispatch(request(
+        *clock, 825U, Manager::ManagerInstructionPackageRequest{
+            project, packagePath, true, stale})),
+        Domain::ErrorCodes::Conflict,
+        "instruction activation with stale preview");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 0U,
+        "stale instruction activation commits nothing");
+
+    const auto activated = dispatcher.dispatch(request(
+        *clock, 826U, Manager::ManagerInstructionPackageRequest{
+            project, packagePath, true, revision}));
+    const auto* activatedSnapshot =
+        responseValue<Manager::ManagerInstructionPackageSnapshot>(activated);
+    require(activatedSnapshot != nullptr && activatedSnapshot->activated &&
+        activatedSnapshot->manifestRecordId == manifest,
+        "validated instruction revision activates with manifest identity");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 1U &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 1U &&
+        memory.lastProjectId() == project,
+        "instruction files and manifest remain bound to exact project");
+
+    const auto now = clock->utc;
+    const auto record = [&](const Domain::MemoryRecordId& id,
+                            std::string kind,
+                            std::string title,
+                            std::string body) {
+        return Domain::ProjectMemoryRecord{
+            id, project, 1U, std::move(kind), std::move(title),
+            "instruction package test", std::move(body),
+            {"instruction-package"}, 1.0, 1.0,
+            "manager_instruction_package", std::nullopt, std::nullopt,
+            now, now, now, std::nullopt, revision, false,
+            Domain::ProjectMemorySchemaVersion};
+    };
+    const auto manifestBody = std::string{
+        "{\"schema\":\"forge-instruction-package-v1\","
+        "\"package_name\":\"fixture\",\"revision\":\""} +
+        revision.value() + "\",\"files\":[{\"path\":\"START-HERE.md\","
+        "\"record_id\":\"" + fileA.value() + "\"},{\"path\":"
+        "\"specs/policy.json\",\"record_id\":\"" + fileB.value() +
+        "\"}]}";
+    auto manifestRecord = record(
+        manifest, "instruction_package", "fixture", manifestBody);
+    auto firstFile = record(
+        fileA, "project_instruction", "START-HERE.md",
+        "Always preserve exact project identity.");
+    auto secondFile = record(
+        fileB, "project_instruction", "specs/policy.json",
+        "{\"mode\":\"bounded\"}");
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{manifestRecord, 1.0}}, std::nullopt,
+            false, 1'024U, 64U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.statusResult.set(
+        Domain::Result<Domain::ProjectMemoryStatus>::success(
+            Domain::ProjectMemoryStatus{
+                project, 1U, 1U, 0U, 0U, 1U, 4'096U, 128U,
+                false, true, Domain::ProjectMemorySchemaVersion, {}}));
+    const auto workspaceResponse = dispatcher.dispatch(request(
+        *clock, 8261U,
+        Manager::ManagerProjectMemoryRequest{project, {}, 20U}));
+    const auto* workspace =
+        responseValue<Manager::ManagerProjectWorkspaceSnapshot>(
+            workspaceResponse);
+    require(workspace != nullptr && workspace->activeInstructionManifest &&
+        workspace->activeInstructionManifest->id == manifest,
+        "project workspace projects the active instruction manifest outside pagination");
+    memory.getResult.set(
+        Domain::Result<Domain::MemoryRecords>::success(Domain::MemoryRecords{
+            project, {std::move(firstFile), std::move(secondFile)},
+            2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    auto managedRuns = std::make_shared<FakeManagedRuns>();
+    Manager::ManagerRequestDispatcher runDispatcher{
+        controller, clock, Manager::ManagerTransportLimits{},
+        managedRuns, sources};
+    const auto runId = Domain::SessionId::parse(uuidText(827U)).value();
+    const auto clientId = Domain::ClientId::parse(uuidText(828U)).value();
+    const auto started = runDispatcher.dispatch(request(
+        *clock, 829U, Manager::ManagedRunStartRequest{
+            runId, project, clientId, 7U, "Complete the project work."}));
+    require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
+        managedRuns->lastStart &&
+        managedRuns->lastStart->task.find("[ACTIVE PROJECT INSTRUCTION PACKAGE]") !=
+            std::string::npos &&
+        managedRuns->lastStart->task.find(
+            "Always preserve exact project identity.") != std::string::npos &&
+        managedRuns->lastStart->task.find("Complete the project work.") !=
+            std::string::npos,
+        "new managed run receives active project instruction revision");
 }
 
 void testMaintenanceRequiresExactScopeAndCoordinatesStores()
@@ -1548,6 +1761,7 @@ int main()
         testDurableEvidenceIsRedactedAndProjectBound();
         testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt();
         testProjectWorkflowKeepsExactProjectIdentity();
+        testInstructionPackagePreviewAndActivationStayProjectBound();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetrySnapshotUsesManagerOwnedRunValues();
         testDuplicateCapacityAndCancellationBypass();
@@ -1556,7 +1770,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 13 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 15 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

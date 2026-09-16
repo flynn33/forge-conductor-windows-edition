@@ -98,6 +98,11 @@ public:
         const Manager::ManagerProjectRememberRequest& request,
         const Domain::OperationContext& context) noexcept;
 
+    [[nodiscard]] Domain::Result<Manager::ManagerInstructionPackageSnapshot>
+    instructionPackage(
+        const Manager::ManagerInstructionPackageRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
     [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> lmStudioStatus(
         const Domain::OperationContext& context) noexcept;
 

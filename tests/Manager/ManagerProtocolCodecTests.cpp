@@ -398,6 +398,12 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "Decision", "Keep project identity stable.",
         std::string{"Runs bind to the selected exact project ID."},
         {"architecture", "identity"}});
+    payloads.emplace_back(Manager::ManagerInstructionPackageRequest{
+        identifier<Domain::ProjectId>(
+            "20000000-0000-4000-8000-000000000002"),
+        path("D:\\Packages\\Alpha"), true,
+        identifier<Domain::Sha256Digest>(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")});
     payloads.emplace_back(Manager::ManagerMaintenanceRequest{
         Manager::ManagerMaintenanceScope::ProjectAllData,
         identifier<Domain::ProjectId>(
@@ -441,6 +447,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "projects.initialize",
         "projects.memory",
         "projects.remember",
+        "projects.instructions",
         "maintenance.reset",
         "manager.control",
         "manager.settings.update",
@@ -758,6 +765,7 @@ void testProjectWorkflowRoundTrips()
             {"identity", "runs"},
             Domain::UtcTimePoint{
                 std::chrono::milliseconds{1'767'225'602'321LL}}}},
+        std::nullopt,
         std::string{"next-page"},
         true,
         recordId};
@@ -778,6 +786,35 @@ void testProjectWorkflowRoundTrips()
     REQUIRE(actual.writtenRecordId == recordId);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedWorkspace)) ==
             workspaceFrame);
+
+    const auto revision = identifier<Domain::Sha256Digest>(
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    const Manager::ManagerInstructionPackageSnapshot package{
+        descriptor.id,
+        "Alpha instructions",
+        path("D:\\Packages\\Alpha"),
+        revision,
+        2U,
+        1U,
+        4'096U,
+        {"START-HERE.md", "specs/policy.json"},
+        true,
+        recordId};
+    const auto packageFrame = take(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{package})));
+    const auto decodedPackage = take(
+        Manager::ManagerProtocolCodec::decodeResponse(packageFrame));
+    const auto& actualPackage =
+        std::get<Manager::ManagerInstructionPackageSnapshot>(
+            std::get<Manager::ManagerResult>(decodedPackage.body));
+    REQUIRE(actualPackage.projectId == descriptor.id);
+    REQUIRE(actualPackage.revision == revision);
+    REQUIRE(actualPackage.files == package.files);
+    REQUIRE(actualPackage.activated);
+    REQUIRE(actualPackage.manifestRecordId == recordId);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedPackage)) ==
+            packageFrame);
 }
 
 void testResponseResultAndErrorRoundTrips()

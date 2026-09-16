@@ -1278,6 +1278,14 @@ void validateSettingsUpdateOutcome(
                 params["body"] = payload.body ? Json(*payload.body) : Json(nullptr);
                 params["tags"] = payload.tags;
             } else if constexpr (
+                std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
+                method = "projects.instructions";
+                params["project_id"] = payload.projectId.value();
+                params["package_path"] = payload.packagePath.value();
+                params["activate"] = payload.activate;
+                params["expected_revision"] = payload.expectedRevision
+                    ? Json(payload.expectedRevision->value()) : Json(nullptr);
+            } else if constexpr (
                 std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                 method = "lmstudio.status";
             } else if constexpr (
@@ -1459,6 +1467,22 @@ void validateSettingsUpdateOutcome(
             stringMember(params, "summary"),
             optionalField<std::string>(params, "body", stringMember),
             stringArray(member(params, "tags"), "projects.remember tags")};
+    } else if (method == "projects.instructions") {
+        requireExactFields(
+            params,
+            {"activate", "expected_revision", "package_path", "project_id"},
+            "projects.instructions params");
+        auto path = Domain::PathText::create(stringMember(params, "package_path"));
+        if (!path) reject(path.error().code, path.error().message);
+        payload = ManagerInstructionPackageRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            std::move(path).value(),
+            booleanMember(params, "activate"),
+            optionalField<Domain::Sha256Digest>(
+                params, "expected_revision",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::Sha256Digest>(object, name);
+                })};
     } else if (method == "lmstudio.status") {
         requireExactFields(params, {}, "lmstudio.status params");
         payload = ManagerLmStudioStatusRequest{};
@@ -2741,6 +2765,9 @@ template <typename T, typename Parser>
         {"full_text_search_available", snapshot.fullTextSearchAvailable},
         {"integrity_ok", snapshot.integrityOk},
         {"records", std::move(records)},
+        {"active_instruction_manifest", snapshot.activeInstructionManifest
+            ? projectMemoryRecordJson(*snapshot.activeInstructionManifest)
+            : Json(nullptr)},
         {"next_cursor", snapshot.nextCursor
             ? Json(*snapshot.nextCursor) : Json(nullptr)},
         {"truncated", snapshot.truncated},
@@ -2753,8 +2780,9 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"database_bytes", "event_count", "full_text_search_available",
-         "integrity_ok", "next_cursor", "project", "record_count", "records",
+        {"active_instruction_manifest", "database_bytes", "event_count",
+         "full_text_search_available", "integrity_ok", "next_cursor", "project",
+         "record_count", "records",
          "tombstone_count", "truncated", "write_ahead_log_bytes",
          "written_record_id"},
         "Manager project workspace snapshot");
@@ -2779,10 +2807,62 @@ template <typename T, typename Parser>
         booleanMember(value, "full_text_search_available"),
         booleanMember(value, "integrity_ok"),
         std::move(records),
+        optionalField<ManagerProjectMemoryRecord>(
+            value, "active_instruction_manifest",
+            [](const Json& object, const std::string_view name) {
+                return parseProjectMemoryRecord(member(object, name));
+            }),
         optionalField<std::string>(value, "next_cursor", stringMember),
         booleanMember(value, "truncated"),
         optionalField<Domain::MemoryRecordId>(
             value, "written_record_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::MemoryRecordId>(object, name);
+            })};
+}
+
+[[nodiscard]] Json instructionPackageSnapshotJson(
+    const ManagerInstructionPackageSnapshot& snapshot)
+{
+    return Json{
+        {"project_id", snapshot.projectId.value()},
+        {"package_name", snapshot.packageName},
+        {"package_path", snapshot.packagePath.value()},
+        {"revision", snapshot.revision.value()},
+        {"file_count", snapshot.fileCount},
+        {"ignored_file_count", snapshot.ignoredFileCount},
+        {"content_bytes", snapshot.contentBytes},
+        {"files", snapshot.files},
+        {"activated", snapshot.activated},
+        {"manifest_record_id", snapshot.manifestRecordId
+            ? Json(snapshot.manifestRecordId->value()) : Json(nullptr)}};
+}
+
+[[nodiscard]] ManagerInstructionPackageSnapshot parseInstructionPackageSnapshot(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"activated", "content_bytes", "file_count", "files",
+         "ignored_file_count", "manifest_record_id", "package_name",
+         "package_path", "project_id", "revision"},
+        "Manager instruction package snapshot");
+    auto path = Domain::PathText::create(stringMember(value, "package_path"));
+    if (!path) reject(path.error().code, path.error().message);
+    auto revision = Domain::Sha256Digest::parse(stringMember(value, "revision"));
+    if (!revision) reject(revision.error().code, revision.error().message);
+    return ManagerInstructionPackageSnapshot{
+        identifierMember<Domain::ProjectId>(value, "project_id"),
+        stringMember(value, "package_name"),
+        std::move(path).value(),
+        std::move(revision).value(),
+        sizeMember(value, "file_count"),
+        sizeMember(value, "ignored_file_count"),
+        uint64Member(value, "content_bytes"),
+        stringArray(member(value, "files"), "Manager instruction package files"),
+        booleanMember(value, "activated"),
+        optionalField<Domain::MemoryRecordId>(
+            value, "manifest_record_id",
             [](const Json& object, const std::string_view name) {
                 return identifierMember<Domain::MemoryRecordId>(object, name);
             })};
@@ -3123,6 +3203,10 @@ template <typename T, typename Parser>
                 wrapper["type"] = "project_workspace";
                 wrapper["value"] = projectWorkspaceSnapshotJson(value);
             } else if constexpr (
+                std::is_same_v<Value, ManagerInstructionPackageSnapshot>) {
+                wrapper["type"] = "instruction_package";
+                wrapper["value"] = instructionPackageSnapshotJson(value);
+            } else if constexpr (
                 std::is_same_v<Value, ManagerLmStudioSnapshot>) {
                 wrapper["type"] = "lmstudio";
                 wrapper["value"] = lmStudioSnapshotJson(value);
@@ -3178,6 +3262,9 @@ template <typename T, typename Parser>
     }
     if (type == "project_workspace") {
         return ManagerResult{parseProjectWorkspaceSnapshot(value)};
+    }
+    if (type == "instruction_package") {
+        return ManagerResult{parseInstructionPackageSnapshot(value)};
     }
     if (type == "lmstudio") {
         return ManagerResult{parseLmStudioSnapshot(value)};

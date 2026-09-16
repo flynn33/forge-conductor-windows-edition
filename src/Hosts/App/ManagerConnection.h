@@ -50,6 +50,12 @@ struct ProjectWorkspaceView final {
     std::optional<Manager::ManagerProjectWorkspaceSnapshot> snapshot;
 };
 
+struct InstructionPackageView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerInstructionPackageSnapshot> snapshot;
+};
+
 enum class LmStudioAction { Inspect, Repair, Activate };
 
 struct LmStudioView final {
@@ -147,6 +153,12 @@ public:
         std::string body,
         std::vector<std::string> tags,
         std::stop_token cancellation) noexcept = 0;
+    virtual InstructionPackageView instructionPackage(
+        std::string projectId,
+        std::string packagePath,
+        bool activate,
+        std::string expectedRevision,
+        std::stop_token cancellation) noexcept = 0;
     virtual LmStudioView lmStudio(
         LmStudioAction action,
         std::stop_token cancellation) noexcept = 0;
@@ -226,6 +238,12 @@ public:
         std::string summary,
         std::string body,
         std::vector<std::string> tags,
+        std::stop_token cancellation) noexcept override;
+    InstructionPackageView instructionPackage(
+        std::string projectId,
+        std::string packagePath,
+        bool activate,
+        std::string expectedRevision,
         std::stop_token cancellation) noexcept override;
     LmStudioView lmStudio(
         LmStudioAction action,

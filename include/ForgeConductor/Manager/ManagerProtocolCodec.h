@@ -56,6 +56,13 @@ struct ManagerProjectRememberRequest final {
     std::vector<std::string> tags;
 };
 
+struct ManagerInstructionPackageRequest final {
+    Domain::ProjectId projectId;
+    Domain::PathText packagePath;
+    bool activate{};
+    std::optional<Domain::Sha256Digest> expectedRevision;
+};
+
 struct ManagerLmStudioStatusRequest final {
     bool operator==(const ManagerLmStudioStatusRequest&) const = default;
 };
@@ -127,9 +134,23 @@ struct ManagerProjectWorkspaceSnapshot final {
     bool fullTextSearchAvailable{};
     bool integrityOk{};
     std::vector<ManagerProjectMemoryRecord> records;
+    std::optional<ManagerProjectMemoryRecord> activeInstructionManifest;
     std::optional<std::string> nextCursor;
     bool truncated{};
     std::optional<Domain::MemoryRecordId> writtenRecordId;
+};
+
+struct ManagerInstructionPackageSnapshot final {
+    Domain::ProjectId projectId;
+    std::string packageName;
+    Domain::PathText packagePath;
+    Domain::Sha256Digest revision;
+    std::size_t fileCount{};
+    std::size_t ignoredFileCount{};
+    std::uint64_t contentBytes{};
+    std::vector<std::string> files;
+    bool activated{};
+    std::optional<Domain::MemoryRecordId> manifestRecordId;
 };
 
 struct ManagerLmStudioSnapshot final {
@@ -248,6 +269,7 @@ using ManagerRequestPayload = std::variant<
     ManagerProjectInitializeRequest,
     ManagerProjectMemoryRequest,
     ManagerProjectRememberRequest,
+    ManagerInstructionPackageRequest,
     ManagerLmStudioStatusRequest,
     ManagerLmStudioRepairRequest,
     ManagerLmStudioActivateRequest,
@@ -288,6 +310,7 @@ using ManagerResult = std::variant<
     Domain::ManagerTelemetrySnapshot,
     ManagerProjectsSnapshot,
     ManagerProjectWorkspaceSnapshot,
+    ManagerInstructionPackageSnapshot,
     ManagerLmStudioSnapshot,
     ManagerToolsSnapshot,
     ManagerToolOutcomeSnapshot,

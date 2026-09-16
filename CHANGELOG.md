@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.41 — Project instruction packages
+
+- Add a first-class Direction A instruction-package workflow to Projects: choose a folder, validate every supported UTF-8 text file, inspect its manifest and activate the exact SHA-256 revision.
+- Keep validation non-mutating, reject changed-after-preview folders, and persist accepted files plus a project-bound active manifest through the Manager-owned memory service.
+- Attach the active project revision to every new managed run within the bounded task budget, with remaining files addressable through project-memory tools. Add protocol round trips and Manager regressions for preview, activation, stale-revision rejection, project isolation and run attachment.
+
 ## 1.1.40 — Large-text navigation completion
 
 - Widen the Direction A navigation pane so every destination label remains complete at Windows 200% text scaling.
