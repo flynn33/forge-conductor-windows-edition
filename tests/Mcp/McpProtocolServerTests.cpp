@@ -621,7 +621,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
                     std::string{Mcp::McpProtocol::SupportedVersions[index]});
         }
         const auto response = parse(session.output.front());
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.1.39");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.1.40");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"

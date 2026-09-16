@@ -173,7 +173,7 @@ void run(const std::filesystem::path& pluginPath)
             SessionHost::NativeSessionHostPluginAbiVersion);
     REQUIRE(std::string_view{api.manifest.adapterIdentifier} ==
             "forge.native-session-host");
-    REQUIRE(std::string_view{api.manifest.adapterVersion} == "1.1.39");
+    REQUIRE(std::string_view{api.manifest.adapterVersion} == "1.1.40");
     REQUIRE(api.manifest.protocolVersion == 1U);
     REQUIRE(api.manifest.capabilityBits == 0xffU);
     REQUIRE(api.create != nullptr);

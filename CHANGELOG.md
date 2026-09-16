@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.40 — Large-text navigation completion
+
+- Widen the Direction A navigation pane so every destination label remains complete at Windows 200% text scaling.
+- Carry forward the 1.1.39 compact Settings reflow and wrapped header metadata after its signed installed large-text pass exposed the final clipped destination label.
+
 ## 1.1.39 — Large-text responsive refinement
 
 - Reflow the Settings summary cards into a balanced two-by-two composition at compact width, matching the Rig telemetry treatment instead of compressing four cards into one row.

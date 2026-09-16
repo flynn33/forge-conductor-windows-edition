@@ -10,7 +10,7 @@
    PaneTitle=""
    PaneDisplayMode="Left"
    IsPaneOpen="True"
-    OpenPaneLength="280"
+    OpenPaneLength="304"
    CompactPaneLength="56"
    CompactModeThresholdWidth="1420"
    ExpandedModeThresholdWidth="1600"
