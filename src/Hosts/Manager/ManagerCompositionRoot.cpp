@@ -561,6 +561,8 @@ private:
         legacyContinuityRepository_;
     std::shared_ptr<PersistenceWindows::WindowsForgeStatusRepository>
         forgeStatusRepository_;
+    std::shared_ptr<PersistenceWindows::WindowsClientPresenceRepository>
+        clientPresenceRepository_;
     std::shared_ptr<PersistenceWindows::WindowsAuditRepository> auditRepository_;
     std::shared_ptr<
         PersistenceWindows::WindowsDashboardOperationalRepository>
@@ -625,8 +627,11 @@ private:
         lmStudioUnavailableReadIssuer_;
     std::unique_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
         lmStudioWriteIssuer_;
+    std::unique_ptr<InfrastructureWindows::WindowsWorkspaceAuthority>
+        lmStudioActivationIssuer_;
     std::optional<Contracts::WorkspaceAuthority> lmStudioReadAuthority_;
     std::optional<Contracts::WorkspaceAuthority> lmStudioWriteAuthority_;
+    std::optional<Contracts::WorkspaceAuthority> lmStudioActivationAuthority_;
     std::unique_ptr<CompositionWindows::ManagerLmStudioAuthorityRouter>
         lmStudioAuthorityRouter_;
     std::unique_ptr<InfrastructureWindows::WindowsLMStudioEnvironment>
@@ -902,6 +907,9 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     forgeStatusRepository_ = take(
         PersistenceWindows::WindowsForgeStatusRepository::attach(
             centralDatabase_));
+    clientPresenceRepository_ = take(
+        PersistenceWindows::WindowsClientPresenceRepository::attach(
+            centralDatabase_));
 
     const auto registryPath =
         childPath(process.projectsRoot(), "registry.json");
@@ -1034,7 +1042,8 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     managedRunStore_ = std::make_unique<
         Application::AgentRepositoryManagedRunStore>(
         *agentSessionRepository_,
-        take(Domain::AgentId::parse("forge-managed-run")));
+        take(Domain::AgentId::parse("forge-managed-run")),
+        *hasher_);
     nativeSessionAdapter_ = std::make_unique<
         NativeSessionHost::ForgeNativeSessionHostAdapter>(
         take(Domain::AdapterId::parse(
@@ -1218,6 +1227,8 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
             nextUuid(*uuidGenerator_)};
         const Domain::AuthorityId writeAuthorityId{
             nextUuid(*uuidGenerator_)};
+        const Domain::AuthorityId activationAuthorityId{
+            nextUuid(*uuidGenerator_)};
         lmStudioSelectionIssuer_ = std::make_unique<
             InfrastructureWindows::WindowsWorkspaceAuthority>(
             std::vector<
@@ -1268,10 +1279,26 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
         lmStudioWriteAuthority_.emplace(take(
             lmStudioWriteIssuer_->authorityFor(
                 maintenanceProjectId, context)));
+        lmStudioActivationIssuer_ = std::make_unique<
+            InfrastructureWindows::WindowsWorkspaceAuthority>(
+            std::vector<
+                InfrastructureWindows::WindowsWorkspaceAuthorityPolicy>{
+                authorityPolicy(
+                    activationAuthorityId, maintenanceProjectId,
+                    *managerClientId_,
+                    lmStudioReadAuthority_->trustedRoots(),
+                    Domain::FileAccess::Execute,
+                    {Domain::FileAccess::Read, Domain::FileAccess::Execute},
+                    {Domain::FileAccess::Write, Domain::FileAccess::Create,
+                     Domain::FileAccess::Delete}, true)});
+        lmStudioActivationAuthority_.emplace(take(
+            lmStudioActivationIssuer_->authorityFor(
+                maintenanceProjectId, context)));
         lmStudioAuthorityRouter_ = std::make_unique<
             CompositionWindows::ManagerLmStudioAuthorityRouter>(
             lmStudioReadScope_->issuer(), *lmStudioReadAuthority_,
-            *lmStudioWriteIssuer_, *lmStudioWriteAuthority_);
+            *lmStudioWriteIssuer_, *lmStudioWriteAuthority_,
+            *lmStudioActivationIssuer_, *lmStudioActivationAuthority_);
 
         lmStudioEnvironment_ = std::make_unique<
             InfrastructureWindows::WindowsLMStudioEnvironment>(
@@ -1314,6 +1341,8 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
             lmStudioEnvironment_.reset();
         }
         lmStudioAuthorityRouter_.reset();
+        lmStudioActivationAuthority_.reset();
+        lmStudioActivationIssuer_.reset();
         lmStudioWriteAuthority_.reset();
         lmStudioReadAuthority_.reset();
         lmStudioWriteIssuer_.reset();
@@ -1429,7 +1458,13 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             continuityAutomation_.get(),
             process.cliExecutable(),
             initialConfiguration_->shell.enabled,
-            continuity_.get()});
+            continuity_.get(),
+            diagnosticSink_.get(),
+            lmStudioActivationAuthority_ ? &*lmStudioActivationAuthority_ : nullptr,
+            clientPresenceRepository_.get(),
+            auditRepository_.get(),
+            managedRunStore_.get(),
+            hasher_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(
@@ -1677,6 +1712,9 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         }
         if (forgeStatusRepository_) {
             forgeStatusRepository_->close();
+        }
+        if (clientPresenceRepository_) {
+            clientPresenceRepository_->close();
         }
         if (legacyContinuityRepository_) {
             legacyContinuityRepository_->close();

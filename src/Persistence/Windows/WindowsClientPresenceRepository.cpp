@@ -18,6 +18,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace ForgeConductor::Persistence::Windows {
 namespace {
@@ -219,6 +220,18 @@ void bindIdentity(
     }
 }
 
+[[nodiscard]] std::string requiredColumnText(
+    const WinsqliteStatement& statement,
+    const int column,
+    const std::size_t maximumBytes)
+{
+    auto value = take(statement.columnText(column, maximumBytes));
+    if (!value || value->empty()) {
+        integrity("A recent client presence owner has an absent text field.");
+    }
+    return std::move(*value);
+}
+
 } // namespace
 
 struct WindowsClientPresenceRepository::Impl final {
@@ -381,6 +394,58 @@ Domain::Result<bool> WindowsClientPresenceRepository::remove(
                 });
             }));
         return removed;
+    });
+}
+
+Domain::Result<std::vector<Domain::ClientPresenceIdentity>>
+WindowsClientPresenceRepository::recentForDeployment(
+    const Domain::DeploymentId& deploymentId,
+    const Domain::UtcTimePoint notBefore,
+    const Domain::OperationContext& context) noexcept
+{
+    return guarded<std::vector<Domain::ClientPresenceIdentity>>([&]() {
+        const auto cutoff = timestampText(notBefore);
+        auto& store = requireStore(
+            implementation_ ? implementation_->repositoryStore() : nullptr);
+        std::vector<Domain::ClientPresenceIdentity> observed;
+        observed.reserve(3U);
+        take(runOnStore(
+            store,
+            "Read recent client presence for deployment",
+            context,
+            [&](WinsqliteConnection& connection) noexcept {
+                return guardedVoid([&]() {
+                    auto statement = take(connection.prepare(
+                        "SELECT client_id,role,process_id FROM client_presence "
+                        "WHERE deployment_id=? AND last_seen_at>=? "
+                        "AND process_id BETWEEN 1 AND 4294967295 "
+                        "AND role IN ('primary','fallback','clu') "
+                        "ORDER BY role,client_id LIMIT 65",
+                        context));
+                    take(statement.bindText(1, deploymentId.value()));
+                    take(statement.bindText(2, cutoff));
+                    while (take(statement.step()) == WinsqliteStepResult::Row) {
+                        if (observed.size() >= 64U) {
+                            fail(Domain::makeError(
+                                Domain::ErrorCodes::LimitExceeded,
+                                "Recent client presence exceeded the bounded deployment readback."));
+                        }
+                        const auto clientId = take(Domain::ClientId::parse(
+                            requiredColumnText(statement, 0, 128U)));
+                        auto role = requiredColumnText(
+                            statement, 1,
+                            Domain::ClientPresenceLimits::MaximumRoleBytes);
+                        const auto processId = take(statement.columnInt64(2));
+                        if (processId <= 0 || processId > 4'294'967'295LL) {
+                            integrity("A recent client presence process ID is invalid.");
+                        }
+                        observed.push_back(Domain::ClientPresenceIdentity{
+                            clientId, std::move(role), deploymentId,
+                            static_cast<std::uint32_t>(processId)});
+                    }
+                });
+            }));
+        return observed;
     });
 }
 

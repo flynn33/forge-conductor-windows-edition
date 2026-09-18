@@ -1278,6 +1278,14 @@ void validateSettingsUpdateOutcome(
                 params["body"] = payload.body ? Json(*payload.body) : Json(nullptr);
                 params["tags"] = payload.tags;
             } else if constexpr (
+                std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
+                method = "projects.instructions";
+                params["project_id"] = payload.projectId.value();
+                params["package_path"] = payload.packagePath.value();
+                params["activate"] = payload.activate;
+                params["expected_revision"] = payload.expectedRevision
+                    ? Json(payload.expectedRevision->value()) : Json(nullptr);
+            } else if constexpr (
                 std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                 method = "lmstudio.status";
             } else if constexpr (
@@ -1304,15 +1312,20 @@ void validateSettingsUpdateOutcome(
                 case ManagerOperationalArea::Runtimes: params["area"] = "runtimes"; break;
                 case ManagerOperationalArea::Diagnostics: params["area"] = "diagnostics"; break;
                 case ManagerOperationalArea::Manager: params["area"] = "manager"; break;
+                case ManagerOperationalArea::Runs: params["area"] = "runs"; break;
+                case ManagerOperationalArea::Evidence: params["area"] = "evidence"; break;
                 }
                 switch (payload.action) {
                 case ManagerOperationalAction::Inspect: params["action"] = "inspect"; break;
                 case ManagerOperationalAction::PruneSessions: params["action"] = "prune_sessions"; break;
                 case ManagerOperationalAction::CloseSession: params["action"] = "close_session"; break;
+                case ManagerOperationalAction::VerifyTask: params["action"] = "verify_task"; break;
                 }
                 params["session_id"] = payload.sessionId
                     ? Json(payload.sessionId->value()) : Json(nullptr);
                 params["summary"] = payload.summary;
+                params["project_id"] = payload.projectId
+                    ? Json(payload.projectId->value()) : Json(nullptr);
             } else if constexpr (
                 std::is_same_v<Payload, ManagerMaintenanceRequest>) {
                 method = "maintenance.reset";
@@ -1338,6 +1351,7 @@ void validateSettingsUpdateOutcome(
                 std::is_same_v<Payload, ManagedRunStartRequest>) {
                 method = "managed_run.start";
                 params["authority_generation"] = payload.authorityGeneration;
+                params["allow_tools"] = payload.allowTools;
                 params["client_id"] = payload.clientId.value();
                 params["project_id"] = payload.projectId.value();
                 params["run_id"] = payload.runId.value();
@@ -1453,6 +1467,22 @@ void validateSettingsUpdateOutcome(
             stringMember(params, "summary"),
             optionalField<std::string>(params, "body", stringMember),
             stringArray(member(params, "tags"), "projects.remember tags")};
+    } else if (method == "projects.instructions") {
+        requireExactFields(
+            params,
+            {"activate", "expected_revision", "package_path", "project_id"},
+            "projects.instructions params");
+        auto path = Domain::PathText::create(stringMember(params, "package_path"));
+        if (!path) reject(path.error().code, path.error().message);
+        payload = ManagerInstructionPackageRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            std::move(path).value(),
+            booleanMember(params, "activate"),
+            optionalField<Domain::Sha256Digest>(
+                params, "expected_revision",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::Sha256Digest>(object, name);
+                })};
     } else if (method == "lmstudio.status") {
         requireExactFields(params, {}, "lmstudio.status params");
         payload = ManagerLmStudioStatusRequest{};
@@ -1476,7 +1506,7 @@ void validateSettingsUpdateOutcome(
             stringMember(params, "arguments")};
     } else if (method == "operations.page") {
         requireExactFields(
-            params, {"action", "area", "session_id", "summary"},
+            params, {"action", "area", "project_id", "session_id", "summary"},
             "operations.page params");
         const auto& areaText = stringMember(params, "area");
         ManagerOperationalArea area;
@@ -1485,12 +1515,15 @@ void validateSettingsUpdateOutcome(
         else if (areaText == "runtimes") area = ManagerOperationalArea::Runtimes;
         else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
         else if (areaText == "manager") area = ManagerOperationalArea::Manager;
+        else if (areaText == "runs") area = ManagerOperationalArea::Runs;
+        else if (areaText == "evidence") area = ManagerOperationalArea::Evidence;
         else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
         const auto& actionText = stringMember(params, "action");
         ManagerOperationalAction action;
         if (actionText == "inspect") action = ManagerOperationalAction::Inspect;
         else if (actionText == "prune_sessions") action = ManagerOperationalAction::PruneSessions;
         else if (actionText == "close_session") action = ManagerOperationalAction::CloseSession;
+        else if (actionText == "verify_task") action = ManagerOperationalAction::VerifyTask;
         else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational action is unknown.");
         payload = ManagerOperationalRequest{
             area,
@@ -1500,7 +1533,12 @@ void validateSettingsUpdateOutcome(
                 [](const Json& object, const std::string_view name) {
                     return identifierMember<Domain::SessionId>(object, name);
                 }),
-            stringMember(params, "summary")};
+            stringMember(params, "summary"),
+            optionalField<Domain::ProjectId>(
+                params, "project_id",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::ProjectId>(object, name);
+                })};
     } else if (method == "maintenance.reset") {
         requireExactFields(
             params, {"confirmation_token", "project_id", "scope"},
@@ -1533,16 +1571,26 @@ void validateSettingsUpdateOutcome(
             parsePatch(member(params, "patch")),
             booleanMember(params, "apply_immediately")};
     } else if (method == "managed_run.start") {
-        requireExactFields(
-            params,
-            {"authority_generation", "client_id", "project_id", "run_id", "task"},
-            "managed_run.start params");
+        if (params.contains("allow_tools")) {
+            requireExactFields(
+                params,
+                {"allow_tools", "authority_generation", "client_id", "project_id",
+                 "run_id", "task"},
+                "managed_run.start params");
+        } else {
+            requireExactFields(
+                params,
+                {"authority_generation", "client_id", "project_id", "run_id", "task"},
+                "managed_run.start params");
+        }
         payload = ManagedRunStartRequest{
             identifierMember<Domain::SessionId>(params, "run_id"),
             identifierMember<Domain::ProjectId>(params, "project_id"),
             identifierMember<Domain::ClientId>(params, "client_id"),
             uint64Member(params, "authority_generation"),
-            stringMember(params, "task")};
+            stringMember(params, "task"),
+            params.contains("allow_tools") ? booleanMember(params, "allow_tools")
+                                           : true};
     } else if (method == "managed_run.status") {
         requireExactFields(params, {"run_id"}, "managed_run.status params");
         payload = ManagedRunStatusRequest{
@@ -1631,6 +1679,7 @@ void validateSettingsUpdateOutcome(
     const auto& record = snapshot.record;
     Json value = Json::object();
     value["authority_generation"] = record.authorityGeneration;
+    value["allow_tools"] = record.allowTools;
     value["cancellation_requested"] = snapshot.cancellationRequested;
     value["client_id"] = record.clientId.value();
     value["created_at_utc_ms"] = epochMilliseconds(record.createdAt);
@@ -1672,14 +1721,25 @@ void validateSettingsUpdateOutcome(
 [[nodiscard]] Domain::ManagedRunSnapshot parseManagedRunSnapshot(
     const Json& value)
 {
-    requireExactFields(
-        value,
-        {"authority_generation", "cancellation_requested", "client_id", "created_at_utc_ms",
-         "input_tokens", "last_error", "manager_owned", "output_text",
-         "output_tokens", "pause_requested", "pending_function_calls", "project_id", "provider_response_id",
-         "retained_context_tokens", "run_id", "state", "task",
-         "updated_at_utc_ms"},
-        "Managed run snapshot");
+    if (value.contains("allow_tools")) {
+        requireExactFields(
+            value,
+            {"allow_tools", "authority_generation", "cancellation_requested", "client_id",
+             "created_at_utc_ms", "input_tokens", "last_error", "manager_owned",
+             "output_text", "output_tokens", "pause_requested", "pending_function_calls",
+             "project_id", "provider_response_id", "retained_context_tokens", "run_id",
+             "state", "task", "updated_at_utc_ms"},
+            "Managed run snapshot");
+    } else {
+        requireExactFields(
+            value,
+            {"authority_generation", "cancellation_requested", "client_id", "created_at_utc_ms",
+             "input_tokens", "last_error", "manager_owned", "output_text",
+             "output_tokens", "pause_requested", "pending_function_calls", "project_id", "provider_response_id",
+             "retained_context_tokens", "run_id", "state", "task",
+             "updated_at_utc_ms"},
+            "Managed run snapshot");
+    }
     const auto providerResponseId = optionalField<Domain::ProviderSessionId>(
         value,
         "provider_response_id",
@@ -1738,7 +1798,9 @@ void validateSettingsUpdateOutcome(
             utcTimePointFromMilliseconds(
                 nonnegativeIntegerMember(value, "created_at_utc_ms")),
             utcTimePointFromMilliseconds(
-                nonnegativeIntegerMember(value, "updated_at_utc_ms"))},
+                nonnegativeIntegerMember(value, "updated_at_utc_ms")),
+            value.contains("allow_tools") ? booleanMember(value, "allow_tools")
+                                           : true},
         booleanMember(value, "manager_owned"),
         booleanMember(value, "cancellation_requested"),
         booleanMember(value, "pause_requested")};
@@ -2332,6 +2394,8 @@ template <typename T, typename Parser>
         {"duration_ms", event.duration
              ? Json(event.duration->count()) : Json(nullptr)},
         {"error", optionalString(event.error)},
+        {"project_id", event.projectId
+             ? Json(event.projectId->value()) : Json(nullptr)},
         {"status", event.status},
         {"timestamp_utc_ms", epochMilliseconds(event.timestamp)},
         {"tool", event.tool}};
@@ -2341,7 +2405,7 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"arguments_digest", "client_id", "duration_ms", "error", "status",
+        {"arguments_digest", "client_id", "duration_ms", "error", "project_id", "status",
          "timestamp_utc_ms", "tool"},
         "Manager telemetry audit event");
     return Domain::AuditEvent{
@@ -2362,7 +2426,13 @@ template <typename T, typename Parser>
                 return std::chrono::milliseconds{
                     nonnegativeIntegerMember(object, name)};
             }),
-        optionalField<std::string>(value, "error", stringMember)};
+        optionalField<std::string>(value, "error", stringMember),
+        std::nullopt,
+        std::nullopt,
+        optionalField<Domain::ProjectId>(value, "project_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::ProjectId>(object, name);
+            })};
 }
 
 [[nodiscard]] Json managerTelemetrySnapshotJson(
@@ -2695,6 +2765,9 @@ template <typename T, typename Parser>
         {"full_text_search_available", snapshot.fullTextSearchAvailable},
         {"integrity_ok", snapshot.integrityOk},
         {"records", std::move(records)},
+        {"active_instruction_manifest", snapshot.activeInstructionManifest
+            ? projectMemoryRecordJson(*snapshot.activeInstructionManifest)
+            : Json(nullptr)},
         {"next_cursor", snapshot.nextCursor
             ? Json(*snapshot.nextCursor) : Json(nullptr)},
         {"truncated", snapshot.truncated},
@@ -2707,8 +2780,9 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"database_bytes", "event_count", "full_text_search_available",
-         "integrity_ok", "next_cursor", "project", "record_count", "records",
+        {"active_instruction_manifest", "database_bytes", "event_count",
+         "full_text_search_available", "integrity_ok", "next_cursor", "project",
+         "record_count", "records",
          "tombstone_count", "truncated", "write_ahead_log_bytes",
          "written_record_id"},
         "Manager project workspace snapshot");
@@ -2733,10 +2807,62 @@ template <typename T, typename Parser>
         booleanMember(value, "full_text_search_available"),
         booleanMember(value, "integrity_ok"),
         std::move(records),
+        optionalField<ManagerProjectMemoryRecord>(
+            value, "active_instruction_manifest",
+            [](const Json& object, const std::string_view name) {
+                return parseProjectMemoryRecord(member(object, name));
+            }),
         optionalField<std::string>(value, "next_cursor", stringMember),
         booleanMember(value, "truncated"),
         optionalField<Domain::MemoryRecordId>(
             value, "written_record_id",
+            [](const Json& object, const std::string_view name) {
+                return identifierMember<Domain::MemoryRecordId>(object, name);
+            })};
+}
+
+[[nodiscard]] Json instructionPackageSnapshotJson(
+    const ManagerInstructionPackageSnapshot& snapshot)
+{
+    return Json{
+        {"project_id", snapshot.projectId.value()},
+        {"package_name", snapshot.packageName},
+        {"package_path", snapshot.packagePath.value()},
+        {"revision", snapshot.revision.value()},
+        {"file_count", snapshot.fileCount},
+        {"ignored_file_count", snapshot.ignoredFileCount},
+        {"content_bytes", snapshot.contentBytes},
+        {"files", snapshot.files},
+        {"activated", snapshot.activated},
+        {"manifest_record_id", snapshot.manifestRecordId
+            ? Json(snapshot.manifestRecordId->value()) : Json(nullptr)}};
+}
+
+[[nodiscard]] ManagerInstructionPackageSnapshot parseInstructionPackageSnapshot(
+    const Json& value)
+{
+    requireExactFields(
+        value,
+        {"activated", "content_bytes", "file_count", "files",
+         "ignored_file_count", "manifest_record_id", "package_name",
+         "package_path", "project_id", "revision"},
+        "Manager instruction package snapshot");
+    auto path = Domain::PathText::create(stringMember(value, "package_path"));
+    if (!path) reject(path.error().code, path.error().message);
+    auto revision = Domain::Sha256Digest::parse(stringMember(value, "revision"));
+    if (!revision) reject(revision.error().code, revision.error().message);
+    return ManagerInstructionPackageSnapshot{
+        identifierMember<Domain::ProjectId>(value, "project_id"),
+        stringMember(value, "package_name"),
+        std::move(path).value(),
+        std::move(revision).value(),
+        sizeMember(value, "file_count"),
+        sizeMember(value, "ignored_file_count"),
+        uint64Member(value, "content_bytes"),
+        stringArray(member(value, "files"), "Manager instruction package files"),
+        booleanMember(value, "activated"),
+        optionalField<Domain::MemoryRecordId>(
+            value, "manifest_record_id",
             [](const Json& object, const std::string_view name) {
                 return identifierMember<Domain::MemoryRecordId>(object, name);
             })};
@@ -2813,7 +2939,12 @@ template <typename T, typename Parser>
         {"connected_client_observed", snapshot.connectedClientObserved},
         {"managed_continuity_projects", snapshot.managedContinuityProjects},
         {"detail", snapshot.detail},
-        {"action_detail", snapshot.actionDetail}};
+        {"action_detail", snapshot.actionDetail},
+        {"tool_audit_checked", snapshot.toolAuditChecked},
+        {"primary_tool_outcome_recorded", snapshot.primaryToolOutcomeRecorded},
+        {"fallback_tool_outcome_recorded", snapshot.fallbackToolOutcomeRecorded},
+        {"continuity_tool_outcome_recorded", snapshot.continuityToolOutcomeRecorded},
+        {"tool_audit_detail", snapshot.toolAuditDetail}};
 }
 
 [[nodiscard]] ManagerLmStudioSnapshot parseLmStudioSnapshot(const Json& value)
@@ -2827,7 +2958,9 @@ template <typename T, typename Parser>
          "fallback_plugin_path", "lmstudio_present", "managed_continuity_projects",
          "mcp_configuration_path", "mcp_configuration_registered",
          "primary_connector_ready", "primary_plugin_installed",
-         "primary_plugin_path"},
+         "primary_plugin_path", "tool_audit_checked",
+         "primary_tool_outcome_recorded", "fallback_tool_outcome_recorded",
+         "continuity_tool_outcome_recorded", "tool_audit_detail"},
         "Manager LM Studio snapshot");
     return ManagerLmStudioSnapshot{
         booleanMember(value, "lmstudio_present"),
@@ -2853,7 +2986,12 @@ template <typename T, typename Parser>
         booleanMember(value, "connected_client_observed"),
         sizeMember(value, "managed_continuity_projects"),
         stringMember(value, "detail"),
-        stringMember(value, "action_detail")};
+        stringMember(value, "action_detail"),
+        booleanMember(value, "tool_audit_checked"),
+        booleanMember(value, "primary_tool_outcome_recorded"),
+        booleanMember(value, "fallback_tool_outcome_recorded"),
+        booleanMember(value, "continuity_tool_outcome_recorded"),
+        stringMember(value, "tool_audit_detail")};
 }
 
 [[nodiscard]] Json toolDescriptorJson(const ManagerToolDescriptor& descriptor)
@@ -2918,14 +3056,15 @@ template <typename T, typename Parser>
         {"tool_name", snapshot.toolName},
         {"ok", snapshot.ok},
         {"canonical_payload", snapshot.canonicalPayload},
-        {"error", snapshot.error ? errorJson(*snapshot.error) : Json(nullptr)}};
+        {"error", snapshot.error ? errorJson(*snapshot.error) : Json(nullptr)},
+        {"elapsed_ms", snapshot.elapsed.count()}};
 }
 
 [[nodiscard]] ManagerToolOutcomeSnapshot parseToolOutcomeSnapshot(const Json& value)
 {
     requireExactFields(
         value,
-        {"canonical_payload", "error", "ok", "project_id", "tool_name"},
+        {"canonical_payload", "elapsed_ms", "error", "ok", "project_id", "tool_name"},
         "Manager tool outcome");
     return ManagerToolOutcomeSnapshot{
         identifierMember<Domain::ProjectId>(value, "project_id"),
@@ -2936,7 +3075,8 @@ template <typename T, typename Parser>
             value, "error",
             [](const Json& object, const std::string_view name) {
                 return parseError(member(object, name));
-            })};
+            }),
+        std::chrono::milliseconds{nonnegativeIntegerMember(value, "elapsed_ms")}};
 }
 
 [[nodiscard]] std::string_view operationalAreaName(
@@ -2948,6 +3088,8 @@ template <typename T, typename Parser>
     case ManagerOperationalArea::Runtimes: return "runtimes";
     case ManagerOperationalArea::Diagnostics: return "diagnostics";
     case ManagerOperationalArea::Manager: return "manager";
+    case ManagerOperationalArea::Runs: return "runs";
+    case ManagerOperationalArea::Evidence: return "evidence";
     }
     return "manager";
 }
@@ -2969,6 +3111,8 @@ template <typename T, typename Parser>
     else if (areaText == "runtimes") area = ManagerOperationalArea::Runtimes;
     else if (areaText == "diagnostics") area = ManagerOperationalArea::Diagnostics;
     else if (areaText == "manager") area = ManagerOperationalArea::Manager;
+    else if (areaText == "runs") area = ManagerOperationalArea::Runs;
+    else if (areaText == "evidence") area = ManagerOperationalArea::Evidence;
     else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
     return ManagerOperationalSnapshot{
         area,
@@ -3059,6 +3203,10 @@ template <typename T, typename Parser>
                 wrapper["type"] = "project_workspace";
                 wrapper["value"] = projectWorkspaceSnapshotJson(value);
             } else if constexpr (
+                std::is_same_v<Value, ManagerInstructionPackageSnapshot>) {
+                wrapper["type"] = "instruction_package";
+                wrapper["value"] = instructionPackageSnapshotJson(value);
+            } else if constexpr (
                 std::is_same_v<Value, ManagerLmStudioSnapshot>) {
                 wrapper["type"] = "lmstudio";
                 wrapper["value"] = lmStudioSnapshotJson(value);
@@ -3114,6 +3262,9 @@ template <typename T, typename Parser>
     }
     if (type == "project_workspace") {
         return ManagerResult{parseProjectWorkspaceSnapshot(value)};
+    }
+    if (type == "instruction_package") {
+        return ManagerResult{parseInstructionPackageSnapshot(value)};
     }
     if (type == "lmstudio") {
         return ManagerResult{parseLmStudioSnapshot(value)};

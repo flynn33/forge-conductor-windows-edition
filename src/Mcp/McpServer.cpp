@@ -243,7 +243,6 @@ public:
                     std::string{McpProtocol::SupportedVersions.front()};
             }
 
-            static_cast<void>(deploymentId);
             worker = std::jthread{
                 [this, &transport](const std::stop_token token) {
                     workerLoop(transport, token);
@@ -311,6 +310,7 @@ public:
                     received.value().value(),
                     transport,
                     role,
+                    deploymentId,
                     clientId,
                     context);
             }
@@ -450,6 +450,7 @@ private:
         const Domain::McpFrame& frame,
         Contracts::IMcpTransport& transport,
         const Domain::McpRole role,
+        const Domain::DeploymentId& deploymentId,
         const Domain::ClientId& clientId,
         const Domain::OperationContext& transportContext)
     {
@@ -605,6 +606,7 @@ private:
                 externalId,
                 transport,
                 role,
+                deploymentId,
                 clientId,
                 transportContext);
             return;
@@ -680,6 +682,7 @@ private:
         const Json& externalId,
         Contracts::IMcpTransport& transport,
         const Domain::McpRole role,
+        const Domain::DeploymentId& deploymentId,
         const Domain::ClientId& clientId,
         const Domain::OperationContext& transportContext)
     {
@@ -798,7 +801,9 @@ private:
                 ids.correlationId,
                 clientId,
                 std::move(projectId),
-                std::move(protocol)},
+                std::move(protocol),
+                role,
+                deploymentId},
             name->get<std::string>(),
             arguments.dump()};
         const auto deadline = transportContext.deadline;

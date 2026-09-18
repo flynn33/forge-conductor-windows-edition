@@ -495,9 +495,14 @@ struct PluginLayout final {
     const Domain::DeploymentId& deploymentId)
 {
     const auto at = state.find("at");
-    return stringEquals(state, "by", InstallerId) &&
-        stringEquals(state, "deploymentID", deploymentId.value()) &&
-        at != state.end() && at->is_number_integer();
+    if (at == state.end() || !at->is_number_integer()) {
+        return false;
+    }
+    if (stringEquals(state, "by", InstallerId)) {
+        return stringEquals(state, "deploymentID", deploymentId.value());
+    }
+    return stringEquals(state, "by", "mcp-bridge-v1") &&
+        state.find("deploymentID") == state.end();
 }
 
 [[nodiscard]] bool exactAuthorization(
@@ -935,6 +940,13 @@ public:
         std::vector<Domain::DiagnosticField> fields = {}) noexcept
     {
         try {
+            // Diagnostic append is best-effort for this workflow. Manager data
+            // stores can retain a write-capable ancestor; that contention must
+            // not consume the deployment's native verification deadline.
+            auto diagnosticContext = context;
+            diagnosticContext.deadline = (std::min)(
+                context.deadline,
+                clock.monotonicNow() + std::chrono::milliseconds{250});
             static_cast<void>(diagnostics.record(
                 Domain::DiagnosticEnvelope{
                     clock.utcNow(),
@@ -944,7 +956,7 @@ public:
                     ::GetCurrentProcessId(),
                     Domain::DiagnosticCategory::LmStudio,
                     std::move(fields)},
-                context));
+                diagnosticContext));
         } catch (...) {
         }
     }

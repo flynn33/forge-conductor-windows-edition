@@ -163,7 +163,7 @@ public:
                                   : role == Domain::LMStudioConnectorRole::Fallback
                                       ? "forge-conductor-fallback"
                                       : "forge-conductor-clu"},
-                    {"version", "1.1.0"}}}}}};
+                    {"version", "1.1.42"}}}}}};
     Json tools = canonicalTools();
     if (role == Domain::LMStudioConnectorRole::Clu) {
         tools.erase(std::remove_if(
@@ -477,9 +477,9 @@ void testSuccessfulRoleVerificationAndRequestShape()
     require(captured->arguments ==
                 std::vector<std::string>{"serve", "--home", expectedProbeHome},
             "the verifier did not invoke serve with an isolated probe home");
-    require(captured->workingDirectory == path("C:\\Forge\\home") &&
+    require(captured->workingDirectory == path("C:\\Forge") &&
                 captured->inheritEnvironment,
-            "the verifier did not bind its inherited working directory to Forge home");
+            "the verifier did not bind its working directory to the selected Forge installation");
     require(captured->timeout == 15s && captured->maximumStdoutBytes == 80'000U &&
                 captured->maximumStderrBytes == 20'000U,
             "the verifier process bounds were wrong");

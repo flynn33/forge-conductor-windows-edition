@@ -376,6 +376,10 @@ private:
                 return valid;
             }
         }
+        if (event.projectId) {
+            valid = budget.add(event.projectId->value(), "audit project id");
+            if (!valid) return valid;
+        }
         if (event.error) {
             valid = budget.add(*event.error, "audit error");
             if (!valid) {

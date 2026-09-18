@@ -42,6 +42,12 @@ public:
         const Domain::ClientPresenceIdentity& identity,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<
+        std::vector<Domain::ClientPresenceIdentity>> recentForDeployment(
+        const Domain::DeploymentId& deploymentId,
+        Domain::UtcTimePoint notBefore,
+        const Domain::OperationContext& context) noexcept override;
+
     void close() noexcept override;
 
 private:

@@ -1,9 +1,11 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/IFoundationServices.h"
+#include "ForgeConductor/Contracts/IDiagnosticsServices.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
 #include "ForgeConductor/Contracts/IContinuityAutomation.h"
+#include "ForgeConductor/Contracts/IClientPresenceRepository.h"
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Contracts/ILMStudioDeploymentService.h"
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
@@ -35,6 +37,12 @@ struct ManagerTelemetrySources final {
     std::optional<Domain::PathText> preferredForgeBinary;
     bool shellEnabled{};
     Contracts::IContinuityCoordinator* continuity{};
+    Contracts::IDiagnosticSink* diagnostics{};
+    const Contracts::WorkspaceAuthority* lmStudioActivationAuthority{};
+    Contracts::IClientPresenceRepository* clientPresence{};
+    Contracts::IAuditRepository* audit{};
+    Contracts::IManagedRunStore* durableManagedRunStore{};
+    Contracts::IHasher* evidenceHasher{};
 };
 
 class ManagerRequestDispatcher final {

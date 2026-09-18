@@ -2,6 +2,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include <chrono>
+#include <span>
+#include <stdexcept>
 #include <utility>
 
 namespace ForgeConductor::Application {
@@ -40,10 +43,37 @@ namespace {
     }
 }
 
-[[nodiscard]] std::optional<std::string> summary(
-    const Domain::ManagedRunRecord& record)
+[[nodiscard]] bool isTerminal(const Domain::ManagedRunState state) noexcept
+{
+    return state == Domain::ManagedRunState::Completed ||
+        state == Domain::ManagedRunState::Failed ||
+        state == Domain::ManagedRunState::Cancelled;
+}
+
+[[nodiscard]] Domain::Result<Domain::Sha256Digest> evidenceDigest(
+    const Domain::ManagedRunRecord& record,
+    const nlohmann::json& persistedSummary,
+    Contracts::IHasher& hasher)
+{
+    auto summaryWithoutSeal = persistedSummary;
+    summaryWithoutSeal.erase("evidence_seal_sha256");
+    const nlohmann::json envelope{
+        {"client_id", record.clientId.value()},
+        {"project_id", record.projectId.value()},
+        {"run_id", record.runId.value()},
+        {"summary", std::move(summaryWithoutSeal)},
+        {"task", record.task}};
+    const auto encoded = envelope.dump();
+    return hasher.sha256(std::as_bytes(std::span<const char>{
+        encoded.data(), encoded.size()}));
+}
+
+[[nodiscard]] Domain::Result<std::optional<std::string>> summary(
+    const Domain::ManagedRunRecord& record,
+    Contracts::IHasher& hasher)
 {
     nlohmann::json value{
+        {"allow_tools", record.allowTools},
         {"authority_generation", record.authorityGeneration},
         {"input_tokens", record.inputTokens},
         {"kind", "forge_managed_run"},
@@ -76,12 +106,41 @@ namespace {
     } else {
         value["error"] = nullptr;
     }
-    return value.dump();
+    if (record.nativeTaskChecks.size() > 8U) {
+        return Domain::Result<std::optional<std::string>>::failure(
+            Domain::makeError(Domain::ErrorCodes::LimitExceeded,
+                "The durable run has too many native task checks."));
+    }
+    value["native_task_checks"] = nlohmann::json::array();
+    for (const auto& check : record.nativeTaskChecks) {
+        value["native_task_checks"].push_back(nlohmann::json{
+            {"command_sha256", check.commandDigest.value()},
+            {"stdout_sha256", check.stdoutDigest.value()},
+            {"stderr_sha256", check.stderrDigest.value()},
+            {"exit_code", check.exitCode},
+            {"passed", check.passed},
+            {"timed_out", check.timedOut},
+            {"cancelled", check.cancelled},
+            {"termination_confirmed", check.terminationConfirmed},
+            {"elapsed_ms", check.elapsedMilliseconds},
+            {"checked_at_utc_ms", std::chrono::duration_cast<
+                std::chrono::milliseconds>(check.checkedAt.time_since_epoch()).count()}});
+    }
+    if (isTerminal(record.state)) {
+        auto seal = evidenceDigest(record, value, hasher);
+        if (!seal) {
+            return Domain::Result<std::optional<std::string>>::failure(
+                std::move(seal).error());
+        }
+        value["evidence_seal_sha256"] = seal.value().value();
+    }
+    return Domain::Result<std::optional<std::string>>::success(value.dump());
 }
 
 void applySummary(
     const std::optional<std::string>& encoded,
-    Domain::ManagedRunRecord& record)
+    Domain::ManagedRunRecord& record,
+    Contracts::IHasher& hasher)
 {
     if (!encoded || !encoded->starts_with('{')) return;
     try {
@@ -90,8 +149,19 @@ void applySummary(
                 "forge_managed_run" || value.value("version", 0U) != 1U) {
             return;
         }
+        const auto sealText = value.contains("evidence_seal_sha256") &&
+            value["evidence_seal_sha256"].is_string()
+                ? std::optional<std::string>{
+                      value["evidence_seal_sha256"].get<std::string>()}
+                : std::nullopt;
+        const auto persistedDigest = sealText
+            ? Domain::Sha256Digest::parse(*sealText)
+            : Domain::Result<Domain::Sha256Digest>::failure(
+                  Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                      "The run evidence seal is absent."));
         record.authorityGeneration =
             value.value("authority_generation", 0ULL);
+        record.allowTools = value.value("allow_tools", true);
         record.inputTokens = value.value("input_tokens", 0ULL);
         record.outputTokens = value.value("output_tokens", 0ULL);
         if (value.contains("retained_context_tokens") &&
@@ -134,8 +204,57 @@ void applySummary(
                     : "The recovered managed run stopped before a terminal provider result.",
                 true);
         }
+        if (value.contains("native_task_checks")) {
+            if (!value["native_task_checks"].is_array() ||
+                value["native_task_checks"].size() > 8U) {
+                throw std::runtime_error{"Native task checks are malformed."};
+            }
+            for (const auto& item : value["native_task_checks"]) {
+                if (!item.is_object()) {
+                    throw std::runtime_error{"Native task check is malformed."};
+                }
+                const auto command = Domain::Sha256Digest::parse(
+                    item.at("command_sha256").get<std::string>());
+                const auto stdoutDigestResult = Domain::Sha256Digest::parse(
+                    item.at("stdout_sha256").get<std::string>());
+                const auto stderrDigestResult = Domain::Sha256Digest::parse(
+                    item.at("stderr_sha256").get<std::string>());
+                if (!command || !stdoutDigestResult || !stderrDigestResult) {
+                    throw std::runtime_error{"Native task check digest is malformed."};
+                }
+                record.nativeTaskChecks.push_back(Domain::ManagedNativeTaskCheck{
+                    command.value(), stdoutDigestResult.value(),
+                    stderrDigestResult.value(),
+                    item.at("exit_code").get<int>(),
+                    item.at("passed").get<bool>(),
+                    item.at("timed_out").get<bool>(),
+                    item.at("cancelled").get<bool>(),
+                    item.at("termination_confirmed").get<bool>(),
+                    item.at("elapsed_ms").get<std::uint64_t>(),
+                    Domain::UtcTimePoint{std::chrono::milliseconds{
+                        item.at("checked_at_utc_ms").get<std::int64_t>()}}});
+            }
+        }
+        if (isTerminal(record.state)) {
+            record.evidenceIntegrity =
+                Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed;
+            if (sealText) {
+                if (persistedDigest) {
+                    record.evidenceSeal = persistedDigest.value();
+                    auto recomputed = evidenceDigest(record, value, hasher);
+                    record.evidenceIntegrity = recomputed &&
+                        recomputed.value() == persistedDigest.value()
+                            ? Domain::ManagedRunEvidenceIntegrity::Verified
+                            : Domain::ManagedRunEvidenceIntegrity::Mismatch;
+                } else {
+                    record.evidenceIntegrity =
+                        Domain::ManagedRunEvidenceIntegrity::Mismatch;
+                }
+            }
+        }
     } catch (...) {
         record.state = Domain::ManagedRunState::Failed;
+        record.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Mismatch;
         record.lastError = Domain::makeError(
             Domain::ErrorCodes::IntegrityFailure,
             "The durable managed-run summary is malformed.");
@@ -148,8 +267,10 @@ class AgentRepositoryManagedRunStore::Impl final {
 public:
     Impl(
         Contracts::IAgentSessionRepository& repository,
-        Domain::AgentId managedAgentId)
-        : repository_{repository}, managedAgentId_{std::move(managedAgentId)}
+        Domain::AgentId managedAgentId,
+        Contracts::IHasher& hasher)
+        : repository_{repository}, managedAgentId_{std::move(managedAgentId)},
+          hasher_{hasher}
     {
     }
 
@@ -192,7 +313,7 @@ public:
             {},
             run.session.createdAt,
             run.session.updatedAt};
-        applySummary(run.session.summary, record);
+        applySummary(run.session.summary, record, hasher_);
         return Domain::Result<
             std::optional<Domain::ManagedRunRecord>>::success(
             std::move(record));
@@ -208,12 +329,17 @@ public:
                 return Domain::Result<void>::failure(
                     std::move(loaded).error());
             }
+            auto encodedSummary = summary(record, hasher_);
+            if (!encodedSummary) {
+                return Domain::Result<void>::failure(
+                    std::move(encodedSummary).error());
+            }
             Domain::AgentSession session{
                 record.runId,
                 managedAgentId_,
                 record.clientId,
                 sessionStatus(record.state),
-                summary(record),
+                std::move(encodedSummary).value(),
                 record.createdAt,
                 record.updatedAt};
             if (!loaded.value()) {
@@ -268,14 +394,17 @@ public:
 private:
     Contracts::IAgentSessionRepository& repository_;
     Domain::AgentId managedAgentId_;
+    Contracts::IHasher& hasher_;
 };
 
 AgentRepositoryManagedRunStore::AgentRepositoryManagedRunStore(
     Contracts::IAgentSessionRepository& repository,
-    Domain::AgentId managedAgentId)
+    Domain::AgentId managedAgentId,
+    Contracts::IHasher& hasher)
     : implementation_{std::make_unique<Impl>(
           repository,
-          std::move(managedAgentId))}
+          std::move(managedAgentId),
+          hasher)}
 {
 }
 

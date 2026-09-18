@@ -2,7 +2,9 @@
 
 ## 1.1 product recovery
 
-The 1.1 line restores routine native operation: independent telemetry and command scheduling, automatic Manager startup, delayed-readback edit preservation, plumbing-free project/run controls, and synchronized primary/fallback/CLU LM Studio registration. It also adds the exact four-tool continuity-control role without claiming desktop-chat takeover that has not been observed end to end.
+The 1.1 line restores routine native operation: independent telemetry and command scheduling, automatic Manager startup, delayed-readback edit preservation, plumbing-free project/run controls, and synchronized primary/fallback/CLU LM Studio registration. It also adds the exact four-tool continuity-control role. Desktop-chat takeover and source-to-successor restoration remain separate live qualification gates; neither role registration nor a read-only tool result closes them.
+
+The current engineering candidate is 1.1.42. Signed installed 1.1.27 established isolated project and memory workflows; 1.1.28 corrected the archive binding/readback. Signed installed 1.1.32 exposed an exact-run native-check receipt, 1.1.34 captured all fourteen populated archive-profile views, and 1.1.35 captured a materially closer Direction A all-view iteration with exact-project Feed interaction at 1668 × 906. Signed installed 1.1.36 proved the narrow/ultrawide composition and truthful filtered-empty language but exposed a covered Runtimes execution card. Signed installed 1.1.37 corrected that card placement. Signed installed 1.1.38 adds the richer Direction A lighting, navigation identity, chart grid and compact Rig sequence. Signed installed 1.1.39 captures all fourteen populated views and correct Settings/header behavior at 200% text, while exposing one clipped long navigation label; 1.1.40 widens that pane. Version 1.1.41 adds checksummed, project-bound instruction packages and managed-run attachment. Version 1.1.42 adds an opt-in guided setup that operates on the user's real project and explains each setup decision. An isolated managed run reached the live loaded model and sealed an exact project record; it did not verify task success. Production-data proof, fallback live exchange, exact authorized desktop-source handoff and visible successor, complete run outcome qualification, final exact-byte accessibility proof, and the installed acceptance matrix remain open. No package is release-ready until those gates are evidenced on the same final bytes.
 
 ## 1.0 completion
 
@@ -20,4 +22,4 @@ The earlier R0–R7 plan is complete and retained under [historical delivery rec
 
 ## After 1.1
 
-Future work is versioned enhancement, not unfinished 1.0 scope. Candidate themes include additional processor architectures, more provider integrations, expanded performance telemetry, and Store distribution. Any such work must preserve the native C++20/WinUI architecture, Manager ownership boundaries, project isolation, and migration compatibility.
+Additional processor architectures, provider integrations, expanded performance telemetry, and Store distribution are future enhancements. They do not substitute for the open 1.1 installed acceptance gates above. Any work must preserve the native C++20/WinUI architecture, Manager ownership boundaries, project isolation, and migration compatibility.

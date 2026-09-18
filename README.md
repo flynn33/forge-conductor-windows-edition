@@ -8,7 +8,7 @@ The 1.1 product includes a full WinUI 3 desktop interface, an automatically atta
 
 - **Rig:** live system, model, store, continuity, process, and workflow status with bounded histories and disconnect visibility.
 - **Autonomy:** start, inspect, pause, resume, stop, and reattach managed local-model runs.
-- **Projects:** register authorized folders and manage stable project identities and aliases.
+- **Projects:** register authorized folders, manage stable project identities and aliases, and validate/activate checksummed instruction-package folders for new managed runs.
 - **Memory:** search and inspect durable project memory with project isolation.
 - **Tools:** invoke authorized filesystem, search, Git, PowerShell, PDF, project, memory, agent, and continuity tools.
 - **LM Studio MCP:** inspect, repair, and activate synchronized primary, fallback, and continuity-control registrations. The dedicated `clu` role exposes only `clu_capabilities`, `clu_start_handoff`, `clu_status`, and `clu_cancel`.

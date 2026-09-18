@@ -1,5 +1,266 @@
 # Changelog
 
+## 1.1.42 — Guided project setup
+
+- Add a persistent five-step Guided Mode that explains project authorization, durable identity, instruction packages, project memory, and the handoff to managed work while using the operator's real folders and records.
+- Expose synchronized Guided Mode toggles on Rig and in Settings, save progress per deployment profile, and allow the walkthrough to be dismissed or restarted at any time.
+- Reuse the existing Windows folder picker and Manager-owned registration path; the guide advances past registration only after an authoritative project readback and never creates a tutorial project or mock data.
+
+## 1.1.41 — Project instruction packages
+
+- Add a first-class Direction A instruction-package workflow to Projects: choose a folder, validate every supported UTF-8 text file, inspect its manifest and activate the exact SHA-256 revision.
+- Keep validation non-mutating, reject changed-after-preview folders, and persist accepted files plus a project-bound active manifest through the Manager-owned memory service.
+- Attach the active project revision to every new managed run within the bounded task budget, with remaining files addressable through project-memory tools. Add protocol round trips and Manager regressions for preview, activation, stale-revision rejection, project isolation and run attachment.
+
+## 1.1.40 — Large-text navigation completion
+
+- Widen the Direction A navigation pane so every destination label remains complete at Windows 200% text scaling.
+- Carry forward the 1.1.39 compact Settings reflow and wrapped header metadata after its signed installed large-text pass exposed the final clipped destination label.
+
+## 1.1.39 — Large-text responsive refinement
+
+- Reflow the Settings summary cards into a balanced two-by-two composition at compact width, matching the Rig telemetry treatment instead of compressing four cards into one row.
+- Allow environment and last-updated metadata to wrap to two lines so Windows 200% text scaling preserves complete values without overlapping adjacent header controls.
+- Carry forward the signed installed 1.1.38 Direction A visual sweep and its compact, ultrawide, filtered-empty, and High Contrast evidence. Desktop-source handoff remains a separate qualification gate.
+
+## 1.1.38 — Direction A depth and compact Rig composition
+
+- Give the native shell and cards layered graphite-to-blue gradients, directional borders, and a brighter hero edge; retain system-color brushes in High Contrast.
+- Align the desktop navigation width and mosaic mark with the selected Direction A concept, add chart time-grid lines and the Rig hero action glyph, and title the activity lane Recent events.
+- At compact width, stack Rig configuration, live chart, recent events and actions into full-width panels so titles and controls remain legible. Signed installed 1.1.37 and rebuilt staged 1.1.38 screenshots are visual iterations, not final feature or desktop-continuity acceptance.
+
+## 1.1.37 — Correct operational card placement
+
+- Place Runtimes execution and operating policy beside each other on desktop, with project jobs below both; at compact width, present execution, policy, then jobs as a readable single-column sequence.
+- Preserve the 1.1.36 Feed filter truth and bounded ultrawide canvas. Signed installed 1.1.36 exposed a covered Runtimes execution card, so its all-view screenshots remain diagnostic iteration evidence rather than final acceptance.
+
+## 1.1.36 — Adaptive Direction A composition
+
+- Bound the native page canvas to a practical 1440-pixel content width on ultrawide displays while preserving full-width cards at normal windows.
+- Stack the operational detail and insights under the main panel when the window narrows below 1080 pixels; retain the desktop two-column composition above that breakpoint.
+- Make a category/project-filtered empty Feed explicitly say no audited outcome matched, and update the detail message without blaming the Manager for a zero-match filter.
+- Carry forward the installed 1.1.35 fourteen-view archive-profile visual sweep and its exact-project audit proof. A disposable unpackaged live model-only run completed and sealed an exact project record, but this is not desktop continuity or independently verified assignment work.
+
+## 1.1.35 — Project-scoped audit feed
+
+- Carry the Manager-verified typed project authority into bounded audit persistence, Manager telemetry and dashboard readback. Requests that claim a mismatched project remain unscoped; projectless requests bound to a verified authority acquire its actual scope. C011 adds only the nullable project column, and historical outcomes remain unscoped instead of acquiring a fabricated binding.
+- Give Feed native status, tool-family and current-project/unscoped filters. The current-project choice uses the persistent project selector; no project identifier has to be entered in the Feed.
+- Rebalance the fourteen-view native shell toward Direction A's graphite canvas, restrained indigo/azure surfaces, softer card strokes, narrower navigation and more confident page typography. Signed installed archive-profile captures cover the visual iteration; production, scaled and accessibility acceptance remain separate.
+- Add migration, audit round-trip, tool-router, Manager protocol and dashboard JSON regressions. Installed exact-project filtered-feed interaction passed; the complete acceptance matrix remains separate qualification work.
+
+## 1.1.34 — Audit and exact-run presentation
+
+- Show the bounded Manager audit window's success, error and denial mix, with its most recent observation, alongside selectable Feed detail and a direct path to project-bound durable evidence.
+- Expose the verified run and project identity in Autonomy's live readback and keep the native-evidence path next to model output without implying that a completed response is a verified task result.
+- Display the active isolated profile's data root in the Manager card rather than the default production path. Installed visual and integrated acceptance still require review of this exact build.
+- Keep the dashboard real-socket smoke test's bounded loopback ports outside this host's reserved IPv6 TCP range so a valid listener is not mistaken for a product regression.
+
+## 1.1.33 — Direction A shell and contrast-theme pass
+
+- Give the active native navigation destination the approved blue treatment and give Tools the same hero-led hierarchy as the other work surfaces.
+- Place the exact-run native check and approval controls ahead of provenance digests so the action is visible at a normal desktop viewport; color the latest check state distinctly from unverified or failed outcomes.
+- Use runtime theme resources for the console's semantic brushes, with system-color mappings for contrast themes. Installed populated-view, scale, keyboard, and contrast qualification remains required.
+
+## 1.1.32 — Exact-run native check receipt
+
+- Add a bounded post-run native check action for an exact completed, sealed project run. It uses the project's authorized native shell route and persists a sealed receipt with command/stdout/stderr digests, exit state, elapsed time and check timestamp; command and output text are not included in the redacted evidence projection.
+- Events & Evidence now requires an explicit approval in the installed UI, separates the specified native check result from durable metadata integrity and model output, and permits local export of the redacted receipt. A passing check verifies only that command, not every assignment requirement.
+- Add protocol, cross-project, legacy-unsealed, passing/failing receipt, and durable-seal regressions. Installed passing/failing check and all-view visual acceptance remain required.
+
+## 1.1.31 — Evidence presentation and Direction A lighting
+
+- Replace the flat main console canvas with a blue-lit native gradient shared by every view, tuned against the approved Direction A visual language.
+- Present exact-project durable runs through compact identity and digest tiles, with complete provenance and SHA-256 values available under an explicit disclosure. Preserve the separate native-record-integrity and task-outcome states and local redacted export.
+- Correct stale Evidence labels that implied no durable projection existed, including singular run counts. Installed populated visual, scaling, and interaction review remains required before parity acceptance.
+
+## 1.1.30 — Durable run evidence readback
+
+- Seal terminal Manager-owned run summaries with an unkeyed SHA-256 consistency digest and validate saved metadata on native read; report legacy-unsealed and mismatch without promoting model text to a trusted task result.
+- Add an exact-project Events & Evidence run selector with provider provenance, task and stored-output digests, native record-integrity status, and local redacted JSON export. The Manager excludes other projects and raw mission/output text.
+- Retry only the transient same-project repository-opening race during automatic Projects readback. Protocol, redaction, project-boundary and altered-summary regressions accompany the new projection; installed visual and end-to-end checks remain required.
+
+## 1.1.29 — Repeatable project archive export
+
+- Retain an existing project-owned exports directory with only the permissions needed to create and inspect artifact files. A second installed-profile export under inherited Modify permissions no longer fails because of an unnecessary delete-child access request.
+- Add a repeated-export repository regression: successive snapshots remain separately retained and byte-equivalent for the same project state. Installed archive preview and confirmed import remain acceptance checks before all-view visual proof.
+
+## 1.1.28 — Archive readback and profile truth
+
+- Correct the Projects archive result check to compare the Manager's exact tool name with the action's stable expected name after background argument transfer. Installed 1.1.27 completed an export but displayed “Export unavailable” because the local comparison string was moved.
+- Replace the nonfunctional one-choice environment dropdown with a read-only active-profile chip. Sidebar and header now show the actual isolated or production profile and its effective data root, rather than hard-coded Production labels.
+- Bind the archive status to the selected project and report confirmed import dispositions separately: inserted, already present, and updated. Source compilation and signed installed interaction are required before visual acceptance.
+
+## 1.1.27 — Project archive preview fence
+
+- Add a full-width Projects archive workflow for exact-project export, artifact selection, non-mutating verification preview, and confirmed import. The import command carries the preview's checksum; the repository rejects a changed valid artifact before a write and requires a fresh preview.
+- Read import artifacts from the application's exact project-owned exports directory rather than an unrelated authorized workspace root. The artifact store still rejects foreign project paths, non-immediate children, and unsafe filesystem links.
+- Add a cancellable disposable Responses contract probe. Archive output is labeled as memory integrity, not managed-run completion evidence.
+- Full Release tests passed (151/151), and a signed MSIX was unpacked and verified before installed interaction. In an isolated installed profile, native folder registration and durable memory creation worked; the Manager completed project export but the archive card's result-binding bug prevented end-to-end UI confirmation. Final all-view acceptance remains open.
+
+## 1.1.26 — Runtime layout and Responses contract readback
+
+- Move exact project-bound managed jobs and stored results into a full-width Runtimes card. Exclude the inventory summary from job-row parsing; installed 1.1.25 exposed a phantom job row despite correct counts.
+- Add a separate disposable, model-only Responses contract probe in Provider. It validates an actual response ID and token usage without treating model discovery, a managed run, or a desktop chat as the same result. Clear Provider's stale “Working…” label when discovery finishes.
+- Installed 1.1.25 recorded a read-only `agent_list` primary MCP result in the exact Manager deployment after an LM Studio desktop model call and following answer. This establishes only the observed native call, not source-to-successor desktop continuity or trusted completion.
+- Full Release tests passed (151/151). A signed 1.1.26 MSIX was unpacked and verified (324 payload files), installed over a checked backup, and inspected in the native app: two exact-project runtime job rows without the phantom summary; Provider discovery and a disposable real Responses ID/usage probe worked. Final all-view and continuity/evidence acceptance remain open.
+
+## 1.1.25 — Project-bound runtime job results
+
+- Project the bounded recent managed-run window into Runtimes using the Manager's persisted run owner. Exact project filtering protects other projects' missions and results; the view reports real active, completed, failed, and stopped states without inventing a queued-job service.
+- Show each run's stored mission and result/error in a compact native card, with an exact-run path to Autonomy for verified inspection and supported control. Disconnect and stale project replies invalidate the visible job rows.
+- A focused Manager regression covers persisted-state counting and cross-project result isolation. Installed visual and acceptance qualification for this candidate remain open.
+
+## 1.1.24 — Model-only run scope and live registration repair
+
+- Treat LM Studio's own runtime `install-state.json` marker as a valid bridge receipt while still validating the exact deployed manifest, binary, role, home, and deployment ID. A mismatched bridge deployment remains rejected.
+- Make native tool access an explicit, durable per-run choice. The desktop starts model-only by default; authorized tool runs still use the canonical Manager catalog and authority boundary. Scope survives Manager protocol readback and run recovery.
+- Distinguish provider endpoint failure from an empty model list, clear stale Manager operational telemetry after disconnect, and retain an exact selected Continuity run as awaiting usage when the provider has not returned token counts.
+- Report WinHTTP send/receive stage and numeric error on a failed LM Studio Responses exchange. Focused source tests and a signed installed model-only Qwen run passed; final all-view screenshot acceptance and tool-catalog provider exchange remain open.
+
+## 1.1.23 — Deployment-scoped MCP outcome readback and LM Studio identities
+
+- Record the native MCP role and exact deployment ID with newly routed tool outcomes. A nullable C010 migration preserves historical audit rows without manufacturing provenance; focused persistence and protocol tests cover readback and pairing.
+- Let Manager distinguish live role-host presence from a bounded, deployment-scoped successful MCP tool audit. The audit proves neither the external LM Studio caller nor durable verified completion evidence.
+- Add local model policy/discovery, Manager-configured backend, and sampled local process identities to the LM Studio command center. Labels distinguish configuration, endpoint discovery, prior audited result, and live process state.
+- The signed installed 1.1.22 visual sweep reached all fourteen destinations. Autonomy lacked an attached run, Runtimes lacked jobs/results, and Events & Evidence lacked a verified artifact chain; final screenshot acceptance remains open.
+
+## 1.1.22 — Honest MCP role presence and command-center LM Studio view
+
+- Read a bounded, deployment-specific recent presence set from the shared native MCP ledger. Manager status reports a role host only while its heartbeat is fresh and its owning PID is still running from the exact packaged CLI image; a tool call remains a separate proof.
+- Give LM Studio's three roles, deployment posture, connection boundary, and actions a Direction A composition. Label host launch and synchronization accurately instead of suggesting that activation itself proves a working client.
+- On signed installed 1.1.21, LM Studio's existing Qwen3 Coder 30B model invoked the read-only CLU `clu_capabilities` control and received a native MCP response. The earlier Qwen3.8 27B model displayed the CLU catalog but did not make a tool call. This live result does not yet verify Primary or Fallback calls, installed 1.1.22 UI, or all-view visual acceptance.
+
+## 1.1.21 — Routed non-writing LM Studio activation authority
+
+- Route the distinct Read, Write, and Execute Manager LM Studio capabilities through their exact issuers. The native deployment service and host activator can now authorize application/configuration paths and narrow an Execute authority for activation without admitting Write, Create, or Delete.
+- Test the router's Execute and Read-under-Execute paths, denial of Write, generation-preserving narrowing, and rejection of a write-capable activation policy. Signed installed client verification is still required.
+
+## 1.1.20 — Bound LM Studio activation to the native deployment tool
+
+- Use the same `install-lmstudio-plugin` capability name for both Manager-issued repair (Write effect) and connector activation (Execute effect), matching the deployment service's exact tool-name check. The separate Execute-scoped authority remains mandatory for activation.
+- A signed installed 1.1.19 activation passed Manager authorization but failed the service's exact-name check before launching LM Studio. Registration of all three roles was observed; connected-client verification remains pending.
+
+## 1.1.19 — Execute-scoped LM Studio connector activation
+
+- Issue a separate narrow Execute-intent Manager authority for activating the already registered LM Studio connectors. Repair retains its distinct Write-intent authority; a Write token cannot authorize an Execute-effect native action merely because Execute is among its grants.
+- Keep LM Studio's registration and connected-client states separate. A cold 1.1.18 installed readback observed all three Forge roles in production `mcp.json` with both foreign entries semantically unchanged, but no client was observed and activation was rejected before launch by the previous Write-intent policy.
+
+## 1.1.18 — Isolated LM Studio smoke working directory
+
+- Bind all three pre/post native serve probes to the selected Forge CLI installation directory, not the live Manager's write-anchored data root. Each probe still receives an exact per-operation `--home` under `.serve-verifier`, so it cannot use the production SQLite store or inherit an unrelated workspace.
+- Preserve the process supervisor's strict no-write path anchors and update the verifier request-shape regression. Live packaged registration and connected-client qualification remain required.
+
+## 1.1.17 — Bounded native repair diagnostics and visible action state
+
+- Bound best-effort LM Studio repair and deployment diagnostics to a quarter-second child deadline. A Manager-held write-capable data-root anchor currently contests the diagnostic writer's strict ancestor anchor; diagnostic contention can no longer consume the full native repair deadline. The diagnostic storage contention itself remains open.
+- Put queued, active, and failed LM Studio action feedback in the hero and Connection & authority card instead of hiding it in Advanced registration detail. Compact the three native actions into one aligned lane.
+- Add a regression for the competing database-like ancestor anchor while retaining the diagnostic sink's strict no-write/no-delete root-anchor tests.
+
+## 1.1.16 — Evidence-chain composition and repair tracing
+
+- Give Events & Evidence its own three-stage trust composition while keeping current Manager audit outcomes visibly distinct from unprojected durable artifacts and unperformed native verification.
+- Add bounded, local Manager diagnostic breadcrumbs around LM Studio repair receipt, read inspection, authorization, and deployment admission to locate the live pre-transaction stall without logging configuration contents.
+- Describe the three Forge LM Studio roles accurately in the desktop action guidance.
+
+## 1.1.15 — Bounded LM Studio repair and retained inspection state
+
+- Give the six-stage native MCP repair workflow a two-minute desktop request deadline instead of the previous thirty seconds; keep the Manager's transport and each smoke probe independently bounded.
+- Explain the pending repair check in the UI and retain the last valid host and registration inspection when a command fails or times out.
+- Distinguish the discovered LM Studio application from the separate packaged Forge CLI executable in the readiness path.
+
+## 1.1.14 — Distinct sparse-state compositions
+
+- Give LM Studio MCP separate host, registration, and connector-readiness stages without implying a working client when it is absent.
+- Keep exact project UUID and repository hash under Advanced; lead with a verified human-facing binding and concise store readback.
+- Replace Runtimes' repeated four-line inventory with a Manager-owned execution topology while honestly labeling unavailable job inspection.
+- Tighten the Rig middle row for the usable Windows viewport and stop rebuilding the recent-activity timeline on every telemetry tick when its content has not changed.
+- Preserve open feature and installed all-view QA; audit activity is still not durable verified evidence.
+
+## 1.1.13 — Cold-launch catalog and installed-version correction
+
+- Start and authenticate the Manager before restoring a page that immediately needs its catalog; keep the empty Tools state compact and explicitly recoverable if readback fails.
+- Show the actual installed package version in Manager and locally exported Diagnostics context, instead of relying on a potentially stale compiled label.
+- Smooth only the miniature Rig trend readbacks; leave the measured telemetry values and absolute main chart intact.
+- Continue signed installed all-view and feature acceptance before calling any screenshot final proof.
+
+## 1.1.12 — Project run history and sharper native readback
+
+- Add a Manager-backed recent-run timeline to Autonomy and Continuity, filtered by the exact selected project and attachable through the existing verified run path.
+- Improve miniature Rig telemetry trends while preserving absolute values in the main chart and gauges; show measured CPU frequency in the primary instrument card.
+- Tighten sparse Tools/Runtimes layouts and clarify that optional unavailable LM Studio doctor checks do not negate verified core Manager health.
+- Add a local, user-chosen Diagnostics support snapshot export containing the bounded Manager readback; it is explicitly not verified run evidence and is never transmitted automatically.
+- Keep installed all-view visual, scaled/accessibility and remaining feature acceptance open until signed-release verification.
+
+## 1.1.11 — Operator detail and truthful runtime states
+
+- Correct Provider, Continuity, and Store status colors to distinguish configured or absent dependencies from verified healthy states.
+- Bound high-density CPU-core and GPU-engine details into responsive telemetry tiles rather than unbounded diagnostic text.
+- Compose Runtimes from the effective shell policy and owned resource readback, with an explicit unavailable-job state and a compact inventory.
+- Add Manager-bound project-memory edit and confirm-to-forget controls, project-scoped guided tool arguments, recent agent sessions, and useful Agents/Diagnostics detail cards.
+- Reset the shared page scroll position on navigation so each destination opens with its title and primary controls visible.
+- Keep installed feature and all-view visual acceptance open pending signed Windows verification.
+
+## 1.1.10 — DPI-aware cold launch
+
+- Convert the intended console dimensions from Windows layout units to monitor physical pixels before resizing the native window.
+- Keep the wide left navigation permanently open; show an expandable compact rail after narrowing the viewport.
+- Continue signed installed and feature-parity QA before treating any view captures as proof.
+
+## 1.1.9 — Adaptive native console
+
+- Size the native window to its current monitor's usable work area on launch, with a deliberate full-height command-center viewport.
+- Use a compact left rail and two-row Rig metrics on narrower displays; keep the full navigation pane and four-card instrument row on wide displays.
+- Stretch detailed Settings controls across the available content width and show sub-millisecond tool outcomes accurately.
+- Automatically retry selected operational readback after Manager ensure or restart; installed feature and visual QA remain open.
+
+## 1.1.8 — Structured result and configuration composition
+
+- Present native tool outcomes as bounded records with clear completion and invocation duration; retain exact payload in Advanced.
+- Use the Manager's measured tool receipt duration in the typed desktop response.
+- Compose Settings around effective endpoint, context and shell readback, with detailed sections and destructive maintenance behind clear expansion.
+- Keep visual QA open until the signed install and all required feature outcomes are verified.
+
+## 1.1.7 — Guided workbench and density corrections
+
+- Render Manager tool schemas as guided native argument controls; keep canonical JSON in Advanced for complex forms.
+- Tighten short Manager/Runtimes inventories, distinguish record counts from live resources, and preserve concise Provider state readback.
+- Collapse rarely used project registration, freeing the primary workspace for scope and memory work.
+- Continue installed all-view visual QA before treating screenshots as final proof.
+
+## 1.1.6 — Direction A operational composition pass
+
+- Make Projects a selected-scope and memory-health workbench with a native Windows folder picker; keep project identity internal in routine selection.
+- Add a model-first Provider screen with bounded discovery of actual loaded LM Studio models and distinct configured versus discovered states.
+- Give Autonomy a mission, live run readback, output and token/tool-activity composition; let the Manager resolve project authority and guard run controls by exact project verification.
+- Give Continuity a dedicated capacity and handoff-state composition while clearly labeling desktop capability gaps.
+- Improve typography, color, feed filtering, agent search, and Manager/Runtimes status cards; installed all-view QA remains required.
+
+## 1.1.5 — Direction A live-view finish
+
+- Strengthen the native Rig hierarchy with a distinct machine identity, full-height meters, a readable 60-second chart, and structured recent outcomes.
+- Put run and log navigation in the command center while retaining service lifecycle controls on Manager.
+- Continue operational-view refinement; installed production-data inspection identified follow-on work.
+
+## 1.1.4 — Structured native view refinement
+
+- Replace generic operational text dumps with selectable native records, context-specific status headers, detail readback, and an advanced canonical projection.
+- Add tool search, pack filtering, capability selection and details while retaining the Manager-owned invocation path.
+- Give LM Studio MCP explicit Primary, Fallback, and CLU role status cards; distinguish Autonomy from retained-context Continuity.
+- Group persistent Settings into readable configuration, rollover, maintenance, and verification surfaces.
+
+## 1.1.3 — All-view visual finish
+
+- Finished the tool workbench and operational destinations with the same layered command-center cards, structured actions, bounded live-data panes, and monospace technical readouts used by the Rig dashboard.
+
+## 1.1.2 — Command center fit and finish
+
+- Tightened the Rig viewport so the complete operational action cluster remains above the fold at the reference desktop size.
+
+## 1.1.1 — Direction A command center
+
+- Rebuilt the native Windows shell around the selected Obsidian Command Center direction, including dark window chrome, a compact production command strip, high-density telemetry cards, live sparklines, an operational chart grid, status rows, and a consistent premium surface system across every view.
+- Preserved the authenticated Manager data path, existing navigation destinations, native command handlers, and release provenance while advancing the Windows package to `1.1.1.0` for a safe in-place upgrade.
+
 ## 1.1.0 — Windows product recovery
 
 - Removed the global WinUI busy gate. Live telemetry now coalesces independently while user commands retain a bounded FIFO disposition, and closing the window cancels both lanes.

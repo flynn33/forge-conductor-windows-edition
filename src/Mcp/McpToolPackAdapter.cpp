@@ -452,7 +452,7 @@ void normalizeProjectMemoryArguments(
         return;
     }
     if (name == "project_memory.import") {
-        normalizeLegacyStringFields(arguments, {"artifact", "merge_policy"});
+        normalizeLegacyStringFields(arguments, {"artifact", "merge_policy", "expected_checksum"});
         normalizeLegacyBooleanDefault(arguments, "preview");
     }
 }
@@ -3512,8 +3512,7 @@ private:
             authority,
             project.value(),
             arguments,
-            context,
-            observation);
+            context);
     }
 
     [[nodiscard]] Domain::Result<Json> projectMemoryMutation(
@@ -3522,8 +3521,7 @@ private:
         const Contracts::WorkspaceAuthority& authority,
         const Domain::ProjectId& project,
         const Json& arguments,
-        const Domain::OperationContext& context,
-        ToolContinuityObservationBuilder& observation)
+        const Domain::OperationContext& context)
     {
         if (name == "project_memory.update") {
             auto id = parseStrongUuid<Domain::MemoryRecordId>(arguments, "id");
@@ -3638,7 +3636,7 @@ private:
         }
 
         return projectMemoryArtifact(
-            name, call, authority, project, arguments, context, observation);
+            name, call, authority, project, arguments, context);
     }
 
     [[nodiscard]] Domain::Result<Json> projectMemoryArtifact(
@@ -3647,8 +3645,7 @@ private:
         const Contracts::WorkspaceAuthority& authority,
         const Domain::ProjectId& project,
         const Json& arguments,
-        const Domain::OperationContext& context,
-        ToolContinuityObservationBuilder& observation)
+        const Domain::OperationContext& context)
     {
         if (name == "project_memory.link") {
             auto source = parseStrongUuid<Domain::MemoryRecordId>(
@@ -3699,23 +3696,27 @@ private:
         }
         if (name == "project_memory.import") {
             const auto artifactText = strictString(arguments, "artifact").value_or("");
-            auto artifact = authorizePath(
-                dependencies_.workspaceAuthority,
-                authority,
-                artifactText,
-                Domain::FileAccess::Read,
-                false,
-                context,
-                &observation);
+            // Export artifacts live in the application's owned directory, not
+            // in an authorized workspace root. The artifact store resolves the
+            // candidate against the exact project's immediate exports child
+            // and rejects foreign paths and reparse-point escapes on open.
+            auto artifact = pathText(artifactText, "artifact");
             if (!artifact) {
                 return propagate<Json>(std::move(artifact));
             }
             const auto policy = strictString(arguments, "merge_policy").value_or("");
+            std::optional<Domain::Sha256Digest> expectedChecksum;
+            if (const auto expected = strictString(arguments, "expected_checksum")) {
+                auto parsed = Domain::Sha256Digest::parse(*expected);
+                if (!parsed) return propagate<Json>(std::move(parsed));
+                expectedChecksum = std::move(parsed).value();
+            }
             Domain::ImportProjectMemoryRequest request{
                 project,
-                artifact.value().canonicalPath(),
+                std::move(artifact).value(),
                 strictBoolean(arguments, "preview").value_or(true),
-                policy == "merge"};
+                policy == "merge",
+                std::move(expectedChecksum)};
             auto outcome = dependencies_.projectMemory.importMemory(
                 request, context);
             if (!outcome) {

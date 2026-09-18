@@ -257,6 +257,7 @@ struct ImportProjectMemoryRequest final {
     PathText artifact;
     bool preview{true};
     bool allowCrossProjectMerge{};
+    std::optional<Sha256Digest> expectedChecksum;
 };
 
 struct ProjectMemoryImport final {

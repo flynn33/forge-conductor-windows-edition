@@ -36,7 +36,8 @@ constexpr std::size_t MaximumStatusBytes = 128U;
 constexpr std::size_t MaximumErrorBytes = 4U * 1024U;
 constexpr std::string_view ProjectionColumns =
     "COALESCE(occurred_at,timestamp),client_id,tool,args_digest,"
-    "COALESCE(status,'ok'),duration_ms,COALESCE(error_code,error)";
+    "COALESCE(status,'ok'),duration_ms,COALESCE(error_code,error),"
+    "mcp_role,deployment_id,project_id";
 
 static_assert(
     WindowsAuditRepository::MaximumRetainedEvents > 0U &&
@@ -321,6 +322,9 @@ void validateEvent(const Domain::AuditEvent& event)
     if (event.duration && event.duration->count() < 0) {
         invalid("Audit duration must not be negative.");
     }
+    if (event.mcpRole.has_value() != event.deploymentId.has_value()) {
+        invalid("Audit MCP role and deployment provenance must be paired.");
+    }
 }
 
 void bindOptionalText(
@@ -370,6 +374,29 @@ void bindOptionalText(
     }
     auto error = optionalPersistedText(
         statement, 6, MaximumErrorBytes, "error_code");
+    std::optional<Domain::McpRole> role;
+    if (auto value = optionalPersistedText(statement, 7, 16U, "mcp_role")) {
+        if (*value == "primary") role = Domain::McpRole::Primary;
+        else if (*value == "fallback") role = Domain::McpRole::Fallback;
+        else if (*value == "clu") role = Domain::McpRole::Clu;
+        else integrity("A persisted audit MCP role is invalid.");
+    }
+    std::optional<Domain::DeploymentId> deploymentId;
+    if (auto value = optionalPersistedText(
+            statement, 8, 128U, "deployment_id")) {
+        auto parsed = Domain::DeploymentId::parse(*value);
+        if (!parsed) integrity("A persisted audit deployment identifier is invalid.");
+        deploymentId.emplace(std::move(parsed).value());
+    }
+    if (role.has_value() != deploymentId.has_value()) {
+        integrity("Persisted audit MCP provenance is incomplete.");
+    }
+    std::optional<Domain::ProjectId> projectId;
+    if (auto value = optionalPersistedText(statement, 9, 128U, "project_id")) {
+        auto parsed = Domain::ProjectId::parse(*value);
+        if (!parsed) integrity("A persisted audit project identifier is invalid.");
+        projectId.emplace(std::move(parsed).value());
+    }
     return Domain::AuditEvent{
         timestamp,
         std::move(clientId),
@@ -377,7 +404,10 @@ void bindOptionalText(
         std::move(argumentsDigest),
         std::move(status),
         duration,
-        std::move(error)};
+        std::move(error),
+        role,
+        std::move(deploymentId),
+        std::move(projectId)};
 }
 
 } // namespace
@@ -453,8 +483,8 @@ Domain::Result<void> WindowsAuditRepository::append(
                     auto statement = take(transaction.prepare(
                         "INSERT INTO audit_events("
                         "timestamp,client_id,tool,args_digest,status,duration_ms,"
-                        "error,occurred_at,error_code) "
-                        "VALUES(?,?,?,?,?,?,?,?,?)"));
+                        "error,occurred_at,error_code,mcp_role,deployment_id,project_id) "
+                        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"));
                     take(statement.bindText(1, timestamp));
                     if (event.clientId) {
                         take(statement.bindText(2, event.clientId->value()));
@@ -477,6 +507,23 @@ Domain::Result<void> WindowsAuditRepository::append(
                     bindOptionalText(statement, 7, event.error);
                     take(statement.bindText(8, timestamp));
                     bindOptionalText(statement, 9, event.error);
+                    if (event.mcpRole) {
+                        take(statement.bindText(
+                            10, Domain::wireName(*event.mcpRole)));
+                    } else {
+                        take(statement.bindNull(10));
+                    }
+                    if (event.deploymentId) {
+                        take(statement.bindText(
+                            11, event.deploymentId->value()));
+                    } else {
+                        take(statement.bindNull(11));
+                    }
+                    if (event.projectId) {
+                        take(statement.bindText(12, event.projectId->value()));
+                    } else {
+                        take(statement.bindNull(12));
+                    }
                     stepDone(statement);
 
                     auto prune = take(transaction.prepare(

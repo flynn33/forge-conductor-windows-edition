@@ -276,7 +276,17 @@ CREATE INDEX idx_reset_receipts_started
     ON reset_receipts(started_at DESC);
 UPDATE schema_version SET version = 9;)sql";
 
-constexpr std::array<MigrationStep, 9> Steps{{
+constexpr std::string_view C010Sql = R"sql(ALTER TABLE audit_events ADD COLUMN mcp_role TEXT
+    CHECK (mcp_role IN ('primary', 'fallback', 'clu'));
+ALTER TABLE audit_events ADD COLUMN deployment_id TEXT;
+CREATE INDEX idx_audit_events_deployment
+    ON audit_events(deployment_id, occurred_at DESC);
+UPDATE schema_version SET version = 10;)sql";
+
+constexpr std::string_view C011Sql = R"sql(ALTER TABLE audit_events ADD COLUMN project_id TEXT;
+UPDATE schema_version SET version = 11;)sql";
+
+constexpr std::array<MigrationStep, 11> Steps{{
     {1, "C001", C001Sql, "6d34b6a07a3d74440b598f2ca8b73ce84b615f99b814911b0f23e517e77c3eeb"},
     {2, "C002", C002Sql, "3c6fed9dd5aad4cda6d1bf511c48bfb27e450b68cba7b9446e6ddc9ef0d60315"},
     {3, "C003", C003Sql, "600c16d28acd5f54a53a900d20e9ca51392a764e4bc9cdcb0b0b895a335173d9"},
@@ -286,9 +296,11 @@ constexpr std::array<MigrationStep, 9> Steps{{
     {7, "C007", C007Sql, "e484d351fc622d0664bddeaa17a47b17929213a226341a98a9bed055df0864bd"},
     {8, "C008", C008Sql, "d4aff22aa147de43bfb77437762421f55c0c667e14a51f4e229ee1d1df9d5368"},
     {9, "C009", C009Sql, "3aadf0efc1844836e10bcab4927532767be92ed06b25cf9a12cb101c0dce6b11"},
+    {10, "C010", C010Sql, "9a75c71681d072ecddb28b021f8bd5578cc783307eac6511e13ddf192346a0ab"},
+    {11, "C011", C011Sql, "82bda99a53aec3474628ff80d3e23225f753b569ad43b8acccb8b631aec45830"},
 }};
 
-constexpr std::array<SchemaObject, 29> RequiredSchema{{
+constexpr std::array<SchemaObject, 30> RequiredSchema{{
     {"table", "agent_sessions"},
     {"table", "audit_events"},
     {"table", "client_presence"},
@@ -305,6 +317,7 @@ constexpr std::array<SchemaObject, 29> RequiredSchema{{
     {"table", "reset_receipts"},
     {"index", "idx_audit_events_event_id"},
     {"index", "idx_audit_events_occurred_at"},
+    {"index", "idx_audit_events_deployment"},
     {"index", "idx_agent_sessions_created_id"},
     {"index", "idx_agent_sessions_open_created_id"},
     {"index", "idx_client_presence_last_seen_client"},

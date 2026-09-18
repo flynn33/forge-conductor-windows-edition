@@ -1011,6 +1011,23 @@ void snapshotRoundTripSecurityAndRollback()
     REQUIRE(artifact.parent_path() == directory.path() / L"exports");
     const std::string originalArtifact = readText(artifact);
 
+    const auto repeatContext = operationContext(
+        "artifact-repeat-export", fixture.now);
+    const auto repeatCapability = exportCapability(
+        projectId,
+        Support::pathText(directory.path()),
+        repeatContext,
+        Domain::ToolEffect::Write);
+    const auto repeated = take(fixture.repository->exportMemory(
+        Domain::ExportProjectMemoryRequest{projectId},
+        repeatCapability.authority,
+        repeatCapability.authorization,
+        repeatContext));
+    REQUIRE(repeated.recordCount == exported.recordCount);
+    REQUIRE(repeated.artifact.value() != exported.artifact.value());
+    REQUIRE(std::filesystem::exists(nativePath(repeated.artifact)));
+    REQUIRE(readText(nativePath(repeated.artifact)) == originalArtifact);
+
     const auto hardLink = artifact.parent_path() / L"hard-link.json";
     REQUIRE(::CreateHardLinkW(hardLink.c_str(), artifact.c_str(), nullptr) != FALSE);
     const auto hardLinkRejected = fixture.repository->importMemory(
@@ -1070,9 +1087,23 @@ void snapshotRoundTripSecurityAndRollback()
                 operationContext("artifact-status-after-preview", fixture.now)))
                 .recordCount == 0U);
 
+    const auto changedSincePreview = fixture.repository->importMemory(
+        Domain::ImportProjectMemoryRequest{
+            projectId, exported.artifact, false, false,
+            parse<Domain::Sha256Digest>(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")},
+        operationContext("artifact-preview-checksum-mismatch", fixture.now));
+    REQUIRE(!changedSincePreview);
+    REQUIRE(changedSincePreview.error().code == Domain::ErrorCodes::IntegrityFailure);
+    REQUIRE(std::filesystem::exists(artifact));
+    REQUIRE(take(fixture.repository->status(
+                Domain::ProjectMemoryStatusRequest{projectId},
+                operationContext("artifact-status-after-mismatch", fixture.now)))
+                .recordCount == 0U);
+
     const auto imported = take(fixture.repository->importMemory(
         Domain::ImportProjectMemoryRequest{
-            projectId, exported.artifact, false, false},
+            projectId, exported.artifact, false, false, preview.checksum},
         operationContext("artifact-import", fixture.now)));
     REQUIRE(imported.disposition == Domain::ImportDisposition::Imported);
     REQUIRE(imported.imported.size() == 51U);

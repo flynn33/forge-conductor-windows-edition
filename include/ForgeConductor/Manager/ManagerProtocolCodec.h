@@ -7,6 +7,7 @@
 #include "ForgeConductor/Domain/ProjectMemoryModels.h"
 #include "ForgeConductor/Domain/ToolModels.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -55,6 +56,13 @@ struct ManagerProjectRememberRequest final {
     std::vector<std::string> tags;
 };
 
+struct ManagerInstructionPackageRequest final {
+    Domain::ProjectId projectId;
+    Domain::PathText packagePath;
+    bool activate{};
+    std::optional<Domain::Sha256Digest> expectedRevision;
+};
+
 struct ManagerLmStudioStatusRequest final {
     bool operator==(const ManagerLmStudioStatusRequest&) const = default;
 };
@@ -77,14 +85,15 @@ struct ManagerToolInvokeRequest final {
     std::string canonicalArguments;
 };
 
-enum class ManagerOperationalArea { Agents, Feed, Runtimes, Diagnostics, Manager };
-enum class ManagerOperationalAction { Inspect, PruneSessions, CloseSession };
+enum class ManagerOperationalArea { Agents, Feed, Runtimes, Diagnostics, Manager, Runs, Evidence };
+enum class ManagerOperationalAction { Inspect, PruneSessions, CloseSession, VerifyTask };
 
 struct ManagerOperationalRequest final {
     ManagerOperationalArea area{ManagerOperationalArea::Agents};
     ManagerOperationalAction action{ManagerOperationalAction::Inspect};
     std::optional<Domain::SessionId> sessionId;
     std::string summary;
+    std::optional<Domain::ProjectId> projectId;
 };
 
 enum class ManagerMaintenanceScope {
@@ -125,9 +134,23 @@ struct ManagerProjectWorkspaceSnapshot final {
     bool fullTextSearchAvailable{};
     bool integrityOk{};
     std::vector<ManagerProjectMemoryRecord> records;
+    std::optional<ManagerProjectMemoryRecord> activeInstructionManifest;
     std::optional<std::string> nextCursor;
     bool truncated{};
     std::optional<Domain::MemoryRecordId> writtenRecordId;
+};
+
+struct ManagerInstructionPackageSnapshot final {
+    Domain::ProjectId projectId;
+    std::string packageName;
+    Domain::PathText packagePath;
+    Domain::Sha256Digest revision;
+    std::size_t fileCount{};
+    std::size_t ignoredFileCount{};
+    std::uint64_t contentBytes{};
+    std::vector<std::string> files;
+    bool activated{};
+    std::optional<Domain::MemoryRecordId> manifestRecordId;
 };
 
 struct ManagerLmStudioSnapshot final {
@@ -151,6 +174,11 @@ struct ManagerLmStudioSnapshot final {
     std::size_t managedContinuityProjects{};
     std::string detail;
     std::string actionDetail;
+    bool toolAuditChecked{};
+    bool primaryToolOutcomeRecorded{};
+    bool fallbackToolOutcomeRecorded{};
+    bool continuityToolOutcomeRecorded{};
+    std::string toolAuditDetail;
 };
 
 struct ManagerToolDescriptor final {
@@ -175,6 +203,7 @@ struct ManagerToolOutcomeSnapshot final {
     bool ok{};
     std::string canonicalPayload;
     std::optional<Domain::Error> error;
+    std::chrono::milliseconds elapsed{};
 };
 
 struct ManagerOperationalSnapshot final {
@@ -213,6 +242,7 @@ struct ManagedRunStartRequest final {
     Domain::ClientId clientId;
     std::uint64_t authorityGeneration{};
     std::string task;
+    bool allowTools{true};
 };
 
 struct ManagedRunStatusRequest final {
@@ -239,6 +269,7 @@ using ManagerRequestPayload = std::variant<
     ManagerProjectInitializeRequest,
     ManagerProjectMemoryRequest,
     ManagerProjectRememberRequest,
+    ManagerInstructionPackageRequest,
     ManagerLmStudioStatusRequest,
     ManagerLmStudioRepairRequest,
     ManagerLmStudioActivateRequest,
@@ -279,6 +310,7 @@ using ManagerResult = std::variant<
     Domain::ManagerTelemetrySnapshot,
     ManagerProjectsSnapshot,
     ManagerProjectWorkspaceSnapshot,
+    ManagerInstructionPackageSnapshot,
     ManagerLmStudioSnapshot,
     ManagerToolsSnapshot,
     ManagerToolOutcomeSnapshot,

@@ -1184,6 +1184,36 @@ void caseSensitiveDiagnosticDirectoriesFailClosed()
                  "child lookup");
 }
 
+void databaseAncestorWriteAnchorIsBoundedByDiagnosticDeadline()
+{
+    DiagnosticFixture fixture;
+    WindowsDetail::UniqueHandle databaseAnchor{::CreateFileW(
+        fixture.directory.path().c_str(),
+        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES | FILE_ADD_FILE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
+    require(static_cast<bool>(databaseAnchor),
+            "database-like write anchor must open on the shared data root");
+
+    WindowsDiagnosticSink sink{fixture.options(), fixture.clockOwner,
+                               fixture.redactorOwner, fixture.hasherOwner,
+                               fixture.authorityOwner, fixture.atomicStoreOwner};
+    const auto started = std::chrono::steady_clock::now();
+    auto diagnosticContext = liveContext(fixture.clock);
+    diagnosticContext.deadline = started + std::chrono::milliseconds{250};
+    requireError(sink.record(
+                     diagnostic("database-anchor-contention", fixture.clock.utc()),
+                     diagnosticContext),
+                 Domain::ErrorCodes::DeadlineExceeded,
+                 "a retained database write anchor must respect the diagnostic deadline");
+    require(std::chrono::steady_clock::now() - started < std::chrono::seconds{1},
+            "diagnostic contention must not consume a native workflow deadline");
+    require(allDiagnosticText(fixture.logRoot).find("database-anchor-contention") ==
+                std::string::npos,
+            "a timed-out diagnostic append must not publish a partial record");
+    sink.shutdown();
+}
+
 void finalDiagnosticRootStaysProtectedDuringLogTransaction()
 {
     DiagnosticFixture fixture;
@@ -1837,6 +1867,8 @@ void registerDiagnosticWindowsTests(TestRegistry &tests)
     addTest(tests, "diagnostics.relative-file-operations", relativeFileOperationsStayBoundToStrongParent);
     addTest(tests, "diagnostics.hard-link-leaf-rejection", diagnosticLeafHardLinksFailClosed);
     addTest(tests, "diagnostics.case-sensitive-root-rejection", caseSensitiveDiagnosticDirectoriesFailClosed);
+    addTest(tests, "diagnostics.database-ancestor-write-anchor-deadline",
+            databaseAncestorWriteAnchorIsBoundedByDiagnosticDeadline);
     addTest(tests, "diagnostics.final-root-protected-transaction",
             finalDiagnosticRootStaysProtectedDuringLogTransaction);
     addTest(tests, "diagnostics.redaction-all-surfaces", redactionPrecedesEveryDiagnosticSurface);

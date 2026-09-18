@@ -286,6 +286,10 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
 
     Fixture fixture{L"audit-round-trip"};
     const auto client = take(Domain::ClientId::parse("mcp-primary-client"));
+    const auto deployment = take(Domain::DeploymentId::parse(
+        "11111111-1111-4111-8111-111111111111"));
+    const auto project = take(Domain::ProjectId::parse(
+        "22222222-2222-4222-8222-222222222222"));
     const auto digest = take(Domain::Sha256Digest::parse(
         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
     const Domain::AuditEvent first{
@@ -295,7 +299,10 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
         digest,
         "ok",
         42ms,
-        std::nullopt};
+        std::nullopt,
+        Domain::McpRole::Primary,
+        deployment,
+        project};
     const Domain::AuditEvent second{
         utcTime(1, 456),
         std::nullopt,
@@ -317,7 +324,9 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
                 recent[0].status == second.status &&
                 recent[0].duration == second.duration &&
                 recent[0].error == second.error &&
-                !recent[0].clientId && !recent[0].argumentsDigest,
+                !recent[0].clientId && !recent[0].argumentsDigest &&
+                !recent[0].mcpRole && !recent[0].deploymentId &&
+                !recent[0].projectId,
             "newest audit row did not round-trip");
     require(recent[1].timestamp == first.timestamp &&
                 recent[1].clientId == first.clientId &&
@@ -325,7 +334,10 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
                 recent[1].argumentsDigest == first.argumentsDigest &&
                 recent[1].status == first.status &&
                 recent[1].duration == first.duration &&
-                !recent[1].error,
+                !recent[1].error &&
+                recent[1].mcpRole == first.mcpRole &&
+                recent[1].deploymentId == first.deploymentId &&
+                recent[1].projectId == first.projectId,
             "older audit row did not round-trip");
     require(take(fixture.repository->recent(
                     0U, Support::activeContext("audit-recent-empty")))
@@ -353,6 +365,10 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
                 "event_id IS NOT NULL OR mutating IS NOT NULL") == 0,
             "audit persistence fabricated unavailable metadata");
     require(database.queryInteger(
+                "SELECT COUNT(*) FROM audit_events WHERE "
+                "mcp_role='primary' AND deployment_id='11111111-1111-4111-8111-111111111111'") == 1,
+            "MCP role and deployment provenance did not persist exactly");
+    require(database.queryInteger(
                 "SELECT COUNT(*) FROM audit_events WHERE timestamp=occurred_at") == 2,
             "legacy and current audit timestamps diverged");
     require(database.queryText(
@@ -371,6 +387,13 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
 void invalidInputContextsAndReadBoundsFailClosed()
 {
     Fixture fixture{L"audit-invalid"};
+    auto incompleteProvenance = auditEvent("clu_capabilities");
+    incompleteProvenance.mcpRole = Domain::McpRole::Clu;
+    requireError(
+        fixture.repository->append(
+            incompleteProvenance,
+            Support::activeContext("audit-incomplete-provenance")),
+        Domain::ErrorCodes::InvalidRequest);
     auto invalidStatus = auditEvent("read_file");
     invalidStatus.status.clear();
     requireError(

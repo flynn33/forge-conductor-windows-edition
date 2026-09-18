@@ -1,5 +1,6 @@
 #include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
 #include "ForgeConductor/Application/ManagedRunService.h"
+#include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -216,6 +217,16 @@ public:
     bool admittedWithBinding{};
     std::size_t sessionSaves{};
 
+    void corruptSealedSummary()
+    {
+        assert(run_ && run_->session.summary);
+        auto& encoded = *run_->session.summary;
+        const auto position = encoded.find("sealed result");
+        assert(position != std::string::npos);
+        encoded.replace(position, std::string{"sealed result"}.size(),
+            "altered result");
+    }
+
 private:
     template <typename T>
     [[nodiscard]] static Domain::Result<T> unavailable() noexcept
@@ -242,6 +253,7 @@ public:
             lastProject = request.projectId.value();
             lastRun = request.runId.value();
             lastGeneration = request.authorityGeneration;
+            lastToolCount = request.tools.size();
         }
         if (mode == Mode::Block) {
             std::unique_lock lock{mutex_};
@@ -359,6 +371,7 @@ public:
     std::string lastProject;
     std::string lastRun;
     std::uint64_t lastGeneration{};
+    std::size_t lastToolCount{};
     bool sawToolDescriptor{};
     bool sawToolOutput{};
     bool sawSuccessorPrompt{};
@@ -420,6 +433,7 @@ private:
 
 class WorkspaceAuthority final : public Contracts::IWorkspaceAuthority {
 public:
+    std::size_t calls{};
     WorkspaceAuthority(Domain::ProjectId projectId, Domain::ClientId clientId)
         : projectId_{std::move(projectId)}, clientId_{std::move(clientId)}
     {
@@ -429,6 +443,7 @@ public:
         const Domain::ProjectId& projectId,
         const Domain::OperationContext&) noexcept override
     {
+        ++calls;
         if (projectId != projectId_) {
             return Domain::Result<Contracts::WorkspaceAuthority>::failure(
                 Domain::makeError(Domain::ErrorCodes::ProjectScopeMismatch,
@@ -695,9 +710,11 @@ public:
 int main()
 {
     AdmissionRepository admissionRepository;
+    ForgeConductor::Infrastructure::Windows::BCryptSha256Hasher hasher;
     Application::AgentRepositoryManagedRunStore durableStore{
         admissionRepository,
-        parsed(Domain::AgentId::parse("forge-managed-run"))};
+        parsed(Domain::AgentId::parse("forge-managed-run")),
+        hasher};
     const auto admittedAt = Domain::UtcTimePoint{};
     const Domain::ManagedRunRecord durableRecord{
         parsed(Domain::SessionId::parse(
@@ -716,7 +733,8 @@ int main()
         std::nullopt,
         {},
         admittedAt,
-        admittedAt};
+        admittedAt,
+        false};
     const auto admissionContext = context(
         "30303030-3030-4030-8030-303030303030",
         "managed-admission-test");
@@ -733,6 +751,45 @@ int main()
     assert(durableLoaded.value()->lastError->code == Domain::ErrorCodes::Conflict);
     assert(durableLoaded.value()->authorityGeneration == 3U);
     assert(durableLoaded.value()->task == durableRecord.task);
+    assert(!durableLoaded.value()->allowTools);
+
+    auto sealedRecord = durableRecord;
+    sealedRecord.state = Domain::ManagedRunState::Completed;
+    sealedRecord.providerResponseId = parsed(
+        Domain::ProviderSessionId::parse("resp_sealed_result"));
+    sealedRecord.outputText = "sealed result";
+    sealedRecord.inputTokens = 12U;
+    sealedRecord.outputTokens = 3U;
+    assert(durableStore.save(sealedRecord, admissionContext));
+    const auto sealedLoaded = durableStore.load(
+        sealedRecord.runId, admissionContext);
+    assert(sealedLoaded && sealedLoaded.value());
+    assert(sealedLoaded.value()->evidenceSeal);
+    assert(sealedLoaded.value()->evidenceIntegrity ==
+        Domain::ManagedRunEvidenceIntegrity::Verified);
+    auto checkedRecord = *sealedLoaded.value();
+    checkedRecord.nativeTaskChecks.push_back(Domain::ManagedNativeTaskCheck{
+        parsed(Domain::Sha256Digest::parse(std::string(64U, 'a'))),
+        parsed(Domain::Sha256Digest::parse(std::string(64U, 'b'))),
+        parsed(Domain::Sha256Digest::parse(std::string(64U, 'c'))),
+        0, true, false, false, true, 17U,
+        Domain::UtcTimePoint{std::chrono::milliseconds{1'700'000'000'000}}});
+    assert(durableStore.save(checkedRecord, admissionContext));
+    const auto checkedLoaded = durableStore.load(
+        checkedRecord.runId, admissionContext);
+    assert(checkedLoaded && checkedLoaded.value());
+    assert(checkedLoaded.value()->nativeTaskChecks.size() == 1U);
+    assert(checkedLoaded.value()->nativeTaskChecks.front().passed);
+    assert(checkedLoaded.value()->nativeTaskChecks.front().exitCode == 0);
+    assert(checkedLoaded.value()->evidenceIntegrity ==
+        Domain::ManagedRunEvidenceIntegrity::Verified);
+    admissionRepository.corruptSealedSummary();
+    const auto alteredLoaded = durableStore.load(
+        sealedRecord.runId, admissionContext);
+    assert(alteredLoaded && alteredLoaded.value());
+    assert(alteredLoaded.value()->state == Domain::ManagedRunState::Completed);
+    assert(alteredLoaded.value()->evidenceIntegrity ==
+        Domain::ManagedRunEvidenceIntegrity::Mismatch);
 
     Clock clock;
     Store store;
@@ -815,6 +872,41 @@ int main()
     assert(store.saves >= 6U);
 
     service.shutdown();
+
+    Store modelOnlyStore;
+    Transport modelOnlyTransport;
+    ToolCatalog modelOnlyCatalog;
+    ToolRouter modelOnlyRouter;
+    auto modelOnlyRequest = request(
+        "d0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0",
+        "d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1",
+        "Respond without native tools.");
+    modelOnlyRequest.allowTools = false;
+    WorkspaceAuthority modelOnlyAuthority{
+        modelOnlyRequest.projectId, modelOnlyRequest.clientId};
+    Application::ManagedRunService modelOnlyService{
+        modelOnlyTransport, modelOnlyStore, clock,
+        Application::ManagedRunToolDependencies{
+            &modelOnlyCatalog, &modelOnlyRouter, &modelOnlyAuthority}};
+    const auto modelOnlyContext = context(
+        "d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1",
+        "managed-run-model-only");
+    assert(modelOnlyService.start(modelOnlyRequest, modelOnlyContext));
+    const auto modelOnlyCompleted = waitForTerminal(
+        modelOnlyService, modelOnlyRequest.runId);
+    assert(modelOnlyCompleted.record.state ==
+           Domain::ManagedRunState::Completed);
+    assert(!modelOnlyCompleted.record.allowTools);
+    assert(modelOnlyTransport.lastToolCount == 0U);
+    assert(modelOnlyAuthority.calls == 1U);
+    assert(modelOnlyRouter.calls == 0U);
+    auto expandedRequest = modelOnlyRequest;
+    expandedRequest.allowTools = true;
+    const auto expanded = modelOnlyService.start(
+        expandedRequest, modelOnlyContext);
+    assert(!expanded && expanded.error().code ==
+           Domain::ErrorCodes::Conflict);
+    modelOnlyService.shutdown();
 
     Store toolStore;
     Transport toolTransport;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ForgeConductor/Domain/ConfigurationModels.h"
 #include "ForgeConductor/Domain/FileSystemModels.h"
 #include "ForgeConductor/Domain/OperationContext.h"
 #include "ForgeConductor/Domain/ResourcePolicy.h"
@@ -50,6 +51,8 @@ struct McpRequestMetadata final {
     ClientId clientId;
     std::optional<ProjectId> projectId;
     std::string protocolVersion;
+    std::optional<McpRole> role;
+    std::optional<DeploymentId> deploymentId;
 };
 
 struct McpToolDescriptor final {

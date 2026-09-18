@@ -18,6 +18,12 @@ struct ProviderSettingsView final {
     Domain::ManagerSettings settings;
 };
 
+struct ProviderModelsView final {
+    bool loaded{};
+    std::string message;
+    std::vector<std::string> models;
+};
+
 enum class ManagedRunAction { Status, Pause, Resume, Cancel };
 
 struct ManagedRunView final {
@@ -42,6 +48,12 @@ struct ProjectWorkspaceView final {
     bool loaded{};
     std::string message;
     std::optional<Manager::ManagerProjectWorkspaceSnapshot> snapshot;
+};
+
+struct InstructionPackageView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerInstructionPackageSnapshot> snapshot;
 };
 
 enum class LmStudioAction { Inspect, Repair, Activate };
@@ -101,11 +113,24 @@ public:
     virtual std::string testProvider(
         const Domain::ManagerSettings& settings,
         std::stop_token cancellation) noexcept = 0;
+    virtual std::string probeProviderContract(
+        const Domain::ManagerSettings&,
+        std::stop_token) noexcept
+    {
+        return "The Responses contract probe is unavailable.";
+    }
+    virtual ProviderModelsView providerModels(
+        const Domain::ManagerSettings&,
+        std::stop_token) noexcept
+    {
+        return {false, "Loaded-model discovery is unavailable.", {}};
+    }
     virtual ManagedRunView startManagedRun(
         std::string projectId,
         std::string clientId,
         std::uint64_t authorityGeneration,
         std::string task,
+        bool allowTools,
         std::stop_token cancellation) noexcept = 0;
     virtual ManagedRunView controlManagedRun(
         std::string runId,
@@ -128,6 +153,12 @@ public:
         std::string body,
         std::vector<std::string> tags,
         std::stop_token cancellation) noexcept = 0;
+    virtual InstructionPackageView instructionPackage(
+        std::string projectId,
+        std::string packagePath,
+        bool activate,
+        std::string expectedRevision,
+        std::stop_token cancellation) noexcept = 0;
     virtual LmStudioView lmStudio(
         LmStudioAction action,
         std::stop_token cancellation) noexcept = 0;
@@ -142,6 +173,7 @@ public:
         Manager::ManagerOperationalAction action,
         std::string sessionId,
         std::string summary,
+        std::optional<std::string> projectId,
         std::stop_token cancellation) noexcept = 0;
     virtual MaintenanceView resetData(
         Manager::ManagerMaintenanceScope scope,
@@ -174,11 +206,18 @@ public:
     std::string testProvider(
         const Domain::ManagerSettings& settings,
         std::stop_token cancellation) noexcept override;
+    std::string probeProviderContract(
+        const Domain::ManagerSettings& settings,
+        std::stop_token cancellation) noexcept override;
+    ProviderModelsView providerModels(
+        const Domain::ManagerSettings& settings,
+        std::stop_token cancellation) noexcept override;
     ManagedRunView startManagedRun(
         std::string projectId,
         std::string clientId,
         std::uint64_t authorityGeneration,
         std::string task,
+        bool allowTools,
         std::stop_token cancellation) noexcept override;
     ManagedRunView controlManagedRun(
         std::string runId,
@@ -200,6 +239,12 @@ public:
         std::string body,
         std::vector<std::string> tags,
         std::stop_token cancellation) noexcept override;
+    InstructionPackageView instructionPackage(
+        std::string projectId,
+        std::string packagePath,
+        bool activate,
+        std::string expectedRevision,
+        std::stop_token cancellation) noexcept override;
     LmStudioView lmStudio(
         LmStudioAction action,
         std::stop_token cancellation) noexcept override;
@@ -214,6 +259,7 @@ public:
         Manager::ManagerOperationalAction action,
         std::string sessionId,
         std::string summary,
+        std::optional<std::string> projectId,
         std::stop_token cancellation) noexcept override;
     MaintenanceView resetData(
         Manager::ManagerMaintenanceScope scope,

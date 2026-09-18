@@ -685,6 +685,7 @@ void routedAuthorityGuardAndAuditAreExact()
     REQUIRE(events.size() == 1U);
     REQUIRE(events.front().tool == request.toolName);
     REQUIRE(events.front().clientId == request.metadata.clientId);
+    REQUIRE(events.front().projectId == request.metadata.projectId);
     REQUIRE(events.front().argumentsDigest.has_value());
     REQUIRE(events.front().status == "ok");
     REQUIRE(!events.front().error.has_value());
@@ -725,6 +726,8 @@ void resolvedAuthorityScopesProjectlessToolCall()
             resolvedAuthority.projectId());
     REQUIRE(authorizer.calls() == 1U);
     REQUIRE(audit.events().back().status == "ok");
+    REQUIRE(audit.events().back().projectId ==
+            std::optional<Domain::ProjectId>{resolvedAuthority.projectId()});
 }
 
 void policyAndAuthorityFailuresDoNotDispatch()
@@ -760,6 +763,7 @@ void policyAndAuthorityFailuresDoNotDispatch()
     auto events = audit.events();
     REQUIRE(events.back().status == "denied");
     REQUIRE(events.back().argumentsDigest.has_value());
+    REQUIRE(!events.back().projectId.has_value());
 
     const auto request = requestFor(tool, 2U);
     const auto wrongEffect = issuer.issue(

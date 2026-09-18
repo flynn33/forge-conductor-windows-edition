@@ -339,7 +339,16 @@ public:
                     std::move(validOutcome).error());
             }
             recordAudit(
-                request, argumentsDigest, started, outcome, routedContext);
+                request,
+                argumentsDigest,
+                started,
+                outcome,
+                routedContext,
+                request.metadata.clientId == authority.callerId() &&
+                    (!request.metadata.projectId ||
+                     request.metadata.projectId.value() == authority.projectId())
+                    ? std::optional<Domain::ProjectId>{authority.projectId()}
+                    : std::nullopt);
             return outcome;
         } catch (...) {
             invocationGuard_.cancel(context.operationId);
@@ -721,7 +730,9 @@ private:
         const std::optional<Domain::Sha256Digest>& argumentsDigest,
         const Domain::MonotonicTimePoint started,
         const ToolOutcomeResult& outcome,
-        const Domain::OperationContext& context) noexcept
+        const Domain::OperationContext& context,
+        const std::optional<Domain::ProjectId>& verifiedProjectId =
+            std::nullopt) noexcept
     {
         try {
             const auto finished = clock_.monotonicNow();
@@ -745,7 +756,10 @@ private:
                 argumentsDigest,
                 std::move(status),
                 elapsed,
-                std::move(error)};
+                std::move(error),
+                request.metadata.role,
+                request.metadata.deploymentId,
+                verifiedProjectId};
             const auto now = clock_.monotonicNow();
             const Domain::OperationContext auditContext{
                 context.operationId,

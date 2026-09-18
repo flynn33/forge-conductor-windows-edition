@@ -2,12 +2,28 @@
 
 #include "ForgeConductor/Manager/ManagerDeadlineMapper.h"
 #include "ForgeConductor/Dashboard/DashboardSessionCloseRequest.h"
+#include "ForgeConductor/Domain/Utf8.h"
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <chrono>
+#include <cctype>
 #include <condition_variable>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
+#include <span>
+#include <sstream>
 #include <stop_token>
 #include <stdexcept>
 #include <string_view>
@@ -71,6 +87,119 @@ template <typename T>
         rounded = std::chrono::milliseconds::zero();
     }
     return rounded;
+}
+
+// Recent heartbeat rows are claims, not proof of a currently connected host.
+// Match both a live PID and the exact packaged CLI image before displaying one.
+[[nodiscard]] bool liveExpectedMcpProcess(
+    const std::uint32_t processId,
+    const Domain::PathText& expectedBinary) noexcept
+{
+    const auto& utf8 = expectedBinary.value();
+    const int expectedLength = ::MultiByteToWideChar(
+        CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(),
+        static_cast<int>(utf8.size()), nullptr, 0);
+    if (expectedLength <= 0) {
+        return false;
+    }
+    wchar_t expected[Domain::PathText::MaximumBytes + 1U]{};
+    if (::MultiByteToWideChar(
+            CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(),
+            static_cast<int>(utf8.size()), expected,
+            static_cast<int>(sizeof(expected) / sizeof(expected[0]))) !=
+        expectedLength) {
+        return false;
+    }
+    const HANDLE process = ::OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+    if (process == nullptr) {
+        return false;
+    }
+    DWORD exitCode{};
+    wchar_t actual[Domain::PathText::MaximumBytes + 1U]{};
+    DWORD actualLength = static_cast<DWORD>(
+        sizeof(actual) / sizeof(actual[0]));
+    const bool live = ::GetExitCodeProcess(process, &exitCode) != FALSE &&
+        exitCode == STILL_ACTIVE;
+    const bool queried = live &&
+        ::QueryFullProcessImageNameW(
+            process, 0, actual, &actualLength) != FALSE;
+    ::CloseHandle(process);
+    return queried && ::CompareStringOrdinal(
+        expected, expectedLength, actual,
+        static_cast<int>(actualLength), TRUE) == CSTR_EQUAL;
+}
+
+struct InstructionPackageFile final {
+    std::string relativePath;
+    std::string content;
+};
+
+struct ScannedInstructionPackage final {
+    std::string name;
+    Domain::PathText path;
+    Domain::Sha256Digest revision;
+    std::vector<InstructionPackageFile> files;
+    std::size_t ignoredFileCount{};
+    std::uint64_t contentBytes{};
+};
+
+[[nodiscard]] std::wstring utf8Path(const std::string_view value)
+{
+    if (value.empty()) return {};
+    const auto count = ::MultiByteToWideChar(
+        CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
+        static_cast<int>(value.size()), nullptr, 0);
+    if (count <= 0) {
+        throw std::runtime_error{"The instruction package path is not valid UTF-8."};
+    }
+    std::wstring result(static_cast<std::size_t>(count), L'\0');
+    if (::MultiByteToWideChar(
+            CP_UTF8, MB_ERR_INVALID_CHARS, value.data(),
+            static_cast<int>(value.size()), result.data(), count) != count) {
+        throw std::runtime_error{"The instruction package path could not be decoded."};
+    }
+    return result;
+}
+
+[[nodiscard]] std::string pathUtf8(const std::filesystem::path& value)
+{
+    const auto native = value.wstring();
+    if (native.empty()) return {};
+    const auto count = ::WideCharToMultiByte(
+        CP_UTF8, WC_ERR_INVALID_CHARS, native.data(),
+        static_cast<int>(native.size()), nullptr, 0, nullptr, nullptr);
+    if (count <= 0) {
+        throw std::runtime_error{"An instruction package file name is not valid Unicode."};
+    }
+    std::string result(static_cast<std::size_t>(count), '\0');
+    if (::WideCharToMultiByte(
+            CP_UTF8, WC_ERR_INVALID_CHARS, native.data(),
+            static_cast<int>(native.size()), result.data(), count,
+            nullptr, nullptr) != count) {
+        throw std::runtime_error{"An instruction package file name could not be encoded."};
+    }
+    std::replace(result.begin(), result.end(), '\\', '/');
+    return result;
+}
+
+[[nodiscard]] bool supportedInstructionExtension(std::string extension)
+{
+    std::transform(
+        extension.begin(), extension.end(), extension.begin(),
+        [](const unsigned char character) {
+            return static_cast<char>(std::tolower(character));
+        });
+    return extension == ".md" || extension == ".txt" ||
+        extension == ".json" || extension == ".yaml" ||
+        extension == ".yml" || extension == ".toml" ||
+        extension == ".csv";
+}
+
+[[nodiscard]] std::span<const std::byte> byteView(
+    const std::string& value) noexcept
+{
+    return std::as_bytes(std::span{value.data(), value.size()});
 }
 
 } // namespace
@@ -658,6 +787,28 @@ private:
                     "Project memory returned records from a different project identity."));
         }
 
+        auto activeManifestPage = telemetrySources_.projectMemory->listRecent(
+            Domain::ListRecentProjectMemoryRequest{
+                projectId, {"instruction_package"}, std::nullopt, 1U,
+                std::nullopt, true, 64U * 1024U},
+            context);
+        if (!activeManifestPage) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                std::move(activeManifestPage).error());
+        }
+        if (activeManifestPage.value().projectId != projectId ||
+            std::any_of(
+                activeManifestPage.value().records.begin(),
+                activeManifestPage.value().records.end(),
+                [&](const Domain::MemorySearchHit& hit) {
+                    return hit.record.projectId != projectId;
+                })) {
+            return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
+                error(
+                    Domain::ErrorCodes::ProjectScopeMismatch,
+                    "The active instruction manifest returned a different project identity."));
+        }
+
         std::vector<ManagerProjectMemoryRecord> records;
         records.reserve(page.value().records.size());
         for (auto& hit : page.value().records) {
@@ -673,6 +824,20 @@ private:
                 record.updatedAt});
         }
 
+        std::optional<ManagerProjectMemoryRecord> activeInstructionManifest;
+        if (!activeManifestPage.value().records.empty()) {
+            auto& record = activeManifestPage.value().records.front().record;
+            activeInstructionManifest = ManagerProjectMemoryRecord{
+                record.id,
+                record.version,
+                std::move(record.kind),
+                std::move(record.title),
+                std::move(record.summary),
+                std::move(record.body),
+                std::move(record.tags),
+                record.updatedAt};
+        }
+
         const auto& memoryStatus = status.value();
         return Domain::Result<ManagerProjectWorkspaceSnapshot>::success(
             ManagerProjectWorkspaceSnapshot{
@@ -685,9 +850,431 @@ private:
                 memoryStatus.fullTextSearchAvailable,
                 memoryStatus.integrityOk,
                 std::move(records),
+                std::move(activeInstructionManifest),
                 std::move(page.value().nextCursor),
                 page.value().truncated,
                 std::move(writtenRecordId)});
+    }
+
+    [[nodiscard]] Domain::Result<ScannedInstructionPackage>
+    scanInstructionPackage(
+        const ManagerInstructionPackageRequest& request,
+        const Domain::OperationContext& context)
+    {
+        constexpr std::size_t maximumFiles = 32U;
+        constexpr std::uint64_t maximumContentBytes = 212U * 1024U;
+        constexpr std::uint64_t maximumFileBytes = 256U * 1024U;
+        if (telemetrySources_.projects == nullptr ||
+            telemetrySources_.projectMemory == nullptr ||
+            telemetrySources_.evidenceHasher == nullptr) {
+            return Domain::Result<ScannedInstructionPackage>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Instruction packages are unavailable in this Manager composition."));
+        }
+        if (auto current = validateContext(context); !current) {
+            return Domain::Result<ScannedInstructionPackage>::failure(
+                std::move(current).error());
+        }
+        auto descriptor = telemetrySources_.projects->descriptor(
+            request.projectId, context);
+        if (!descriptor) {
+            return Domain::Result<ScannedInstructionPackage>::failure(
+                std::move(descriptor).error());
+        }
+        try {
+            const std::filesystem::path root{utf8Path(request.packagePath.value())};
+            std::error_code pathError;
+            const auto canonicalRoot = std::filesystem::weakly_canonical(
+                root, pathError);
+            if (pathError || !std::filesystem::is_directory(canonicalRoot, pathError) ||
+                pathError) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "Choose an existing instruction package folder."));
+            }
+            const auto rootAttributes = ::GetFileAttributesW(canonicalRoot.c_str());
+            if (rootAttributes == INVALID_FILE_ATTRIBUTES ||
+                (rootAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::Unauthorized,
+                    "Instruction package roots cannot be links or reparse points."));
+            }
+
+            ScannedInstructionPackage scanned{
+                pathUtf8(canonicalRoot.filename()),
+                request.packagePath,
+                Domain::Sha256Digest::parse(std::string(64U, '0')).value(),
+                {}, 0U, 0U};
+            std::vector<std::filesystem::path> candidates;
+            for (std::filesystem::recursive_directory_iterator iterator{
+                     canonicalRoot,
+                     std::filesystem::directory_options::skip_permission_denied,
+                     pathError}, end;
+                 iterator != end; iterator.increment(pathError)) {
+                if (pathError) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The Manager could not enumerate the complete instruction package."));
+                }
+                if (context.cancellation.stop_requested()) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Cancelled,
+                        "Instruction package validation was cancelled."));
+                }
+                const auto attributes = ::GetFileAttributesW(iterator->path().c_str());
+                if (attributes == INVALID_FILE_ATTRIBUTES) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The Manager could not inspect an instruction package entry."));
+                }
+                if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "Instruction packages cannot contain links or reparse points."));
+                }
+                if (!iterator->is_regular_file(pathError)) {
+                    if (pathError) {
+                        return Domain::Result<ScannedInstructionPackage>::failure(error(
+                            Domain::ErrorCodes::Unauthorized,
+                            "The Manager could not inspect an instruction package file."));
+                    }
+                    continue;
+                }
+                if (!supportedInstructionExtension(
+                        pathUtf8(iterator->path().extension()))) {
+                    ++scanned.ignoredFileCount;
+                    continue;
+                }
+                candidates.push_back(iterator->path());
+            }
+            std::sort(candidates.begin(), candidates.end(),
+                [&](const auto& left, const auto& right) {
+                    return pathUtf8(std::filesystem::relative(left, canonicalRoot)) <
+                        pathUtf8(std::filesystem::relative(right, canonicalRoot));
+                });
+            if (candidates.empty()) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The folder contains no supported instruction files."));
+            }
+            if (candidates.size() > maximumFiles) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::PayloadTooLarge,
+                    "Instruction packages can contain at most 32 supported text files."));
+            }
+
+            std::string digestInput{"forge-instruction-package-v1\n"};
+            scanned.files.reserve(candidates.size());
+            for (const auto& candidate : candidates) {
+                const auto relative = pathUtf8(
+                    std::filesystem::relative(candidate, canonicalRoot, pathError));
+                if (pathError || relative.empty() || relative.size() > 512U) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "An instruction package relative path is invalid or too long."));
+                }
+                const auto size = std::filesystem::file_size(candidate, pathError);
+                if (pathError || size > maximumFileBytes ||
+                    scanned.contentBytes > maximumContentBytes - size) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::PayloadTooLarge,
+                        "Instruction package text exceeds the bounded 212 KiB package limit or 256 KiB file limit."));
+                }
+                std::ifstream input{candidate, std::ios::binary};
+                if (!input) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The Manager could not read an instruction package file."));
+                }
+                std::string content(
+                    static_cast<std::size_t>(size), '\0');
+                input.read(content.data(), static_cast<std::streamsize>(content.size()));
+                if (!input && static_cast<std::size_t>(input.gcount()) != content.size()) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "An instruction package file changed while it was being read."));
+                }
+                if (content.starts_with("\xEF\xBB\xBF")) content.erase(0U, 3U);
+                if (content.find('\0') != std::string::npos ||
+                    !Domain::isValidUtf8(content)) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(error(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "Instruction package files must be valid UTF-8 text without NUL bytes."));
+                }
+                scanned.contentBytes += content.size();
+                digestInput += relative + "\n" +
+                    std::to_string(content.size()) + "\n" + content + "\n";
+                scanned.files.push_back(
+                    InstructionPackageFile{relative, std::move(content)});
+            }
+            auto revision = telemetrySources_.evidenceHasher->sha256(
+                byteView(digestInput));
+            if (!revision) {
+                return Domain::Result<ScannedInstructionPackage>::failure(
+                    std::move(revision).error());
+            }
+            scanned.revision = std::move(revision).value();
+            return Domain::Result<ScannedInstructionPackage>::success(
+                std::move(scanned));
+        } catch (const std::exception&) {
+            return Domain::Result<ScannedInstructionPackage>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "The Manager could not validate the selected instruction package folder."));
+        }
+    }
+
+    [[nodiscard]] Domain::Result<ManagerInstructionPackageSnapshot>
+    instructionPackage(
+        const ManagerInstructionPackageRequest& request,
+        const Domain::OperationContext& context)
+    {
+        auto scannedResult = scanInstructionPackage(request, context);
+        if (!scannedResult) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                std::move(scannedResult).error());
+        }
+        auto scanned = std::move(scannedResult).value();
+        if (request.activate && !request.expectedRevision) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Activation requires the exact validated instruction revision."));
+        }
+        if (!request.activate && request.expectedRevision) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest,
+                "Validation cannot supply an activation revision."));
+        }
+        if (request.expectedRevision &&
+            *request.expectedRevision != scanned.revision) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(error(
+                Domain::ErrorCodes::Conflict,
+                "The instruction package changed after validation. Validate the folder again."));
+        }
+        std::vector<std::string> fileNames;
+        fileNames.reserve(scanned.files.size());
+        for (const auto& file : scanned.files) fileNames.push_back(file.relativePath);
+        std::optional<Domain::MemoryRecordId> manifestRecordId;
+        if (request.activate) {
+            std::vector<Domain::ProjectMemoryWrite> writes;
+            writes.reserve(scanned.files.size());
+            const auto revisionTag = "revision-" +
+                scanned.revision.value().substr(0U, 16U);
+            for (std::size_t index{}; index < scanned.files.size(); ++index) {
+                const auto& file = scanned.files[index];
+                auto idempotency = Domain::IdempotencyKey::create(
+                    "instruction-file:" + scanned.revision.value() + ":" +
+                    std::to_string(index));
+                if (!idempotency) {
+                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                        std::move(idempotency).error());
+                }
+                Domain::ProjectMemoryWrite write;
+                write.kind = "project_instruction";
+                write.title = file.relativePath;
+                write.summary = "Instruction package " + scanned.name +
+                    " · revision " + scanned.revision.value().substr(0U, 16U);
+                write.body = file.content;
+                write.tags = {"instruction-package", revisionTag};
+                write.importance = 1.0;
+                write.confidence = 1.0;
+                write.sourceKind = "manager_instruction_package";
+                write.sourceReference = file.relativePath;
+                write.idempotencyKey = std::move(idempotency).value();
+                writes.push_back(std::move(write));
+            }
+            auto remembered = telemetrySources_.projectMemory->rememberBatch(
+                Domain::RememberProjectMemoryBatchRequest{
+                    request.projectId, std::move(writes)},
+                context);
+            if (!remembered) {
+                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                    std::move(remembered).error());
+            }
+            nlohmann::json manifest{
+                {"schema", "forge-instruction-package-v1"},
+                {"package_name", scanned.name},
+                {"package_path", scanned.path.value()},
+                {"revision", scanned.revision.value()},
+                {"content_bytes", scanned.contentBytes},
+                {"files", nlohmann::json::array()}};
+            Domain::ProjectMemoryWrite manifestWrite;
+            manifestWrite.kind = "instruction_package";
+            manifestWrite.title = scanned.name;
+            manifestWrite.summary = std::to_string(scanned.files.size()) +
+                " files · " + std::to_string(scanned.contentBytes) +
+                " bytes · SHA-256 " + scanned.revision.value();
+            for (std::size_t index{};
+                 index < remembered.value().results.size(); ++index) {
+                const auto& outcome = remembered.value().results[index];
+                manifest["files"].push_back({
+                    {"path", scanned.files[index].relativePath},
+                    {"record_id", outcome.recordId.value()}});
+                manifestWrite.relatedIds.push_back(outcome.recordId);
+            }
+            manifestWrite.body = manifest.dump();
+            manifestWrite.tags = {"active-instructions", revisionTag};
+            manifestWrite.importance = 1.0;
+            manifestWrite.confidence = 1.0;
+            manifestWrite.sourceKind = "manager_instruction_package";
+            manifestWrite.sourceReference = scanned.path.value();
+            auto manifestKey = Domain::IdempotencyKey::create(
+                "instruction-manifest:" + scanned.revision.value());
+            if (!manifestKey) {
+                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                    std::move(manifestKey).error());
+            }
+            manifestWrite.idempotencyKey = std::move(manifestKey).value();
+            auto manifestOutcome = telemetrySources_.projectMemory->remember(
+                Domain::RememberProjectMemoryRequest{
+                    request.projectId, std::move(manifestWrite)},
+                context);
+            if (!manifestOutcome) {
+                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                    std::move(manifestOutcome).error());
+            }
+            manifestRecordId = manifestOutcome.value().recordId;
+        }
+        return Domain::Result<ManagerInstructionPackageSnapshot>::success(
+            ManagerInstructionPackageSnapshot{
+                request.projectId,
+                std::move(scanned.name),
+                std::move(scanned.path),
+                std::move(scanned.revision),
+                scanned.files.size(),
+                scanned.ignoredFileCount,
+                scanned.contentBytes,
+                std::move(fileNames),
+                request.activate,
+                std::move(manifestRecordId)});
+    }
+
+    [[nodiscard]] Domain::Result<std::string> managedRunTaskWithInstructions(
+        const Domain::ProjectId& projectId,
+        std::string task,
+        const bool allowTools,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.projectMemory == nullptr ||
+            task.size() >= Domain::MaximumManagedRunTaskBytes) {
+            return Domain::Result<std::string>::success(std::move(task));
+        }
+        auto manifests = telemetrySources_.projectMemory->listRecent(
+            Domain::ListRecentProjectMemoryRequest{
+                projectId, {"instruction_package"}, std::nullopt, 1U,
+                std::nullopt, true, 64U * 1024U},
+            context);
+        if (!manifests) {
+            return Domain::Result<std::string>::failure(
+                std::move(manifests).error());
+        }
+        if (manifests.value().records.empty() ||
+            !manifests.value().records.front().record.body) {
+            return Domain::Result<std::string>::success(std::move(task));
+        }
+        try {
+            const auto manifest = nlohmann::json::parse(
+                *manifests.value().records.front().record.body);
+            if (!manifest.is_object() ||
+                manifest.value("schema", std::string{}) !=
+                    "forge-instruction-package-v1" ||
+                !manifest.contains("files") || !manifest.at("files").is_array()) {
+                return Domain::Result<std::string>::failure(error(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The active instruction package manifest is malformed."));
+            }
+            std::vector<Domain::MemoryRecordId> ids;
+            std::vector<std::pair<std::string, std::string>> index;
+            for (const auto& file : manifest.at("files")) {
+                if (!file.is_object() || !file.contains("path") ||
+                    !file.at("path").is_string() ||
+                    !file.contains("record_id") ||
+                    !file.at("record_id").is_string()) {
+                    return Domain::Result<std::string>::failure(error(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The active instruction package file index is malformed."));
+                }
+                auto id = Domain::MemoryRecordId::parse(
+                    file.at("record_id").get<std::string>());
+                if (!id) {
+                    return Domain::Result<std::string>::failure(
+                        std::move(id).error());
+                }
+                index.emplace_back(
+                    file.at("path").get<std::string>(), id.value().value());
+                ids.push_back(std::move(id).value());
+            }
+            auto records = telemetrySources_.projectMemory->get(
+                Domain::GetProjectMemoryRequest{
+                    projectId, std::move(ids), true, 256U * 1024U},
+                context);
+            if (!records) {
+                return Domain::Result<std::string>::failure(
+                    std::move(records).error());
+            }
+            if (records.value().projectId != projectId) {
+                return Domain::Result<std::string>::failure(error(
+                    Domain::ErrorCodes::ProjectScopeMismatch,
+                    "The active instruction package crossed project scope."));
+            }
+            auto priority = [](std::string value) {
+                std::transform(value.begin(), value.end(), value.begin(),
+                    [](const unsigned char character) {
+                        return static_cast<char>(std::tolower(character));
+                    });
+                if (value == "agents.md") return 0;
+                if (value.find("start-here") != std::string::npos) return 1;
+                if (value.find("execution") != std::string::npos ||
+                    value.find("instruction") != std::string::npos) return 2;
+                if (value.find("readme") != std::string::npos) return 3;
+                return 4;
+            };
+            auto ordered = std::move(records).value().records;
+            std::stable_sort(ordered.begin(), ordered.end(),
+                [&](const auto& left, const auto& right) {
+                    return priority(left.title) < priority(right.title);
+                });
+
+            std::string enriched = "[USER MISSION]\n" + task +
+                "\n\n[ACTIVE PROJECT INSTRUCTION PACKAGE]\nPackage: " +
+                manifest.value("package_name", std::string{"unnamed"}) +
+                "\nRevision SHA-256: " +
+                manifest.value("revision", std::string{"unknown"}) +
+                "\nThe Manager has bound this revision to the exact project. "
+                "Follow these instructions for this run.\n";
+            if (allowTools) {
+                enriched += "Files not embedded below remain available through "
+                    "project_memory.get using this index:\n";
+                for (const auto& [path, id] : index) {
+                    enriched += "- " + path + " | " + id + "\n";
+                }
+            }
+            std::size_t embedded{};
+            const std::string footer =
+                "\n[END ACTIVE PROJECT INSTRUCTION PACKAGE]\n";
+            for (const auto& record : ordered) {
+                if (!record.body) continue;
+                const auto section = "\n[INSTRUCTION FILE: " + record.title +
+                    "]\n" + *record.body + "\n";
+                if (enriched.size() + section.size() + footer.size() >
+                    Domain::MaximumManagedRunTaskBytes) {
+                    continue;
+                }
+                enriched += section;
+                ++embedded;
+            }
+            enriched += "\nEmbedded " + std::to_string(embedded) + " of " +
+                std::to_string(index.size()) + " instruction files." + footer;
+            if (enriched.size() > Domain::MaximumManagedRunTaskBytes) {
+                return Domain::Result<std::string>::failure(error(
+                    Domain::ErrorCodes::PayloadTooLarge,
+                    "The mission leaves no safe context budget for the active instruction package index."));
+            }
+            return Domain::Result<std::string>::success(std::move(enriched));
+        } catch (const std::exception&) {
+            return Domain::Result<std::string>::failure(error(
+                Domain::ErrorCodes::IntegrityFailure,
+                "The active instruction package could not be assembled safely."));
+        }
     }
 
     [[nodiscard]] Domain::Result<ManagerLmStudioSnapshot> lmStudioWorkflow(
@@ -697,6 +1284,26 @@ private:
         const Domain::OperationContext& context)
     {
         const auto& sources = telemetrySources_;
+        const auto trace = [&](const std::string_view event) noexcept {
+            if (!repair || sources.diagnostics == nullptr) return;
+            try {
+                // A contested diagnostic ancestor must not consume the repair
+                // deadline before native admission or connector verification.
+                auto diagnosticContext = context;
+                diagnosticContext.deadline = (std::min)(
+                    context.deadline,
+                    clock_->monotonicNow() + std::chrono::milliseconds{250});
+                static_cast<void>(sources.diagnostics->record(
+                    Domain::DiagnosticEnvelope{
+                        clock_->utcNow(), std::string{event},
+                        Domain::DiagnosticSeverity::Info, "manager",
+                        ::GetCurrentProcessId(),
+                        Domain::DiagnosticCategory::LmStudio, {}},
+                    diagnosticContext));
+            } catch (...) {
+            }
+        };
+        trace("lmstudio_repair_request_received");
         if (sources.lmStudioDeployment == nullptr ||
             sources.lmStudioReadAuthority == nullptr ||
             sources.lmStudioWriteAuthority == nullptr ||
@@ -714,6 +1321,7 @@ private:
             return Domain::Result<ManagerLmStudioSnapshot>::failure(
                 std::move(inspected).error());
         }
+        trace("lmstudio_repair_inspection_complete");
 
         std::string actionDetail{"Registration inspected without changing LM Studio."};
         if (repair) {
@@ -739,12 +1347,15 @@ private:
                 return Domain::Result<ManagerLmStudioSnapshot>::failure(
                     std::move(authorized).error());
             }
+            trace("lmstudio_repair_authorized");
+            trace("lmstudio_repair_deployment_requested");
             auto deployed = sources.lmStudioDeployment->deploy(
                 deploymentRequest, authority, authorized.value(), context);
             if (!deployed) {
                 return Domain::Result<ManagerLmStudioSnapshot>::failure(
                     std::move(deployed).error());
             }
+            trace("lmstudio_repair_deployment_complete");
             actionDetail = deployed.value().message;
             inspected = sources.lmStudioDeployment->status(
                 deploymentRequest, *sources.lmStudioReadAuthority, context);
@@ -764,7 +1375,12 @@ private:
                     Domain::ErrorCodes::Conflict,
                     "LM Studio must have a complete Forge Conductor deployment before connector activation."));
             }
-            const auto& authority = *sources.lmStudioWriteAuthority;
+            if (sources.lmStudioActivationAuthority == nullptr) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "LM Studio connector activation has no Execute-scoped Manager authority."));
+            }
+            const auto& authority = *sources.lmStudioActivationAuthority;
             const auto deploymentId = *inspected.value().deploymentId;
             Domain::ToolCallRequest call{
                 Domain::McpRequestMetadata{
@@ -773,7 +1389,7 @@ private:
                     authority.callerId(),
                     authority.projectId(),
                     "2025-11-25"},
-                "activate-lmstudio-connectors",
+                "install-lmstudio-plugin",
                 "{\"deployment_id\":\"" + deploymentId.value() + "\"}"};
             auto authorized = sources.toolAuthorizer->authorize(
                 Domain::ToolAuthorizationRequest{
@@ -817,6 +1433,87 @@ private:
         }
 
         const auto& status = inspected.value();
+        bool liveRoleHostObserved{};
+        if (status.deploymentId && sources.clientPresence != nullptr &&
+            sources.preferredForgeBinary) {
+            auto recent = sources.clientPresence->recentForDeployment(
+                *status.deploymentId,
+                clock_->utcNow() - std::chrono::seconds{25}, context);
+            if (recent) {
+                connectionCheckPerformed = true;
+                for (const auto& owner : recent.value()) {
+                    if (!owner.processId || !liveExpectedMcpProcess(
+                            *owner.processId,
+                            *sources.preferredForgeBinary)) {
+                        continue;
+                    }
+                    liveRoleHostObserved = true;
+                    primaryReady |= owner.role == "primary";
+                    fallbackReady |= owner.role == "fallback";
+                    continuityReady |= owner.role == "clu";
+                }
+            } else {
+                if (!actionDetail.empty()) {
+                    actionDetail += " ";
+                }
+                actionDetail +=
+                    "Live MCP role readback unavailable; no session is claimed.";
+            }
+        }
+        bool toolAuditChecked{};
+        bool primaryToolRecorded{};
+        bool fallbackToolRecorded{};
+        bool continuityToolRecorded{};
+        std::string toolAuditDetail{
+            "No deployment-scoped MCP tool audit was inspected."};
+        if (status.deploymentId && sources.audit != nullptr) {
+            auto recentAudit = sources.audit->recent(200U, context);
+            if (!recentAudit) {
+                toolAuditDetail =
+                    "MCP tool audit readback unavailable; no outcome is claimed.";
+            } else {
+                toolAuditChecked = true;
+                toolAuditDetail =
+                    "No successful native MCP tool outcome is recorded for this exact deployment in the bounded audit readback.";
+                for (const auto& event : recentAudit.value()) {
+                    if (!event.deploymentId ||
+                        *event.deploymentId != *status.deploymentId ||
+                        !event.mcpRole || !event.clientId ||
+                        event.status != "ok") {
+                        continue;
+                    }
+                    bool* recorded{};
+                    std::string_view lane;
+                    switch (*event.mcpRole) {
+                    case Domain::McpRole::Primary:
+                        recorded = &primaryToolRecorded;
+                        lane = "Primary";
+                        break;
+                    case Domain::McpRole::Fallback:
+                        recorded = &fallbackToolRecorded;
+                        lane = "Fallback";
+                        break;
+                    case Domain::McpRole::Clu:
+                        recorded = &continuityToolRecorded;
+                        lane = "CLU";
+                        break;
+                    }
+                    if (recorded == nullptr || *recorded) continue;
+                    *recorded = true;
+                    if (toolAuditDetail.starts_with("No successful")) {
+                        toolAuditDetail = "Recorded native MCP tool success: ";
+                    } else {
+                        toolAuditDetail += " · ";
+                    }
+                    toolAuditDetail += std::string{lane} + " " + event.tool;
+                }
+                if (primaryToolRecorded || fallbackToolRecorded ||
+                    continuityToolRecorded) {
+                    toolAuditDetail +=
+                        ". Audit is not verified evidence or proof of the external caller.";
+                }
+            }
+        }
         return Domain::Result<ManagerLmStudioSnapshot>::success(
             ManagerLmStudioSnapshot{
                 status.lmStudioPresent,
@@ -835,12 +1532,17 @@ private:
                 primaryReady,
                 fallbackReady,
                 continuityReady,
-                false,
+                liveRoleHostObserved,
                 sources.continuityAutomation == nullptr
                     ? 0U
                     : sources.continuityAutomation->trackedProjectCount(),
                 status.detail,
-                std::move(actionDetail)});
+                std::move(actionDetail),
+                toolAuditChecked,
+                primaryToolRecorded,
+                fallbackToolRecorded,
+                continuityToolRecorded,
+                std::move(toolAuditDetail)});
     }
 
     [[nodiscard]] Domain::Result<ManagerToolsSnapshot> toolsSnapshot() const
@@ -911,10 +1613,12 @@ private:
                 request.toolName,
                 outcome.value().receipt.ok,
                 std::move(outcome.value().canonicalPayload),
-                std::move(outcome.value().receipt.error)});
+                std::move(outcome.value().receipt.error),
+                outcome.value().receipt.elapsed});
     }
 
     [[nodiscard]] Domain::Result<ManagerOperationalSnapshot> operationalSnapshot(
+        const ManagerRequest& managerRequest,
         const ManagerOperationalRequest& request,
         const Domain::OperationContext& context)
     {
@@ -925,6 +1629,318 @@ private:
         }
         auto& service = *telemetrySources_.operational;
         std::vector<std::string> lines;
+        if (request.area == ManagerOperationalArea::Evidence) {
+            if (!request.projectId ||
+                !telemetrySources_.durableManagedRunStore ||
+                !telemetrySources_.evidenceHasher) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "An exact project and native durable evidence services are required."));
+            }
+            if (request.action == ManagerOperationalAction::VerifyTask) {
+                std::lock_guard checkGuard{evidenceCheckMutex_};
+                if (!request.sessionId || request.summary.empty() ||
+                    request.summary.size() > 1'024U ||
+                    !telemetrySources_.shellEnabled ||
+                    !telemetrySources_.toolRouter ||
+                    !telemetrySources_.projectWorkspaceAuthority) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::InvalidRequest,
+                        "An exact completed run, bounded check command and enabled native shell authority are required."));
+                }
+                auto loaded = telemetrySources_.durableManagedRunStore->load(
+                    *request.sessionId, context);
+                if (!loaded) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(loaded).error());
+                if (!loaded.value() ||
+                    loaded.value()->projectId != *request.projectId ||
+                    loaded.value()->state != Domain::ManagedRunState::Completed ||
+                    loaded.value()->evidenceIntegrity !=
+                        Domain::ManagedRunEvidenceIntegrity::Verified ||
+                    loaded.value()->nativeTaskChecks.size() >= 8U) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::Conflict,
+                        "The exact project run is not a verified completed record with check capacity."));
+                }
+                auto authority = telemetrySources_.projectWorkspaceAuthority->authorityFor(
+                    *request.projectId, context);
+                if (!authority) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(authority).error());
+                const nlohmann::json arguments{
+                    {"command", request.summary}, {"timeout_sec", 60}};
+                Domain::ToolCallRequest call{
+                    Domain::McpRequestMetadata{
+                        managerRequest.requestId,
+                        context.correlationId,
+                        authority.value().callerId(),
+                        *request.projectId,
+                        "2025-11-25"},
+                    "shell_exec", arguments.dump()};
+                auto outcome = telemetrySources_.toolRouter->invoke(
+                    call, authority.value(), context);
+                if (!outcome) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(outcome).error());
+                nlohmann::json process;
+                try {
+                    process = nlohmann::json::parse(outcome.value().canonicalPayload);
+                    if (!process.is_object() ||
+                        !process.contains("exit_code") ||
+                        !process["exit_code"].is_number_integer() ||
+                        !process.contains("ok") || !process["ok"].is_boolean() ||
+                        !process.contains("timed_out") ||
+                        !process["timed_out"].is_boolean() ||
+                        !process.contains("cancelled") ||
+                        !process["cancelled"].is_boolean() ||
+                        !process.contains("termination_confirmed") ||
+                        !process["termination_confirmed"].is_boolean() ||
+                        !process.contains("elapsed_ms") ||
+                        !process["elapsed_ms"].is_number_integer() ||
+                        process["elapsed_ms"].get<std::int64_t>() < 0 ||
+                        (process.contains("stdout_truncated") &&
+                         !process["stdout_truncated"].is_boolean()) ||
+                        (process.contains("stderr_truncated") &&
+                         !process["stderr_truncated"].is_boolean()) ||
+                        !process.contains("stdout") ||
+                        !process["stdout"].is_string() ||
+                        !process.contains("stderr") ||
+                        !process["stderr"].is_string() ||
+                        !process.contains("command") ||
+                        process["command"] != request.summary) {
+                        throw std::runtime_error{"Native check result is incomplete."};
+                    }
+                } catch (...) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The native check returned an invalid process receipt."));
+                }
+                const auto digest = [&](const std::string& value)
+                    -> Domain::Result<Domain::Sha256Digest> {
+                    return telemetrySources_.evidenceHasher->sha256(
+                        std::as_bytes(std::span<const char>{
+                            value.data(), value.size()}));
+                };
+                auto commandDigest = digest(request.summary);
+                auto stdoutDigest = digest(process["stdout"].get<std::string>());
+                auto stderrDigest = digest(process["stderr"].get<std::string>());
+                if (!commandDigest || !stdoutDigest || !stderrDigest) {
+                    return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                        Domain::ErrorCodes::InternalFailure,
+                        "Native check digests could not be computed."));
+                }
+                auto checked = std::move(*loaded.value());
+                const bool timedOut = process.value("timed_out", false);
+                const bool cancelled = process.value("cancelled", false);
+                const bool terminated = process.value("termination_confirmed", false);
+                const bool outputTruncated = process.value("stdout_truncated", false) ||
+                    process.value("stderr_truncated", false);
+                const int exitCode = process["exit_code"].get<int>();
+                const auto elapsed = process.value("elapsed_ms", 0ULL);
+                checked.nativeTaskChecks.push_back(Domain::ManagedNativeTaskCheck{
+                    std::move(commandDigest).value(),
+                    std::move(stdoutDigest).value(),
+                    std::move(stderrDigest).value(),
+                    exitCode,
+                    outcome.value().receipt.ok && process.value("ok", false) &&
+                        exitCode == 0 && !timedOut && !cancelled && terminated &&
+                        !outputTruncated,
+                    timedOut, cancelled, terminated, elapsed,
+                    clock_->utcNow()});
+                checked.updatedAt = clock_->utcNow();
+                auto saved = telemetrySources_.durableManagedRunStore->save(
+                    checked, context);
+                if (!saved) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(saved).error());
+                return operationalSnapshot(managerRequest,
+                    ManagerOperationalRequest{
+                        ManagerOperationalArea::Evidence,
+                        ManagerOperationalAction::Inspect,
+                        std::nullopt, {}, request.projectId},
+                    context);
+            }
+            if (request.action != ManagerOperationalAction::Inspect) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The evidence action is not supported."));
+            }
+            auto sessions = service.sessions(context);
+            if (!sessions) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(sessions).error());
+            }
+            std::set<std::string> seen;
+            const auto hashText = [&](const std::string& source)
+                -> Domain::Result<Domain::Sha256Digest> {
+                return telemetrySources_.evidenceHasher->sha256(
+                    std::as_bytes(std::span<const char>{
+                        source.data(), source.size()}));
+            };
+            const auto append = [&](const Domain::AgentSession& session)
+                -> Domain::Result<void> {
+                if (session.agentId.value() != "forge-managed-run" ||
+                    !seen.insert(session.id.value()).second) {
+                    return Domain::Result<void>::success();
+                }
+                auto loaded = telemetrySources_.durableManagedRunStore->load(
+                    session.id, context);
+                if (!loaded) return Domain::Result<void>::failure(
+                    std::move(loaded).error());
+                if (!loaded.value()) return Domain::Result<void>::failure(error(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "A managed-run evidence identity has no durable record."));
+                const auto& record = *loaded.value();
+                if (record.projectId != *request.projectId) {
+                    return Domain::Result<void>::success();
+                }
+                auto taskDigest = hashText(record.task);
+                if (!taskDigest) return Domain::Result<void>::failure(
+                    std::move(taskDigest).error());
+                std::optional<Domain::Sha256Digest> outputDigest;
+                if (record.outputText) {
+                    auto computed = hashText(*record.outputText);
+                    if (!computed) return Domain::Result<void>::failure(
+                        std::move(computed).error());
+                    outputDigest = std::move(computed).value();
+                }
+                const char* state = "unknown";
+                switch (record.state) {
+                case Domain::ManagedRunState::Running: state = "running"; break;
+                case Domain::ManagedRunState::Cancelling: state = "stopping"; break;
+                case Domain::ManagedRunState::Completed: state = "completed"; break;
+                case Domain::ManagedRunState::Failed: state = "failed"; break;
+                case Domain::ManagedRunState::Cancelled: state = "stopped"; break;
+                case Domain::ManagedRunState::Paused: state = "paused"; break;
+                }
+                const char* integrity = "not_terminal";
+                switch (record.evidenceIntegrity) {
+                case Domain::ManagedRunEvidenceIntegrity::NotTerminal:
+                    integrity = "not_terminal"; break;
+                case Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed:
+                    integrity = "legacy_unsealed"; break;
+                case Domain::ManagedRunEvidenceIntegrity::Verified:
+                    integrity = "verified"; break;
+                case Domain::ManagedRunEvidenceIntegrity::Mismatch:
+                    integrity = "mismatch"; break;
+                }
+                nlohmann::json nativeCheck = nullptr;
+                std::string taskVerification{"not_configured"};
+                std::string taskDetail{
+                    "No approved native task check was attached to this run; model text is not a verified task outcome."};
+                if (!record.nativeTaskChecks.empty()) {
+                    const auto& check = record.nativeTaskChecks.back();
+                    nativeCheck = nlohmann::json{
+                        {"kind", "operator_authorized_post_run_shell_check"},
+                        {"check_count", record.nativeTaskChecks.size()},
+                        {"command_sha256", check.commandDigest.value()},
+                        {"stdout_sha256", check.stdoutDigest.value()},
+                        {"stderr_sha256", check.stderrDigest.value()},
+                        {"exit_code", check.exitCode},
+                        {"passed", check.passed},
+                        {"timed_out", check.timedOut},
+                        {"cancelled", check.cancelled},
+                        {"termination_confirmed", check.terminationConfirmed},
+                        {"elapsed_ms", check.elapsedMilliseconds},
+                        {"checked_at_utc_ms", std::chrono::duration_cast<
+                            std::chrono::milliseconds>(
+                                check.checkedAt.time_since_epoch()).count()}};
+                    taskVerification = integrity == std::string_view{"verified"}
+                        ? check.passed ? "native_check_passed" : "native_check_failed"
+                        : "record_integrity_unverified";
+                    taskDetail = integrity != std::string_view{"verified"}
+                        ? "The stored native check cannot be trusted while durable record integrity is unverified."
+                        : check.passed
+                            ? "The requested post-run native check passed. This verifies the specified check only, not every assignment requirement."
+                            : "The requested post-run native check did not pass. Model text cannot override its result.";
+                }
+                const nlohmann::json evidence{
+                    {"format", "forge-conductor-managed-run-evidence-v1"},
+                    {"run_id", record.runId.value()},
+                    {"project_id", record.projectId.value()},
+                    {"state", state},
+                    {"manager_owned", true},
+                    {"provider_response_id", record.providerResponseId
+                        ? nlohmann::json(record.providerResponseId->value())
+                        : nlohmann::json{nullptr}},
+                    {"authority_generation", record.authorityGeneration},
+                    {"native_tools_allowed", record.allowTools},
+                    {"input_tokens", record.inputTokens},
+                    {"output_tokens", record.outputTokens},
+                    {"task_sha256", taskDigest.value().value()},
+                    {"stored_output_sha256", outputDigest
+                        ? nlohmann::json(outputDigest->value())
+                        : nlohmann::json{nullptr}},
+                    {"evidence_seal_sha256", record.evidenceSeal
+                        ? nlohmann::json(record.evidenceSeal->value())
+                        : nlohmann::json{nullptr}},
+                    {"native_record_integrity", integrity},
+                    {"native_check", std::move(nativeCheck)},
+                    {"task_outcome_verification", std::move(taskVerification)},
+                    {"task_outcome_detail", std::move(taskDetail)}};
+                lines.push_back(evidence.dump());
+                return Domain::Result<void>::success();
+            };
+            for (const auto& session : sessions.value().open) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            for (const auto& session : sessions.value().recent) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            return Domain::Result<ManagerOperationalSnapshot>::success(
+                {request.area, "Durable Manager-owned runs · exact selected project",
+                    std::move(lines)});
+        }
+        if (request.area == ManagerOperationalArea::Runs) {
+            if (request.action != ManagerOperationalAction::Inspect ||
+                !request.projectId || !managedRuns_) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "A project-bound managed-run history inspection is required."));
+            }
+            auto sessions = service.sessions(context);
+            if (!sessions) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(sessions).error());
+            std::set<std::string> seen;
+            const auto append = [&](const Domain::AgentSession& session)
+                -> Domain::Result<void> {
+                if (session.agentId.value() != "forge-managed-run" ||
+                    !seen.insert(session.id.value()).second) {
+                    return Domain::Result<void>::success();
+                }
+                auto run = managedRuns_->status(session.id, context);
+                if (!run) return Domain::Result<void>::failure(std::move(run).error());
+                const auto& record = run.value().record;
+                if (record.projectId != *request.projectId) {
+                    return Domain::Result<void>::success();
+                }
+                const char* state = "unknown";
+                switch (record.state) {
+                case Domain::ManagedRunState::Running: state = "running"; break;
+                case Domain::ManagedRunState::Paused: state = "paused"; break;
+                case Domain::ManagedRunState::Cancelling: state = "stopping"; break;
+                case Domain::ManagedRunState::Completed: state = "completed"; break;
+                case Domain::ManagedRunState::Failed: state = "failed"; break;
+                case Domain::ManagedRunState::Cancelled: state = "stopped"; break;
+                }
+                lines.push_back(record.runId.value() + " · " + state + "\n" +
+                    record.task);
+                return Domain::Result<void>::success();
+            };
+            for (const auto& session : sessions.value().open) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            for (const auto& session : sessions.value().recent) {
+                auto appended = append(session);
+                if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(appended).error());
+            }
+            return Domain::Result<ManagerOperationalSnapshot>::success(
+                {request.area, "Recent Manager-owned runs · selected project", std::move(lines)});
+        }
         if (request.action == ManagerOperationalAction::PruneSessions) {
             auto pruned = service.pruneSessions(context);
             if (!pruned) return Domain::Result<ManagerOperationalSnapshot>::failure(
@@ -967,6 +1983,13 @@ private:
                     (session.summary ? "\n" + *session.summary : ""));
             }
             lines.push_back("Recent sessions: " + std::to_string(sessions.value().recent.size()));
+            for (const auto& session : sessions.value().recent) {
+                lines.push_back(session.id.value() + " · " + session.agentId.value() +
+                    " · " + std::string{Domain::wireName(session.status)} +
+                    " · recent" +
+                    (session.clientId ? " · client " + session.clientId->value() : "") +
+                    (session.summary ? "\n" + *session.summary : ""));
+            }
             return Domain::Result<ManagerOperationalSnapshot>::success(
                 {request.area, "Agents and sessions", std::move(lines)});
         }
@@ -975,12 +1998,17 @@ private:
             if (!audit) return Domain::Result<ManagerOperationalSnapshot>::failure(
                 std::move(audit).error());
             for (const auto& event : audit.value()) {
-                lines.push_back(event.tool + " · " + event.status +
+                const auto seconds = std::chrono::system_clock::to_time_t(event.timestamp);
+                std::tm utc{};
+                gmtime_s(&utc, &seconds);
+                char timestamp[32]{};
+                std::strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S UTC", &utc);
+                lines.push_back(std::string{timestamp} + " · " + event.tool + " · " + event.status +
+                    (event.projectId ? " · project " + event.projectId->value() : "") +
                     (event.clientId ? " · " + event.clientId->value() : "") +
                     (event.duration ? " · " + std::to_string(event.duration->count()) + " ms" : "") +
                     (event.error ? "\n" + *event.error : ""));
             }
-            if (lines.empty()) lines.push_back("No recent audit activity.");
             return Domain::Result<ManagerOperationalSnapshot>::success(
                 {request.area, "Recent activity", std::move(lines)});
         }
@@ -1009,6 +2037,73 @@ private:
         lines.push_back("Open repositories/databases: " +
             std::to_string(runtime.openRepositories) + "/" +
             std::to_string(runtime.openDatabases));
+        if (request.area == ManagerOperationalArea::Runtimes) {
+            auto settings = controller_->settings(context);
+            if (!settings) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                std::move(settings).error());
+            lines.push_back(std::string{"Effective shell policy: "} +
+                (settings.value().shellEnabled ? "enabled" : "disabled"));
+            if (!request.projectId || !managedRuns_) {
+                lines.push_back("Job inventory: select an authorized project to inspect persisted managed runs");
+            } else {
+                auto sessions = service.sessions(context);
+                if (!sessions) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    std::move(sessions).error());
+                std::set<std::string> seen;
+                std::vector<std::string> jobs;
+                std::size_t active{};
+                std::size_t completed{};
+                std::size_t failed{};
+                std::size_t stopped{};
+                const auto append = [&](const Domain::AgentSession& session)
+                    -> Domain::Result<void> {
+                    if (session.agentId.value() != "forge-managed-run" ||
+                        !seen.insert(session.id.value()).second) {
+                        return Domain::Result<void>::success();
+                    }
+                    auto run = managedRuns_->status(session.id, context);
+                    if (!run) return Domain::Result<void>::failure(std::move(run).error());
+                    const auto& record = run.value().record;
+                    if (record.projectId != *request.projectId)
+                        return Domain::Result<void>::success();
+                    const char* state = "unknown";
+                    switch (record.state) {
+                    case Domain::ManagedRunState::Running: state = "running"; ++active; break;
+                    case Domain::ManagedRunState::Paused: state = "paused"; ++active; break;
+                    case Domain::ManagedRunState::Cancelling: state = "stopping"; ++active; break;
+                    case Domain::ManagedRunState::Completed: state = "completed"; ++completed; break;
+                    case Domain::ManagedRunState::Failed: state = "failed"; ++failed; break;
+                    case Domain::ManagedRunState::Cancelled: state = "stopped"; ++stopped; break;
+                    }
+                    const auto outcome = record.lastError
+                        ? "Error · " + record.lastError->message
+                        : record.outputText && !record.outputText->empty()
+                            ? "Result · " + *record.outputText
+                            : "Result · not recorded yet";
+                    jobs.push_back("Job " + record.runId.value() + " · " + state +
+                        "\nMission · " + Domain::truncateAgentSummaryUtf8(record.task, 240U) +
+                        "\n" + Domain::truncateAgentSummaryUtf8(outcome, 800U));
+                    return Domain::Result<void>::success();
+                };
+                for (const auto& session : sessions.value().open) {
+                    auto appended = append(session);
+                    if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                        std::move(appended).error());
+                }
+                for (const auto& session : sessions.value().recent) {
+                    auto appended = append(session);
+                    if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                        std::move(appended).error());
+                }
+                lines.push_back("Job inventory: " + std::to_string(jobs.size()) +
+                    " recent selected-project runs · " + std::to_string(active) +
+                    " active · " + std::to_string(completed) + " completed · " +
+                    std::to_string(failed) + " failed · " +
+                    std::to_string(stopped) + " stopped");
+                lines.insert(lines.end(), std::make_move_iterator(jobs.begin()),
+                    std::make_move_iterator(jobs.end()));
+            }
+        }
         if (request.area == ManagerOperationalArea::Manager) {
             auto manager = controller_->status(context);
             if (!manager) return Domain::Result<ManagerOperationalSnapshot>::failure(
@@ -1278,6 +2373,10 @@ private:
                             payload.projectId, {}, 20U,
                             remembered.value().recordId, context));
                 } else if constexpr (
+                    std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
+                    return controllerResponse(
+                        request, instructionPackage(payload, context));
+                } else if constexpr (
                     std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                     return controllerResponse(
                         request, lmStudioWorkflow(request, false, false, context));
@@ -1299,7 +2398,7 @@ private:
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerOperationalRequest>) {
                     return controllerResponse(
-                        request, operationalSnapshot(payload, context));
+                        request, operationalSnapshot(request, payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerMaintenanceRequest>) {
                     return controllerResponse(
@@ -1326,6 +2425,13 @@ private:
                                 Domain::ErrorCodes::InvalidRequest,
                                 "Managed runs are unavailable in this Manager composition."));
                     }
+                    auto task = managedRunTaskWithInstructions(
+                        payload.projectId, payload.task,
+                        payload.allowTools, context);
+                    if (!task) {
+                        return responseWithError(
+                            request, std::move(task).error());
+                    }
                     return controllerResponse(
                         request,
                         managedRuns_->start(
@@ -1336,7 +2442,8 @@ private:
                                 context.operationId,
                                 context.correlationId,
                                 payload.authorityGeneration,
-                                payload.task},
+                                std::move(task).value(),
+                                payload.allowTools},
                             context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagedRunStatusRequest>) {
@@ -1432,6 +2539,7 @@ private:
     ManagerTransportLimits limits_;
     std::shared_ptr<Contracts::IManagedRunService> managedRuns_;
     ManagerTelemetrySources telemetrySources_;
+    std::mutex evidenceCheckMutex_;
 
     mutable std::mutex stateMutex_;
     std::condition_variable stateChanged_;

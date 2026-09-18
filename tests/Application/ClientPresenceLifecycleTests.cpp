@@ -293,6 +293,16 @@ public:
         }
     }
 
+    [[nodiscard]] Domain::Result<
+        std::vector<Domain::ClientPresenceIdentity>> recentForDeployment(
+        const Domain::DeploymentId&,
+        Domain::UtcTimePoint,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<
+            std::vector<Domain::ClientPresenceIdentity>>::success({});
+    }
+
     void close() noexcept override {}
 
     void setUpsertFailures(const std::size_t count)

@@ -209,7 +209,8 @@ void replaceOne(
             std::nullopt,
             {},
             Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'600'123LL}},
-            Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'601'456LL}}},
+            Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'601'456LL}},
+            false},
         true,
         false};
 }
@@ -307,7 +308,10 @@ void replaceOne(
             identifier<Domain::Sha256Digest>(std::string(64U, 'b')),
             "success",
             25ms,
-            std::nullopt}},
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            run.record.projectId}},
         Domain::makeUnavailableTelemetryMetric<bool>(
             Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
             capturedAt,
@@ -394,6 +398,12 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "Decision", "Keep project identity stable.",
         std::string{"Runs bind to the selected exact project ID."},
         {"architecture", "identity"}});
+    payloads.emplace_back(Manager::ManagerInstructionPackageRequest{
+        identifier<Domain::ProjectId>(
+            "20000000-0000-4000-8000-000000000002"),
+        path("D:\\Packages\\Alpha"), true,
+        identifier<Domain::Sha256Digest>(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")});
     payloads.emplace_back(Manager::ManagerMaintenanceRequest{
         Manager::ManagerMaintenanceScope::ProjectAllData,
         identifier<Domain::ProjectId>(
@@ -437,6 +447,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "projects.initialize",
         "projects.memory",
         "projects.remember",
+        "projects.instructions",
         "maintenance.reset",
         "manager.control",
         "manager.settings.update",
@@ -503,11 +514,13 @@ void testEveryRequestMethodRoundTripsDeterministically()
                 identifier<Domain::ClientId>(
                     "20000000-0000-4000-8000-000000000003"),
                 9U,
-                "Run the ordinary managed turn."})))));
+                "Run the ordinary managed turn.",
+                false})))));
     const auto& managedPayload =
         std::get<Manager::ManagedRunStartRequest>(managedStart.payload);
     REQUIRE(managedPayload.authorityGeneration == 9U);
     REQUIRE(managedPayload.task == "Run the ordinary managed turn.");
+    REQUIRE(!managedPayload.allowTools);
 }
 
 void testManagedRunResultRoundTrips()
@@ -516,7 +529,8 @@ void testManagedRunResultRoundTrips()
         response(Manager::ManagerResult{sampleManagedRun()})));
     const auto root = Json::parse(payloadText(frame));
     REQUIRE(root.at("result").at("type") == "managed_run");
-    REQUIRE(root.at("result").at("value").size() == 18U);
+    REQUIRE(root.at("result").at("value").size() == 19U);
+    REQUIRE(root.at("result").at("value").at("allow_tools") == false);
     const auto decoded = take(
         Manager::ManagerProtocolCodec::decodeResponse(frame));
     const auto& actual = std::get<Domain::ManagedRunSnapshot>(
@@ -528,6 +542,7 @@ void testManagedRunResultRoundTrips()
             sampleManagedRun().record.providerResponseId);
     REQUIRE(actual.record.retainedContextTokens == 4096U);
     REQUIRE(actual.record.outputText == "The managed result.");
+    REQUIRE(!actual.record.allowTools);
     REQUIRE(actual.managerOwned);
     REQUIRE(!actual.cancellationRequested);
     REQUIRE(!actual.pauseRequested);
@@ -577,9 +592,30 @@ void testManagerTelemetryRoundTripsWithoutLosingAvailability()
     REQUIRE(actual.projects.size() == 1U);
     REQUIRE(actual.tools.size() == 2U);
     REQUIRE(actual.recentEvents.size() == 1U);
+    REQUIRE(actual.recentEvents[0].projectId == sampleManagedRun().record.projectId);
     REQUIRE(!actual.storeHealthy.value);
     REQUIRE(actual.storeHealthy.availability ==
             Domain::TelemetryMetricAvailability::TemporarilyUnavailable);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+}
+
+void testToolOutcomePreservesMeasuredDuration()
+{
+    const Manager::ManagerToolOutcomeSnapshot snapshot{
+        identifier<Domain::ProjectId>(
+            "30000000-0000-4000-8000-000000000001"),
+        "agent_list", true, "{\"agents\":[]}", std::nullopt,
+        std::chrono::milliseconds{47}};
+    const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{snapshot})));
+    const auto root = Json::parse(payloadText(frame));
+    REQUIRE(root.at("result").at("type") == "tool_outcome");
+    REQUIRE(root.at("result").at("value").at("elapsed_ms") == 47);
+    const auto decoded = take(Manager::ManagerProtocolCodec::decodeResponse(frame));
+    const auto& actual = std::get<Manager::ManagerToolOutcomeSnapshot>(
+        std::get<Manager::ManagerResult>(decoded.body));
+    REQUIRE(actual.elapsed == std::chrono::milliseconds{47});
+    REQUIRE(actual.canonicalPayload == snapshot.canonicalPayload);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 
@@ -604,6 +640,86 @@ void testMaintenanceRoundTrips()
     REQUIRE(actual.eventsRemoved == 5U);
     REQUIRE(actual.verified);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+}
+
+void testProjectRunHistoryRoundTrips()
+{
+    const auto project = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    const auto framed = take(Manager::ManagerProtocolCodec::encodeRequest(request(
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, project})));
+    const auto decoded = take(Manager::ManagerProtocolCodec::decodeRequest(framed));
+    const auto& operation = std::get<Manager::ManagerOperationalRequest>(
+        decoded.payload);
+    REQUIRE(operation.area == Manager::ManagerOperationalArea::Runs);
+    REQUIRE(operation.projectId == project);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(decoded)) == framed);
+    const auto root = Json::parse(payloadText(framed));
+    REQUIRE(root.at("params").at("project_id").get<std::string>() ==
+        project.value());
+
+    const Manager::ManagerOperationalSnapshot history{
+        Manager::ManagerOperationalArea::Runs,
+        "Recent Manager-owned runs · selected project",
+        {"20000000-0000-4000-8000-000000000001 · completed\nfixture task"}};
+    const auto responseFrame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{history})));
+    const auto responseDecoded = take(
+        Manager::ManagerProtocolCodec::decodeResponse(responseFrame));
+    const auto& result = std::get<Manager::ManagerOperationalSnapshot>(
+        std::get<Manager::ManagerResult>(responseDecoded.body));
+    REQUIRE(result.area == Manager::ManagerOperationalArea::Runs);
+    REQUIRE(result.lines == history.lines);
+
+    const auto evidenceFrame = take(
+        Manager::ManagerProtocolCodec::encodeRequest(request(
+            Manager::ManagerOperationalRequest{
+                Manager::ManagerOperationalArea::Evidence,
+                Manager::ManagerOperationalAction::Inspect,
+                std::nullopt, {}, project})));
+    const auto evidenceDecoded = take(
+        Manager::ManagerProtocolCodec::decodeRequest(evidenceFrame));
+    const auto& evidenceRequest = std::get<Manager::ManagerOperationalRequest>(
+        evidenceDecoded.payload);
+    REQUIRE(evidenceRequest.area == Manager::ManagerOperationalArea::Evidence);
+    REQUIRE(evidenceRequest.projectId == project);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(
+        evidenceDecoded)) == evidenceFrame);
+    const Manager::ManagerOperationalSnapshot evidence{
+        Manager::ManagerOperationalArea::Evidence,
+        "Durable Manager-owned runs · exact selected project",
+        {"{\"format\":\"forge-conductor-managed-run-evidence-v1\"}"}};
+    const auto evidenceResponse = take(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{evidence})));
+    const auto parsedEvidence = take(
+        Manager::ManagerProtocolCodec::decodeResponse(evidenceResponse));
+    const auto& evidenceResult = std::get<Manager::ManagerOperationalSnapshot>(
+        std::get<Manager::ManagerResult>(parsedEvidence.body));
+    REQUIRE(evidenceResult.area == Manager::ManagerOperationalArea::Evidence);
+    REQUIRE(evidenceResult.lines == evidence.lines);
+    const auto exactRun = identifier<Domain::SessionId>(
+        "20000000-0000-4000-8000-000000000003");
+    const auto verifyFrame = take(
+        Manager::ManagerProtocolCodec::encodeRequest(request(
+            Manager::ManagerOperationalRequest{
+                Manager::ManagerOperationalArea::Evidence,
+                Manager::ManagerOperationalAction::VerifyTask,
+                exactRun, "Write-Output CHECK_OK", project})));
+    const auto verifyDecoded = take(
+        Manager::ManagerProtocolCodec::decodeRequest(verifyFrame));
+    const auto& verify = std::get<Manager::ManagerOperationalRequest>(
+        verifyDecoded.payload);
+    REQUIRE(verify.area == Manager::ManagerOperationalArea::Evidence);
+    REQUIRE(verify.action == Manager::ManagerOperationalAction::VerifyTask);
+    REQUIRE(verify.projectId == project);
+    REQUIRE(verify.sessionId == exactRun);
+    REQUIRE(verify.summary == "Write-Output CHECK_OK");
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(
+        verifyDecoded)) == verifyFrame);
 }
 
 void testProjectWorkflowRoundTrips()
@@ -649,6 +765,7 @@ void testProjectWorkflowRoundTrips()
             {"identity", "runs"},
             Domain::UtcTimePoint{
                 std::chrono::milliseconds{1'767'225'602'321LL}}}},
+        std::nullopt,
         std::string{"next-page"},
         true,
         recordId};
@@ -669,6 +786,35 @@ void testProjectWorkflowRoundTrips()
     REQUIRE(actual.writtenRecordId == recordId);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedWorkspace)) ==
             workspaceFrame);
+
+    const auto revision = identifier<Domain::Sha256Digest>(
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    const Manager::ManagerInstructionPackageSnapshot package{
+        descriptor.id,
+        "Alpha instructions",
+        path("D:\\Packages\\Alpha"),
+        revision,
+        2U,
+        1U,
+        4'096U,
+        {"START-HERE.md", "specs/policy.json"},
+        true,
+        recordId};
+    const auto packageFrame = take(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{package})));
+    const auto decodedPackage = take(
+        Manager::ManagerProtocolCodec::decodeResponse(packageFrame));
+    const auto& actualPackage =
+        std::get<Manager::ManagerInstructionPackageSnapshot>(
+            std::get<Manager::ManagerResult>(decodedPackage.body));
+    REQUIRE(actualPackage.projectId == descriptor.id);
+    REQUIRE(actualPackage.revision == revision);
+    REQUIRE(actualPackage.files == package.files);
+    REQUIRE(actualPackage.activated);
+    REQUIRE(actualPackage.manifestRecordId == recordId);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedPackage)) ==
+            packageFrame);
 }
 
 void testResponseResultAndErrorRoundTrips()
@@ -1365,8 +1511,10 @@ int main()
         {"managed-run-round-trips", testManagedRunResultRoundTrips},
         {"manager-telemetry-round-trips",
          testManagerTelemetryRoundTripsWithoutLosingAvailability},
+        {"tool-outcome-duration", testToolOutcomePreservesMeasuredDuration},
         {"project-workflow-round-trips", testProjectWorkflowRoundTrips},
         {"maintenance-round-trips", testMaintenanceRoundTrips},
+        {"project-run-history-round-trips", testProjectRunHistoryRoundTrips},
         {"settings-update-outcome-round-trips",
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},

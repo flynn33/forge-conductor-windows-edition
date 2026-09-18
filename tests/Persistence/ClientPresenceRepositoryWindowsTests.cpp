@@ -390,6 +390,48 @@ void nullableOwnerFieldsParticipateInExactMatching()
         "the exact nullable owner did not remove its row");
 }
 
+void recentReadbackHonorsExactDeploymentAndCutoff()
+{
+    Fixture fixture{L"client-presence-recent-readback"};
+    const auto primary = identity(
+        "recent-primary", "primary", "deployment-one", 101U);
+    const auto clu = identity(
+        "recent-clu", "clu", "deployment-one", 202U);
+    const auto foreign = identity(
+        "recent-foreign", "fallback", "deployment-two", 303U);
+    take(fixture.repository->upsert(
+        Domain::ClientPresenceRegistration{
+            primary, workingDirectory("D:\\workspaces\\first"),
+            atSeconds(10), atSeconds(20)},
+        Support::activeContext("presence-recent-primary")));
+    take(fixture.repository->upsert(
+        Domain::ClientPresenceRegistration{
+            clu, workingDirectory("D:\\workspaces\\second"),
+            atSeconds(30), atSeconds(40)},
+        Support::activeContext("presence-recent-clu")));
+    take(fixture.repository->upsert(
+        Domain::ClientPresenceRegistration{
+            foreign, workingDirectory("D:\\workspaces\\foreign"),
+            atSeconds(30), atSeconds(40)},
+        Support::activeContext("presence-recent-foreign")));
+
+    const auto deployment = parse<Domain::DeploymentId>("deployment-one");
+    const auto all = take(fixture.repository->recentForDeployment(
+        deployment, atSeconds(20),
+        Support::activeContext("presence-recent-all")));
+    require(all.size() == 2U && all[0] == clu && all[1] == primary,
+            "recent readback changed exact deployment or deterministic role order");
+    const auto fresh = take(fixture.repository->recentForDeployment(
+        deployment, atSeconds(30),
+        Support::activeContext("presence-recent-fresh")));
+    require(fresh.size() == 1U && fresh.front() == clu,
+            "recent readback retained a stale owner");
+    const auto none = take(fixture.repository->recentForDeployment(
+        parse<Domain::DeploymentId>("unknown-deployment"), atSeconds(0),
+        Support::activeContext("presence-recent-unknown")));
+    require(none.empty(), "recent readback matched another deployment");
+}
+
 void validationContextsAndCloseFailTyped()
 {
     Fixture fixture{L"client-presence-validation"};
@@ -483,11 +525,13 @@ struct TestCase final {
 
 int wmain()
 {
-    const std::array<TestCase, 3U> tests{{
+    const std::array<TestCase, 4U> tests{{
         {"replacement rejects stale owner and preserves first seen",
          replacementRejectsStaleOwnerAndPreservesFirstSeen},
         {"nullable owner fields participate in exact matching",
          nullableOwnerFieldsParticipateInExactMatching},
+        {"recent readback honors exact deployment and cutoff",
+         recentReadbackHonorsExactDeploymentAndCutoff},
         {"validation contexts and close fail typed",
          validationContextsAndCloseFailTyped},
     }};

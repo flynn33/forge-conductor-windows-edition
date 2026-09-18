@@ -2,6 +2,7 @@
 #include "../Fakes/ProjectRepositoryFakes.h"
 #include "../Fakes/RecordingProjectMemoryService.h"
 #include "../Fakes/RecordingContinuityCoordinator.h"
+#include "../Fakes/DeterministicWorkspaceAuthority.h"
 
 #include <algorithm>
 #include <atomic>
@@ -9,10 +10,14 @@
 #include <condition_variable>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <stop_token>
 #include <string>
@@ -25,6 +30,7 @@
 namespace {
 
 namespace Contracts = ForgeConductor::Contracts;
+namespace Dashboard = ForgeConductor::Dashboard;
 namespace Domain = ForgeConductor::Domain;
 namespace Manager = ForgeConductor::Manager;
 namespace TestFakes = ForgeConductor::Tests::Fakes;
@@ -371,12 +377,20 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         ++statusCalls;
-        auto value = snapshotFor(runId, Domain::ManagedRunState::Completed);
+        const auto state = stateByRun.find(runId.value());
+        auto value = snapshotFor(runId, state == stateByRun.end()
+            ? Domain::ManagedRunState::Completed : state->second);
+        if (const auto found = projectByRun.find(runId.value());
+            found != projectByRun.end()) {
+            value.record.projectId = found->second;
+        }
         value.record.providerResponseId =
             Domain::ProviderSessionId::parse("response-authoritative-1").value();
         value.record.inputTokens = 101U;
         value.record.outputTokens = 37U;
         value.record.retainedContextTokens = 4'096U;
+        if (const auto found = outputByRun.find(runId.value());
+            found != outputByRun.end()) value.record.outputText = found->second;
         return Domain::Result<Domain::ManagedRunSnapshot>::success(
             std::move(value));
     }
@@ -415,6 +429,9 @@ public:
     void shutdown() noexcept override { ++shutdownCalls; }
 
     std::optional<Domain::ManagedRunStartRequest> lastStart;
+    std::map<std::string, Domain::ProjectId> projectByRun;
+    std::map<std::string, Domain::ManagedRunState> stateByRun;
+    std::map<std::string, std::string> outputByRun;
     std::optional<Domain::OperationId> lastContextOperation;
     std::atomic_size_t startCalls{};
     std::atomic_size_t statusCalls{};
@@ -465,6 +482,145 @@ private:
                 "fixture managed task"},
             state);
     }
+};
+
+class FixedHasher final : public Contracts::IHasher {
+public:
+    explicit FixedHasher(Domain::Sha256Digest digest)
+        : digest_{std::move(digest)}
+    {
+    }
+
+    [[nodiscard]] Domain::Result<Domain::Sha256Digest> sha256(
+        const std::span<const std::byte> bytes) noexcept override
+    {
+        ++calls;
+        lastByteCount = bytes.size();
+        return Domain::Result<Domain::Sha256Digest>::success(digest_);
+    }
+
+    std::size_t calls{};
+    std::size_t lastByteCount{};
+
+private:
+    Domain::Sha256Digest digest_;
+};
+
+class FakeDurableManagedRunStore final : public Contracts::IManagedRunStore {
+public:
+    std::map<std::string, Domain::ManagedRunRecord> records;
+
+    [[nodiscard]] Domain::Result<std::optional<Domain::ManagedRunRecord>> load(
+        const Domain::SessionId& runId,
+        const Domain::OperationContext&) noexcept override
+    {
+        const auto found = records.find(runId.value());
+        return Domain::Result<std::optional<Domain::ManagedRunRecord>>::success(
+            found == records.end()
+                ? std::optional<Domain::ManagedRunRecord>{}
+                : std::optional<Domain::ManagedRunRecord>{found->second});
+    }
+
+    [[nodiscard]] Domain::Result<void> save(
+        const Domain::ManagedRunRecord& record,
+        const Domain::OperationContext&) noexcept override
+    {
+        records.insert_or_assign(record.runId.value(), record);
+        return Domain::Result<void>::success();
+    }
+};
+
+class FakeEvidenceHasher final : public Contracts::IHasher {
+public:
+    [[nodiscard]] Domain::Result<Domain::Sha256Digest> sha256(
+        std::span<const std::byte>) noexcept override
+    {
+        return Domain::Sha256Digest::parse(std::string(64U, 'a'));
+    }
+};
+
+class FakeNativeCheckToolRouter final : public Contracts::IToolRouter {
+public:
+    int exitCode{};
+    std::size_t calls{};
+    std::string lastCommand;
+    Domain::ProjectId lastProject = Domain::ProjectId::parse(uuidText(1U)).value();
+
+    [[nodiscard]] Domain::Result<Domain::ToolCallOutcome> invoke(
+        const Domain::ToolCallRequest& call,
+        const Contracts::WorkspaceAuthority& authority,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++calls;
+        lastProject = authority.projectId();
+        lastCommand = call.canonicalArguments.find("Write-Output OK") !=
+            std::string::npos ? "Write-Output OK" : "exit 1";
+        const auto payload = std::string{"{\"ok\":"} +
+            (exitCode == 0 ? "true" : "false") +
+            ",\"command\":\"" + lastCommand +
+            "\",\"exit_code\":" + std::to_string(exitCode) +
+            ",\"stdout\":\"native stdout\",\"stderr\":\"" +
+            (exitCode == 0 ? "" : "native stderr") +
+            "\",\"timed_out\":false,\"cancelled\":false," +
+            "\"termination_confirmed\":true,\"elapsed_ms\":13}";
+        return Domain::Result<Domain::ToolCallOutcome>::success(
+            Domain::ToolCallOutcome{
+                Domain::ToolExecutionReceipt{
+                    call.metadata.requestId, call.toolName, exitCode == 0,
+                    std::nullopt, 13ms},
+                payload, std::nullopt, std::nullopt});
+    }
+    void cancel(const Domain::OperationId&) noexcept override {}
+    void shutdown() noexcept override {}
+};
+
+class FakeOperationalSessions final : public Dashboard::IDashboardOperationalService {
+public:
+    Dashboard::DashboardSessionListing listing;
+    std::size_t sessionCalls{};
+    bool allowStatus{};
+    [[nodiscard]] Domain::Result<Dashboard::DashboardStatusData> status(
+        const Domain::OperationContext&) noexcept override
+    {
+        if (allowStatus) return Domain::Result<Dashboard::DashboardStatusData>::success({});
+        return Domain::Result<Dashboard::DashboardStatusData>::failure(
+            Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Unexpected status in run-history test."));
+    }
+    [[nodiscard]] Domain::Result<Domain::DoctorReport> doctor(
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Domain::DoctorReport>::failure(
+            Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Unexpected doctor in run-history test."));
+    }
+    [[nodiscard]] Domain::Result<std::vector<Domain::AgentSpec>> agents(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::vector<Domain::AgentSpec>>::success({}); }
+    [[nodiscard]] Domain::Result<Dashboard::DashboardSessionListing> sessions(
+        const Domain::OperationContext&) noexcept override
+    {
+        ++sessionCalls;
+        return Domain::Result<Dashboard::DashboardSessionListing>::success(listing);
+    }
+    [[nodiscard]] Domain::Result<std::vector<Domain::AuditEvent>> audit(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::vector<Domain::AuditEvent>>::success({}); }
+    [[nodiscard]] Domain::Result<std::vector<std::string>> diagnosticLines(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::vector<std::string>>::success({}); }
+    [[nodiscard]] Domain::Result<std::size_t> pruneSessions(
+        const Domain::OperationContext&) noexcept override
+    { return Domain::Result<std::size_t>::success(0U); }
+    [[nodiscard]] Domain::Result<Domain::AgentSession> closeSession(
+        const Dashboard::DashboardSessionCloseRequest&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<Domain::AgentSession>::failure(
+            Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Unexpected close in run-history test."));
+    }
+    void shutdown() noexcept override {}
 };
 
 class FakeTelemetryService final : public Contracts::ITelemetryService {
@@ -676,6 +832,275 @@ void testManagedRunDispatchAndIdentity()
         "managed run unavailable composition");
 }
 
+void testRunHistoryIsBoundToSelectedProject()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    auto managedRuns = std::make_shared<FakeManagedRuns>();
+    FakeOperationalSessions operational;
+    const auto projectA = Domain::ProjectId::parse(uuidText(701U)).value();
+    const auto projectB = Domain::ProjectId::parse(uuidText(702U)).value();
+    const auto managedAgent = Domain::AgentId::parse("forge-managed-run").value();
+    const auto otherAgent = Domain::AgentId::parse("other-agent").value();
+    const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
+    const auto aOpen = Domain::SessionId::parse(uuidText(710U)).value();
+    const auto bRecent = Domain::SessionId::parse(uuidText(711U)).value();
+    const auto aRecent = Domain::SessionId::parse(uuidText(712U)).value();
+    operational.listing.open.push_back({
+        aOpen, managedAgent, std::nullopt, Domain::SessionStatus::Open,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        bRecent, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        aRecent, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        Domain::SessionId::parse(uuidText(713U)).value(), otherAgent,
+        std::nullopt, Domain::SessionStatus::Completed, std::nullopt, time, time});
+    managedRuns->projectByRun.emplace(bRecent.value(), projectB);
+    Manager::ManagerTelemetrySources sources;
+    sources.operational = &operational;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, managedRuns, sources};
+
+    const auto aResponse = dispatcher.dispatch(request(*clock, 91U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectA}));
+    const auto* aHistory = responseValue<Manager::ManagerOperationalSnapshot>(aResponse);
+    require(aHistory != nullptr && aHistory->lines.size() == 2U,
+        "run history includes only selected project A");
+    require(aHistory->lines[0].find(aOpen.value()) != std::string::npos &&
+            aHistory->lines[1].find(aRecent.value()) != std::string::npos,
+        "project A run identities are preserved");
+    require(aHistory->lines[0].find(bRecent.value()) == std::string::npos &&
+            aHistory->lines[1].find(bRecent.value()) == std::string::npos,
+        "project B run identity never leaks into A");
+
+    const auto bResponse = dispatcher.dispatch(request(*clock, 92U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectB}));
+    const auto* bHistory = responseValue<Manager::ManagerOperationalSnapshot>(bResponse);
+    require(bHistory != nullptr && bHistory->lines.size() == 1U &&
+            bHistory->lines[0].find(bRecent.value()) != std::string::npos,
+        "project B history retains only its exact run");
+    require(operational.sessionCalls == 2U,
+        "one bounded session listing is read per authorized inspection");
+    requireError(dispatcher.dispatch(request(*clock, 93U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, std::nullopt})),
+        Domain::ErrorCodes::InvalidRequest, "unbound run history");
+    require(operational.sessionCalls == 2U,
+        "unbound inspection does not read sessions");
+    operational.allowStatus = true;
+    managedRuns->stateByRun.emplace(aOpen.value(), Domain::ManagedRunState::Running);
+    managedRuns->outputByRun.emplace(aRecent.value(), "OK from project A");
+    managedRuns->outputByRun.emplace(bRecent.value(), "private project B result");
+    const auto runtimeResponse = dispatcher.dispatch(request(*clock, 94U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Runtimes,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectA}));
+    const auto* runtime = responseValue<Manager::ManagerOperationalSnapshot>(runtimeResponse);
+    require(runtime != nullptr, "project-bound runtime inventory succeeds");
+    const auto runtimeText = [&] {
+        std::string text;
+        for (const auto& line : runtime->lines) text += line + "\n";
+        return text;
+    }();
+    require(runtimeText.find("Job inventory: 2 recent selected-project runs · 1 active · 1 completed") !=
+            std::string::npos,
+        "runtime jobs use exact persisted run states");
+    require(runtimeText.find(aOpen.value()) != std::string::npos &&
+            runtimeText.find(aRecent.value()) != std::string::npos &&
+            runtimeText.find("Result · OK from project A") != std::string::npos,
+        "runtime inventory projects selected-project identities and outcomes");
+    require(runtimeText.find(bRecent.value()) == std::string::npos &&
+            runtimeText.find("private project B result") == std::string::npos,
+        "runtime inventory never projects another project's run or result");
+    require(operational.sessionCalls == 3U,
+        "runtime jobs read one bounded persisted session window");
+}
+
+void testDurableEvidenceIsRedactedAndProjectBound()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    FakeOperationalSessions operational;
+    FakeDurableManagedRunStore durable;
+    FakeEvidenceHasher hasher;
+    const auto projectA = Domain::ProjectId::parse(uuidText(721U)).value();
+    const auto projectB = Domain::ProjectId::parse(uuidText(722U)).value();
+    const auto runA = Domain::SessionId::parse(uuidText(723U)).value();
+    const auto runB = Domain::SessionId::parse(uuidText(724U)).value();
+    const auto managedAgent = Domain::AgentId::parse("forge-managed-run").value();
+    const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
+    operational.listing.recent.push_back({
+        runA, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    operational.listing.recent.push_back({
+        runB, managedAgent, std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    Domain::ManagedRunRecord a{
+        runA, projectA, Domain::ClientId::parse("evidence-fixture").value(),
+        "private project A mission", 7U, Domain::ManagedRunState::Completed,
+        Domain::ProviderSessionId::parse("resp_evidence_a").value(),
+        20U, 4U, std::nullopt, std::string{"private project A model output"},
+        std::nullopt, {}, time, time, false};
+    a.evidenceSeal = Domain::Sha256Digest::parse(std::string(64U, 'b')).value();
+    a.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Verified;
+    durable.records.emplace(runA.value(), a);
+    auto b = a;
+    b.runId = runB;
+    b.projectId = projectB;
+    b.task = "private project B mission";
+    b.outputText = "private project B model output";
+    durable.records.emplace(runB.value(), b);
+    Manager::ManagerTelemetrySources sources;
+    sources.operational = &operational;
+    sources.durableManagedRunStore = &durable;
+    sources.evidenceHasher = &hasher;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    const auto responseA = dispatcher.dispatch(request(*clock, 95U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, projectA}));
+    const auto* evidenceA = responseValue<Manager::ManagerOperationalSnapshot>(
+        responseA);
+    require(evidenceA && evidenceA->lines.size() == 1U,
+        "evidence returns one exact-project durable run");
+    const auto& row = evidenceA->lines.front();
+    require(row.find("\"run_id\":\"" + runA.value() + "\"") !=
+                std::string::npos &&
+            row.find("\"project_id\":\"" + projectA.value() + "\"") !=
+                std::string::npos &&
+            row.find("\"native_record_integrity\":\"verified\"") !=
+                std::string::npos &&
+            row.find("\"task_outcome_verification\":\"not_configured\"") !=
+                std::string::npos,
+        "evidence carries native provenance without claiming task success");
+    require(row.find("\"task_sha256\":\"" + std::string(64U, 'a') +
+                "\"") != std::string::npos &&
+            row.find("\"stored_output_sha256\":\"" +
+                std::string(64U, 'a') + "\"") != std::string::npos &&
+            row.find("private project A") == std::string::npos &&
+            row.find(runB.value()) == std::string::npos,
+        "redacted evidence omits mission and model text and foreign identity");
+    requireError(dispatcher.dispatch(request(*clock, 96U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::Inspect,
+            std::nullopt, {}, std::nullopt})),
+        Domain::ErrorCodes::InvalidRequest, "evidence needs exact project");
+    require(operational.sessionCalls == 1U,
+        "unbound evidence never reads the session window");
+}
+
+void testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    FakeOperationalSessions operational;
+    FakeDurableManagedRunStore durable;
+    FakeEvidenceHasher hasher;
+    FakeNativeCheckToolRouter nativeTool;
+    const auto projectA = Domain::ProjectId::parse(uuidText(731U)).value();
+    const auto projectB = Domain::ProjectId::parse(uuidText(732U)).value();
+    const auto runA = Domain::SessionId::parse(uuidText(733U)).value();
+    const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
+    operational.listing.recent.push_back({
+        runA, Domain::AgentId::parse("forge-managed-run").value(),
+        std::nullopt, Domain::SessionStatus::Completed,
+        std::nullopt, time, time});
+    Domain::ManagedRunRecord record{
+        runA, projectA, Domain::ClientId::parse("native-check-fixture").value(),
+        "private mission", 0U, Domain::ManagedRunState::Completed,
+        std::nullopt, 3U, 2U, std::nullopt, "private model output",
+        std::nullopt, {}, time, time, false};
+    record.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Verified;
+    record.evidenceSeal = Domain::Sha256Digest::parse(std::string(64U, 'b')).value();
+    durable.records.emplace(runA.value(), record);
+    TestFakes::DeterministicWorkspaceAuthority authority{
+        Domain::AuthorityId::parse(uuidText(734U)).value(),
+        Domain::ClientId::parse("native-check-fixture").value(),
+        {Domain::PathText::create("D:\\NativeFixture").value()},
+        Domain::FileAccess::Execute, {Domain::FileAccess::Execute}, {}, true, 0U};
+    Manager::ManagerTelemetrySources sources;
+    sources.operational = &operational;
+    sources.durableManagedRunStore = &durable;
+    sources.evidenceHasher = &hasher;
+    sources.projectWorkspaceAuthority = &authority;
+    sources.toolRouter = &nativeTool;
+    sources.shellEnabled = true;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    requireError(dispatcher.dispatch(request(*clock, 97U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "Write-Output OK", projectB})),
+        Domain::ErrorCodes::Conflict, "foreign-project native check denied");
+    require(nativeTool.calls == 0U, "foreign run never reaches native router");
+    durable.records.at(runA.value()).evidenceIntegrity =
+        Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed;
+    requireError(dispatcher.dispatch(request(*clock, 98U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "Write-Output OK", projectA})),
+        Domain::ErrorCodes::Conflict, "unsealed native check denied");
+    require(nativeTool.calls == 0U, "unsealed run never reaches native router");
+    durable.records.at(runA.value()).evidenceIntegrity =
+        Domain::ManagedRunEvidenceIntegrity::Verified;
+
+    const auto passed = dispatcher.dispatch(request(*clock, 99U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "Write-Output OK", projectA}));
+    const auto* passedSnapshot = responseValue<Manager::ManagerOperationalSnapshot>(passed);
+    require(passedSnapshot && passedSnapshot->lines.size() == 1U &&
+        passedSnapshot->lines.front().find("native_check_passed") !=
+            std::string::npos,
+        "passing native check projected separately from model result");
+    require(nativeTool.calls == 1U && nativeTool.lastProject == projectA &&
+        nativeTool.lastCommand == "Write-Output OK",
+        "exact-project command routes through authorized native tool");
+    require(durable.records.at(runA.value()).nativeTaskChecks.size() == 1U &&
+        durable.records.at(runA.value()).nativeTaskChecks.front().passed,
+        "passing receipt stored in durable run");
+    require(passedSnapshot->lines.front().find("Write-Output OK") ==
+            std::string::npos &&
+        passedSnapshot->lines.front().find("native stdout") ==
+            std::string::npos &&
+        passedSnapshot->lines.front().find("private mission") ==
+            std::string::npos,
+        "evidence projection omits command, output and mission text");
+
+    nativeTool.exitCode = 1;
+    const auto failed = dispatcher.dispatch(request(*clock, 100U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Evidence,
+            Manager::ManagerOperationalAction::VerifyTask,
+            runA, "exit 1", projectA}));
+    const auto* failedSnapshot = responseValue<Manager::ManagerOperationalSnapshot>(failed);
+    require(failedSnapshot && failedSnapshot->lines.front().find(
+        "native_check_failed") != std::string::npos &&
+        durable.records.at(runA.value()).nativeTaskChecks.size() == 2U &&
+        !durable.records.at(runA.value()).nativeTaskChecks.back().passed,
+        "failing check is durable and never upgraded by model completion");
+}
+
 void testProjectWorkflowKeepsExactProjectIdentity()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -721,6 +1146,8 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         Domain::Result<Domain::ProjectMemoryStatus>::success(statusFor(projectB)));
     memory.searchResult.set(
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectB)));
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(pageFor(projectB)));
     const auto selectedB = dispatcher.dispatch(request(
         *clock,
         81U,
@@ -746,6 +1173,8 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         Domain::Result<Domain::ProjectMemoryStatus>::success(statusFor(projectA)));
     memory.searchResult.set(
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
     const auto selectedA = dispatcher.dispatch(request(
         *clock,
         83U,
@@ -754,6 +1183,191 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         responseValue<Manager::ManagerProjectWorkspaceSnapshot>(selectedA);
     require(workspaceA != nullptr && workspaceA->project.id == projectA,
             "project A selection remains isolated from project B");
+}
+
+void testInstructionPackagePreviewAndActivationStayProjectBound()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    const auto project = Domain::ProjectId::parse(uuidText(820U)).value();
+    const Domain::ProjectMemoryDescriptor descriptor{
+        project, "Instruction project", std::nullopt,
+        {Domain::PathText::create("D:\\Projects\\Instructions").value()}};
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(descriptor)),
+        "seed instruction project");
+    TestFakes::RecordingProjectMemoryService memory;
+    const auto revision = Domain::Sha256Digest::parse(
+        std::string(64U, 'a')).value();
+    FixedHasher hasher{revision};
+
+    const auto packageRoot = std::filesystem::temp_directory_path() /
+        "forge-instruction-package-dispatcher-test";
+    struct Cleanup final {
+        std::filesystem::path path;
+        ~Cleanup()
+        {
+            std::error_code ignored;
+            std::filesystem::remove_all(path, ignored);
+        }
+    } cleanup{packageRoot};
+    std::error_code ignored;
+    std::filesystem::remove_all(packageRoot, ignored);
+    std::filesystem::create_directories(packageRoot / "specs");
+    {
+        std::ofstream output{packageRoot / "START-HERE.md", std::ios::binary};
+        output << "# Start here\nFollow the project contract.\n";
+    }
+    {
+        std::ofstream output{packageRoot / "specs" / "policy.json",
+            std::ios::binary};
+        output << "{\"mode\":\"bounded\"}\n";
+    }
+    {
+        std::ofstream output{packageRoot / "ignored.bin", std::ios::binary};
+        output << "not ingested";
+    }
+    const auto packagePath = Domain::PathText::create(
+        packageRoot.string()).value();
+    Manager::ManagerTelemetrySources sources;
+    sources.projects = &registry;
+    sources.projectMemory = &memory;
+    sources.evidenceHasher = &hasher;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    const auto preview = dispatcher.dispatch(request(
+        *clock, 821U, Manager::ManagerInstructionPackageRequest{
+            project, packagePath, false, std::nullopt}));
+    const auto* previewSnapshot =
+        responseValue<Manager::ManagerInstructionPackageSnapshot>(preview);
+    require(previewSnapshot != nullptr &&
+        previewSnapshot->projectId == project &&
+        previewSnapshot->revision == revision &&
+        previewSnapshot->fileCount == 2U &&
+        previewSnapshot->ignoredFileCount == 1U &&
+        !previewSnapshot->activated &&
+        !previewSnapshot->manifestRecordId,
+        "instruction package preview is exact, bounded and read-only");
+    require(hasher.calls == 1U && hasher.lastByteCount > 0U,
+        "instruction preview hashes canonical package content");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 0U &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 0U,
+        "instruction preview does not mutate memory");
+
+    const auto fileA = Domain::MemoryRecordId::parse(uuidText(822U)).value();
+    const auto fileB = Domain::MemoryRecordId::parse(uuidText(823U)).value();
+    const auto manifest = Domain::MemoryRecordId::parse(uuidText(824U)).value();
+    const auto outcome = [&](const Domain::MemoryRecordId& id) {
+        return Domain::MemoryWriteOutcome{
+            project, id, 1U, Domain::MemoryWriteDisposition::Inserted,
+            revision, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion};
+    };
+    memory.rememberBatchResult.set(
+        Domain::Result<Domain::MemoryBatchOutcome>::success(
+            Domain::MemoryBatchOutcome{
+                project, {outcome(fileA), outcome(fileB)},
+                Domain::ProjectMemorySchemaVersion,
+                Domain::ProjectMemoryCapabilityVersion}));
+    memory.rememberResult.set(
+        Domain::Result<Domain::MemoryWriteOutcome>::success(outcome(manifest)));
+
+    const auto stale = Domain::Sha256Digest::parse(
+        std::string(64U, 'b')).value();
+    requireError(dispatcher.dispatch(request(
+        *clock, 825U, Manager::ManagerInstructionPackageRequest{
+            project, packagePath, true, stale})),
+        Domain::ErrorCodes::Conflict,
+        "instruction activation with stale preview");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 0U,
+        "stale instruction activation commits nothing");
+
+    const auto activated = dispatcher.dispatch(request(
+        *clock, 826U, Manager::ManagerInstructionPackageRequest{
+            project, packagePath, true, revision}));
+    const auto* activatedSnapshot =
+        responseValue<Manager::ManagerInstructionPackageSnapshot>(activated);
+    require(activatedSnapshot != nullptr && activatedSnapshot->activated &&
+        activatedSnapshot->manifestRecordId == manifest,
+        "validated instruction revision activates with manifest identity");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 1U &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 1U &&
+        memory.lastProjectId() == project,
+        "instruction files and manifest remain bound to exact project");
+
+    const auto now = clock->utc;
+    const auto record = [&](const Domain::MemoryRecordId& id,
+                            std::string kind,
+                            std::string title,
+                            std::string body) {
+        return Domain::ProjectMemoryRecord{
+            id, project, 1U, std::move(kind), std::move(title),
+            "instruction package test", std::move(body),
+            {"instruction-package"}, 1.0, 1.0,
+            "manager_instruction_package", std::nullopt, std::nullopt,
+            now, now, now, std::nullopt, revision, false,
+            Domain::ProjectMemorySchemaVersion};
+    };
+    const auto manifestBody = std::string{
+        "{\"schema\":\"forge-instruction-package-v1\","
+        "\"package_name\":\"fixture\",\"revision\":\""} +
+        revision.value() + "\",\"files\":[{\"path\":\"START-HERE.md\","
+        "\"record_id\":\"" + fileA.value() + "\"},{\"path\":"
+        "\"specs/policy.json\",\"record_id\":\"" + fileB.value() +
+        "\"}]}";
+    auto manifestRecord = record(
+        manifest, "instruction_package", "fixture", manifestBody);
+    auto firstFile = record(
+        fileA, "project_instruction", "START-HERE.md",
+        "Always preserve exact project identity.");
+    auto secondFile = record(
+        fileB, "project_instruction", "specs/policy.json",
+        "{\"mode\":\"bounded\"}");
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{manifestRecord, 1.0}}, std::nullopt,
+            false, 1'024U, 64U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.statusResult.set(
+        Domain::Result<Domain::ProjectMemoryStatus>::success(
+            Domain::ProjectMemoryStatus{
+                project, 1U, 1U, 0U, 0U, 1U, 4'096U, 128U,
+                false, true, Domain::ProjectMemorySchemaVersion, {}}));
+    const auto workspaceResponse = dispatcher.dispatch(request(
+        *clock, 8261U,
+        Manager::ManagerProjectMemoryRequest{project, {}, 20U}));
+    const auto* workspace =
+        responseValue<Manager::ManagerProjectWorkspaceSnapshot>(
+            workspaceResponse);
+    require(workspace != nullptr && workspace->activeInstructionManifest &&
+        workspace->activeInstructionManifest->id == manifest,
+        "project workspace projects the active instruction manifest outside pagination");
+    memory.getResult.set(
+        Domain::Result<Domain::MemoryRecords>::success(Domain::MemoryRecords{
+            project, {std::move(firstFile), std::move(secondFile)},
+            2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    auto managedRuns = std::make_shared<FakeManagedRuns>();
+    Manager::ManagerRequestDispatcher runDispatcher{
+        controller, clock, Manager::ManagerTransportLimits{},
+        managedRuns, sources};
+    const auto runId = Domain::SessionId::parse(uuidText(827U)).value();
+    const auto clientId = Domain::ClientId::parse(uuidText(828U)).value();
+    const auto started = runDispatcher.dispatch(request(
+        *clock, 829U, Manager::ManagedRunStartRequest{
+            runId, project, clientId, 7U, "Complete the project work."}));
+    require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
+        managedRuns->lastStart &&
+        managedRuns->lastStart->task.find("[ACTIVE PROJECT INSTRUCTION PACKAGE]") !=
+            std::string::npos &&
+        managedRuns->lastStart->task.find(
+            "Always preserve exact project identity.") != std::string::npos &&
+        managedRuns->lastStart->task.find("Complete the project work.") !=
+            std::string::npos,
+        "new managed run receives active project instruction revision");
 }
 
 void testMaintenanceRequiresExactScopeAndCoordinatesStores()
@@ -1143,7 +1757,11 @@ int main()
     try {
         testPayloadMappingAndControllerFailures();
         testManagedRunDispatchAndIdentity();
+        testRunHistoryIsBoundToSelectedProject();
+        testDurableEvidenceIsRedactedAndProjectBound();
+        testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt();
         testProjectWorkflowKeepsExactProjectIdentity();
+        testInstructionPackagePreviewAndActivationStayProjectBound();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetrySnapshotUsesManagerOwnedRunValues();
         testDuplicateCapacityAndCancellationBypass();
@@ -1152,7 +1770,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 11 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 15 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

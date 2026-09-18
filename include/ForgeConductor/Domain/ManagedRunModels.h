@@ -23,6 +23,26 @@ enum class ManagedRunState {
     Paused
 };
 
+enum class ManagedRunEvidenceIntegrity {
+    NotTerminal,
+    LegacyUnsealed,
+    Verified,
+    Mismatch
+};
+
+struct ManagedNativeTaskCheck final {
+    Sha256Digest commandDigest;
+    Sha256Digest stdoutDigest;
+    Sha256Digest stderrDigest;
+    int exitCode{};
+    bool passed{};
+    bool timedOut{};
+    bool cancelled{};
+    bool terminationConfirmed{};
+    std::uint64_t elapsedMilliseconds{};
+    UtcTimePoint checkedAt;
+};
+
 struct ManagedFunctionCall final {
     std::string callId;
     std::string name;
@@ -69,6 +89,11 @@ struct ManagedRunRecord final {
     std::vector<ManagedFunctionCall> pendingFunctionCalls;
     UtcTimePoint createdAt;
     UtcTimePoint updatedAt;
+    bool allowTools{true};
+    std::optional<Sha256Digest> evidenceSeal;
+    ManagedRunEvidenceIntegrity evidenceIntegrity{
+        ManagedRunEvidenceIntegrity::NotTerminal};
+    std::vector<ManagedNativeTaskCheck> nativeTaskChecks;
 };
 
 struct ManagedRunStartRequest final {
@@ -79,6 +104,7 @@ struct ManagedRunStartRequest final {
     CorrelationId correlationId;
     std::uint64_t authorityGeneration{};
     std::string task;
+    bool allowTools{true};
 };
 
 struct ManagedRunSnapshot final {
