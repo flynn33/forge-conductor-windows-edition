@@ -1,12 +1,12 @@
 # Product status
 
-Updated September 18, 2026 for the Forge Conductor 1.1.42 engineering candidate.
+Updated September 18, 2026 for the Forge Conductor 1.1.43 engineering candidate.
 
 Forge Conductor is implemented as a native Windows 11 x64 product with a complete WinUI 3 GUI and production runtime. The source builds all four shipping executables: `ForgeConductorApp.exe`, `forge-conductor.exe`, `ForgeConductor.Manager.exe`, and `ForgeConductor.SessionHost.exe`.
 
 | Area | Current state |
 |---|---|
-| GUI | Fourteen native destinations are implemented. Version 1.1.42 adds a persistent guided project-setup path that uses the real registration workflow and explains what each step does and why. Production-data, final exact-byte scaling, High Contrast, and keyboard-only installed acceptance remain open. |
+| GUI | Fifteen native destinations are implemented. Version 1.1.43 adds a dedicated Guided setup destination and a persistent nine-step path covering real folder authorization, Manager verification, optional instructions and memory, provider readiness, and the first managed task. Production-data, final exact-byte scaling, High Contrast, and keyboard-only installed acceptance remain open. |
 | Local-model execution | Manager-owned LM Studio Responses runs, tool calls, rollover, reattachment, pause/resume/stop, and retained-context reporting are implemented. |
 | Data | Production profile is `%LOCALAPPDATA%\Forge Conductor`; central schemas 3, 5, 6, 7, 8, released 9 and 10 migrate through immutable history to nullable audit-project schema 11. Historical audit rows remain unscoped. |
 | Projects and tools | Stable project identities, alias isolation, legacy/project memory, checksummed project instruction packages, and 57 native tools are exposed through authenticated Manager and MCP paths. Package validation is read-only; activation persists file records and an exact active manifest, and new runs receive the active revision within the bounded task budget. |
@@ -15,6 +15,6 @@ Forge Conductor is implemented as a native Windows 11 x64 product with a complet
 | Packaging | Stable package identity `ForgeConductor.Windows`, signed MSIX, verified payload manifest, public certificate, installer helper, optional App Installer updates, and provenance metadata are implemented. |
 | Automation | Windows Release CI and a secret-backed production-signing workflow are checked in. |
 
-Version 1.1.42 adds guided setup around the existing Manager-owned project registration path while retaining the 1.1.41 instruction-package validation, stale-preview rejection, project-scoped persistence, and managed-run attachment. Exact-commit Release, signed installation, every-view screenshots, and installed package interaction are required before its release record is complete. The live model-only response is not native task verification. Desktop-source handoff, useful successor work, production and final accessibility proofs remain open. Packaging intentionally rejects dirty product inputs.
+Version 1.1.43 expands guided setup across the existing Manager-owned project registration, instruction-package, durable-memory, provider, and managed-run paths. The guide does not synthesize project data and advances authoritative actions only after their Manager readback. Exact-commit Release, signed installation, every-view screenshots, and installed package interaction are required before its release record is complete. The live model-only response is not native task verification. Desktop-source handoff, useful successor work, production and final accessibility proofs remain open. Packaging intentionally rejects dirty product inputs.
 
 Historical 0.9.x and 1.0 candidate records document prior validation only and are not 1.1 release artifacts.

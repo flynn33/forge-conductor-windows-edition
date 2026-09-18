@@ -180,6 +180,23 @@ foreach ($relative in $requiredPayload) {
         throw "Required package payload is missing: $relative"
     }
 }
+$mainWindowXbf = Join-Path $payload 'MainWindow.xbf'
+$mainWindowText = [Text.Encoding]::Unicode.GetString(
+    [IO.File]::ReadAllBytes($mainWindowXbf))
+$guidedModeMarkers = @(
+    'Guided setup',
+    'Open Guided Mode setup',
+    'Guided Mode on home',
+    'Guided Mode setting',
+    'GUIDED MODE · STEP 1 OF 9',
+    'Restart from the beginning',
+    'The full path',
+    'Version loading · Windows 11 · x64')
+foreach ($marker in $guidedModeMarkers) {
+    if (-not $mainWindowText.Contains($marker, [StringComparison]::Ordinal)) {
+        throw "Compiled application surface is missing required Guided Mode marker: $marker"
+    }
+}
 foreach ($debugRuntime in @('vcruntime140d.dll','msvcp140d.dll','ucrtbased.dll')) {
     if (Test-Path -LiteralPath (Join-Path $payload $debugRuntime)) {
         throw "Debug runtime must not ship: $debugRuntime"

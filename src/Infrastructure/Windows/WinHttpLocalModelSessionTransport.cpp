@@ -441,7 +441,7 @@ public:
         : configuration_{validatedConfiguration(std::move(configuration))},
           host_{requireUtf16(configuration_.loopbackHost, "host")},
           session_{std::make_shared<AtomicInternetHandle>(WinHttpOpen(
-              L"Forge Conductor/1.1.42",
+              L"Forge Conductor/1.1.43",
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,

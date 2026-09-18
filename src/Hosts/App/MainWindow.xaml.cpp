@@ -391,6 +391,8 @@ void MainWindow::WindowContentLoaded(
         // Invalid monitor geometry must not prevent the native console from opening.
     }
     FooterMachineName().Text(currentMachineName());
+    FooterProductVersion().Text(winrt::to_hstring(
+        "Version " + currentProductVersion() + " · Windows 11 · x64"));
     const auto profile = connection_
         ? connection_->profileSummary()
         : std::string{"Deployment profile unavailable"};
@@ -434,13 +436,14 @@ void MainWindow::WindowContentLoaded(
     if (const auto savedStep = loadSavedText(guidedStepValueName_.c_str())) {
         const auto value = std::wcstoul(savedStep->c_str(), nullptr, 10);
         if (value >= static_cast<unsigned long>(GuidedProjectStep::Welcome) &&
-            value <= static_cast<unsigned long>(GuidedProjectStep::Ready)) {
+            value <= static_cast<unsigned long>(GuidedProjectStep::Complete)) {
             guidedStep_ = static_cast<GuidedProjectStep>(value);
         }
     }
     if (guidedStep_ == GuidedProjectStep::RegisterProject ||
-        ((guidedStep_ == GuidedProjectStep::UnderstandProject ||
-          guidedStep_ == GuidedProjectStep::Ready) && selectedProjectId_.empty())) {
+        (static_cast<std::uint32_t>(guidedStep_) >=
+             static_cast<std::uint32_t>(GuidedProjectStep::ReviewScope) &&
+         selectedProjectId_.empty())) {
         guidedStep_ = GuidedProjectStep::ChooseFolder;
         storeSavedText(guidedStepValueName_.c_str(),
             winrt::to_hstring(static_cast<std::uint32_t>(guidedStep_)));
@@ -675,11 +678,20 @@ void MainWindow::RenderGuidedMode()
 
     const auto step = static_cast<std::uint32_t>(guidedStep_);
     GuidedModeStepLabel().Text(L"GUIDED MODE · STEP " +
-        winrt::to_hstring(step) + L" OF 5");
+        winrt::to_hstring(step) + L" OF 9");
     GuidedModeProgress().Value(static_cast<double>(step));
     GuidedModeBackButton().Visibility(guidedStep_ == GuidedProjectStep::Welcome
         ? Visibility::Collapsed : Visibility::Visible);
     GuidedModeSecondaryButton().Visibility(Visibility::Collapsed);
+    auto projectLabel = selectedProjectId_.empty()
+        ? std::string{"none selected"} : selectedProjectId_;
+    for (const auto& project : projects_) {
+        if (project.id.value() == selectedProjectId_) {
+            projectLabel = project.displayName + " · " + selectedProjectId_;
+            break;
+        }
+    }
+    GuidedModeContext().Text(winrt::to_hstring("Current project: " + projectLabel));
 
     switch (guidedStep_) {
     case GuidedProjectStep::Welcome:
@@ -723,20 +735,60 @@ void MainWindow::RenderGuidedMode()
         GuidedModeSecondaryButton().Visibility(Visibility::Visible);
         break;
     }
-    case GuidedProjectStep::UnderstandProject:
-        GuidedModeTitle().Text(L"Add the context your project needs");
-        GuidedModeBody().Text(L"The project is now registered and selected. On the Projects page you can optionally activate an instruction package for repeatable guidance, or save durable memory for facts and decisions learned while working. Both use this real project's store.");
+    case GuidedProjectStep::ReviewScope:
+        GuidedModeTitle().Text(L"Review the verified project boundary");
+        GuidedModeBody().Text(L"The Manager has registered and read back the selected project. Review its authorized folder and durable identity on Projects before adding context. Nothing outside that boundary becomes part of this project.");
         GuidedModeWhy().Text(
-            L"Why this matters: instructions describe how work should be done; project memory preserves what was learned. Keeping them separate makes future runs easier to understand and maintain.");
-        GuidedModePrimaryButton().Content(box_value(L"Finish project setup"));
+            L"Why this matters: the exact project ID prevents instructions, memory, runs, and evidence from drifting into another project with a similar name.");
+        GuidedModePrimaryButton().Content(box_value(L"Continue to instructions"));
         break;
-    case GuidedProjectStep::Ready:
-        GuidedModeTitle().Text(L"Your project is ready");
+    case GuidedProjectStep::Instructions:
+        GuidedModeTitle().Text(L"Add repeatable project instructions · optional");
         GuidedModeBody().Text(
-            L"The active project now supplies the authorization and durable context boundary for managed work. You can return to Projects at any time to add instructions, memory, another authorized folder, or an archive.");
+            L"If this project has real guidance files—such as conventions, requirements, or operating notes—choose that folder in Instruction package. Validate first to review exactly what will be included, then activate the verified revision. Skip this step if the project does not need persistent instructions.");
         GuidedModeWhy().Text(
-            L"What happens next: a managed run uses this selected project. Native tools remain off unless you deliberately enable them for that run.");
+            L"Why this matters: instructions tell every new managed run how work should be done. Validation keeps accidental or unsupported files out before anything is activated.");
+        GuidedModePrimaryButton().Content(box_value(L"Open instruction controls"));
+        GuidedModeSecondaryButton().Content(box_value(L"Skip instructions for now"));
+        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        break;
+    case GuidedProjectStep::Memory:
+        GuidedModeTitle().Text(L"Record durable project context · optional");
+        GuidedModeBody().Text(
+            L"Use Remember for real facts, decisions, constraints, or context that should survive future sessions. Do not add a placeholder note just to complete this guide; save something only when it is useful to this project.");
+        GuidedModeWhy().Text(
+            L"Why this matters: project memory preserves what was learned, while instructions define how work should be performed. Keeping them separate makes both easier to review and maintain.");
+        GuidedModePrimaryButton().Content(box_value(L"Open project memory"));
+        GuidedModeSecondaryButton().Content(box_value(L"Continue without a note"));
+        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        break;
+    case GuidedProjectStep::Provider:
+        GuidedModeTitle().Text(L"Verify the model provider");
+        GuidedModeBody().Text(
+            L"Open Provider to confirm the loopback endpoint and loaded model that will handle this project's managed work. Discover models, adjust the selection if needed, and test the connection using the real configured provider.");
+        GuidedModeWhy().Text(
+            L"Why this matters: project setup is not operational until the Manager can reach the intended model. Provider readback makes that dependency explicit before a task starts.");
+        GuidedModePrimaryButton().Content(box_value(L"Open provider setup"));
+        GuidedModeSecondaryButton().Content(box_value(L"Continue to first task"));
+        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        break;
+    case GuidedProjectStep::FirstRun:
+        GuidedModeTitle().Text(L"Define the first real managed task");
+        GuidedModeBody().Text(
+            L"On Autonomy, describe actual work for the selected project. Native tool access stays off unless you deliberately enable the authorized catalog. Starting the run creates real project-bound work—Guided Mode never submits a sample task.");
+        GuidedModeWhy().Text(
+            L"Why this matters: the mission, project identity, model policy, and tool choice become one Manager-owned run that can be resumed and inspected later.");
         GuidedModePrimaryButton().Content(box_value(L"Open managed work"));
+        GuidedModeSecondaryButton().Content(box_value(L"Finish setup without starting"));
+        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        break;
+    case GuidedProjectStep::Complete:
+        GuidedModeTitle().Text(L"Project setup is complete");
+        GuidedModeBody().Text(
+            L"The selected project now has a verified authorization boundary and is ready for managed work. Any instructions or memory you chose were stored through the real Manager workflow, and any run you started is bound to this exact project.");
+        GuidedModeWhy().Text(
+            L"Come back any time: restart Guided Mode from the navigation, the Rig toggle, or Settings. Your project remains available when the guide is off.");
+        GuidedModePrimaryButton().Content(box_value(L"Finish Guided Mode"));
         GuidedModeSecondaryButton().Content(box_value(L"Review project"));
         GuidedModeSecondaryButton().Visibility(Visibility::Visible);
         break;
@@ -791,12 +843,34 @@ void MainWindow::GuidedModePrimaryClicked(
         RenderGuidedMode();
         RunAction(Action::ProjectRegister);
         break;
-    case GuidedProjectStep::UnderstandProject:
-        SetGuidedStep(GuidedProjectStep::Ready);
+    case GuidedProjectStep::ReviewScope:
+        SetGuidedStep(GuidedProjectStep::Instructions);
+        SelectPage(L"Projects");
+        InstructionPackageCard().StartBringIntoView();
+        InstructionPackagePath().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
         break;
-    case GuidedProjectStep::Ready:
-        SetGuidedMode(false, false);
+    case GuidedProjectStep::Instructions:
+        SelectPage(L"Projects");
+        InstructionPackageCard().StartBringIntoView();
+        InstructionPackagePath().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+        break;
+    case GuidedProjectStep::Memory:
+        SelectPage(L"Projects");
+        ProjectMemoryCard().StartBringIntoView();
+        ProjectMemoryTitle().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+        break;
+    case GuidedProjectStep::Provider:
+        SelectPage(L"Provider");
+        ProviderLoadedModels().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+        break;
+    case GuidedProjectStep::FirstRun:
         SelectPage(L"Autonomy");
+        RunMissionCard().StartBringIntoView();
+        RunTask().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+        break;
+    case GuidedProjectStep::Complete:
+        SetGuidedMode(false, false);
+        SelectPage(L"Rig");
         break;
     }
 }
@@ -808,14 +882,26 @@ void MainWindow::GuidedModeSecondaryClicked(
     if (guidedStep_ == GuidedProjectStep::Welcome ||
         guidedStep_ == GuidedProjectStep::ChooseFolder) {
         if (!selectedProjectId_.empty()) {
-            SetGuidedStep(GuidedProjectStep::UnderstandProject);
+            SetGuidedStep(GuidedProjectStep::ReviewScope);
             SelectPage(L"Projects");
         }
     } else if (guidedStep_ == GuidedProjectStep::RegisterProject) {
         guidedRegistrationPending_ = false;
         SetGuidedStep(GuidedProjectStep::ChooseFolder);
         ShowProjectRegistration();
-    } else if (guidedStep_ == GuidedProjectStep::Ready) {
+    } else if (guidedStep_ == GuidedProjectStep::Instructions) {
+        SetGuidedStep(GuidedProjectStep::Memory);
+        SelectPage(L"Projects");
+        ProjectMemoryCard().StartBringIntoView();
+    } else if (guidedStep_ == GuidedProjectStep::Memory) {
+        SetGuidedStep(GuidedProjectStep::Provider);
+        SelectPage(L"Provider");
+    } else if (guidedStep_ == GuidedProjectStep::Provider) {
+        SetGuidedStep(GuidedProjectStep::FirstRun);
+        SelectPage(L"Autonomy");
+    } else if (guidedStep_ == GuidedProjectStep::FirstRun) {
+        SetGuidedStep(GuidedProjectStep::Complete);
+    } else if (guidedStep_ == GuidedProjectStep::Complete) {
         SelectPage(L"Projects");
     }
 }
@@ -836,13 +922,30 @@ void MainWindow::GuidedModeBackClicked(
         SetGuidedStep(GuidedProjectStep::ChooseFolder);
         ShowProjectRegistration();
         break;
-    case GuidedProjectStep::UnderstandProject:
+    case GuidedProjectStep::ReviewScope:
         SetGuidedStep(GuidedProjectStep::ChooseFolder);
         ShowProjectRegistration();
         break;
-    case GuidedProjectStep::Ready:
-        SetGuidedStep(GuidedProjectStep::UnderstandProject);
+    case GuidedProjectStep::Instructions:
+        SetGuidedStep(GuidedProjectStep::ReviewScope);
         SelectPage(L"Projects");
+        break;
+    case GuidedProjectStep::Memory:
+        SetGuidedStep(GuidedProjectStep::Instructions);
+        SelectPage(L"Projects");
+        InstructionPackageCard().StartBringIntoView();
+        break;
+    case GuidedProjectStep::Provider:
+        SetGuidedStep(GuidedProjectStep::Memory);
+        SelectPage(L"Projects");
+        break;
+    case GuidedProjectStep::FirstRun:
+        SetGuidedStep(GuidedProjectStep::Provider);
+        SelectPage(L"Provider");
+        break;
+    case GuidedProjectStep::Complete:
+        SetGuidedStep(GuidedProjectStep::FirstRun);
+        SelectPage(L"Autonomy");
         break;
     }
 }
@@ -852,6 +955,15 @@ void MainWindow::GuidedModeCloseClicked(
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
     SetGuidedMode(false, false);
+    if (PageTitle().Text() == L"Guided setup") SelectPage(L"Rig");
+}
+
+void MainWindow::GuidedModeRestartClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    SetGuidedMode(true, true);
+    SelectPage(L"Guided setup");
 }
 
 void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
@@ -1463,6 +1575,8 @@ void MainWindow::NavigationChanged(
     }
     const bool provider = tag == L"Provider";
     const bool settings = tag == L"Settings";
+    const bool guidedSetup = tag == L"Guided setup";
+    if (guidedSetup && !guidedModeEnabled_) SetGuidedMode(true, false);
     const bool autonomy = tag == L"Autonomy" || tag == L"Continuity";
     const bool continuityPage = tag == L"Continuity";
     const bool rig = tag == L"Rig";
@@ -1532,6 +1646,7 @@ void MainWindow::NavigationChanged(
         OperationalCount().Text(L"WAITING");
     }
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
+    GuidedSetupPanel().Visibility(guidedSetup ? Visibility::Visible : Visibility::Collapsed);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     AutonomyOverviewCard().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
     ContinuityOverviewCard().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
@@ -1555,9 +1670,11 @@ void MainWindow::NavigationChanged(
     OperationalPanel().Visibility(operational ? Visibility::Visible : Visibility::Collapsed);
     SettingsPanel().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
     GenericPanel().Visibility(
-        !provider && !settings && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
+        !provider && !settings && !guidedSetup && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
             ? Visibility::Visible : Visibility::Collapsed);
-    if (provider) {
+    if (guidedSetup) {
+        PageDescription().Text(L"Follow the real project path from folder authorization through the first managed task.");
+    } else if (provider) {
         PageDescription().Text(L"Choose a loaded model and inspect the Manager-owned Responses endpoint.");
         if (!providerSettings_) RunAction(Action::ProviderLoad);
         if (telemetryUiInitialized_ && !providerDiscoveryAttempted_) RunAction(Action::ProviderModels);
@@ -4739,6 +4856,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (runView.snapshot) {
                 if (runView.snapshot->record.projectId.value() == selectedProjectId_) {
                     ApplyRunReadback(*runView.snapshot);
+                    if (action == Action::RunStart && guidedModeEnabled_ &&
+                        guidedStep_ == GuidedProjectStep::FirstRun) {
+                        SetGuidedStep(GuidedProjectStep::Complete);
+                    }
                     if (action == Action::RunStart ||
                         (action == Action::RunStatus &&
                          runView.snapshot->record.state !=
@@ -4784,12 +4905,16 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ProjectMemorySummary().Text(L"");
                     ProjectMemoryBody().Text(L"");
                     ProjectMemoryTags().Text(L"");
+                    if (guidedModeEnabled_ &&
+                        guidedStep_ == GuidedProjectStep::Memory) {
+                        SetGuidedStep(GuidedProjectStep::Provider);
+                    }
                 }
             }
             if (action == Action::ProjectRegister && guidedRegistrationPending_) {
                 guidedRegistrationPending_ = false;
                 if (guidedModeEnabled_ && projectView.loaded && projectView.snapshot) {
-                    SetGuidedStep(GuidedProjectStep::UnderstandProject);
+                    SetGuidedStep(GuidedProjectStep::ReviewScope);
                     ProjectRegistrationExpander().IsExpanded(false);
                 } else {
                     RenderGuidedMode();
@@ -4839,6 +4964,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                         InstructionPackageRevision().Text(winrt::to_hstring(
                             package.revision.value().substr(0U, 16U) +
                             "… · ACTIVE"));
+                        if (guidedModeEnabled_ &&
+                            guidedStep_ == GuidedProjectStep::Instructions) {
+                            SetGuidedStep(GuidedProjectStep::Memory);
+                        }
                         followUp = Action::ProjectLoad;
                     }
                     ProjectState().Text(winrt::to_hstring(message));

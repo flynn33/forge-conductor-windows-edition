@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.43 — Complete Guided Mode
+
+- Replace the shallow setup card with a persistent nine-step Guided Mode that covers a real project from folder authorization and Manager verification through scope review, optional instruction packages, optional durable memory, provider readiness, and the first real managed task.
+- Add an unmistakable **Guided setup** destination to the main navigation while retaining synchronized on/off controls on Rig and in Settings. The dedicated page shows the complete path and can restart the guide at any time.
+- Keep every action on the production workflow: the guide uses the operator's folders, project identity, instruction validation, project-memory store, provider configuration, and managed-run form. Optional steps can be skipped without generating placeholder content, sample projects, or mock records.
+- Advance only after authoritative readback for project registration, instruction activation, saved memory, and managed-run creation; display the installed product version in the navigation footer so an upgrade can be confirmed in the app itself.
+
 ## 1.1.42 — Guided project setup
 
 - Add a persistent five-step Guided Mode that explains project authorization, durable identity, instruction packages, project memory, and the handoff to managed work while using the operator's real folders and records.

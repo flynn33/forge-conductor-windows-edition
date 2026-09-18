@@ -4,7 +4,19 @@ Launch Forge Conductor from Start. The header reports the Manager connection and
 
 ## First run
 
-Guided Mode is on for a new profile. Follow its five steps to choose one of your real folders, register it through the Manager, understand its authorization boundary, add optional project context, and continue to managed work. The guide does not create a sample project or mock records. Turn it off or restart it from the **Rig** toggle; the same control is available under **Settings**.
+Guided Mode is on for a new profile. Open **Guided setup** in the main navigation to see and resume the complete path:
+
+1. Learn what the setup will change and what it will leave untouched.
+2. Choose a folder containing the work you actually want to manage.
+3. Give it an optional friendly name, then register it through the Manager.
+4. Review the Manager-verified project identity and authorized folder boundary.
+5. Optionally validate and activate real project instruction files.
+6. Optionally save useful facts, decisions, or constraints as durable project memory.
+7. Review the real loopback provider, loaded model, and connection state.
+8. Describe the first real task and choose whether it may use the authorized native tool catalog.
+9. Finish after the Manager creates and reads back the project-bound run, or finish setup without submitting a task.
+
+The guide never creates a sample project, placeholder note, mock record, or tutorial task. Optional context steps can be skipped. Turn Guided Mode off or restart it from **Guided setup**, the **Rig** toggle, or the matching control under **Settings**. The navigation footer displays the installed application version.
 
 Without Guided Mode:
 
@@ -17,6 +29,7 @@ Without Guided Mode:
 ## Pages
 
 - **Rig** shows live resource telemetry, provider/store/continuity health, relevant processes, workflows, and the Guided Mode toggle. A disconnect is shown as a gap rather than fabricated data.
+- **Guided setup** explains and drives the complete real-project setup path and can restart it at any time.
 - **Autonomy** starts and reattaches managed runs and provides pause, resume, and stop controls.
 - **Continuity** shows handoff and retained-context state for managed work.
 - **Projects** registers folders, displays stable project IDs and authorized aliases, and validates or activates checksummed UTF-8 instruction packages. Supported package files are Markdown, text, JSON, YAML, TOML, and CSV, with a 32-file / 212-KiB content bound.

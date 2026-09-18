@@ -56,6 +56,7 @@ struct MainWindow : MainWindowT<MainWindow> {
     void GuidedModeSecondaryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void GuidedModeBackClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void GuidedModeCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void GuidedModeRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunHistoryRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -117,8 +118,12 @@ private:
         Welcome = 1U,
         ChooseFolder = 2U,
         RegisterProject = 3U,
-        UnderstandProject = 4U,
-        Ready = 5U
+        ReviewScope = 4U,
+        Instructions = 5U,
+        Memory = 6U,
+        Provider = 7U,
+        FirstRun = 8U,
+        Complete = 9U
     };
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
