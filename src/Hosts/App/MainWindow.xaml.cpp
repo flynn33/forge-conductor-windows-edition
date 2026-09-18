@@ -17,6 +17,7 @@
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <ctime>
 #include <limits>
 #include <optional>
@@ -320,6 +321,12 @@ MainWindow::MainWindow(
     selectedEvidenceProjectValueName_ =
         ::ForgeConductor::Hosts::App::scopedViewStateValueName(
             L"SelectedEvidenceProjectId", scope);
+    guidedModeValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"GuidedModeEnabled", scope);
+    guidedStepValueName_ =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"GuidedModeStep", scope);
 }
 
 void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
@@ -422,6 +429,23 @@ void MainWindow::WindowContentLoaded(
             selectedEvidenceRunId_ = winrt::to_string(*savedEvidenceRun);
         }
     }
+    guidedModeEnabled_ = loadSavedText(guidedModeValueName_.c_str())
+        .value_or(L"1") != L"0";
+    if (const auto savedStep = loadSavedText(guidedStepValueName_.c_str())) {
+        const auto value = std::wcstoul(savedStep->c_str(), nullptr, 10);
+        if (value >= static_cast<unsigned long>(GuidedProjectStep::Welcome) &&
+            value <= static_cast<unsigned long>(GuidedProjectStep::Ready)) {
+            guidedStep_ = static_cast<GuidedProjectStep>(value);
+        }
+    }
+    if (guidedStep_ == GuidedProjectStep::RegisterProject ||
+        ((guidedStep_ == GuidedProjectStep::UnderstandProject ||
+          guidedStep_ == GuidedProjectStep::Ready) && selectedProjectId_.empty())) {
+        guidedStep_ = GuidedProjectStep::ChooseFolder;
+        storeSavedText(guidedStepValueName_.c_str(),
+            winrt::to_hstring(static_cast<std::uint32_t>(guidedStep_)));
+    }
+    RenderGuidedMode();
     // The restored page may immediately enqueue a Manager readback. Attach or
     // launch the authenticated Manager first so a cold-launch catalog does not
     // time out behind startup.
@@ -619,6 +643,217 @@ void MainWindow::SelectPage(const winrt::hstring& tag)
         }
     }
 }
+
+void MainWindow::SetGuidedMode(const bool enabled, const bool restart)
+{
+    guidedModeEnabled_ = enabled;
+    guidedRegistrationPending_ = false;
+    if (enabled && restart) guidedStep_ = GuidedProjectStep::Welcome;
+    storeSavedText(guidedModeValueName_.c_str(), enabled ? L"1" : L"0");
+    storeSavedText(guidedStepValueName_.c_str(),
+        winrt::to_hstring(static_cast<std::uint32_t>(guidedStep_)));
+    RenderGuidedMode();
+}
+
+void MainWindow::SetGuidedStep(const GuidedProjectStep step)
+{
+    guidedStep_ = step;
+    storeSavedText(guidedStepValueName_.c_str(),
+        winrt::to_hstring(static_cast<std::uint32_t>(guidedStep_)));
+    RenderGuidedMode();
+}
+
+void MainWindow::RenderGuidedMode()
+{
+    updatingGuidedModeControls_ = true;
+    HomeGuidedModeToggle().IsOn(guidedModeEnabled_);
+    SettingsGuidedModeToggle().IsOn(guidedModeEnabled_);
+    updatingGuidedModeControls_ = false;
+    GuidedModePanel().Visibility(
+        guidedModeEnabled_ ? Visibility::Visible : Visibility::Collapsed);
+    if (!guidedModeEnabled_) return;
+
+    const auto step = static_cast<std::uint32_t>(guidedStep_);
+    GuidedModeStepLabel().Text(L"GUIDED MODE · STEP " +
+        winrt::to_hstring(step) + L" OF 5");
+    GuidedModeProgress().Value(static_cast<double>(step));
+    GuidedModeBackButton().Visibility(guidedStep_ == GuidedProjectStep::Welcome
+        ? Visibility::Collapsed : Visibility::Visible);
+    GuidedModeSecondaryButton().Visibility(Visibility::Collapsed);
+
+    switch (guidedStep_) {
+    case GuidedProjectStep::Welcome:
+        GuidedModeTitle().Text(L"Set up a real project");
+        GuidedModeBody().Text(
+            L"Guided Mode stays inside the normal Forge Conductor workflow. You will choose one of your own folders; no tutorial project, sample records, or mock work will be created.");
+        GuidedModeWhy().Text(
+            L"Why this matters: a project identity keeps tools, memory, instructions, runs, and evidence attached to the correct work.");
+        GuidedModePrimaryButton().Content(box_value(selectedProjectId_.empty()
+            ? L"Choose my project folder" : L"Set up another project"));
+        if (!selectedProjectId_.empty()) {
+            GuidedModeSecondaryButton().Content(box_value(L"Continue with selected project"));
+            GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        }
+        break;
+    case GuidedProjectStep::ChooseFolder:
+        GuidedModeTitle().Text(L"Choose the folder you actually work in");
+        GuidedModeBody().Text(
+            L"Select your existing source, writing, research, or other work folder. Forge Conductor registers the folder as an authorized boundary; it does not move, copy, rename, or fill it with tutorial data.");
+        GuidedModeWhy().Text(
+            L"Why this matters: native tools are limited to folders you explicitly authorize, which keeps unrelated files outside the project scope.");
+        GuidedModePrimaryButton().Content(box_value(L"Browse for my folder…"));
+        if (!selectedProjectId_.empty()) {
+            GuidedModeSecondaryButton().Content(box_value(L"Use selected project"));
+            GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        }
+        break;
+    case GuidedProjectStep::RegisterProject: {
+        GuidedModeTitle().Text(L"Name and register the project");
+        const auto path = ProjectPath().Text();
+        GuidedModeBody().Text(path.empty()
+            ? L"Choose a folder first. You may add a friendly display name; leaving it blank uses the folder name. Registration creates a durable identity without changing the folder itself."
+            : L"Selected folder: " + path +
+                L". Add an optional display name in Project selection, then register it through the Manager.");
+        GuidedModeWhy().Text(
+            L"Why this matters: the durable project ID lets memory, continuity, run history, and evidence remain bound even when names are similar.");
+        GuidedModePrimaryButton().Content(box_value(
+            guidedRegistrationPending_ ? L"Registering…" : L"Register this project"));
+        GuidedModePrimaryButton().IsEnabled(!guidedRegistrationPending_);
+        GuidedModeSecondaryButton().Content(box_value(L"Choose a different folder"));
+        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        break;
+    }
+    case GuidedProjectStep::UnderstandProject:
+        GuidedModeTitle().Text(L"Add the context your project needs");
+        GuidedModeBody().Text(L"The project is now registered and selected. On the Projects page you can optionally activate an instruction package for repeatable guidance, or save durable memory for facts and decisions learned while working. Both use this real project's store.");
+        GuidedModeWhy().Text(
+            L"Why this matters: instructions describe how work should be done; project memory preserves what was learned. Keeping them separate makes future runs easier to understand and maintain.");
+        GuidedModePrimaryButton().Content(box_value(L"Finish project setup"));
+        break;
+    case GuidedProjectStep::Ready:
+        GuidedModeTitle().Text(L"Your project is ready");
+        GuidedModeBody().Text(
+            L"The active project now supplies the authorization and durable context boundary for managed work. You can return to Projects at any time to add instructions, memory, another authorized folder, or an archive.");
+        GuidedModeWhy().Text(
+            L"What happens next: a managed run uses this selected project. Native tools remain off unless you deliberately enable them for that run.");
+        GuidedModePrimaryButton().Content(box_value(L"Open managed work"));
+        GuidedModeSecondaryButton().Content(box_value(L"Review project"));
+        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
+        break;
+    }
+    if (guidedStep_ != GuidedProjectStep::RegisterProject) {
+        GuidedModePrimaryButton().IsEnabled(true);
+    }
+}
+
+void MainWindow::ShowProjectRegistration()
+{
+    SelectPage(L"Projects");
+    ProjectRegistrationExpander().IsExpanded(true);
+    ProjectRegistrationExpander().StartBringIntoView();
+    ProjectPath().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+}
+
+void MainWindow::GuidedModeToggled(
+    Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (updatingGuidedModeControls_ || !telemetryUiInitialized_) return;
+    const auto toggle = sender.try_as<
+        Microsoft::UI::Xaml::Controls::ToggleSwitch>();
+    if (!toggle) return;
+    const auto enabled = toggle.IsOn();
+    SetGuidedMode(enabled, enabled);
+    if (enabled) SelectPage(L"Rig");
+}
+
+void MainWindow::GuidedModePrimaryClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    switch (guidedStep_) {
+    case GuidedProjectStep::Welcome:
+        SetGuidedStep(GuidedProjectStep::ChooseFolder);
+        ShowProjectRegistration();
+        break;
+    case GuidedProjectStep::ChooseFolder:
+        ShowProjectRegistration();
+        if (BrowseForProjectFolder()) SetGuidedStep(GuidedProjectStep::RegisterProject);
+        break;
+    case GuidedProjectStep::RegisterProject:
+        if (ProjectPath().Text().empty()) {
+            SetGuidedStep(GuidedProjectStep::ChooseFolder);
+            ShowProjectRegistration();
+            ProjectState().Text(L"Choose your project folder before registering it.");
+            break;
+        }
+        guidedRegistrationPending_ = true;
+        RenderGuidedMode();
+        RunAction(Action::ProjectRegister);
+        break;
+    case GuidedProjectStep::UnderstandProject:
+        SetGuidedStep(GuidedProjectStep::Ready);
+        break;
+    case GuidedProjectStep::Ready:
+        SetGuidedMode(false, false);
+        SelectPage(L"Autonomy");
+        break;
+    }
+}
+
+void MainWindow::GuidedModeSecondaryClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (guidedStep_ == GuidedProjectStep::Welcome ||
+        guidedStep_ == GuidedProjectStep::ChooseFolder) {
+        if (!selectedProjectId_.empty()) {
+            SetGuidedStep(GuidedProjectStep::UnderstandProject);
+            SelectPage(L"Projects");
+        }
+    } else if (guidedStep_ == GuidedProjectStep::RegisterProject) {
+        guidedRegistrationPending_ = false;
+        SetGuidedStep(GuidedProjectStep::ChooseFolder);
+        ShowProjectRegistration();
+    } else if (guidedStep_ == GuidedProjectStep::Ready) {
+        SelectPage(L"Projects");
+    }
+}
+
+void MainWindow::GuidedModeBackClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    guidedRegistrationPending_ = false;
+    switch (guidedStep_) {
+    case GuidedProjectStep::Welcome:
+        break;
+    case GuidedProjectStep::ChooseFolder:
+        SetGuidedStep(GuidedProjectStep::Welcome);
+        SelectPage(L"Rig");
+        break;
+    case GuidedProjectStep::RegisterProject:
+        SetGuidedStep(GuidedProjectStep::ChooseFolder);
+        ShowProjectRegistration();
+        break;
+    case GuidedProjectStep::UnderstandProject:
+        SetGuidedStep(GuidedProjectStep::ChooseFolder);
+        ShowProjectRegistration();
+        break;
+    case GuidedProjectStep::Ready:
+        SetGuidedStep(GuidedProjectStep::UnderstandProject);
+        SelectPage(L"Projects");
+        break;
+    }
+}
+
+void MainWindow::GuidedModeCloseClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    SetGuidedMode(false, false);
+}
+
 void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStart); }
 void MainWindow::RunStatusClicked(Windows::Foundation::IInspectable const&,
@@ -658,9 +893,20 @@ void MainWindow::RunIdTextChanged(Windows::Foundation::IInspectable const&,
     }
 }
 void MainWindow::ProjectRegisterClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectRegister); }
-void MainWindow::ProjectBrowseClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (guidedModeEnabled_ &&
+        (guidedStep_ == GuidedProjectStep::ChooseFolder ||
+         guidedStep_ == GuidedProjectStep::RegisterProject)) {
+        guidedRegistrationPending_ = !ProjectPath().Text().empty();
+        SetGuidedStep(ProjectPath().Text().empty()
+            ? GuidedProjectStep::ChooseFolder
+            : GuidedProjectStep::RegisterProject);
+    }
+    RunAction(Action::ProjectRegister);
+}
+
+bool MainWindow::BrowseForProjectFolder()
 {
     try {
         auto nativeWindow = this->m_inner.as<::IWindowNative>();
@@ -675,7 +921,7 @@ void MainWindow::ProjectBrowseClicked(Windows::Foundation::IInspectable const&,
             FOS_FORCEFILESYSTEM));
         winrt::check_hresult(dialog->SetTitle(L"Choose an authorized project folder"));
         const auto shown = dialog->Show(hwnd);
-        if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
+        if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return false;
         winrt::check_hresult(shown);
         winrt::com_ptr<::IShellItem> folder;
         winrt::check_hresult(dialog->GetResult(folder.put()));
@@ -684,8 +930,19 @@ void MainWindow::ProjectBrowseClicked(Windows::Foundation::IInspectable const&,
         ProjectPath().Text(path);
         ::CoTaskMemFree(path);
         ProjectState().Text(L"Folder chosen. Register it to authorize this work scope.");
+        return true;
     } catch (const winrt::hresult_error& error) {
         ProjectState().Text(L"The Windows folder picker failed: " + error.message());
+        return false;
+    }
+}
+void MainWindow::ProjectBrowseClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (BrowseForProjectFolder() && guidedModeEnabled_ &&
+        (guidedStep_ == GuidedProjectStep::Welcome ||
+         guidedStep_ == GuidedProjectStep::ChooseFolder)) {
+        SetGuidedStep(GuidedProjectStep::RegisterProject);
     }
 }
 void MainWindow::ProjectRefreshClicked(Windows::Foundation::IInspectable const&,
@@ -1188,6 +1445,7 @@ void MainWindow::ProjectSelectionChanged(
     RunAction(Action::ProjectLoad);
     UpdateRunProjectLabel();
     if (PageTitle().Text() == L"Runtimes") RunAction(Action::OperationalInspect);
+    RenderGuidedMode();
 }
 
 void MainWindow::NavigationChanged(
@@ -1347,6 +1605,7 @@ void MainWindow::NavigationChanged(
         PageDescription().Text(L"Inspect the current typed Manager operational snapshot.");
     }
     if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
+    RenderGuidedMode();
 }
 
 void MainWindow::TelemetryChartSizeChanged(
@@ -2089,6 +2348,7 @@ void MainWindow::ApplyProjectList(
         ProjectPersistence().Text(L"No project memory store is active.");
         ProjectMemoryRecords().Children().Clear();
     }
+    RenderGuidedMode();
 }
 
 void MainWindow::UpdateRunProjectLabel()
@@ -2342,6 +2602,7 @@ void MainWindow::ApplyProjectWorkspace(
         row.Child(content);
         ProjectMemoryRecords().Children().Append(row);
     }
+    RenderGuidedMode();
 }
 
 void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
@@ -4176,6 +4437,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 LmStudioOverview().Text(L"Native command was not accepted");
                 LmStudioBadge().Text(L"WAITING");
             }
+            if (action == Action::ProjectRegister && guidedRegistrationPending_) {
+                guidedRegistrationPending_ = false;
+                RenderGuidedMode();
+            }
         }
         co_return;
     }
@@ -4519,6 +4784,15 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ProjectMemorySummary().Text(L"");
                     ProjectMemoryBody().Text(L"");
                     ProjectMemoryTags().Text(L"");
+                }
+            }
+            if (action == Action::ProjectRegister && guidedRegistrationPending_) {
+                guidedRegistrationPending_ = false;
+                if (guidedModeEnabled_ && projectView.loaded && projectView.snapshot) {
+                    SetGuidedStep(GuidedProjectStep::UnderstandProject);
+                    ProjectRegistrationExpander().IsExpanded(false);
+                } else {
+                    RenderGuidedMode();
                 }
             }
             if (action == Action::InstructionPackagePreview ||

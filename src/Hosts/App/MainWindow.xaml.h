@@ -3,6 +3,7 @@
 #include "AppActionScheduler.h"
 #include "ManagerConnection.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -50,6 +51,11 @@ struct MainWindow : MainWindowT<MainWindow> {
     void OpenSettingsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenToolsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenProjectsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void GuidedModeToggled(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void GuidedModePrimaryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void GuidedModeSecondaryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void GuidedModeBackClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void GuidedModeCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunHistoryRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -107,6 +113,13 @@ struct MainWindow : MainWindowT<MainWindow> {
     void EvidenceExportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
+    enum class GuidedProjectStep : std::uint32_t {
+        Welcome = 1U,
+        ChooseFolder = 2U,
+        RegisterProject = 3U,
+        UnderstandProject = 4U,
+        Ready = 5U
+    };
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
         ProviderModels, ProviderContract,
@@ -155,6 +168,11 @@ private:
     void ClearArchivePreview();
     void ClearInstructionPackagePreview();
     void SelectPage(const winrt::hstring& tag);
+    void SetGuidedMode(bool enabled, bool restart);
+    void SetGuidedStep(GuidedProjectStep step);
+    void RenderGuidedMode();
+    void ShowProjectRegistration();
+    [[nodiscard]] bool BrowseForProjectFolder();
 
     std::shared_ptr<::ForgeConductor::Hosts::App::IManagerConnection> connection_;
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;
@@ -207,11 +225,17 @@ private:
     std::wstring selectedRunProjectValueName_{L"SelectedRunProjectId"};
     std::wstring selectedEvidenceRunValueName_{L"SelectedEvidenceRunId"};
     std::wstring selectedEvidenceProjectValueName_{L"SelectedEvidenceProjectId"};
+    std::wstring guidedModeValueName_{L"GuidedModeEnabled"};
+    std::wstring guidedStepValueName_{L"GuidedModeStep"};
     std::stop_source cancellation_;
     std::stop_source providerContractCancellation_;
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};
     bool rebuildingProjects_{};
+    bool guidedModeEnabled_{true};
+    bool updatingGuidedModeControls_{};
+    bool guidedRegistrationPending_{};
+    GuidedProjectStep guidedStep_{GuidedProjectStep::Welcome};
     ::ForgeConductor::Manager::ManagerOperationalArea operationalArea_{
         ::ForgeConductor::Manager::ManagerOperationalArea::Agents};
     ::ForgeConductor::Hosts::App::AppActionScheduler actionScheduler_;

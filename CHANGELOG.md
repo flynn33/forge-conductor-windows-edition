@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.42 — Guided project setup
+
+- Add a persistent five-step Guided Mode that explains project authorization, durable identity, instruction packages, project memory, and the handoff to managed work while using the operator's real folders and records.
+- Expose synchronized Guided Mode toggles on Rig and in Settings, save progress per deployment profile, and allow the walkthrough to be dismissed or restarted at any time.
+- Reuse the existing Windows folder picker and Manager-owned registration path; the guide advances past registration only after an authoritative project readback and never creates a tutorial project or mock data.
+
 ## 1.1.41 — Project instruction packages
 
 - Add a first-class Direction A instruction-package workflow to Projects: choose a folder, validate every supported UTF-8 text file, inspect its manifest and activate the exact SHA-256 revision.
