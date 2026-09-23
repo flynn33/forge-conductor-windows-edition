@@ -1,6 +1,8 @@
 # Product status
 
-Updated September 18, 2026 for the Forge Conductor 1.1.43 engineering candidate.
+Updated September 23, 2026 for the Forge Conductor 1.1.44 engineering prerelease.
+
+Version 1.1.44 adds 20 searchable offline setup/help articles, corrects the opening folder-picker action, and isolates lifecycle tests from the live Manager port. See [release notes](releases/1.1.44.md), [setup/governance research](SETUP-GOVERNANCE-RESEARCH.md), and [verification limits](validation/SETUP-RESEARCH-2026-09-23.md). Policy repository import and enforcement are not implemented. Full installed acceptance remains open; this candidate must not be described as fully shippable. Stale Manager detail cards after disconnect and a lingering isolated Manager after a stop request are recorded for follow-up.
 
 Forge Conductor is implemented as a native Windows 11 x64 product with a complete WinUI 3 GUI and production runtime. The source builds all four shipping executables: `ForgeConductorApp.exe`, `forge-conductor.exe`, `ForgeConductor.Manager.exe`, and `ForgeConductor.SessionHost.exe`.
 
