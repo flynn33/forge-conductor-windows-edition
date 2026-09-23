@@ -1,4 +1,5 @@
 #pragma once
+#include "ForgeConductor/Application/ProjectSetupCoordinator.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 #include "ForgeConductor/Domain/ManagerModels.h"
 #include "ForgeConductor/Domain/ManagedRunModels.h"
@@ -91,6 +92,9 @@ struct MaintenanceView final {
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
+    virtual Application::ProjectSetupSnapshot prepareProject(
+        std::string folder, std::stop_token cancellation,
+        const Application::ProjectSetupCoordinator::Observer& observer = {}) = 0;
     [[nodiscard]] virtual std::string profileSummary() const
     {
         return "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
@@ -181,10 +185,14 @@ public:
         std::string confirmationToken,
         std::stop_token cancellation) noexcept = 0;
 };
-class ManagerConnection final : public IManagerConnection {
+class ManagerConnection final : public IManagerConnection,
+    private Application::IProjectSetupOperations {
 public:
     explicit ManagerConnection(
         std::optional<std::wstring> alphaRoot = std::nullopt) noexcept;
+    Application::ProjectSetupSnapshot prepareProject(
+        std::string folder, std::stop_token cancellation,
+        const Application::ProjectSetupCoordinator::Observer& observer = {}) override;
 
     [[nodiscard]] std::string profileSummary() const override;
     [[nodiscard]] std::optional<std::string> viewStateScope()
@@ -267,6 +275,10 @@ public:
         std::string confirmationToken,
         std::stop_token cancellation) noexcept override;
 private:
+    Application::SetupOperationResult ensureManager(std::stop_token) override;
+    Application::SetupOperationResult ensureProject(Application::ProjectSetupSnapshot&, std::stop_token) override;
+    Application::SetupOperationResult ensureProvider(Application::ProjectSetupSnapshot&, std::stop_token) override;
+    Application::SetupOperationResult verifyProvider(Application::ProjectSetupSnapshot&, std::stop_token) override;
     std::optional<Infrastructure::Windows::WindowsAlphaManagerProfile>
         alphaProfile_;
     bool persistentProfile_{};

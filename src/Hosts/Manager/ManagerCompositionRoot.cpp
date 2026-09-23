@@ -37,6 +37,7 @@
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
+#include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsApplicationPaths.h"
@@ -600,7 +601,7 @@ private:
         continuityCodec_;
     std::unique_ptr<InfrastructureWindows::WindowsNativeSessionLedger>
         nativeSessionLedger_;
-    std::unique_ptr<InfrastructureWindows::LMStudioResponsesTransport>
+    std::unique_ptr<InfrastructureWindows::SettingsBoundResponsesTransport>
         nativeSessionTransport_;
     std::unique_ptr<Application::AgentRepositoryManagedRunStore>
         managedRunStore_;
@@ -1030,15 +1031,19 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             *dataAuthority_, *dataScope_,
             childPath(process.memoryRoot(), "native-session-ledger.json.bak"),
             process.dataRoot(), Domain::FileAccess::Read, context));
-    InfrastructureWindows::LMStudioResponsesTransportConfiguration
-        providerConfiguration;
-    providerConfiguration.loopbackHost = initialConfiguration_->localModel.host;
-    providerConfiguration.port = initialConfiguration_->localModel.port;
-    providerConfiguration.secure = initialConfiguration_->localModel.secure;
-    providerConfiguration.model = initialConfiguration_->localModel.model;
     nativeSessionTransport_ = std::make_unique<
-        InfrastructureWindows::LMStudioResponsesTransport>(
-        std::move(providerConfiguration));
+        InfrastructureWindows::SettingsBoundResponsesTransport>(
+        [store = configurationStore_](const Domain::OperationContext& operation) {
+            using Configuration = InfrastructureWindows::LMStudioResponsesTransportConfiguration;
+            auto current = store->load(operation);
+            if (!current) return Domain::Result<Configuration>::failure(current.error());
+            Configuration configuration;
+            configuration.loopbackHost = current.value().localModel.host;
+            configuration.port = current.value().localModel.port;
+            configuration.secure = current.value().localModel.secure;
+            configuration.model = current.value().localModel.model;
+            return Domain::Result<Configuration>::success(std::move(configuration));
+        });
     managedRunStore_ = std::make_unique<
         Application::AgentRepositoryManagedRunStore>(
         *agentSessionRepository_,

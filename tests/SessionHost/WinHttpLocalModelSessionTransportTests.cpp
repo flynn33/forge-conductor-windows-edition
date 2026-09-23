@@ -1,5 +1,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsModelPreparation.h"
+#include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -1128,6 +1130,101 @@ void deadlineAndActiveCancellationAreBounded()
     stopServer.requireHealthy();
 }
 
+void providerSettingsApplyToNewRunsAndPreserveExistingRuns()
+{
+    const auto reply = [](const char* id) {
+        return Json{{"id", id}, {"status", "completed"}, {"output_text", "OK"},
+            {"usage", {{"input_tokens", 1}, {"output_tokens", 1}}}}.dump();
+    };
+    LoopbackHttpServer first{{
+        {"GET", "/v1/models", 200U, R"({"data":[{"id":"first-model"}]})"},
+        {"POST", "/v1/responses", 200U, reply("first-response")},
+        {"POST", "/v1/responses", 200U, reply("continued-response")}}};
+    LoopbackHttpServer second{{
+        {"GET", "/v1/models", 200U, R"({"data":[{"id":"second-model"}]})"},
+        {"POST", "/v1/responses", 200U, reply("second-response")}}};
+    std::uint16_t selectedPort = first.port();
+    int resolved{};
+    InfrastructureWindows::SettingsBoundResponsesTransport transport{
+        [&](const Domain::OperationContext&) {
+            ++resolved;
+            return Domain::Result<InfrastructureWindows::LMStudioResponsesTransportConfiguration>::success(
+                responsesConfiguration(selectedPort));
+        }};
+    Domain::ManagedProviderTurnRequest request{parse<Domain::ProjectId>(ProjectIdText),
+        parse<Domain::SessionId>(SuccessorSessionIdText), 1U, "Check", std::nullopt, {}, {}};
+    auto initial = take(transport.complete(request,
+        operationContext("12121212-1212-4212-8212-121212121214", 5s)));
+    selectedPort = second.port();
+    request.previousResponseId = initial.responseId;
+    auto continued = take(transport.complete(request,
+        operationContext("12121212-1212-4212-8212-121212121215", 5s)));
+    REQUIRE(continued.responseId.value() == "continued-response");
+    request.runId = parse<Domain::SessionId>("12121212-1212-4212-8212-121212121216");
+    request.previousResponseId.reset();
+    auto fresh = take(transport.complete(request,
+        operationContext("12121212-1212-4212-8212-121212121217", 5s)));
+    REQUIRE(fresh.responseId.value() == "second-response");
+    REQUIRE(resolved == 2);
+    REQUIRE(first.waitUntilHandled(3U, 5s));
+    REQUIRE(second.waitUntilHandled(2U, 5s));
+    REQUIRE(Json::parse(first.requests()[2].body).at("model") == "first-model");
+    REQUIRE(Json::parse(second.requests()[1].body).at("model") == "second-model");
+    first.requireHealthy(); second.requireHealthy();
+}
+
+void automaticModelPreparationUsesVerifiedInventory()
+{
+    const Json model{{"type", "llm"}, {"key", "coding-model"}, {"size_bytes", 4096},
+        {"max_context_length", 65536}, {"capabilities", {{"trained_for_tool_use", true}}},
+        {"loaded_instances", Json::array()}};
+    auto loaded = model;
+    loaded["loaded_instances"] = Json::array({{{"id", "coding-instance"}, {"config", {{"context_length", 32768}}}}});
+    LoopbackHttpServer server{{
+        {"GET", "/api/v1/models", 200U, Json{{"models", Json::array({model})}}.dump()},
+        {"POST", "/api/v1/models/load", 200U, R"({"instance_id":"coding-instance","status":"loaded"})"},
+        {"GET", "/api/v1/models", 200U, Json{{"models", Json::array({loaded})}}.dump()},
+        {"GET", "/api/v1/models", 200U, Json{{"models", Json::array({loaded})}}.dump()}}};
+    Domain::ManagerSettings settings;
+    settings.localModelPort = server.port();
+    InfrastructureWindows::WindowsModelPreparation preparation;
+    auto result = take(preparation.prepare(settings,
+        operationContext("12121212-1212-4212-8212-121212121211", 5s)));
+    REQUIRE(result.identifier == "coding-instance");
+    REQUIRE(result.contextCapacity == 32768U);
+    REQUIRE(result.modelLoaded);
+    REQUIRE(!result.serverStarted);
+    settings.localModelName = result.identifier;
+    auto reused = take(preparation.prepare(settings,
+        operationContext("12121212-1212-4212-8212-121212121212", 5s)));
+    REQUIRE(reused.identifier == result.identifier);
+    REQUIRE(!reused.modelLoaded);
+    REQUIRE(server.waitUntilHandled(4U, 5s));
+    const auto requests = server.requests();
+    REQUIRE(Json::parse(requests[1].body).at("model") == "coding-model");
+    REQUIRE(Json::parse(requests[1].body).at("context_length") == 32768U);
+    server.requireHealthy();
+}
+
+void automaticModelPreparationRejectsUnusableAndMalformedInventory()
+{
+    LoopbackHttpServer server{{
+        {"GET", "/api/v1/models", 200U, R"({"models":[{"type":"embedding","key":"not-a-language-model"}]})"},
+        {"GET", "/api/v1/models", 200U, "{malformed"},
+        {"GET", "/api/v1/models", 401U, R"({"error":"authentication required"})"}}};
+    Domain::ManagerSettings settings;
+    settings.localModelPort = server.port();
+    InfrastructureWindows::WindowsModelPreparation preparation;
+    for (int attempt = 0; attempt != 3; ++attempt) {
+        auto result = preparation.prepare(settings,
+            operationContext("12121212-1212-4212-8212-121212121213", 5s));
+        REQUIRE(!result);
+    }
+    REQUIRE(server.waitUntilHandled(3U, 5s));
+    REQUIRE(server.requests().size() == 3U);
+    server.requireHealthy();
+}
+
 void shutdownClosesActiveAndFutureRequests()
 {
     ResponseScript blocked{
@@ -1165,6 +1262,10 @@ void shutdownClosesActiveAndFutureRequests()
 int main()
 {
     try {
+        providerSettingsApplyToNewRunsAndPreserveExistingRuns();
+        automaticModelPreparationUsesVerifiedInventory();
+        automaticModelPreparationRejectsUnusableAndMalformedInventory();
+        std::cout << "PASS automatic_setup.model_load_reuse_and_failure\n";
         loopbackConfigurationIsFailClosed();
         std::cout << "PASS winhttp_transport.loopback_configuration\n";
         createBootstrapAndQueryUseExactRoutes();
@@ -1183,7 +1284,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=9 failed=0 assertions="
+        std::cout << "SUMMARY passed=12 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

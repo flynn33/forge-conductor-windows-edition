@@ -2,6 +2,7 @@
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsModelPreparation.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsCurrentUserIdentity.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerAuthentication.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
@@ -1111,6 +1112,99 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
                 : std::string{". Last connection error: "} + lastConnectionError);
     } catch (const std::exception& error) { return error.what(); }
       catch (...) { return "Could not start manager."; }
+}
+
+Application::ProjectSetupSnapshot ManagerConnection::prepareProject(
+    std::string folder, std::stop_token cancellation,
+    const Application::ProjectSetupCoordinator::Observer& observer)
+{
+    Application::ProjectSetupCoordinator coordinator{*this};
+    return coordinator.prepare(std::move(folder), cancellation, observer);
+}
+
+Application::SetupOperationResult ManagerConnection::ensureManager(std::stop_token cancellation)
+{
+    const auto startup = start(cancellation);
+    if (cancellation.stop_requested()) return {false, "Preparation cancelled."};
+    auto clock = std::make_shared<W::SystemClock>();
+    auto context = operationContext(clock, cancellation);
+    auto created = connectManager(alphaProfile_, context, clock);
+    if (!created) return {false, startup + " " + created.error().message};
+    auto client = std::move(created).value();
+    auto ready = client->control({Domain::ManagerControlAction::Start}, context);
+    client->shutdown();
+    if (!ready) return {false, ready.error().message};
+    return {ready.value().serviceActive, ready.value().serviceActive
+        ? "Manager started and authenticated."
+        : "Manager is connected but its service is not active. Retry preparation."};
+}
+
+Application::SetupOperationResult ManagerConnection::ensureProject(
+    Application::ProjectSetupSnapshot& setup, std::stop_token cancellation)
+{
+    const auto project = initializeProject(setup.folder, {}, cancellation);
+    if (!project.loaded || !project.snapshot) return {false, project.message};
+    if (!project.snapshot->integrityOk)
+        return {false, "Project storage needs repair. Open Diagnostics before starting work."};
+    setup.projectId = project.snapshot->project.id.value();
+    setup.projectName = project.snapshot->project.displayName;
+    return {true, "Project registered and storage verified: " + setup.projectName};
+}
+
+Application::SetupOperationResult ManagerConnection::ensureProvider(
+    Application::ProjectSetupSnapshot& setup, std::stop_token cancellation)
+{
+    auto current = providerSettings(cancellation);
+    if (!current.loaded) return {false, current.message};
+    auto clock = std::make_shared<W::SystemClock>();
+    auto context = operationContext(clock, cancellation, std::chrono::seconds{180});
+    W::WindowsModelPreparation preparation;
+    auto prepared = preparation.prepare(current.settings, context);
+    if (!prepared) return {false, prepared.error().message};
+    setup.model = prepared.value().identifier;
+    Domain::ManagerSettingsPatch patch;
+    patch.localModelName = setup.model;
+    patch.effectiveContextCapacity = current.settings.effectiveContextCapacity;
+    auto created = connectManager(alphaProfile_, context, clock);
+    if (!created) return {false, created.error().message};
+    auto client = std::move(created).value();
+    auto saved = client->updateSettings(patch, true, context);
+    client->shutdown();
+    if (!saved) return {false, saved.error().message};
+    if (saved.value().settings.localModelName != setup.model ||
+        saved.value().settings.effectiveContextCapacity != current.settings.effectiveContextCapacity)
+        return {false, "The Manager did not confirm the prepared model settings. Retry preparation."};
+    return {true, std::string{prepared.value().modelLoaded ? "Loaded and verified " : "Verified loaded model "} + setup.model};
+}
+
+Application::SetupOperationResult ManagerConnection::verifyProvider(
+    Application::ProjectSetupSnapshot& setup, std::stop_token cancellation)
+{
+    auto current = providerSettings(cancellation);
+    if (!current.loaded) return {false, current.message};
+    if (!current.settings.localModelName.empty() && current.settings.localModelName != setup.model)
+        return {false, "Model settings changed during preparation. Retry with the current settings."};
+    W::LMStudioResponsesTransportConfiguration configuration;
+    configuration.loopbackHost = current.settings.localModelHost;
+    configuration.port = current.settings.localModelPort;
+    configuration.secure = current.settings.localModelSecure;
+    configuration.model = setup.model;
+    W::LMStudioResponsesTransport transport{std::move(configuration)};
+    auto clock = std::make_shared<W::SystemClock>();
+    auto context = operationContext(clock, cancellation, std::chrono::seconds{90});
+    W::WindowsUuidGenerator ids;
+    auto id = ids.next();
+    if (!id) return {false, id.error().message};
+    Domain::ManagedProviderTurnRequest request{
+        Domain::ProjectId::parse(setup.projectId).value(),
+        Domain::SessionId::parse(id.value().value()).value(), 1U,
+        "Connection check: reply OK. Do not call tools.", std::nullopt, {}, {}};
+    auto response = transport.complete(request, context);
+    transport.shutdown();
+    if (!response) return {false, "The model could not answer: " + response.error().message};
+    if (!response.value().functionCalls.empty() || response.value().outputText.empty())
+        return {false, "The model did not complete the connection check. Choose another model or retry."};
+    return {true, "Model answered successfully. Your project is ready for a task."};
 }
 
 ProviderModelsView ManagerConnection::providerModels(

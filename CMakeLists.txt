@@ -348,6 +348,8 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsWorkspaceAuthority.cpp
     src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp
     src/Infrastructure/Windows/LMStudioResponsesTransport.cpp
+    src/Infrastructure/Windows/WindowsModelPreparation.cpp
+    src/Infrastructure/Windows/SettingsBoundResponsesTransport.cpp
     src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp
     src/Infrastructure/Windows/Detail/BoundedSerialExecutor.cpp
     src/Infrastructure/Windows/Detail/CommandLineBuilder.cpp
@@ -819,6 +821,15 @@ if(BUILD_TESTING)
     set_tests_properties(ForgeConductor.App.TelemetryPresentationTests PROPERTIES
         LABELS "R2;T-UI;T-UNIT"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.App.ProjectSetupCoordinatorTests
+        tests/App/ProjectSetupCoordinatorTests.cpp)
+    forge_configure_standard_target(ForgeConductor.App.ProjectSetupCoordinatorTests)
+    target_include_directories(ForgeConductor.App.ProjectSetupCoordinatorTests PRIVATE include)
+    add_test(NAME ForgeConductor.App.ProjectSetupCoordinatorTests
+        COMMAND $<TARGET_FILE:ForgeConductor.App.ProjectSetupCoordinatorTests>)
+    set_tests_properties(ForgeConductor.App.ProjectSetupCoordinatorTests PROPERTIES
+        LABELS "T-UNIT;T-UI")
 
     add_executable(ForgeConductor.App.ActionSchedulerTests
         tests/App/AppActionSchedulerTests.cpp)

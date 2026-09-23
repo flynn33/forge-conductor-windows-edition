@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
+#include <winrt/Microsoft.UI.Dispatching.h>
 #include "MainWindow.g.cpp"
 #include "TelemetryPresentation.h"
 #include "SetupKnowledge.h"
@@ -455,6 +456,11 @@ void MainWindow::WindowContentLoaded(
     // launch the authenticated Manager first so a cold-launch catalog does not
     // time out behind startup.
     RunAction(Action::Start);
+    if (const auto folder = loadSavedText((selectedPageValueName_ + L".SetupFolder").c_str())) {
+        SetupFolder().Text(*folder);
+        SetupRetryButton().IsEnabled(!folder->empty());
+        AutomaticSetupState().Text(L"Your folder is saved. Retry preparation to check current readiness and continue.");
+    }
     if (const auto saved = loadSavedText(selectedPageValueName_.c_str())) {
         const auto items = RootNavigation().MenuItems();
         for (std::uint32_t index{}; index < items.Size(); ++index) {
@@ -468,6 +474,7 @@ void MainWindow::WindowContentLoaded(
     }
     const auto weak = get_weak();
     telemetryTimer_ = Microsoft::UI::Xaml::DispatcherTimer{};
+    if (selectedProjectId_.empty()) SelectPage(L"Guided setup");
     telemetryTimer_.Interval(std::chrono::milliseconds{500});
     telemetryTimer_.Tick([weak](auto const&, auto const&) {
         if (const auto self = weak.get()) self->RunAction(Action::Refresh);
@@ -674,132 +681,8 @@ void MainWindow::RenderGuidedMode()
     HomeGuidedModeToggle().IsOn(guidedModeEnabled_);
     SettingsGuidedModeToggle().IsOn(guidedModeEnabled_);
     updatingGuidedModeControls_ = false;
-    GuidedModePanel().Visibility(
-        guidedModeEnabled_ ? Visibility::Visible : Visibility::Collapsed);
-    if (!guidedModeEnabled_) return;
-
-    const auto step = static_cast<std::uint32_t>(guidedStep_);
-    GuidedModeStepLabel().Text(L"GUIDED MODE · STEP " +
-        winrt::to_hstring(step) + L" OF 9");
-    GuidedModeProgress().Value(static_cast<double>(step));
-    GuidedModeBackButton().Visibility(guidedStep_ == GuidedProjectStep::Welcome
-        ? Visibility::Collapsed : Visibility::Visible);
-    GuidedModeSecondaryButton().Visibility(Visibility::Collapsed);
-    auto projectLabel = selectedProjectId_.empty()
-        ? std::string{"none selected"} : selectedProjectId_;
-    for (const auto& project : projects_) {
-        if (project.id.value() == selectedProjectId_) {
-            projectLabel = project.displayName + " · " + selectedProjectId_;
-            break;
-        }
-    }
-    GuidedModeContext().Text(winrt::to_hstring("Current project: " + projectLabel));
-
-    switch (guidedStep_) {
-    case GuidedProjectStep::Welcome:
-        GuidedModeTitle().Text(L"Set up a real project");
-        GuidedModeBody().Text(
-            L"Guided Mode stays inside the normal Forge Conductor workflow. You will choose one of your own folders; no tutorial project, sample records, or mock work will be created.");
-        GuidedModeWhy().Text(
-            L"Why this matters: a project identity keeps tools, memory, instructions, runs, and evidence attached to the correct work.");
-        GuidedModePrimaryButton().Content(box_value(selectedProjectId_.empty()
-            ? L"Choose my project folder" : L"Set up another project"));
-        if (!selectedProjectId_.empty()) {
-            GuidedModeSecondaryButton().Content(box_value(L"Continue with selected project"));
-            GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        }
-        break;
-    case GuidedProjectStep::ChooseFolder:
-        GuidedModeTitle().Text(L"Choose the folder you actually work in");
-        GuidedModeBody().Text(
-            L"Select your existing source, writing, research, or other work folder. Forge Conductor registers the folder as an authorized boundary; it does not move, copy, rename, or fill it with tutorial data.");
-        GuidedModeWhy().Text(
-            L"Why this matters: native tools are limited to folders you explicitly authorize, which keeps unrelated files outside the project scope.");
-        GuidedModePrimaryButton().Content(box_value(L"Browse for my folder…"));
-        if (!selectedProjectId_.empty()) {
-            GuidedModeSecondaryButton().Content(box_value(L"Use selected project"));
-            GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        }
-        break;
-    case GuidedProjectStep::RegisterProject: {
-        GuidedModeTitle().Text(L"Name and register the project");
-        const auto path = ProjectPath().Text();
-        GuidedModeBody().Text(path.empty()
-            ? L"Choose a folder first. You may add a friendly display name; leaving it blank uses the folder name. Registration creates a durable identity without changing the folder itself."
-            : L"Selected folder: " + path +
-                L". Add an optional display name in Project selection, then register it through the Manager.");
-        GuidedModeWhy().Text(
-            L"Why this matters: the durable project ID lets memory, continuity, run history, and evidence remain bound even when names are similar.");
-        GuidedModePrimaryButton().Content(box_value(
-            guidedRegistrationPending_ ? L"Registering…" : L"Register this project"));
-        GuidedModePrimaryButton().IsEnabled(!guidedRegistrationPending_);
-        GuidedModeSecondaryButton().Content(box_value(L"Choose a different folder"));
-        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        break;
-    }
-    case GuidedProjectStep::ReviewScope:
-        GuidedModeTitle().Text(L"Review the verified project boundary");
-        GuidedModeBody().Text(L"The Manager has registered and read back the selected project. Review its authorized folder and durable identity on Projects before adding context. Nothing outside that boundary becomes part of this project.");
-        GuidedModeWhy().Text(
-            L"Why this matters: the exact project ID prevents instructions, memory, runs, and evidence from drifting into another project with a similar name.");
-        GuidedModePrimaryButton().Content(box_value(L"Continue to instructions"));
-        break;
-    case GuidedProjectStep::Instructions:
-        GuidedModeTitle().Text(L"Add repeatable project instructions · optional");
-        GuidedModeBody().Text(
-            L"If this project has real guidance files—such as conventions, requirements, or operating notes—choose that folder in Instruction package. Validate first to review exactly what will be included, then activate the verified revision. Skip this step if the project does not need persistent instructions.");
-        GuidedModeWhy().Text(
-            L"Why this matters: instructions tell every new managed run how work should be done. Validation keeps accidental or unsupported files out before anything is activated.");
-        GuidedModePrimaryButton().Content(box_value(L"Open instruction controls"));
-        GuidedModeSecondaryButton().Content(box_value(L"Skip instructions for now"));
-        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        break;
-    case GuidedProjectStep::Memory:
-        GuidedModeTitle().Text(L"Record durable project context · optional");
-        GuidedModeBody().Text(
-            L"Use Remember for real facts, decisions, constraints, or context that should survive future sessions. Do not add a placeholder note just to complete this guide; save something only when it is useful to this project.");
-        GuidedModeWhy().Text(
-            L"Why this matters: project memory preserves what was learned, while instructions define how work should be performed. Keeping them separate makes both easier to review and maintain.");
-        GuidedModePrimaryButton().Content(box_value(L"Open project memory"));
-        GuidedModeSecondaryButton().Content(box_value(L"Continue without a note"));
-        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        break;
-    case GuidedProjectStep::Provider:
-        GuidedModeTitle().Text(L"Verify the model provider");
-        GuidedModeBody().Text(
-            L"Open Provider to confirm the loopback endpoint and loaded model that will handle this project's managed work. Discover models, adjust the selection if needed, and test the connection using the real configured provider.");
-        GuidedModeWhy().Text(
-            L"Why this matters: project setup is not operational until the Manager can reach the intended model. Provider readback makes that dependency explicit before a task starts.");
-        GuidedModePrimaryButton().Content(box_value(L"Open provider setup"));
-        GuidedModeSecondaryButton().Content(box_value(L"Continue to first task"));
-        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        break;
-    case GuidedProjectStep::FirstRun:
-        GuidedModeTitle().Text(L"Define the first real managed task");
-        GuidedModeBody().Text(
-            L"On Autonomy, describe actual work for the selected project. Native tool access stays off unless you deliberately enable the authorized catalog. Starting the run creates real project-bound work—Guided Mode never submits a sample task.");
-        GuidedModeWhy().Text(
-            L"Why this matters: the mission, project identity, model policy, and tool choice become one Manager-owned run that can be resumed and inspected later.");
-        GuidedModePrimaryButton().Content(box_value(L"Open managed work"));
-        GuidedModeSecondaryButton().Content(box_value(L"Finish setup without starting"));
-        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        break;
-    case GuidedProjectStep::Complete:
-        GuidedModeTitle().Text(L"Project registered · setup guide finished");
-        GuidedModeBody().Text(
-            L"The selected project now has a verified authorization boundary and is ready for managed work. Any instructions or memory you chose were stored through the real Manager workflow, and any run you started is bound to this exact project.");
-        GuidedModeWhy().Text(
-            L"Come back any time: restart Guided Mode from the navigation, the Rig toggle, or Settings. Your project remains available when the guide is off.");
-        GuidedModePrimaryButton().Content(box_value(L"Finish Guided Mode"));
-        GuidedModeSecondaryButton().Content(box_value(L"Review project"));
-        GuidedModeSecondaryButton().Visibility(Visibility::Visible);
-        break;
-    }
-    if (guidedStep_ != GuidedProjectStep::RegisterProject) {
-        GuidedModePrimaryButton().IsEnabled(true);
-    }
+    GuidedModePanel().Visibility(Visibility::Collapsed);
 }
-
 void MainWindow::ShowProjectRegistration()
 {
     SelectPage(L"Projects");
@@ -818,7 +701,7 @@ void MainWindow::GuidedModeToggled(
     if (!toggle) return;
     const auto enabled = toggle.IsOn();
     SetGuidedMode(enabled, enabled);
-    if (enabled) SelectPage(L"Rig");
+    if (enabled) SelectPage(L"Guided setup");
 }
 
 void MainWindow::GuidedModePrimaryClicked(
@@ -876,6 +759,63 @@ void MainWindow::GuidedModePrimaryClicked(
         SelectPage(L"Rig");
         break;
     }
+}
+
+void MainWindow::SetupFolderClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (!BrowseForProjectFolder()) return;
+    SetupFolder().Text(ProjectPath().Text());
+    storeSavedText((selectedPageValueName_ + L".SetupFolder").c_str(), SetupFolder().Text());
+    RunAction(Action::SetupPrepare);
+}
+
+void MainWindow::SetupRetryClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{ RunAction(Action::SetupPrepare); }
+
+void MainWindow::SetupCancelClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{ setupCancellation_.request_stop(); }
+
+void MainWindow::SetupTaskClicked(Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (preparedProjectId_.empty() || selectedProjectId_ != preparedProjectId_) {
+        SetupTaskButton().IsEnabled(false);
+        AutomaticSetupState().Text(L"The selected project changed. Retry preparation before starting this task.");
+        return;
+    }
+    if (SetupTask().Text().empty()) {
+        SetupTask().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+        AutomaticSetupState().Text(L"Describe what you would like to build or fix, then start the task.");
+        return;
+    }
+    RunTask().Text(SetupTask().Text());
+    RunAllowNativeTools().IsOn(SetupAllowTools().IsOn());
+    SelectPage(L"Autonomy");
+    RunAction(Action::RunStart);
+}
+
+void MainWindow::ApplySetupProgress(
+    const ::ForgeConductor::Application::ProjectSetupSnapshot& snapshot)
+{
+    using namespace ::ForgeConductor::Application;
+    std::string text;
+    for (const auto& check : snapshot.checks) {
+        const char* stage = check.stage == SetupStage::Manager ? "Manager"
+            : check.stage == SetupStage::Project ? "Project"
+            : check.stage == SetupStage::Provider ? "Model" : "Connection check";
+        const char* state = check.state == SetupState::Ready ? "Ready"
+            : check.state == SetupState::Running ? "Working"
+            : check.state == SetupState::NeedsAction ? "Needs attention"
+            : check.state == SetupState::Cancelled ? "Cancelled" : "Waiting";
+        text += std::string{stage} + " · " + state;
+        if (!check.detail.empty()) text += " — " + check.detail;
+        text += "\n";
+    }
+    AutomaticSetupState().Text(winrt::to_hstring(text));
+    SetupTaskButton().IsEnabled(snapshot.ready);
 }
 
 void MainWindow::HelpSearchChanged(
@@ -4240,6 +4180,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::uint64_t runGeneration{};
     bool runAllowTools{};
     std::string projectPath;
+    if (action == Action::SetupPrepare) {
+        projectPath = winrt::to_string(SetupFolder().Text());
+        if (projectPath.empty()) co_return;
+    }
     std::string projectDisplayName;
     std::string projectQuery;
     std::string requestedProjectId;
@@ -4657,6 +4601,16 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
 
     std::string message;
     ::ForgeConductor::Hosts::App::ProviderSettingsView loaded;
+    ::ForgeConductor::Application::ProjectSetupSnapshot setupResult;
+    const auto setupDispatcher = DispatcherQueue();
+    const auto setupWeak = get_weak();
+    if (action == Action::SetupPrepare) {
+        setupCancellation_ = std::stop_source{};
+        SetupFolderButton().IsEnabled(false);
+        SetupRetryButton().IsEnabled(false);
+        SetupCancelButton().IsEnabled(true);
+        SetupTaskButton().IsEnabled(false);
+    }
     ::ForgeConductor::Hosts::App::ProviderModelsView modelsView;
     ::ForgeConductor::Hosts::App::ManagedRunView runView;
     ::ForgeConductor::Hosts::App::TelemetryView telemetryView;
@@ -4672,6 +4626,21 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     try {
         co_await winrt::resume_background();
         switch (action) {
+        case Action::SetupPrepare: {
+            std::stop_callback closed{cancellation_.get_token(),
+                [source = setupCancellation_]() mutable { source.request_stop(); }};
+            setupResult = connection_->prepareProject(projectPath, setupCancellation_.get_token(),
+                [setupDispatcher, setupWeak](const auto& progress) {
+                    setupDispatcher.TryEnqueue([setupWeak, progress]() {
+                        if (const auto window = setupWeak.get()) window->ApplySetupProgress(progress);
+                    });
+                });
+            if (!setupResult.projectId.empty())
+                projectView = connection_->projectMemory(setupResult.projectId, {}, cancellation_.get_token());
+            loaded = connection_->providerSettings(cancellation_.get_token());
+            message = setupResult.ready ? "Project preparation completed." : "Project preparation needs attention.";
+            break;
+        }
         case Action::Start:
             message = connection_->start(cancellation_.get_token());
             break;
@@ -4889,6 +4858,15 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     }
     std::optional<Action> followUp;
     if (!cancellation_.stop_requested()) {
+        if (action == Action::SetupPrepare) {
+            ApplySetupProgress(setupResult);
+            preparedProjectId_ = setupResult.ready ? setupResult.projectId : std::string{};
+            SetupFolderButton().IsEnabled(true);
+            SetupRetryButton().IsEnabled(true);
+            SetupCancelButton().IsEnabled(false);
+            if (projectView.loaded && projectView.snapshot) ApplyProjectWorkspace(*projectView.snapshot);
+            if (loaded.loaded) ApplyProviderForm(loaded.settings);
+        }
         if (runAction) {
             if (runView.snapshot) {
                 if (runView.snapshot->record.projectId.value() == selectedProjectId_) {
