@@ -335,7 +335,7 @@ $distributionMetadata = [ordered]@{
     signature_status=[string]$signature.Status
     payload_manifest_sha256=(Get-FileHash -LiteralPath (
         Join-Path $payload 'payload-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
-    release_channel='stable'
+    release_channel=$ReleaseChannel
     development_signed=[bool]$DevelopmentSigning
 }
 $distributionMetadata | ConvertTo-Json -Depth 5 |
