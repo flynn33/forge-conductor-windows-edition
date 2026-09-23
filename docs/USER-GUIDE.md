@@ -28,6 +28,18 @@ Without Guided Mode:
 
 ## Pages
 
+### Offline help in 1.1.44
+
+Open **Guided setup → Help and troubleshooting**. Search by a word or phrase such as `policy`, `model`, or `memory`, then expand an article. All 20 articles are available without a network connection or model. A no-match message suggests other search terms.
+
+The opening **Choose my project folder** button opens the Windows picker directly. Cancelling returns to folder selection without registering a project. Finishing the guide does not prove provider readiness or task success.
+
+### Development policy limitations
+
+The current instruction-package control accepts local folders, not repository URLs. Activation supplies project guidance; it is not a policy-enforcement engine. Repository intake, pinned policy adoption, and verifiable governance gates are specified in [the research plan](SETUP-GOVERNANCE-RESEARCH.md) and remain future implementation work.
+
+### Navigation
+
 - **Rig** shows live resource telemetry, provider/store/continuity health, relevant processes, workflows, and the Guided Mode toggle. A disconnect is shown as a gap rather than fabricated data.
 - **Guided setup** explains and drives the complete real-project setup path and can restart it at any time.
 - **Autonomy** starts and reattaches managed runs and provides pause, resume, and stop controls.

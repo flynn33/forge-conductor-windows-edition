@@ -4,6 +4,7 @@ param(
     [ValidateSet('Release')][string]$Configuration='Release',
     [ValidateSet('x64')][string]$Architecture='x64',
     [switch]$DevelopmentSigning,
+    [ValidateSet('stable','prerelease')][string]$ReleaseChannel='stable',
     [string]$PfxPath=$env:FORGE_SIGNING_PFX,
     [string]$PfxPassword=$env:FORGE_SIGNING_PASSWORD,
     [string]$UpdateBaseUri
@@ -219,7 +220,7 @@ $provenance = [ordered]@{
     configuration=$Configuration
     architecture=$Architecture
     staged_executables=$buildExecutables
-    release_channel='stable'
+    release_channel=$ReleaseChannel
     development_signed=[bool]$DevelopmentSigning
 }
 $provenance | ConvertTo-Json -Depth 6 |

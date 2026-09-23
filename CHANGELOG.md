@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.44 — Offline setup help (engineering prerelease)
+
+- Add 20 searchable offline help articles under Guided setup, including provider recovery, project instructions, permissions, memory, telemetry, and evidence.
+- Open the Windows folder picker immediately from the opening setup action. Describe the final guide state as guide completion rather than verified readiness.
+- Isolate the real-process Manager lifecycle test from the installed application's dashboard port.
+- Add a consolidated Release verification runner with per-check logs, hashes, exit codes, and explicit outstanding acceptance work.
+- Document the proposed shorter setup path and pinned repository-policy intake and enforcement design. Policy repository import and enforcement are not implemented in this version.
+- Allow package metadata to identify an engineering prerelease. Full installed acceptance, stale Manager detail presentation, and isolated shutdown behavior remain open.
+
 ## 1.1.43 — Complete Guided Mode
 
 - Replace the shallow setup card with a persistent nine-step Guided Mode that covers a real project from folder authorization and Manager verification through scope review, optional instruction packages, optional durable memory, provider readiness, and the first real managed task.

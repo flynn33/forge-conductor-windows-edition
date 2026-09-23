@@ -2,6 +2,7 @@
 #include "MainWindow.xaml.h"
 #include "MainWindow.g.cpp"
 #include "TelemetryPresentation.h"
+#include "SetupKnowledge.h"
 #include "ForgeConductor/Domain/ProductIdentity.h"
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Windowing.h>
@@ -19,6 +20,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <cwctype>
 #include <limits>
 #include <optional>
 #include <sstream>
@@ -783,7 +785,7 @@ void MainWindow::RenderGuidedMode()
         GuidedModeSecondaryButton().Visibility(Visibility::Visible);
         break;
     case GuidedProjectStep::Complete:
-        GuidedModeTitle().Text(L"Project setup is complete");
+        GuidedModeTitle().Text(L"Project registered · setup guide finished");
         GuidedModeBody().Text(
             L"The selected project now has a verified authorization boundary and is ready for managed work. Any instructions or memory you chose were stored through the real Manager workflow, and any run you started is bound to this exact project.");
         GuidedModeWhy().Text(
@@ -827,6 +829,7 @@ void MainWindow::GuidedModePrimaryClicked(
     case GuidedProjectStep::Welcome:
         SetGuidedStep(GuidedProjectStep::ChooseFolder);
         ShowProjectRegistration();
+        if (BrowseForProjectFolder()) SetGuidedStep(GuidedProjectStep::RegisterProject);
         break;
     case GuidedProjectStep::ChooseFolder:
         ShowProjectRegistration();
@@ -873,6 +876,39 @@ void MainWindow::GuidedModePrimaryClicked(
         SelectPage(L"Rig");
         break;
     }
+}
+
+void MainWindow::HelpSearchChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&)
+{
+    using namespace Microsoft::UI::Xaml::Controls;
+    if (!HelpArticles()) return;
+    auto lower = [](std::wstring text) {
+        std::transform(text.begin(), text.end(), text.begin(),
+            [](wchar_t value) { return static_cast<wchar_t>(std::towlower(value)); });
+        return text;
+    };
+    const auto query = lower(std::wstring{HelpSearch().Text()});
+    HelpArticles().Children().Clear();
+    std::size_t count{};
+    for (const auto& article : ::ForgeConductor::Hosts::App::SetupKnowledge) {
+        const auto searchable = lower(std::wstring{article.title} + L" " + std::wstring{article.body});
+        if (!query.empty() && searchable.find(query) == std::wstring::npos) continue;
+        Expander entry;
+        entry.Header(box_value(hstring{article.title}));
+        entry.HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Stretch);
+        TextBlock body;
+        body.Text(hstring{article.body});
+        body.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
+        body.IsTextSelectionEnabled(true);
+        entry.Content(body);
+        HelpArticles().Children().Append(entry);
+        ++count;
+    }
+    HelpSearchState().Text(count == 0U
+        ? L"No matching article. Try project, model, policy, tools, or memory."
+        : winrt::to_hstring(count) + L" help articles · available offline");
 }
 
 void MainWindow::GuidedModeSecondaryClicked(
@@ -1673,6 +1709,7 @@ void MainWindow::NavigationChanged(
         !provider && !settings && !guidedSetup && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
             ? Visibility::Visible : Visibility::Collapsed);
     if (guidedSetup) {
+        HelpSearchChanged(nullptr, nullptr);
         PageDescription().Text(L"Follow the real project path from folder authorization through the first managed task.");
     } else if (provider) {
         PageDescription().Text(L"Choose a loaded model and inspect the Manager-owned Responses endpoint.");

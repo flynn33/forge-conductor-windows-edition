@@ -24,6 +24,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -57,7 +59,7 @@ constexpr auto InfrastructureReleaseTimeout = 15s;
 constexpr auto PollInterval = 50ms;
 constexpr DWORD FixtureOwnershipConflictExitCode = 3U;
 constexpr DWORD ForcedTerminationExitCode = 0xF0160001U;
-constexpr std::uint16_t ExpectedDashboardPort = 7788U;
+std::uint16_t ExpectedDashboardPort{};
 constexpr std::uint64_t MaximumQualifiedExecutableBytes = 512ULL * 1024ULL * 1024ULL;
 constexpr std::string_view ExpectedShutdownAcknowledgement =
     "{\"ok\":true,\"message\":\"Manager shutting down\",\"state\":\"stopping\"}";
@@ -744,6 +746,21 @@ void requireByteIdenticalFiles(
     return probe.valid();
 }
 
+[[nodiscard]] std::uint16_t chooseDashboardPort()
+{
+    UniqueSocket socket{::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)};
+    require(socket.valid(), "create isolated dashboard port probe");
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    require(::bind(socket.get(), reinterpret_cast<const sockaddr*>(&address),
+        sizeof(address)) != SOCKET_ERROR, "reserve an ephemeral dashboard port");
+    int length = sizeof(address);
+    require(::getsockname(socket.get(), reinterpret_cast<sockaddr*>(&address),
+        &length) != SOCKET_ERROR, "read the isolated dashboard port");
+    return ntohs(address.sin_port);
+}
+
 [[nodiscard]] bool dashboardPortIsFree()
 {
     UniqueSocket socket{::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)};
@@ -813,6 +830,13 @@ public:
             "the dashboard port is already owned; refusing to disturb it");
 
         root_ = reserveTemporaryRoot(utf8ToWide(purposeSuffix_));
+        const auto configRoot = std::filesystem::path{root_} / L"config";
+        std::filesystem::create_directory(configRoot);
+        std::ofstream config{configRoot / L"config.json", std::ios::binary};
+        config << "{\"schema_version\":1,\"dashboard\":{\"port\":"
+               << ExpectedDashboardPort << "}}";
+        config.close();
+        require(!config.fail(), "write the isolated dashboard configuration");
     }
 
     ~IsolatedManagerEnvironment() noexcept
@@ -1699,6 +1723,7 @@ void runLifecycle(
     const std::wstring& canonicalCliArgument)
 {
     WinsockLifetime winsock;
+    ExpectedDashboardPort = chooseDashboardPort();
     const std::wstring managerExecutable = canonicalRegularFile(
         fixtureArgument, L"ForgeConductor.Manager.exe");
     std::wstring expectedCli{parentPath(managerExecutable)};

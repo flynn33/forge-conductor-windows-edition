@@ -166,6 +166,15 @@
     </Border>
 
     <StackPanel x:Name="GuidedSetupPanel" Spacing="14" Visibility="Collapsed">
+     <Expander Header="Help and troubleshooting · 20 offline articles" HorizontalAlignment="Stretch" IsExpanded="False">
+      <StackPanel Spacing="10">
+       <TextBlock Text="Help and troubleshooting" Style="{ThemeResource ForgeSectionTitleStyle}"/>
+       <TextBlock Text="Find a plain-language answer without leaving the application." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+       <TextBox x:Name="HelpSearch" PlaceholderText="Search project, model, policy, tools, memory…" TextChanged="HelpSearchChanged" AutomationProperties.Name="Search offline help"/>
+       <TextBlock x:Name="HelpSearchState" Style="{ThemeResource ForgeCaptionStyle}" AutomationProperties.LiveSetting="Polite"/>
+       <StackPanel x:Name="HelpArticles" Spacing="6"/>
+      </StackPanel>
+     </Expander>
      <Border Style="{ThemeResource ForgeHeroCardStyle}" Padding="20">
       <Grid ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions>
        <Border Width="56" Height="56" CornerRadius="14" Background="{ThemeResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE897;" FontSize="26" Foreground="{ThemeResource ForgeAccentBrush}"/></Border>
