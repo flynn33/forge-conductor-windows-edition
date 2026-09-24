@@ -190,8 +190,9 @@ $guidedModeMarkers = @(
     'Guided Mode on home',
     'Guided Mode setting',
     'GUIDED MODE · STEP 1 OF 9',
-    'Restart from the beginning',
-    'The full path',
+    'Choose folder and prepare',
+    'Retry preparation',
+    'Start task',
     'Version loading · Windows 11 · x64')
 foreach ($marker in $guidedModeMarkers) {
     if (-not $mainWindowText.Contains($marker, [StringComparison]::Ordinal)) {
