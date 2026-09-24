@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <filesystem>
 #include <limits>
 #include <stdexcept>
@@ -20,8 +21,14 @@ public:
     using std::runtime_error::runtime_error;
 };
 struct Internet final {
-    HINTERNET value{};
-    ~Internet() { if (value) WinHttpCloseHandle(value); }
+    explicit Internet(HINTERNET value) : value_{value} {}
+    Internet(const Internet&) = delete;
+    Internet& operator=(const Internet&) = delete;
+    HINTERNET get() const noexcept { return value_.load(); }
+    void close() noexcept { if (auto value = value_.exchange(nullptr)) WinHttpCloseHandle(value); }
+    ~Internet() { close(); }
+private:
+    std::atomic<HINTERNET> value_{};
 };
 
 void check(const Domain::OperationContext& context)
@@ -37,29 +44,30 @@ Json request(const Domain::ManagerSettings& settings, const wchar_t* path,
     check(context);
     Internet session{WinHttpOpen(L"Forge Conductor setup", WINHTTP_ACCESS_TYPE_NO_PROXY,
         WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0)};
-    if (!session.value) throw std::runtime_error{"Cannot initialize local model connection."};
+    if (!session.get()) throw std::runtime_error{"Cannot initialize local model connection."};
     const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
         context.deadline - std::chrono::steady_clock::now()).count();
     const int receiveTimeout = static_cast<int>(std::clamp<std::int64_t>(remaining, 1, body ? 120000 : 5000));
-    if (!WinHttpSetTimeouts(session.value, 2000, 2000, 5000, receiveTimeout))
+    if (!WinHttpSetTimeouts(session.get(), 2000, 2000, 5000, receiveTimeout))
         throw std::runtime_error{"Cannot set model preparation timeout."};
     const auto host = Detail::CommandLineBuilder::utf8ToUtf16(settings.localModelHost);
     if (!host) throw std::runtime_error{host.error().message};
-    Internet connection{WinHttpConnect(session.value, host.value().c_str(), settings.localModelPort, 0)};
-    Internet operation{connection.value ? WinHttpOpenRequest(connection.value, body ? L"POST" : L"GET",
+    Internet connection{WinHttpConnect(session.get(), host.value().c_str(), settings.localModelPort, 0)};
+    Internet operation{connection.get() ? WinHttpOpenRequest(connection.get(), body ? L"POST" : L"GET",
         path, nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
         settings.localModelSecure ? WINHTTP_FLAG_SECURE : 0) : nullptr};
     const auto data = body ? body->dump() : std::string{};
-    if (!operation.value || !WinHttpSendRequest(operation.value,
+    std::stop_callback cancel{context.cancellation, [&operation]() noexcept { operation.close(); }};
+    if (!operation.get() || !WinHttpSendRequest(operation.get(),
             body ? L"Content-Type: application/json\r\n" : WINHTTP_NO_ADDITIONAL_HEADERS,
             body ? static_cast<DWORD>(-1L) : 0,
             data.empty() ? WINHTTP_NO_REQUEST_DATA : const_cast<char*>(data.data()),
             static_cast<DWORD>(data.size()), static_cast<DWORD>(data.size()), 0) ||
-        !WinHttpReceiveResponse(operation.value, nullptr))
+        !WinHttpReceiveResponse(operation.get(), nullptr))
         throw ServerUnavailable{"LM Studio is not responding at the configured local address."};
     check(context);
     DWORD status{}, size{sizeof(status)};
-    if (!WinHttpQueryHeaders(operation.value, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+    if (!WinHttpQueryHeaders(operation.get(), WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
         WINHTTP_HEADER_NAME_BY_INDEX, &status, &size, WINHTTP_NO_HEADER_INDEX) || status != 200)
         throw std::runtime_error{"LM Studio model management returned HTTP " + std::to_string(status) +
             ". Check server authentication or update LM Studio."};
@@ -68,7 +76,7 @@ Json request(const Domain::ManagerSettings& settings, const wchar_t* path,
         check(context);
         std::array<char, 8192> buffer{};
         DWORD bytes{};
-        if (!WinHttpReadData(operation.value, buffer.data(), static_cast<DWORD>(buffer.size()), &bytes))
+        if (!WinHttpReadData(operation.get(), buffer.data(), static_cast<DWORD>(buffer.size()), &bytes))
             throw std::runtime_error{"LM Studio model metadata could not be read."};
         if (bytes == 0) break;
         if (response.size() + bytes > 1024U * 1024U)
@@ -101,7 +109,10 @@ void startServer(const Domain::ManagerSettings& settings, const Domain::Operatio
     Detail::UniqueHandle ownedProcess{process.hProcess};
     Detail::UniqueHandle ownedThread{process.hThread};
     const auto deadline = std::min(context.deadline, std::chrono::steady_clock::now() + std::chrono::seconds{30});
-    while (WaitForSingleObject(ownedProcess.get(), 100) == WAIT_TIMEOUT) {
+    for (;;) {
+        const auto wait = WaitForSingleObject(ownedProcess.get(), 100);
+        if (wait == WAIT_OBJECT_0) break;
+        if (wait != WAIT_TIMEOUT) throw std::runtime_error{"Windows could not observe LM Studio startup. Retry preparation."};
         if (context.isCancellationRequested() || std::chrono::steady_clock::now() >= deadline) {
             TerminateProcess(ownedProcess.get(), 1);
             WaitForSingleObject(ownedProcess.get(), 5000);
@@ -180,7 +191,9 @@ Domain::Result<PreparedLocalModel> WindowsModelPreparation::prepare(
         throw std::runtime_error{"The loaded model could not be verified. Retry preparation."};
     } catch (const std::exception& failure) {
         return Domain::Result<PreparedLocalModel>::failure(
-            Domain::makeError(Domain::ErrorCodes::InvalidRequest, failure.what()));
+            Domain::makeError(context.isCancellationRequested() ? Domain::ErrorCodes::Cancelled :
+                context.isExpired(std::chrono::steady_clock::now()) ? Domain::ErrorCodes::DeadlineExceeded :
+                Domain::ErrorCodes::InvalidRequest, failure.what()));
     } catch (...) {
         return Domain::Result<PreparedLocalModel>::failure(
             Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Model preparation failed safely."));

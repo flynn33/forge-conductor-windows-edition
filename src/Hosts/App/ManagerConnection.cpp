@@ -765,7 +765,7 @@ std::string ManagerConnection::saveProviderSettings(
         return "Provider settings saved for " +
             result.value().settings.localModelHost + ":" +
             std::to_string(result.value().settings.localModelPort) +
-            ". Restart the Manager before starting new model sessions.";
+            ". New runs use the saved model connection. Restart the Manager after changing context or shell settings.";
     } catch (const std::exception& error) {
         return error.what();
     } catch (...) {
@@ -812,6 +812,24 @@ std::string ManagerConnection::testProvider(
     } catch (...) {
         return "LM Studio connection failed safely.";
     }
+}
+
+ProjectPolicyView ManagerConnection::projectPolicy(const Contracts::ProjectPolicyRequest& request,
+    std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, {}};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation, std::chrono::minutes{5});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, {}};
+        auto client = std::move(created).value();
+        auto result = client->projectPolicy(request, context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, {}};
+        return {true, "Policy operation completed.", result.value().canonicalJson};
+    } catch (const std::exception& error) { return {false, error.what(), {}}; }
+    catch (...) { return {false, "Policy operation failed safely.", {}}; }
 }
 
 std::string ManagerConnection::probeProviderContract(

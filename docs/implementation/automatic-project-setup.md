@@ -1,46 +1,26 @@
 # Automatic project setup delivery record
 
-Status: implementation in progress; not release qualification.
+Version: 1.2.0. Implementation is complete; release qualification is recorded separately in [the validation report](../validation/AUTOMATIC-SETUP-1.2.0.md).
 
-The setup flow accepts a folder, starts or attaches to the Manager, activates its
-service, registers the project, starts an installed LM Studio server when needed,
-loads or reuses a compatible downloaded tool model, saves the selected instance,
-and verifies a model response. Task entry and tool permission are on this page.
-Preparation can be retried and reports the stage that needs attention.
+The coordinator performs Manager activation, stable project registration, model preparation and response verification. Setup shows progress, retry/cancellation and task entry. The Windows model service uses native loopback HTTP and the installed LM Studio CLI. It checks tool capability and actual context capacity; missing software or weights produces an actionable error.
 
-## Evidence collected
+The policy service imports a bounded text snapshot from a local folder or immutable GitHub commit. Native HTTPS supports public sources; normal Git credential-helper authentication supports private sources through a no-checkout object reader. Repository scripts, hooks and filters are not executed. Unsupported files are reported.
 
-- Release backend and WinUI application build passed on the development host.
-- ProjectSetupCoordinatorTests passed: stage failures stop dependent work,
-  cancellation, missing identities, exception handling and retry.
-- WinHttpTransportTests passed: 12 cases / 133 assertions, including model load,
-  readback, reuse, malformed or unusable inventory, and provider settings applied
-  to new runs while existing runs retain their connection.
+The Manager persists adopted snapshots and human review records atomically. The common authorizer checks integrity, review status, path restrictions and exact commands. Policy retrieval is read-only and paginated. Private state cannot overlap authorized project roots. Arbitrary semantic obligations still require human assessment.
 
-These checks do not prove a complete installed user journey or release readiness.
+Provider bindings are persisted before run admission and after response creation. Existing runs and known response chains retain their endpoint and model through restart. Unknown response bindings fail explicitly. New runs use current saved settings.
 
-## Required before publication
+## Host evidence already collected
 
-- Exercise the actual Manager-backed preparation flow in an isolated profile,
-  including first task, retry, restart, cancellation and recovery.
-- Bound cancellation during model loading; verify server startup failure paths.
-- Review persisted provider binding and continuity behavior across Manager restart.
-- Add policy repository import, immutable adoption and authorization enforcement.
-  The existing instruction-package memory importer is not enforcement.
-- Verify the Raven Forge policy source requirements and distinguish machine
-  checks from human review obligations; never infer completed review from import.
-- Update in-app help, README, changelog, documentation and wiki to match behavior.
-- Run the complete Release build, tests, static gates, feature/control inventory,
-  package validation and isolated installation lifecycle, preserving evidence.
-- Commit, review, merge, publish the release and synchronize the local repository.
+- Actual native folder picker and setup completed in an isolated profile with qwen3.8-27b.
+- The first task wrote hello.txt containing exactly `Automatic setup works.` and read it back; the on-disk contents were independently checked.
+- Raven Forge private repository intake resolved commit ed0028a46bac9c5b92876a6ad6589ca421fd9499: 204 text files, 26 reported exclusions.
+- Real Manager tests exercise registration reuse, model pinning, actual file writes, pending-review denial, accepted scope, forbidden paths and commands, and persisted review readback.
 
-## Model API sources
+## API research
 
 - https://lmstudio.ai/docs/developer/rest/list
 - https://lmstudio.ai/docs/developer/rest/load
 - https://lmstudio.ai/docs/cli/serve/server-start
 
-Automatic preparation does not download model weights or run repository scripts.
-Model metadata must establish tool support and enough loaded context; a model name
-alone is insufficient. Missing software or weights must produce an actionable
-next step rather than a false ready state.
+Full logs and exact release provenance belong to the release evidence archive; model-generated text is not a substitute for native outcomes.

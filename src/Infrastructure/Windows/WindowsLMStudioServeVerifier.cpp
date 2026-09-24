@@ -37,7 +37,7 @@ using namespace std::chrono_literals;
 constexpr auto VerificationTimeout = 15s;
 constexpr std::size_t VerificationStdoutBytesMaximum = 80'000U;
 constexpr std::size_t VerificationStderrBytesMaximum = 20'000U;
-constexpr std::array<std::string_view, 57U> CanonicalToolNames{
+constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "agent_context",
     "agent_get",
     "agent_list",
@@ -91,6 +91,7 @@ constexpr std::array<std::string_view, 57U> CanonicalToolNames{
     "project_memory.search",
     "project_memory.status",
     "project_memory.update",
+    "project_policy.read",
     "search_text",
     "session_checkpoint",
     "session_handoff",
@@ -101,7 +102,7 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "f9261d9718c4df49c16f04ae8c7ff5afd08391f28daf7a99efade07d6bfd0d1e";
+    "3d6b0acc0cf2fa429b2a36fe5dd10dad738fd4b2b43269c04a5c515769ba3356";
 constexpr std::array<std::string_view, 4U> CluToolNames{
     "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"};
 constexpr std::string_view CluToolDescriptorSha256 =

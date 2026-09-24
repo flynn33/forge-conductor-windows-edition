@@ -55,6 +55,9 @@ public:
     [[nodiscard]] Domain::Result<void> requestShutdown(
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<Manager::ManagerProjectPolicySnapshot> projectPolicy(
+        const Contracts::ProjectPolicyRequest&, const Domain::OperationContext&) noexcept;
+
     [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> startManagedRun(
         const Domain::ManagedRunStartRequest& request,
         const Domain::OperationContext& context) noexcept;

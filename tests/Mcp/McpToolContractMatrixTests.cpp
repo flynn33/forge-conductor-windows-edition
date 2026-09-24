@@ -305,6 +305,8 @@ void runMatrix(const Json& fixture)
     Contract::McpToolContractFixture catalogFixture{
         Contract::DependencyMode::Happy};
     auto catalogNames = catalogFixture.catalogToolNames();
+    require(std::erase(catalogNames, "project_policy.read") == 1U,
+        "The Windows policy retrieval extension must be registered once; its Manager integration is tested separately.");
     const std::set<std::string> continuityControlNames{
         "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"};
     std::set<std::string> observedControlNames;

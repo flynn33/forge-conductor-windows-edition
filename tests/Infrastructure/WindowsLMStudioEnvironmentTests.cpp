@@ -608,13 +608,13 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
                 Domain::LMStudioConnectorRole::Primary,
                 true,
                 std::string{"2025-11-25"},
-                57U,
+                58U,
                 "Primary role ready."},
             Domain::LMStudioConnectorHealth{
                 Domain::LMStudioConnectorRole::Fallback,
                 true,
                 std::string{"2025-11-25"},
-                57U,
+                58U,
                 "Fallback role ready."},
             Domain::LMStudioConnectorHealth{
                 Domain::LMStudioConnectorRole::Clu,
@@ -628,7 +628,7 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
             "A consistent measured role-health snapshot was rejected.");
     const auto cached = take(environment.connectionHealth(context));
     require(cached.state == Domain::LMStudioConnectionState::Ready &&
-                cached.roles.size() == 3U && cached.roles[0].toolCount == 57U,
+                cached.roles.size() == 3U && cached.roles[0].toolCount == 58U,
             "The connection-health snapshot was not cached exactly.");
 
     auto inconsistent = ready;
@@ -657,7 +657,7 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
             Domain::LMStudioConnectorRole::Primary,
             false,
             std::string{"2025-11-25"},
-            57U,
+            58U,
             "Primary role failed after a prior measurement."}},
         Domain::LMStudioConnectionState::Unavailable};
     requireError(

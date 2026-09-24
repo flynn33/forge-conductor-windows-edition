@@ -113,7 +113,7 @@ public:
     const auto document = Json::parse(encoded);
     require(document.is_object() && document.value("schemaVersion", 0) == 1 &&
                 document.contains("tools") && document.at("tools").is_array() &&
-                document.at("tools").size() == 57U,
+                document.at("tools").size() == 58U,
             "the reviewed MCP semantic golden has the wrong schema or tool count");
     return document.at("tools");
 }
@@ -141,7 +141,7 @@ public:
 
 [[nodiscard]] std::string successfulResponse(
     const Domain::LMStudioConnectorRole role,
-    const std::size_t toolCount = 57U,
+    const std::size_t toolCount = 58U,
     const bool duplicateLast = false,
     const bool reverseLastTwo = false,
     const bool emptyDescription = false,
@@ -163,7 +163,7 @@ public:
                                   : role == Domain::LMStudioConnectorRole::Fallback
                                       ? "forge-conductor-fallback"
                                       : "forge-conductor-clu"},
-                    {"version", "1.1.44"}}}}}};
+                    {"version", "1.2.0"}}}}}};
     Json tools = canonicalTools();
     if (role == Domain::LMStudioConnectorRole::Clu) {
         tools.erase(std::remove_if(
@@ -172,7 +172,7 @@ public:
             }), tools.end());
     }
     const auto selectedCount = role == Domain::LMStudioConnectorRole::Clu &&
-            toolCount == 57U
+            toolCount == 58U
         ? 4U
         : toolCount;
     require(selectedCount <= tools.size(), "the requested verifier tool subset is invalid");
@@ -463,7 +463,7 @@ void testSuccessfulRoleVerificationAndRequestShape()
 
     require(health.role == Domain::LMStudioConnectorRole::Primary && health.ready,
             "the primary verifier did not return ready health");
-    require(health.protocolVersion == "2025-11-25" && health.toolCount == 57U,
+    require(health.protocolVersion == "2025-11-25" && health.toolCount == 58U,
             "the primary verifier returned the wrong protocol or tool count");
     require(processes.lastAuthorityIntent() == Domain::FileAccess::Write,
             "the verifier rejected or rewrote a deploy authority with an Execute grant");
@@ -504,7 +504,7 @@ void testSuccessfulRoleVerificationAndRequestShape()
         authority,
         operationContext(2U)));
     require(fallback.role == Domain::LMStudioConnectorRole::Fallback && fallback.ready &&
-                fallback.toolCount == 57U,
+                fallback.toolCount == 58U,
             "the fallback verifier did not return ready health");
     const auto fallbackRequest = processes.lastRequest();
     require(fallbackRequest.has_value() &&
@@ -715,33 +715,33 @@ void testProtocolDriftAndProcessFailuresFailClosed()
                  "a 52-tool MCP surface was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 57U, true, false));
+        Domain::LMStudioConnectorRole::Primary, 58U, true, false));
     requireError(verify(13U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "duplicate MCP tool names were accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 57U, false, true));
+        Domain::LMStudioConnectorRole::Primary, 58U, false, true));
     requireError(verify(14U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "nondeterministic MCP tool ordering was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 57U, false, false, true, false));
+        Domain::LMStudioConnectorRole::Primary, 58U, false, false, true, false));
     requireError(verify(15U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "an empty MCP tool description was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 57U, false, false, false, true));
+        Domain::LMStudioConnectorRole::Primary, 58U, false, false, false, true));
     requireError(verify(16U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a non-object MCP input schema was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 57U, false, false, false, false,
+        Domain::LMStudioConnectorRole::Primary, 58U, false, false, false, false,
         true, false));
     requireError(verify(27U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a wrong but sorted canonical MCP tool name was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 57U, false, false, false, false,
+        Domain::LMStudioConnectorRole::Primary, 58U, false, false, false, false,
         false, true));
     requireError(verify(28U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a compatible-looking canonical MCP schema drift was accepted");

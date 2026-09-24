@@ -1806,6 +1806,19 @@ private:
         std::optional<Domain::ContextRecoveryReceipt>& contextRecovery)
     {
         const auto& name = call.toolName();
+        if (name == "project_policy.read") {
+            if (!dependencies_.projectPolicy) return failure<Json>(Domain::ErrorCodes::InvalidRequest, "Policy retrieval is unavailable in this composition.");
+            auto inspected = dependencies_.projectPolicy->execute({authority.projectId(), Contracts::ProjectPolicyAction::Inspect}, context);
+            if (!inspected) return propagate<Json>(std::move(inspected));
+            auto index = Json::parse(inspected.value());
+            const auto path = arguments.value("path", "");
+            if (path.empty() || !index.value("adopted", false)) return Domain::Result<Json>::success(std::move(index));
+            const auto offset = arguments.value("offset", std::size_t{});
+            auto document = dependencies_.projectPolicy->execute({authority.projectId(), Contracts::ProjectPolicyAction::ReadDocument,
+                path, index.at("revision").get<std::string>(), Json{{"offset", offset}}.dump()}, context);
+            if (!document) return propagate<Json>(std::move(document));
+            return Domain::Result<Json>::success(Json::parse(document.value()));
+        }
         if (name.starts_with("clu_")) {
             return continuityControl(name, arguments);
         }

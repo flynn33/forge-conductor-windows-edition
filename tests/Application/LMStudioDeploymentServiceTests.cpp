@@ -677,7 +677,7 @@ public:
             return Domain::Result<Domain::LMStudioConnectorHealth>::success(
                 Domain::LMStudioConnectorHealth{
                     role, true, std::string{"2025-11-25"},
-                    role == Domain::LMStudioConnectorRole::Clu ? 4U : 57U,
+                    role == Domain::LMStudioConnectorRole::Clu ? 4U : 58U,
                     "ready"});
         } catch (...) {
             return Domain::Result<Domain::LMStudioConnectorHealth>::failure(

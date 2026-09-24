@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.1.44
+    VERSION 1.2.0
     LANGUAGES CXX RC
 )
 
@@ -158,6 +158,7 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/ManagedRunService.cpp
     src/Application/ProjectMemoryRepositoryCache.cpp
     src/Application/ProjectMemoryService.cpp
+    src/Application/ProjectPolicyService.cpp
 )
 add_library(ForgeConductor.Application STATIC ${FORGE_APPLICATION_SOURCES})
 forge_add_layer(ForgeConductor.Application ForgeConductor::Application
@@ -349,6 +350,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp
     src/Infrastructure/Windows/LMStudioResponsesTransport.cpp
     src/Infrastructure/Windows/WindowsModelPreparation.cpp
+    src/Infrastructure/Windows/WindowsPolicySourceReader.cpp
     src/Infrastructure/Windows/SettingsBoundResponsesTransport.cpp
     src/Infrastructure/Windows/Detail/AtomicReplaceEngine.cpp
     src/Infrastructure/Windows/Detail/BoundedSerialExecutor.cpp
@@ -830,6 +832,14 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.App.ProjectSetupCoordinatorTests>)
     set_tests_properties(ForgeConductor.App.ProjectSetupCoordinatorTests PROPERTIES
         LABELS "T-UNIT;T-UI")
+
+    add_executable(ForgeConductor.App.ProjectPolicyServiceTests tests/App/ProjectPolicyServiceTests.cpp)
+    forge_configure_native_target(ForgeConductor.App.ProjectPolicyServiceTests)
+    target_include_directories(ForgeConductor.App.ProjectPolicyServiceTests PRIVATE tests)
+    target_link_libraries(ForgeConductor.App.ProjectPolicyServiceTests PRIVATE
+        ForgeConductor::Application ForgeConductor::Infrastructure.Windows nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.App.ProjectPolicyServiceTests COMMAND $<TARGET_FILE:ForgeConductor.App.ProjectPolicyServiceTests>)
+    set_tests_properties(ForgeConductor.App.ProjectPolicyServiceTests PROPERTIES LABELS "T-UNIT;T-SEC;T-MGR" TIMEOUT 60)
 
     add_executable(ForgeConductor.App.ActionSchedulerTests
         tests/App/AppActionSchedulerTests.cpp)
@@ -3038,12 +3048,14 @@ if(BUILD_TESTING)
     )
 
     add_executable(ForgeConductor.SessionHost.WinHttpTransportTests
-        tests/SessionHost/WinHttpLocalModelSessionTransportTests.cpp)
+        tests/SessionHost/WinHttpLocalModelSessionTransportTests.cpp
+        src/Hosts/App/ManagerConnection.cpp)
     forge_configure_native_target(
         ForgeConductor.SessionHost.WinHttpTransportTests)
     target_include_directories(
         ForgeConductor.SessionHost.WinHttpTransportTests PRIVATE
-        "${PROJECT_SOURCE_DIR}/tests")
+        "${PROJECT_SOURCE_DIR}/tests"
+        "${PROJECT_SOURCE_DIR}/src/Hosts/App")
     target_link_libraries(
         ForgeConductor.SessionHost.WinHttpTransportTests PRIVATE
         ForgeConductor::Infrastructure.Windows

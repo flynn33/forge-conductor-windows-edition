@@ -774,6 +774,55 @@ void MainWindow::SetupRetryClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 { RunAction(Action::SetupPrepare); }
 
+void MainWindow::PolicyClicked(Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    const auto button = sender.as<Microsoft::UI::Xaml::Controls::Button>();
+    const auto tag = unbox_value<hstring>(button.Tag());
+    if (tag == L"preview") RunAction(Action::PolicyPreview);
+    else if (tag == L"adopt") RunAction(Action::PolicyAdopt);
+    else if (tag == L"inspect") RunAction(Action::PolicyInspect);
+    else if (tag == L"read") RunAction(Action::PolicyRead);
+    else if (tag == L"next") RunAction(Action::PolicyNext);
+    else if (tag == L"review") RunAction(Action::PolicyReview);
+}
+
+void MainWindow::ApplyPolicyView(const ::ForgeConductor::Hosts::App::ProjectPolicyView& view, bool document)
+{
+    if (!view.loaded) { PolicyState().Text(to_hstring(view.message)); return; }
+    try {
+        const auto value = nlohmann::json::parse(view.canonicalJson);
+        if (document) {
+            policyDocumentPath_ = value.at("path").get<std::string>();
+            PolicyDocumentText().Text(to_hstring(value.at("content").get<std::string>()));
+            policyDocumentOffset_ = value.at("next_offset").get<std::size_t>();
+            PolicyState().Text(value.at("complete").get<bool>() ? L"End of pinned document." : L"More content is available. Choose Next part to continue reading.");
+            return;
+        }
+        policySummaryJson_ = view.canonicalJson;
+        policyProject_ = selectedProjectId_;
+        policyRevision_ = value.value("revision", "");
+        policyDocumentOffset_ = 0;
+        policyDocumentPath_.clear();
+        PolicyReviewConfirmed().IsChecked(false);
+        PolicyDocument().Items().Clear();
+        PolicyDocumentText().Text(L"");
+        for (const auto& file : value.value("files", nlohmann::json::array()))
+            PolicyDocument().Items().Append(box_value(to_hstring(file.at("path").get<std::string>())));
+        if (PolicyDocument().Items().Size()) PolicyDocument().SelectedIndex(0);
+        if (policyRevision_.empty()) { PolicyState().Text(L"This project has no adopted policy."); return; }
+        if (value.value("adopted", false) && !value.value("review_accepted", false)) PolicyPanel().IsExpanded(true);
+        std::string detail = value.value("review_accepted", false) ? "Reviewed scope is enforced."
+            : value.value("adopted", false) ? "Policy adopted. Write tools and commands require a completed review."
+            : "Preview ready. Review the source identity and file list, then adopt this revision.";
+        const auto commit = value.value("commit", "");
+        detail += "\nSource: " + value.value("source", "") + "\nCommit: " + (commit.empty() ? "local snapshot" : commit) +
+            "\nSnapshot: " + policyRevision_ + "\nText files: " + std::to_string(value.at("files").size());
+        for (const auto& excluded : value.at("excluded_files")) detail += "\nExcluded from text snapshot: " + excluded.get<std::string>();
+        PolicyState().Text(to_hstring(detail));
+    } catch (const std::exception& error) { PolicyState().Text(to_hstring(std::string{"Policy response needs attention: "} + error.what())); }
+}
+
 void MainWindow::SetupCancelClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 { setupCancellation_.request_stop(); }
@@ -2528,6 +2577,10 @@ void MainWindow::ApplyProjectWorkspace(
             L"Project selection changed. Validate a package for this exact project.");
     }
     selectedProjectId_ = snapshot.project.id.value();
+    const auto existing = std::find_if(projects_.begin(), projects_.end(),
+        [&](const auto& project) { return project.id == snapshot.project.id; });
+    if (existing == projects_.end()) projects_.push_back(snapshot.project);
+    else *existing = snapshot.project;
     if (ProjectArchiveState().Text() ==
         L"Choose an authorized project to archive its memory.") {
         ProjectArchiveState().Text(winrt::to_hstring(
@@ -4152,6 +4205,56 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool runAction = action == Action::RunStart ||
         action == Action::RunStatus || action == Action::RunPause ||
         action == Action::RunResume || action == Action::RunCancel;
+    const bool policyAction = action == Action::PolicyPreview || action == Action::PolicyAdopt ||
+        action == Action::PolicyInspect || action == Action::PolicyRead || action == Action::PolicyNext || action == Action::PolicyReview;
+    std::optional<::ForgeConductor::Contracts::ProjectPolicyRequest> policyRequest;
+    if (policyAction) {
+        using PolicyAction = ::ForgeConductor::Contracts::ProjectPolicyAction;
+        auto project = ::ForgeConductor::Domain::ProjectId::parse(selectedProjectId_);
+        if (!project) { PolicyState().Text(L"Prepare or select a project before importing a policy."); co_return; }
+        const auto operation = action == Action::PolicyPreview ? PolicyAction::Preview : action == Action::PolicyAdopt ? PolicyAction::Adopt
+            : action == Action::PolicyInspect ? PolicyAction::Inspect : action == Action::PolicyReview ? PolicyAction::Review : PolicyAction::ReadDocument;
+        if (operation != PolicyAction::Preview && operation != PolicyAction::Inspect &&
+            (policyProject_ != selectedProjectId_ || policyRevision_.empty())) {
+            PolicyState().Text(L"Inspect or preview the policy for this selected project first."); co_return;
+        }
+        policyRequest.emplace(::ForgeConductor::Contracts::ProjectPolicyRequest{project.value(), operation, {}, policyRevision_, {}});
+        if (operation == PolicyAction::Preview) policyRequest->source = to_string(PolicySource().Text());
+        if (operation == PolicyAction::ReadDocument) {
+            if (!PolicyDocument().SelectedItem()) { PolicyState().Text(L"Select an adopted policy document."); co_return; }
+            policyRequest->source = to_string(unbox_value<hstring>(PolicyDocument().SelectedItem()));
+            if (action == Action::PolicyRead || policyDocumentPath_ != policyRequest->source) policyDocumentOffset_ = 0;
+            policyRequest->reviewJson = nlohmann::json{{"offset", policyDocumentOffset_}}.dump();
+        }
+        if (operation == PolicyAction::Review) {
+            const auto confirmed = PolicyReviewConfirmed().IsChecked();
+            if (!confirmed || !confirmed.Value() || PolicyReviewer().Text().empty() || PolicyEvidence().Text().empty()) {
+                PolicyState().Text(L"Complete the review, identify its reviewer and evidence, then confirm before accepting the scope."); co_return;
+            }
+            const auto lines = [](const hstring& text) {
+                auto values = nlohmann::json::array();
+                std::istringstream input{to_string(text)};
+                std::string line;
+                while (std::getline(input, line)) { if (line.ends_with('\r')) line.pop_back(); if (!line.empty()) values.push_back(line); }
+                return values;
+            };
+            SYSTEMTIME utc{}; GetSystemTime(&utc);
+            char timestamp[40]{};
+            sprintf_s(timestamp, "%04u-%02u-%02uT%02u:%02u:%02uZ", utc.wYear, utc.wMonth, utc.wDay, utc.wHour, utc.wMinute, utc.wSecond);
+            const auto evidence = to_string(PolicyEvidence().Text());
+            auto coverage = nlohmann::json::array();
+            const auto summary = nlohmann::json::parse(policySummaryJson_);
+            if (!summary.value("adopted", false)) { PolicyState().Text(L"Adopt the preview before recording its completed review."); co_return; }
+            for (const auto& file : summary.at("files")) coverage.push_back({{"path", file.at("path")}, {"status", "read"}, {"evidence_or_reason", evidence}});
+            auto approved = nlohmann::json::array();
+            for (const auto& command : lines(PolicyCommands().Text())) approved.push_back({{"tool", "shell_exec"}, {"arguments", {{"command", command}}}});
+            policyRequest->reviewJson = nlohmann::json{{"schema", 1}, {"accepted", true}, {"policy_revision", policyRevision_},
+                {"reviewer", to_string(PolicyReviewer().Text())}, {"reviewed_at", timestamp}, {"evidence", evidence},
+                {"unresolved_obligations", nlohmann::json::array()}, {"source_coverage", coverage}, {"non_text_review", evidence},
+                {"write_paths", lines(PolicyWritePaths().Text())}, {"prohibited_paths", lines(PolicyProhibitedPaths().Text())}, {"approved_calls", approved}}.dump();
+        }
+        PolicyState().Text(L"Working on the selected project policy…");
+    }
     const bool projectAction = action == Action::ProjectList ||
         action == Action::ProjectRegister || action == Action::ProjectLoad ||
         action == Action::ProjectRemember || action == Action::ProjectUpdate ||
@@ -4601,6 +4704,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
 
     std::string message;
     ::ForgeConductor::Hosts::App::ProviderSettingsView loaded;
+    ::ForgeConductor::Hosts::App::ProjectPolicyView policyView;
     ::ForgeConductor::Application::ProjectSetupSnapshot setupResult;
     const auto setupDispatcher = DispatcherQueue();
     const auto setupWeak = get_weak();
@@ -4626,6 +4730,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     try {
         co_await winrt::resume_background();
         switch (action) {
+        case Action::PolicyPreview: case Action::PolicyAdopt: case Action::PolicyInspect:
+        case Action::PolicyRead: case Action::PolicyNext: case Action::PolicyReview:
+            policyView = connection_->projectPolicy(*policyRequest, cancellation_.get_token());
+            message = policyView.message;
+            break;
         case Action::SetupPrepare: {
             std::stop_callback closed{cancellation_.get_token(),
                 [source = setupCancellation_]() mutable { source.request_stop(); }};
@@ -4637,6 +4746,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 });
             if (!setupResult.projectId.empty())
                 projectView = connection_->projectMemory(setupResult.projectId, {}, cancellation_.get_token());
+            if (projectView.loaded && projectView.snapshot)
+                policyView = connection_->projectPolicy({projectView.snapshot->project.id,
+                    ::ForgeConductor::Contracts::ProjectPolicyAction::Inspect}, cancellation_.get_token());
             loaded = connection_->providerSettings(cancellation_.get_token());
             message = setupResult.ready ? "Project preparation completed." : "Project preparation needs attention.";
             break;
@@ -4858,6 +4970,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     }
     std::optional<Action> followUp;
     if (!cancellation_.stop_requested()) {
+        if (policyAction) {
+            if (policyRequest->projectId.value() != selectedProjectId_) PolicyState().Text(L"The selected project changed. Inspect its policy to continue.");
+            else if (failed) PolicyState().Text(to_hstring(message));
+            else ApplyPolicyView(policyView, action == Action::PolicyRead || action == Action::PolicyNext);
+        }
         if (action == Action::SetupPrepare) {
             ApplySetupProgress(setupResult);
             preparedProjectId_ = setupResult.ready ? setupResult.projectId : std::string{};
@@ -4865,6 +4982,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             SetupRetryButton().IsEnabled(true);
             SetupCancelButton().IsEnabled(false);
             if (projectView.loaded && projectView.snapshot) ApplyProjectWorkspace(*projectView.snapshot);
+            if (policyView.loaded) ApplyPolicyView(policyView, false);
             if (loaded.loaded) ApplyProviderForm(loaded.settings);
         }
         if (runAction) {

@@ -404,6 +404,10 @@ void testEveryRequestMethodRoundTripsDeterministically()
         path("D:\\Packages\\Alpha"), true,
         identifier<Domain::Sha256Digest>(
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")});
+    payloads.emplace_back(ForgeConductor::Contracts::ProjectPolicyRequest{
+        identifier<Domain::ProjectId>("20000000-0000-4000-8000-000000000002"),
+        ForgeConductor::Contracts::ProjectPolicyAction::Preview,
+        "https://github.com/flynn33/raven-forge-development", {}, {}});
     payloads.emplace_back(Manager::ManagerMaintenanceRequest{
         Manager::ManagerMaintenanceScope::ProjectAllData,
         identifier<Domain::ProjectId>(
@@ -448,6 +452,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "projects.memory",
         "projects.remember",
         "projects.instructions",
+        "projects.policy",
         "maintenance.reset",
         "manager.control",
         "manager.settings.update",

@@ -2,6 +2,8 @@
 
 Research date: September 23, 2026. Product baseline: `a3d6092afd737f52f0e720ee1f0b249da63ff969` (1.1.43). This document separates findings, implemented first fixes, and proposed work. It is not a release acceptance record.
 
+Implementation update: version 1.2.0 delivers the automatic preparation path and a native policy intake/review gate. See [the current user guide](USER-GUIDE.md). The recommendations below retain their original research scope; semantic validator parity and operating-system command sandboxing are not implied by import.
+
 ## Recommended product change
 
 Make the default starting experience **Choose your folder → Prepare automatically → Describe your task**. Keep one visible next action, preserve progress, and put optional instructions, memory, and technical settings behind expandable sections. Setup should perform preparation instead of sending the user around the application to do it manually.

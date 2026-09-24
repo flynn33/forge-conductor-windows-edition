@@ -181,7 +181,37 @@
       <TextBlock Text="Starting a task authorizes work inside the selected project. An adopted development policy still controls what operations are allowed." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
       <Button x:Name="SetupTaskButton" Content="Start task" Click="SetupTaskClicked" IsEnabled="False" HorizontalAlignment="Left"/>
      </StackPanel></Border>
-     <Expander Header="Help and troubleshooting · 20 offline articles" HorizontalAlignment="Stretch" IsExpanded="False">
+     <Expander x:Name="PolicyPanel" Header="Development policy and governance (optional)" HorizontalAlignment="Stretch">
+      <StackPanel Spacing="10">
+       <TextBlock Text="Import a policy repository for the selected project. Adoption pins its contents and requires an accepted review before write tools or commands can run." TextWrapping="Wrap"/>
+       <TextBox x:Name="PolicySource" Header="GitHub repository URL or local policy folder" PlaceholderText="https://github.com/flynn33/raven-forge-development"/>
+       <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Import preview" Tag="preview" Click="PolicyClicked"/>
+        <Button Content="Adopt this revision" Tag="adopt" Click="PolicyClicked"/>
+        <Button Content="Inspect adopted policy" Tag="inspect" Click="PolicyClicked"/>
+       </StackPanel>
+       <TextBlock x:Name="PolicyState" Text="Prepare or select a project first. Policy is optional." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/>
+       <ComboBox x:Name="PolicyDocument" Header="Imported source documents" HorizontalAlignment="Stretch"/>
+       <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Read document" Tag="read" Click="PolicyClicked"/>
+        <Button Content="Next part" Tag="next" Click="PolicyClicked"/>
+       </StackPanel>
+       <TextBox x:Name="PolicyDocumentText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="320" Header="Pinned document contents"/>
+       <Expander Header="Record a completed policy review" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="10">
+         <TextBlock Text="Importing is not proof of compliance. Record the completed source and project review, resolve its obligations, and select the scope it permits. Semantic policy requirements still need review; these controls enforce write scope and exact approved commands." TextWrapping="Wrap"/>
+         <TextBox x:Name="PolicyReviewer" Header="Reviewer"/>
+         <TextBox x:Name="PolicyEvidence" Header="Review evidence and decisions" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"/>
+         <TextBox x:Name="PolicyWritePaths" Header="Allowed project paths (one per line; . permits the whole project)" AcceptsReturn="True" TextWrapping="Wrap"/>
+         <TextBox x:Name="PolicyProhibitedPaths" Header="Prohibited project paths (one per line)" AcceptsReturn="True" TextWrapping="Wrap"/>
+         <TextBox x:Name="PolicyCommands" Header="Exact approved project commands (one per line; leave empty to block commands)" AcceptsReturn="True" TextWrapping="Wrap"/>
+         <CheckBox x:Name="PolicyReviewConfirmed" Content="I reviewed every listed source document and the project, accounted for excluded files, and resolved all policy obligations."/>
+         <Button Content="Accept reviewed scope" Tag="review" Click="PolicyClicked" HorizontalAlignment="Left"/>
+        </StackPanel>
+       </Expander>
+      </StackPanel>
+     </Expander>
+     <Expander Header="Help and troubleshooting · 42 offline articles" HorizontalAlignment="Stretch" IsExpanded="False">
       <StackPanel Spacing="10">
        <TextBlock Text="Help and troubleshooting" Style="{ThemeResource ForgeSectionTitleStyle}"/>
        <TextBlock Text="Find a plain-language answer without leaving the application." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>

@@ -229,8 +229,8 @@ McpExecutionContextResolver::resolve(
 }
 
 McpToolAuthorizer::McpToolAuthorizer(
-    const Contracts::IClock& clock) noexcept
-    : clock_{clock}
+    const Contracts::IClock& clock, Contracts::IProjectPolicyGate* policy) noexcept
+    : clock_{clock}, policy_{policy}
 {
 }
 
@@ -251,6 +251,13 @@ Domain::Result<Contracts::AuthorizedToolCall> McpToolAuthorizer::authorize(
                 std::move(binding).error());
         }
 
+        if (policy_) {
+            auto permitted = policy_->check(request, authority, context);
+            if (!permitted) {
+                return Domain::Result<Contracts::AuthorizedToolCall>::failure(
+                    std::move(permitted).error());
+            }
+        }
         auto authorized = issueAuthorizedToolCall(request, authority, context);
         if (!authorized) {
             return authorized;

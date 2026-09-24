@@ -336,6 +336,46 @@ void authorizerIssuesOnlyBoundCapabilities()
     REQUIRE(expired.error().code == Domain::ErrorCodes::DeadlineExceeded);
 }
 
+void adoptedPolicyRunsBeforeReturningCapability()
+{
+    class Policy final : public Contracts::IProjectPolicyGate {
+    public:
+        bool permit{};
+        unsigned checks{};
+        Domain::Result<void> check(const Domain::ToolAuthorizationRequest& call,
+            const Contracts::WorkspaceAuthority& scope,
+            const Domain::OperationContext&) noexcept override
+        {
+            ++checks;
+            if (permit && call.call.metadata.projectId == scope.projectId())
+                return Domain::Result<void>::success();
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::Unauthorized, "Policy requires an accepted project review."));
+        }
+    } policy;
+    FixedClock clock;
+    auto issuer = authority(Domain::FileAccess::Write,
+        {Domain::FileAccess::Read, Domain::FileAccess::Write});
+    Mcp::McpExecutionContextResolver resolver{issuer, defaultProject(), clock};
+    Mcp::McpToolAuthorizer authorizer{clock, &policy};
+    const auto active = context();
+    const auto call = request(defaultProject());
+    const auto resolved = take(resolver.resolve(call, Domain::ToolEffect::Write, active));
+    const Domain::ToolAuthorizationRequest authorization{call, Domain::ToolEffect::Write,
+        {resolved.authorityId(), resolved.generation()}};
+    const auto denied = authorizer.authorize(authorization, resolved, active);
+    REQUIRE(!denied);
+    REQUIRE(denied.error().code == Domain::ErrorCodes::Unauthorized);
+    REQUIRE(policy.checks == 1U);
+    policy.permit = true;
+    const auto accepted = take(authorizer.authorize(authorization, resolved, active));
+    REQUIRE(accepted.matches(call));
+    REQUIRE(policy.checks == 2U);
+    clock.setNow(Domain::MonotonicTimePoint{10s});
+    REQUIRE(!authorizer.authorize(authorization, resolved, active));
+    REQUIRE(policy.checks == 2U);
+}
+
 } // namespace
 
 int main()
@@ -346,6 +386,7 @@ int main()
         explicitProjectPrecedesAdoptionWhichPrecedesStartupDefault();
         cancellationDeadlineAndCorrelationFailClosed();
         authorizerIssuesOnlyBoundCapabilities();
+        adoptedPolicyRunsBeforeReturningCapability();
         std::cout << "MCP execution service tests passed.\n";
         return 0;
     } catch (const std::exception& error) {

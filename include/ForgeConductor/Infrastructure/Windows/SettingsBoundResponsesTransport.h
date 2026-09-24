@@ -13,7 +13,9 @@ class SettingsBoundResponsesTransport final : public Contracts::IManagedResponse
     public Contracts::INativeSessionTransport {
 public:
     using Resolver = std::function<Domain::Result<LMStudioResponsesTransportConfiguration>(const Domain::OperationContext&)>;
-    explicit SettingsBoundResponsesTransport(Resolver resolver);
+    using LoadBindings = std::function<Domain::Result<std::string>(const Domain::OperationContext&)>;
+    using SaveBindings = std::function<Domain::Result<void>(const std::string&, const Domain::OperationContext&)>;
+    explicit SettingsBoundResponsesTransport(Resolver resolver, LoadBindings load = {}, SaveBindings save = {});
     ~SettingsBoundResponsesTransport() override;
     Domain::Result<Domain::ManagedProviderTurnResult> complete(const Domain::ManagedProviderTurnRequest&, const Domain::OperationContext&) noexcept override;
     Domain::Result<Domain::NativeTransportSession> createSession(const Domain::SessionCreationRequest&, const Domain::OperationContext&) noexcept override;
@@ -25,11 +27,17 @@ private:
     struct Binding {
         std::string project;
         std::shared_ptr<LMStudioResponsesTransport> transport;
+        LMStudioResponsesTransportConfiguration configuration;
     };
     Domain::Result<Binding> bind(const std::string& run, const std::string& project,
         const std::optional<std::string>& response, const Domain::OperationContext&);
     void finish(const Domain::OperationContext&, const Binding&, const std::optional<std::string>&);
     Resolver resolver_;
+    LoadBindings load_;
+    SaveBindings save_;
+    bool loaded_{};
+    void load(const Domain::OperationContext&);
+    void save(const Domain::OperationContext&);
     std::mutex mutex_;
     bool stopped_{};
     std::map<std::string, Binding> runs_;

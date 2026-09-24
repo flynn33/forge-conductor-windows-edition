@@ -63,7 +63,7 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 57U> ExpectedNames{
+    constexpr std::array<std::string_view, 58U> ExpectedNames{
         "agent_context", "agent_get", "agent_list", "agent_recommend",
         "agent_run_complete", "agent_run_start", "agent_run_status",
         "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status",
@@ -80,7 +80,7 @@ void testCanonicalCatalog()
         "project_memory.link", "project_memory.list_recent",
         "project_memory.remember", "project_memory.remember_batch",
         "project_memory.search", "project_memory.status",
-        "project_memory.update", "search_text", "session_checkpoint",
+        "project_memory.update", "project_policy.read", "search_text", "session_checkpoint",
         "session_handoff", "shell_exec"};
 
     auto catalog = take(Mcp::McpToolCatalog::create());
@@ -111,7 +111,7 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 25U);
+    REQUIRE(readEffects == 26U);
     REQUIRE(writeEffects == 32U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "project_memory.export").tool.effect == Domain::ToolEffect::Write);

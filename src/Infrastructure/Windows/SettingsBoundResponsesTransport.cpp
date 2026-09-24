@@ -1,6 +1,7 @@
 #include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
 #include <set>
 #include <stdexcept>
+#include <nlohmann/json.hpp>
 
 namespace ForgeConductor::Infrastructure::Windows {
 namespace {
@@ -8,9 +9,61 @@ template<class T> Domain::Result<T> failed(const std::string& detail)
 { return Domain::Result<T>::failure(Domain::makeError(Domain::ErrorCodes::InvalidRequest, detail)); }
 }
 
-SettingsBoundResponsesTransport::SettingsBoundResponsesTransport(Resolver resolver)
-    : resolver_{std::move(resolver)} {}
+SettingsBoundResponsesTransport::SettingsBoundResponsesTransport(Resolver resolver, LoadBindings load, SaveBindings save)
+    : resolver_{std::move(resolver)}, load_{std::move(load)}, save_{std::move(save)} {}
 SettingsBoundResponsesTransport::~SettingsBoundResponsesTransport() { shutdown(); }
+
+void SettingsBoundResponsesTransport::load(const Domain::OperationContext& context)
+{
+    if (loaded_) return;
+    if (load_) {
+        auto content = load_(context);
+        if (!content) throw std::runtime_error{content.error().message};
+        if (!content.value().empty()) {
+            const auto document = nlohmann::json::parse(content.value());
+            if (document.at("schema") != 1 || document.at("runs").size() > 4096 || document.at("responses").size() > 65536)
+                throw std::runtime_error{"Persisted provider bindings are invalid."};
+            std::map<std::string, Binding> runs, responses;
+            const auto decode = [](const auto& records, auto& target) {
+                for (const auto& [key, item] : records.items()) {
+                    LMStudioResponsesTransportConfiguration config;
+                    config.loopbackHost = item.at("host").template get<std::string>();
+                    const auto port = item.at("port").template get<unsigned>();
+                    if ((config.loopbackHost != "127.0.0.1" && config.loopbackHost != "localhost" && config.loopbackHost != "::1") || port == 0 || port > 65535)
+                        throw std::runtime_error{"Persisted provider endpoint is invalid."};
+                    config.port = static_cast<std::uint16_t>(port);
+                    config.secure = item.at("secure").template get<bool>();
+                    config.basePath = item.at("base_path").template get<std::string>();
+                    if (!item.at("model").is_null()) config.model = item.at("model").template get<std::string>();
+                    target.emplace(key, Binding{item.at("project").template get<std::string>(),
+                        std::make_shared<LMStudioResponsesTransport>(config), config});
+                }
+            };
+            decode(document.at("runs"), runs);
+            decode(document.at("responses"), responses);
+            runs_ = std::move(runs); responses_ = std::move(responses);
+        }
+    }
+    loaded_ = true;
+}
+
+void SettingsBoundResponsesTransport::save(const Domain::OperationContext& context)
+{
+    if (!save_) return;
+    nlohmann::json document{{"schema", 1}, {"runs", nlohmann::json::object()}, {"responses", nlohmann::json::object()}};
+    const auto encode = [](const auto& bindings, auto& target) {
+        for (const auto& [key, binding] : bindings) {
+            const auto& config = binding.configuration;
+            if (config.bearerToken) throw std::runtime_error{"Credential-bearing provider bindings require a protected credential store."};
+            target[key] = {{"project", binding.project}, {"host", config.loopbackHost}, {"port", config.port},
+                {"secure", config.secure}, {"base_path", config.basePath},
+                {"model", config.model ? nlohmann::json(*config.model) : nlohmann::json(nullptr)}};
+        }
+    };
+    encode(runs_, document["runs"]); encode(responses_, document["responses"]);
+    auto stored = save_(document.dump(), context);
+    if (!stored) throw std::runtime_error{stored.error().message};
+}
 
 Domain::Result<SettingsBoundResponsesTransport::Binding> SettingsBoundResponsesTransport::bind(
     const std::string& run, const std::string& project, const std::optional<std::string>& response,
@@ -18,10 +71,15 @@ Domain::Result<SettingsBoundResponsesTransport::Binding> SettingsBoundResponsesT
 {
     std::lock_guard lock{mutex_};
     if (stopped_) return failed<Binding>("The provider transport is stopped.");
+    load(context);
     const auto remember = [&](const Binding& binding) {
         if (!project.empty() && binding.project != project)
             return failed<Binding>("Provider binding belongs to another project.");
-        if (!run.empty()) runs_.insert_or_assign(run, binding);
+        if (!run.empty() && !runs_.contains(run)) {
+            if (runs_.size() >= 4096U) return failed<Binding>("Provider run binding history is full.");
+            runs_.insert_or_assign(run, binding);
+            try { save(context); } catch (...) { runs_.erase(run); throw; }
+        }
         operations_.insert_or_assign(context.operationId.value(), binding);
         return Domain::Result<Binding>::success(binding);
     };
@@ -30,12 +88,15 @@ Domain::Result<SettingsBoundResponsesTransport::Binding> SettingsBoundResponsesT
     if (response) {
         if (const auto found = responses_.find(*response); found != responses_.end())
             return remember(found->second);
+        if (save_) return failed<Binding>("This provider response has no saved connection binding. Start a new run; its history cannot safely be moved to the current model.");
     }
     if (runs_.size() >= 4096U || responses_.size() >= 65536U)
         return failed<Binding>("Provider binding history is full. Finish active work and restart the Manager.");
     auto configuration = resolver_(context);
     if (!configuration) return Domain::Result<Binding>::failure(configuration.error());
-    return remember(Binding{project, std::make_shared<LMStudioResponsesTransport>(std::move(configuration).value())});
+    if (save_ && !configuration.value().model)
+        return failed<Binding>("Prepare the project or select a model in Provider settings before starting a durable run.");
+    return remember(Binding{project, std::make_shared<LMStudioResponsesTransport>(configuration.value()), configuration.value()});
 }
 
 void SettingsBoundResponsesTransport::finish(const Domain::OperationContext& context,
@@ -43,7 +104,12 @@ void SettingsBoundResponsesTransport::finish(const Domain::OperationContext& con
 {
     std::lock_guard lock{mutex_};
     operations_.erase(context.operationId.value());
-    if (response && !stopped_) responses_.insert_or_assign(*response, binding);
+    if (response && !stopped_) {
+        if (!responses_.contains(*response) && responses_.size() >= 65536U)
+            throw std::runtime_error{"Provider response binding history is full."};
+        responses_.insert_or_assign(*response, binding);
+        save(context);
+    }
 }
 
 Domain::Result<Domain::ManagedProviderTurnResult> SettingsBoundResponsesTransport::complete(

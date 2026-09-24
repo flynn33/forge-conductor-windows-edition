@@ -4,6 +4,7 @@
 #include "ForgeConductor/Contracts/IFoundationServices.h"
 #include "ForgeConductor/Contracts/IMcpClientWorkspaceContext.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
+#include "ForgeConductor/Contracts/IProjectPolicyGate.h"
 
 namespace ForgeConductor::Mcp {
 
@@ -34,7 +35,8 @@ private:
 // workspace authority, caller, project, and operation context agree.
 class McpToolAuthorizer final : public Contracts::IToolAuthorizer {
 public:
-    explicit McpToolAuthorizer(const Contracts::IClock& clock) noexcept;
+    explicit McpToolAuthorizer(const Contracts::IClock& clock,
+        Contracts::IProjectPolicyGate* policy = nullptr) noexcept;
 
     [[nodiscard]] Domain::Result<Contracts::AuthorizedToolCall> authorize(
         const Domain::ToolAuthorizationRequest& request,
@@ -43,6 +45,7 @@ public:
 
 private:
     const Contracts::IClock& clock_;
+    Contracts::IProjectPolicyGate* const policy_;
 };
 
 } // namespace ForgeConductor::Mcp

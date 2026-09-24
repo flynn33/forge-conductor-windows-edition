@@ -37,7 +37,7 @@ constexpr auto ChildTimeout = 30s;
 constexpr auto ForcedCleanupTimeout = 5s;
 constexpr auto DrainCancelRetryInterval = 25ms;
 constexpr std::size_t MaximumCapturedBytes = 2U * 1024U * 1024U;
-constexpr std::size_t ExpectedToolCount = 57U;
+constexpr std::size_t ExpectedToolCount = 58U;
 
 std::size_t assertions{};
 
@@ -951,7 +951,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.1.44");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.2.0");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
 
     const auto& listed = responseFor(frames, 2);

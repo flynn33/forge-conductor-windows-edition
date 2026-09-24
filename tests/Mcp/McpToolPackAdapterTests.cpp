@@ -455,7 +455,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 57U);
+    REQUIRE(tools.size() == 58U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 8U},
@@ -467,6 +467,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         {"GitToolPack", 5U},
         {"MemoryToolPack", 5U},
         {"ProjectMemoryToolPack", 12U},
+        {"ProjectPolicyToolPack", 1U},
         {"SearchToolPack", 1U},
         {"ShellToolPack", 1U}};
     std::map<std::string_view, std::size_t> actualPackCounts;
@@ -479,6 +480,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         REQUIRE(schema.value("type", "") == "object");
 
         const bool closedPack =
+            descriptor.tool.pack == "ProjectPolicyToolPack" ||
             descriptor.tool.pack == "ProjectMemoryToolPack" ||
             descriptor.tool.pack == "ContinuityLifecycleToolPack" ||
             descriptor.tool.pack == "ContinuityControlToolPack";
@@ -629,7 +631,7 @@ void testRuntimeDispatchAndSchemaPolicy()
             "0.9.0",
             "windows-cpp",
             42U}));
-    REQUIRE(adapter->tools().size() == 57U);
+    REQUIRE(adapter->tools().size() == 58U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
