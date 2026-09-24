@@ -190,13 +190,17 @@ Contracts::PolicySourceBundle authenticatedGit(const std::string& name, const Do
             std::min(std::chrono::milliseconds{120000}, std::chrono::duration_cast<std::chrono::milliseconds>(context.deadline - std::chrono::steady_clock::now())),
             MaximumFileBytes, 32768};
         auto output = take(processes.run(request, scope, context));
-        if (output.exitCode || output.cancelled || output.timedOut || !output.terminationConfirmed)
+        if (output.cancelled) throw std::runtime_error{"Policy import was cancelled. The adopted revision is unchanged."};
+        if (output.timedOut) throw std::runtime_error{"Policy import exceeded its time limit. Retry or import a local checkout."};
+        if (output.exitCode || !output.terminationConfirmed)
             throw std::runtime_error{"Git could not import the policy using the current sign-in. Sign in to Git for this repository or import a local checkout, then retry."};
         if (output.stdoutTruncated || output.stderrTruncated) throw std::runtime_error{"Git policy output exceeded the complete import limit."};
         return output.stdoutUtf8;
     };
     const auto repository = temporary / "repository";
-    (void)run({"clone", "--quiet", "--depth=1", "--filter=blob:none", "--no-checkout", "--", "https://github.com/" + name + ".git", pathText(repository)}, temporary);
+    // Fetch bounded-size source blobs together. Blob-less clones would make a
+    // separate authenticated network fetch for every document during cat-file.
+    (void)run({"clone", "--quiet", "--depth=1", "--filter=blob:limit=2m", "--no-checkout", "--", "https://github.com/" + name + ".git", pathText(repository)}, temporary);
     auto commit = run({"rev-parse", "HEAD"}, repository);
     while (!commit.empty() && (commit.back() == '\n' || commit.back() == '\r')) commit.pop_back();
     if (commit.size() != 40 || !std::all_of(commit.begin(), commit.end(), [](char c) { return (c >= 'a' && c <= 'f') || (c >= '0' && c <= '9'); }))

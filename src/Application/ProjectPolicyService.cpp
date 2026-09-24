@@ -34,6 +34,9 @@ bool below(const std::string& path, const std::string& root)
 bool relative(const std::string& value)
 {
     if (value.empty() || value.starts_with('/') || value.find(':') != std::string::npos || value.find('\0') != std::string::npos) return false;
+    // Policy prefixes use explicit ASCII names. Reject Windows short-name
+    // aliases and Unicode case variants rather than compare them incorrectly.
+    if (std::any_of(value.begin(), value.end(), [](unsigned char c) { return c >= 128 || c == '~'; })) return false;
     std::size_t begin{};
     for (;;) {
         const auto end = value.find('/', begin);
@@ -183,7 +186,7 @@ public:
             for (const auto& item : review.at(key)) {
                 const auto path = normalized(item.get<std::string>());
                 if (!(path == "." && std::string_view{key} == "write_paths") && !relative(path))
-                    throw std::runtime_error{"Review paths must be explicit project-relative paths without traversal."};
+                    throw std::runtime_error{"Review paths must be explicit ASCII project-relative paths without traversal or short-name aliases."};
             }
         }
         if (!review.at("approved_calls").is_array() || review.at("approved_calls").size() > 128)
@@ -231,7 +234,7 @@ public:
             }
             if (!matched) throw std::runtime_error{"Policy write is outside the project roots."};
         }
-        if (!relative(path) || below(path, ".git")) throw std::runtime_error{"Policy write path is not an ordinary project path."};
+        if (!relative(path) || below(path, ".git")) throw std::runtime_error{"Policy writes require explicit ASCII project-relative paths without traversal, short-name aliases or .git metadata."};
         for (const auto& denied : review.at("prohibited_paths"))
             if (below(path, normalized(denied.get<std::string>()))) throw std::runtime_error{"The adopted review prohibits this path."};
         for (const auto& allowed : review.at("write_paths")) {

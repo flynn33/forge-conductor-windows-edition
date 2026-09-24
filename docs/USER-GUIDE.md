@@ -18,7 +18,7 @@ Expand **Development policy and governance** after selecting a project. Paste a 
 
 Review the source, immutable commit, snapshot digest, file list and exclusions. **Read document** and **Next part** display complete text in bounded pages. Choose **Adopt revision** to make the policy mandatory for the selected project. Adoption immediately blocks write tools and commands until a review is accepted.
 
-Complete the source and project review required by your policy, then record the reviewer, evidence location, permitted paths, prohibited paths, and exact approved commands. The confirmation is the reviewer's attestation that all applicable obligations are resolved. An empty permitted-path list allows no file edits. Reimporting and adopting another revision clears the old review.
+Complete the source and project review required by your policy, then record the reviewer, evidence location, permitted paths, prohibited paths, and exact approved commands. The confirmation is the reviewer's attestation that all applicable obligations are resolved. An empty permitted-path list allows no file edits. Native policy path scopes currently require ASCII names and reject Windows short-name aliases; they fail closed for other names. Reimporting and adopting another revision clears the old review.
 
 The Manager checks policy integrity, review acceptance, permitted file paths and exact command arguments at the common tool authorization boundary. New runs receive the policy identity and can retrieve its documents using `project_policy.read`; that tool cannot adopt a policy or approve a review. Imported scripts are never run by import.
 

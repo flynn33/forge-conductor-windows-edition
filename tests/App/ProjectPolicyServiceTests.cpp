@@ -101,6 +101,10 @@ void policyAdoptionAndAuthorization()
     REQUIRE(!service.check(write, scope, context));
     write.call.canonicalArguments = R"({"path":"src/../outside.cpp","content":"bad"})";
     REQUIRE(!service.check(write, scope, context));
+    write.call.canonicalArguments = R"({"path":"src/VENDOR~1/copied.cpp","content":"bad"})";
+    REQUIRE(!service.check(write, scope, context));
+    write.call.canonicalArguments = R"({"path":"src/\u00c9xample.cpp","content":"bad"})";
+    REQUIRE(!service.check(write, scope, context));
     write.call.toolName = "shell_exec";
     write.effect = D::ToolEffect::Execute;
     write.call.canonicalArguments = R"({"command":"build"})";
