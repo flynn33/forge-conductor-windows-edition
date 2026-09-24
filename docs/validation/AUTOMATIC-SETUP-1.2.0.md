@@ -22,7 +22,7 @@ Authenticated import of the supplied Raven Forge repository resolved commit `ed0
 | Controls/telemetry | Command scheduler, Manager protocol/control, dashboard lifecycle, metrics collectors and presentation suites |
 | Distribution | Exact-source Release build, static gates, package manifest/signature/hash validation and isolated simulated upgrade/uninstall/reinstall |
 
-The full suite contains 153 CTest entries. A preliminary run found three stale expectations after adding the 58th tool; those expectations and the reviewed semantic fingerprint were corrected. Final rerun results are recorded in release evidence.
+The final implementation passed all 153 CTest entries, the Release backend/WinUI build, native-stack/no-attribution checks and package persistence checks. Initial catalog expectation failures and a test dashboard-port collision were corrected and rerun. Authenticated source intake completed in 11.4 seconds after batching bounded source blobs. Package and lifecycle receipts accompany the release assets.
 
 ## Interpretation
 
