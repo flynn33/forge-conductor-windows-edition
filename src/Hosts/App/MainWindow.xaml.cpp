@@ -474,7 +474,9 @@ void MainWindow::WindowContentLoaded(
     }
     const auto weak = get_weak();
     telemetryTimer_ = Microsoft::UI::Xaml::DispatcherTimer{};
-    if (selectedProjectId_.empty()) SelectPage(L"Guided setup");
+    // A selected project from an older release is not proof of completed setup.
+    if (!loadSavedText((selectedPageValueName_ + L".SetupCompleted").c_str()))
+        SelectPage(L"Guided setup");
     telemetryTimer_.Interval(std::chrono::milliseconds{500});
     telemetryTimer_.Tick([weak](auto const&, auto const&) {
         if (const auto self = weak.get()) self->RunAction(Action::Refresh);
@@ -492,7 +494,7 @@ void MainWindow::ConsoleSizeChanged(
     using namespace Microsoft::UI::Xaml;
     using namespace Microsoft::UI::Xaml::Controls;
     const auto width = args.NewSize().Width;
-    const auto narrowPane = width < 1400.0;
+    const auto narrowPane = width < 1000.0;
     const auto paneMode = narrowPane
         ? NavigationViewPaneDisplayMode::LeftCompact
         : NavigationViewPaneDisplayMode::Left;
@@ -677,11 +679,8 @@ void MainWindow::SetGuidedStep(const GuidedProjectStep step)
 
 void MainWindow::RenderGuidedMode()
 {
-    updatingGuidedModeControls_ = true;
-    HomeGuidedModeToggle().IsOn(guidedModeEnabled_);
-    SettingsGuidedModeToggle().IsOn(guidedModeEnabled_);
-    updatingGuidedModeControls_ = false;
-    GuidedModePanel().Visibility(Visibility::Collapsed);
+    GuidedModePanel().Visibility(PageTitle().Text() == L"Guided setup"
+        ? Visibility::Collapsed : Visibility::Visible);
 }
 void MainWindow::ShowProjectRegistration()
 {
@@ -801,6 +800,7 @@ void MainWindow::ApplyPolicyView(const ::ForgeConductor::Hosts::App::ProjectPoli
         }
         policySummaryJson_ = view.canonicalJson;
         policyProject_ = selectedProjectId_;
+        policyRequiresReview_ = value.value("adopted", false) && !value.value("review_accepted", false);
         policyRevision_ = value.value("revision", "");
         policyDocumentOffset_ = 0;
         policyDocumentPath_.clear();
@@ -840,6 +840,12 @@ void MainWindow::SetupTaskClicked(Windows::Foundation::IInspectable const&,
         AutomaticSetupState().Text(L"Describe what you would like to build or fix, then start the task.");
         return;
     }
+    if (SetupAllowTools().IsOn() && policyProject_ == selectedProjectId_ && policyRequiresReview_) {
+        PolicyPanel().IsExpanded(true);
+        PolicyPanel().StartBringIntoView();
+        AutomaticSetupState().Text(L"Complete the adopted policy review in step 2 before allowing project changes. You can also turn off Allow work in this project to discuss without tools.");
+        return;
+    }
     RunTask().Text(SetupTask().Text());
     RunAllowNativeTools().IsOn(SetupAllowTools().IsOn());
     SelectPage(L"Autonomy");
@@ -854,6 +860,7 @@ void MainWindow::ApplySetupProgress(
     for (const auto& check : snapshot.checks) {
         const char* stage = check.stage == SetupStage::Manager ? "Manager"
             : check.stage == SetupStage::Project ? "Project"
+            : check.stage == SetupStage::Plugins ? "LM Studio plugins"
             : check.stage == SetupStage::Provider ? "Model" : "Connection check";
         const char* state = check.state == SetupState::Ready ? "Ready"
             : check.state == SetupState::Running ? "Working"
@@ -863,6 +870,7 @@ void MainWindow::ApplySetupProgress(
         if (!check.detail.empty()) text += " — " + check.detail;
         text += "\n";
     }
+    if (snapshot.ready) text += "\nPreparation complete. Next: add your policy in step 2 (optional), then describe your task in step 3.";
     AutomaticSetupState().Text(winrt::to_hstring(text));
     SetupTaskButton().IsEnabled(snapshot.ready);
 }
@@ -1593,7 +1601,7 @@ void MainWindow::NavigationChanged(
         Microsoft::UI::Xaml::Controls::NavigationViewItem>();
     if (!item) return;
     const auto tag = unbox_value_or<hstring>(item.Tag(), L"Rig");
-    PageTitle().Text(tag);
+    PageTitle().Text(tag == L"LM Studio MCP" ? L"LM Studio plugins" : tag);
     if (telemetryUiInitialized_) {
         storeSavedText(selectedPageValueName_.c_str(), tag);
         MainScrollViewer().ChangeView(nullptr, 0.0, nullptr, true);
@@ -1672,6 +1680,7 @@ void MainWindow::NavigationChanged(
     }
     ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
     GuidedSetupPanel().Visibility(guidedSetup ? Visibility::Visible : Visibility::Collapsed);
+    ProfileCard().Visibility(guidedSetup ? Visibility::Collapsed : Visibility::Visible);
     AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
     AutonomyOverviewCard().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
     ContinuityOverviewCard().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
@@ -2397,6 +2406,8 @@ void MainWindow::ApplyRunReadback(
         storeSavedText(selectedRunProjectValueName_.c_str(),
             winrt::to_hstring(verifiedRunProjectId_));
     }
+    if (const auto row = runHistoryLabels_.find(run.runId.value()); row != runHistoryLabels_.end())
+        row->second.Text(hstring{state} + L" · " + runId);
     RunState().Text(hstring{state} +
         (snapshot.pauseRequested ? L" · pause requested" : L" · Manager-owned"));
     RunTelemetryState().Text(winrt::to_hstring(
@@ -2885,19 +2896,19 @@ void MainWindow::ApplyLmStudio(
     LmStudioPrimaryRole().Text(winrt::to_hstring(
         std::string{snapshot.primaryPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
-            ? (snapshot.primaryConnectorReady ? "role host live" : "role host not live")
+            ? (snapshot.primaryConnectorReady ? "role host live" : "select in LM Studio chat to use")
             : "not yet verified") +
         (snapshot.primaryToolOutcomeRecorded ? " · tool result recorded" : "")));
     LmStudioFallbackRole().Text(winrt::to_hstring(
         std::string{snapshot.fallbackPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
-            ? (snapshot.fallbackConnectorReady ? "role host live" : "role host not live")
+            ? (snapshot.fallbackConnectorReady ? "role host live" : "select in LM Studio chat to use")
             : "not yet verified") +
         (snapshot.fallbackToolOutcomeRecorded ? " · tool result recorded" : "")));
     LmStudioCluRole().Text(winrt::to_hstring(
         std::string{snapshot.continuityPluginInstalled ? "Installed" : "Missing"} +
         " · " + (snapshot.connectionCheckPerformed
-            ? (snapshot.continuityConnectorReady ? "role host live" : "role host not live")
+            ? (snapshot.continuityConnectorReady ? "role host live" : "select in LM Studio chat to use")
             : "not yet verified") +
         (snapshot.continuityToolOutcomeRecorded ? " · tool result recorded" : "")));
     LmStudioRegistrationState().Text(winrt::to_hstring(
@@ -3435,6 +3446,7 @@ void MainWindow::FilterTools()
 void MainWindow::ApplyRunHistory(
     const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot)
 {
+    runHistoryLabels_.clear();
     RunHistoryRows().Children().Clear();
     if (snapshot.area != ::ForgeConductor::Manager::ManagerOperationalArea::Runs)
         return;
@@ -3461,6 +3473,7 @@ void MainWindow::ApplyRunHistory(
         heading.Children().Append(attach);
         Microsoft::UI::Xaml::Controls::TextBlock identity;
         identity.Text(winrt::to_hstring(state + " · " + id));
+        runHistoryLabels_.insert_or_assign(id, identity);
         identity.FontSize(14);
         identity.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
         identity.TextTrimming(Microsoft::UI::Xaml::TextTrimming::CharacterEllipsis);
@@ -4449,6 +4462,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (historyAction) {
         requestedHistoryProject = selectedProjectId_;
         if (requestedHistoryProject.empty()) {
+            runHistoryLabels_.clear();
             RunHistoryRows().Children().Clear();
             RunHistoryState().Text(L"Choose a project to inspect its recent Manager-owned runs.");
             co_return;
@@ -4989,6 +5003,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (runView.snapshot) {
                 if (runView.snapshot->record.projectId.value() == selectedProjectId_) {
                     ApplyRunReadback(*runView.snapshot);
+                    if (action == Action::RunStart && preparedProjectId_ == selectedProjectId_)
+                        storeSavedText((selectedPageValueName_ + L".SetupCompleted").c_str(), L"1");
                     if (action == Action::RunStart && guidedModeEnabled_ &&
                         guidedStep_ == GuidedProjectStep::FirstRun) {
                         SetGuidedStep(GuidedProjectStep::Complete);

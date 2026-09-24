@@ -1,12 +1,12 @@
 # User guide
 
-Launch Forge Conductor from Start. The header reports the Manager connection and data profile.
+Launch Forge Conductor from Start. Guided setup opens until the first setup task has started successfully. You can always reopen it through Start here in the sidebar or the visible setup button on other pages; no hidden guide switch is required.
 
 ## Start a project
 
-1. Open **Guided setup → Choose folder and prepare**. Select an existing folder or create one in the Windows picker.
-2. Wait for the four checks: Manager, project, model, and connection. Forge Conductor starts its services, registers the folder, starts the installed LM Studio server when needed, loads a compatible downloaded model, saves its selection, and verifies a response.
-3. Describe what you want to build or fix. Review the file/command permission beside the task, then choose **Start task**. Autonomy displays the actual Manager-owned run and its results.
+1. Open **Start here · Guided setup → Choose folder and prepare**. Select an existing folder or create one in the Windows picker.
+2. Wait for all five checks: Manager, project, LM Studio plugins, model, and connection. Forge Conductor starts its services, registers the folder, installs and verifies Primary/Fallback/Continuity plugins while preserving other plugins, opens LM Studio and verifies synchronization, starts its local server when needed, loads a compatible downloaded model, saves its selection, and verifies a response.
+3. In step 2, optionally import and review your development policy. Then, in step 3, describe what you want to build or fix. Review the file/command permission beside the task, then choose **Start task**. Autonomy displays the actual Manager-owned run and its results.
 
 If a check fails, its message identifies the next action. **Retry preparation** reuses the project and checks the current model state. **Cancel** stops pending preparation; already completed registration or model loading is not undone. The selected folder is remembered per profile.
 
@@ -35,12 +35,12 @@ A successful setup check verifies a model response. A successful task additional
 ## Navigation
 
 - **Rig:** system, process, provider, storage and workflow telemetry. Missing observations are not zero measurements.
-- **Guided setup:** automatic preparation, task entry, policy import and offline help.
+- **Start here · Guided setup:** automatic preparation, task entry, policy import and offline help.
 - **Autonomy:** start, attach, pause, resume and stop Manager-owned runs.
 - **Continuity:** handoff and retained-context state.
 - **Projects:** folder registration, stable identities, aliases, memory and instruction packages.
 - **Tools:** invoke authorized native tools in the selected project.
-- **LM Studio MCP:** inspect, repair and activate tool registrations for LM Studio desktop use.
+- **LM Studio plugins:** use the installation controls at the top to install/repair all three plugins, check them, or open LM Studio and synchronize. For desktop chats, select the desired plugin in the LM Studio chat Integrations panel.
 - **Settings:** saved runtime configuration and scoped maintenance.
 
 Closing the window does not cancel Manager-owned work. New runs use current provider settings; existing run bindings persist across Manager restarts. An unavailable pinned model or provider response requires attention rather than silently switching its history.

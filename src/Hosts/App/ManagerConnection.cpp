@@ -1134,10 +1134,36 @@ std::string ManagerConnection::start(std::stop_token cancellation) noexcept {
 
 Application::ProjectSetupSnapshot ManagerConnection::prepareProject(
     std::string folder, std::stop_token cancellation,
-    const Application::ProjectSetupCoordinator::Observer& observer)
+    const Application::ProjectSetupCoordinator::Observer& observer, const bool installPlugins)
 {
     Application::ProjectSetupCoordinator coordinator{*this};
-    return coordinator.prepare(std::move(folder), cancellation, observer);
+    return coordinator.prepare(std::move(folder), cancellation, observer, installPlugins);
+}
+
+Application::SetupOperationResult ManagerConnection::ensurePlugins(std::stop_token cancellation)
+{
+    const auto complete = [](const LmStudioView& view) {
+        return view.loaded && view.snapshot && view.snapshot->lmStudioPresent &&
+            view.snapshot->primaryPluginInstalled && view.snapshot->fallbackPluginInstalled &&
+            view.snapshot->continuityPluginInstalled && view.snapshot->mcpConfigurationRegistered &&
+            view.snapshot->binaryExecutable && view.snapshot->deploymentId.has_value();
+    };
+    auto inspected = lmStudio(LmStudioAction::Inspect, cancellation);
+    if (cancellation.stop_requested()) return {false, "Plugin setup cancelled. Retry to inspect the saved installation."};
+    if (!complete(inspected)) {
+        const auto repaired = lmStudio(LmStudioAction::Repair, cancellation);
+        if (!repaired.loaded) return {false, "Could not install LM Studio plugins: " + repaired.message +
+            " Open LM Studio plugins for details, then retry setup."};
+        if (cancellation.stop_requested()) return {false, "Plugin setup cancelled. Retry to verify the installation."};
+        inspected = lmStudio(LmStudioAction::Inspect, cancellation);
+    }
+    if (!complete(inspected)) return {false, "Plugin installation is not fully verified: " + inspected.message +
+        " Open LM Studio plugins and retry installation."};
+    const auto activated = lmStudio(LmStudioAction::Activate, cancellation);
+    if (!complete(activated) || !activated.snapshot->connectionCheckPerformed)
+        return {false, "Plugins are installed, but LM Studio has not confirmed them: " + activated.message +
+            " Retry preparation after LM Studio finishes opening."};
+    return {true, "Primary, Fallback and Continuity plugins are installed and synchronized with LM Studio. Other plugins were preserved."};
 }
 
 Application::SetupOperationResult ManagerConnection::ensureManager(std::stop_token cancellation)

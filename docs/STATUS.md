@@ -1,10 +1,10 @@
 # Product status
 
-Version 1.2.0 adds automatic project preparation and development-policy adoption. Release qualification evidence is tracked in [Automatic setup validation](validation/AUTOMATIC-SETUP-1.2.0.md).
+Version 1.2.1 corrects guided setup discovery and integrates real LM Studio plugin installation into automatic preparation. Release qualification evidence is tracked in [Setup correction verification](validation/SETUP-CORRECTION-1.2.1.md).
 
 | Area | Implemented behavior |
 |---|---|
-| Setup | Folder selection starts/attaches the Manager, registers and verifies the project, prepares a compatible downloaded LM Studio model, and checks an actual response. Retry and cancellation are available. |
+| Setup | Folder selection starts/attaches the Manager, registers and verifies the project, installs and synchronizes all three LM Studio plugins, prepares a compatible downloaded LM Studio model, and checks an actual response. Retry and cancellation are available. |
 | Governance | GitHub/local policy snapshots, pinned commit/digest, complete text retrieval, explicit adoption and review, common tool authorization for reviewed paths and exact commands. Private repositories use existing Git authentication. |
 | Help | 42 searchable offline articles covering setup, model recovery, policy, tools, continuity and evidence. |
 | Execution | Manager-owned Responses runs, authorized native tool calls, pause/resume/stop, reattachment and context continuity. Provider bindings persist across restart. |

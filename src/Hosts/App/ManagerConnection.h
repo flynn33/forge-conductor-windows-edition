@@ -101,7 +101,7 @@ public:
     virtual ProjectPolicyView projectPolicy(const Contracts::ProjectPolicyRequest&, std::stop_token) noexcept = 0;
     virtual Application::ProjectSetupSnapshot prepareProject(
         std::string folder, std::stop_token cancellation,
-        const Application::ProjectSetupCoordinator::Observer& observer = {}) = 0;
+        const Application::ProjectSetupCoordinator::Observer& observer = {}, bool installPlugins = true) = 0;
     [[nodiscard]] virtual std::string profileSummary() const
     {
         return "Production\nData: %LOCALAPPDATA%\\Forge Conductor";
@@ -200,7 +200,7 @@ public:
     ProjectPolicyView projectPolicy(const Contracts::ProjectPolicyRequest&, std::stop_token) noexcept override;
     Application::ProjectSetupSnapshot prepareProject(
         std::string folder, std::stop_token cancellation,
-        const Application::ProjectSetupCoordinator::Observer& observer = {}) override;
+        const Application::ProjectSetupCoordinator::Observer& observer = {}, bool installPlugins = true) override;
 
     [[nodiscard]] std::string profileSummary() const override;
     [[nodiscard]] std::optional<std::string> viewStateScope()
@@ -284,6 +284,7 @@ public:
         std::stop_token cancellation) noexcept override;
 private:
     Application::SetupOperationResult ensureManager(std::stop_token) override;
+    Application::SetupOperationResult ensurePlugins(std::stop_token) override;
     Application::SetupOperationResult ensureProject(Application::ProjectSetupSnapshot&, std::stop_token) override;
     Application::SetupOperationResult ensureProvider(Application::ProjectSetupSnapshot&, std::stop_token) override;
     Application::SetupOperationResult verifyProvider(Application::ProjectSetupSnapshot&, std::stop_token) override;

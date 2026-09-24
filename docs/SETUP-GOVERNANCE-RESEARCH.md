@@ -2,7 +2,7 @@
 
 Research date: September 23, 2026. Product baseline: `a3d6092afd737f52f0e720ee1f0b249da63ff969` (1.1.43). This document separates findings, implemented first fixes, and proposed work. It is not a release acceptance record.
 
-Implementation update: version 1.2.0 delivers the automatic preparation path and a native policy intake/review gate. See [the current user guide](USER-GUIDE.md). The recommendations below retain their original research scope; semantic validator parity and operating-system command sandboxing are not implied by import.
+Implementation update: version 1.2.1 adds the missing automatic plugin deployment and synchronization, visible persistent setup entry and ordered policy/task sections to the preparation path and native policy intake/review gate. The 1.2.0 setup path omitted plugin deployment and is superseded. See [the current user guide](USER-GUIDE.md). The recommendations below retain their original research scope; semantic validator parity and operating-system command sandboxing are not implied by import.
 
 ## Recommended product change
 
