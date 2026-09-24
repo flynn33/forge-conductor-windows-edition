@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 — Automatic project setup and development policy
+
+- Replace manual setup navigation with folder selection, automatic Manager/project/model preparation, a verified model response and task entry on one page.
+- Start the installed LM Studio server when necessary; reuse or load a compatible downloaded model, verify its context capacity, and persist the selected instance. Add cancellation and idempotent retry.
+- Import a GitHub policy repository at an immutable commit or a local text snapshot. Use existing Git authentication for private repositories without copying credentials or executing imported scripts.
+- Adopt project policy, require a recorded human review, and enforce approved file paths, prohibited paths and exact command arguments at common tool authorization. Expose complete pinned documents through the read-only `project_policy.read` tool.
+- Persist provider bindings across Manager restart; new settings apply to new runs without silently changing existing history.
+- Expand offline help to 42 articles and correct the newly prepared project's run label.
+- Add setup, cancellation, real Manager/tool, policy denial, persistence and recovery tests. Publish release evidence separately from model-generated claims.
+
 ## 1.1.44 — Offline setup help (engineering prerelease)
 
 - Add 20 searchable offline help articles under Guided setup, including provider recovery, project instructions, permissions, memory, telemetry, and evidence.

@@ -6,6 +6,7 @@
 #include "ForgeConductor/Domain/EnvironmentModels.h"
 #include "ForgeConductor/Domain/ProjectMemoryModels.h"
 #include "ForgeConductor/Domain/ToolModels.h"
+#include "ForgeConductor/Contracts/IProjectPolicyService.h"
 
 #include <chrono>
 #include <cstddef>
@@ -153,6 +154,10 @@ struct ManagerInstructionPackageSnapshot final {
     std::optional<Domain::MemoryRecordId> manifestRecordId;
 };
 
+struct ManagerProjectPolicySnapshot final {
+    std::string canonicalJson;
+};
+
 struct ManagerLmStudioSnapshot final {
     bool lmStudioPresent{};
     bool primaryPluginInstalled{};
@@ -270,6 +275,7 @@ using ManagerRequestPayload = std::variant<
     ManagerProjectMemoryRequest,
     ManagerProjectRememberRequest,
     ManagerInstructionPackageRequest,
+    Contracts::ProjectPolicyRequest,
     ManagerLmStudioStatusRequest,
     ManagerLmStudioRepairRequest,
     ManagerLmStudioActivateRequest,
@@ -311,6 +317,7 @@ using ManagerResult = std::variant<
     ManagerProjectsSnapshot,
     ManagerProjectWorkspaceSnapshot,
     ManagerInstructionPackageSnapshot,
+    ManagerProjectPolicySnapshot,
     ManagerLmStudioSnapshot,
     ManagerToolsSnapshot,
     ManagerToolOutcomeSnapshot,

@@ -1,8 +1,19 @@
 #include "ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsModelPreparation.h"
+#include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#include "ManagerConnection.h"
+#include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
+#include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsCurrentUserIdentity.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerAuthentication.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
+#include <filesystem>
+#include <fstream>
 
 #include <nlohmann/json.hpp>
 
@@ -1128,6 +1139,292 @@ void deadlineAndActiveCancellationAreBounded()
     stopServer.requireHealthy();
 }
 
+void providerSettingsApplyToNewRunsAndPreserveExistingRuns()
+{
+    const auto reply = [](const char* id) {
+        return Json{{"id", id}, {"status", "completed"}, {"output_text", "OK"},
+            {"usage", {{"input_tokens", 1}, {"output_tokens", 1}}}}.dump();
+    };
+    LoopbackHttpServer first{{
+        {"GET", "/v1/models", 200U, R"({"data":[{"id":"first-model"}]})"},
+        {"POST", "/v1/responses", 200U, reply("first-response")},
+        {"POST", "/v1/responses", 200U, reply("continued-response")},
+        {"GET", "/v1/models", 200U, R"({"data":[{"id":"first-model"}]})"},
+        {"POST", "/v1/responses", 200U, reply("recovered-response")}}};
+    LoopbackHttpServer second{{
+        {"GET", "/v1/models", 200U, R"({"data":[{"id":"second-model"}]})"},
+        {"POST", "/v1/responses", 200U, reply("second-response")}}};
+    std::uint16_t selectedPort = first.port();
+    int resolved{};
+    std::string journal;
+    const auto resolver = [&](const Domain::OperationContext&) {
+            ++resolved;
+            auto config = responsesConfiguration(selectedPort);
+            config.model = selectedPort == first.port() ? "first-model" : "second-model";
+            return Domain::Result<InfrastructureWindows::LMStudioResponsesTransportConfiguration>::success(
+                std::move(config));
+        };
+    const auto load = [&](const Domain::OperationContext&) { return Domain::Result<std::string>::success(journal); };
+    const auto save = [&](const std::string& data, const Domain::OperationContext&) {
+        journal = data; return Domain::Result<void>::success();
+    };
+    InfrastructureWindows::SettingsBoundResponsesTransport transport{resolver, load, save};
+    Domain::ManagedProviderTurnRequest request{parse<Domain::ProjectId>(ProjectIdText),
+        parse<Domain::SessionId>(SuccessorSessionIdText), 1U, "Check", std::nullopt, {}, {}};
+    auto initial = take(transport.complete(request,
+        operationContext("12121212-1212-4212-8212-121212121214", 5s)));
+    selectedPort = second.port();
+    request.previousResponseId = initial.responseId;
+    auto continued = take(transport.complete(request,
+        operationContext("12121212-1212-4212-8212-121212121215", 5s)));
+    REQUIRE(continued.responseId.value() == "continued-response");
+    request.runId = parse<Domain::SessionId>("12121212-1212-4212-8212-121212121216");
+    request.previousResponseId.reset();
+    auto fresh = take(transport.complete(request,
+        operationContext("12121212-1212-4212-8212-121212121217", 5s)));
+    REQUIRE(fresh.responseId.value() == "second-response");
+    REQUIRE(resolved == 2);
+    transport.shutdown();
+    InfrastructureWindows::SettingsBoundResponsesTransport recovered{resolver, load, save};
+    request.runId = parse<Domain::SessionId>(SuccessorSessionIdText);
+    request.previousResponseId = continued.responseId;
+    auto recovery = take(recovered.complete(request, operationContext("12121212-1212-4212-8212-121212121218", 5s)));
+    REQUIRE(recovery.responseId.value() == "recovered-response");
+    REQUIRE(resolved == 2);
+    REQUIRE(first.waitUntilHandled(5U, 5s));
+    REQUIRE(second.waitUntilHandled(2U, 5s));
+    REQUIRE(Json::parse(first.requests()[2].body).at("model") == "first-model");
+    REQUIRE(Json::parse(second.requests()[1].body).at("model") == "second-model");
+    first.requireHealthy(); second.requireHealthy();
+}
+
+void automaticModelPreparationUsesVerifiedInventory()
+{
+    const Json model{{"type", "llm"}, {"key", "coding-model"}, {"size_bytes", 4096},
+        {"max_context_length", 65536}, {"capabilities", {{"trained_for_tool_use", true}}},
+        {"loaded_instances", Json::array()}};
+    auto loaded = model;
+    loaded["loaded_instances"] = Json::array({{{"id", "coding-instance"}, {"config", {{"context_length", 32768}}}}});
+    LoopbackHttpServer server{{
+        {"GET", "/api/v1/models", 200U, Json{{"models", Json::array({model})}}.dump()},
+        {"POST", "/api/v1/models/load", 200U, R"({"instance_id":"coding-instance","status":"loaded"})"},
+        {"GET", "/api/v1/models", 200U, Json{{"models", Json::array({loaded})}}.dump()},
+        {"GET", "/api/v1/models", 200U, Json{{"models", Json::array({loaded})}}.dump()}}};
+    Domain::ManagerSettings settings;
+    settings.localModelPort = server.port();
+    InfrastructureWindows::WindowsModelPreparation preparation;
+    auto result = take(preparation.prepare(settings,
+        operationContext("12121212-1212-4212-8212-121212121211", 5s)));
+    REQUIRE(result.identifier == "coding-instance");
+    REQUIRE(result.contextCapacity == 32768U);
+    REQUIRE(result.modelLoaded);
+    REQUIRE(!result.serverStarted);
+    settings.localModelName = result.identifier;
+    auto reused = take(preparation.prepare(settings,
+        operationContext("12121212-1212-4212-8212-121212121212", 5s)));
+    REQUIRE(reused.identifier == result.identifier);
+    REQUIRE(!reused.modelLoaded);
+    REQUIRE(server.waitUntilHandled(4U, 5s));
+    const auto requests = server.requests();
+    REQUIRE(Json::parse(requests[1].body).at("model") == "coding-model");
+    REQUIRE(Json::parse(requests[1].body).at("context_length") == 32768U);
+    server.requireHealthy();
+}
+
+void automaticModelPreparationRejectsUnusableAndMalformedInventory()
+{
+    LoopbackHttpServer server{{
+        {"GET", "/api/v1/models", 200U, R"({"models":[{"type":"embedding","key":"not-a-language-model"}]})"},
+        {"GET", "/api/v1/models", 200U, "{malformed"},
+        {"GET", "/api/v1/models", 401U, R"({"error":"authentication required"})"}}};
+    Domain::ManagerSettings settings;
+    settings.localModelPort = server.port();
+    InfrastructureWindows::WindowsModelPreparation preparation;
+    for (int attempt = 0; attempt != 3; ++attempt) {
+        auto result = preparation.prepare(settings,
+            operationContext("12121212-1212-4212-8212-121212121213", 5s));
+        REQUIRE(!result);
+    }
+    REQUIRE(server.waitUntilHandled(3U, 5s));
+    REQUIRE(server.requests().size() == 3U);
+    server.requireHealthy();
+}
+
+void automaticSetupUsesRealManagerAndPersistsProject()
+{
+    namespace App = ForgeConductor::Hosts::App;
+    namespace W = InfrastructureWindows;
+    const auto reply = [](const char* id) {
+        return Json{{"id", id}, {"status", "completed"}, {"output_text", "OK"},
+            {"usage", {{"input_tokens", 1}, {"output_tokens", 1}}}}.dump();
+    };
+    const auto inventory = R"({"models":[{"type":"llm","key":"test-model","capabilities":{"trained_for_tool_use":true},"loaded_instances":[{"id":"test-model","config":{"context_length":32768}}]}]})";
+    const auto models = R"({"data":[{"id":"test-model"}]})";
+    LoopbackHttpServer server{{
+        {"GET", "/api/v1/models", 200U, inventory},
+        {"GET", "/v1/models", 200U, models},
+        {"POST", "/v1/responses", 200U, reply("setup-check-1")},
+        {"GET", "/api/v1/models", 200U, inventory},
+        {"GET", "/v1/models", 200U, models},
+        {"POST", "/v1/responses", 200U, reply("setup-check-2")},
+        {"GET", "/v1/models", 200U, models},
+        {"POST", "/v1/responses", 200U,
+            R"({"id":"first-task-tool","status":"completed","output":[{"type":"function_call","name":"fs_write","call_id":"setup-first-write","arguments":"{\"path\":\"setup-proof.txt\",\"content\":\"Project setup completed real native work.\"}"}],"usage":{"input_tokens":20,"output_tokens":3}})"},
+        {"POST", "/v1/responses", 200U, reply("first-task")}}};
+    std::array<wchar_t, 32768> executable{};
+    REQUIRE(GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size())) > 0);
+    const auto root = std::filesystem::path{executable.data()}.parent_path().parent_path().parent_path().parent_path().parent_path() /
+        (L"setup-proof-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
+    const auto project = root / L"project";
+    std::filesystem::create_directories(project);
+    const auto profile = take(W::WindowsAlphaManagerProfile::create((root / L"profile").wstring()));
+    std::uint16_t dashboardPort{};
+    {
+        LoopbackHttpServer portProbe{std::vector<ResponseScript>{}};
+        dashboardPort = portProbe.port();
+    }
+    std::filesystem::create_directories(root / L"profile" / L"config");
+    {
+        std::ofstream config{root / L"profile" / L"config" / L"config.json"};
+        config << Json{{"schema_version", 1}, {"dashboard", {{"port", dashboardPort}}}}.dump();
+    }
+    App::ManagerConnection connection{std::wstring{profile.nativeDataRoot()}};
+    const auto started = connection.start({});
+    auto settings = connection.providerSettings({});
+    if (!settings.loaded) throw std::runtime_error{started + " " + settings.message};
+    const auto context = [] { return operationContext("12121212-1212-4212-8212-121212121299", 10s); };
+    auto clock = std::make_shared<W::SystemClock>();
+    auto identity = take(W::WindowsCurrentUserIdentity::load());
+    W::WindowsManagerInstanceLeaseOptions options;
+    options.purposeSuffix = profile.purposeSuffix();
+    auto names = take(W::WindowsManagerInstanceLease::namesFor(identity, options));
+    W::DpapiSecureStorage secure{std::wstring{profile.secureStorageRegistrySubkey()}};
+    W::WindowsManagerAuthenticationTokenGenerator generator;
+    W::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
+    auto nonce = take(tokens.load(context()));
+    REQUIRE(nonce.has_value());
+    auto client = take(W::WindowsManagerNamedPipeClient::create(clock, std::wstring{names.pipeName()}, *nonce));
+    struct Cleanup {
+        W::WindowsManagerNamedPipeClient& client;
+        ~Cleanup() { (void)client.requestShutdown(operationContext("12121212-1212-4212-8212-121212121298", 10s)); }
+    } cleanup{*client};
+    Domain::ManagerSettingsPatch patch;
+    patch.localModelPort = server.port();
+    const auto saved = take(client->updateSettings(patch, true, context()));
+    REQUIRE(saved.settings.localModelPort == server.port());
+    REQUIRE(client->control({Domain::ManagerControlAction::Stop}, context()));
+    const auto folderBytes = project.u8string();
+    const std::string folder{reinterpret_cast<const char*>(folderBytes.data()), folderBytes.size()};
+    const auto prepared = connection.prepareProject(folder, {});
+    if (!prepared.ready) {
+        std::string detail;
+        for (const auto& check : prepared.checks) detail += check.detail + "\n";
+        throw std::runtime_error{"Real Manager setup failed: " + detail};
+    }
+    REQUIRE(!prepared.projectId.empty());
+    REQUIRE(prepared.model == "test-model");
+    REQUIRE(take(client->status(context())).serviceActive);
+    const auto repeated = connection.prepareProject(folder, {});
+    REQUIRE(repeated.ready);
+    REQUIRE(repeated.projectId == prepared.projectId);
+    const auto projects = connection.projects({});
+    REQUIRE(projects.loaded && projects.snapshot);
+    REQUIRE(projects.snapshot->projects.size() == 1U);
+    const auto freshSettings = connection.providerSettings({});
+    REQUIRE(freshSettings.loaded);
+    REQUIRE(freshSettings.settings.localModelName == prepared.model);
+    auto run = connection.startManagedRun(prepared.projectId,
+        "forge-conductor-manager", 0U, "Write setup-proof.txt in this project.", true, {});
+    if (!run.loaded) throw std::runtime_error{"First task failed: " + run.message};
+    REQUIRE(run.snapshot.has_value());
+    const auto runId = run.snapshot->record.runId.value();
+    const auto deadline = std::chrono::steady_clock::now() + 10s;
+    while (run.snapshot->record.state == Domain::ManagedRunState::Running && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(20ms);
+        run = connection.controlManagedRun(runId, App::ManagedRunAction::Status, {});
+        REQUIRE(run.loaded && run.snapshot);
+    }
+    if (run.snapshot->record.state != Domain::ManagedRunState::Completed) {
+        server.requireHealthy();
+        throw std::runtime_error{"First task did not complete: " + run.message +
+            (run.snapshot->record.lastError ? " " + run.snapshot->record.lastError->message : "")};
+    }
+    REQUIRE(run.snapshot->record.state == Domain::ManagedRunState::Completed);
+    REQUIRE(server.waitUntilHandled(9U, 5s));
+    std::ifstream proof{project / L"setup-proof.txt", std::ios::binary};
+    const std::string written{std::istreambuf_iterator<char>{proof}, std::istreambuf_iterator<char>{}};
+    REQUIRE(written == "Project setup completed real native work.");
+    const auto completion = Json::parse(server.requests().at(8).body);
+    REQUIRE(completion.at("previous_response_id") == "first-task-tool");
+    REQUIRE(completion.at("input").at(0).at("call_id") == "setup-first-write");
+    namespace C = ForgeConductor::Contracts;
+    const auto policyFolder = root / L"policy";
+    std::filesystem::create_directories(policyFolder);
+    { std::ofstream policy{policyFolder / "README.md"}; policy << "Review before editing. Only approved project paths may change."; }
+    const auto policyBytes = policyFolder.generic_u8string();
+    const std::string policySource{reinterpret_cast<const char*>(policyBytes.data()), policyBytes.size()};
+    const auto projectId = parse<Domain::ProjectId>(prepared.projectId);
+    const auto preview = take(client->projectPolicy({projectId, C::ProjectPolicyAction::Preview, policySource}, context()));
+    const auto revision = Json::parse(preview.canonicalJson).at("revision").get<std::string>();
+    REQUIRE(client->projectPolicy({projectId, C::ProjectPolicyAction::Adopt, {}, revision}, context()));
+    auto denied = connection.invokeTool(prepared.projectId, "fs_write", R"({"path":"blocked.txt","content":"must not write"})", {});
+    REQUIRE(!denied.loaded || !denied.snapshot || !denied.snapshot->ok);
+    REQUIRE(!std::filesystem::exists(project / L"blocked.txt"));
+    const auto index = connection.invokeTool(prepared.projectId, "project_policy.read", "{}", {});
+    REQUIRE(index.loaded && index.snapshot && index.snapshot->ok);
+    const auto document = connection.invokeTool(prepared.projectId, "project_policy.read", R"({"path":"README.md"})", {});
+    REQUIRE(document.loaded && document.snapshot && document.snapshot->ok);
+    REQUIRE(Json::parse(document.snapshot->canonicalPayload).at("content") == "Review before editing. Only approved project paths may change.");
+    Json review{{"schema", 1}, {"accepted", true}, {"policy_revision", revision}, {"reviewer", "Integration fixture"},
+        {"reviewed_at", "2026-09-23T00:00:00Z"}, {"evidence", "Controlled policy integration test"},
+        {"unresolved_obligations", Json::array()}, {"source_coverage", Json::array({
+            {{"path", "README.md"}, {"status", "read"}, {"evidence_or_reason", "Fixture review"}}})},
+        {"write_paths", Json::array({"approved.txt"})}, {"prohibited_paths", Json::array()}, {"approved_calls", Json::array()}};
+    REQUIRE(client->projectPolicy({projectId, C::ProjectPolicyAction::Review, {}, revision, review.dump()}, context()));
+    const auto permitted = connection.invokeTool(prepared.projectId, "fs_write", R"({"path":"approved.txt","content":"reviewed scope"})", {});
+    REQUIRE(permitted.loaded && permitted.snapshot && permitted.snapshot->ok);
+    denied = connection.invokeTool(prepared.projectId, "fs_write", R"({"path":"blocked.txt","content":"must not write"})", {});
+    REQUIRE(!denied.loaded || !denied.snapshot || !denied.snapshot->ok);
+    REQUIRE(!std::filesystem::exists(project / L"blocked.txt"));
+    denied = connection.invokeTool(prepared.projectId, "shell_exec", R"({"command":"Set-Content blocked.txt bypass"})", {});
+    REQUIRE(!denied.loaded || !denied.snapshot || !denied.snapshot->ok);
+    REQUIRE(!std::filesystem::exists(project / L"blocked.txt"));
+    App::ManagerConnection reopened{std::wstring{profile.nativeDataRoot()}};
+    const auto persistedPolicy = reopened.projectPolicy({projectId, C::ProjectPolicyAction::Inspect}, {});
+    REQUIRE(persistedPolicy.loaded);
+    REQUIRE(Json::parse(persistedPolicy.canonicalJson).at("review_accepted").get<bool>());
+    server.requireHealthy();
+    std::cout << "PASS automatic_setup.real_manager_project_retry_and_first_task " << root.string() << '\n';
+}
+
+void automaticModelPreparationCancelsPendingLoad()
+{
+    ResponseScript loading{"POST", "/api/v1/models/load", 200U, R"({"instance_id":"cancelled-model"})"};
+    loading.blockUntilReleased = true;
+    loading.allowClientDisconnect = true;
+    LoopbackHttpServer server{{
+        {"GET", "/api/v1/models", 200U, R"({"models":[{"type":"llm","key":"test-model","capabilities":{"trained_for_tool_use":true},"size_bytes":4096,"max_context_length":65536,"loaded_instances":[]}]})"},
+        loading}};
+    Domain::ManagerSettings settings;
+    settings.localModelPort = server.port();
+    InfrastructureWindows::WindowsModelPreparation preparation;
+    std::stop_source cancellation;
+    auto context = operationContext("12121212-1212-4212-8212-121212121296", 10s);
+    context.cancellation = cancellation.get_token();
+    std::optional<Domain::Result<InfrastructureWindows::PreparedLocalModel>> result;
+    std::thread worker{[&] { result.emplace(preparation.prepare(settings, context)); }};
+    const bool loadingStarted = server.waitForRequests(2U, 5s);
+    const auto cancelledAt = std::chrono::steady_clock::now();
+    cancellation.request_stop();
+    worker.join();
+    server.releaseBlockedResponses();
+    REQUIRE(loadingStarted);
+    REQUIRE(std::chrono::steady_clock::now() - cancelledAt < 2s);
+    REQUIRE(result.has_value());
+    requireError(*result, Domain::ErrorCodes::Cancelled);
+    server.requireHealthy();
+}
+
 void shutdownClosesActiveAndFutureRequests()
 {
     ResponseScript blocked{
@@ -1165,6 +1462,12 @@ void shutdownClosesActiveAndFutureRequests()
 int main()
 {
     try {
+        automaticSetupUsesRealManagerAndPersistsProject();
+        automaticModelPreparationCancelsPendingLoad();
+        providerSettingsApplyToNewRunsAndPreserveExistingRuns();
+        automaticModelPreparationUsesVerifiedInventory();
+        automaticModelPreparationRejectsUnusableAndMalformedInventory();
+        std::cout << "PASS automatic_setup.model_load_reuse_and_failure\n";
         loopbackConfigurationIsFailClosed();
         std::cout << "PASS winhttp_transport.loopback_configuration\n";
         createBootstrapAndQueryUseExactRoutes();
@@ -1183,7 +1486,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=9 failed=0 assertions="
+        std::cout << "SUMMARY passed=14 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

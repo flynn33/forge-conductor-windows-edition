@@ -37,6 +37,9 @@
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
+#include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
+#include "ForgeConductor/Application/ProjectPolicyService.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsPolicySourceReader.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsApplicationPaths.h"
@@ -600,7 +603,7 @@ private:
         continuityCodec_;
     std::unique_ptr<InfrastructureWindows::WindowsNativeSessionLedger>
         nativeSessionLedger_;
-    std::unique_ptr<InfrastructureWindows::LMStudioResponsesTransport>
+    std::unique_ptr<InfrastructureWindows::SettingsBoundResponsesTransport>
         nativeSessionTransport_;
     std::unique_ptr<Application::AgentRepositoryManagedRunStore>
         managedRunStore_;
@@ -614,6 +617,8 @@ private:
     std::unique_ptr<Mcp::McpInvocationGuard> invocationGuard_;
     std::unique_ptr<Mcp::McpToolPackAdapter> toolPack_;
     std::unique_ptr<Mcp::McpToolAuthorizer> toolAuthorizer_;
+    std::unique_ptr<InfrastructureWindows::WindowsPolicySourceReader> policySource_;
+    std::unique_ptr<Application::ProjectPolicyService> projectPolicy_;
     std::unique_ptr<Mcp::McpToolRouter> toolRouter_;
 
     std::unique_ptr<InfrastructureWindows::WindowsLMStudioDiscoverySource>
@@ -1030,15 +1035,37 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             *dataAuthority_, *dataScope_,
             childPath(process.memoryRoot(), "native-session-ledger.json.bak"),
             process.dataRoot(), Domain::FileAccess::Read, context));
-    InfrastructureWindows::LMStudioResponsesTransportConfiguration
-        providerConfiguration;
-    providerConfiguration.loopbackHost = initialConfiguration_->localModel.host;
-    providerConfiguration.port = initialConfiguration_->localModel.port;
-    providerConfiguration.secure = initialConfiguration_->localModel.secure;
-    providerConfiguration.model = initialConfiguration_->localModel.model;
     nativeSessionTransport_ = std::make_unique<
-        InfrastructureWindows::LMStudioResponsesTransport>(
-        std::move(providerConfiguration));
+        InfrastructureWindows::SettingsBoundResponsesTransport>(
+        [store = configurationStore_](const Domain::OperationContext& operation) {
+            using Configuration = InfrastructureWindows::LMStudioResponsesTransportConfiguration;
+            auto current = store->load(operation);
+            if (!current) return Domain::Result<Configuration>::failure(current.error());
+            Configuration configuration;
+            configuration.loopbackHost = current.value().localModel.host;
+            configuration.port = current.value().localModel.port;
+            configuration.secure = current.value().localModel.secure;
+            configuration.model = current.value().localModel.model;
+            return Domain::Result<Configuration>::success(std::move(configuration));
+        },
+        [this, root = process.dataRoot(), path = childPath(process.memoryRoot(), "provider-bindings.json")](const Domain::OperationContext& operation) {
+            auto content = atomicFileStore_->read(authorizePath(*dataAuthority_, *dataScope_, path, root,
+                Domain::FileAccess::Read, operation), Contracts::IAtomicFileStore::MaximumBytes, operation);
+            if (!content && content.error().code == Domain::ErrorCodes::RecordNotFound)
+                return Domain::Result<std::string>::success({});
+            if (!content) return Domain::Result<std::string>::failure(content.error());
+            return Domain::Result<std::string>::success(std::string{
+                reinterpret_cast<const char*>(content.value().data()), content.value().size()});
+        },
+        [this, root = process.dataRoot(), path = childPath(process.memoryRoot(), "provider-bindings.json")](const std::string& content, const Domain::OperationContext& operation) {
+            const auto readable = authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Read, operation);
+            const auto existing = atomicFileStore_->read(readable, Contracts::IAtomicFileStore::MaximumBytes, operation);
+            if (!existing && existing.error().code != Domain::ErrorCodes::RecordNotFound)
+                return Domain::Result<void>::failure(existing.error());
+            return atomicFileStore_->replace(authorizePath(*dataAuthority_, *dataScope_, path, root,
+                existing ? Domain::FileAccess::Write : Domain::FileAccess::Create, operation),
+                {reinterpret_cast<const std::byte*>(content.data()), content.size()}, true, operation);
+        });
     managedRunStore_ = std::make_unique<
         Application::AgentRepositoryManagedRunStore>(
         *agentSessionRepository_,
@@ -1063,6 +1090,16 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *projectRegistry_, *projectWorkspaceAuthority_, *clock_);
     invocationGuard_ = take(Mcp::McpInvocationGuard::create(
         *legacyContinuity_, *hasher_, *clock_));
+    policySource_ = std::make_unique<InfrastructureWindows::WindowsPolicySourceReader>();
+    projectPolicy_ = std::make_unique<Application::ProjectPolicyService>(
+        *policySource_, *atomicFileStore_, *hasher_, *projectRegistry_,
+        [this, root = process.dataRoot(), memory = process.memoryRoot()](const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+            const auto path = childPath(memory, "project-policy-" + project.value() + ".json");
+            return Domain::Result<Application::PolicyStoragePaths>::success({
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Read, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Write, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Create, operation)});
+        }, process.dataRoot().value());
     toolPack_ = take(Mcp::McpToolPackAdapter::create(
         Mcp::McpToolPackDependencies{
             *toolCatalog_,
@@ -1094,8 +1131,8 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             discoverExecutable(L"powershell.exe"),
             std::string{ProductVersion},
             std::string{RuntimeName},
-            static_cast<std::uint32_t>(::GetCurrentProcessId())}));
-    toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_);
+            static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()}));
+    toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_, projectPolicy_.get());
     const std::array<Contracts::IToolHandler*, 1U> handlers{toolPack_.get()};
     toolRouter_ = take(Mcp::McpToolRouter::create(
         *toolCatalog_, handlers, *toolAuthorizer_, *invocationGuard_,
@@ -1464,7 +1501,7 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             clientPresenceRepository_.get(),
             auditRepository_.get(),
             managedRunStore_.get(),
-            hasher_.get()});
+            hasher_.get(), projectPolicy_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

@@ -1030,6 +1030,14 @@ WindowsManagerNamedPipeClient::instructionPackage(
               "The manager client transport is unavailable."));
 }
 
+Domain::Result<Manager::ManagerProjectPolicySnapshot> WindowsManagerNamedPipeClient::projectPolicy(
+    const Contracts::ProjectPolicyRequest& request, const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation ? implementation->typedWorkflow<Manager::ManagerProjectPolicySnapshot>(request, context)
+        : failure<Manager::ManagerProjectPolicySnapshot>(clientError(Domain::ErrorCodes::TransportClosed, "The Manager connection is unavailable."));
+}
+
 Domain::Result<Manager::ManagerLmStudioSnapshot>
 WindowsManagerNamedPipeClient::lmStudioStatus(
     const Domain::OperationContext& context) noexcept

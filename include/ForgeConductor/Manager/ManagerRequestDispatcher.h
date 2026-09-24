@@ -43,6 +43,7 @@ struct ManagerTelemetrySources final {
     Contracts::IAuditRepository* audit{};
     Contracts::IManagedRunStore* durableManagedRunStore{};
     Contracts::IHasher* evidenceHasher{};
+    Contracts::IProjectPolicyService* projectPolicy{};
 };
 
 class ManagerRequestDispatcher final {

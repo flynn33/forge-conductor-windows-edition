@@ -2376,6 +2376,13 @@ private:
                     std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
                     return controllerResponse(
                         request, instructionPackage(payload, context));
+                } else if constexpr (std::is_same_v<Payload, Contracts::ProjectPolicyRequest>) {
+                    if (!telemetrySources_.projectPolicy) return responseWithError(request,
+                        error(Domain::ErrorCodes::InvalidRequest, "Project policy service is unavailable."));
+                    auto policy = telemetrySources_.projectPolicy->execute(payload, context);
+                    if (!policy) return responseWithError(request, policy.error());
+                    return controllerResponse(request, Domain::Result<ManagerProjectPolicySnapshot>::success(
+                        ManagerProjectPolicySnapshot{std::move(policy).value()}));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                     return controllerResponse(
@@ -2431,6 +2438,24 @@ private:
                     if (!task) {
                         return responseWithError(
                             request, std::move(task).error());
+                    }
+                    if (telemetrySources_.projectPolicy) {
+                        auto policy = telemetrySources_.projectPolicy->execute(
+                            {payload.projectId, Contracts::ProjectPolicyAction::Inspect}, context);
+                        if (!policy) return responseWithError(request, policy.error());
+                        const auto state = nlohmann::json::parse(policy.value());
+                        if (state.value("adopted", false)) {
+                            const auto guidance = std::string{"\n\nPROJECT DEVELOPMENT POLICY\nPinned source: "} +
+                                state.value("source", "") + "\nSnapshot: " + state.value("revision", "") +
+                                "\nUse project_policy.read without a path to inspect the policy and reviewed scope, then read applicable documents completely using path and offset. "
+                                "Follow their governing requirements. Import is not evidence of reading or compliance. "
+                                "Never claim human review or approvals on the user's behalf. "
+                                "File edits are limited to reviewed paths; commands must match the reviewed shell_exec arguments exactly. " +
+                                (state.value("review_accepted", false) ? "An accepted review is recorded.\n" : "Review is pending; only read-only work is permitted.\n");
+                            if (task.value().size() + guidance.size() > Domain::MaximumManagedRunTaskBytes)
+                                return responseWithError(request, error(Domain::ErrorCodes::PayloadTooLarge, "Task and policy guidance exceed the run input limit."));
+                            task.value() += guidance;
+                        }
                     }
                     return controllerResponse(
                         request,

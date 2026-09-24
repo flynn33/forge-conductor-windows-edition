@@ -1458,6 +1458,18 @@
       "name": "project_memory.update"
     },
     {
+      "description": "Read the adopted policy index or an exact pinned document. Supply path and next offset to retrieve every part; this tool cannot adopt policy or approve reviews.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "offset": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "name": "project_policy.read"
+    },
+    {
       "description": "Recursive text search (grep).",
       "inputSchema": {
         "properties": {

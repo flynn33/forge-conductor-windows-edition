@@ -13,6 +13,7 @@
 #include "ForgeConductor/Contracts/INativeToolServices.h"
 #include "ForgeConductor/Contracts/IPathGlobService.h"
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
+#include "ForgeConductor/Contracts/IProjectPolicyService.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
 
 #include <chrono>
@@ -58,6 +59,7 @@ struct McpToolPackDependencies final {
     std::string productVersion;
     std::string runtimeName;
     std::uint32_t processId{};
+    Contracts::IProjectPolicyService* projectPolicy{};
 };
 
 // Parses source-compatible tool arguments into transport-neutral Domain

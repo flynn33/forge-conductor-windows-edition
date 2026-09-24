@@ -90,6 +90,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"project_memory.search", "Search one project with deterministic bounded pagination.", "ProjectMemoryToolPack", Read, true, false},
         {"project_memory.status", "Report project memory health, sizes, capabilities, and limits.", "ProjectMemoryToolPack", Read, true, false},
         {"project_memory.update", "Update a record with optimistic version checking.", "ProjectMemoryToolPack", Write, true, false},
+        {"project_policy.read", "Read the adopted policy index or an exact pinned document. Supply path and next offset to retrieve every part; this tool cannot adopt policy or approve reviews.", "ProjectPolicyToolPack", Read, true, false},
         {"search_text", "Recursive text search (grep).", "SearchToolPack", Read, true, false},
         {"session_checkpoint", "Soft-save context + open agent sessions for continuity (continue working).", "ContinuityToolPack", Write, false, false},
         {"session_handoff", "Finalize context/agent handoff for a new chat; returns resume_seed. Prefer before context is full.", "ContinuityToolPack", Write, false, false},
@@ -147,6 +148,10 @@ using Property = std::pair<std::string_view, Json>;
 
 [[nodiscard]] Json legacySchema(const std::string_view name)
 {
+    if (name == "project_policy.read") {
+        return Json{{"type", "object"}, {"properties", {{"path", {{"type", "string"}}},
+            {"offset", {{"type", "integer"}, {"minimum", 0}}}}}, {"additionalProperties", false}};
+    }
     const auto string = primitive("string");
     if (name == "agent_run_start") {
         return objectSchema(

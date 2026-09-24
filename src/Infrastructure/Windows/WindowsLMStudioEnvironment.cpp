@@ -458,7 +458,7 @@ private:
             if (!role.protocolVersion ||
                 *role.protocolVersion != SupportedMcpProtocolVersion ||
                 role.toolCount !=
-                    (role.role == Domain::LMStudioConnectorRole::Clu ? 4U : 57U)) {
+                    (role.role == Domain::LMStudioConnectorRole::Clu ? 4U : 58U)) {
                 return false;
             }
         } else if (role.protocolVersion || role.toolCount != 0U) {

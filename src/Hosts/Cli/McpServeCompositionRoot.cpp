@@ -8,6 +8,8 @@
 #include "ForgeConductor/Application/LegacyMemoryService.h"
 #include "ForgeConductor/Application/ProjectMemoryRepositoryCache.h"
 #include "ForgeConductor/Application/ProjectMemoryService.h"
+#include "ForgeConductor/Application/ProjectPolicyService.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsPolicySourceReader.h"
 #include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
@@ -760,6 +762,16 @@ private:
             *projectRegistry_, *workspaceAuthority_, *clock_);
         invocationGuard_ = take(Mcp::McpInvocationGuard::create(
             *legacyContinuity_, *hasher_, *clock_));
+        policySource_ = std::make_unique<InfrastructureWindows::WindowsPolicySourceReader>();
+        projectPolicy_ = std::make_unique<Application::ProjectPolicyService>(
+            *policySource_, *atomicFileStore_, *hasher_, *projectRegistry_,
+            [this, dataScope, dataRoot, memoryRoot](const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+                const auto path = childPath(memoryRoot, "project-policy-" + project.value() + ".json");
+                return Domain::Result<Application::PolicyStoragePaths>::success({
+                    authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Read, operation),
+                    authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Write, operation),
+                    authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Create, operation)});
+            }, dataRoot.value());
         toolPack_ = take(Mcp::McpToolPackAdapter::create(
             Mcp::McpToolPackDependencies{
                 *toolCatalog_,
@@ -791,8 +803,8 @@ private:
                 powerShellExecutable,
                 std::string{ProductVersion},
                 std::string{RuntimeName},
-                static_cast<std::uint32_t>(::GetCurrentProcessId())}));
-        toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_);
+                static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()}));
+        toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_, projectPolicy_.get());
         const std::array<Contracts::IToolHandler*, 1U> handlers{toolPack_.get()};
         toolRouter_ = take(Mcp::McpToolRouter::create(
             *toolCatalog_, handlers, *toolAuthorizer_, *invocationGuard_,
@@ -1068,6 +1080,8 @@ private:
     std::unique_ptr<Mcp::McpInvocationGuard> invocationGuard_;
     std::unique_ptr<Mcp::McpToolPackAdapter> toolPack_;
     std::unique_ptr<Mcp::McpToolAuthorizer> toolAuthorizer_;
+    std::unique_ptr<InfrastructureWindows::WindowsPolicySourceReader> policySource_;
+    std::unique_ptr<Application::ProjectPolicyService> projectPolicy_;
     std::unique_ptr<Mcp::McpToolRouter> toolRouter_;
     std::unique_ptr<Mcp::McpExecutionContextResolver>
         executionContextResolver_;

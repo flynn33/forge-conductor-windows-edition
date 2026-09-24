@@ -57,6 +57,11 @@ struct MainWindow : MainWindowT<MainWindow> {
     void GuidedModeBackClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void GuidedModeCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void GuidedModeRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SetupFolderClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void PolicyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SetupRetryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SetupCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void SetupTaskClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void HelpSearchChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -128,7 +133,8 @@ private:
     };
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
-        ProviderModels, ProviderContract,
+        ProviderModels, ProviderContract, SetupPrepare,
+        PolicyPreview, PolicyAdopt, PolicyInspect, PolicyRead, PolicyNext, PolicyReview,
         SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
@@ -138,6 +144,15 @@ private:
         OperationalInspect, OperationalPrune, OperationalClose, RunHistory, EvidenceLoad, EvidenceVerify
     };
     winrt::fire_and_forget RunAction(Action action);
+    void ApplySetupProgress(const ::ForgeConductor::Application::ProjectSetupSnapshot& snapshot);
+    void ApplyPolicyView(const ::ForgeConductor::Hosts::App::ProjectPolicyView& view, bool document);
+    std::string policyProject_;
+    std::string policyRevision_;
+    std::string policySummaryJson_;
+    std::size_t policyDocumentOffset_{};
+    std::string policyDocumentPath_;
+    std::stop_source setupCancellation_;
+    std::string preparedProjectId_;
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>
         ReadProviderForm(std::string& error);
     [[nodiscard]] std::optional<::ForgeConductor::Domain::ManagerSettings>

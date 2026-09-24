@@ -2,9 +2,9 @@
 
 Forge Conductor is a native Windows 11 control application and MCP tool server for project work with local models in LM Studio.
 
-Version **1.1.44** is an [engineering prerelease](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.1.44) with searchable offline help and a corrected opening folder-picker action. It is not a fully qualified production release. Development-policy repository import and enforcement remain planned; see the [release notes](docs/releases/1.1.44.md).
+Version **1.2.0** adds automatic project preparation and pinned development-policy import. Choose a folder, let Forge Conductor prepare the Manager and a compatible downloaded model, then enter a task. See the [release notes](docs/releases/1.2.0.md).
 
-The 1.1 product includes a full WinUI 3 desktop interface, an automatically attached or started per-user Manager process, managed inference and context continuity, project registration, legacy and project memory, 57 native MCP tools, three-role LM Studio deployment, scoped maintenance, and live CPU, RAM, GPU, disk, volume, process, and workflow telemetry.
+The 1.1 product includes a full WinUI 3 desktop interface, an automatically attached or started per-user Manager process, managed inference and context continuity, project registration, legacy and project memory, 58 native MCP tools, three-role LM Studio deployment, scoped maintenance, and live CPU, RAM, GPU, disk, volume, process, and workflow telemetry.
 
 ## Product surfaces
 
@@ -39,4 +39,4 @@ Production distributions require an explicitly supplied code-signing PFX. See [I
 
 Historical Alpha plans and evidence remain under `.forge-alpha/` and `docs/implementation/alpha-recovery/`; they are archived delivery records, not the current product definition.
 
-Setup simplification, development-policy intake/enforcement requirements, and the remaining qualification matrix are documented in [Setup and governance research](docs/SETUP-GOVERNANCE-RESEARCH.md). Guided setup includes 20 searchable offline articles. [Verification evidence](docs/validation/SETUP-RESEARCH-2026-09-23.md) records the initial fixes and their limits; repository policy enforcement is planned, not implemented.
+Guided setup includes 42 searchable offline articles and optional policy adoption from GitHub or a local folder. The Manager enforces reviewed write paths and exact commands. Human review remains necessary for prose requirements. See the [user guide](docs/USER-GUIDE.md), [research](docs/SETUP-GOVERNANCE-RESEARCH.md), and [verification record](docs/validation/AUTOMATIC-SETUP-1.2.0.md).

@@ -166,7 +166,52 @@
     </Border>
 
     <StackPanel x:Name="GuidedSetupPanel" Spacing="14" Visibility="Collapsed">
-     <Expander Header="Help and troubleshooting · 20 offline articles" HorizontalAlignment="Stretch" IsExpanded="False">
+     <Border Style="{ThemeResource ForgeHeroCardStyle}"><StackPanel Spacing="12">
+      <TextBlock Text="Start a project" Style="{ThemeResource ForgeSectionTitleStyle}"/>
+      <TextBlock Text="Choose a folder. Forge Conductor starts its services, registers your project, finds a model, and checks that it can answer. Then describe your task." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+      <TextBox x:Name="SetupFolder" Header="Your project folder" IsReadOnly="True" PlaceholderText="Choose a new or existing project folder"/>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+       <Button x:Name="SetupFolderButton" Content="Choose folder and prepare" Click="SetupFolderClicked" Style="{ThemeResource ForgeAccentButtonStyle}"/>
+       <Button x:Name="SetupRetryButton" Content="Retry preparation" Click="SetupRetryClicked" IsEnabled="False"/>
+       <Button x:Name="SetupCancelButton" Content="Cancel" Click="SetupCancelClicked" IsEnabled="False"/>
+      </StackPanel>
+      <TextBlock x:Name="AutomaticSetupState" Text="1 · Choose a folder   →   2 · Prepare automatically   →   3 · Describe your task" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+      <TextBox x:Name="SetupTask" Header="What would you like to build or fix?" PlaceholderText="Describe your task in ordinary language" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="100"/>
+      <ToggleSwitch x:Name="SetupAllowTools" Header="Allow work in this project" IsOn="True" OnContent="Files and project commands allowed" OffContent="Discuss only · no tools"/>
+      <TextBlock Text="Starting a task authorizes work inside the selected project. An adopted development policy still controls what operations are allowed." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+      <Button x:Name="SetupTaskButton" Content="Start task" Click="SetupTaskClicked" IsEnabled="False" HorizontalAlignment="Left"/>
+     </StackPanel></Border>
+     <Expander x:Name="PolicyPanel" Header="Development policy and governance (optional)" HorizontalAlignment="Stretch">
+      <StackPanel Spacing="10">
+       <TextBlock Text="Import a policy repository for the selected project. Adoption pins its contents and requires an accepted review before write tools or commands can run." TextWrapping="Wrap"/>
+       <TextBox x:Name="PolicySource" Header="GitHub repository URL or local policy folder" PlaceholderText="https://github.com/flynn33/raven-forge-development"/>
+       <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Import preview" Tag="preview" Click="PolicyClicked"/>
+        <Button Content="Adopt this revision" Tag="adopt" Click="PolicyClicked"/>
+        <Button Content="Inspect adopted policy" Tag="inspect" Click="PolicyClicked"/>
+       </StackPanel>
+       <TextBlock x:Name="PolicyState" Text="Prepare or select a project first. Policy is optional." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/>
+       <ComboBox x:Name="PolicyDocument" Header="Imported source documents" HorizontalAlignment="Stretch"/>
+       <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Read document" Tag="read" Click="PolicyClicked"/>
+        <Button Content="Next part" Tag="next" Click="PolicyClicked"/>
+       </StackPanel>
+       <TextBox x:Name="PolicyDocumentText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="320" Header="Pinned document contents"/>
+       <Expander Header="Record a completed policy review" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="10">
+         <TextBlock Text="Importing is not proof of compliance. Record the completed source and project review, resolve its obligations, and select the scope it permits. Semantic policy requirements still need review; these controls enforce write scope and exact approved commands." TextWrapping="Wrap"/>
+         <TextBox x:Name="PolicyReviewer" Header="Reviewer"/>
+         <TextBox x:Name="PolicyEvidence" Header="Review evidence and decisions" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"/>
+         <TextBox x:Name="PolicyWritePaths" Header="Allowed project paths (one per line; . permits the whole project)" AcceptsReturn="True" TextWrapping="Wrap"/>
+         <TextBox x:Name="PolicyProhibitedPaths" Header="Prohibited project paths (one per line)" AcceptsReturn="True" TextWrapping="Wrap"/>
+         <TextBox x:Name="PolicyCommands" Header="Exact approved project commands (one per line; leave empty to block commands)" AcceptsReturn="True" TextWrapping="Wrap"/>
+         <CheckBox x:Name="PolicyReviewConfirmed" Content="I reviewed every listed source document and the project, accounted for excluded files, and resolved all policy obligations."/>
+         <Button Content="Accept reviewed scope" Tag="review" Click="PolicyClicked" HorizontalAlignment="Left"/>
+        </StackPanel>
+       </Expander>
+      </StackPanel>
+     </Expander>
+     <Expander Header="Help and troubleshooting · 42 offline articles" HorizontalAlignment="Stretch" IsExpanded="False">
       <StackPanel Spacing="10">
        <TextBlock Text="Help and troubleshooting" Style="{ThemeResource ForgeSectionTitleStyle}"/>
        <TextBlock Text="Find a plain-language answer without leaving the application." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
@@ -175,20 +220,7 @@
        <StackPanel x:Name="HelpArticles" Spacing="6"/>
       </StackPanel>
      </Expander>
-     <Border Style="{ThemeResource ForgeHeroCardStyle}" Padding="20">
-      <Grid ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions>
-       <Border Width="56" Height="56" CornerRadius="14" Background="{ThemeResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE897;" FontSize="26" Foreground="{ThemeResource ForgeAccentBrush}"/></Border>
-       <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center"><TextBlock Text="Guided project setup" FontFamily="Segoe UI Variable Display" FontSize="24" FontWeight="SemiBold"/><TextBlock Text="A real, resumable setup path using your folders, your project identity, your instructions, your memory, and your first managed task." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
-       <Button Grid.Column="2" Content="Restart from the beginning" Click="GuidedModeRestartClicked" Style="{ThemeResource ForgeAccentButtonStyle}" VerticalAlignment="Center" AutomationProperties.Name="Restart Guided Mode from the beginning"/>
-      </Grid>
-     </Border>
-     <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <Border Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8"><TextBlock Text="1 · AUTHORIZE" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><TextBlock Text="Choose and register a real project folder" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Defines the exact workspace Forge Conductor is allowed to use without moving or filling it with tutorial data." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel></Border>
-      <Border Grid.Column="1" Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8"><TextBlock Text="2 · ADD CONTEXT" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><TextBlock Text="Review instructions and durable memory" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Optional guidance describes how work should be done; project memory preserves facts and decisions learned over time." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel></Border>
-      <Border Grid.Column="2" Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8"><TextBlock Text="3 · START REAL WORK" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><TextBlock Text="Verify the provider and define the first task" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="The first managed run uses the selected project boundary and the actual model and tool policy you choose." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel></Border>
-     </Grid>
-     <Border Style="{ThemeResource ForgeCardStyle}" Padding="18"><StackPanel Spacing="10"><TextBlock Text="The full path" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="1  Orientation   →   2  Choose folder   →   3  Register &amp; verify   →   4  Review scope   →   5  Instructions   →   6  Durable memory   →   7  Provider readiness   →   8  First managed task   →   9  Complete" TextWrapping="Wrap" FontSize="13" AutomationProperties.Name="Guided Mode complete setup path"/><TextBlock Text="Optional steps can be skipped without inventing data. Guided Mode remains available here, on Rig, and in Settings whenever you need it again." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel></Border>
-    </StackPanel>
+         </StackPanel>
 
      <StackPanel x:Name="RigPanel" Spacing="10">
       <Border Style="{ThemeResource ForgeCardStyle}" Padding="16,13">

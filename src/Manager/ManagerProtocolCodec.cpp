@@ -1285,6 +1285,10 @@ void validateSettingsUpdateOutcome(
                 params["activate"] = payload.activate;
                 params["expected_revision"] = payload.expectedRevision
                     ? Json(payload.expectedRevision->value()) : Json(nullptr);
+            } else if constexpr (std::is_same_v<Payload, Contracts::ProjectPolicyRequest>) {
+                method = "projects.policy";
+                params = {{"project_id", payload.projectId.value()}, {"action", static_cast<int>(payload.action)},
+                    {"source", payload.source}, {"expected_revision", payload.expectedRevision}, {"review_json", payload.reviewJson}};
             } else if constexpr (
                 std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                 method = "lmstudio.status";
@@ -1483,6 +1487,14 @@ void validateSettingsUpdateOutcome(
                 [](const Json& object, const std::string_view name) {
                     return identifierMember<Domain::Sha256Digest>(object, name);
                 })};
+    } else if (method == "projects.policy") {
+        requireExactFields(params, {"project_id", "action", "source", "expected_revision", "review_json"}, "projects.policy params");
+        const auto& action = member(params, "action");
+        if (!action.is_number_integer() || action.get<std::int64_t>() < 0 || action.get<std::int64_t>() > 4)
+            reject(Domain::ErrorCodes::InvalidRequest, "Invalid project policy action.");
+        payload = Contracts::ProjectPolicyRequest{identifierMember<Domain::ProjectId>(params, "project_id"),
+            static_cast<Contracts::ProjectPolicyAction>(action.get<int>()), stringMember(params, "source"),
+            stringMember(params, "expected_revision"), stringMember(params, "review_json")};
     } else if (method == "lmstudio.status") {
         requireExactFields(params, {}, "lmstudio.status params");
         payload = ManagerLmStudioStatusRequest{};
@@ -3206,6 +3218,9 @@ template <typename T, typename Parser>
                 std::is_same_v<Value, ManagerInstructionPackageSnapshot>) {
                 wrapper["type"] = "instruction_package";
                 wrapper["value"] = instructionPackageSnapshotJson(value);
+            } else if constexpr (std::is_same_v<Value, ManagerProjectPolicySnapshot>) {
+                wrapper["type"] = "project_policy";
+                wrapper["value"] = Json{{"canonical_json", value.canonicalJson}};
             } else if constexpr (
                 std::is_same_v<Value, ManagerLmStudioSnapshot>) {
                 wrapper["type"] = "lmstudio";
@@ -3265,6 +3280,10 @@ template <typename T, typename Parser>
     }
     if (type == "instruction_package") {
         return ManagerResult{parseInstructionPackageSnapshot(value)};
+    }
+    if (type == "project_policy") {
+        requireExactFields(value, {"canonical_json"}, "project policy snapshot");
+        return ManagerResult{ManagerProjectPolicySnapshot{stringMember(value, "canonical_json")}};
     }
     if (type == "lmstudio") {
         return ManagerResult{parseLmStudioSnapshot(value)};
