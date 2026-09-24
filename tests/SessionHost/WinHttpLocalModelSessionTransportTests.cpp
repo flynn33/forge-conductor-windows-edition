@@ -1278,6 +1278,16 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     const auto project = root / L"project";
     std::filesystem::create_directories(project);
     const auto profile = take(W::WindowsAlphaManagerProfile::create((root / L"profile").wstring()));
+    std::uint16_t dashboardPort{};
+    {
+        LoopbackHttpServer portProbe{std::vector<ResponseScript>{}};
+        dashboardPort = portProbe.port();
+    }
+    std::filesystem::create_directories(root / L"profile" / L"config");
+    {
+        std::ofstream config{root / L"profile" / L"config" / L"config.json"};
+        config << Json{{"schema_version", 1}, {"dashboard", {{"port", dashboardPort}}}}.dump();
+    }
     App::ManagerConnection connection{std::wstring{profile.nativeDataRoot()}};
     const auto started = connection.start({});
     auto settings = connection.providerSettings({});
