@@ -24,6 +24,7 @@ public:
         return {calls != failAt, calls == failAt ? "Needs repair" : "Verified"};
     }
     SetupOperationResult ensureManager(std::stop_token) override { return next(); }
+    SetupOperationResult ensurePlugins(std::stop_token) override { return next(); }
     SetupOperationResult ensureProject(ProjectSetupSnapshot& result, std::stop_token) override
     {
         if (!omitIdentity) result.projectId = "existing-project";
@@ -42,7 +43,7 @@ public:
 int main()
 {
     try {
-        for (int failedStage = 1; failedStage <= 4; ++failedStage) {
+        for (int failedStage = 1; failedStage <= 5; ++failedStage) {
             Backend backend;
             backend.failAt = failedStage;
             ProjectSetupCoordinator coordinator{backend};
@@ -54,6 +55,8 @@ int main()
             backend.calls = 0;
             backend.failAt = -1;
             auto retry = coordinator.prepare("C:/project", {});
+            require(retry.checks.size() == 5 && retry.checks[2].stage == SetupStage::Plugins,
+                "Default setup must install plugins before preparing the model");
             require(retry.ready && retry.projectId == "existing-project",
                 "Retry must revalidate all stages and retain authoritative project identity");
         }

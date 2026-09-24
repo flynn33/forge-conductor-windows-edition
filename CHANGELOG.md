@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.1 — Complete plugin setup and visible guidance
+
+- Add automatic installation, readback and LM Studio synchronization of Primary, Fallback and Continuity plugins to project preparation. Stop before model/task readiness if this stage fails.
+- Fix project governance incorrectly blocking Manager-owned plugin maintenance. Keep project tools behind their policy gate and keep maintenance behind its separate scoped capability.
+- Open guided setup for profiles without a completed first setup task, including upgrades with an existing project and a previously disabled guide.
+- Put Start here first in navigation, keep a visible setup entry on other pages, retain navigation labels at normal desktop widths, and present preparation, optional policy and task entry in order.
+- Move clearly named plugin installation controls to the top of the LM Studio plugins page. Replace misleading guide toggles with direct navigation buttons.
+- Update offline help, packaging surface checks and regression coverage for the five-stage setup contract.
 ## 1.2.0 — Automatic project setup and development policy
 
 - Replace manual setup navigation with folder selection, automatic Manager/project/model preparation, a verified model response and task entry on one page.

@@ -1315,7 +1315,9 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     REQUIRE(client->control({Domain::ManagerControlAction::Stop}, context()));
     const auto folderBytes = project.u8string();
     const std::string folder{reinterpret_cast<const char*>(folderBytes.data()), folderBytes.size()};
-    const auto prepared = connection.prepareProject(folder, {});
+    // This test uses an isolated Manager and must preserve the real LM Studio. Exercise the
+    // explicit Forge-only option without changing this machine's LM Studio.
+    const auto prepared = connection.prepareProject(folder, {}, {}, false);
     if (!prepared.ready) {
         std::string detail;
         for (const auto& check : prepared.checks) detail += check.detail + "\n";
@@ -1324,7 +1326,7 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     REQUIRE(!prepared.projectId.empty());
     REQUIRE(prepared.model == "test-model");
     REQUIRE(take(client->status(context())).serviceActive);
-    const auto repeated = connection.prepareProject(folder, {});
+    const auto repeated = connection.prepareProject(folder, {}, {}, false);
     REQUIRE(repeated.ready);
     REQUIRE(repeated.projectId == prepared.projectId);
     const auto projects = connection.projects({});

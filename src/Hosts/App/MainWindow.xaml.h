@@ -8,6 +8,7 @@
 #include <optional>
 #include <string_view>
 #include <vector>
+#include <unordered_map>
 
 namespace winrt::ForgeConductorApp::implementation {
 struct MainWindow : MainWindowT<MainWindow> {
@@ -146,6 +147,8 @@ private:
     winrt::fire_and_forget RunAction(Action action);
     void ApplySetupProgress(const ::ForgeConductor::Application::ProjectSetupSnapshot& snapshot);
     void ApplyPolicyView(const ::ForgeConductor::Hosts::App::ProjectPolicyView& view, bool document);
+    bool policyRequiresReview_{};
+    std::unordered_map<std::string, Microsoft::UI::Xaml::Controls::TextBlock> runHistoryLabels_;
     std::string policyProject_;
     std::string policyRevision_;
     std::string policySummaryJson_;

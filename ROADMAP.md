@@ -2,7 +2,7 @@
 
 ## 1.2 automatic setup and governance
 
-Version 1.2.0 delivers folder-to-task preparation, installed LM Studio server startup, compatible model loading, response verification, retry/cancellation, pinned repository policy import, reviewed tool permissions and 42 offline help articles. See [release notes](docs/releases/1.2.0.md) and [validation evidence](docs/validation/AUTOMATIC-SETUP-1.2.0.md).
+Version 1.2.1 delivers folder-to-task preparation, automatic deployment and synchronization of all three LM Studio plugins, a persistent visible setup entry, installed LM Studio server startup, compatible model loading, response verification, retry/cancellation, pinned repository policy import, reviewed tool permissions and 42 offline help articles. See [release notes](docs/releases/1.2.1.md) and [validation evidence](docs/validation/SETUP-CORRECTION-1.2.1.md).
 
 The release uses the existing native C++20/WinUI architecture, Manager-owned execution, stable project identities, durable memory and native telemetry. Existing runs retain their selected provider binding across restart. Private GitHub policy import uses existing Git authentication and never executes imported scripts.
 

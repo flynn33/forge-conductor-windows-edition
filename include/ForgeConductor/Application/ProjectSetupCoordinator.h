@@ -9,7 +9,7 @@
 
 namespace ForgeConductor::Application {
 
-enum class SetupStage { Manager, Project, Provider, Verification };
+enum class SetupStage { Manager, Project, Plugins, Provider, Verification };
 enum class SetupState { Pending, Running, Ready, NeedsAction, Cancelled };
 
 struct SetupCheck final {
@@ -40,6 +40,7 @@ public:
     virtual ~IProjectSetupOperations() = default;
     virtual SetupOperationResult ensureManager(std::stop_token) = 0;
     virtual SetupOperationResult ensureProject(ProjectSetupSnapshot&, std::stop_token) = 0;
+    virtual SetupOperationResult ensurePlugins(std::stop_token) = 0;
     virtual SetupOperationResult ensureProvider(ProjectSetupSnapshot&, std::stop_token) = 0;
     virtual SetupOperationResult verifyProvider(ProjectSetupSnapshot&, std::stop_token) = 0;
 };
@@ -53,12 +54,14 @@ public:
 
     [[nodiscard]] ProjectSetupSnapshot prepare(
         std::string folder, std::stop_token cancellation,
-        const Observer& observer = {})
+        const Observer& observer = {}, bool installPlugins = true)
     {
         ProjectSetupSnapshot result;
         result.folder = std::move(folder);
-        result.checks = {{SetupStage::Manager}, {SetupStage::Project},
-                         {SetupStage::Provider}, {SetupStage::Verification}};
+        result.checks = {{SetupStage::Manager}, {SetupStage::Project}};
+        if (installPlugins) result.checks.push_back({SetupStage::Plugins});
+        result.checks.push_back({SetupStage::Provider});
+        result.checks.push_back({SetupStage::Verification});
         for (auto& check : result.checks) {
             if (cancellation.stop_requested()) {
                 check.state = SetupState::Cancelled;
@@ -75,6 +78,8 @@ public:
                     operation = operations_.ensureManager(cancellation); break;
                 case SetupStage::Project:
                     operation = operations_.ensureProject(result, cancellation); break;
+                case SetupStage::Plugins:
+                    operation = operations_.ensurePlugins(cancellation); break;
                 case SetupStage::Provider:
                     operation = operations_.ensureProvider(result, cancellation); break;
                 case SetupStage::Verification:

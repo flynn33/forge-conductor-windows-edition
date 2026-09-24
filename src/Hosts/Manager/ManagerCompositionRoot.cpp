@@ -617,6 +617,7 @@ private:
     std::unique_ptr<Mcp::McpInvocationGuard> invocationGuard_;
     std::unique_ptr<Mcp::McpToolPackAdapter> toolPack_;
     std::unique_ptr<Mcp::McpToolAuthorizer> toolAuthorizer_;
+    std::unique_ptr<Mcp::McpToolAuthorizer> maintenanceToolAuthorizer_;
     std::unique_ptr<InfrastructureWindows::WindowsPolicySourceReader> policySource_;
     std::unique_ptr<Application::ProjectPolicyService> projectPolicy_;
     std::unique_ptr<Mcp::McpToolRouter> toolRouter_;
@@ -1133,6 +1134,9 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             std::string{RuntimeName},
             static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()}));
     toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_, projectPolicy_.get());
+    // Host maintenance has separate Manager-issued capabilities, not a user
+    // project scope. Keep the project gate on the run/MCP router exclusively.
+    maintenanceToolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_);
     const std::array<Contracts::IToolHandler*, 1U> handlers{toolPack_.get()};
     toolRouter_ = take(Mcp::McpToolRouter::create(
         *toolCatalog_, handlers, *toolAuthorizer_, *invocationGuard_,
@@ -1212,7 +1216,7 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
         maintenanceService_ = std::make_shared<
             CompositionWindows::ManagerMaintenanceService>(
             *agentSessions_, *continuity_, *lmStudioDeployment_,
-            *toolAuthorizer_, *uuidGenerator_, *clock_,
+            *maintenanceToolAuthorizer_, *uuidGenerator_, *clock_,
             CompositionWindows::ManagerMaintenanceServiceConfiguration{
                 process.cliExecutable(), *lmStudioReadAuthority_,
                 *lmStudioWriteAuthority_});
@@ -1404,7 +1408,7 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
     maintenanceService_ = std::make_shared<
         CompositionWindows::ManagerMaintenanceService>(
         *agentSessions_, *continuity_, *lmStudioDeployment_,
-        *toolAuthorizer_, *uuidGenerator_, *clock_,
+        *maintenanceToolAuthorizer_, *uuidGenerator_, *clock_,
         CompositionWindows::ManagerMaintenanceServiceConfiguration{
             process.cliExecutable(), *lmStudioReadAuthority_,
             *lmStudioWriteAuthority_});
@@ -1489,7 +1493,7 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             lmStudioDeployment_.get(),
             lmStudioReadAuthority_ ? &*lmStudioReadAuthority_ : nullptr,
             lmStudioWriteAuthority_ ? &*lmStudioWriteAuthority_ : nullptr,
-            toolAuthorizer_.get(),
+            maintenanceToolAuthorizer_.get(),
             projectWorkspaceAuthority_.get(),
             toolRouter_.get(),
             continuityAutomation_.get(),
