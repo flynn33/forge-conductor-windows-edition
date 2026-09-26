@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — Simplified Workspace and CLU governance
+
+- Replace normal wizard/mission navigation with Workspace, Rig, Activity, and Settings.
+- Add a persistent project-scoped ordered queue of universal instruction-package folders with streamed hashes, revision-bound paging, explicit opaque/reparse/failure records, retry, removal, and ordered managed-run attachment.
+- Replace the four CLU continuity-control tools with development-governance operations for evidence evaluation, findings, correction receipts, redacted export, and policy document readback.
+- Keep governance nonblocking when no policy is bound and keep coverage gaps visible rather than treating unparsed content as omitted.
+- Add an independent per-project/provider automatic-continuity preference and carry it through the typed Manager start protocol; disabled runs skip automatic continuity observations.
+- Migrate legacy active instruction-package state into the ordered queue and retain compatible project-policy state migration.
+- Advance native runtime and package identity to 1.3.0.
+
 ## 1.2.1 — Complete plugin setup and visible guidance
 
 - Add automatic installation, readback and LM Studio synchronization of Primary, Fallback and Continuity plugins to project preparation. Stop before model/task readiness if this stage fails.

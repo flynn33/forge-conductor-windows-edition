@@ -63,6 +63,12 @@ struct InstructionPackageView final {
     std::optional<Manager::ManagerInstructionPackageSnapshot> snapshot;
 };
 
+struct InstructionPackageQueueView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Manager::ManagerInstructionPackageQueueSnapshot> snapshot;
+};
+
 enum class LmStudioAction { Inspect, Repair, Activate };
 
 struct LmStudioView final {
@@ -142,7 +148,8 @@ public:
         std::uint64_t authorityGeneration,
         std::string task,
         bool allowTools,
-        std::stop_token cancellation) noexcept = 0;
+        std::stop_token cancellation,
+        bool automaticContinuity = true) noexcept = 0;
     virtual ManagedRunView controlManagedRun(
         std::string runId,
         ManagedRunAction action,
@@ -170,6 +177,12 @@ public:
         bool activate,
         std::string expectedRevision,
         std::stop_token cancellation) noexcept = 0;
+    virtual InstructionPackageQueueView instructionPackageQueue(
+        Manager::ManagerInstructionPackageQueueRequest,
+        std::stop_token) noexcept
+    {
+        return {false, "Instruction package queue is unavailable.", std::nullopt};
+    }
     virtual LmStudioView lmStudio(
         LmStudioAction action,
         std::stop_token cancellation) noexcept = 0;
@@ -234,7 +247,8 @@ public:
         std::uint64_t authorityGeneration,
         std::string task,
         bool allowTools,
-        std::stop_token cancellation) noexcept override;
+        std::stop_token cancellation,
+        bool automaticContinuity = true) noexcept override;
     ManagedRunView controlManagedRun(
         std::string runId,
         ManagedRunAction action,
@@ -260,6 +274,9 @@ public:
         std::string packagePath,
         bool activate,
         std::string expectedRevision,
+        std::stop_token cancellation) noexcept override;
+    InstructionPackageQueueView instructionPackageQueue(
+        Manager::ManagerInstructionPackageQueueRequest request,
         std::stop_token cancellation) noexcept override;
     LmStudioView lmStudio(
         LmStudioAction action,

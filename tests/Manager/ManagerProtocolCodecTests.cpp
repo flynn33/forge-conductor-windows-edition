@@ -404,9 +404,20 @@ void testEveryRequestMethodRoundTripsDeterministically()
         path("D:\\Packages\\Alpha"), true,
         identifier<Domain::Sha256Digest>(
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")});
+    payloads.emplace_back(Manager::ManagerInstructionPackageQueueRequest{
+        identifier<Domain::ProjectId>(
+            "20000000-0000-4000-8000-000000000002"),
+        Manager::ManagerInstructionPackageQueueAction::ReadContent,
+        std::string{"queue-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+        std::nullopt,
+        std::string{"page-cursor"},
+        25U,
+        std::string{"assets/binary.dat"},
+        65'536U,
+        32U * 1024U});
     payloads.emplace_back(ForgeConductor::Contracts::ProjectPolicyRequest{
         identifier<Domain::ProjectId>("20000000-0000-4000-8000-000000000002"),
-        ForgeConductor::Contracts::ProjectPolicyAction::Preview,
+        ForgeConductor::Contracts::ProjectPolicyAction::Bind,
         "https://github.com/flynn33/raven-forge-development", {}, {}});
     payloads.emplace_back(Manager::ManagerMaintenanceRequest{
         Manager::ManagerMaintenanceScope::ProjectAllData,
@@ -452,6 +463,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "projects.memory",
         "projects.remember",
         "projects.instructions",
+        "projects.instruction_queue",
         "projects.policy",
         "maintenance.reset",
         "manager.control",
@@ -520,12 +532,14 @@ void testEveryRequestMethodRoundTripsDeterministically()
                     "20000000-0000-4000-8000-000000000003"),
                 9U,
                 "Run the ordinary managed turn.",
+                false,
                 false})))));
     const auto& managedPayload =
         std::get<Manager::ManagedRunStartRequest>(managedStart.payload);
     REQUIRE(managedPayload.authorityGeneration == 9U);
     REQUIRE(managedPayload.task == "Run the ordinary managed turn.");
     REQUIRE(!managedPayload.allowTools);
+    REQUIRE(!managedPayload.automaticContinuity);
 }
 
 void testManagedRunResultRoundTrips()
@@ -804,7 +818,12 @@ void testProjectWorkflowRoundTrips()
         4'096U,
         {"START-HERE.md", "specs/policy.json"},
         true,
-        recordId};
+        recordId,
+        std::string{"queue-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        1024U,
+        1U,
+        std::string{"2"},
+        true};
     const auto packageFrame = take(
         Manager::ManagerProtocolCodec::encodeResponse(response(
             Manager::ManagerResult{package})));
@@ -820,6 +839,46 @@ void testProjectWorkflowRoundTrips()
     REQUIRE(actualPackage.manifestRecordId == recordId);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedPackage)) ==
             packageFrame);
+
+    const Manager::ManagerInstructionPackageQueueSnapshot queue{
+        descriptor.id,
+        {Manager::ManagerInstructionPackageQueueRowSnapshot{
+            "queue-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "Alpha instructions",
+            path("D:\\Packages\\Alpha"),
+            revision,
+            1024U,
+            "ready",
+            44U,
+            8U * 1024U * 1024U,
+            2U,
+            3U,
+            2048U,
+            std::nullopt}},
+        {Manager::ManagerInstructionPackageEntrySnapshot{
+            "assets/binary.dat", "file", 512U * 1024U, revision,
+            "opaque", std::string{"No text representation"}}},
+        std::string{"next-entry-page"},
+        true,
+        std::string{"AAEC/w=="},
+        65'536U,
+        65'540U,
+        false};
+    const auto queueFrame = take(
+        Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerResult{queue})));
+    const auto decodedQueue = take(
+        Manager::ManagerProtocolCodec::decodeResponse(queueFrame));
+    const auto& actualQueue =
+        std::get<Manager::ManagerInstructionPackageQueueSnapshot>(
+            std::get<Manager::ManagerResult>(decodedQueue.body));
+    REQUIRE(actualQueue.projectId == descriptor.id);
+    REQUIRE(actualQueue.rows.size() == 1U);
+    REQUIRE(actualQueue.entries.size() == 1U);
+    REQUIRE(actualQueue.contentBase64 == "AAEC/w==");
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedQueue)) ==
+            queueFrame);
 }
 
 void testResponseResultAndErrorRoundTrips()

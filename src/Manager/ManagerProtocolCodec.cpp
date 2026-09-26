@@ -1285,10 +1285,39 @@ void validateSettingsUpdateOutcome(
                 params["activate"] = payload.activate;
                 params["expected_revision"] = payload.expectedRevision
                     ? Json(payload.expectedRevision->value()) : Json(nullptr);
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerInstructionPackageQueueRequest>) {
+                method = "projects.instruction_queue";
+                params["project_id"] = payload.projectId.value();
+                switch (payload.action) {
+                case ManagerInstructionPackageQueueAction::List:
+                    params["action"] = "list"; break;
+                case ManagerInstructionPackageQueueAction::Move:
+                    params["action"] = "move"; break;
+                case ManagerInstructionPackageQueueAction::Remove:
+                    params["action"] = "remove"; break;
+                case ManagerInstructionPackageQueueAction::Entries:
+                    params["action"] = "entries"; break;
+                case ManagerInstructionPackageQueueAction::ReadContent:
+                    params["action"] = "read_content"; break;
+                case ManagerInstructionPackageQueueAction::Retry:
+                    params["action"] = "retry"; break;
+                }
+                params["queue_row_id"] = payload.queueRowId
+                    ? Json(*payload.queueRowId) : Json(nullptr);
+                params["target_index"] = payload.targetIndex
+                    ? Json(*payload.targetIndex) : Json(nullptr);
+                params["cursor"] = payload.cursor
+                    ? Json(*payload.cursor) : Json(nullptr);
+                params["maximum_count"] = payload.maximumCount;
+                params["relative_path"] = payload.relativePath
+                    ? Json(*payload.relativePath) : Json(nullptr);
+                params["content_offset"] = payload.contentOffset;
+                params["maximum_content_bytes"] = payload.maximumContentBytes;
             } else if constexpr (std::is_same_v<Payload, Contracts::ProjectPolicyRequest>) {
                 method = "projects.policy";
                 params = {{"project_id", payload.projectId.value()}, {"action", static_cast<int>(payload.action)},
-                    {"source", payload.source}, {"expected_revision", payload.expectedRevision}, {"review_json", payload.reviewJson}};
+                    {"source", payload.source}, {"expected_revision", payload.expectedRevision}, {"details_json", payload.detailsJson}};
             } else if constexpr (
                 std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                 method = "lmstudio.status";
@@ -1356,6 +1385,7 @@ void validateSettingsUpdateOutcome(
                 method = "managed_run.start";
                 params["authority_generation"] = payload.authorityGeneration;
                 params["allow_tools"] = payload.allowTools;
+                params["automatic_continuity"] = payload.automaticContinuity;
                 params["client_id"] = payload.clientId.value();
                 params["project_id"] = payload.projectId.value();
                 params["run_id"] = payload.runId.value();
@@ -1487,14 +1517,41 @@ void validateSettingsUpdateOutcome(
                 [](const Json& object, const std::string_view name) {
                     return identifierMember<Domain::Sha256Digest>(object, name);
                 })};
+    } else if (method == "projects.instruction_queue") {
+        requireExactFields(
+            params,
+            {"action", "content_offset", "cursor", "maximum_content_bytes",
+             "maximum_count", "project_id", "queue_row_id", "relative_path",
+             "target_index"},
+            "projects.instruction_queue params");
+        const auto& actionText = stringMember(params, "action");
+        ManagerInstructionPackageQueueAction action;
+        if (actionText == "list") action = ManagerInstructionPackageQueueAction::List;
+        else if (actionText == "move") action = ManagerInstructionPackageQueueAction::Move;
+        else if (actionText == "remove") action = ManagerInstructionPackageQueueAction::Remove;
+        else if (actionText == "entries") action = ManagerInstructionPackageQueueAction::Entries;
+        else if (actionText == "read_content") action = ManagerInstructionPackageQueueAction::ReadContent;
+        else if (actionText == "retry") action = ManagerInstructionPackageQueueAction::Retry;
+        else reject(Domain::ErrorCodes::InvalidRequest,
+            "Instruction package queue action is unknown.");
+        payload = ManagerInstructionPackageQueueRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            action,
+            optionalField<std::string>(params, "queue_row_id", stringMember),
+            optionalField<std::size_t>(params, "target_index", sizeMember),
+            optionalField<std::string>(params, "cursor", stringMember),
+            sizeMember(params, "maximum_count"),
+            optionalField<std::string>(params, "relative_path", stringMember),
+            uint64Member(params, "content_offset"),
+            sizeMember(params, "maximum_content_bytes")};
     } else if (method == "projects.policy") {
-        requireExactFields(params, {"project_id", "action", "source", "expected_revision", "review_json"}, "projects.policy params");
+        requireExactFields(params, {"project_id", "action", "source", "expected_revision", "details_json"}, "projects.policy params");
         const auto& action = member(params, "action");
-        if (!action.is_number_integer() || action.get<std::int64_t>() < 0 || action.get<std::int64_t>() > 4)
+        if (!action.is_number_integer() || action.get<std::int64_t>() < 0 || action.get<std::int64_t>() > 7)
             reject(Domain::ErrorCodes::InvalidRequest, "Invalid project policy action.");
         payload = Contracts::ProjectPolicyRequest{identifierMember<Domain::ProjectId>(params, "project_id"),
             static_cast<Contracts::ProjectPolicyAction>(action.get<int>()), stringMember(params, "source"),
-            stringMember(params, "expected_revision"), stringMember(params, "review_json")};
+            stringMember(params, "expected_revision"), stringMember(params, "details_json")};
     } else if (method == "lmstudio.status") {
         requireExactFields(params, {}, "lmstudio.status params");
         payload = ManagerLmStudioStatusRequest{};
@@ -1583,7 +1640,19 @@ void validateSettingsUpdateOutcome(
             parsePatch(member(params, "patch")),
             booleanMember(params, "apply_immediately")};
     } else if (method == "managed_run.start") {
-        if (params.contains("allow_tools")) {
+        if (params.contains("allow_tools") && params.contains("automatic_continuity")) {
+            requireExactFields(
+                params,
+                {"allow_tools", "automatic_continuity", "authority_generation",
+                 "client_id", "project_id", "run_id", "task"},
+                "managed_run.start params");
+        } else if (params.contains("automatic_continuity")) {
+            requireExactFields(
+                params,
+                {"automatic_continuity", "authority_generation", "client_id",
+                 "project_id", "run_id", "task"},
+                "managed_run.start params");
+        } else if (params.contains("allow_tools")) {
             requireExactFields(
                 params,
                 {"allow_tools", "authority_generation", "client_id", "project_id",
@@ -1602,7 +1671,9 @@ void validateSettingsUpdateOutcome(
             uint64Member(params, "authority_generation"),
             stringMember(params, "task"),
             params.contains("allow_tools") ? booleanMember(params, "allow_tools")
-                                           : true};
+                                           : true,
+            params.contains("automatic_continuity")
+                ? booleanMember(params, "automatic_continuity") : true};
     } else if (method == "managed_run.status") {
         requireExactFields(params, {"run_id"}, "managed_run.status params");
         payload = ManagedRunStatusRequest{
@@ -2847,7 +2918,14 @@ template <typename T, typename Parser>
         {"files", snapshot.files},
         {"activated", snapshot.activated},
         {"manifest_record_id", snapshot.manifestRecordId
-            ? Json(snapshot.manifestRecordId->value()) : Json(nullptr)}};
+            ? Json(snapshot.manifestRecordId->value()) : Json(nullptr)},
+        {"queue_row_id", snapshot.queueRowId
+            ? Json(*snapshot.queueRowId) : Json(nullptr)},
+        {"queue_order", snapshot.queueOrder},
+        {"coverage_gap_count", snapshot.coverageGapCount},
+        {"next_cursor", snapshot.nextCursor
+            ? Json(*snapshot.nextCursor) : Json(nullptr)},
+        {"truncated", snapshot.truncated}};
 }
 
 [[nodiscard]] ManagerInstructionPackageSnapshot parseInstructionPackageSnapshot(
@@ -2855,9 +2933,10 @@ template <typename T, typename Parser>
 {
     requireExactFields(
         value,
-        {"activated", "content_bytes", "file_count", "files",
-         "ignored_file_count", "manifest_record_id", "package_name",
-         "package_path", "project_id", "revision"},
+        {"activated", "content_bytes", "coverage_gap_count", "file_count",
+         "files", "ignored_file_count", "manifest_record_id", "next_cursor",
+         "package_name", "package_path", "project_id", "queue_order",
+         "queue_row_id", "revision", "truncated"},
         "Manager instruction package snapshot");
     auto path = Domain::PathText::create(stringMember(value, "package_path"));
     if (!path) reject(path.error().code, path.error().message);
@@ -2877,7 +2956,131 @@ template <typename T, typename Parser>
             value, "manifest_record_id",
             [](const Json& object, const std::string_view name) {
                 return identifierMember<Domain::MemoryRecordId>(object, name);
-            })};
+            }),
+        optionalField<std::string>(value, "queue_row_id", stringMember),
+        uint64Member(value, "queue_order"),
+        sizeMember(value, "coverage_gap_count"),
+        optionalField<std::string>(value, "next_cursor", stringMember),
+        booleanMember(value, "truncated")};
+}
+
+[[nodiscard]] Json instructionPackageQueueSnapshotJson(
+    const ManagerInstructionPackageQueueSnapshot& snapshot)
+{
+    Json rows = Json::array();
+    for (const auto& row : snapshot.rows) {
+        rows.push_back({
+            {"queue_row_id", row.queueRowId},
+            {"package_id", row.packageId},
+            {"package_name", row.packageName},
+            {"package_path", row.packagePath.value()},
+            {"revision", row.revision.value()},
+            {"order", row.order},
+            {"state", row.state},
+            {"entry_count", row.entryCount},
+            {"content_bytes", row.contentBytes},
+            {"coverage_gap_count", row.coverageGapCount},
+            {"cursor_entry", row.cursorEntry},
+            {"cursor_byte_offset", row.cursorByteOffset},
+            {"last_error", row.lastError ? Json(*row.lastError) : Json(nullptr)}});
+    }
+    Json entries = Json::array();
+    for (const auto& entry : snapshot.entries) {
+        entries.push_back({
+            {"relative_path", entry.relativePath},
+            {"kind", entry.kind},
+            {"byte_length", entry.byteLength},
+            {"content_hash", entry.contentHash
+                ? Json(entry.contentHash->value()) : Json(nullptr)},
+            {"interpretation", entry.interpretation},
+            {"coverage_detail", entry.coverageDetail
+                ? Json(*entry.coverageDetail) : Json(nullptr)}});
+    }
+    return Json{
+        {"project_id", snapshot.projectId.value()},
+        {"rows", std::move(rows)},
+        {"entries", std::move(entries)},
+        {"next_cursor", snapshot.nextCursor
+            ? Json(*snapshot.nextCursor) : Json(nullptr)},
+        {"truncated", snapshot.truncated},
+        {"content_base64", snapshot.contentBase64
+            ? Json(*snapshot.contentBase64) : Json(nullptr)},
+        {"content_offset", snapshot.contentOffset},
+        {"next_content_offset", snapshot.nextContentOffset},
+        {"content_complete", snapshot.contentComplete}};
+}
+
+[[nodiscard]] ManagerInstructionPackageQueueSnapshot
+parseInstructionPackageQueueSnapshot(const Json& value)
+{
+    requireExactFields(
+        value,
+        {"content_base64", "content_complete", "content_offset", "entries",
+         "next_content_offset", "next_cursor", "project_id", "rows",
+         "truncated"},
+        "Manager instruction package queue snapshot");
+    ManagerInstructionPackageQueueSnapshot snapshot{
+        identifierMember<Domain::ProjectId>(value, "project_id")};
+    const auto& rowValues = member(value, "rows");
+    if (!rowValues.is_array()) reject(Domain::ErrorCodes::InvalidRequest,
+        "Manager instruction package queue rows must be an array.");
+    for (const auto& row : rowValues) {
+        requireExactFields(
+            row,
+            {"content_bytes", "coverage_gap_count", "cursor_byte_offset",
+             "cursor_entry", "entry_count", "last_error", "order",
+             "package_id", "package_name", "package_path", "queue_row_id",
+             "revision", "state"},
+            "Manager instruction package queue row");
+        auto path = Domain::PathText::create(stringMember(row, "package_path"));
+        if (!path) reject(path.error().code, path.error().message);
+        auto revision = Domain::Sha256Digest::parse(stringMember(row, "revision"));
+        if (!revision) reject(revision.error().code, revision.error().message);
+        snapshot.rows.push_back(ManagerInstructionPackageQueueRowSnapshot{
+            stringMember(row, "queue_row_id"),
+            stringMember(row, "package_id"),
+            stringMember(row, "package_name"),
+            std::move(path).value(),
+            std::move(revision).value(),
+            uint64Member(row, "order"),
+            stringMember(row, "state"),
+            uint64Member(row, "entry_count"),
+            uint64Member(row, "content_bytes"),
+            uint64Member(row, "coverage_gap_count"),
+            uint64Member(row, "cursor_entry"),
+            uint64Member(row, "cursor_byte_offset"),
+            optionalField<std::string>(row, "last_error", stringMember)});
+    }
+    const auto& entryValues = member(value, "entries");
+    if (!entryValues.is_array()) reject(Domain::ErrorCodes::InvalidRequest,
+        "Manager instruction package entries must be an array.");
+    for (const auto& entry : entryValues) {
+        requireExactFields(
+            entry,
+            {"byte_length", "content_hash", "coverage_detail",
+             "interpretation", "kind", "relative_path"},
+            "Manager instruction package entry");
+        snapshot.entries.push_back(ManagerInstructionPackageEntrySnapshot{
+            stringMember(entry, "relative_path"),
+            stringMember(entry, "kind"),
+            uint64Member(entry, "byte_length"),
+            optionalField<Domain::Sha256Digest>(
+                entry, "content_hash",
+                [](const Json& object, const std::string_view name) {
+                    return identifierMember<Domain::Sha256Digest>(object, name);
+                }),
+            stringMember(entry, "interpretation"),
+            optionalField<std::string>(entry, "coverage_detail", stringMember)});
+    }
+    snapshot.nextCursor = optionalField<std::string>(
+        value, "next_cursor", stringMember);
+    snapshot.truncated = booleanMember(value, "truncated");
+    snapshot.contentBase64 = optionalField<std::string>(
+        value, "content_base64", stringMember);
+    snapshot.contentOffset = uint64Member(value, "content_offset");
+    snapshot.nextContentOffset = uint64Member(value, "next_content_offset");
+    snapshot.contentComplete = booleanMember(value, "content_complete");
+    return snapshot;
 }
 
 [[nodiscard]] std::string_view toolEffectName(
@@ -3218,6 +3421,10 @@ template <typename T, typename Parser>
                 std::is_same_v<Value, ManagerInstructionPackageSnapshot>) {
                 wrapper["type"] = "instruction_package";
                 wrapper["value"] = instructionPackageSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value, ManagerInstructionPackageQueueSnapshot>) {
+                wrapper["type"] = "instruction_package_queue";
+                wrapper["value"] = instructionPackageQueueSnapshotJson(value);
             } else if constexpr (std::is_same_v<Value, ManagerProjectPolicySnapshot>) {
                 wrapper["type"] = "project_policy";
                 wrapper["value"] = Json{{"canonical_json", value.canonicalJson}};
@@ -3280,6 +3487,9 @@ template <typename T, typename Parser>
     }
     if (type == "instruction_package") {
         return ManagerResult{parseInstructionPackageSnapshot(value)};
+    }
+    if (type == "instruction_package_queue") {
+        return ManagerResult{parseInstructionPackageQueueSnapshot(value)};
     }
     if (type == "project_policy") {
         requireExactFields(value, {"canonical_json"}, "project policy snapshot");

@@ -3,6 +3,7 @@
 #include "../Fakes/RecordingProjectMemoryService.h"
 #include "../Fakes/RecordingContinuityCoordinator.h"
 #include "../Fakes/DeterministicWorkspaceAuthority.h"
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -1225,7 +1226,25 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
     }
     {
         std::ofstream output{packageRoot / "ignored.bin", std::ios::binary};
-        output << "not ingested";
+        const std::array<unsigned char, 6U> binary{0x00U, 0xffU, 0x10U, 0x80U, 0x00U, 0x7fU};
+        output.write(reinterpret_cast<const char*>(binary.data()),
+            static_cast<std::streamsize>(binary.size()));
+    }
+    std::filesystem::create_directories(packageRoot / "bulk" / "nested");
+    for (std::size_t index{}; index < 40U; ++index) {
+        std::ofstream output{
+            packageRoot / "bulk" / "nested" / ("entry-" + std::to_string(index))};
+        output << "extensionless entry " << index << '\n';
+    }
+    {
+        std::ofstream output{packageRoot / "large.dat", std::ios::binary};
+        std::string block(300U * 1024U, 'L');
+        output.write(block.data(), static_cast<std::streamsize>(block.size()));
+    }
+    {
+        std::ofstream output{packageRoot / "sparse.bin", std::ios::binary};
+        output.seekp((4U * 1024U * 1024U) - 1U);
+        output.put('\0');
     }
     const auto packagePath = Domain::PathText::create(
         packageRoot.string()).value();
@@ -1244,13 +1263,15 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
     require(previewSnapshot != nullptr &&
         previewSnapshot->projectId == project &&
         previewSnapshot->revision == revision &&
-        previewSnapshot->fileCount == 2U &&
-        previewSnapshot->ignoredFileCount == 1U &&
+        previewSnapshot->fileCount == 48U &&
+        previewSnapshot->ignoredFileCount == 0U &&
+        previewSnapshot->contentBytes > 4U * 1024U * 1024U &&
+        previewSnapshot->coverageGapCount >= 3U &&
         !previewSnapshot->activated &&
         !previewSnapshot->manifestRecordId,
-        "instruction package preview is exact, bounded and read-only");
-    require(hasher.calls == 1U && hasher.lastByteCount > 0U,
-        "instruction preview hashes canonical package content");
+        "instruction package preview accepts and inventories every entry");
+    require(hasher.calls > 1U && hasher.lastByteCount > 0U,
+        "instruction preview derives a bounded streaming revision");
     require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 0U &&
         memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 0U,
         "instruction preview does not mutate memory");
@@ -1272,6 +1293,11 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
                 Domain::ProjectMemoryCapabilityVersion}));
     memory.rememberResult.set(
         Domain::Result<Domain::MemoryWriteOutcome>::success(outcome(manifest)));
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {}, std::nullopt, false, 0U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
 
     const auto stale = Domain::Sha256Digest::parse(
         std::string(64U, 'b')).value();
@@ -1289,9 +1315,10 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
     const auto* activatedSnapshot =
         responseValue<Manager::ManagerInstructionPackageSnapshot>(activated);
     require(activatedSnapshot != nullptr && activatedSnapshot->activated &&
-        activatedSnapshot->manifestRecordId == manifest,
-        "validated instruction revision activates with manifest identity");
-    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) == 1U &&
+        activatedSnapshot->manifestRecordId == manifest &&
+        activatedSnapshot->queueRowId,
+        "validated instruction revision is added with queue identity");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::RememberBatch) > 1U &&
         memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 1U &&
         memory.lastProjectId() == project,
         "instruction files and manifest remain bound to exact project");
@@ -1309,21 +1336,39 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
             now, now, now, std::nullopt, revision, false,
             Domain::ProjectMemorySchemaVersion};
     };
-    const auto manifestBody = std::string{
-        "{\"schema\":\"forge-instruction-package-v1\","
-        "\"package_name\":\"fixture\",\"revision\":\""} +
-        revision.value() + "\",\"files\":[{\"path\":\"START-HERE.md\","
-        "\"record_id\":\"" + fileA.value() + "\"},{\"path\":"
-        "\"specs/policy.json\",\"record_id\":\"" + fileB.value() +
-        "\"}]}";
+    const auto queueRowId = *activatedSnapshot->queueRowId;
+    const auto manifestBody = nlohmann::json{
+        {"schema", "forge-instruction-package-queue-v2"},
+        {"project_id", project.value()},
+        {"queue_row_id", queueRowId},
+        {"package_id", revision.value()},
+        {"package_name", "fixture"},
+        {"package_path", packagePath.value()},
+        {"revision", revision.value()},
+        {"order", 1024U},
+        {"state", "ready"},
+        {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}},
+        {"entry_count", 2U},
+        {"content_bytes", 64U},
+        {"coverage_gap_count", 0U},
+        {"attempts", 1U},
+        {"last_error", nullptr}}.dump();
     auto manifestRecord = record(
-        manifest, "instruction_package", "fixture", manifestBody);
+        manifest, "instruction_package_queue", "fixture", manifestBody);
     auto firstFile = record(
-        fileA, "project_instruction", "START-HERE.md",
-        "Always preserve exact project identity.");
+        fileA, "instruction_package_entry", "START-HERE.md",
+        nlohmann::json{{"queue_row_id", queueRowId},
+            {"relative_path", "START-HERE.md"}, {"kind", "file"},
+            {"byte_length", 39U}, {"content_hash", revision.value()},
+            {"interpretation", "interpreted"}, {"coverage_detail", nullptr},
+            {"derived_text", "Always preserve exact project identity."}}.dump());
     auto secondFile = record(
-        fileB, "project_instruction", "specs/policy.json",
-        "{\"mode\":\"bounded\"}");
+        fileB, "instruction_package_entry", "specs/policy.json",
+        nlohmann::json{{"queue_row_id", queueRowId},
+            {"relative_path", "specs/policy.json"}, {"kind", "file"},
+            {"byte_length", 18U}, {"content_hash", revision.value()},
+            {"interpretation", "interpreted"}, {"coverage_detail", nullptr},
+            {"derived_text", "{\"mode\":\"bounded\"}"}}.dump());
     memory.listRecentResult.set(
         Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
             project, {{manifestRecord, 1.0}}, std::nullopt,
@@ -1344,10 +1389,10 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
     require(workspace != nullptr && workspace->activeInstructionManifest &&
         workspace->activeInstructionManifest->id == manifest,
         "project workspace projects the active instruction manifest outside pagination");
-    memory.getResult.set(
-        Domain::Result<Domain::MemoryRecords>::success(Domain::MemoryRecords{
-            project, {std::move(firstFile), std::move(secondFile)},
-            2'048U, 256U * 1024U,
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{std::move(firstFile), 1.0}, {std::move(secondFile), 1.0}},
+            std::nullopt, false, 2'048U, 256U * 1024U,
             Domain::ProjectMemorySchemaVersion,
             Domain::ProjectMemoryCapabilityVersion}));
     auto managedRuns = std::make_shared<FakeManagedRuns>();
@@ -1361,13 +1406,13 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
             runId, project, clientId, 7U, "Complete the project work."}));
     require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
         managedRuns->lastStart &&
-        managedRuns->lastStart->task.find("[ACTIVE PROJECT INSTRUCTION PACKAGE]") !=
+        managedRuns->lastStart->task.find("[ORDERED PROJECT INSTRUCTION PACKAGES]") !=
             std::string::npos &&
         managedRuns->lastStart->task.find(
             "Always preserve exact project identity.") != std::string::npos &&
         managedRuns->lastStart->task.find("Complete the project work.") !=
             std::string::npos,
-        "new managed run receives active project instruction revision");
+        "new managed run receives the ordered project instruction assignment");
 }
 
 void testMaintenanceRequiresExactScopeAndCoordinatesStores()

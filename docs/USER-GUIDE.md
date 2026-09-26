@@ -1,50 +1,61 @@
 # User guide
 
-Launch Forge Conductor from Start. Guided setup opens until the first setup task has started successfully. You can always reopen it through Start here in the sidebar or the visible setup button on other pages; no hidden guide switch is required.
+Launch Forge Conductor from Start. Normal operation has four destinations: **Workspace**, **Rig**, **Activity**, and **Settings**.
 
-## Start a project
+## Prepare a workspace
 
-1. Open **Start here · Guided setup → Choose folder and prepare**. Select an existing folder or create one in the Windows picker.
-2. Wait for all five checks: Manager, project, LM Studio plugins, model, and connection. Forge Conductor starts its services, registers the folder, installs and verifies Primary/Fallback/Continuity plugins while preserving other plugins, opens LM Studio and verifies synchronization, starts its local server when needed, loads a compatible downloaded model, saves its selection, and verifies a response.
-3. In step 2, optionally import and review your development policy. Then, in step 3, describe what you want to build or fix. Review the file/command permission beside the task, then choose **Start task**. Autonomy displays the actual Manager-owned run and its results.
+1. Open **Workspace**, register or select the project folder, and select its saved provider profile.
+2. Add zero or more instruction-package folders. Each selected folder becomes a project-scoped queue row. Use **Move up** and **Move down** to define the order supplied to new work.
+3. Optionally bind a local or remote development-policy source under **CLU governance**, then inspect its immutable revision and coverage.
+4. Set **Automatic continuity** independently for this project/provider pair.
+5. Review readiness. A missing optional policy or disabled continuity does not block ordinary work.
 
-If a check fails, its message identifies the next action. **Retry preparation** reuses the project and checks the current model state. **Cancel** stops pending preparation; already completed registration or model loading is not undone. The selected folder is remembered per profile.
+Forge Conductor remembers the selected project/provider preference and queue. Closing the window does not cancel Manager-owned work.
 
-Preparation requires LM Studio and a downloaded tool-capable model with sufficient context capacity. It does not download weights, install project dependencies, or create starter files. Missing prerequisites produce an actionable result. Provider settings remain available for selecting another loopback address or model.
+## Instruction-package folders
 
-## Development policy and governance
+A package is a folder, not a special manifest format. Intake walks the complete directory tree and does not reject a package because of file extension, encoding, NUL bytes, path depth, file count, individual size, aggregate size, or filename. Content is hashed incrementally rather than loaded wholesale.
 
-Expand **Development policy and governance** after selecting a project. Paste a GitHub repository URL, such as `https://github.com/flynn33/raven-forge-development`, or a local source folder. Choose **Import preview**. Private GitHub repositories use the host's existing Git sign-in; credentials are not copied into the application.
+The queue records:
 
-Review the source, immutable commit, snapshot digest, file list and exclusions. **Read document** and **Next part** display complete text in bounded pages. Choose **Adopt revision** to make the policy mandatory for the selected project. Adoption immediately blocks write tools and commands until a review is accepted.
+- files and directories in deterministic order;
+- reparse points without silently following them;
+- metadata and SHA-256 content identities;
+- inaccessible or changed entries as explicit failures;
+- bounded derived UTF-8 text when safe, otherwise an opaque-content classification.
 
-Complete the source and project review required by your policy, then record the reviewer, evidence location, permitted paths, prohibited paths, and exact approved commands. The confirmation is the reviewer's attestation that all applicable obligations are resolved. An empty permitted-path list allows no file edits. Native policy path scopes currently require ASCII names and reject Windows short-name aliases; they fail closed for other names. Reimporting and adopting another revision clears the old review.
+Open a package to page through its inventory or bounded content. Cursors are tied to the package revision so a changed revision cannot be resumed accidentally. Retry a failed row after correcting its source. Removing a queued row affects future work; active execution retains the revision it already received.
 
-The Manager checks policy integrity, review acceptance, permitted file paths and exact command arguments at the common tool authorization boundary. New runs receive the policy identity and can retrieve its documents using `project_policy.read`; that tool cannot adopt a policy or approve a review. Imported scripts are never run by import.
+New managed work receives the ordered package identities and available bounded text. Nothing is silently described as “ignored” or “unsupported”; entries that cannot be interpreted as text remain recorded and retrievable by identity.
 
-Prose requirements, architectural judgments and the contents of review evidence need human assessment. Import is not proof of semantic compliance. Approved shell commands run with existing native command restrictions; they are not an operating-system filesystem sandbox. Review their scripts and effects before approval. Stop active work before changing its governing revision.
+## CLU governance
 
-Policy snapshots support up to 2,048 files, 2 MiB per text file and 16 MiB total text. Unsupported files are listed for review or justified exclusion. Oversized, malformed or unsafe sources fail without replacing the adopted snapshot. Instruction packages remain a separate, smaller guidance feature under Projects.
+CLU governs development-policy compliance only. It never starts, stops, or reports continuity.
 
-## Help and results
+Bind a policy source from the Workspace governance card. The binding records its source identity, immutable revision, entry inventory, interpretation state, and coverage gaps. Use the document reader to inspect bounded pages. Refresh deliberately when the source changes.
 
-Open **Guided setup → Help and troubleshooting**. All 42 searchable articles work offline, without a model. Search terms include project, model, policy, tool, memory, context and evidence.
+During development, CLU can:
 
-A successful setup check verifies a model response. A successful task additionally requires the requested tool outcomes and output checks. Use **Events & Evidence** to inspect actual operations and correlate the project/run identity. Model text alone is not proof that files changed.
+- evaluate structured evidence against the bound policy;
+- create deduplicated findings and correction requests;
+- expose pending notification receipts;
+- accept correction evidence and resolve findings;
+- export a redacted governance history.
 
-## Navigation
+Governance is nonblocking by design. No bound policy produces an inactive state rather than preventing work. A finding informs the operator and requests correction; it does not impersonate the independent runtime-continuity system.
 
-- **Rig:** system, process, provider, storage and workflow telemetry. Missing observations are not zero measurements.
-- **Start here · Guided setup:** automatic preparation, task entry, policy import and offline help.
-- **Autonomy:** start, attach, pause, resume and stop Manager-owned runs.
-- **Continuity:** handoff and retained-context state.
-- **Projects:** folder registration, stable identities, aliases, memory and instruction packages.
-- **Tools:** invoke authorized native tools in the selected project.
-- **LM Studio plugins:** use the installation controls at the top to install/repair all three plugins, check them, or open LM Studio and synchronize. For desktop chats, select the desired plugin in the LM Studio chat Integrations panel.
-- **Settings:** saved runtime configuration and scoped maintenance.
+The dedicated `clu` MCP role exposes `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read`.
 
-Closing the window does not cancel Manager-owned work. New runs use current provider settings; existing run bindings persist across Manager restarts. An unavailable pinned model or provider response requires attention rather than silently switching its history.
+## Automatic continuity
 
-Ordinary LM Studio desktop chats and Forge-managed runs are separate modes. MCP connection does not retroactively enroll a desktop chat into managed continuity.
+The **Automatic continuity** toggle is saved per selected project/provider profile. When enabled, a Manager-owned run may use the existing context-capacity continuity path. When disabled, the run skips automatic continuity observations and remains otherwise unchanged.
+
+LM Studio desktop chats and Forge-managed runs are separate modes. Connecting MCP does not retroactively enroll a desktop chat in Manager-owned continuity.
+
+## Rig, Activity, and Settings
+
+- **Rig** shows live resource, provider, storage, process, context, continuity, and workflow health. Missing observations are displayed as unavailable, never as zero.
+- **Activity** presents operational outcomes and is the normal place to correlate work with CLU findings, corrections, notifications, and exported evidence.
+- **Settings** contains persistent runtime controls and explicitly scoped maintenance actions. It is not required for ordinary workspace setup.
 
 Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`. For disposable validation only, launch `ForgeConductorApp.exe --alpha-root <absolute-empty-folder>`.

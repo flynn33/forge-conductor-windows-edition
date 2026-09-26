@@ -44,10 +44,10 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"agent_run_complete", "Close a session with a report matching output_schema.", "AgentToolPack", Write, false, false},
         {"agent_run_start", "Start a durable specialist session (supersedes prior open sessions).", "AgentToolPack", Write, false, false},
         {"agent_run_status", "Status of an agent session; reminds host to complete open runs.", "AgentToolPack", Write, false, false},
-        {"clu_cancel", "Request cancellation of one caller-authorized CLU operation while preserving committed effects and recovery.", "ContinuityControlToolPack", Write, false, false},
-        {"clu_capabilities", "Read CLU deployment, connection, exact-task readiness and observed qualification limits.", "ContinuityControlToolPack", Read, false, false},
-        {"clu_start_handoff", "Submit one exact authorized handoff durably and return its operation handle without starting a provider inline.", "ContinuityControlToolPack", Write, false, false},
-        {"clu_status", "Read durable progress or the terminal receipt for one caller-authorized CLU operation.", "ContinuityControlToolPack", Read, false, false},
+        {"clu.evaluate", "Evaluate development evidence against the exact bound policy revision and return any CLU finding.", "CluGovernanceToolPack", Write, true, false},
+        {"clu.export_log", "Export the redacted project-bound CLU governance log without full private policy content.", "CluGovernanceToolPack", Read, true, false},
+        {"clu.findings", "List CLU findings, correction requests, notification receipts, and policy coverage state.", "CluGovernanceToolPack", Read, true, false},
+        {"clu.resolve", "Attach correction evidence and resolve one exact CLU finding while retaining original evidence.", "CluGovernanceToolPack", Write, true, false},
         {"context_get", "Load latest (or id) handoff packet \xE2\x80\x94 call first in every new chat bootstrap.", "ContinuityToolPack", Read, false, false},
         {"context_list", "List recent context handoff packets.", "ContinuityToolPack", Read, false, false},
         {"continuity.acknowledge_handoff", "Compare-and-set acknowledgment for an exact successor and handoff.", "ContinuityLifecycleToolPack", Write, true, false},
@@ -458,47 +458,30 @@ void addProjectProperty(Json& properties)
         {{"project_id", string}}, {"project_id"}, AdditionalProperties::Denied);
 }
 
-[[nodiscard]] Json continuityControlSchema(const std::string_view name)
+[[nodiscard]] Json cluGovernanceSchema(const std::string_view name)
 {
-    if (name == "clu_capabilities") {
+    if (name == "clu.findings" || name == "clu.export_log") {
         return objectSchema({}, {}, AdditionalProperties::Denied);
     }
-    if (name == "clu_start_handoff") {
-        auto continuityId = primitive("string");
-        continuityId["minLength"] = 1U;
-        continuityId["maxLength"] = 128U;
-        continuityId["pattern"] = "^[A-Za-z0-9_.-]+$";
-        continuityId["not"] = Json{{"enum", Json::array({".", ".."})}};
-        auto idempotency = primitive("string");
-        idempotency["minLength"] = 1U;
-        idempotency["maxLength"] = 256U;
-        idempotency["description"] =
-            "At most 256 UTF-8 bytes; no control characters or surrounding whitespace.";
-        auto reason = primitive("string");
-        reason["minLength"] = 1U;
-        reason["maxLength"] = 512U;
-        reason["description"] =
-            "At most 512 UTF-8 bytes; no control characters or surrounding whitespace.";
+    if (name == "clu.evaluate") {
         return objectSchema(
-            {{"continuity_id", std::move(continuityId)},
-             {"idempotency_key", std::move(idempotency)},
-             {"reason", std::move(reason)}},
-            {"continuity_id"},
+            {{"evidence", primitive("object")}}, {"evidence"},
             AdditionalProperties::Denied);
     }
-    auto operationId = primitive("string");
-    operationId["pattern"] =
-        "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$";
+    auto findingId = primitive("string");
+    findingId["minLength"] = 1U;
+    findingId["maxLength"] = 128U;
     return objectSchema(
-        {{"operation_id", std::move(operationId)}},
-        {"operation_id"},
+        {{"finding_id", std::move(findingId)},
+         {"correction_evidence", primitive("object")}},
+        {"finding_id", "correction_evidence"},
         AdditionalProperties::Denied);
 }
 
 [[nodiscard]] Json schemaFor(const std::string_view name)
 {
-    if (name.starts_with("clu_")) {
-        return continuityControlSchema(name);
+    if (name.starts_with("clu.")) {
+        return cluGovernanceSchema(name);
     }
     if (name.starts_with("project_memory.")) {
         return projectMemorySchema(name);

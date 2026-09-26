@@ -61,8 +61,11 @@ void policyAdoptionAndAuthorization()
     const auto folder = std::filesystem::current_path() / "out" /
         ("policy-test-" + std::to_string(now.time_since_epoch().count()));
     std::filesystem::create_directories(folder);
-    { std::ofstream file{folder / "README.md"}; file << "Review source and prohibit vendor copies."; }
-    { std::ofstream file{folder / "diagram.png", std::ios::binary}; file << "fixture"; }
+    { std::ofstream file{folder / "README.md"}; file << "Development policy evidence."; }
+    { std::ofstream file{folder / "policy.json"}; file << R"({"forge_clu_rules":[{"id":"no-shell","tool":"shell_exec","severity":"error","correction":"Use the bounded build runner."}]})"; }
+    { std::ofstream file{folder / "diagram.png", std::ios::binary};
+      constexpr char bytes[]{'f', 'i', 'x', '\0', 'b'};
+      file.write(bytes, sizeof(bytes)); }
     const auto folderUtf8 = folder.generic_u8string();
     const std::string source{reinterpret_cast<const char*>(folderUtf8.data()), folderUtf8.size()};
     A::ProjectPolicyService service{reader, store, hasher, projects, paths};
@@ -70,64 +73,57 @@ void policyAdoptionAndAuthorization()
         "fs_write", R"({"path":"src/main.cpp","content":"test"})"}, D::ToolEffect::Write, {scope.authorityId(), scope.generation()}};
     REQUIRE(service.check(write, scope, context));
     A::ProjectPolicyService overlapping{reader, store, hasher, projects, paths, "C:\\policy-test\\private-state"};
-    REQUIRE(!overlapping.check(write, scope, context));
+    REQUIRE(overlapping.check(write, scope, context));
     REQUIRE(!overlapping.execute({project, C::ProjectPolicyAction::Inspect}, context));
-    const auto preview = Json::parse(take(service.execute({project, C::ProjectPolicyAction::Preview, source}, context)));
-    const auto revision = preview.at("revision").get<std::string>();
-    REQUIRE(!preview.at("adopted").get<bool>());
-    REQUIRE(preview.at("files").size() == 1);
-    REQUIRE(preview.at("excluded_files").size() == 1);
-    REQUIRE(store.content.empty());
-    REQUIRE(!service.execute({project, C::ProjectPolicyAction::Adopt, {}, "wrong"}, context));
-    REQUIRE(service.execute({project, C::ProjectPolicyAction::Adopt, {}, revision}, context));
-    REQUIRE(!service.check(write, scope, context));
-    auto read = write;
-    read.effect = D::ToolEffect::Read;
-    read.call.toolName = "fs_read";
-    REQUIRE(service.check(read, scope, context));
+    const auto bound = Json::parse(take(service.execute(
+        {project, C::ProjectPolicyAction::Bind, source}, context)));
+    const auto revision = bound.at("revision").get<std::string>();
+    REQUIRE(bound.at("active").get<bool>());
+    REQUIRE(bound.at("entry_count").get<std::size_t>() == 3U);
+    REQUIRE(bound.at("coverage_gap_count").get<std::size_t>() == 1U);
     const auto document = Json::parse(take(service.execute({project, C::ProjectPolicyAction::ReadDocument, "README.md", revision}, context)));
-    REQUIRE(document.at("content") == "Review source and prohibit vendor copies.");
-    Json review{{"schema", 1}, {"accepted", true}, {"policy_revision", revision}, {"reviewer", "Fixture reviewer"},
-        {"reviewed_at", "2026-09-23T00:00:00Z"}, {"evidence", "Fixture review record"},
-        {"unresolved_obligations", Json::array()}, {"non_text_review", "diagram.png excluded: fixture data"},
-        {"source_coverage", Json::array({{{"path", "README.md"}, {"status", "read"}, {"evidence_or_reason", "Fixture reading record"}}})},
-        {"write_paths", Json::array({"src"})}, {"prohibited_paths", Json::array({"src/vendor"})}, {"approved_calls", Json::array()}};
-    auto incomplete = review;
-    incomplete["source_coverage"] = Json::array();
-    REQUIRE(!service.execute({project, C::ProjectPolicyAction::Review, {}, revision, incomplete.dump()}, context));
-    REQUIRE(service.execute({project, C::ProjectPolicyAction::Review, {}, revision, review.dump()}, context));
-    REQUIRE(service.check(write, scope, context));
-    write.call.canonicalArguments = R"({"path":"src/vendor/copied.cpp","content":"bad"})";
-    REQUIRE(!service.check(write, scope, context));
-    write.call.canonicalArguments = R"({"path":"src/../outside.cpp","content":"bad"})";
-    REQUIRE(!service.check(write, scope, context));
-    write.call.canonicalArguments = R"({"path":"src/VENDOR~1/copied.cpp","content":"bad"})";
-    REQUIRE(!service.check(write, scope, context));
-    write.call.canonicalArguments = R"({"path":"src/\u00c9xample.cpp","content":"bad"})";
-    REQUIRE(!service.check(write, scope, context));
+    REQUIRE(document.at("content") == "Development policy evidence.");
+
+    const Json evidence{{"phase", "post_operation"}, {"tool_name", "shell_exec"},
+        {"arguments", R"({"command":"build"})"}, {"effect", "execute"}};
+    const auto evaluation = Json::parse(take(service.execute({project,
+        C::ProjectPolicyAction::Evaluate, {}, revision, evidence.dump()}, context)));
+    REQUIRE(evaluation.at("finding_id").is_string());
+    const auto findingId = evaluation.at("finding_id").get<std::string>();
+    const auto findings = Json::parse(take(service.execute({project,
+        C::ProjectPolicyAction::ListFindings, {}, revision}, context)));
+    REQUIRE(findings.at("findings").size() == 1U);
+    REQUIRE(findings.at("notifications").size() == 1U);
+
     write.call.toolName = "shell_exec";
     write.effect = D::ToolEffect::Execute;
     write.call.canonicalArguments = R"({"command":"build"})";
-    REQUIRE(!service.check(write, scope, context));
-    review["approved_calls"].push_back({{"tool", "shell_exec"}, {"arguments", {{"command", "build"}}}});
-    REQUIRE(service.execute({project, C::ProjectPolicyAction::Review, {}, revision, review.dump()}, context));
     REQUIRE(service.check(write, scope, context));
-    write.call.canonicalArguments = R"({"command":"build; delete"})";
-    REQUIRE(!service.check(write, scope, context));
+    const Json resolution{{"finding_id", findingId},
+        {"correction_evidence", {{"kind", "rerun"}, {"result", "clean"}}}};
+    const auto resolved = Json::parse(take(service.execute({project,
+        C::ProjectPolicyAction::Resolve, {}, revision, resolution.dump()}, context)));
+    REQUIRE(resolved.at("finding").at("state") == "resolved");
+    const auto exported = Json::parse(take(service.execute({project,
+        C::ProjectPolicyAction::ExportLog, {}, revision}, context)));
+    REQUIRE(exported.at("schema") == "forge-clu-governance-log-v1");
+    for (const auto& coverage : exported.at("coverage")) REQUIRE(!coverage.contains("content"));
+    REQUIRE(service.execute({project, C::ProjectPolicyAction::Refresh}, context));
     A::ProjectPolicyService restarted{reader, store, hasher, projects, paths};
-    REQUIRE(!restarted.check(write, scope, context));
+    REQUIRE(restarted.check(write, scope, context));
     const auto before = store.content;
     store.failWrites = true;
-    REQUIRE(!service.execute({project, C::ProjectPolicyAction::Review, {}, revision, review.dump()}, context));
+    REQUIRE(!service.execute({project, C::ProjectPolicyAction::Evaluate, {}, {}, evidence.dump()}, context));
     REQUIRE(store.content == before);
     store.failWrites = false;
     auto corrupted = Json::parse(reinterpret_cast<const char*>(store.content.data()), reinterpret_cast<const char*>(store.content.data()) + store.content.size());
-    corrupted["bundle"]["files"][0]["content"] = "tampered";
+    corrupted["schema"] = 99;
     const auto encoded = corrupted.dump();
     store.content.assign(reinterpret_cast<const std::byte*>(encoded.data()), reinterpret_cast<const std::byte*>(encoded.data()) + encoded.size());
-    REQUIRE(!restarted.check(read, scope, context));
+    REQUIRE(!restarted.execute({project, C::ProjectPolicyAction::Inspect}, context));
+    REQUIRE(restarted.check(write, scope, context));
     REQUIRE(!reader.read("https://example.com/policy", context));
-    std::cout << "Policy adoption, review, scope, command, restart, corruption and failed-write checks passed.\n";
+    std::cout << "Policy binding, coverage, findings, resolution, export, restart and failed-write checks passed.\n";
 }
 }
 int main(int argc, char** argv) {
@@ -138,7 +134,7 @@ int main(int argc, char** argv) {
                 std::chrono::steady_clock::now() + std::chrono::minutes{5}, {}, id<D::CorrelationId>("policy-source-check")};
             const auto source = take(reader.read(argv[2], context));
             std::cout << "Policy source verified: " << source.source << " commit=" << source.commit
-                << " text_files=" << source.files.size() << " excluded_files=" << source.excludedFiles.size() << '\n';
+                << " inventoried_entries=" << source.files.size() << '\n';
         } else policyAdoptionAndAuthorization();
         return 0;
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

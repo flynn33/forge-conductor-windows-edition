@@ -1,20 +1,21 @@
 # Product status
 
-Version 1.2.1 corrects guided setup discovery and integrates real LM Studio plugin installation into automatic preparation. Release qualification evidence is tracked in [Setup correction verification](validation/SETUP-CORRECTION-1.2.1.md).
+Version 1.3.0 implements the simplified Workspace workflow, universal ordered instruction-package intake, CLU development governance, and an independent automatic-continuity preference. Release verification is recorded in [the 1.3.0 validation record](validation/SIMPLIFIED-WORKFLOW-CLU-1.3.0.md).
 
 | Area | Implemented behavior |
 |---|---|
-| Setup | Folder selection starts/attaches the Manager, registers and verifies the project, installs and synchronizes all three LM Studio plugins, prepares a compatible downloaded LM Studio model, and checks an actual response. Retry and cancellation are available. |
-| Governance | GitHub/local policy snapshots, pinned commit/digest, complete text retrieval, explicit adoption and review, common tool authorization for reviewed paths and exact commands. Private repositories use existing Git authentication. |
-| Help | 42 searchable offline articles covering setup, model recovery, policy, tools, continuity and evidence. |
-| Execution | Manager-owned Responses runs, authorized native tool calls, pause/resume/stop, reattachment and context continuity. Provider bindings persist across restart. |
-| Projects/tools | Stable identities, authorized aliases, isolated memory, instruction packages and 58 native tools, including read-only policy retrieval. |
-| Telemetry | Native CPU, RAM, GPU, disk, volumes, processes, provider, store, continuity and workflow observations. Unavailable observations remain explicit. |
-| Persistence | Durable per-user state; immutable migration ledger supports released stores. Validation uses disposable profiles. |
-| Packaging | Signed MSIX, payload hashes, source provenance, certificate and installer helper. The release metadata identifies development signing when used. |
+| Navigation | Four normal destinations: Workspace, Rig, Activity, and Settings. |
+| Workspace | Project/provider selection, persistent ordered package queue, CLU binding/coverage/findings, independent continuity toggle, and readiness summary. |
+| Packages | Streamed hashing, deterministic universal inventory, explicit directory/reparse/failure records, bounded safe text derivation, paging/resume, retry, removal, revision identity, and ordered run attachment. |
+| Governance | Local/remote policy binding, immutable revision and coverage state, evidence evaluation, deduplicated findings, notifications, correction evidence, and redacted export. |
+| Continuity | Existing Manager-owned context continuity remains available and is skipped when the selected project/provider preference is off. It is not controlled through CLU tools. |
+| Execution | Manager-owned Responses runs, authorized native tool calls, pause/resume/stop, reattachment, and persisted provider binding. |
+| Telemetry | Native CPU, RAM, GPU, disk, volumes, processes, provider, store, continuity, and workflow observations. Unavailable observations remain explicit. |
+| Persistence | Durable per-user state with legacy instruction-package migration and compatible governance-state migration. |
+| Packaging | Signed MSIX workflow with payload hashes, source provenance, certificate verification, and installer helper. |
 
-Policy import does not automatically prove arbitrary prose requirements. The reviewer must resolve source obligations; the runtime enforces the resulting accepted permissions. Exact approved shell commands are not an operating-system filesystem sandbox. Model readiness does not prove every task or dependency will work.
+Policy interpretation is intentionally honest: binary/opaque entries and access gaps remain visible instead of being omitted. CLU findings and policy coverage inform correction work but do not block unrelated execution or claim semantic proof beyond recorded evidence.
 
-LM Studio desktop chats and Manager-owned tasks remain separate. Existing desktop chats without a native task binding are not automatically enrolled in managed continuity. The dedicated CLU role exposes four continuity-control tools.
+LM Studio desktop chats and Manager-owned tasks remain separate. Existing desktop chats without a native task binding are not automatically enrolled in managed continuity.
 
-Ordinary data remains at `%LOCALAPPDATA%\Forge Conductor`. The historical `--alpha-root` option supports isolated validation. Historical candidate reports describe their own artifacts and are not evidence for newer binaries.
+Ordinary data remains at `%LOCALAPPDATA%\Forge Conductor`. The historical `--alpha-root` option supports isolated validation. Historical reports describe their own artifacts and are not evidence for newer binaries.

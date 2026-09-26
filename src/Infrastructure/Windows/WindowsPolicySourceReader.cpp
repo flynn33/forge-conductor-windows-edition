@@ -1,47 +1,38 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsPolicySourceReader.h"
 #include "ForgeConductor/Domain/Utf8.h"
+#include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
-#include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
-#include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include <Windows.h>
-#include <winhttp.h>
-#include <nlohmann/json.hpp>
+#include <bcrypt.h>
 #include <algorithm>
 #include <array>
-#include <atomic>
 #include <filesystem>
 #include <fstream>
-#include <stdexcept>
+#include <iomanip>
+#include <memory>
 #include <sstream>
+#include <stdexcept>
 
 namespace ForgeConductor::Infrastructure::Windows {
 namespace {
-using Json = nlohmann::json;
-constexpr std::size_t MaximumFileBytes = 2U * 1024U * 1024U;
-constexpr std::size_t MaximumBundleBytes = 16U * 1024U * 1024U;
-constexpr std::size_t MaximumFiles = 2048U;
-class GitHubUnavailable final : public std::runtime_error { public: using std::runtime_error::runtime_error; };
-template<class T> T take(Domain::Result<T> result)
-{ if (!result) throw std::runtime_error{result.error().message}; return std::move(result).value(); }
+constexpr std::size_t DerivedTextBytesMaximum = 128U * 1024U;
 
-class Internet final {
-public:
-    explicit Internet(HINTERNET value) : value_{value} {}
-    ~Internet() { close(); }
-    Internet(const Internet&) = delete;
-    Internet& operator=(const Internet&) = delete;
-    HINTERNET get() const noexcept { return value_.load(); }
-    void close() noexcept { if (const auto value = value_.exchange(nullptr)) WinHttpCloseHandle(value); }
-private:
-    std::atomic<HINTERNET> value_;
-};
+template<class T>
+T take(Domain::Result<T> result)
+{
+    if (!result) throw std::runtime_error{result.error().message};
+    return std::move(result).value();
+}
 
 void check(const Domain::OperationContext& context)
 {
     if (context.isCancellationRequested()) throw std::runtime_error{"Policy import cancelled."};
-    if (context.isExpired(std::chrono::steady_clock::now())) throw std::runtime_error{"Policy import timed out. Retry the import."};
+    if (context.isExpired(std::chrono::steady_clock::now())) {
+        throw std::runtime_error{"Policy import timed out. Retry the import."};
+    }
 }
 
 std::string pathText(const std::filesystem::path& path)
@@ -51,274 +42,299 @@ std::string pathText(const std::filesystem::path& path)
 }
 
 std::filesystem::path nativePath(const std::string& text)
-{ return std::filesystem::path{std::u8string_view{reinterpret_cast<const char8_t*>(text.data()), text.size()}}; }
+{
+    return std::filesystem::path{std::u8string_view{
+        reinterpret_cast<const char8_t*>(text.data()), text.size()}};
+}
 
 Domain::PathText nativePathText(const std::filesystem::path& path)
 {
     const auto text = path.u8string();
-    return take(Domain::PathText::create(std::string{reinterpret_cast<const char*>(text.data()), text.size()}));
+    return take(Domain::PathText::create(std::string{
+        reinterpret_cast<const char*>(text.data()), text.size()}));
 }
 
-bool supported(const std::string& name)
+std::string normalizedText(std::string_view content)
 {
-    auto extension = pathText(nativePath(name).extension());
-    std::transform(extension.begin(), extension.end(), extension.begin(),
-        [](unsigned char c) { return static_cast<char>(c >= 'A' && c <= 'Z' ? c + 32 : c); });
-    return extension == ".md" || extension == ".txt" || extension == ".json" ||
-        extension == ".yaml" || extension == ".yml" || extension == ".toml" ||
-        extension == ".py" || extension == ".ps1" || extension == ".rst" ||
-        extension == ".csv" || name == "LICENSE" || name == "NOTICE";
-}
-
-void append(Contracts::PolicySourceBundle& bundle, std::string path,
-    std::string content, std::size_t& bytes)
-{
-    if (content.size() > MaximumFileBytes || content.size() > MaximumBundleBytes - bytes ||
-        bundle.files.size() >= MaximumFiles)
-        throw std::runtime_error{"Policy source exceeds the complete snapshot limit (2048 text files, 2 MiB per file, 16 MiB total). No policy was adopted."};
-    if (content.starts_with("\xEF\xBB\xBF")) content.erase(0, 3);
-    if (!Domain::isValidUtf8(content) || content.find('\0') != std::string::npos)
-        throw std::runtime_error{"Policy text must be valid UTF-8 without NUL bytes: " + path};
-    bytes += content.size();
-    bundle.files.push_back({std::move(path), std::move(content)});
-}
-
-std::string encodedPath(std::string_view path)
-{
-    constexpr char hex[] = "0123456789ABCDEF";
     std::string result;
-    for (const unsigned char c : path) {
-        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-            (c >= '0' && c <= '9') || c == '/' || c == '-' || c == '_' || c == '.') result += static_cast<char>(c);
-        else { result += '%'; result += hex[c >> 4U]; result += hex[c & 15U]; }
+    result.reserve(content.size());
+    for (std::size_t index{}; index < content.size(); ++index) {
+        if (content[index] == '\r') {
+            if (index + 1U < content.size() && content[index + 1U] == '\n') {
+                ++index;
+            }
+            result.push_back('\n');
+        } else {
+            result.push_back(content[index]);
+        }
     }
     return result;
 }
 
-std::string get(const wchar_t* host, const std::string& path,
-    std::size_t limit, const Domain::OperationContext& context)
+class Algorithm final {
+public:
+    Algorithm()
+    {
+        if (BCryptOpenAlgorithmProvider(&value_, BCRYPT_SHA256_ALGORITHM, nullptr, 0) != 0) {
+            throw std::runtime_error{"Cannot initialize policy hashing."};
+        }
+    }
+    ~Algorithm() { if (value_) BCryptCloseAlgorithmProvider(value_, 0); }
+    BCRYPT_ALG_HANDLE get() const noexcept { return value_; }
+private:
+    BCRYPT_ALG_HANDLE value_{};
+};
+
+std::string hashFile(const std::filesystem::path& path,
+                     const Domain::OperationContext& context)
 {
-    check(context);
-    Internet session{WinHttpOpen(L"ForgeConductor-Policy-Import", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
-        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0)};
-    if (!session.get()) throw std::runtime_error{"Cannot initialize policy download."};
-    Internet connection{WinHttpConnect(session.get(), host, INTERNET_DEFAULT_HTTPS_PORT, 0)};
-    const std::wstring nativePath{path.begin(), path.end()};
-    Internet request{connection.get() ? WinHttpOpenRequest(connection.get(), L"GET", nativePath.c_str(),
-        nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE) : nullptr};
-    if (!request.get()) throw std::runtime_error{"Cannot open policy download."};
-    const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(context.deadline - std::chrono::steady_clock::now()).count();
-    const int timeout = static_cast<int>(std::clamp<std::int64_t>(remaining, 1, 15000));
-    DWORD redirectPolicy = WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
-    if (!WinHttpSetTimeouts(request.get(), timeout, timeout, timeout, timeout) ||
-        !WinHttpSetOption(request.get(), WINHTTP_OPTION_REDIRECT_POLICY, &redirectPolicy, sizeof(redirectPolicy)))
-        throw std::runtime_error{"Cannot configure bounded policy download."};
-    std::stop_callback cancelled{context.cancellation, [&request]() noexcept { request.close(); }};
-    if (!WinHttpSendRequest(request.get(), L"Accept: application/vnd.github+json\r\n", static_cast<DWORD>(-1L),
-        WINHTTP_NO_REQUEST_DATA, 0, 0, 0) || !WinHttpReceiveResponse(request.get(), nullptr)) {
-        check(context);
-        throw GitHubUnavailable{"GitHub could not be reached. Retry or import a local policy folder."};
+    Algorithm algorithm;
+    DWORD objectBytes{}, resultBytes{};
+    if (BCryptGetProperty(algorithm.get(), BCRYPT_OBJECT_LENGTH,
+            reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes),
+            &resultBytes, 0) != 0 || objectBytes == 0) {
+        throw std::runtime_error{"Cannot allocate policy hashing state."};
     }
-    DWORD status{}, size = sizeof(status);
-    if (!WinHttpQueryHeaders(request.get(), WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-        WINHTTP_HEADER_NAME_BY_INDEX, &status, &size, WINHTTP_NO_HEADER_INDEX) || status != 200)
-        throw GitHubUnavailable{"Policy download returned HTTP " + std::to_string(status) +
-            ". Use a public GitHub repository URL or a local checkout; rate limits may require retrying later."};
-    std::string result;
-    for (;;) {
-        check(context);
-        std::array<char, 16384> buffer{};
-        DWORD read{};
-        if (!WinHttpReadData(request.get(), buffer.data(), static_cast<DWORD>(buffer.size()), &read))
-            throw std::runtime_error{"Policy download was interrupted."};
-        if (!read) break;
-        if (read > limit - result.size()) throw std::runtime_error{"Policy response exceeds its complete download limit."};
-        result.append(buffer.data(), read);
+    std::vector<unsigned char> object(objectBytes);
+    BCRYPT_HASH_HANDLE raw{};
+    if (BCryptCreateHash(algorithm.get(), &raw, object.data(),
+            static_cast<ULONG>(object.size()), nullptr, 0, 0) != 0) {
+        throw std::runtime_error{"Cannot create policy hash."};
     }
-    return result;
+    struct HashCloser final {
+        BCRYPT_HASH_HANDLE value{};
+        ~HashCloser() { if (value) BCryptDestroyHash(value); }
+    } closer{raw};
+    std::ifstream input{path, std::ios::binary};
+    if (!input) throw std::runtime_error{"Cannot read policy entry."};
+    std::array<char, 64U * 1024U> buffer{};
+    while (input) {
+        check(context);
+        input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const auto count = input.gcount();
+        if (count > 0 && BCryptHashData(raw,
+                reinterpret_cast<PUCHAR>(buffer.data()),
+                static_cast<ULONG>(count), 0) != 0) {
+            throw std::runtime_error{"Cannot hash policy entry."};
+        }
+    }
+    if (!input.eof()) throw std::runtime_error{"Policy entry changed while hashing."};
+    std::array<unsigned char, 32> digest{};
+    if (BCryptFinishHash(raw, digest.data(), static_cast<ULONG>(digest.size()), 0) != 0) {
+        throw std::runtime_error{"Cannot finish policy hash."};
+    }
+    std::ostringstream encoded;
+    encoded << std::hex << std::setfill('0');
+    for (const auto byte : digest) encoded << std::setw(2) << +byte;
+    return encoded.str();
 }
 
-Contracts::PolicySourceBundle authenticatedGit(const std::string& name, const Domain::OperationContext& context)
+Contracts::PolicySourceFile inspectFile(
+    const std::filesystem::path& path,
+    std::string relative,
+    const Domain::OperationContext& context)
 {
-    // Use the user's existing Git credential helper through Git itself. No
-    // credential is read, copied into an argument, or returned to the caller.
+    Contracts::PolicySourceFile entry;
+    entry.path = std::move(relative);
+    entry.kind = "file";
+    std::error_code error;
+    entry.byteLength = std::filesystem::file_size(path, error);
+    if (error) {
+        entry.interpretation = "unavailable";
+        entry.coverageDetail = "File metadata was unavailable during this revision.";
+        return entry;
+    }
+    try {
+        entry.contentHash = hashFile(path, context);
+        if (entry.byteLength > DerivedTextBytesMaximum) {
+            entry.interpretation = "opaque";
+            entry.coverageDetail = "Content remains at source and is covered by its streamed SHA-256; derived text was not materialized.";
+            return entry;
+        }
+        std::ifstream input{path, std::ios::binary};
+        if (!input) throw std::runtime_error{"Cannot open policy entry."};
+        std::string content(static_cast<std::size_t>(entry.byteLength), '\0');
+        input.read(content.data(), static_cast<std::streamsize>(content.size()));
+        if (input.gcount() != static_cast<std::streamsize>(content.size()) ||
+            input.peek() != std::char_traits<char>::eof()) {
+            throw std::runtime_error{"Policy entry changed during import."};
+        }
+        if (content.starts_with("\xEF\xBB\xBF")) content.erase(0, 3);
+        if (Domain::isValidUtf8(content) && content.find('\0') == std::string::npos) {
+            entry.content = normalizedText(content);
+            entry.interpretation = "interpreted";
+        } else {
+            entry.interpretation = "opaque";
+            entry.coverageDetail = "Binary or non-UTF-8 content is accepted and covered by its streamed SHA-256.";
+        }
+    } catch (const std::exception& failure) {
+        entry.interpretation = "unavailable";
+        entry.coverageDetail = failure.what();
+    }
+    return entry;
+}
+
+Contracts::PolicySourceBundle enumerateFolder(
+    const std::filesystem::path& requestedRoot,
+    std::string source,
+    std::string commit,
+    const Domain::OperationContext& context)
+{
+    const auto root = std::filesystem::canonical(requestedRoot);
+    if (!std::filesystem::is_directory(root)) {
+        throw std::runtime_error{"Choose an existing policy folder."};
+    }
+    Contracts::PolicySourceBundle bundle{std::move(source), std::move(commit), {}};
+    std::error_code iteratorError;
+    std::filesystem::recursive_directory_iterator iterator{
+        root, std::filesystem::directory_options::skip_permission_denied, iteratorError};
+    const std::filesystem::recursive_directory_iterator end;
+    while (iterator != end) {
+        check(context);
+        const auto current = iterator->path();
+        const auto relative = pathText(current.lexically_relative(root));
+        std::error_code statusError;
+        const auto status = iterator->symlink_status(statusError);
+        if (current.filename() == L".git" && !statusError &&
+            std::filesystem::is_directory(status)) {
+            iterator.disable_recursion_pending();
+        } else if (statusError) {
+            bundle.files.push_back({relative, "unavailable", 0U, std::nullopt,
+                std::nullopt, "unavailable",
+                "Entry metadata was unavailable during this revision."});
+        } else if (std::filesystem::is_symlink(status) || std::filesystem::is_other(status)) {
+            if (std::filesystem::is_directory(status)) iterator.disable_recursion_pending();
+            bundle.files.push_back({relative, "reparse", 0U, std::nullopt,
+                std::nullopt, "opaque",
+                "Reparse targets are not traversed; the entry remains visible as a coverage gap."});
+        } else if (std::filesystem::is_directory(status)) {
+            bundle.files.push_back({relative, "directory", 0U, std::nullopt,
+                std::nullopt, "inventory", std::nullopt});
+        } else if (std::filesystem::is_regular_file(status)) {
+            bundle.files.push_back(inspectFile(current, relative, context));
+        } else {
+            bundle.files.push_back({relative, "unavailable", 0U, std::nullopt,
+                std::nullopt, "unavailable",
+                "The filesystem entry type could not be inventoried."});
+        }
+        iterator.increment(iteratorError);
+        if (iteratorError) iteratorError.clear();
+    }
+    std::sort(bundle.files.begin(), bundle.files.end(),
+        [](const auto& left, const auto& right) { return left.path < right.path; });
+    return bundle;
+}
+
+Contracts::PolicySourceBundle cloneRepository(
+    const std::string& source,
+    const Domain::OperationContext& context)
+{
     std::array<wchar_t, 32768> search{}, executable{};
     const auto length = GetEnvironmentVariableW(L"PATH", search.data(), static_cast<DWORD>(search.size()));
     const auto found = length && length < search.size()
-        ? SearchPathW(search.data(), L"git.exe", nullptr, static_cast<DWORD>(executable.size()), executable.data(), nullptr) : 0;
-    if (!found || found >= executable.size()) throw std::runtime_error{"This policy repository needs Git access. Install Git and sign in, or import an existing local checkout."};
+        ? SearchPathW(search.data(), L"git.exe", nullptr,
+            static_cast<DWORD>(executable.size()), executable.data(), nullptr) : 0;
+    if (!found || found >= executable.size()) {
+        throw std::runtime_error{"Git is required to bind a remote development-policy repository."};
+    }
     std::filesystem::path git{executable.data()};
-    // Git for Windows' PATH shim can be hard-linked by its installer. Its
-    // sibling bin launcher preserves installation discovery and satisfies the
-    // supervisor's independent executable ownership check.
     const auto launcher = git.parent_path().parent_path() / L"bin" / L"git.exe";
     if (git.parent_path().filename() == L"cmd" && std::filesystem::is_regular_file(launcher)) git = launcher;
+
     WindowsUuidGenerator ids;
     const auto identity = take(ids.next()).value();
     const auto temporaryParent = std::filesystem::canonical(std::filesystem::temp_directory_path());
     const auto temporary = temporaryParent / ("ForgeConductor-policy-" + identity);
-    if (temporary.parent_path() != temporaryParent || !std::filesystem::create_directory(temporary))
+    if (temporary.parent_path() != temporaryParent || !std::filesystem::create_directory(temporary)) {
         throw std::runtime_error{"Cannot create an isolated policy import directory."};
+    }
     struct Temporary final {
         std::filesystem::path root;
         std::filesystem::path parent;
-        ~Temporary() {
+        ~Temporary()
+        {
             std::error_code ignored;
-            if (root.is_absolute() && root.parent_path() == parent && pathText(root.filename()).starts_with("ForgeConductor-policy-"))
+            if (root.is_absolute() && root.parent_path() == parent &&
+                pathText(root.filename()).starts_with("ForgeConductor-policy-")) {
                 std::filesystem::remove_all(root, ignored);
+            }
         }
     } cleanup{temporary, temporaryParent};
+
     auto budgets = Domain::budgetsForProfile(Domain::ResourceProfile::Standard16GiB);
-    budgets.toolStdoutBytesMaximum = MaximumFileBytes;
-    budgets.toolStderrBytesMaximum = 32768;
+    budgets.toolStdoutBytesMaximum = 64U * 1024U;
+    budgets.toolStderrBytesMaximum = 64U * 1024U;
     SystemClock clock;
     auto diagnostics = std::make_shared<WindowsRuntimeDiagnostics>(clock, budgets);
     WindowsProcessSupervisor processes{budgets, diagnostics};
     const auto project = take(Domain::ProjectId::parse(identity));
-    const auto temporaryPath = nativePathText(temporary);
     const auto executablePath = nativePathText(git);
     WindowsWorkspaceAuthority authority{{WindowsWorkspaceAuthorityPolicy{
-        take(Domain::AuthorityId::parse(identity)), project, take(Domain::ClientId::parse("policy-import")),
-        {temporaryPath, nativePathText(git.parent_path())}, Domain::FileAccess::Execute,
-        {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create, Domain::FileAccess::Execute}, {}, true, 1U}}};
+        take(Domain::AuthorityId::parse(identity)), project,
+        take(Domain::ClientId::parse("policy-import")),
+        {nativePathText(temporary), nativePathText(git.parent_path())},
+        Domain::FileAccess::Execute,
+        {Domain::FileAccess::Read, Domain::FileAccess::Write,
+         Domain::FileAccess::Create, Domain::FileAccess::Execute}, {}, true, 1U}}};
     const auto scope = take(authority.authorityFor(project, context));
-    const auto run = [&](std::vector<std::string> arguments, const std::filesystem::path& working) {
+    const auto run = [&](std::vector<std::string> arguments,
+                         const std::filesystem::path& working) {
         check(context);
-        arguments.insert(arguments.begin(), {"-c", "core.hooksPath=NUL", "-c", "core.fsmonitor=false", "-c", "core.quotepath=false"});
-        Domain::ProcessRequest request{executablePath, std::move(arguments), nativePathText(working),
-            {{"GIT_TERMINAL_PROMPT", "0"}, {"GCM_INTERACTIVE", "Never"}}, true,
-            std::min(std::chrono::milliseconds{120000}, std::chrono::duration_cast<std::chrono::milliseconds>(context.deadline - std::chrono::steady_clock::now())),
-            MaximumFileBytes, 32768};
+        arguments.insert(arguments.begin(), {"-c", "core.hooksPath=NUL",
+            "-c", "core.fsmonitor=false", "-c", "core.quotepath=false"});
+        Domain::ProcessRequest request{executablePath, std::move(arguments),
+            nativePathText(working), {{"GIT_TERMINAL_PROMPT", "0"},
+            {"GCM_INTERACTIVE", "Never"}}, true,
+            (std::min)(std::chrono::milliseconds{120000},
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    context.deadline - std::chrono::steady_clock::now())),
+            64U * 1024U, 64U * 1024U};
         auto output = take(processes.run(request, scope, context));
-        if (output.cancelled) throw std::runtime_error{"Policy import was cancelled. The adopted revision is unchanged."};
-        if (output.timedOut) throw std::runtime_error{"Policy import exceeded its time limit. Retry or import a local checkout."};
-        if (output.exitCode || !output.terminationConfirmed)
-            throw std::runtime_error{"Git could not import the policy using the current sign-in. Sign in to Git for this repository or import a local checkout, then retry."};
-        if (output.stdoutTruncated || output.stderrTruncated) throw std::runtime_error{"Git policy output exceeded the complete import limit."};
+        if (output.cancelled) throw std::runtime_error{"Policy import was cancelled."};
+        if (output.timedOut) throw std::runtime_error{"Policy import exceeded its time limit."};
+        if (output.exitCode || !output.terminationConfirmed) {
+            throw std::runtime_error{"Git could not import the policy repository using the current sign-in."};
+        }
         return output.stdoutUtf8;
     };
+
     const auto repository = temporary / "repository";
-    // Fetch bounded-size source blobs together. Blob-less clones would make a
-    // separate authenticated network fetch for every document during cat-file.
-    (void)run({"clone", "--quiet", "--depth=1", "--filter=blob:limit=2m", "--no-checkout", "--", "https://github.com/" + name + ".git", pathText(repository)}, temporary);
+    (void)run({"clone", "--quiet", "--depth=1", "--no-recurse-submodules",
+        "--", source, pathText(repository)}, temporary);
     auto commit = run({"rev-parse", "HEAD"}, repository);
     while (!commit.empty() && (commit.back() == '\n' || commit.back() == '\r')) commit.pop_back();
-    if (commit.size() != 40 || !std::all_of(commit.begin(), commit.end(), [](char c) { return (c >= 'a' && c <= 'f') || (c >= '0' && c <= '9'); }))
-        throw std::runtime_error{"Git did not return an immutable policy commit."};
-    Contracts::PolicySourceBundle bundle{"https://github.com/" + name, commit, {}, {}};
-    std::istringstream tree{run({"ls-tree", "-r", "--full-tree", commit}, repository)};
-    std::string line;
-    std::size_t bytes{};
-    while (std::getline(tree, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        const auto tab = line.find('\t');
-        if (tab == std::string::npos) throw std::runtime_error{"Git returned an invalid policy tree."};
-        std::istringstream metadata{line.substr(0, tab)};
-        std::string mode, type, blob;
-        metadata >> mode >> type >> blob;
-        if (type != "blob" || mode == "120000" || blob.size() != 40 ||
-            !std::all_of(blob.begin(), blob.end(), [](char c) { return (c >= 'a' && c <= 'f') || (c >= '0' && c <= '9'); }))
-            throw std::runtime_error{"Policy import rejects submodules, links and invalid blob identities."};
-        auto path = line.substr(tab + 1);
-        if (path.starts_with('"')) path = Json::parse(path).get<std::string>();
-        if (path.empty() || path.find_first_of("\r\n\t\\:") != std::string::npos || path.starts_with('/') || path.find("../") != std::string::npos)
-            throw std::runtime_error{"Git returned an unsupported policy path."};
-        if (!supported(path)) {
-            if (bundle.excludedFiles.size() >= MaximumFiles) throw std::runtime_error{"Too many excluded policy source files."};
-            bundle.excludedFiles.push_back(path); continue;
-        }
-        append(bundle, path, run({"cat-file", "blob", blob}, repository), bytes);
-    }
-    return bundle;
+    if (commit.empty()) throw std::runtime_error{"Git did not return an immutable policy revision."};
+    return enumerateFolder(repository, source, commit, context);
 }
-
-Contracts::PolicySourceBundle github(const std::string& source, const Domain::OperationContext& context)
-{
-    auto name = source.substr(std::string{"https://github.com/"}.size());
-    if (name.ends_with('/')) name.pop_back();
-    if (name.ends_with(".git")) name.resize(name.size() - 4);
-    const auto slash = name.find('/');
-    if (slash == std::string::npos || slash == 0 || slash == name.size() - 1 ||
-        name.find('/', slash + 1) != std::string::npos || name.find("..") != std::string::npos ||
-        !std::all_of(name.begin(), name.end(), [](unsigned char c) {
-            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '/';
-        })) throw std::runtime_error{"Enter the repository URL as https://github.com/owner/repository."};
-    Json identity;
-    try { identity = Json::parse(get(L"api.github.com", "/repos/" + name + "/commits/HEAD", MaximumBundleBytes, context)); }
-    catch (const GitHubUnavailable&) { return authenticatedGit(name, context); }
-    const auto sha = identity.at("sha").get<std::string>();
-    if (sha.size() != 40 || !std::all_of(sha.begin(), sha.end(), [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); }))
-        throw std::runtime_error{"GitHub did not return an immutable policy commit."};
-    const auto tree = Json::parse(get(L"api.github.com", "/repos/" + name + "/git/trees/" + sha + "?recursive=1", MaximumBundleBytes, context));
-    if (tree.value("truncated", true)) throw std::runtime_error{"GitHub returned an incomplete policy tree. Import a local checkout instead."};
-    Contracts::PolicySourceBundle bundle{"https://github.com/" + name, sha, {}, {}};
-    std::size_t bytes{};
-    for (const auto& entry : tree.at("tree")) {
-        check(context);
-        const auto type = entry.at("type").get<std::string>();
-        if (type == "tree") continue;
-        const auto path = entry.at("path").get<std::string>();
-        if (path.empty() || path.starts_with('/') || path.find('\\') != std::string::npos || path.find(':') != std::string::npos || path.find("../") != std::string::npos)
-            throw std::runtime_error{"GitHub returned an invalid policy path."};
-        if (type != "blob" || entry.value("mode", "") == "120000")
-            throw std::runtime_error{"Policy snapshots cannot contain links or submodules: " + path};
-        if (!supported(path)) {
-            if (bundle.excludedFiles.size() >= MaximumFiles) throw std::runtime_error{"Too many non-text policy files to review."};
-            bundle.excludedFiles.push_back(path);
-            continue;
-        }
-        if (entry.at("size").get<std::uint64_t>() > MaximumFileBytes) throw std::runtime_error{"Policy file is too large: " + path};
-        append(bundle, path, get(L"raw.githubusercontent.com", "/" + name + "/" + sha + "/" + encodedPath(path), MaximumFileBytes, context), bytes);
-    }
-    return bundle;
-}
-}
+} // namespace
 
 Domain::Result<Contracts::PolicySourceBundle> WindowsPolicySourceReader::read(
-    const std::string& source, const Domain::OperationContext& context) noexcept
+    const std::string& source,
+    const Domain::OperationContext& context) noexcept
 {
     try {
+        if (source.empty()) throw std::runtime_error{"Select a development-policy source."};
         Contracts::PolicySourceBundle bundle;
-        if (source.starts_with("https://github.com/")) bundle = github(source, context);
-        else {
-            if (source.find("://") != std::string::npos) throw std::runtime_error{"Use a local folder or an HTTPS GitHub repository URL."};
+        if (source.starts_with("https://") || source.starts_with("ssh://") || source.starts_with("git@")) {
+            bundle = cloneRepository(source, context);
+        } else {
+            if (source.find("://") != std::string::npos) {
+                throw std::runtime_error{"Use a local folder or a Git-compatible HTTPS or SSH repository URL."};
+            }
             check(context);
             const auto root = std::filesystem::canonical(nativePath(source));
-            if (!std::filesystem::is_directory(root)) throw std::runtime_error{"Choose an existing policy folder."};
-            bundle.source = pathText(root);
-            std::size_t bytes{};
-            for (std::filesystem::recursive_directory_iterator iterator{root}, end; iterator != end; ++iterator) {
-                check(context);
-                if (iterator->path().filename() == L".git") { if (iterator->is_directory()) iterator.disable_recursion_pending(); continue; }
-                const auto attributes = GetFileAttributesW(iterator->path().c_str());
-                if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_REPARSE_POINT))
-                    throw std::runtime_error{"Policy snapshots cannot include unreadable entries, links or reparse points."};
-                if (!iterator->is_regular_file()) continue;
-                const auto path = pathText(iterator->path().lexically_relative(root));
-                if (!supported(path)) {
-                    if (bundle.excludedFiles.size() >= MaximumFiles) throw std::runtime_error{"Too many non-text policy files to review."};
-                    bundle.excludedFiles.push_back(path); continue;
-                }
-                const auto length = iterator->file_size();
-                if (length > MaximumFileBytes) throw std::runtime_error{"Policy file is too large: " + path};
-                std::ifstream file{iterator->path(), std::ios::binary};
-                if (!file) throw std::runtime_error{"Cannot read policy file: " + path};
-                std::string content(static_cast<std::size_t>(length), '\0');
-                file.read(content.data(), static_cast<std::streamsize>(length));
-                if (file.gcount() != static_cast<std::streamsize>(length) || file.peek() != std::char_traits<char>::eof())
-                    throw std::runtime_error{"Policy file changed during import: " + path};
-                append(bundle, path, std::move(content), bytes);
-            }
+            bundle = enumerateFolder(root, pathText(root), {}, context);
         }
-        if (bundle.files.empty()) throw std::runtime_error{"No supported policy text was found."};
-        std::sort(bundle.files.begin(), bundle.files.end(), [](const auto& a, const auto& b) { return a.path < b.path; });
-        std::sort(bundle.excludedFiles.begin(), bundle.excludedFiles.end());
         return Domain::Result<Contracts::PolicySourceBundle>::success(std::move(bundle));
-    } catch (const std::exception& error) {
-        return Domain::Result<Contracts::PolicySourceBundle>::failure(Domain::makeError(
-            context.isCancellationRequested() ? Domain::ErrorCodes::Cancelled : Domain::ErrorCodes::InvalidRequest, error.what()));
+    } catch (const std::exception& failure) {
+        return Domain::Result<Contracts::PolicySourceBundle>::failure(
+            Domain::makeError(context.isCancellationRequested()
+                ? Domain::ErrorCodes::Cancelled : Domain::ErrorCodes::InvalidRequest,
+                failure.what()));
     } catch (...) {
-        return Domain::Result<Contracts::PolicySourceBundle>::failure(Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Policy import failed without adoption."));
+        return Domain::Result<Contracts::PolicySourceBundle>::failure(
+            Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Development-policy import failed without replacing the active revision."));
     }
 }
 } // namespace ForgeConductor::Infrastructure::Windows

@@ -387,7 +387,7 @@ void attachmentRoundTripAndPrivacyAreProductionBounded()
 void invalidInputContextsAndReadBoundsFailClosed()
 {
     Fixture fixture{L"audit-invalid"};
-    auto incompleteProvenance = auditEvent("clu_capabilities");
+    auto incompleteProvenance = auditEvent("legacy_policy_probe");
     incompleteProvenance.mcpRole = Domain::McpRole::Clu;
     requireError(
         fixture.repository->append(

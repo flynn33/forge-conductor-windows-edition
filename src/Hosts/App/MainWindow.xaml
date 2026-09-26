@@ -73,20 +73,9 @@
    </StackPanel>
   </NavigationView.PaneHeader>
   <NavigationView.MenuItems>
-   <NavigationViewItem Content="Start here · Setup" Tag="Guided setup" Icon="Help" AutomationProperties.Name="Open Guided Mode setup" IsSelected="True" />
+   <NavigationViewItem Content="Workspace" Tag="Workspace" Icon="Folder" AutomationProperties.Name="Open Workspace" IsSelected="True" />
    <NavigationViewItem Content="Rig" Tag="Rig" Icon="Home" />
-   <NavigationViewItem Content="LM Studio plugins" Tag="LM Studio MCP" Icon="Library" />
-   <NavigationViewItem Content="Agents" Tag="Agents" Icon="People" />
-   <NavigationViewItem Content="Tools" Tag="Tools" Icon="Repair" />
-   <NavigationViewItem Content="Feed" Tag="Feed" Icon="Document" />
-   <NavigationViewItem Content="Projects" Tag="Projects" Icon="Folder" />
-   <NavigationViewItem Content="Autonomy" Tag="Autonomy" Icon="Play" />
-   <NavigationViewItem Content="Continuity" Tag="Continuity" Icon="Refresh" />
-   <NavigationViewItem Content="Runtimes" Tag="Runtimes" Icon="World" />
-   <NavigationViewItem Content="Provider" Tag="Provider" Icon="Link" />
-   <NavigationViewItem Content="Events &amp; Evidence" Tag="Events &amp; Evidence" Icon="Document" />
-   <NavigationViewItem Content="Diagnostics" Tag="Diagnostics" Icon="Repair" />
-   <NavigationViewItem Content="Manager" Tag="Manager" Icon="Admin" />
+   <NavigationViewItem Content="Activity" Tag="Activity" Icon="Document" />
    <NavigationViewItem Content="Settings" Tag="Settings" Icon="Setting" />
   </NavigationView.MenuItems>
   <NavigationView.PaneFooter>
@@ -138,63 +127,46 @@
      </Border>
     </Grid>
 
-    <Border x:Name="GuidedModePanel" Style="{ThemeResource ForgeHeroCardStyle}" Padding="16" AutomationProperties.Name="Guided project setup">
+    <Border x:Name="WorkspaceReadinessPanel" Style="{ThemeResource ForgeHeroCardStyle}" Padding="16" AutomationProperties.Name="Workspace readiness">
      <StackPanel Spacing="8">
-      <TextBlock Text="Need to set up or repair your project? Start here." Style="{ThemeResource ForgeSectionTitleStyle}" TextWrapping="Wrap"/>
-      <TextBlock Text="One guided page takes you through plugins, model, project, policy and your first task in order." TextWrapping="Wrap"/>
-      <Button Content="Start here · Guided setup" Click="GuidedModeRestartClicked" Style="{ThemeResource ForgeAccentButtonStyle}" HorizontalAlignment="Left"/>
+      <TextBlock Text="Project workspace" Style="{ThemeResource ForgeSectionTitleStyle}" TextWrapping="Wrap"/>
+      <TextBlock Text="Bind a project, instruction packages, governance, provider, and automatic continuity in one place." TextWrapping="Wrap"/>
+      <ToggleSwitch x:Name="AutomaticContinuityToggle" Header="Automatic continuity for this project/provider" OffContent="Off" OnContent="On" IsOn="True" Toggled="AutomaticContinuityToggled" AutomationProperties.Name="Automatic continuity"/>
+      <TextBlock x:Name="AutomaticContinuityState" Text="Select a project to persist this preference." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
      </StackPanel>
     </Border>
-    <StackPanel x:Name="GuidedSetupPanel" Spacing="14" Visibility="Collapsed">
+    <StackPanel x:Name="WorkspacePanel" Spacing="14" Visibility="Collapsed">
      <Border Style="{ThemeResource ForgeHeroCardStyle}"><StackPanel Spacing="12">
-      <TextBlock Text="1 · Prepare your project automatically" Style="{ThemeResource ForgeSectionTitleStyle}"/>
-      <TextBlock Text="Choose your project folder below. Setup starts the Manager, registers the folder, installs and verifies all three LM Studio plugins, loads a compatible downloaded model and checks its response. Stay on this page; each result and the next step appear here." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
-      <TextBox x:Name="SetupFolder" Header="Your project folder" IsReadOnly="True" PlaceholderText="Choose a new or existing project folder"/>
+      <TextBlock Text="Project" Style="{ThemeResource ForgeSectionTitleStyle}"/>
+      <TextBlock Text="Choose the local Git working tree once. Forge preserves a stable project identity and reuses its saved provider and remote metadata." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+      <TextBox x:Name="SetupFolder" Header="Local working tree" IsReadOnly="True" PlaceholderText="Choose a new or existing project folder" AutomationProperties.Name="Selected local project folder"/>
       <StackPanel Orientation="Horizontal" Spacing="8">
-       <Button x:Name="SetupFolderButton" Content="Choose folder and prepare" Click="SetupFolderClicked" Style="{ThemeResource ForgeAccentButtonStyle}"/>
-       <Button x:Name="SetupRetryButton" Content="Retry preparation" Click="SetupRetryClicked" IsEnabled="False"/>
+       <Button x:Name="SetupFolderButton" Content="Choose project folder" Click="SetupFolderClicked" Style="{ThemeResource ForgeAccentButtonStyle}"/>
+       <Button x:Name="SetupRetryButton" Content="Refresh readiness" Click="SetupRetryClicked" IsEnabled="False"/>
        <Button x:Name="SetupCancelButton" Content="Cancel" Click="SetupCancelClicked" IsEnabled="False"/>
       </StackPanel>
-      <TextBlock x:Name="AutomaticSetupState" Text="Next: choose a folder. Setup will check Manager → Project → LM Studio plugins → Model → Response. Nothing needs to be configured on another page first." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+      <TextBlock x:Name="AutomaticSetupState" Text="Choose a folder to inspect the actual actions still needed." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
      </StackPanel></Border>
-     <Expander x:Name="PolicyPanel" Header="2 · Development policy and governance (optional)" HorizontalAlignment="Stretch">
+     <Expander x:Name="PolicyPanel" Header="CLU governance (optional)" HorizontalAlignment="Stretch">
       <StackPanel Spacing="10">
-       <TextBlock Text="Import a policy repository for the selected project. Adoption pins its contents and requires an accepted review before write tools or commands can run." TextWrapping="Wrap"/>
-       <TextBox x:Name="PolicySource" Header="GitHub repository URL or local policy folder" PlaceholderText="https://github.com/flynn33/raven-forge-development"/>
+       <TextBlock Text="Bind a local folder or remote Git repository. CLU activates automatically, reports every interpretation gap, and sends non-blocking correction guidance to the coding agent." TextWrapping="Wrap"/>
+       <TextBox x:Name="PolicySource" Header="Policy folder or remote repository URL" PlaceholderText="C:\policy or https://github.com/owner/policy" AutomationProperties.Name="Development policy source"/>
        <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="Import preview" Tag="preview" Click="PolicyClicked"/>
-        <Button Content="Adopt this revision" Tag="adopt" Click="PolicyClicked"/>
-        <Button Content="Inspect adopted policy" Tag="inspect" Click="PolicyClicked"/>
+        <Button Content="Bind source" Tag="preview" Click="PolicyClicked"/>
+        <Button Content="Refresh revision" Tag="adopt" Click="PolicyClicked"/>
+        <Button Content="Inspect status" Tag="inspect" Click="PolicyClicked"/>
+        <Button Content="Inspect findings" Tag="review" Click="PolicyClicked"/>
+        <Button Content="Export CLU log" Tag="export" Click="PolicyClicked"/>
        </StackPanel>
-       <TextBlock x:Name="PolicyState" Text="Prepare or select a project first. Policy is optional." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/>
-       <ComboBox x:Name="PolicyDocument" Header="Imported source documents" HorizontalAlignment="Stretch"/>
+       <TextBlock x:Name="PolicyState" Text="Select a project to inspect its governance state." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/>
+       <ComboBox x:Name="PolicyDocument" Header="Policy-source entries" HorizontalAlignment="Stretch"/>
        <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="Read document" Tag="read" Click="PolicyClicked"/>
         <Button Content="Next part" Tag="next" Click="PolicyClicked"/>
        </StackPanel>
-       <TextBox x:Name="PolicyDocumentText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="320" Header="Pinned document contents"/>
-       <Expander Header="Record a completed policy review" HorizontalAlignment="Stretch">
-        <StackPanel Spacing="10">
-         <TextBlock Text="Importing is not proof of compliance. Record the completed source and project review, resolve its obligations, and select the scope it permits. Semantic policy requirements still need review; these controls enforce write scope and exact approved commands." TextWrapping="Wrap"/>
-         <TextBox x:Name="PolicyReviewer" Header="Reviewer"/>
-         <TextBox x:Name="PolicyEvidence" Header="Review evidence and decisions" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"/>
-         <TextBox x:Name="PolicyWritePaths" Header="Allowed project paths (one per line; . permits the whole project)" AcceptsReturn="True" TextWrapping="Wrap"/>
-         <TextBox x:Name="PolicyProhibitedPaths" Header="Prohibited project paths (one per line)" AcceptsReturn="True" TextWrapping="Wrap"/>
-         <TextBox x:Name="PolicyCommands" Header="Exact approved project commands (one per line; leave empty to block commands)" AcceptsReturn="True" TextWrapping="Wrap"/>
-         <CheckBox x:Name="PolicyReviewConfirmed" Content="I reviewed every listed source document and the project, accounted for excluded files, and resolved all policy obligations."/>
-         <Button Content="Accept reviewed scope" Tag="review" Click="PolicyClicked" HorizontalAlignment="Left"/>
-        </StackPanel>
-       </Expander>
+       <TextBox x:Name="PolicyDocumentText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="320" Header="Bound policy evidence"/>
       </StackPanel>
      </Expander>
-     <Border Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="12">
-      <TextBlock Text="3 · Start your first task" Style="{ThemeResource ForgeSectionTitleStyle}"/>
-      <TextBlock Text="After preparation is ready, optionally configure a development policy above, then describe the work below." TextWrapping="Wrap"/>
-      <TextBox x:Name="SetupTask" Header="What would you like to build or fix?" PlaceholderText="Describe your task in ordinary language" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="100"/>
-      <ToggleSwitch x:Name="SetupAllowTools" Header="Allow work in this project" IsOn="True" OnContent="Files and project commands allowed" OffContent="Discuss only · no tools"/>
-      <TextBlock Text="Starting a task authorizes work inside the selected project. An adopted development policy still controls what operations are allowed." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
-      <Button x:Name="SetupTaskButton" Content="Start task" Click="SetupTaskClicked" IsEnabled="False" HorizontalAlignment="Left"/>
-     </StackPanel></Border>
      <Expander Header="Help and troubleshooting · 42 offline articles" HorizontalAlignment="Stretch" IsExpanded="False">
       <StackPanel Spacing="10">
        <TextBlock Text="Help and troubleshooting" Style="{ThemeResource ForgeSectionTitleStyle}"/>
@@ -207,12 +179,6 @@
          </StackPanel>
 
      <StackPanel x:Name="RigPanel" Spacing="10">
-      <Border Style="{ThemeResource ForgeCardStyle}" Padding="16,13">
-       <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel Spacing="3"><TextBlock Text="Guided Mode" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Walk through a real project setup with explanations for each choice. No sample project or mock data is created." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
-        <Button Grid.Column="1" Content="Open guided setup" Click="GuidedModeRestartClicked" VerticalAlignment="Center" AutomationProperties.Name="Guided Mode on home"/>
-       </Grid>
-      </Border>
       <Border Style="{ThemeResource ForgeHeroCardStyle}" MinHeight="118">
        <Grid ColumnSpacing="18">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="1"/><ColumnDefinition Width="250"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -347,7 +313,7 @@
      <Grid x:Name="ContinuityMetrics" Visibility="Collapsed" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Border Style="{ThemeResource ForgeCardStyle}" MinHeight="126"><StackPanel Spacing="8"><TextBlock Text="Effective capacity" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="ContinuityCapacityValue" Text="—" Style="{ThemeResource ForgeMetricValueStyle}" FontSize="27"/><TextBlock Text="Manager context window · tokens" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border><Border Grid.Column="1" Style="{ThemeResource ForgeCardStyle}" MinHeight="126"><StackPanel Spacing="8"><TextBlock Text="Response reserve" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="ContinuityResponseReserveValue" Text="—" Style="{ThemeResource ForgeMetricValueStyle}" FontSize="27"/><TextBlock Text="Protected for the next answer" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border><Border Grid.Column="2" Style="{ThemeResource ForgeCardStyle}" MinHeight="126"><StackPanel Spacing="8"><TextBlock Text="Handoff reserve" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="ContinuityHandoffReserveValue" Text="—" Style="{ThemeResource ForgeMetricValueStyle}" FontSize="27"/><TextBlock Text="Protected successor budget" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border><Border Grid.Column="3" Style="{ThemeResource ForgeCardStyle}" MinHeight="126"><StackPanel Spacing="8"><TextBlock Text="Retained context" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="ContinuityRetainedValue" Text="No run" Style="{ThemeResource ForgeMetricValueStyle}" FontSize="27" TextWrapping="Wrap"/><TextBlock Text="Only authoritative run readback" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border></Grid>
      <Border x:Name="ContinuityTimelineCard" Style="{ThemeResource ForgeCardStyle}" Visibility="Collapsed"><StackPanel Spacing="10"><Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE8F1;" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Exact handoff state" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="Start in Autonomy" Click="OpenAutonomyClicked"/></Grid><Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Text="SOURCE RUN" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold" Width="110"/><TextBlock x:Name="ContinuitySourceState" Text="Awaiting an exact run identity" TextWrapping="Wrap"/></StackPanel></Border><Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Text="POLICY" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold" Width="110"/><TextBlock x:Name="ContinuityPolicyState" Text="Context-only · Manager-owned" TextWrapping="Wrap"/></StackPanel></Border><Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Text="RESTORATION" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold" Width="110"/><TextBlock x:Name="ContinuityRestorationState" Text="No verified successor projected" TextWrapping="Wrap"/></StackPanel></Border><TextBlock Text="Desktop capability: inspect exact context and attach/control a run. An explicit checkpoint/request API and verified restoration artifact are not exposed by this Manager projection." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel></Border>
       <Grid x:Name="RunCompositionGrid" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-       <Border x:Name="RunMissionCard" Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="11"><Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Mission" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="Choose project" Click="OpenProjectsClicked"/></Grid><Border Style="{ThemeResource ForgeInsetStyle}"><StackPanel Spacing="6"><TextBlock Text="AUTHORIZED PROJECT" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><TextBlock x:Name="RunSelectedProject" Text="No project selected · choose an authorized project before starting" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel></Border><Border Style="{ThemeResource ForgeInsetStyle}"><StackPanel Spacing="6"><TextBlock Text="MODEL POLICY" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><Grid><TextBlock x:Name="RunSelectedModel" Text="Awaiting Manager readback" Style="{ThemeResource ForgeCaptionStyle}"/><Button HorizontalAlignment="Right" Content="Configure" Click="OpenProviderClicked"/></Grid></StackPanel></Border><TextBox x:Name="RunProjectId" Visibility="Collapsed"/><TextBox x:Name="RunClientId" Visibility="Collapsed" Text="forge-conductor-manager"/><NumberBox x:Name="RunAuthorityGeneration" Visibility="Collapsed" Value="0"/><TextBox x:Name="RunTask" Header="What should Forge Conductor do?" PlaceholderText="Describe the work for this project" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="128"/><ToggleSwitch x:Name="RunAllowNativeTools" Header="Native tool access" OnContent="Authorized catalog" OffContent="No tools" IsOn="False"/><TextBlock Text="Off keeps the provider turn model-only. On grants the project-authorized native catalog, subject to Manager tool policy." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/><Button x:Name="RunStartButton" Content="Start managed run" Click="RunStartClicked" Style="{ThemeResource ForgeAccentButtonStyle}" MinWidth="170" HorizontalAlignment="Left"/><TextBlock Text="The Manager owns execution after this window closes; model text is not verified evidence." Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border>
+       <Border x:Name="RunMissionCard" Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="11"><Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE768;" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Managed run" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="Choose project" Click="OpenProjectsClicked"/></Grid><Border Style="{ThemeResource ForgeInsetStyle}"><StackPanel Spacing="6"><TextBlock Text="AUTHORIZED PROJECT" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><TextBlock x:Name="RunSelectedProject" Text="No project selected · choose an authorized project before starting" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel></Border><Border Style="{ThemeResource ForgeInsetStyle}"><StackPanel Spacing="6"><TextBlock Text="MODEL POLICY" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="11" FontWeight="SemiBold"/><Grid><TextBlock x:Name="RunSelectedModel" Text="Awaiting Manager readback" Style="{ThemeResource ForgeCaptionStyle}"/><Button HorizontalAlignment="Right" Content="Configure" Click="OpenProviderClicked"/></Grid></StackPanel></Border><TextBox x:Name="RunProjectId" Visibility="Collapsed"/><TextBox x:Name="RunClientId" Visibility="Collapsed" Text="forge-conductor-manager"/><NumberBox x:Name="RunAuthorityGeneration" Visibility="Collapsed" Value="0"/><TextBox x:Name="RunTask" Header="Work request" PlaceholderText="Describe the work for this project" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="128"/><ToggleSwitch x:Name="RunAllowNativeTools" Header="Native tool access" OnContent="Authorized catalog" OffContent="No tools" IsOn="False"/><TextBlock Text="Off keeps the provider turn model-only. On grants the project-authorized native catalog, subject to Manager tool policy." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/><Button x:Name="RunStartButton" Content="Start managed run" Click="RunStartClicked" Style="{ThemeResource ForgeAccentButtonStyle}" MinWidth="170" HorizontalAlignment="Left"/><TextBlock Text="The Manager owns execution after this window closes; model text is not verified evidence." Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border>
        <Border x:Name="RunReadbackCard" Grid.Column="1" Style="{ThemeResource ForgeCardStyle}">
         <StackPanel Spacing="11">
          <Grid><StackPanel Orientation="Horizontal" Spacing="9"><Ellipse x:Name="RunStatusDot" Width="9" Height="9" Fill="{ThemeResource ForgeWarningBrush}" VerticalAlignment="Center"/><TextBlock x:Name="RunStateHeading" Text="Live run" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><TextBlock Text="MANAGER READBACK" Style="{ThemeResource ForgeCaptionStyle}" HorizontalAlignment="Right"/></Grid>
@@ -390,16 +356,18 @@
       <Border x:Name="InstructionPackageCard" Style="{ThemeResource ForgeCardStyle}" Padding="18">
       <Grid ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="1.25*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
        <StackPanel Spacing="12">
-        <Grid><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="34" Height="34" CornerRadius="9" Background="{ThemeResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE8A5;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/></Border><StackPanel Spacing="2"><TextBlock Text="Instruction package" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Bind a verified folder of project guidance to every new managed run." Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></StackPanel><Border HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="10" Padding="10,5" Background="#192BD4B6"><TextBlock Text="MANAGER OWNED" Foreground="#FF55E2C1" FontSize="10" FontWeight="SemiBold"/></Border></Grid>
+        <Grid><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="34" Height="34" CornerRadius="9" Background="{ThemeResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE8A5;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/></Border><StackPanel Spacing="2"><TextBlock Text="Instruction-package queue" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Folders are accepted as-is, inventoried with streamed hashes, and executed in the displayed order." Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></StackPanel><Border HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="10" Padding="10,5" Background="#192BD4B6"><TextBlock Text="MANAGER OWNED" Foreground="#FF55E2C1" FontSize="10" FontWeight="SemiBold"/></Border></Grid>
         <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="InstructionPackagePath" PlaceholderText="Choose an instruction package folder…" TextChanged="InstructionPackagePathChanged" AutomationProperties.Name="Instruction package folder"/><Button Grid.Column="1" Content="Browse…" Click="InstructionPackageBrowseClicked"/></Grid>
-        <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Validate package" Click="InstructionPackagePreviewClicked"/><Button x:Name="InstructionPackageActivateButton" Content="Activate revision" Click="InstructionPackageActivateClicked" Style="{ThemeResource ForgeAccentButtonStyle}" IsEnabled="False"/></StackPanel>
-        <TextBlock Text="Supported: Markdown, text, JSON, YAML, TOML, and CSV · up to 32 files / 212 KiB. Validation reads without changing project memory." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Inspect folder" Click="InstructionPackagePreviewClicked"/><Button x:Name="InstructionPackageActivateButton" Content="Add folder" Click="InstructionPackageActivateClicked" Style="{ThemeResource ForgeAccentButtonStyle}" IsEnabled="False"/><Button Content="Refresh queue" Click="InstructionQueueRefreshClicked"/></StackPanel>
+        <TextBlock Text="Unknown, binary, encrypted, damaged, extensionless, and large entries remain in the inventory with truthful interpretation coverage." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
        </StackPanel>
        <Border Grid.Column="1" Style="{ThemeResource ForgeInsetStyle}" Padding="14">
         <StackPanel Spacing="10">
-         <Grid><StackPanel Spacing="3"><TextBlock Text="ACTIVE REVISION" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="10" FontWeight="SemiBold"/><TextBlock x:Name="InstructionPackageRevision" Text="No revision activated" FontFamily="Cascadia Mono" FontSize="14" FontWeight="SemiBold"/></StackPanel><TextBlock x:Name="InstructionPackageFileCount" HorizontalAlignment="Right" VerticalAlignment="Center" Text="— files" Style="{ThemeResource ForgeCaptionStyle}"/></Grid>
+         <Grid><StackPanel Spacing="3"><TextBlock Text="ORDERED QUEUE" Foreground="{ThemeResource ForgeAccentBrush}" FontSize="10" FontWeight="SemiBold"/><TextBlock x:Name="InstructionPackageRevision" Text="No package selected" FontFamily="Cascadia Mono" FontSize="14" FontWeight="SemiBold"/></StackPanel><TextBlock x:Name="InstructionPackageFileCount" HorizontalAlignment="Right" VerticalAlignment="Center" Text="— entries" Style="{ThemeResource ForgeCaptionStyle}"/></Grid>
          <TextBlock x:Name="InstructionPackageState" Text="Choose a project and package folder to begin." TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
-         <ScrollViewer MaxHeight="92" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="InstructionPackageFiles" Text="Validated file manifest will appear here." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer>
+         <ListView x:Name="InstructionPackageQueue" MaxHeight="180" SelectionChanged="InstructionQueueSelectionChanged" AutomationProperties.Name="Ordered instruction package queue"/>
+         <StackPanel Orientation="Horizontal" Spacing="6"><Button Content="Move up" Click="InstructionQueueMoveUpClicked" AutomationProperties.Name="Move selected package up"/><Button Content="Move down" Click="InstructionQueueMoveDownClicked" AutomationProperties.Name="Move selected package down"/><Button Content="Retry" Click="InstructionQueueRetryClicked"/><Button Content="Remove" Click="InstructionQueueRemoveClicked"/></StackPanel>
+         <ScrollViewer MaxHeight="92" VerticalScrollBarVisibility="Auto"><TextBlock x:Name="InstructionPackageFiles" Text="Select a queue row to inspect its revision, progress, cursor, and coverage." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap" IsTextSelectionEnabled="True"/></ScrollViewer>
         </StackPanel>
        </Border>
       </Grid>
@@ -432,7 +400,7 @@
     <StackPanel x:Name="LmStudioMcpPanel" Spacing="14" Visibility="Collapsed">
      <Border Style="{ThemeResource ForgeHeroCardStyle}"><StackPanel Spacing="12">
       <TextBlock Text="Install the Forge Conductor plugins" Style="{ThemeResource ForgeSectionTitleStyle}"/>
-      <TextBlock Text="Guided setup does this automatically. You can also install or repair Primary, Fallback and Continuity here. Other LM Studio plugins and settings are preserved." TextWrapping="Wrap"/>
+      <TextBlock Text="Install or repair the Primary, Fallback, and CLU governance integrations. Other LM Studio plugins and settings are preserved." TextWrapping="Wrap"/>
       <Button Content="Install or repair all three plugins" Click="LmStudioRepairClicked" Style="{ThemeResource ForgeAccentButtonStyle}" HorizontalAlignment="Stretch"/>
       <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
        <Button Content="Check installed plugins" Click="LmStudioInspectClicked" HorizontalAlignment="Stretch"/>
@@ -443,12 +411,12 @@
      <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Border Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8"><TextBlock Text="Primary" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioPrimaryRole" Text="Checking…" TextWrapping="Wrap"/><TextBlock Text="Project tools and specialist work" TextWrapping="Wrap"/></StackPanel></Border>
       <Border Grid.Column="1" Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8"><TextBlock Text="Fallback" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioFallbackRole" Text="Checking…" TextWrapping="Wrap"/><TextBlock Text="Recovery and inspection tools" TextWrapping="Wrap"/></StackPanel></Border>
-      <Border Grid.Column="2" Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8"><TextBlock Text="Continuity" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioCluRole" Text="Checking…" TextWrapping="Wrap"/><TextBlock Text="Four controls for context handoff" TextWrapping="Wrap"/></StackPanel></Border>
+      <Border Grid.Column="2" Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8"><TextBlock Text="CLU governance" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock x:Name="LmStudioCluRole" Text="Checking…" TextWrapping="Wrap"/><TextBlock Text="Policy evaluation, findings, correction, and redacted export" TextWrapping="Wrap"/></StackPanel></Border>
      </Grid>
      <Border Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="8">
       <TextBlock Text="What to do next" Style="{ThemeResource ForgeSectionTitleStyle}"/>
-      <TextBlock Text="For a Forge Conductor task, return to Guided setup and finish preparation. For an LM Studio desktop chat, open its Integrations panel and select the plugin you want to use. A plugin can be installed without an active chat connection." TextWrapping="Wrap"/>
-      <Button Content="Continue guided setup" Click="GuidedModeRestartClicked" HorizontalAlignment="Left"/>
+      <TextBlock Text="Return to Workspace to finish project preparation. For an LM Studio desktop chat, open its Integrations panel and select the plugin you want to use. Installation does not imply an active chat connection." TextWrapping="Wrap"/>
+      <Button Content="Open Workspace" Click="GuidedModeRestartClicked" HorizontalAlignment="Left"/>
      </StackPanel></Border>
      <Expander Header="Technical details and troubleshooting" HorizontalAlignment="Stretch"><StackPanel Spacing="10">
       <TextBlock x:Name="LmStudioBadge" Text="CHECKING"/>
@@ -659,12 +627,6 @@
 
     <StackPanel x:Name="SettingsPanel" Spacing="14" Visibility="Collapsed">
      <Border Style="{ThemeResource ForgeHeroCardStyle}" MinHeight="118" Padding="20"><Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions><Border Width="52" Height="52" CornerRadius="12" Background="{ThemeResource ForgeAccentSoftBrush}"><FontIcon Glyph="&#xE713;" FontSize="24" Foreground="{ThemeResource ForgeAccentBrush}"/></Border><StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center"><TextBlock Text="Effective configuration" FontFamily="Segoe UI Variable Display" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="The Manager owns these preferences. Save includes an effective readback." Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel><StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center"><TextBlock Text="SOURCE OF TRUTH" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsHeroReadback" Text="Awaiting Manager settings" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel></Grid></Border>
-     <Border Style="{ThemeResource ForgeCardStyle}" Padding="18">
-      <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-       <StackPanel Spacing="4"><TextBlock Text="Help &amp; guidance" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Guided Mode explains project authorization, identity, memory, instructions, and the handoff to managed work. Turning it on restarts the walkthrough; progress is saved locally." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/></StackPanel>
-       <Button Grid.Column="1" Content="Open guided setup" Click="GuidedModeRestartClicked" VerticalAlignment="Center" AutomationProperties.Name="Guided Mode setting"/>
-      </Grid>
-     </Border>
      <Grid x:Name="SettingsSummaryGrid" ColumnSpacing="12" RowSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition x:Name="SettingsSummaryColumn2" Width="*"/><ColumnDefinition x:Name="SettingsSummaryColumn3" Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Border Style="{ThemeResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Dashboard" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsDashboardSummary" Text="—" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Local control endpoint" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border><Border Grid.Column="1" Style="{ThemeResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Model endpoint" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsProviderSummary" Text="—" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Loopback Responses" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border><Border x:Name="SettingsContextCard" Grid.Column="2" Style="{ThemeResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Context threshold" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsContextSummary" Text="—" Style="{ThemeResource ForgeMetricValueStyle}" FontSize="27"/><TextBlock Text="Effective tokens" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border><Border x:Name="SettingsShellCard" Grid.Column="3" Style="{ThemeResource ForgeCardStyle}" MinHeight="105"><StackPanel Spacing="7"><TextBlock Text="Shell policy" Style="{ThemeResource ForgeCaptionStyle}"/><TextBlock x:Name="SettingsShellSummary" Text="—" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="Manager invocation guard" Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel></Border></Grid>
      <Border Style="{ThemeResource ForgeCardStyle}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="5"><TextBlock Text="Apply &amp; verify" Style="{ThemeResource ForgeSectionTitleStyle}"/><TextBlock Text="Unsaved edits remain pending until the Manager accepts and reads them back." Style="{ThemeResource ForgeCaptionStyle}"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button Content="Reload" Click="SettingsLoadClicked"/><Button Content="Revert" Click="SettingsRevertClicked"/><Button Content="Save &amp; read back" Click="SettingsSaveClicked" Style="{ThemeResource ForgeAccentButtonStyle}"/></StackPanel></Grid></Border>
      <Expander Header="Manager &amp; dashboard controls" IsExpanded="True" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><Border Style="{ThemeResource ForgeCardStyle}" HorizontalAlignment="Stretch"><StackPanel Spacing="14" HorizontalAlignment="Stretch">

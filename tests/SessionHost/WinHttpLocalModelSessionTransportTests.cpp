@@ -1362,39 +1362,30 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     namespace C = ForgeConductor::Contracts;
     const auto policyFolder = root / L"policy";
     std::filesystem::create_directories(policyFolder);
-    { std::ofstream policy{policyFolder / "README.md"}; policy << "Review before editing. Only approved project paths may change."; }
+    { std::ofstream policy{policyFolder / "README.md"}; policy << "FORBID_TOOL fs_write\nDevelopment policy guidance."; }
     const auto policyBytes = policyFolder.generic_u8string();
     const std::string policySource{reinterpret_cast<const char*>(policyBytes.data()), policyBytes.size()};
     const auto projectId = parse<Domain::ProjectId>(prepared.projectId);
-    const auto preview = take(client->projectPolicy({projectId, C::ProjectPolicyAction::Preview, policySource}, context()));
-    const auto revision = Json::parse(preview.canonicalJson).at("revision").get<std::string>();
-    REQUIRE(client->projectPolicy({projectId, C::ProjectPolicyAction::Adopt, {}, revision}, context()));
-    auto denied = connection.invokeTool(prepared.projectId, "fs_write", R"({"path":"blocked.txt","content":"must not write"})", {});
-    REQUIRE(!denied.loaded || !denied.snapshot || !denied.snapshot->ok);
-    REQUIRE(!std::filesystem::exists(project / L"blocked.txt"));
+    const auto binding = take(client->projectPolicy(
+        {projectId, C::ProjectPolicyAction::Bind, policySource}, context()));
+    const auto revision = Json::parse(binding.canonicalJson).at("revision").get<std::string>();
+    const auto governed = connection.invokeTool(prepared.projectId, "fs_write",
+        R"({"path":"governed.txt","content":"governance is non-blocking"})", {});
+    REQUIRE(governed.loaded && governed.snapshot && governed.snapshot->ok);
+    REQUIRE(std::filesystem::exists(project / L"governed.txt"));
     const auto index = connection.invokeTool(prepared.projectId, "project_policy.read", "{}", {});
     REQUIRE(index.loaded && index.snapshot && index.snapshot->ok);
     const auto document = connection.invokeTool(prepared.projectId, "project_policy.read", R"({"path":"README.md"})", {});
     REQUIRE(document.loaded && document.snapshot && document.snapshot->ok);
-    REQUIRE(Json::parse(document.snapshot->canonicalPayload).at("content") == "Review before editing. Only approved project paths may change.");
-    Json review{{"schema", 1}, {"accepted", true}, {"policy_revision", revision}, {"reviewer", "Integration fixture"},
-        {"reviewed_at", "2026-09-23T00:00:00Z"}, {"evidence", "Controlled policy integration test"},
-        {"unresolved_obligations", Json::array()}, {"source_coverage", Json::array({
-            {{"path", "README.md"}, {"status", "read"}, {"evidence_or_reason", "Fixture review"}}})},
-        {"write_paths", Json::array({"approved.txt"})}, {"prohibited_paths", Json::array()}, {"approved_calls", Json::array()}};
-    REQUIRE(client->projectPolicy({projectId, C::ProjectPolicyAction::Review, {}, revision, review.dump()}, context()));
-    const auto permitted = connection.invokeTool(prepared.projectId, "fs_write", R"({"path":"approved.txt","content":"reviewed scope"})", {});
-    REQUIRE(permitted.loaded && permitted.snapshot && permitted.snapshot->ok);
-    denied = connection.invokeTool(prepared.projectId, "fs_write", R"({"path":"blocked.txt","content":"must not write"})", {});
-    REQUIRE(!denied.loaded || !denied.snapshot || !denied.snapshot->ok);
-    REQUIRE(!std::filesystem::exists(project / L"blocked.txt"));
-    denied = connection.invokeTool(prepared.projectId, "shell_exec", R"({"command":"Set-Content blocked.txt bypass"})", {});
-    REQUIRE(!denied.loaded || !denied.snapshot || !denied.snapshot->ok);
-    REQUIRE(!std::filesystem::exists(project / L"blocked.txt"));
+    REQUIRE(Json::parse(document.snapshot->canonicalPayload).at("content") ==
+        "FORBID_TOOL fs_write\nDevelopment policy guidance.");
+    const auto findings = take(client->projectPolicy({projectId,
+        C::ProjectPolicyAction::ListFindings, {}, revision}, context()));
+    REQUIRE(!Json::parse(findings.canonicalJson).at("findings").empty());
     App::ManagerConnection reopened{std::wstring{profile.nativeDataRoot()}};
     const auto persistedPolicy = reopened.projectPolicy({projectId, C::ProjectPolicyAction::Inspect}, {});
     REQUIRE(persistedPolicy.loaded);
-    REQUIRE(Json::parse(persistedPolicy.canonicalJson).at("review_accepted").get<bool>());
+    REQUIRE(Json::parse(persistedPolicy.canonicalJson).at("active").get<bool>());
     server.requireHealthy();
     std::cout << "PASS automatic_setup.real_manager_project_retry_and_first_task " << root.string() << '\n';
 }

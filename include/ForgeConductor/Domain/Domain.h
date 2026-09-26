@@ -28,3 +28,4 @@
 #include "ForgeConductor/Domain/TelemetryModels.h"
 #include "ForgeConductor/Domain/ToolModels.h"
 #include "ForgeConductor/Domain/Utf8.h"
+#include "ForgeConductor/Domain/WorkflowModels.h"

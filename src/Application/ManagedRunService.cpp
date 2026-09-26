@@ -516,7 +516,7 @@ private:
         const std::vector<Domain::ContinuityWorkEntry>& completedToolWork,
         const Domain::OperationContext& context) noexcept
     {
-        if (!record.retainedContextTokens ||
+        if (!request.automaticContinuity || !record.retainedContextTokens ||
             !continuity_.automation || !continuity_.codec ||
             !continuity_.projects || !continuity_.adapterId ||
             continuity_.contextCapacity == 0U) {

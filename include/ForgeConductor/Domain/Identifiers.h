@@ -119,6 +119,11 @@ struct DeploymentIdTag;
 struct CorrelationIdTag;
 struct RequestIdTag;
 struct LegacyHandoffIdTag;
+struct InstructionPackageIdTag;
+struct PackageQueueRowIdTag;
+struct PolicyRevisionIdTag;
+struct CluFindingIdTag;
+struct CluNotificationIdTag;
 
 using AuthorityId = StrongUuid<AuthorityIdTag>;
 using ProjectId = StrongUuid<ProjectIdTag>;
@@ -136,5 +141,10 @@ using DeploymentId = OpaqueId<DeploymentIdTag>;
 using CorrelationId = OpaqueId<CorrelationIdTag>;
 using RequestId = OpaqueId<RequestIdTag>;
 using LegacyHandoffId = OpaqueId<LegacyHandoffIdTag>;
+using InstructionPackageId = OpaqueId<InstructionPackageIdTag>;
+using PackageQueueRowId = OpaqueId<PackageQueueRowIdTag>;
+using PolicyRevisionId = OpaqueId<PolicyRevisionIdTag>;
+using CluFindingId = OpaqueId<CluFindingIdTag>;
+using CluNotificationId = OpaqueId<CluNotificationIdTag>;
 
 } // namespace ForgeConductor::Domain

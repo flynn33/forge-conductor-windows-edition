@@ -105,6 +105,7 @@ struct ManagedRunStartRequest final {
     std::uint64_t authorityGeneration{};
     std::string task;
     bool allowTools{true};
+    bool automaticContinuity{true};
 };
 
 struct ManagedRunSnapshot final {

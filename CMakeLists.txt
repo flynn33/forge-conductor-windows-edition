@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.2.1
+    VERSION 1.3.0
     LANGUAGES CXX RC
 )
 
@@ -179,7 +179,8 @@ forge_configure_standard_target(ForgeConductor.Manager.Protocol)
 target_include_directories(ForgeConductor.Manager.Protocol PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(ForgeConductor.Manager.Protocol PRIVATE
-    nlohmann_json::nlohmann_json)
+    nlohmann_json::nlohmann_json
+    bcrypt)
 
 add_library(ForgeConductor.Manager.Startup STATIC
     src/Manager/ManagerStartupTaskPolicy.cpp)
@@ -789,7 +790,8 @@ if(BUILD_TESTING)
         tests/Manager/ManagerRequestDispatcherTests.cpp)
     forge_configure_standard_target(ForgeConductor.Manager.RequestDispatcherTests)
     target_link_libraries(ForgeConductor.Manager.RequestDispatcherTests PRIVATE
-        ForgeConductor::Manager.Protocol)
+        ForgeConductor::Manager.Protocol
+        nlohmann_json::nlohmann_json)
     add_test(
         NAME ForgeConductor.Manager.RequestDispatcherTests
         COMMAND $<TARGET_FILE:ForgeConductor.Manager.RequestDispatcherTests>)

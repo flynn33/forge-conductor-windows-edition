@@ -307,19 +307,19 @@ void runMatrix(const Json& fixture)
     auto catalogNames = catalogFixture.catalogToolNames();
     require(std::erase(catalogNames, "project_policy.read") == 1U,
         "The Windows policy retrieval extension must be registered once; its Manager integration is tested separately.");
-    const std::set<std::string> continuityControlNames{
-        "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"};
-    std::set<std::string> observedControlNames;
+    const std::set<std::string> cluGovernanceNames{
+        "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve"};
+    std::set<std::string> observedCluNames;
     std::erase_if(catalogNames, [&](const std::string& name) {
-        if (!continuityControlNames.contains(name)) {
+        if (!cluGovernanceNames.contains(name)) {
             return false;
         }
-        observedControlNames.insert(name);
+        observedCluNames.insert(name);
         return true;
     });
     require(
-        observedControlNames == continuityControlNames,
-        "The real MCP catalog must contain the exact four CLU controls");
+        observedCluNames == cluGovernanceNames,
+        "The real MCP catalog must contain the exact four CLU governance tools");
     std::sort(catalogNames.begin(), catalogNames.end());
 
     std::vector<std::string> fixtureNames;

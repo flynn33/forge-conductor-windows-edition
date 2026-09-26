@@ -895,7 +895,8 @@ WindowsManagerNamedPipeClient::startManagedRun(
             request.clientId,
             request.authorityGeneration,
             request.task,
-            request.allowTools},
+            request.allowTools,
+            request.automaticContinuity},
         context);
 }
 
@@ -1026,6 +1027,20 @@ WindowsManagerNamedPipeClient::instructionPackage(
         ? implementation->typedWorkflow<Manager::ManagerInstructionPackageSnapshot>(
               request, context)
         : failure<Manager::ManagerInstructionPackageSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerInstructionPackageQueueSnapshot>
+WindowsManagerNamedPipeClient::instructionPackageQueue(
+    const Manager::ManagerInstructionPackageQueueRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerInstructionPackageQueueSnapshot>(
+              request, context)
+        : failure<Manager::ManagerInstructionPackageQueueSnapshot>(clientError(
               Domain::ErrorCodes::TransportClosed,
               "The manager client transport is unavailable."));
 }

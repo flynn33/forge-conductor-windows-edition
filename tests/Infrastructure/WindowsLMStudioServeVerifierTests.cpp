@@ -163,17 +163,19 @@ public:
                                   : role == Domain::LMStudioConnectorRole::Fallback
                                       ? "forge-conductor-fallback"
                                       : "forge-conductor-clu"},
-                    {"version", "1.2.1"}}}}}};
+                    {"version", "1.3.0"}}}}}};
     Json tools = canonicalTools();
     if (role == Domain::LMStudioConnectorRole::Clu) {
         tools.erase(std::remove_if(
             tools.begin(), tools.end(), [](const Json& descriptor) {
-                return !descriptor.at("name").get<std::string>().starts_with("clu_");
+                const auto name = descriptor.at("name").get<std::string>();
+                return !name.starts_with("clu.") &&
+                    name != "project_policy.read";
             }), tools.end());
     }
     const auto selectedCount = role == Domain::LMStudioConnectorRole::Clu &&
             toolCount == 58U
-        ? 4U
+        ? 5U
         : toolCount;
     require(selectedCount <= tools.size(), "the requested verifier tool subset is invalid");
     while (tools.size() > selectedCount) {
@@ -521,8 +523,8 @@ void testSuccessfulRoleVerificationAndRequestShape()
         authority,
         operationContext(3U)));
     require(clu.role == Domain::LMStudioConnectorRole::Clu && clu.ready &&
-                clu.toolCount == 4U,
-            "the CLU verifier did not enforce the exact four-control surface");
+                clu.toolCount == 5U,
+            "the CLU verifier did not enforce the exact governance surface");
     const auto cluRequest = processes.lastRequest();
     require(cluRequest.has_value() &&
                 environmentValue(*cluRequest, "FORGE_MCP_ROLE") == "clu",

@@ -9,6 +9,22 @@ Closing the GUI detaches the client; it must not cancel a run unless the operato
 The CLI remains a separate native executable with `serve` as the external stdio MCP entry point.
 The session-host adapter is an execution component, not proof that a real provider session exists.
 
+Normal desktop navigation is intentionally limited to Workspace, Rig, Activity, and Settings. Workspace composes
+project/provider identity, an ordered project-scoped instruction queue, optional CLU policy governance, the
+per-project/provider automatic-continuity preference, and readiness. The older wizard and mission entry are not
+separate operating surfaces.
+
+Instruction intake is an inventory pipeline rather than a text-file admission gate. The Manager streams hashes,
+persists revision identities and deterministic entry records, records directories/reparse points/read failures, and
+derives bounded text only when the bytes can be represented safely. Protocol paging uses revision-bound cursors.
+Managed work receives package identities in queue order and a bounded text projection; opaque content is recorded,
+not silently omitted.
+
+CLU is composed through `IProjectPolicyService` as optional, nonblocking development governance. Its state contains
+the bound source/revision, coverage, findings, notification receipts, correction evidence, and redacted history.
+Its MCP role has no continuity operations. Runtime continuity remains owned by the managed-run service and is
+conditionally observed from the explicit `automaticContinuity` request value.
+
 ## Build boundaries
 Retain the current CMake targets for backend libraries, manager, CLI, session host and native tests.
 Add a normal Microsoft WinUI C++/WinRT MSBuild project for XAML compilation and packaging.
@@ -45,10 +61,10 @@ The Mac Swift source is behavioral evidence only. No Swift binaries belong in th
 
 ## Product and package identity
 
-`ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `1.1.44` value; the stable MSIX identity is `ForgeConductor.Windows` with numeric version `1.1.44.0`. The packaged GUI displays its actual installed package version in the navigation footer, operational context, and locally exported diagnostic context. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` compatibility option. Production view state retains stable registry names; isolated profiles derive deterministic per-profile names and validate a saved project ID against the authoritative Manager snapshot before use.
+`ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `1.3.0` value; the stable MSIX identity is `ForgeConductor.Windows` with numeric version `1.3.0.0`. The packaged GUI displays its actual installed package version in the navigation footer, operational context, and locally exported diagnostic context. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` compatibility option. Production view state retains stable registry names; isolated profiles derive deterministic per-profile names and validate a saved project ID against the authoritative Manager snapshot before use.
 
 Terminal managed-run summaries now carry an unkeyed SHA-256 consistency seal over the persisted summary and immutable run/project/client/task identities. The native run store recalculates it on read and reports verified, mismatch, or legacy-unsealed status. This detects accidental or partial alteration, but it is not an authenticity signature against an actor able to rewrite both the record and seal. The exact-project Events & Evidence projection reads this durable store independently of the live run cache and exposes response provenance, token counts, and redacted task/stored-output digests. The local export excludes task and model text. Record integrity and a completed provider response are not task-outcome verification; until an approved native task check is attached and executed, the result is explicitly unverified.
 
 Ordinary startup selects `%LOCALAPPDATA%\Forge Conductor`. The MSIX manifest exempts only that directory from AppData write virtualization through `unvirtualizedResources`, keeping project, settings, memory, and continuity stores outside package-private data that Windows removes on uninstall. A focused manifest contract test rejects a broader exclusion or any different profile path. Central schema versions 3, 5, 6, 7, 8, 9, and 10 are handled explicitly; version 9 receives a guarded, backed-up C010 upgrade and unsupported future versions are refused without mutation. Newly recorded native MCP outcomes retain exact role/deployment provenance; earlier audit rows remain unqualified.
 
-Historical phase records are retained under `docs/implementation/alpha-recovery/`; [Product status](STATUS.md) is authoritative for the 1.0 release.
+Historical phase records are retained under `docs/implementation/alpha-recovery/`; [Product status](STATUS.md) is authoritative for the current release.

@@ -951,7 +951,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.2.1");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.0");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
 
     const auto& listed = responseFor(frames, 2);
@@ -1191,7 +1191,7 @@ void run(
         L"clu",
         L"p14-shared-root-clu"};
     clu.send(handshake);
-    const auto cluObservation = observeRole(clu, 4U);
+    const auto cluObservation = observeRole(clu, 5U);
     REQUIRE(cluObservation.serverName == "forge-conductor-clu");
     std::vector<std::string> cluNames;
     for (const auto& tool : cluObservation.tools) {
@@ -1199,13 +1199,14 @@ void run(
     }
     REQUIRE((cluNames ==
         std::vector<std::string>{
-            "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"}));
-    clu.send(toolRequest(3, "clu_capabilities", Json::object()));
+            "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
+            "project_policy.read"}));
+    clu.send(toolRequest(3, "clu.findings", Json::object()));
     const auto cluFrames = clu.awaitFrames(3U);
     const auto& cluResult = responseFor(cluFrames, 3).at("result");
     REQUIRE(cluResult.at("isError") == false);
-    REQUIRE(cluResult.at("structuredContent").at("task_identity") == "unavailable");
-    REQUIRE(cluResult.at("structuredContent").at("ready") == false);
+    REQUIRE(cluResult.at("structuredContent").at("active") == false);
+    REQUIRE(cluResult.at("structuredContent").at("findings").empty());
     clu.finish(3U);
 
     primary.send(statusRequest(3));

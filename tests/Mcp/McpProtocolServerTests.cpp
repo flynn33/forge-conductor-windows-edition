@@ -621,7 +621,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
                     std::string{Mcp::McpProtocol::SupportedVersions[index]});
         }
         const auto response = parse(session.output.front());
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.2.1");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.0");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"
@@ -653,16 +653,17 @@ void testCluRoleExactInventoryAndDenial(Contracts::IToolCatalog& catalog)
                 Json{{"arguments", Json::object()}, {"name", "fs_read"}})),
             Inbound::json(request(
                 3, "tools/call",
-                Json{{"arguments", Json::object()}, {"name", "clu_capabilities"}})),
+                Json{{"arguments", Json::object()}, {"name", "clu.findings"}})),
         },
         3U);
     REQUIRE(session.result.hasValue());
     const auto tools = parse(session.output[0]).at("result").at("tools");
-    REQUIRE(tools.size() == 4U);
-    REQUIRE(tools[0].at("name") == "clu_cancel");
-    REQUIRE(tools[1].at("name") == "clu_capabilities");
-    REQUIRE(tools[2].at("name") == "clu_start_handoff");
-    REQUIRE(tools[3].at("name") == "clu_status");
+    REQUIRE(tools.size() == 5U);
+    REQUIRE(tools[0].at("name") == "clu.evaluate");
+    REQUIRE(tools[1].at("name") == "clu.export_log");
+    REQUIRE(tools[2].at("name") == "clu.findings");
+    REQUIRE(tools[3].at("name") == "clu.resolve");
+    REQUIRE(tools[4].at("name") == "project_policy.read");
     REQUIRE(parse(session.output[1]).at("result").at("isError") == true);
     REQUIRE(parse(session.output[1]).at("result").at("structuredContent").at("code") ==
             "tool_not_allowed");

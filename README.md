@@ -1,22 +1,21 @@
 # Forge Conductor for Windows
 
-Forge Conductor is a native Windows 11 control application and MCP tool server for project work with local models in LM Studio.
+Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-Version **1.2.1** corrects setup discovery and completes automatic LM Studio plugin deployment. Open **Start here · Guided setup**, choose a folder, and follow preparation → policy → first task on one page. Preparation installs, verifies and synchronizes Primary, Fallback and Continuity plugins before model readiness. See the [release notes](docs/releases/1.2.1.md).
-
-The 1.1 product includes a full WinUI 3 desktop interface, an automatically attached or started per-user Manager process, managed inference and context continuity, project registration, legacy and project memory, 58 native MCP tools, three-role LM Studio deployment, scoped maintenance, and live CPU, RAM, GPU, disk, volume, process, and workflow telemetry.
+Version **1.3.0** replaces the setup wizard and mission-oriented shell with a direct Workspace workflow. Select or register a project, choose its provider profile, queue any number of instruction-package folders, bind optional CLU governance, choose whether automatic continuity is enabled, and work only when the readiness summary is clear. See the [release notes](docs/releases/1.3.0.md).
 
 ## Product surfaces
 
-- **Rig:** live system, model, store, continuity, process, and workflow status with bounded histories and disconnect visibility.
-- **Autonomy:** start, inspect, pause, resume, stop, and reattach managed local-model runs.
-- **Projects:** register authorized folders, manage stable project identities and aliases, and validate/activate checksummed instruction-package folders for new managed runs.
-- **Memory:** search and inspect durable project memory with project isolation.
-- **Tools:** invoke authorized filesystem, search, Git, PowerShell, PDF, project, memory, agent, and continuity tools.
-- **LM Studio plugins:** install, verify, and activate synchronized primary, fallback, and continuity-control registrations. The dedicated `clu` role exposes only `clu_capabilities`, `clu_start_handoff`, `clu_status`, and `clu_cancel`.
-- **Settings:** configure Manager, dashboard, LM Studio, logs, shell, startup, retention, and context thresholds; perform confirmed scoped resets.
+- **Workspace:** project and provider selection, ordered instruction packages, CLU development-policy governance, automatic-continuity preference, and readiness.
+- **Rig:** live system, model, storage, continuity, process, and workflow status with bounded histories and explicit disconnected states.
+- **Activity:** project/run outcomes, governance findings, corrections, notifications, and exported evidence.
+- **Settings:** persistent provider, Manager, logging, shell, startup, retention, context, and scoped-maintenance controls.
 
-Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`. Released schema-9 data is supported in place. The historical `--alpha-root <absolute-path>` option remains as a compatibility alias for disposable isolated profiles.
+Instruction-package intake inventories the selected folder without extension, encoding, file-count, file-size, aggregate-size, depth, or name-based admission limits. Forge Conductor hashes content while streaming, records files, directories, reparse points and read failures, derives bounded text only when safe, and exposes paged content with stable cursors. Packages stay project-scoped and run in the queue order; failed entries can be retried and inactive entries removed.
+
+CLU is a nonblocking governance role, not a continuity controller. Its tools evaluate development evidence, list findings and notifications, accept correction evidence, export a redacted governance log, and read bound policy documents. Automatic continuity remains an independent per-project/provider preference used only by Manager-owned runs.
+
+Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`. Released schema data is migrated in place. The historical `--alpha-root <absolute-path>` option remains available for disposable isolated profiles.
 
 ## Build and verify
 
@@ -29,14 +28,12 @@ Requirements and reproducible commands are in [Build](docs/BUILD.md). The comple
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Create a development-signed validation package with:
+After committing the exact release inputs and rebuilding from that commit, create a development-signed validation package with:
 
 ```powershell
 ./scripts/package.ps1 -DevelopmentSigning
 ```
 
-Production distributions require an explicitly supplied code-signing PFX. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), and [Architecture](docs/ARCHITECTURE.md).
+Production distributions require an explicitly supplied code-signing PFX. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), [Architecture](docs/ARCHITECTURE.md), and [Roadmap](docs/ROADMAP.md).
 
 Historical Alpha plans and evidence remain under `.forge-alpha/` and `docs/implementation/alpha-recovery/`; they are archived delivery records, not the current product definition.
-
-Guided setup includes 42 searchable offline articles and optional policy adoption from GitHub or a local folder. The Manager enforces reviewed write paths and exact commands. Human review remains necessary for prose requirements. See the [user guide](docs/USER-GUIDE.md), [research](docs/SETUP-GOVERNANCE-RESEARCH.md), and [verification record](docs/validation/SETUP-CORRECTION-1.2.1.md).

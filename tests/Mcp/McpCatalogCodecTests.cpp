@@ -66,7 +66,7 @@ void testCanonicalCatalog()
     constexpr std::array<std::string_view, 58U> ExpectedNames{
         "agent_context", "agent_get", "agent_list", "agent_recommend",
         "agent_run_complete", "agent_run_start", "agent_run_status",
-        "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status",
+        "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
         "context_get", "context_list", "continuity.acknowledge_handoff",
         "continuity.checkpoint", "continuity.get_pending_handoff",
         "continuity.prepare_handoff", "continuity.request_rollover",
@@ -129,18 +129,21 @@ void testSourceSchemasAndWindowsDelta()
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
 
-    REQUIRE(schema(tools, "clu_capabilities") == Json({
+    REQUIRE(schema(tools, "clu.findings") == Json({
         {"additionalProperties", false},
         {"properties", Json::object()},
         {"required", Json::array()},
         {"type", "object"}}));
-    const auto cluStart = schema(tools, "clu_start_handoff");
-    REQUIRE(cluStart.at("additionalProperties") == false);
-    REQUIRE(cluStart.at("required") == Json::array({"continuity_id"}));
-    REQUIRE(cluStart.at("properties").at("continuity_id").at("maxLength") == 128U);
-    REQUIRE(cluStart.at("properties").at("idempotency_key").at("maxLength") == 256U);
-    REQUIRE(cluStart.at("properties").at("reason").at("maxLength") == 512U);
-    REQUIRE(schema(tools, "clu_status") == schema(tools, "clu_cancel"));
+    REQUIRE(schema(tools, "clu.export_log") == schema(tools, "clu.findings"));
+    const auto cluEvaluate = schema(tools, "clu.evaluate");
+    REQUIRE(cluEvaluate.at("additionalProperties") == false);
+    REQUIRE(cluEvaluate.at("required") == Json::array({"evidence"}));
+    REQUIRE(cluEvaluate.at("properties").at("evidence").at("type") == "object");
+    const auto cluResolve = schema(tools, "clu.resolve");
+    REQUIRE(cluResolve.at("additionalProperties") == false);
+    REQUIRE(cluResolve.at("required") ==
+        Json::array({"finding_id", "correction_evidence"}));
+    REQUIRE(cluResolve.at("properties").at("finding_id").at("maxLength") == 128U);
 
     const auto agentList = schema(tools, "agent_list");
     REQUIRE(agentList == Json({

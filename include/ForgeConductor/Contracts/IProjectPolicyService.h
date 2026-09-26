@@ -1,6 +1,8 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/IProjectPolicyGate.h"
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -8,14 +10,18 @@ namespace ForgeConductor::Contracts {
 
 struct PolicySourceFile final {
     std::string path;
-    std::string content;
+    std::string kind{"file"};
+    std::uint64_t byteLength{};
+    std::optional<std::string> contentHash;
+    std::optional<std::string> content;
+    std::string interpretation{"opaque"};
+    std::optional<std::string> coverageDetail;
 };
 
 struct PolicySourceBundle final {
     std::string source;
     std::string commit;
     std::vector<PolicySourceFile> files;
-    std::vector<std::string> excludedFiles;
 };
 
 class IPolicySourceReader {
@@ -25,17 +31,27 @@ public:
         const std::string& source, const Domain::OperationContext&) noexcept = 0;
 };
 
-enum class ProjectPolicyAction { Inspect, Preview, Adopt, Review, ReadDocument };
+enum class ProjectPolicyAction {
+    Inspect,
+    Bind,
+    Refresh,
+    ReadDocument,
+    ListFindings,
+    Evaluate,
+    Resolve,
+    ExportLog
+};
 
 struct ProjectPolicyRequest final {
     Domain::ProjectId projectId;
     ProjectPolicyAction action{ProjectPolicyAction::Inspect};
-    // Preview: local folder or public GitHub repository URL. ReadDocument: exact
-    // path in the adopted snapshot. Other actions leave source empty.
+    // Bind: local folder or remote repository URL. ReadDocument: exact path in
+    // the bound immutable revision. Other actions leave source empty.
     std::string source;
     std::string expectedRevision;
-    // Review is an explicit user-authored review record, never model output.
-    std::string reviewJson;
+    // Action-specific canonical JSON: page window, evaluation evidence,
+    // resolution evidence, or export options.
+    std::string detailsJson;
 };
 
 class IProjectPolicyService : public IProjectPolicyGate {

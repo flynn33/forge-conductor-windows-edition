@@ -8,9 +8,11 @@
 #define NOMINMAX
 #endif
 #include <Windows.h>
+#include <bcrypt.h>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cctype>
 #include <condition_variable>
@@ -18,6 +20,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -132,7 +135,12 @@ template <typename T>
 
 struct InstructionPackageFile final {
     std::string relativePath;
-    std::string content;
+    std::string kind;
+    std::uint64_t byteLength{};
+    std::optional<Domain::Sha256Digest> contentHash;
+    std::string interpretation;
+    std::optional<std::string> coverageDetail;
+    std::optional<std::string> derivedText;
 };
 
 struct ScannedInstructionPackage final {
@@ -140,7 +148,7 @@ struct ScannedInstructionPackage final {
     Domain::PathText path;
     Domain::Sha256Digest revision;
     std::vector<InstructionPackageFile> files;
-    std::size_t ignoredFileCount{};
+    std::size_t coverageGapCount{};
     std::uint64_t contentBytes{};
 };
 
@@ -183,23 +191,156 @@ struct ScannedInstructionPackage final {
     return result;
 }
 
-[[nodiscard]] bool supportedInstructionExtension(std::string extension)
-{
-    std::transform(
-        extension.begin(), extension.end(), extension.begin(),
-        [](const unsigned char character) {
-            return static_cast<char>(std::tolower(character));
-        });
-    return extension == ".md" || extension == ".txt" ||
-        extension == ".json" || extension == ".yaml" ||
-        extension == ".yml" || extension == ".toml" ||
-        extension == ".csv";
-}
-
 [[nodiscard]] std::span<const std::byte> byteView(
     const std::string& value) noexcept
 {
     return std::as_bytes(std::span{value.data(), value.size()});
+}
+
+[[nodiscard]] std::string hexDigest(
+    const std::array<unsigned char, 32U>& bytes)
+{
+    constexpr char Hex[] = "0123456789abcdef";
+    std::string result(64U, '0');
+    for (std::size_t index{}; index < bytes.size(); ++index) {
+        result[index * 2U] = Hex[bytes[index] >> 4U];
+        result[index * 2U + 1U] = Hex[bytes[index] & 0x0fU];
+    }
+    return result;
+}
+
+struct StreamedFile final {
+    std::optional<Domain::Sha256Digest> digest;
+    std::optional<std::string> derivedText;
+    std::string interpretation{"opaque"};
+    std::optional<std::string> coverageDetail;
+};
+
+[[nodiscard]] StreamedFile streamInstructionFile(
+    const std::filesystem::path& path,
+    const std::uint64_t expectedBytes,
+    const Domain::OperationContext& context)
+{
+    constexpr std::size_t BufferBytes = 64U * 1024U;
+    constexpr std::uint64_t MaximumDerivedTextBytes = 128U * 1024U;
+    BCRYPT_ALG_HANDLE algorithm{};
+    BCRYPT_HASH_HANDLE hash{};
+    std::vector<unsigned char> object;
+    auto close = [&]() noexcept {
+        if (hash != nullptr) static_cast<void>(::BCryptDestroyHash(hash));
+        if (algorithm != nullptr) {
+            static_cast<void>(::BCryptCloseAlgorithmProvider(algorithm, 0));
+        }
+    };
+    try {
+        if (::BCryptOpenAlgorithmProvider(
+                &algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0) {
+            close();
+            return {{}, {}, "unavailable", "SHA-256 provider unavailable"};
+        }
+        ULONG objectBytes{};
+        ULONG returned{};
+        if (::BCryptGetProperty(
+                algorithm, BCRYPT_OBJECT_LENGTH,
+                reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes),
+                &returned, 0) < 0 || returned != sizeof(objectBytes)) {
+            close();
+            return {{}, {}, "unavailable", "SHA-256 state unavailable"};
+        }
+        object.resize(objectBytes);
+        if (::BCryptCreateHash(
+                algorithm, &hash, object.data(), objectBytes,
+                nullptr, 0, 0) < 0) {
+            close();
+            return {{}, {}, "unavailable", "SHA-256 state could not be created"};
+        }
+        std::ifstream input{path, std::ios::binary};
+        if (!input) {
+            close();
+            return {{}, {}, "unavailable", "Entry could not be opened"};
+        }
+        std::array<char, BufferBytes> buffer{};
+        std::string derived;
+        if (expectedBytes <= MaximumDerivedTextBytes) {
+            derived.reserve(static_cast<std::size_t>(expectedBytes));
+        }
+        std::uint64_t observed{};
+        while (input) {
+            if (context.cancellation.stop_requested()) {
+                close();
+                throw std::runtime_error{"Instruction package ingestion was cancelled."};
+            }
+            input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+            const auto count = input.gcount();
+            if (count <= 0) break;
+            if (::BCryptHashData(
+                    hash, reinterpret_cast<PUCHAR>(buffer.data()),
+                    static_cast<ULONG>(count), 0) < 0) {
+                close();
+                return {{}, {}, "unavailable", "Entry hashing failed"};
+            }
+            observed += static_cast<std::uint64_t>(count);
+            if (expectedBytes <= MaximumDerivedTextBytes) {
+                derived.append(buffer.data(), static_cast<std::size_t>(count));
+            }
+        }
+        if (input.bad()) {
+            close();
+            return {{}, {}, "unavailable", "Entry read failed"};
+        }
+        if (observed != expectedBytes) {
+            close();
+            return {{}, {}, "changed_during_read", "Entry length changed during ingestion"};
+        }
+        std::array<unsigned char, 32U> digestBytes{};
+        if (::BCryptFinishHash(
+                hash, digestBytes.data(),
+                static_cast<ULONG>(digestBytes.size()), 0) < 0) {
+            close();
+            return {{}, {}, "unavailable", "Entry hashing could not finish"};
+        }
+        close();
+        auto digest = Domain::Sha256Digest::parse(hexDigest(digestBytes));
+        if (!digest) {
+            return {{}, {}, "unavailable", "Entry hash was invalid"};
+        }
+        if (expectedBytes <= MaximumDerivedTextBytes &&
+            derived.find('\0') == std::string::npos &&
+            Domain::isValidUtf8(derived)) {
+            if (derived.starts_with("\xEF\xBB\xBF")) derived.erase(0U, 3U);
+            return {std::move(digest).value(), std::move(derived),
+                "interpreted", std::nullopt};
+        }
+        return {std::move(digest).value(), {}, "opaque",
+            "Original bytes retained at the authorized source; no text representation was derived"};
+    } catch (...) {
+        close();
+        throw;
+    }
+}
+
+[[nodiscard]] std::string base64Encode(
+    const std::span<const std::byte> input)
+{
+    constexpr char Alphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string output;
+    output.reserve(((input.size() + 2U) / 3U) * 4U);
+    for (std::size_t index{}; index < input.size(); index += 3U) {
+        const auto first = std::to_integer<unsigned int>(input[index]);
+        const auto second = index + 1U < input.size()
+            ? std::to_integer<unsigned int>(input[index + 1U]) : 0U;
+        const auto third = index + 2U < input.size()
+            ? std::to_integer<unsigned int>(input[index + 2U]) : 0U;
+        const auto value = (first << 16U) | (second << 8U) | third;
+        output.push_back(Alphabet[(value >> 18U) & 0x3fU]);
+        output.push_back(Alphabet[(value >> 12U) & 0x3fU]);
+        output.push_back(index + 1U < input.size()
+            ? Alphabet[(value >> 6U) & 0x3fU] : '=');
+        output.push_back(index + 2U < input.size()
+            ? Alphabet[value & 0x3fU] : '=');
+    }
+    return output;
 }
 
 } // namespace
@@ -861,9 +1002,6 @@ private:
         const ManagerInstructionPackageRequest& request,
         const Domain::OperationContext& context)
     {
-        constexpr std::size_t maximumFiles = 32U;
-        constexpr std::uint64_t maximumContentBytes = 212U * 1024U;
-        constexpr std::uint64_t maximumFileBytes = 256U * 1024U;
         if (telemetrySources_.projects == nullptr ||
             telemetrySources_.projectMemory == nullptr ||
             telemetrySources_.evidenceHasher == nullptr) {
@@ -893,11 +1031,10 @@ private:
                     "Choose an existing instruction package folder."));
             }
             const auto rootAttributes = ::GetFileAttributesW(canonicalRoot.c_str());
-            if (rootAttributes == INVALID_FILE_ATTRIBUTES ||
-                (rootAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+            if (rootAttributes == INVALID_FILE_ATTRIBUTES) {
                 return Domain::Result<ScannedInstructionPackage>::failure(error(
                     Domain::ErrorCodes::Unauthorized,
-                    "Instruction package roots cannot be links or reparse points."));
+                    "The selected instruction package root is unavailable."));
             }
 
             ScannedInstructionPackage scanned{
@@ -905,121 +1042,130 @@ private:
                 request.packagePath,
                 Domain::Sha256Digest::parse(std::string(64U, '0')).value(),
                 {}, 0U, 0U};
-            std::vector<std::filesystem::path> candidates;
-            for (std::filesystem::recursive_directory_iterator iterator{
-                     canonicalRoot,
-                     std::filesystem::directory_options::skip_permission_denied,
-                     pathError}, end;
-                 iterator != end; iterator.increment(pathError)) {
-                if (pathError) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::Unauthorized,
-                        "The Manager could not enumerate the complete instruction package."));
-                }
+            std::filesystem::recursive_directory_iterator iterator{
+                canonicalRoot,
+                std::filesystem::directory_options::skip_permission_denied,
+                pathError};
+            const std::filesystem::recursive_directory_iterator end;
+            if (pathError) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::Unauthorized,
+                    "The Manager could not begin instruction package enumeration."));
+            }
+            std::size_t enumerationErrors{};
+            while (iterator != end) {
                 if (context.cancellation.stop_requested()) {
                     return Domain::Result<ScannedInstructionPackage>::failure(error(
                         Domain::ErrorCodes::Cancelled,
-                        "Instruction package validation was cancelled."));
+                        "Instruction package ingestion was cancelled."));
                 }
-                const auto attributes = ::GetFileAttributesW(iterator->path().c_str());
-                if (attributes == INVALID_FILE_ATTRIBUTES) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::Unauthorized,
-                        "The Manager could not inspect an instruction package entry."));
-                }
-                if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::Unauthorized,
-                        "Instruction packages cannot contain links or reparse points."));
-                }
-                if (!iterator->is_regular_file(pathError)) {
-                    if (pathError) {
-                        return Domain::Result<ScannedInstructionPackage>::failure(error(
-                            Domain::ErrorCodes::Unauthorized,
-                            "The Manager could not inspect an instruction package file."));
-                    }
-                    continue;
-                }
-                if (!supportedInstructionExtension(
-                        pathUtf8(iterator->path().extension()))) {
-                    ++scanned.ignoredFileCount;
-                    continue;
-                }
-                candidates.push_back(iterator->path());
-            }
-            std::sort(candidates.begin(), candidates.end(),
-                [&](const auto& left, const auto& right) {
-                    return pathUtf8(std::filesystem::relative(left, canonicalRoot)) <
-                        pathUtf8(std::filesystem::relative(right, canonicalRoot));
-                });
-            if (candidates.empty()) {
-                return Domain::Result<ScannedInstructionPackage>::failure(error(
-                    Domain::ErrorCodes::InvalidRequest,
-                    "The folder contains no supported instruction files."));
-            }
-            if (candidates.size() > maximumFiles) {
-                return Domain::Result<ScannedInstructionPackage>::failure(error(
-                    Domain::ErrorCodes::PayloadTooLarge,
-                    "Instruction packages can contain at most 32 supported text files."));
-            }
-
-            std::string digestInput{"forge-instruction-package-v1\n"};
-            scanned.files.reserve(candidates.size());
-            for (const auto& candidate : candidates) {
-                const auto relative = pathUtf8(
+                const auto candidate = iterator->path();
+                auto relative = pathUtf8(
                     std::filesystem::relative(candidate, canonicalRoot, pathError));
-                if (pathError || relative.empty() || relative.size() > 512U) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::InvalidRequest,
-                        "An instruction package relative path is invalid or too long."));
+                if (pathError || relative.empty()) {
+                    pathError.clear();
+                    relative = "@unavailable-entry-" +
+                        std::to_string(scanned.files.size());
                 }
-                const auto size = std::filesystem::file_size(candidate, pathError);
-                if (pathError || size > maximumFileBytes ||
-                    scanned.contentBytes > maximumContentBytes - size) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::PayloadTooLarge,
-                        "Instruction package text exceeds the bounded 212 KiB package limit or 256 KiB file limit."));
+                const auto attributes = ::GetFileAttributesW(candidate.c_str());
+                if (attributes == INVALID_FILE_ATTRIBUTES) {
+                    scanned.files.push_back(InstructionPackageFile{
+                        std::move(relative), "other", 0U, std::nullopt,
+                        "unavailable", "Entry attributes are unavailable", {}});
+                    ++scanned.coverageGapCount;
+                } else if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U) {
+                    if ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+                        iterator.disable_recursion_pending();
+                    }
+                    scanned.files.push_back(InstructionPackageFile{
+                        std::move(relative), "reparse_point", 0U, std::nullopt,
+                        "opaque", "Reparse point recorded without traversal", {}});
+                    ++scanned.coverageGapCount;
+                } else if ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+                    scanned.files.push_back(InstructionPackageFile{
+                        std::move(relative), "directory", 0U, std::nullopt,
+                        "interpreted", {}, {}});
+                } else if ((attributes & FILE_ATTRIBUTE_DEVICE) != 0U) {
+                    scanned.files.push_back(InstructionPackageFile{
+                        std::move(relative), "other", 0U, std::nullopt,
+                        "opaque", "Non-file entry recorded without reading", {}});
+                    ++scanned.coverageGapCount;
+                } else {
+                    const auto size = std::filesystem::file_size(candidate, pathError);
+                    if (pathError) {
+                        pathError.clear();
+                        scanned.files.push_back(InstructionPackageFile{
+                            std::move(relative), "file", 0U, std::nullopt,
+                            "unavailable", "Entry length is unavailable", {}});
+                        ++scanned.coverageGapCount;
+                    } else {
+                        auto streamed = streamInstructionFile(
+                            candidate, size, context);
+                        if (scanned.contentBytes <=
+                            (std::numeric_limits<std::uint64_t>::max)() - size) {
+                            scanned.contentBytes += size;
+                        } else {
+                            scanned.contentBytes =
+                                (std::numeric_limits<std::uint64_t>::max)();
+                        }
+                        if (streamed.interpretation != "interpreted") {
+                            ++scanned.coverageGapCount;
+                        }
+                        scanned.files.push_back(InstructionPackageFile{
+                            std::move(relative), "file", size,
+                            std::move(streamed.digest),
+                            std::move(streamed.interpretation),
+                            std::move(streamed.coverageDetail),
+                            std::move(streamed.derivedText)});
+                    }
                 }
-                std::ifstream input{candidate, std::ios::binary};
-                if (!input) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::Unauthorized,
-                        "The Manager could not read an instruction package file."));
+                iterator.increment(pathError);
+                if (pathError) {
+                    scanned.files.push_back(InstructionPackageFile{
+                        "@enumeration-error-" + std::to_string(enumerationErrors++),
+                        "other", 0U, std::nullopt, "unavailable",
+                        "An entry could not be enumerated; unrelated entries remain available", {}});
+                    ++scanned.coverageGapCount;
+                    pathError.clear();
                 }
-                std::string content(
-                    static_cast<std::size_t>(size), '\0');
-                input.read(content.data(), static_cast<std::streamsize>(content.size()));
-                if (!input && static_cast<std::size_t>(input.gcount()) != content.size()) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::IntegrityFailure,
-                        "An instruction package file changed while it was being read."));
-                }
-                if (content.starts_with("\xEF\xBB\xBF")) content.erase(0U, 3U);
-                if (content.find('\0') != std::string::npos ||
-                    !Domain::isValidUtf8(content)) {
-                    return Domain::Result<ScannedInstructionPackage>::failure(error(
-                        Domain::ErrorCodes::InvalidRequest,
-                        "Instruction package files must be valid UTF-8 text without NUL bytes."));
-                }
-                scanned.contentBytes += content.size();
-                digestInput += relative + "\n" +
-                    std::to_string(content.size()) + "\n" + content + "\n";
-                scanned.files.push_back(
-                    InstructionPackageFile{relative, std::move(content)});
             }
+            std::sort(scanned.files.begin(), scanned.files.end(),
+                [](const auto& left, const auto& right) {
+                    return left.relativePath < right.relativePath;
+                });
+
             auto revision = telemetrySources_.evidenceHasher->sha256(
-                byteView(digestInput));
+                byteView(std::string{"forge-instruction-package-v2\n"}));
             if (!revision) {
                 return Domain::Result<ScannedInstructionPackage>::failure(
                     std::move(revision).error());
             }
+            for (const auto& entry : scanned.files) {
+                const std::string material = revision.value().value() + "\n" +
+                    entry.relativePath + "\n" + entry.kind + "\n" +
+                    std::to_string(entry.byteLength) + "\n" +
+                    (entry.contentHash ? entry.contentHash->value() : "-") + "\n" +
+                    entry.interpretation + "\n";
+                revision = telemetrySources_.evidenceHasher->sha256(
+                    byteView(material));
+                if (!revision) {
+                    return Domain::Result<ScannedInstructionPackage>::failure(
+                        std::move(revision).error());
+                }
+            }
             scanned.revision = std::move(revision).value();
             return Domain::Result<ScannedInstructionPackage>::success(
                 std::move(scanned));
-        } catch (const std::exception&) {
+        } catch (const std::exception& failure) {
+            if (std::string_view{failure.what()}.find("cancelled") !=
+                std::string_view::npos) {
+                return Domain::Result<ScannedInstructionPackage>::failure(error(
+                    Domain::ErrorCodes::Cancelled,
+                    "Instruction package ingestion was cancelled."));
+            }
             return Domain::Result<ScannedInstructionPackage>::failure(error(
                 Domain::ErrorCodes::InvalidRequest,
-                "The Manager could not validate the selected instruction package folder."));
+                "The Manager could not inventory the selected instruction package folder."));
         }
     }
 
@@ -1050,75 +1196,156 @@ private:
                 Domain::ErrorCodes::Conflict,
                 "The instruction package changed after validation. Validate the folder again."));
         }
+        auto packageIdentity = telemetrySources_.evidenceHasher->sha256(
+            byteView(std::string{"package-root\n"} + request.projectId.value() +
+                "\n" + scanned.path.value()));
+        if (!packageIdentity) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                std::move(packageIdentity).error());
+        }
+        const auto packageId = packageIdentity.value().value();
+        auto rowIdentity = telemetrySources_.evidenceHasher->sha256(
+            byteView(std::string{"package-row\n"} + request.projectId.value() +
+                "\n" + packageId + "\n" + scanned.revision.value()));
+        if (!rowIdentity) {
+            return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                std::move(rowIdentity).error());
+        }
+        const auto queueRowId = "queue-" +
+            rowIdentity.value().value().substr(0U, 32U);
         std::vector<std::string> fileNames;
-        fileNames.reserve(scanned.files.size());
-        for (const auto& file : scanned.files) fileNames.push_back(file.relativePath);
+        constexpr std::size_t SnapshotEntryCount = 100U;
+        fileNames.reserve((std::min)(scanned.files.size(), SnapshotEntryCount));
+        for (std::size_t index{};
+             index < scanned.files.size() && index < SnapshotEntryCount;
+             ++index) {
+            fileNames.push_back(scanned.files[index].relativePath);
+        }
         std::optional<Domain::MemoryRecordId> manifestRecordId;
+        std::uint64_t queueOrder{};
         if (request.activate) {
-            std::vector<Domain::ProjectMemoryWrite> writes;
-            writes.reserve(scanned.files.size());
             const auto revisionTag = "revision-" +
                 scanned.revision.value().substr(0U, 16U);
-            for (std::size_t index{}; index < scanned.files.size(); ++index) {
-                const auto& file = scanned.files[index];
-                auto idempotency = Domain::IdempotencyKey::create(
-                    "instruction-file:" + scanned.revision.value() + ":" +
-                    std::to_string(index));
-                if (!idempotency) {
-                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
-                        std::move(idempotency).error());
+            constexpr std::size_t PersistencePageEntries = 5U;
+            for (std::size_t begin{}; begin < scanned.files.size();
+                 begin += PersistencePageEntries) {
+                std::vector<Domain::ProjectMemoryWrite> writes;
+                const auto count = (std::min)(
+                    PersistencePageEntries, scanned.files.size() - begin);
+                writes.reserve(count);
+                for (std::size_t offset{}; offset < count; ++offset) {
+                    const auto index = begin + offset;
+                    const auto& entry = scanned.files[index];
+                    nlohmann::json entryJson{
+                        {"schema", "forge-instruction-package-entry-v2"},
+                        {"package_id", packageId},
+                        {"queue_row_id", queueRowId},
+                        {"revision", scanned.revision.value()},
+                        {"relative_path", entry.relativePath},
+                        {"kind", entry.kind},
+                        {"byte_length", entry.byteLength},
+                        {"content_hash", entry.contentHash
+                            ? nlohmann::json(entry.contentHash->value())
+                            : nlohmann::json(nullptr)},
+                        {"interpretation", entry.interpretation},
+                        {"coverage_detail", entry.coverageDetail
+                            ? nlohmann::json(*entry.coverageDetail)
+                            : nlohmann::json(nullptr)},
+                        {"derived_text", entry.derivedText
+                            ? nlohmann::json(*entry.derivedText)
+                            : nlohmann::json(nullptr)}};
+                    auto idempotency = Domain::IdempotencyKey::create(
+                        "instruction-entry:" + scanned.revision.value() + ":" +
+                        std::to_string(index));
+                    if (!idempotency) {
+                        return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                            std::move(idempotency).error());
+                    }
+                    Domain::ProjectMemoryWrite write;
+                    write.kind = "instruction_package_entry";
+                    write.title = entry.relativePath.size() <= 512U
+                        ? entry.relativePath
+                        : "Package entry " + std::to_string(index);
+                    write.summary = packageId + " · " + entry.kind + " · " +
+                        entry.interpretation + " · " +
+                        std::to_string(entry.byteLength) + " bytes";
+                    write.body = entryJson.dump();
+                    write.tags = {"instruction-package-entry", revisionTag};
+                    write.importance = 1.0;
+                    write.confidence = entry.interpretation == "interpreted" ? 1.0 : 0.0;
+                    write.sourceKind = "manager_instruction_package";
+                    write.sourceReference = packageId + ":" +
+                        std::to_string(index);
+                    write.idempotencyKey = std::move(idempotency).value();
+                    writes.push_back(std::move(write));
                 }
-                Domain::ProjectMemoryWrite write;
-                write.kind = "project_instruction";
-                write.title = file.relativePath;
-                write.summary = "Instruction package " + scanned.name +
-                    " · revision " + scanned.revision.value().substr(0U, 16U);
-                write.body = file.content;
-                write.tags = {"instruction-package", revisionTag};
-                write.importance = 1.0;
-                write.confidence = 1.0;
-                write.sourceKind = "manager_instruction_package";
-                write.sourceReference = file.relativePath;
-                write.idempotencyKey = std::move(idempotency).value();
-                writes.push_back(std::move(write));
+                auto remembered = telemetrySources_.projectMemory->rememberBatch(
+                    Domain::RememberProjectMemoryBatchRequest{
+                        request.projectId, std::move(writes)},
+                    context);
+                if (!remembered) {
+                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                        std::move(remembered).error());
+                }
             }
-            auto remembered = telemetrySources_.projectMemory->rememberBatch(
-                Domain::RememberProjectMemoryBatchRequest{
-                    request.projectId, std::move(writes)},
-                context);
-            if (!remembered) {
-                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
-                    std::move(remembered).error());
-            }
+
+            std::optional<std::string> pageCursor;
+            do {
+                auto queuePage = telemetrySources_.projectMemory->listRecent(
+                    Domain::ListRecentProjectMemoryRequest{
+                        request.projectId, {"instruction_package_queue"},
+                        std::nullopt, 100U, pageCursor, true, 256U * 1024U},
+                    context);
+                if (!queuePage) {
+                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                        std::move(queuePage).error());
+                }
+                for (const auto& hit : queuePage.value().records) {
+                    if (!hit.record.body) continue;
+                    try {
+                        const auto row = nlohmann::json::parse(*hit.record.body);
+                        queueOrder = (std::max)(
+                            queueOrder, row.value("order", std::uint64_t{}));
+                    } catch (...) {
+                    }
+                }
+                pageCursor = queuePage.value().nextCursor;
+            } while (pageCursor);
+            queueOrder = queueOrder >
+                    (std::numeric_limits<std::uint64_t>::max)() - 1024U
+                ? queueOrder
+                : queueOrder + 1024U;
             nlohmann::json manifest{
-                {"schema", "forge-instruction-package-v1"},
+                {"schema", "forge-instruction-package-queue-v2"},
+                {"project_id", request.projectId.value()},
+                {"queue_row_id", queueRowId},
+                {"package_id", packageId},
                 {"package_name", scanned.name},
                 {"package_path", scanned.path.value()},
                 {"revision", scanned.revision.value()},
+                {"order", queueOrder},
+                {"state", "ready"},
+                {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}},
+                {"entry_count", scanned.files.size()},
                 {"content_bytes", scanned.contentBytes},
-                {"files", nlohmann::json::array()}};
+                {"coverage_gap_count", scanned.coverageGapCount},
+                {"attempts", 1U},
+                {"last_error", nullptr}};
             Domain::ProjectMemoryWrite manifestWrite;
-            manifestWrite.kind = "instruction_package";
+            manifestWrite.kind = "instruction_package_queue";
             manifestWrite.title = scanned.name;
             manifestWrite.summary = std::to_string(scanned.files.size()) +
-                " files · " + std::to_string(scanned.contentBytes) +
-                " bytes · SHA-256 " + scanned.revision.value();
-            for (std::size_t index{};
-                 index < remembered.value().results.size(); ++index) {
-                const auto& outcome = remembered.value().results[index];
-                manifest["files"].push_back({
-                    {"path", scanned.files[index].relativePath},
-                    {"record_id", outcome.recordId.value()}});
-                manifestWrite.relatedIds.push_back(outcome.recordId);
-            }
+                " entries · " + std::to_string(scanned.contentBytes) +
+                " bytes · " + std::to_string(scanned.coverageGapCount) +
+                " coverage gaps · SHA-256 " + scanned.revision.value();
             manifestWrite.body = manifest.dump();
-            manifestWrite.tags = {"active-instructions", revisionTag};
+            manifestWrite.tags = {"instruction-package-queue", revisionTag};
             manifestWrite.importance = 1.0;
             manifestWrite.confidence = 1.0;
             manifestWrite.sourceKind = "manager_instruction_package";
             manifestWrite.sourceReference = scanned.path.value();
             auto manifestKey = Domain::IdempotencyKey::create(
-                "instruction-manifest:" + scanned.revision.value());
+                "instruction-queue:" + queueRowId);
             if (!manifestKey) {
                 return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
                     std::move(manifestKey).error());
@@ -1141,11 +1368,585 @@ private:
                 std::move(scanned.path),
                 std::move(scanned.revision),
                 scanned.files.size(),
-                scanned.ignoredFileCount,
+                0U,
                 scanned.contentBytes,
                 std::move(fileNames),
                 request.activate,
-                std::move(manifestRecordId)});
+                std::move(manifestRecordId),
+                queueRowId,
+                queueOrder,
+                scanned.coverageGapCount,
+                scanned.files.size() > SnapshotEntryCount
+                    ? std::optional<std::string>{std::to_string(SnapshotEntryCount)}
+                    : std::nullopt,
+                scanned.files.size() > SnapshotEntryCount});
+    }
+
+    struct StoredPackageQueueRow final {
+        Domain::ProjectMemoryRecord record;
+        ManagerInstructionPackageQueueRowSnapshot snapshot;
+    };
+
+    [[nodiscard]] Domain::Result<std::vector<StoredPackageQueueRow>>
+    packageQueueRows(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context)
+    {
+        std::vector<StoredPackageQueueRow> rows;
+        std::optional<std::string> cursor;
+        do {
+            auto page = telemetrySources_.projectMemory->listRecent(
+                Domain::ListRecentProjectMemoryRequest{
+                    projectId, {"instruction_package_queue"}, std::nullopt,
+                    100U, cursor, true, 256U * 1024U},
+                context);
+            if (!page) {
+                return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                    std::move(page).error());
+            }
+            try {
+                for (auto& hit : page.value().records) {
+                    auto& record = hit.record;
+                    if (!record.body) continue;
+                    const auto value = nlohmann::json::parse(*record.body);
+                    if (value.value("schema", std::string{}) !=
+                        "forge-instruction-package-queue-v2" ||
+                        value.value("project_id", std::string{}) !=
+                            projectId.value()) {
+                        continue;
+                    }
+                    auto path = Domain::PathText::create(
+                        value.at("package_path").get<std::string>());
+                    auto revision = Domain::Sha256Digest::parse(
+                        value.at("revision").get<std::string>());
+                    if (!path || !revision) {
+                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                            error(Domain::ErrorCodes::IntegrityFailure,
+                                "A persisted instruction package queue row is malformed."));
+                    }
+                    const auto& savedCursor = value.at("cursor");
+                    rows.push_back(StoredPackageQueueRow{
+                        std::move(record),
+                        ManagerInstructionPackageQueueRowSnapshot{
+                            value.at("queue_row_id").get<std::string>(),
+                            value.at("package_id").get<std::string>(),
+                            value.at("package_name").get<std::string>(),
+                            std::move(path).value(),
+                            std::move(revision).value(),
+                            value.value("order", std::uint64_t{}),
+                            value.value("state", std::string{"needs_attention"}),
+                            value.value("entry_count", std::uint64_t{}),
+                            value.value("content_bytes", std::uint64_t{}),
+                            value.value("coverage_gap_count", std::uint64_t{}),
+                            savedCursor.value("entry", std::uint64_t{}),
+                            savedCursor.value("byte_offset", std::uint64_t{}),
+                            value.contains("last_error") &&
+                                    !value.at("last_error").is_null()
+                                ? std::optional<std::string>{
+                                    value.at("last_error").get<std::string>()}
+                                : std::nullopt}});
+                }
+            } catch (...) {
+                return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                    error(Domain::ErrorCodes::IntegrityFailure,
+                        "The persisted instruction package queue failed validation."));
+            }
+            cursor = page.value().nextCursor;
+        } while (cursor);
+
+        if (rows.empty()) {
+            auto legacyPage = telemetrySources_.projectMemory->listRecent(
+                Domain::ListRecentProjectMemoryRequest{
+                    projectId, {"instruction_package"}, std::nullopt,
+                    100U, std::nullopt, true, 256U * 1024U}, context);
+            if (!legacyPage) {
+                return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                    std::move(legacyPage).error());
+            }
+            for (const auto& legacyHit : legacyPage.value().records) {
+                if (!legacyHit.record.body) continue;
+                try {
+                    const auto legacy = nlohmann::json::parse(*legacyHit.record.body);
+                    if (legacy.value("schema", std::string{}) !=
+                        "forge-instruction-package-v1") continue;
+                    const auto revisionText = legacy.at("revision").get<std::string>();
+                    auto revision = Domain::Sha256Digest::parse(revisionText);
+                    auto path = Domain::PathText::create(
+                        legacy.at("package_path").get<std::string>());
+                    if (!revision || !path || !legacy.at("files").is_array()) continue;
+                    auto packageIdentity = telemetrySources_.evidenceHasher->sha256(
+                        byteView(std::string{"package-root\n"} + projectId.value() +
+                            "\n" + path.value().value()));
+                    if (!packageIdentity) {
+                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                            std::move(packageIdentity).error());
+                    }
+                    const auto packageId = packageIdentity.value().value();
+                    auto rowIdentity = telemetrySources_.evidenceHasher->sha256(
+                        byteView(std::string{"package-row\n"} + projectId.value() +
+                            "\n" + packageId + "\n" + revisionText));
+                    if (!rowIdentity) {
+                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                            std::move(rowIdentity).error());
+                    }
+                    const auto rowId = "queue-" +
+                        rowIdentity.value().value().substr(0U, 32U);
+                    std::vector<Domain::MemoryRecordId> legacyIds;
+                    for (const auto& file : legacy.at("files")) {
+                        auto id = Domain::MemoryRecordId::parse(
+                            file.at("record_id").get<std::string>());
+                        if (!id) continue;
+                        legacyIds.push_back(std::move(id).value());
+                    }
+                    auto legacyRecords = telemetrySources_.projectMemory->get(
+                        Domain::GetProjectMemoryRequest{
+                            projectId, std::move(legacyIds), true,
+                            256U * 1024U}, context);
+                    if (!legacyRecords) {
+                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                            std::move(legacyRecords).error());
+                    }
+                    std::map<std::string, const Domain::ProjectMemoryRecord*> byId;
+                    for (const auto& record : legacyRecords.value().records) {
+                        byId.emplace(record.id.value(), &record);
+                    }
+                    std::vector<Domain::ProjectMemoryWrite> entryWrites;
+                    std::uint64_t contentBytes{};
+                    std::size_t fileIndex{};
+                    for (const auto& file : legacy.at("files")) {
+                        const auto recordId = file.at("record_id").get<std::string>();
+                        const auto found = byId.find(recordId);
+                        const auto body = found != byId.end() && found->second->body
+                            ? *found->second->body : std::string{};
+                        auto contentHash = telemetrySources_.evidenceHasher->sha256(
+                            byteView(body));
+                        if (!contentHash) {
+                            return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                                std::move(contentHash).error());
+                        }
+                        const auto relative = file.at("path").get<std::string>();
+                        nlohmann::json entry{{"schema", "forge-instruction-package-entry-v2"},
+                            {"package_id", packageId}, {"queue_row_id", rowId},
+                            {"revision", revisionText}, {"relative_path", relative},
+                            {"kind", "file"}, {"byte_length", body.size()},
+                            {"content_hash", contentHash.value().value()},
+                            {"interpretation", "interpreted"},
+                            {"coverage_detail", "Migrated from the active single-manifest format."},
+                            {"derived_text", body},
+                            {"legacy_record_id", recordId}};
+                        auto key = Domain::IdempotencyKey::create(
+                            "instruction-entry:" + revisionText + ":" +
+                            std::to_string(fileIndex++));
+                        if (!key) {
+                            return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                                std::move(key).error());
+                        }
+                        Domain::ProjectMemoryWrite write;
+                        write.kind = "instruction_package_entry";
+                        write.title = relative;
+                        write.summary = packageId + " · migrated · " +
+                            std::to_string(body.size()) + " bytes";
+                        write.body = entry.dump();
+                        write.tags = {"instruction-package-entry", "migrated-v1"};
+                        write.importance = 1.0;
+                        write.confidence = found == byId.end() ? 0.0 : 1.0;
+                        write.sourceKind = "manager_instruction_package_migration";
+                        write.sourceReference = recordId;
+                        write.idempotencyKey = std::move(key).value();
+                        entryWrites.push_back(std::move(write));
+                        contentBytes += body.size();
+                    }
+                    if (!entryWrites.empty()) {
+                        auto written = telemetrySources_.projectMemory->rememberBatch(
+                            Domain::RememberProjectMemoryBatchRequest{
+                                projectId, std::move(entryWrites)}, context);
+                        if (!written) {
+                            return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                                std::move(written).error());
+                        }
+                    }
+                    nlohmann::json migrated{{"schema", "forge-instruction-package-queue-v2"},
+                        {"project_id", projectId.value()}, {"queue_row_id", rowId},
+                        {"package_id", packageId},
+                        {"package_name", legacy.value("package_name", std::string{"Migrated instructions"})},
+                        {"package_path", path.value().value()}, {"revision", revisionText},
+                        {"order", 1024U}, {"state", "active"},
+                        {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}},
+                        {"entry_count", legacy.at("files").size()},
+                        {"content_bytes", contentBytes}, {"coverage_gap_count", 0U},
+                        {"attempts", 1U},
+                        {"last_error", "Execution cursor was uncertain during migration and was reset to the first entry."},
+                        {"migrated_from_record_id", legacyHit.record.id.value()}};
+                    auto key = Domain::IdempotencyKey::create("instruction-queue:" + rowId);
+                    if (!key) {
+                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                            std::move(key).error());
+                    }
+                    Domain::ProjectMemoryWrite write;
+                    write.kind = "instruction_package_queue";
+                    write.title = legacy.value("package_name", std::string{"Migrated instructions"});
+                    write.summary = "Migrated active instruction manifest · " + revisionText;
+                    write.body = migrated.dump();
+                    write.tags = {"instruction-package-queue", "migrated-v1"};
+                    write.importance = 1.0;
+                    write.confidence = 1.0;
+                    write.sourceKind = "manager_instruction_package_migration";
+                    write.sourceReference = legacyHit.record.id.value();
+                    write.idempotencyKey = std::move(key).value();
+                    auto saved = telemetrySources_.projectMemory->remember(
+                        Domain::RememberProjectMemoryRequest{projectId, std::move(write)},
+                        context);
+                    if (!saved) {
+                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                            std::move(saved).error());
+                    }
+                    return packageQueueRows(projectId, context);
+                } catch (...) {
+                    continue;
+                }
+            }
+        }
+
+        auto orderPage = telemetrySources_.projectMemory->listRecent(
+            Domain::ListRecentProjectMemoryRequest{
+                projectId, {"instruction_package_queue_order"}, std::nullopt,
+                1U, std::nullopt, true, 64U * 1024U},
+            context);
+        if (!orderPage) {
+            return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                std::move(orderPage).error());
+        }
+        if (!orderPage.value().records.empty() &&
+            orderPage.value().records.front().record.body) {
+            try {
+                const auto order = nlohmann::json::parse(
+                    *orderPage.value().records.front().record.body);
+                if (order.value("schema", std::string{}) ==
+                    "forge-instruction-package-order-v1" &&
+                    order.value("project_id", std::string{}) == projectId.value() &&
+                    order.at("rows").is_array()) {
+                    std::map<std::string, std::uint64_t> positions;
+                    std::uint64_t position{};
+                    for (const auto& id : order.at("rows")) {
+                        if (id.is_string()) {
+                            positions.emplace(id.get<std::string>(),
+                                (++position) * 1024U);
+                        }
+                    }
+                    for (auto& row : rows) {
+                        if (const auto found = positions.find(row.snapshot.queueRowId);
+                            found != positions.end()) {
+                            row.snapshot.order = found->second;
+                        }
+                    }
+                }
+            } catch (...) {
+                return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                    error(Domain::ErrorCodes::IntegrityFailure,
+                        "The persisted instruction package order failed validation."));
+            }
+        }
+        std::stable_sort(rows.begin(), rows.end(), [](const auto& left, const auto& right) {
+            if (left.snapshot.order != right.snapshot.order) {
+                return left.snapshot.order < right.snapshot.order;
+            }
+            return left.snapshot.queueRowId < right.snapshot.queueRowId;
+        });
+        return Domain::Result<std::vector<StoredPackageQueueRow>>::success(
+            std::move(rows));
+    }
+
+    [[nodiscard]] Domain::Result<void> persistPackageOrder(
+        const Domain::ProjectId& projectId,
+        const std::vector<StoredPackageQueueRow>& rows,
+        const Domain::OperationContext& context)
+    {
+        nlohmann::json document{
+            {"schema", "forge-instruction-package-order-v1"},
+            {"project_id", projectId.value()},
+            {"rows", nlohmann::json::array()}};
+        std::string identityMaterial;
+        for (const auto& row : rows) {
+            document["rows"].push_back(row.snapshot.queueRowId);
+            identityMaterial += row.snapshot.queueRowId + "\n";
+        }
+        auto digest = telemetrySources_.evidenceHasher->sha256(
+            byteView(identityMaterial));
+        if (!digest) return Domain::Result<void>::failure(std::move(digest).error());
+        auto key = Domain::IdempotencyKey::create(
+            "instruction-order:" + digest.value().value());
+        if (!key) return Domain::Result<void>::failure(std::move(key).error());
+        Domain::ProjectMemoryWrite write;
+        write.kind = "instruction_package_queue_order";
+        write.title = "Instruction package execution order";
+        write.summary = std::to_string(rows.size()) + " ordered package rows";
+        write.body = document.dump();
+        write.tags = {"instruction-package-queue-order"};
+        write.importance = 1.0;
+        write.confidence = 1.0;
+        write.sourceKind = "manager_instruction_package";
+        write.idempotencyKey = std::move(key).value();
+        auto saved = telemetrySources_.projectMemory->remember(
+            Domain::RememberProjectMemoryRequest{projectId, std::move(write)},
+            context);
+        if (!saved) return Domain::Result<void>::failure(std::move(saved).error());
+        return Domain::Result<void>::success();
+    }
+
+    [[nodiscard]] Domain::Result<ManagerInstructionPackageQueueSnapshot>
+    instructionPackageQueue(
+        const ManagerInstructionPackageQueueRequest& request,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.projectMemory == nullptr ||
+            telemetrySources_.projects == nullptr ||
+            telemetrySources_.evidenceHasher == nullptr) {
+            return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                error(Domain::ErrorCodes::InvalidRequest,
+                    "Instruction package queue services are unavailable."));
+        }
+        if (request.maximumCount == 0U || request.maximumCount > 100U ||
+            request.maximumContentBytes == 0U ||
+            request.maximumContentBytes > 256U * 1024U) {
+            return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                error(Domain::ErrorCodes::InvalidRequest,
+                    "Instruction package response page limits are invalid."));
+        }
+        auto descriptor = telemetrySources_.projects->descriptor(
+            request.projectId, context);
+        if (!descriptor) {
+            return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                std::move(descriptor).error());
+        }
+        auto stored = packageQueueRows(request.projectId, context);
+        if (!stored) {
+            return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                std::move(stored).error());
+        }
+        auto rows = std::move(stored).value();
+        auto selected = rows.end();
+        if (request.queueRowId) {
+            selected = std::find_if(rows.begin(), rows.end(), [&](const auto& row) {
+                return row.snapshot.queueRowId == *request.queueRowId;
+            });
+            if (selected == rows.end()) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::RecordNotFound,
+                        "The selected instruction package queue row was not found."));
+            }
+        }
+
+        if (request.action == ManagerInstructionPackageQueueAction::Move) {
+            if (selected == rows.end() || !request.targetIndex ||
+                *request.targetIndex >= rows.size()) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::InvalidRequest,
+                        "Moving a package requires an existing row and valid target index."));
+            }
+            auto moving = std::move(*selected);
+            const auto oldIndex = static_cast<std::size_t>(
+                std::distance(rows.begin(), selected));
+            rows.erase(rows.begin() + static_cast<std::ptrdiff_t>(oldIndex));
+            auto target = *request.targetIndex;
+            rows.insert(rows.begin() + static_cast<std::ptrdiff_t>(target),
+                std::move(moving));
+            for (std::size_t index{}; index < rows.size(); ++index) {
+                rows[index].snapshot.order = (index + 1U) * 1024U;
+            }
+            auto persisted = persistPackageOrder(request.projectId, rows, context);
+            if (!persisted) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    std::move(persisted).error());
+            }
+        } else if (request.action == ManagerInstructionPackageQueueAction::Remove) {
+            if (selected == rows.end()) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::InvalidRequest,
+                        "Removing a package requires an existing queue row."));
+            }
+            if (selected->snapshot.state == "active") {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::Conflict,
+                        "An active package can be removed after the current safe operation boundary."));
+            }
+            auto removed = telemetrySources_.projectMemory->forget(
+                Domain::ForgetProjectMemoryRequest{
+                    request.projectId, selected->record.id},
+                context);
+            if (!removed) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    std::move(removed).error());
+            }
+            rows.erase(selected);
+            auto persisted = persistPackageOrder(request.projectId, rows, context);
+            if (!persisted) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    std::move(persisted).error());
+            }
+        } else if (request.action == ManagerInstructionPackageQueueAction::Retry) {
+            if (selected == rows.end()) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::InvalidRequest,
+                        "Retry requires an existing queue row."));
+            }
+            auto rescanned = scanInstructionPackage(
+                ManagerInstructionPackageRequest{
+                    request.projectId, selected->snapshot.packagePath,
+                    false, std::nullopt}, context);
+            if (!rescanned) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    std::move(rescanned).error());
+            }
+            if (rescanned.value().revision != selected->snapshot.revision) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::Conflict,
+                        "The package changed; add the new revision as a queue row."));
+            }
+        }
+
+        ManagerInstructionPackageQueueSnapshot result{request.projectId};
+        if (request.action == ManagerInstructionPackageQueueAction::Entries) {
+            if (selected == rows.end()) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::InvalidRequest,
+                        "Entry paging requires an existing queue row."));
+            }
+            auto page = telemetrySources_.projectMemory->search(
+                Domain::SearchProjectMemoryRequest{
+                    request.projectId, selected->snapshot.queueRowId,
+                    {"instruction_package_entry"}, {}, std::nullopt,
+                    request.maximumCount, request.cursor, true,
+                    256U * 1024U},
+                context);
+            if (!page) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    std::move(page).error());
+            }
+            try {
+                for (const auto& hit : page.value().records) {
+                    if (!hit.record.body) continue;
+                    const auto entry = nlohmann::json::parse(*hit.record.body);
+                    if (entry.value("queue_row_id", std::string{}) !=
+                        selected->snapshot.queueRowId) continue;
+                    std::optional<Domain::Sha256Digest> hash;
+                    if (entry.contains("content_hash") &&
+                        !entry.at("content_hash").is_null()) {
+                        auto parsed = Domain::Sha256Digest::parse(
+                            entry.at("content_hash").get<std::string>());
+                        if (!parsed) throw std::runtime_error{"invalid entry hash"};
+                        hash = std::move(parsed).value();
+                    }
+                    result.entries.push_back(
+                        ManagerInstructionPackageEntrySnapshot{
+                            entry.at("relative_path").get<std::string>(),
+                            entry.at("kind").get<std::string>(),
+                            entry.value("byte_length", std::uint64_t{}),
+                            std::move(hash),
+                            entry.value("interpretation", std::string{"opaque"}),
+                            entry.contains("coverage_detail") &&
+                                    !entry.at("coverage_detail").is_null()
+                                ? std::optional<std::string>{
+                                    entry.at("coverage_detail").get<std::string>()}
+                                : std::nullopt});
+                }
+            } catch (...) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::IntegrityFailure,
+                        "An instruction package entry page failed validation."));
+            }
+            result.nextCursor = page.value().nextCursor;
+            result.truncated = page.value().truncated;
+            return Domain::Result<ManagerInstructionPackageQueueSnapshot>::success(
+                std::move(result));
+        }
+
+        if (request.action == ManagerInstructionPackageQueueAction::ReadContent) {
+            if (selected == rows.end() || !request.relativePath) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::InvalidRequest,
+                        "Content paging requires a queue row and relative path."));
+            }
+            try {
+                const std::filesystem::path relative{utf8Path(*request.relativePath)};
+                if (relative.empty() || relative.is_absolute()) {
+                    throw std::runtime_error{"invalid relative path"};
+                }
+                for (const auto& component : relative) {
+                    if (component == L".." || component == L".") {
+                        throw std::runtime_error{"relative path traversal"};
+                    }
+                }
+                const std::filesystem::path root{
+                    utf8Path(selected->snapshot.packagePath.value())};
+                std::error_code pathError;
+                const auto candidate = std::filesystem::weakly_canonical(
+                    root / relative, pathError);
+                const auto canonicalRoot = std::filesystem::weakly_canonical(
+                    root, pathError);
+                const auto relativeCheck = std::filesystem::relative(
+                    candidate, canonicalRoot, pathError);
+                if (pathError || relativeCheck.empty() ||
+                    *relativeCheck.begin() == L"..") {
+                    throw std::runtime_error{"content path escaped package root"};
+                }
+                const auto attributes = ::GetFileAttributesW(candidate.c_str());
+                if (attributes == INVALID_FILE_ATTRIBUTES ||
+                    (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U ||
+                    (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+                    throw std::runtime_error{"content entry is not a readable regular file"};
+                }
+                const auto size = std::filesystem::file_size(candidate, pathError);
+                if (pathError || request.contentOffset > size) {
+                    throw std::runtime_error{"content offset is outside the entry"};
+                }
+                const auto count = static_cast<std::size_t>((std::min)(
+                    static_cast<std::uint64_t>(request.maximumContentBytes),
+                    size - request.contentOffset));
+                std::ifstream input{candidate, std::ios::binary};
+                input.seekg(static_cast<std::streamoff>(request.contentOffset));
+                std::vector<std::byte> page(count);
+                input.read(reinterpret_cast<char*>(page.data()),
+                    static_cast<std::streamsize>(page.size()));
+                if (static_cast<std::size_t>(input.gcount()) != count) {
+                    throw std::runtime_error{"content changed during paged read"};
+                }
+                result.contentBase64 = base64Encode(page);
+                result.contentOffset = request.contentOffset;
+                result.nextContentOffset = request.contentOffset + count;
+                result.contentComplete = result.nextContentOffset == size;
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::success(
+                    std::move(result));
+            } catch (...) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::Unauthorized,
+                        "The selected package entry could not be read within its authorized root."));
+            }
+        }
+
+        std::size_t offset{};
+        if (request.cursor) {
+            try {
+                offset = static_cast<std::size_t>(std::stoull(*request.cursor));
+            } catch (...) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::InvalidRequest,
+                        "The instruction package queue cursor is invalid."));
+            }
+        }
+        if (offset > rows.size()) {
+            return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                error(Domain::ErrorCodes::InvalidRequest,
+                    "The instruction package queue cursor is outside the result set."));
+        }
+        const auto end = (std::min)(rows.size(), offset + request.maximumCount);
+        result.rows.reserve(end - offset);
+        for (auto index = offset; index < end; ++index) {
+            result.rows.push_back(rows[index].snapshot);
+        }
+        result.truncated = end < rows.size();
+        if (result.truncated) result.nextCursor = std::to_string(end);
+        return Domain::Result<ManagerInstructionPackageQueueSnapshot>::success(
+            std::move(result));
     }
 
     [[nodiscard]] Domain::Result<std::string> managedRunTaskWithInstructions(
@@ -1158,122 +1959,83 @@ private:
             task.size() >= Domain::MaximumManagedRunTaskBytes) {
             return Domain::Result<std::string>::success(std::move(task));
         }
-        auto manifests = telemetrySources_.projectMemory->listRecent(
-            Domain::ListRecentProjectMemoryRequest{
-                projectId, {"instruction_package"}, std::nullopt, 1U,
-                std::nullopt, true, 64U * 1024U},
-            context);
-        if (!manifests) {
-            return Domain::Result<std::string>::failure(
-                std::move(manifests).error());
+        auto queue = packageQueueRows(projectId, context);
+        if (!queue) {
+            return Domain::Result<std::string>::failure(std::move(queue).error());
         }
-        if (manifests.value().records.empty() ||
-            !manifests.value().records.front().record.body) {
+        if (queue.value().empty()) {
             return Domain::Result<std::string>::success(std::move(task));
         }
         try {
-            const auto manifest = nlohmann::json::parse(
-                *manifests.value().records.front().record.body);
-            if (!manifest.is_object() ||
-                manifest.value("schema", std::string{}) !=
-                    "forge-instruction-package-v1" ||
-                !manifest.contains("files") || !manifest.at("files").is_array()) {
-                return Domain::Result<std::string>::failure(error(
-                    Domain::ErrorCodes::IntegrityFailure,
-                    "The active instruction package manifest is malformed."));
-            }
-            std::vector<Domain::MemoryRecordId> ids;
-            std::vector<std::pair<std::string, std::string>> index;
-            for (const auto& file : manifest.at("files")) {
-                if (!file.is_object() || !file.contains("path") ||
-                    !file.at("path").is_string() ||
-                    !file.contains("record_id") ||
-                    !file.at("record_id").is_string()) {
-                    return Domain::Result<std::string>::failure(error(
-                        Domain::ErrorCodes::IntegrityFailure,
-                        "The active instruction package file index is malformed."));
-                }
-                auto id = Domain::MemoryRecordId::parse(
-                    file.at("record_id").get<std::string>());
-                if (!id) {
-                    return Domain::Result<std::string>::failure(
-                        std::move(id).error());
-                }
-                index.emplace_back(
-                    file.at("path").get<std::string>(), id.value().value());
-                ids.push_back(std::move(id).value());
-            }
-            auto records = telemetrySources_.projectMemory->get(
-                Domain::GetProjectMemoryRequest{
-                    projectId, std::move(ids), true, 256U * 1024U},
-                context);
-            if (!records) {
-                return Domain::Result<std::string>::failure(
-                    std::move(records).error());
-            }
-            if (records.value().projectId != projectId) {
-                return Domain::Result<std::string>::failure(error(
-                    Domain::ErrorCodes::ProjectScopeMismatch,
-                    "The active instruction package crossed project scope."));
-            }
-            auto priority = [](std::string value) {
-                std::transform(value.begin(), value.end(), value.begin(),
-                    [](const unsigned char character) {
-                        return static_cast<char>(std::tolower(character));
-                    });
-                if (value == "agents.md") return 0;
-                if (value.find("start-here") != std::string::npos) return 1;
-                if (value.find("execution") != std::string::npos ||
-                    value.find("instruction") != std::string::npos) return 2;
-                if (value.find("readme") != std::string::npos) return 3;
-                return 4;
-            };
-            auto ordered = std::move(records).value().records;
-            std::stable_sort(ordered.begin(), ordered.end(),
-                [&](const auto& left, const auto& right) {
-                    return priority(left.title) < priority(right.title);
-                });
-
-            std::string enriched = "[USER MISSION]\n" + task +
-                "\n\n[ACTIVE PROJECT INSTRUCTION PACKAGE]\nPackage: " +
-                manifest.value("package_name", std::string{"unnamed"}) +
-                "\nRevision SHA-256: " +
-                manifest.value("revision", std::string{"unknown"}) +
-                "\nThe Manager has bound this revision to the exact project. "
-                "Follow these instructions for this run.\n";
-            if (allowTools) {
-                enriched += "Files not embedded below remain available through "
-                    "project_memory.get using this index:\n";
-                for (const auto& [path, id] : index) {
-                    enriched += "- " + path + " | " + id + "\n";
-                }
-            }
+            std::string enriched = "[PROVIDER DEVELOPMENT INSTRUCTIONS]\n" + task +
+                "\n\n[ORDERED PROJECT INSTRUCTION PACKAGES]\n";
             std::size_t embedded{};
             const std::string footer =
-                "\n[END ACTIVE PROJECT INSTRUCTION PACKAGE]\n";
-            for (const auto& record : ordered) {
-                if (!record.body) continue;
-                const auto section = "\n[INSTRUCTION FILE: " + record.title +
-                    "]\n" + *record.body + "\n";
-                if (enriched.size() + section.size() + footer.size() >
+                "\n[END ORDERED PROJECT INSTRUCTION PACKAGES]\n";
+            for (const auto& stored : queue.value()) {
+                const auto& row = stored.snapshot;
+                enriched += "\nPackage order " + std::to_string(row.order) +
+                    ": " + row.packageName + "\nQueue row: " +
+                    row.queueRowId + "\nRevision SHA-256: " +
+                    row.revision.value() + "\nEntries: " +
+                    std::to_string(row.entryCount) + "; coverage gaps: " +
+                    std::to_string(row.coverageGapCount) + "\n";
+                std::optional<std::string> cursor;
+                do {
+                    auto page = telemetrySources_.projectMemory->search(
+                        Domain::SearchProjectMemoryRequest{
+                            projectId, row.queueRowId,
+                            {"instruction_package_entry"}, {}, std::nullopt,
+                            100U, cursor, true, 256U * 1024U},
+                        context);
+                    if (!page) {
+                        return Domain::Result<std::string>::failure(
+                            std::move(page).error());
+                    }
+                    for (const auto& hit : page.value().records) {
+                        if (!hit.record.body) continue;
+                        const auto entry = nlohmann::json::parse(*hit.record.body);
+                        if (entry.value("queue_row_id", std::string{}) !=
+                            row.queueRowId) continue;
+                        const auto relative = entry.value(
+                            "relative_path", std::string{"unavailable"});
+                        if (allowTools) {
+                            enriched += "- " + relative + " [" +
+                                entry.value("interpretation", std::string{"opaque"}) +
+                                "]\n";
+                        }
+                        if (!entry.contains("derived_text") ||
+                            entry.at("derived_text").is_null()) continue;
+                        const auto section = "\n[INSTRUCTION ENTRY: " +
+                            relative + "]\n" +
+                            entry.at("derived_text").get<std::string>() + "\n";
+                        if (enriched.size() + section.size() + footer.size() <=
+                            Domain::MaximumManagedRunTaskBytes) {
+                            enriched += section;
+                            ++embedded;
+                        }
+                    }
+                    cursor = page.value().nextCursor;
+                } while (cursor && enriched.size() + footer.size() <
+                    Domain::MaximumManagedRunTaskBytes);
+                if (enriched.size() + footer.size() >=
                     Domain::MaximumManagedRunTaskBytes) {
-                    continue;
+                    break;
                 }
-                enriched += section;
-                ++embedded;
             }
-            enriched += "\nEmbedded " + std::to_string(embedded) + " of " +
-                std::to_string(index.size()) + " instruction files." + footer;
+            enriched += "\nEmbedded " + std::to_string(embedded) +
+                " interpreted entries. Opaque and remaining entries stay available "
+                "through bounded package content retrieval." + footer;
             if (enriched.size() > Domain::MaximumManagedRunTaskBytes) {
                 return Domain::Result<std::string>::failure(error(
                     Domain::ErrorCodes::PayloadTooLarge,
-                    "The mission leaves no safe context budget for the active instruction package index."));
+                    "Provider instructions leave no safe context budget for the package assignment."));
             }
             return Domain::Result<std::string>::success(std::move(enriched));
         } catch (const std::exception&) {
             return Domain::Result<std::string>::failure(error(
                 Domain::ErrorCodes::IntegrityFailure,
-                "The active instruction package could not be assembled safely."));
+                "The ordered instruction package assignment could not be assembled safely."));
         }
     }
 
@@ -2376,6 +3138,10 @@ private:
                     std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
                     return controllerResponse(
                         request, instructionPackage(payload, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerInstructionPackageQueueRequest>) {
+                    return controllerResponse(
+                        request, instructionPackageQueue(payload, context));
                 } else if constexpr (std::is_same_v<Payload, Contracts::ProjectPolicyRequest>) {
                     if (!telemetrySources_.projectPolicy) return responseWithError(request,
                         error(Domain::ErrorCodes::InvalidRequest, "Project policy service is unavailable."));
@@ -2444,14 +3210,13 @@ private:
                             {payload.projectId, Contracts::ProjectPolicyAction::Inspect}, context);
                         if (!policy) return responseWithError(request, policy.error());
                         const auto state = nlohmann::json::parse(policy.value());
-                        if (state.value("adopted", false)) {
-                            const auto guidance = std::string{"\n\nPROJECT DEVELOPMENT POLICY\nPinned source: "} +
+                        if (state.value("active", false)) {
+                            const auto guidance = std::string{"\n\nCLU GOVERNANCE CONTEXT\nBound source: "} +
                                 state.value("source", "") + "\nSnapshot: " + state.value("revision", "") +
-                                "\nUse project_policy.read without a path to inspect the policy and reviewed scope, then read applicable documents completely using path and offset. "
-                                "Follow their governing requirements. Import is not evidence of reading or compliance. "
-                                "Never claim human review or approvals on the user's behalf. "
-                                "File edits are limited to reviewed paths; commands must match the reviewed shell_exec arguments exactly. " +
-                                (state.value("review_accepted", false) ? "An accepted review is recorded.\n" : "Review is pending; only read-only work is permitted.\n");
+                                "\nUse project_policy.read to inspect the exact policy revision and source coverage. "
+                                "CLU findings are non-blocking governance guidance: correct reported violations and retain evidence. "
+                                "Open findings: " + std::to_string(state.value("open_findings", 0U)) +
+                                "; coverage gaps: " + std::to_string(state.value("coverage_gap_count", 0U)) + ".\n";
                             if (task.value().size() + guidance.size() > Domain::MaximumManagedRunTaskBytes)
                                 return responseWithError(request, error(Domain::ErrorCodes::PayloadTooLarge, "Task and policy guidance exceed the run input limit."));
                             task.value() += guidance;
@@ -2468,7 +3233,8 @@ private:
                                 context.correlationId,
                                 payload.authorityGeneration,
                                 std::move(task).value(),
-                                payload.allowTools},
+                                payload.allowTools,
+                                payload.automaticContinuity},
                             context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagedRunStatusRequest>) {

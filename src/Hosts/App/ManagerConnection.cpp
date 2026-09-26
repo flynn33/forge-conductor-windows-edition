@@ -528,6 +528,29 @@ InstructionPackageView ManagerConnection::instructionPackage(
     }
 }
 
+InstructionPackageQueueView ManagerConnection::instructionPackageQueue(
+    Manager::ManagerInstructionPackageQueueRequest request,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation, std::chrono::seconds{60});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->instructionPackageQueue(request, context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto snapshot = std::move(result).value();
+        return {true, "Instruction package queue updated.", std::move(snapshot)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false, "Could not update the instruction package queue.", std::nullopt};
+    }
+}
+
 LmStudioView ManagerConnection::lmStudio(
     const LmStudioAction action,
     const std::stop_token cancellation) noexcept
@@ -885,7 +908,8 @@ ManagedRunView ManagerConnection::startManagedRun(
     const std::uint64_t authorityGeneration,
     std::string task,
     const bool allowTools,
-    const std::stop_token cancellation) noexcept
+    const std::stop_token cancellation,
+    const bool automaticContinuity) noexcept
 {
     try {
         if (!profileError_.empty()) return {false, profileError_, std::nullopt};
@@ -894,7 +918,7 @@ ManagedRunView ManagerConnection::startManagedRun(
         if (!project) return {false, project.error().message, std::nullopt};
         if (!clientIdValue) return {false, clientIdValue.error().message, std::nullopt};
         if (task.empty()) {
-            return {false, "A mission is required.", std::nullopt};
+            return {false, "A work request is required.", std::nullopt};
         }
         auto clock = std::make_shared<W::SystemClock>();
         auto context = operationContext(clock, cancellation, std::chrono::seconds{15});
@@ -915,7 +939,8 @@ ManagedRunView ManagerConnection::startManagedRun(
                 context.correlationId,
                 authorityGeneration,
                 std::move(task),
-                allowTools},
+                allowTools,
+                automaticContinuity},
             context);
         manager->shutdown();
         return managedView(std::move(result));

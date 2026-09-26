@@ -45,10 +45,10 @@ constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "agent_run_complete",
     "agent_run_start",
     "agent_run_status",
-    "clu_cancel",
-    "clu_capabilities",
-    "clu_start_handoff",
-    "clu_status",
+    "clu.evaluate",
+    "clu.export_log",
+    "clu.findings",
+    "clu.resolve",
     "context_get",
     "context_list",
     "continuity.acknowledge_handoff",
@@ -102,11 +102,12 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "3d6b0acc0cf2fa429b2a36fe5dd10dad738fd4b2b43269c04a5c515769ba3356";
-constexpr std::array<std::string_view, 4U> CluToolNames{
-    "clu_cancel", "clu_capabilities", "clu_start_handoff", "clu_status"};
+    "b8664cebcb8d0f23eb180a28727e67304f6ed3860181a972ee0a7ecdc1b46c0e";
+constexpr std::array<std::string_view, 5U> CluToolNames{
+    "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
+    "project_policy.read"};
 constexpr std::string_view CluToolDescriptorSha256 =
-    "59cce5985bace67cd7389eb13660386a60a7531841d8d25bdddb8396818b75d4";
+    "8497fa9879a5feea6b9a2a2338930114e34b055e516da87ef1facb3ab17e0ec4";
 constexpr std::size_t MaximumResponseFrames = 2U;
 constexpr std::size_t MaximumJsonDepth = 64U;
 constexpr std::size_t MaximumJsonEvents = 16'384U;

@@ -1027,6 +1027,47 @@ int main()
     assert(continuityTransport.sawSuccessorPrompt);
     continuityService.shutdown();
 
+    Store continuityDisabledStore;
+    Transport continuityDisabledTransport;
+    continuityDisabledTransport.mode = Transport::Mode::ToolLoop;
+    ToolRouter continuityDisabledRouter;
+    ContinuityObserver continuityDisabledObserver;
+    ProjectRegistry continuityDisabledRegistry{toolRequest.projectId};
+    WorkspaceAuthority continuityDisabledAuthority{
+        toolRequest.projectId, toolRequest.clientId};
+    Application::ManagedRunService continuityDisabledService{
+        continuityDisabledTransport,
+        continuityDisabledStore,
+        clock,
+        Application::ManagedRunToolDependencies{
+            &toolCatalog, &continuityDisabledRouter, &continuityDisabledAuthority},
+        Application::ManagedRunContinuityDependencies{
+            &continuityDisabledObserver,
+            &continuityCodec,
+            &continuityDisabledRegistry,
+            parsed(Domain::AdapterId::parse("managed-test-adapter")),
+            1'000U,
+            100U,
+            std::optional<std::string>{"fixture-model"},
+            std::optional<std::string>{"fixture-provider"}}};
+    auto continuityDisabledRequest = request(
+        "14141414-1414-4414-8414-141414141414",
+        "15151515-1515-4515-8515-151515151515",
+        "Complete the tool loop without automatic continuity.");
+    continuityDisabledRequest.automaticContinuity = false;
+    assert(continuityDisabledService.start(
+        continuityDisabledRequest,
+        context(
+            "15151515-1515-4515-8515-151515151515",
+            "managed-run-continuity-disabled")));
+    const auto continuityDisabledCompleted = waitForTerminal(
+        continuityDisabledService, continuityDisabledRequest.runId);
+    assert(continuityDisabledCompleted.record.state ==
+           Domain::ManagedRunState::Completed);
+    assert(continuityDisabledObserver.calls == 0U);
+    assert(!continuityDisabledTransport.sawSuccessorPrompt);
+    continuityDisabledService.shutdown();
+
     Store pauseStore;
     Transport pauseTransport;
     pauseTransport.mode = Transport::Mode::ToolLoop;

@@ -114,85 +114,62 @@
       "name": "agent_run_status"
     },
     {
-      "description": "Request cancellation of one caller-authorized CLU operation while preserving committed effects and recovery.",
+      "description": "Evaluate development evidence against the exact bound policy revision and return any CLU finding.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
-          "operation_id": {
-            "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$",
-            "type": "string"
+          "evidence": {
+            "type": "object"
           }
         },
         "required": [
-          "operation_id"
+          "evidence"
         ],
         "type": "object"
       },
-      "name": "clu_cancel"
+      "name": "clu.evaluate"
     },
     {
-      "description": "Read CLU deployment, connection, exact-task readiness and observed qualification limits.",
+      "description": "Export the redacted project-bound CLU governance log without full private policy content.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {},
         "required": [],
         "type": "object"
       },
-      "name": "clu_capabilities"
+      "name": "clu.export_log"
     },
     {
-      "description": "Submit one exact authorized handoff durably and return its operation handle without starting a provider inline.",
+      "description": "List CLU findings, correction requests, notification receipts, and policy coverage state.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "clu.findings"
+    },
+    {
+      "description": "Attach correction evidence and resolve one exact CLU finding while retaining original evidence.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
-          "continuity_id": {
+          "correction_evidence": {
+            "type": "object"
+          },
+          "finding_id": {
             "maxLength": 128,
             "minLength": 1,
-            "not": {
-              "enum": [
-                ".",
-                ".."
-              ]
-            },
-            "pattern": "^[A-Za-z0-9_.-]+$",
-            "type": "string"
-          },
-          "idempotency_key": {
-            "description": "At most 256 UTF-8 bytes; no control characters or surrounding whitespace.",
-            "maxLength": 256,
-            "minLength": 1,
-            "type": "string"
-          },
-          "reason": {
-            "description": "At most 512 UTF-8 bytes; no control characters or surrounding whitespace.",
-            "maxLength": 512,
-            "minLength": 1,
             "type": "string"
           }
         },
         "required": [
-          "continuity_id"
+          "finding_id",
+          "correction_evidence"
         ],
         "type": "object"
       },
-      "name": "clu_start_handoff"
-    },
-    {
-      "description": "Read durable progress or the terminal receipt for one caller-authorized CLU operation.",
-      "inputSchema": {
-        "additionalProperties": false,
-        "properties": {
-          "operation_id": {
-            "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$",
-            "type": "string"
-          }
-        },
-        "required": [
-          "operation_id"
-        ],
-        "type": "object"
-      },
-      "name": "clu_status"
+      "name": "clu.resolve"
     },
     {
       "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",

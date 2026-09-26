@@ -106,6 +106,11 @@ public:
         const Manager::ManagerInstructionPackageRequest& request,
         const Domain::OperationContext& context) noexcept;
 
+    [[nodiscard]] Domain::Result<Manager::ManagerInstructionPackageQueueSnapshot>
+    instructionPackageQueue(
+        const Manager::ManagerInstructionPackageQueueRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
     [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> lmStudioStatus(
         const Domain::OperationContext& context) noexcept;
 

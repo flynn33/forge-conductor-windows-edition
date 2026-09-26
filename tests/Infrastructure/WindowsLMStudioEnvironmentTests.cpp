@@ -620,7 +620,7 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
                 Domain::LMStudioConnectorRole::Clu,
                 true,
                 std::string{"2025-11-25"},
-                4U,
+                5U,
                 "CLU role ready."},
         },
         Domain::LMStudioConnectionState::Ready};

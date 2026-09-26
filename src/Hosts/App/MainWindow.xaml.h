@@ -62,7 +62,6 @@ struct MainWindow : MainWindowT<MainWindow> {
     void PolicyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupRetryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void SetupTaskClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void HelpSearchChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
     void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -83,6 +82,13 @@ struct MainWindow : MainWindowT<MainWindow> {
         Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
     void InstructionPackagePreviewClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void InstructionPackageActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionQueueRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionQueueMoveUpClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionQueueMoveDownClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionQueueRetryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionQueueRemoveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void InstructionQueueSelectionChanged(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void ProjectUpdateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectForgetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectEditCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -94,6 +100,8 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProjectArchiveImportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void AutomaticContinuityToggled(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::RoutedEventArgs const&);
     void LmStudioInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void LmStudioRepairClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void LmStudioActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -135,7 +143,8 @@ private:
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
         ProviderModels, ProviderContract, SetupPrepare,
-        PolicyPreview, PolicyAdopt, PolicyInspect, PolicyRead, PolicyNext, PolicyReview,
+        PolicyPreview, PolicyAdopt, PolicyInspect, PolicyRead, PolicyNext,
+        PolicyReview, PolicyExport,
         SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
         RunStart, RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
@@ -191,6 +200,11 @@ private:
     void ClearSelectedProject();
     void ClearArchivePreview();
     void ClearInstructionPackagePreview();
+    winrt::fire_and_forget RunInstructionQueueAction(
+        ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction action,
+        std::optional<std::size_t> targetOrder = std::nullopt);
+    void ApplyInstructionQueue(
+        const ::ForgeConductor::Manager::ManagerInstructionPackageQueueSnapshot& snapshot);
     void SelectPage(const winrt::hstring& tag);
     void SetGuidedMode(bool enabled, bool restart);
     void SetGuidedStep(GuidedProjectStep step);
@@ -209,6 +223,8 @@ private:
     std::optional<::ForgeConductor::Manager::ManagerProjectMemoryRecord> selectedMemoryRecord_;
     std::string selectedMemoryProjectId_;
     std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
+    std::vector<::ForgeConductor::Manager::ManagerInstructionPackageQueueRowSnapshot>
+        instructionQueueRows_;
     struct ToolField final {
         std::string name;
         std::string type;
@@ -256,6 +272,7 @@ private:
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};
     bool rebuildingProjects_{};
+    bool updatingAutomaticContinuity_{};
     bool guidedModeEnabled_{true};
     bool updatingGuidedModeControls_{};
     bool guidedRegistrationPending_{};

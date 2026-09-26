@@ -32,10 +32,11 @@ constexpr std::string_view PrimaryServerName = "forge-conductor";
 constexpr std::string_view FallbackServerName = "forge-conductor-fallback";
 constexpr std::string_view CluServerName = "forge-conductor-clu";
 
-[[nodiscard]] bool isCluControl(const std::string_view name) noexcept
+[[nodiscard]] bool isCluGovernance(const std::string_view name) noexcept
 {
-    return name == "clu_capabilities" || name == "clu_start_handoff" ||
-        name == "clu_status" || name == "clu_cancel";
+    return name == "clu.evaluate" || name == "clu.export_log" ||
+        name == "clu.findings" || name == "clu.resolve" ||
+        name == "project_policy.read";
 }
 
 [[nodiscard]] Json jsonRpcError(
@@ -728,7 +729,7 @@ private:
         }
 
         if (role == Domain::McpRole::Clu &&
-            !isCluControl(name->get_ref<const std::string&>())) {
+            !isCluGovernance(name->get_ref<const std::string&>())) {
             sendResponse(
                 transport,
                 domainFailureResponse(
@@ -907,7 +908,7 @@ private:
             tools.get_ref<Json::array_t&>().reserve(catalog_.tools().size());
             for (const auto& descriptor : catalog_.tools()) {
                 if (role == Domain::McpRole::Clu &&
-                    !isCluControl(descriptor.tool.name)) {
+                    !isCluGovernance(descriptor.tool.name)) {
                     continue;
                 }
                 auto schema = Json::parse(

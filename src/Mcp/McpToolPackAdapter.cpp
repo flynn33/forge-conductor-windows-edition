@@ -1685,6 +1685,22 @@ public:
                     Domain::ErrorCodes::InternalFailure,
                     "The MCP tool adapter produced a non-object payload.");
             }
+            if (dependencies_.projectPolicy &&
+                !authorizedCall.toolName().starts_with("clu.")) {
+                auto guidance = dependencies_.projectPolicy->execute(
+                    {authority.projectId(),
+                     Contracts::ProjectPolicyAction::ListFindings, {}, {},
+                     Json{{"acknowledge_notifications", true}}.dump()},
+                    operationContext.value());
+                if (guidance) {
+                    auto value = Json::parse(guidance.value(), nullptr, false);
+                    if (value.is_object() && value.contains("notifications") &&
+                        !value.at("notifications").empty()) {
+                        payload.value()["clu_governance_notifications"] =
+                            value.at("notifications");
+                    }
+                }
+            }
             if (authorizedCall.toolName() == "context_get" &&
                 payload.value().value("found", false)) {
                 const auto handoffId = payload.value().find("handoff_id");
@@ -1712,6 +1728,24 @@ public:
                     Domain::ErrorCodes::IntegrityFailure,
                     "Unexpected recovered context metadata was emitted.");
             }
+            if (dependencies_.projectPolicy &&
+                !authorizedCall.toolName().starts_with("clu.")) {
+                auto resultEvidence = payload.value().dump();
+                if (resultEvidence.size() > 32U * 1024U) {
+                    resultEvidence.resize(32U * 1024U);
+                }
+                const Json evidence{{"phase", "post_operation"},
+                    {"tool_name", authorizedCall.toolName()},
+                    {"arguments", authorizedCall.canonicalRequest()},
+                    {"effect", selected->tool.effect == Domain::ToolEffect::Read
+                        ? "read" : selected->tool.effect == Domain::ToolEffect::Write
+                        ? "write" : selected->tool.effect == Domain::ToolEffect::Execute
+                        ? "execute" : "destructive"},
+                    {"result", std::move(resultEvidence)}};
+                static_cast<void>(dependencies_.projectPolicy->execute(
+                    {authority.projectId(), Contracts::ProjectPolicyAction::Evaluate,
+                     {}, {}, evidence.dump()}, operationContext.value()));
+            }
             auto encoded = codec.canonicalize(payload.value().dump());
             if (!encoded) {
                 return propagate<Domain::ToolCallOutcome>(std::move(encoded));
@@ -1719,8 +1753,7 @@ public:
             const bool ok = payload.value().value("ok", true);
             const bool continuityTool =
                 selected->tool.pack == "ContinuityToolPack" ||
-                selected->tool.pack == "ContinuityLifecycleToolPack" ||
-                selected->tool.pack == "ContinuityControlToolPack";
+                selected->tool.pack == "ContinuityLifecycleToolPack";
             auto observation = !continuityTool
                 ? continuityObservation.finish()
                 : std::optional<Domain::ToolContinuityObservation>{};
@@ -1812,15 +1845,15 @@ private:
             if (!inspected) return propagate<Json>(std::move(inspected));
             auto index = Json::parse(inspected.value());
             const auto path = arguments.value("path", "");
-            if (path.empty() || !index.value("adopted", false)) return Domain::Result<Json>::success(std::move(index));
+            if (path.empty() || !index.value("active", false)) return Domain::Result<Json>::success(std::move(index));
             const auto offset = arguments.value("offset", std::size_t{});
             auto document = dependencies_.projectPolicy->execute({authority.projectId(), Contracts::ProjectPolicyAction::ReadDocument,
                 path, index.at("revision").get<std::string>(), Json{{"offset", offset}}.dump()}, context);
             if (!document) return propagate<Json>(std::move(document));
             return Domain::Result<Json>::success(Json::parse(document.value()));
         }
-        if (name.starts_with("clu_")) {
-            return continuityControl(name, arguments);
+        if (name.starts_with("clu.")) {
+            return cluGovernance(name, authority, arguments, context);
         }
         if (name == "forge_status" || name.starts_with("agent_")) {
             return agents(
@@ -1867,144 +1900,60 @@ private:
             "The requested MCP tool has no registered adapter.");
     }
 
-    [[nodiscard]] Domain::Result<Json> continuityControl(
+    [[nodiscard]] Domain::Result<Json> cluGovernance(
         const std::string_view name,
-        const Json& arguments) const
+        const Contracts::WorkspaceAuthority& authority,
+        const Json& arguments,
+        const Domain::OperationContext& context) const
     {
-        const auto controlFailure = [](const std::string_view code,
-                                       const std::string_view field,
-                                       const std::string_view message,
-                                       const bool retryable = false) {
-            return Domain::Result<Json>::success(Json{
-                {"ok", false},
-                {"schema_version", 1},
-                {"code", code},
-                {"field", field.empty() ? Json(nullptr) : Json(field)},
-                {"message", message},
-                {"retryable", retryable}});
-        };
-        if (name == "clu_capabilities") {
-            return Domain::Result<Json>::success(Json{
-                {"ok", true},
-                {"schema_version", 1},
-                {"deployed", nullptr},
-                {"connected", true},
-                {"ready", false},
-                {"automatic_handoff_enabled", nullptr},
-                {"exact_id_support", true},
-                {"provider_mode", "external_chat"},
-                {"task_identity", "unavailable"},
-                {"role", "clu"},
-                {"deployment_id", nullptr},
-                {"build_version", dependencies_.productVersion},
-                {"qualification",
-                 Json{{"native_api", "unqualified"},
-                      {"desktop_new_chat", "not_observed"},
-                      {"gui_closed_recovery", "not_observed"},
-                      {"later_rollover", "not_observed"}}},
-                {"limits",
-                 Json{{"continuity_id_bytes", 128},
-                      {"idempotency_key_bytes", 256},
-                      {"reason_bytes", 512},
-                      {"maximum_response_bytes", 32'768}}},
-                {"reasons",
-                 Json::array({"task_identity_unavailable",
-                              "deployment_not_observed"})}});
+        if (!dependencies_.projectPolicy) {
+            return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                "CLU governance is unavailable in this composition.");
         }
-
-        if (name == "clu_start_handoff") {
-            const auto continuityId = strictString(arguments, "continuity_id");
-            const auto validContinuityId = [&] {
-                if (!continuityId || continuityId->empty() ||
-                    continuityId->size() > 128U || *continuityId == "." ||
-                    *continuityId == "..") {
-                    return false;
-                }
-                return std::all_of(
-                    continuityId->begin(), continuityId->end(),
-                    [](const char c) {
-                        return (c >= 'a' && c <= 'z') ||
-                            (c >= 'A' && c <= 'Z') ||
-                            (c >= '0' && c <= '9') || c == '_' || c == '.' ||
-                            c == '-';
-                    });
-            }();
-            if (!validContinuityId) {
-                return controlFailure(
-                    "invalid_request", "continuity_id",
-                    "The CLU request does not match the supported schema.");
+        auto inspect = dependencies_.projectPolicy->execute(
+            {authority.projectId(), Contracts::ProjectPolicyAction::Inspect}, context);
+        if (!inspect) return propagate<Json>(std::move(inspect));
+        const auto status = Json::parse(inspect.value());
+        if (!status.value("active", false)) {
+            if (name == "clu.findings") {
+                return Domain::Result<Json>::success(Json{{"active", false},
+                    {"revision", ""}, {"findings", Json::array()},
+                    {"notifications", Json::array()}});
             }
-            for (const auto field : {"idempotency_key", "reason"}) {
-                const auto value = strictString(arguments, field);
-                if (!value) {
-                    continue;
-                }
-                const auto maximum = std::string_view{field} == "reason"
-                    ? 512U
-                    : 256U;
-                const auto hasBoundaryWhitespace = [](const std::string_view text) {
-                    const auto asciiWhitespace = [](const unsigned char c) {
-                        return c == 0x20U || (c >= 0x09U && c <= 0x0DU);
-                    };
-                    if (asciiWhitespace(static_cast<unsigned char>(text.front())) ||
-                        asciiWhitespace(static_cast<unsigned char>(text.back()))) {
-                        return true;
-                    }
-                    // Match Foundation's Unicode whitespace-and-newline trimming
-                    // for the non-ASCII scalars used by the pinned macOS contract.
-                    static constexpr std::array<std::string_view, 11> spaces{
-                        "\xC2\x85", "\xC2\xA0", "\xE1\x9A\x80", "\xE2\x80\xA8",
-                        "\xE2\x80\xA9", "\xE2\x80\xAF", "\xE2\x81\x9F",
-                        "\xE3\x80\x80", "\xEF\xBB\xBF", "\xE2\x80\x8B",
-                        "\xE2\x81\xA0"};
-                    for (const auto scalar : spaces) {
-                        if (text.starts_with(scalar) || text.ends_with(scalar)) {
-                            return true;
-                        }
-                    }
-                    // U+2000 through U+200A are a contiguous UTF-8 range.
-                    const auto isU2000Space = [](const std::string_view edge) {
-                        return edge.size() >= 3U &&
-                            static_cast<unsigned char>(edge[0]) == 0xE2U &&
-                            static_cast<unsigned char>(edge[1]) == 0x80U &&
-                            static_cast<unsigned char>(edge[2]) >= 0x80U &&
-                            static_cast<unsigned char>(edge[2]) <= 0x8AU;
-                    };
-                    return isU2000Space(text) ||
-                        (text.size() >= 3U && isU2000Space(text.substr(text.size() - 3U)));
-                };
-                const auto hasControl = [](const std::string_view text) {
-                    for (std::size_t index = 0; index < text.size(); ++index) {
-                        const auto c = static_cast<unsigned char>(text[index]);
-                        if (c < 0x20U || c == 0x7FU ||
-                            (c == 0xC2U && index + 1U < text.size() &&
-                             static_cast<unsigned char>(text[index + 1U]) >= 0x80U &&
-                             static_cast<unsigned char>(text[index + 1U]) <= 0x9FU)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                };
-                const bool invalid = value->empty() || value->size() > maximum ||
-                    hasBoundaryWhitespace(*value) || hasControl(*value);
-                if (invalid) {
-                    return controlFailure(
-                        "invalid_request", field,
-                        "The CLU request does not match the supported schema.");
-                }
+            if (name == "clu.export_log") {
+                return Domain::Result<Json>::success(Json{{"active", false},
+                    {"revision", ""}, {"history", Json::array()},
+                    {"findings", Json::array()},
+                    {"notifications", Json::array()}});
+            }
+            if (name == "clu.evaluate") {
+                return Domain::Result<Json>::success(Json{{"active", false},
+                    {"evaluated", false}, {"finding_id", nullptr},
+                    {"reason", "No development policy is bound to this project."}});
             }
         }
-        if (name == "clu_status" || name == "clu_cancel") {
-            const auto operationId = strictString(arguments, "operation_id");
-            if (!operationId || !Domain::OperationId::parse(*operationId)) {
-                return controlFailure(
-                    "invalid_request", "operation_id",
-                    "The CLU request does not match the supported schema.");
-            }
+        const auto revision = status.value("revision", std::string{});
+        Contracts::ProjectPolicyAction action{};
+        std::string details;
+        if (name == "clu.findings") {
+            action = Contracts::ProjectPolicyAction::ListFindings;
+        } else if (name == "clu.export_log") {
+            action = Contracts::ProjectPolicyAction::ExportLog;
+        } else if (name == "clu.evaluate") {
+            action = Contracts::ProjectPolicyAction::Evaluate;
+            details = arguments.at("evidence").dump();
+        } else if (name == "clu.resolve") {
+            action = Contracts::ProjectPolicyAction::Resolve;
+            details = Json{{"finding_id", arguments.at("finding_id")},
+                {"correction_evidence", arguments.at("correction_evidence")}}.dump();
+        } else {
+            return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                "The requested CLU governance operation is not registered.");
         }
-        return controlFailure(
-            "task_identity_unavailable", {},
-            "This request needs an authenticated native task connection. A shared MCP connection cannot select a task.");
+        auto result = dependencies_.projectPolicy->execute(
+            {authority.projectId(), action, {}, revision, std::move(details)}, context);
+        if (!result) return propagate<Json>(std::move(result));
+        return Domain::Result<Json>::success(Json::parse(result.value()));
     }
 
     [[nodiscard]] Domain::Result<Json> agents(

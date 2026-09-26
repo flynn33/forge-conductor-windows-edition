@@ -64,6 +64,28 @@ struct ManagerInstructionPackageRequest final {
     std::optional<Domain::Sha256Digest> expectedRevision;
 };
 
+enum class ManagerInstructionPackageQueueAction {
+    List,
+    Move,
+    Remove,
+    Entries,
+    ReadContent,
+    Retry
+};
+
+struct ManagerInstructionPackageQueueRequest final {
+    Domain::ProjectId projectId;
+    ManagerInstructionPackageQueueAction action{
+        ManagerInstructionPackageQueueAction::List};
+    std::optional<std::string> queueRowId;
+    std::optional<std::size_t> targetIndex;
+    std::optional<std::string> cursor;
+    std::size_t maximumCount{50U};
+    std::optional<std::string> relativePath;
+    std::uint64_t contentOffset{};
+    std::size_t maximumContentBytes{64U * 1024U};
+};
+
 struct ManagerLmStudioStatusRequest final {
     bool operator==(const ManagerLmStudioStatusRequest&) const = default;
 };
@@ -152,6 +174,48 @@ struct ManagerInstructionPackageSnapshot final {
     std::vector<std::string> files;
     bool activated{};
     std::optional<Domain::MemoryRecordId> manifestRecordId;
+    std::optional<std::string> queueRowId;
+    std::uint64_t queueOrder{};
+    std::size_t coverageGapCount{};
+    std::optional<std::string> nextCursor;
+    bool truncated{};
+};
+
+struct ManagerInstructionPackageQueueRowSnapshot final {
+    std::string queueRowId;
+    std::string packageId;
+    std::string packageName;
+    Domain::PathText packagePath;
+    Domain::Sha256Digest revision;
+    std::uint64_t order{};
+    std::string state;
+    std::uint64_t entryCount{};
+    std::uint64_t contentBytes{};
+    std::uint64_t coverageGapCount{};
+    std::uint64_t cursorEntry{};
+    std::uint64_t cursorByteOffset{};
+    std::optional<std::string> lastError;
+};
+
+struct ManagerInstructionPackageEntrySnapshot final {
+    std::string relativePath;
+    std::string kind;
+    std::uint64_t byteLength{};
+    std::optional<Domain::Sha256Digest> contentHash;
+    std::string interpretation;
+    std::optional<std::string> coverageDetail;
+};
+
+struct ManagerInstructionPackageQueueSnapshot final {
+    Domain::ProjectId projectId;
+    std::vector<ManagerInstructionPackageQueueRowSnapshot> rows;
+    std::vector<ManagerInstructionPackageEntrySnapshot> entries;
+    std::optional<std::string> nextCursor;
+    bool truncated{};
+    std::optional<std::string> contentBase64;
+    std::uint64_t contentOffset{};
+    std::uint64_t nextContentOffset{};
+    bool contentComplete{};
 };
 
 struct ManagerProjectPolicySnapshot final {
@@ -248,6 +312,7 @@ struct ManagedRunStartRequest final {
     std::uint64_t authorityGeneration{};
     std::string task;
     bool allowTools{true};
+    bool automaticContinuity{true};
 };
 
 struct ManagedRunStatusRequest final {
@@ -275,6 +340,7 @@ using ManagerRequestPayload = std::variant<
     ManagerProjectMemoryRequest,
     ManagerProjectRememberRequest,
     ManagerInstructionPackageRequest,
+    ManagerInstructionPackageQueueRequest,
     Contracts::ProjectPolicyRequest,
     ManagerLmStudioStatusRequest,
     ManagerLmStudioRepairRequest,
@@ -317,6 +383,7 @@ using ManagerResult = std::variant<
     ManagerProjectsSnapshot,
     ManagerProjectWorkspaceSnapshot,
     ManagerInstructionPackageSnapshot,
+    ManagerInstructionPackageQueueSnapshot,
     ManagerProjectPolicySnapshot,
     ManagerLmStudioSnapshot,
     ManagerToolsSnapshot,
