@@ -324,12 +324,6 @@ MainWindow::MainWindow(
     selectedEvidenceProjectValueName_ =
         ::ForgeConductor::Hosts::App::scopedViewStateValueName(
             L"SelectedEvidenceProjectId", scope);
-    guidedModeValueName_ =
-        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
-            L"GuidedModeEnabled", scope);
-    guidedStepValueName_ =
-        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
-            L"GuidedModeStep", scope);
 }
 
 void MainWindow::WindowClosed(Windows::Foundation::IInspectable const&,
@@ -417,7 +411,6 @@ void MainWindow::WindowContentLoaded(
     if (const auto savedProject = loadSavedText(
             selectedProjectValueName_.c_str())) {
         selectedProjectId_ = winrt::to_string(*savedProject);
-        RunProjectId().Text(*savedProject);
         const auto savedRunProject = loadSavedText(
             selectedRunProjectValueName_.c_str());
         const auto savedRun = loadSavedText(selectedRunValueName_.c_str());
@@ -434,24 +427,17 @@ void MainWindow::WindowContentLoaded(
             selectedEvidenceRunId_ = winrt::to_string(*savedEvidenceRun);
         }
     }
-    guidedModeEnabled_ = loadSavedText(guidedModeValueName_.c_str())
-        .value_or(L"1") != L"0";
-    if (const auto savedStep = loadSavedText(guidedStepValueName_.c_str())) {
-        const auto value = std::wcstoul(savedStep->c_str(), nullptr, 10);
-        if (value >= static_cast<unsigned long>(GuidedProjectStep::Welcome) &&
-            value <= static_cast<unsigned long>(GuidedProjectStep::Complete)) {
-            guidedStep_ = static_cast<GuidedProjectStep>(value);
-        }
-    }
-    if (guidedStep_ == GuidedProjectStep::RegisterProject ||
-        (static_cast<std::uint32_t>(guidedStep_) >=
-             static_cast<std::uint32_t>(GuidedProjectStep::ReviewScope) &&
-         selectedProjectId_.empty())) {
-        guidedStep_ = GuidedProjectStep::ChooseFolder;
-        storeSavedText(guidedStepValueName_.c_str(),
-            winrt::to_hstring(static_cast<std::uint32_t>(guidedStep_)));
-    }
-    RenderGuidedMode();
+    // Guided setup was retired in 1.3.0. Delete its scoped view-state values
+    // after carrying forward the independently persisted project/provider data.
+    const auto retiredScope = connection_ ? connection_->viewStateScope() : std::nullopt;
+    const auto retiredGuidedMode =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"GuidedModeEnabled", retiredScope);
+    const auto retiredGuidedStep =
+        ::ForgeConductor::Hosts::App::scopedViewStateValueName(
+            L"GuidedModeStep", retiredScope);
+    clearSavedText(retiredGuidedMode.c_str());
+    clearSavedText(retiredGuidedStep.c_str());
     // The restored page may immediately enqueue a Manager readback. Attach or
     // launch the authenticated Manager first so a cold-launch catalog does not
     // time out behind startup.
@@ -462,11 +448,25 @@ void MainWindow::WindowContentLoaded(
         AutomaticSetupState().Text(L"Your folder is saved. Retry preparation to check current readiness and continue.");
     }
     if (const auto saved = loadSavedText(selectedPageValueName_.c_str())) {
+        auto destination = *saved;
+        if (destination == L"Guided setup" || destination == L"Projects" ||
+            destination == L"Provider" || destination == L"Autonomy" ||
+            destination == L"Continuity" || destination == L"LM Studio MCP") {
+            destination = L"Workspace";
+        } else if (destination == L"Agents" || destination == L"Feed" ||
+            destination == L"Events & Evidence" || destination == L"Runtimes" ||
+            destination == L"Diagnostics" || destination == L"Manager" ||
+            destination == L"Tools") {
+            destination = L"Activity";
+        }
+        if (destination != *saved) {
+            storeSavedText(selectedPageValueName_.c_str(), destination);
+        }
         const auto items = RootNavigation().MenuItems();
         for (std::uint32_t index{}; index < items.Size(); ++index) {
             const auto item = items.GetAt(index).try_as<
                 Microsoft::UI::Xaml::Controls::NavigationViewItem>();
-            if (item && unbox_value_or<hstring>(item.Tag(), L"") == *saved) {
+            if (item && unbox_value_or<hstring>(item.Tag(), L"") == destination) {
                 RootNavigation().SelectedItem(item);
                 break;
             }
@@ -629,143 +629,31 @@ void MainWindow::SettingsRestartClicked(Windows::Foundation::IInspectable const&
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsRestart); }
 void MainWindow::MaintenanceResetClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::MaintenanceReset); }
-void MainWindow::OpenProviderClicked(Windows::Foundation::IInspectable const&,
+void MainWindow::OpenWorkspaceClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Workspace"); }
-void MainWindow::OpenManagerClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Activity"); }
-void MainWindow::OpenAutonomyClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Workspace"); }
-void MainWindow::OpenFeedClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Activity"); }
-void MainWindow::OpenEvidenceClicked(Windows::Foundation::IInspectable const&,
+void MainWindow::OpenActivityClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Activity"); }
 void MainWindow::OpenSettingsClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Settings"); }
-void MainWindow::OpenToolsClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Activity"); }
-void MainWindow::OpenProjectsClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Workspace"); }
 
 void MainWindow::SelectPage(const winrt::hstring& tag)
 {
-    auto destination = tag;
-    if (tag == L"Guided setup" || tag == L"Projects" || tag == L"Provider" ||
-        tag == L"Autonomy" || tag == L"Continuity" || tag == L"LM Studio MCP") {
-        destination = L"Workspace";
-    } else if (tag == L"Agents" || tag == L"Feed" ||
-        tag == L"Events & Evidence" || tag == L"Runtimes" ||
-        tag == L"Diagnostics" || tag == L"Manager" || tag == L"Tools") {
-        destination = L"Activity";
-    }
     for (const auto& value : RootNavigation().MenuItems()) {
         const auto item = value.try_as<
             Microsoft::UI::Xaml::Controls::NavigationViewItem>();
-        if (item && unbox_value_or<hstring>(item.Tag(), L"") == destination) {
+        if (item && unbox_value_or<hstring>(item.Tag(), L"") == tag) {
             RootNavigation().SelectedItem(item);
             return;
         }
     }
 }
 
-void MainWindow::SetGuidedMode(const bool enabled, const bool restart)
-{
-    guidedModeEnabled_ = enabled;
-    guidedRegistrationPending_ = false;
-    if (enabled && restart) guidedStep_ = GuidedProjectStep::Welcome;
-    storeSavedText(guidedModeValueName_.c_str(), enabled ? L"1" : L"0");
-    storeSavedText(guidedStepValueName_.c_str(),
-        winrt::to_hstring(static_cast<std::uint32_t>(guidedStep_)));
-    RenderGuidedMode();
-}
-
-void MainWindow::SetGuidedStep(const GuidedProjectStep step)
-{
-    guidedStep_ = step;
-    storeSavedText(guidedStepValueName_.c_str(),
-        winrt::to_hstring(static_cast<std::uint32_t>(guidedStep_)));
-    RenderGuidedMode();
-}
-
-void MainWindow::RenderGuidedMode()
-{
-    WorkspaceReadinessPanel().Visibility(Visibility::Visible);
-}
 void MainWindow::ShowProjectRegistration()
 {
-    SelectPage(L"Projects");
+    SelectPage(L"Workspace");
     ProjectRegistrationExpander().IsExpanded(true);
     ProjectRegistrationExpander().StartBringIntoView();
     ProjectPath().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
-}
-
-void MainWindow::GuidedModeToggled(
-    Windows::Foundation::IInspectable const& sender,
-    Microsoft::UI::Xaml::RoutedEventArgs const&)
-{
-    if (updatingGuidedModeControls_ || !telemetryUiInitialized_) return;
-    const auto toggle = sender.try_as<
-        Microsoft::UI::Xaml::Controls::ToggleSwitch>();
-    if (!toggle) return;
-    const auto enabled = toggle.IsOn();
-    SetGuidedMode(enabled, enabled);
-    if (enabled) SelectPage(L"Guided setup");
-}
-
-void MainWindow::GuidedModePrimaryClicked(
-    Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&)
-{
-    switch (guidedStep_) {
-    case GuidedProjectStep::Welcome:
-        SetGuidedStep(GuidedProjectStep::ChooseFolder);
-        ShowProjectRegistration();
-        if (BrowseForProjectFolder()) SetGuidedStep(GuidedProjectStep::RegisterProject);
-        break;
-    case GuidedProjectStep::ChooseFolder:
-        ShowProjectRegistration();
-        if (BrowseForProjectFolder()) SetGuidedStep(GuidedProjectStep::RegisterProject);
-        break;
-    case GuidedProjectStep::RegisterProject:
-        if (ProjectPath().Text().empty()) {
-            SetGuidedStep(GuidedProjectStep::ChooseFolder);
-            ShowProjectRegistration();
-            ProjectState().Text(L"Choose your project folder before registering it.");
-            break;
-        }
-        guidedRegistrationPending_ = true;
-        RenderGuidedMode();
-        RunAction(Action::ProjectRegister);
-        break;
-    case GuidedProjectStep::ReviewScope:
-        SetGuidedStep(GuidedProjectStep::Instructions);
-        SelectPage(L"Projects");
-        InstructionPackageCard().StartBringIntoView();
-        InstructionPackagePath().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
-        break;
-    case GuidedProjectStep::Instructions:
-        SelectPage(L"Projects");
-        InstructionPackageCard().StartBringIntoView();
-        InstructionPackagePath().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
-        break;
-    case GuidedProjectStep::Memory:
-        SelectPage(L"Projects");
-        ProjectMemoryCard().StartBringIntoView();
-        ProjectMemoryTitle().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
-        break;
-    case GuidedProjectStep::Provider:
-        SelectPage(L"Provider");
-        ProviderLoadedModels().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
-        break;
-    case GuidedProjectStep::FirstRun:
-        SelectPage(L"Autonomy");
-        RunMissionCard().StartBringIntoView();
-        RunTask().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
-        break;
-    case GuidedProjectStep::Complete:
-        SetGuidedMode(false, false);
-        SelectPage(L"Rig");
-        break;
-    }
 }
 
 void MainWindow::SetupFolderClicked(Windows::Foundation::IInspectable const&,
@@ -786,12 +674,12 @@ void MainWindow::PolicyClicked(Windows::Foundation::IInspectable const& sender,
 {
     const auto button = sender.as<Microsoft::UI::Xaml::Controls::Button>();
     const auto tag = unbox_value<hstring>(button.Tag());
-    if (tag == L"preview") RunAction(Action::PolicyPreview);
-    else if (tag == L"adopt") RunAction(Action::PolicyAdopt);
+    if (tag == L"bind") RunAction(Action::PolicyBind);
+    else if (tag == L"refresh") RunAction(Action::PolicyRefresh);
     else if (tag == L"inspect") RunAction(Action::PolicyInspect);
     else if (tag == L"read") RunAction(Action::PolicyRead);
     else if (tag == L"next") RunAction(Action::PolicyNext);
-    else if (tag == L"review") RunAction(Action::PolicyReview);
+    else if (tag == L"findings") RunAction(Action::PolicyFindings);
     else if (tag == L"export") RunAction(Action::PolicyExport);
 }
 
@@ -826,7 +714,6 @@ void MainWindow::ApplyPolicyView(const ::ForgeConductor::Hosts::App::ProjectPoli
         }
         policySummaryJson_ = view.canonicalJson;
         policyProject_ = selectedProjectId_;
-        policyRequiresReview_ = false;
         policyRevision_ = value.value("revision", "");
         policyDocumentOffset_ = 0;
         policyDocumentPath_.clear();
@@ -907,99 +794,6 @@ void MainWindow::HelpSearchChanged(
         : winrt::to_hstring(count) + L" help articles · available offline");
 }
 
-void MainWindow::GuidedModeSecondaryClicked(
-    Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&)
-{
-    if (guidedStep_ == GuidedProjectStep::Welcome ||
-        guidedStep_ == GuidedProjectStep::ChooseFolder) {
-        if (!selectedProjectId_.empty()) {
-            SetGuidedStep(GuidedProjectStep::ReviewScope);
-            SelectPage(L"Projects");
-        }
-    } else if (guidedStep_ == GuidedProjectStep::RegisterProject) {
-        guidedRegistrationPending_ = false;
-        SetGuidedStep(GuidedProjectStep::ChooseFolder);
-        ShowProjectRegistration();
-    } else if (guidedStep_ == GuidedProjectStep::Instructions) {
-        SetGuidedStep(GuidedProjectStep::Memory);
-        SelectPage(L"Projects");
-        ProjectMemoryCard().StartBringIntoView();
-    } else if (guidedStep_ == GuidedProjectStep::Memory) {
-        SetGuidedStep(GuidedProjectStep::Provider);
-        SelectPage(L"Provider");
-    } else if (guidedStep_ == GuidedProjectStep::Provider) {
-        SetGuidedStep(GuidedProjectStep::FirstRun);
-        SelectPage(L"Autonomy");
-    } else if (guidedStep_ == GuidedProjectStep::FirstRun) {
-        SetGuidedStep(GuidedProjectStep::Complete);
-    } else if (guidedStep_ == GuidedProjectStep::Complete) {
-        SelectPage(L"Projects");
-    }
-}
-
-void MainWindow::GuidedModeBackClicked(
-    Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&)
-{
-    guidedRegistrationPending_ = false;
-    switch (guidedStep_) {
-    case GuidedProjectStep::Welcome:
-        break;
-    case GuidedProjectStep::ChooseFolder:
-        SetGuidedStep(GuidedProjectStep::Welcome);
-        SelectPage(L"Rig");
-        break;
-    case GuidedProjectStep::RegisterProject:
-        SetGuidedStep(GuidedProjectStep::ChooseFolder);
-        ShowProjectRegistration();
-        break;
-    case GuidedProjectStep::ReviewScope:
-        SetGuidedStep(GuidedProjectStep::ChooseFolder);
-        ShowProjectRegistration();
-        break;
-    case GuidedProjectStep::Instructions:
-        SetGuidedStep(GuidedProjectStep::ReviewScope);
-        SelectPage(L"Projects");
-        break;
-    case GuidedProjectStep::Memory:
-        SetGuidedStep(GuidedProjectStep::Instructions);
-        SelectPage(L"Projects");
-        InstructionPackageCard().StartBringIntoView();
-        break;
-    case GuidedProjectStep::Provider:
-        SetGuidedStep(GuidedProjectStep::Memory);
-        SelectPage(L"Projects");
-        break;
-    case GuidedProjectStep::FirstRun:
-        SetGuidedStep(GuidedProjectStep::Provider);
-        SelectPage(L"Provider");
-        break;
-    case GuidedProjectStep::Complete:
-        SetGuidedStep(GuidedProjectStep::FirstRun);
-        SelectPage(L"Autonomy");
-        break;
-    }
-}
-
-void MainWindow::GuidedModeCloseClicked(
-    Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&)
-{
-    SetGuidedMode(false, false);
-    if (PageTitle().Text() == L"Guided setup") SelectPage(L"Rig");
-}
-
-void MainWindow::GuidedModeRestartClicked(
-    Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&)
-{
-    SetGuidedMode(true, true);
-    SelectPage(L"Guided setup");
-}
-
-void MainWindow::RunStartClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStart); }
 void MainWindow::RunStatusClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::RunStatus); }
 void MainWindow::RunHistoryRefreshClicked(Windows::Foundation::IInspectable const&,
@@ -1039,14 +833,6 @@ void MainWindow::RunIdTextChanged(Windows::Foundation::IInspectable const&,
 void MainWindow::ProjectRegisterClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
-    if (guidedModeEnabled_ &&
-        (guidedStep_ == GuidedProjectStep::ChooseFolder ||
-         guidedStep_ == GuidedProjectStep::RegisterProject)) {
-        guidedRegistrationPending_ = !ProjectPath().Text().empty();
-        SetGuidedStep(ProjectPath().Text().empty()
-            ? GuidedProjectStep::ChooseFolder
-            : GuidedProjectStep::RegisterProject);
-    }
     RunAction(Action::ProjectRegister);
 }
 
@@ -1083,11 +869,7 @@ bool MainWindow::BrowseForProjectFolder()
 void MainWindow::ProjectBrowseClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
-    if (BrowseForProjectFolder() && guidedModeEnabled_ &&
-        (guidedStep_ == GuidedProjectStep::Welcome ||
-         guidedStep_ == GuidedProjectStep::ChooseFolder)) {
-        SetGuidedStep(GuidedProjectStep::RegisterProject);
-    }
+    static_cast<void>(BrowseForProjectFolder());
 }
 void MainWindow::ProjectRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectList); }
@@ -1209,9 +991,45 @@ void MainWindow::InstructionQueueSelectionChanged(
         (row.lastError ? "\nNeeds attention: " + *row.lastError : "")));
 }
 
+void MainWindow::InstructionQueueDragItemsStarting(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::DragItemsStartingEventArgs const& args)
+{
+    draggedInstructionQueueRowId_.reset();
+    if (args.Items().Size() != 1U) return;
+    const auto dragged = args.Items().GetAt(0);
+    std::uint32_t index{};
+    if (!InstructionPackageQueue().Items().IndexOf(dragged, index) ||
+        index >= instructionQueueRows_.size()) {
+        return;
+    }
+    draggedInstructionQueueRowId_ = instructionQueueRows_[index].queueRowId;
+}
+
+void MainWindow::InstructionQueueDragItemsCompleted(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::DragItemsCompletedEventArgs const& args)
+{
+    if (!draggedInstructionQueueRowId_ || args.Items().Size() != 1U) return;
+    const auto dragged = args.Items().GetAt(0);
+    std::uint32_t target{};
+    if (!InstructionPackageQueue().Items().IndexOf(dragged, target)) {
+        draggedInstructionQueueRowId_.reset();
+        RunInstructionQueueAction(
+            ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::List);
+        return;
+    }
+    auto rowId = std::move(draggedInstructionQueueRowId_);
+    draggedInstructionQueueRowId_.reset();
+    RunInstructionQueueAction(
+        ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::Move,
+        static_cast<std::size_t>(target), std::move(rowId));
+}
+
 winrt::fire_and_forget MainWindow::RunInstructionQueueAction(
     const ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction action,
-    std::optional<std::size_t> targetOrder)
+    std::optional<std::size_t> targetOrder,
+    std::optional<std::string> rowIdOverride)
 {
     auto lifetime = get_strong();
     if (!connection_ || selectedProjectId_.empty() || cancellation_.stop_requested()) co_return;
@@ -1220,8 +1038,9 @@ winrt::fire_and_forget MainWindow::RunInstructionQueueAction(
         InstructionPackageState().Text(winrt::to_hstring(project.error().message));
         co_return;
     }
-    std::optional<std::string> rowId;
-    if (action != ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::List) {
+    auto rowId = std::move(rowIdOverride);
+    if (action != ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::List &&
+        !rowId) {
         const auto index = InstructionPackageQueue().SelectedIndex();
         if (index < 0 || static_cast<std::size_t>(index) >= instructionQueueRows_.size()) {
             InstructionPackageState().Text(L"Select an instruction-package queue row first.");
@@ -1354,7 +1173,7 @@ void MainWindow::RuntimeJobInspectClicked(Windows::Foundation::IInspectable cons
     const auto button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>();
     if (!button || selectedProjectId_.empty()) return;
     RunId().Text(winrt::unbox_value<winrt::hstring>(button.Tag()));
-    SelectPage(L"Autonomy");
+    SelectPage(L"Activity");
     RunAction(Action::RunStatus);
 }
 void MainWindow::OperationalExportClicked(Windows::Foundation::IInspectable const&,
@@ -1694,27 +1513,17 @@ void MainWindow::ProjectSelectionChanged(
         ProjectEditCard().Visibility(Visibility::Collapsed);
     }
     selectedProjectId_ = nextProjectId;
-    const auto continuityValueName = selectedProjectValueName_ +
-        L".AutomaticContinuity." + winrt::to_hstring(selectedProjectId_).c_str();
-    updatingAutomaticContinuity_ = true;
-    AutomaticContinuityToggle().IsOn(
-        loadSavedText(continuityValueName.c_str()).value_or(L"1") != L"0");
-    updatingAutomaticContinuity_ = false;
-    AutomaticContinuityState().Text(AutomaticContinuityToggle().IsOn()
-        ? L"Enabled for this project/provider. Future managed runs may roll over automatically."
-        : L"Disabled for this project/provider. Future managed runs remain in the current context.");
+    AutomaticContinuityState().Text(
+        L"Reading this project/provider preference from the Manager…");
     ProjectArchiveState().Text(winrt::to_hstring(
         "Archive scope bound to " +
         projects_[static_cast<std::size_t>(index)].displayName +
         ". Export or verify a memory artifact for this exact project."));
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
-    RunProjectId().Text(selected);
     ToolProjectId().Text(selected);
     RunAction(Action::ProjectLoad);
-    UpdateRunProjectLabel();
-    if (PageTitle().Text() == L"Runtimes") RunAction(Action::OperationalInspect);
-    RenderGuidedMode();
+    RunAction(Action::ContinuityRead);
 }
 
 void MainWindow::NavigationChanged(
@@ -1724,112 +1533,69 @@ void MainWindow::NavigationChanged(
     const auto item = args.SelectedItem().try_as<
         Microsoft::UI::Xaml::Controls::NavigationViewItem>();
     if (!item) return;
-    const auto tag = unbox_value_or<hstring>(item.Tag(), L"Rig");
-    PageTitle().Text(tag == L"LM Studio MCP" ? L"LM Studio plugins" : tag);
+    const auto tag = unbox_value_or<hstring>(item.Tag(), L"Workspace");
+    PageTitle().Text(tag);
     if (telemetryUiInitialized_) {
         storeSavedText(selectedPageValueName_.c_str(), tag);
         MainScrollViewer().ChangeView(nullptr, 0.0, nullptr, true);
     }
     const bool workspace = tag == L"Workspace";
-    const bool provider = workspace;
     const bool settings = tag == L"Settings";
-    const bool guidedSetup = workspace;
-    const bool autonomy = false;
-    const bool continuityPage = false;
     const bool rig = tag == L"Rig";
-    const bool projects = workspace;
-    const bool lmStudioMcp = false;
-    const bool tools = false;
-    const bool operational = tag == L"Activity";
-    if (operational) operationalArea_ =
+    const bool activity = tag == L"Activity";
+    if (activity) operationalArea_ =
         ::ForgeConductor::Manager::ManagerOperationalArea::Feed;
-    if (tag == L"Agents") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Agents;
-    else if (tag == L"Feed" || tag == L"Events & Evidence") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Feed;
-    else if (tag == L"Runtimes") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Runtimes;
-    else if (tag == L"Diagnostics") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Diagnostics;
-    else if (tag == L"Manager") operationalArea_ = ::ForgeConductor::Manager::ManagerOperationalArea::Manager;
-    if (operational) {
-        const bool agents = false;
-        const bool feed = tag == L"Activity";
-        const bool evidence = false;
-        const bool runtimes = tag == L"Runtimes";
-        const bool diagnostics = tag == L"Diagnostics";
-        OperationalHeading().Text(agents ? L"Agent playbooks & sessions" :
-            feed ? L"Recent tool activity" :
-            evidence ? L"Native evidence chain" :
-            runtimes ? L"Native runtime inventory" :
-            diagnostics ? L"Health & diagnostics" : L"Manager ownership");
-        OperationalSubtitle().Text(agents ? L"Inspect available specialists and exact session identities." :
-            feed ? L"Manager-owned chronological audit outcomes." :
-            evidence ? L"Inspect project-bound audit, sealed run provenance, and independent task verification." :
-            runtimes ? L"Owned operations, threads, processes, repositories and databases." :
-            diagnostics ? L"Doctor checks and bounded diagnostic output." :
-            L"Current service identity and owned runtime resources.");
-        OperationalListTitle().Text(agents ? L"Available specialists & sessions" :
-            feed ? L"Recent outcomes" :
-            evidence ? L"Audit trail · not durable evidence" :
-            runtimes ? L"Resource inventory" :
-            diagnostics ? L"Doctor checks" : L"Manager state");
-        OperationalHeroIcon().Glyph(agents ? L"\uE716" :
-            feed || evidence ? L"\uE8D4" :
-            runtimes ? L"\uE7F4" :
-            diagnostics ? L"\uE713" : L"\uE77B");
-        OperationalPruneButton().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
+    if (activity) {
+        OperationalHeading().Text(L"Recent tool activity");
+        OperationalSubtitle().Text(L"Manager-owned chronological audit outcomes.");
+        OperationalListTitle().Text(L"Recent outcomes");
+        OperationalHeroIcon().Glyph(L"\uE8D4");
+        OperationalPruneButton().Visibility(Visibility::Collapsed);
         OperationalSessionCard().Visibility(Visibility::Collapsed);
-        OperationalAgentSearch().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
-        OperationalFeedFilters().Visibility(feed || evidence ? Visibility::Visible : Visibility::Collapsed);
-        OperationalFeedInsightsCard().Visibility(feed ? Visibility::Visible : Visibility::Collapsed);
-        OperationalFeedBoundaryCard().Visibility(feed ? Visibility::Visible : Visibility::Collapsed);
-        OperationalEvidenceCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
-        OperationalEvidencePath().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
-        OperationalEvidenceRunsCard().Visibility(evidence ? Visibility::Visible : Visibility::Collapsed);
-        OperationalStatusGrid().Visibility(runtimes || tag == L"Manager"
-            ? Visibility::Visible : Visibility::Collapsed);
-        OperationalListCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
-        OperationalRuntimeCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
-        OperationalRuntimeJobsCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
-        OperationalDetailCard().Visibility(runtimes ? Visibility::Collapsed : Visibility::Visible);
-        OperationalListViewport().Height(runtimes || tag == L"Manager" ? 235.0 :
-            evidence ? 355.0 : 545.0);
-        OperationalManagerCard().Visibility(tag == L"Manager" ? Visibility::Visible : Visibility::Collapsed);
-        OperationalRuntimePolicyCard().Visibility(runtimes ? Visibility::Visible : Visibility::Collapsed);
-        OperationalAgentInsightsCard().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
-        OperationalDiagnosticsCard().Visibility(tag == L"Diagnostics"
-            ? Visibility::Visible : Visibility::Collapsed);
-        OperationalCards().Visibility(agents ? Visibility::Visible : Visibility::Collapsed);
-        OperationalList().Visibility(agents ? Visibility::Collapsed : Visibility::Visible);
+        OperationalAgentSearch().Visibility(Visibility::Collapsed);
+        OperationalFeedFilters().Visibility(Visibility::Visible);
+        OperationalFeedInsightsCard().Visibility(Visibility::Visible);
+        OperationalFeedBoundaryCard().Visibility(Visibility::Visible);
+        OperationalEvidenceCard().Visibility(Visibility::Collapsed);
+        OperationalEvidencePath().Visibility(Visibility::Collapsed);
+        OperationalEvidenceRunsCard().Visibility(Visibility::Collapsed);
+        OperationalStatusGrid().Visibility(Visibility::Collapsed);
+        OperationalListCard().Visibility(Visibility::Visible);
+        OperationalRuntimeCard().Visibility(Visibility::Collapsed);
+        OperationalRuntimeJobsCard().Visibility(Visibility::Collapsed);
+        OperationalDetailCard().Visibility(Visibility::Visible);
+        OperationalListViewport().Height(545.0);
+        OperationalManagerCard().Visibility(Visibility::Collapsed);
+        OperationalRuntimePolicyCard().Visibility(Visibility::Collapsed);
+        OperationalAgentInsightsCard().Visibility(Visibility::Collapsed);
+        OperationalDiagnosticsCard().Visibility(Visibility::Collapsed);
+        OperationalCards().Visibility(Visibility::Collapsed);
+        OperationalList().Visibility(Visibility::Visible);
         OperationalEmptyTitle().Text(L"Live inventory unavailable");
         OperationalEmptyBody().Text(L"Connect to the Manager and refresh this view.");
         OperationalCount().Text(L"WAITING");
     }
-    ProviderPanel().Visibility(provider ? Visibility::Visible : Visibility::Collapsed);
-    WorkspacePanel().Visibility(guidedSetup ? Visibility::Visible : Visibility::Collapsed);
+    WorkspaceReadinessPanel().Visibility(
+        workspace ? Visibility::Visible : Visibility::Collapsed);
+    WorkspaceProviderSection().Visibility(workspace ? Visibility::Visible : Visibility::Collapsed);
+    WorkspacePanel().Visibility(workspace ? Visibility::Visible : Visibility::Collapsed);
     ProfileCard().Visibility(Visibility::Visible);
-    AutonomyPanel().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
-    AutonomyOverviewCard().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
-    ContinuityOverviewCard().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
-    ContinuityMetrics().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
-    ContinuityTimelineCard().Visibility(continuityPage ? Visibility::Visible : Visibility::Collapsed);
-    RunMissionCard().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
-    Microsoft::UI::Xaml::Controls::Grid::SetColumn(RunReadbackCard(),
-        continuityPage ? 0 : 1);
-    Microsoft::UI::Xaml::Controls::Grid::SetColumnSpan(RunReadbackCard(),
-        continuityPage ? 2 : 1);
-    RunTask().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
-    RunStartButton().Visibility(continuityPage ? Visibility::Collapsed : Visibility::Visible);
-    UpdateRunProjectLabel();
-    RunControlHeading().Text(continuityPage ? L"Attach & control exact run" : L"Managed run control");
-    RunStateHeading().Text(continuityPage ? L"Latest run readback" : L"Live run");
-    RunHistoryCard().Visibility(autonomy ? Visibility::Visible : Visibility::Collapsed);
+    ActivityRunSection().Visibility(activity ? Visibility::Visible : Visibility::Collapsed);
+    AutonomyOverviewCard().Visibility(Visibility::Visible);
+    ContinuityOverviewCard().Visibility(Visibility::Collapsed);
+    ContinuityMetrics().Visibility(Visibility::Collapsed);
+    ContinuityTimelineCard().Visibility(Visibility::Collapsed);
+    Microsoft::UI::Xaml::Controls::Grid::SetColumn(RunReadbackCard(), 0);
+    Microsoft::UI::Xaml::Controls::Grid::SetColumnSpan(RunReadbackCard(), 2);
+    RunControlHeading().Text(L"Managed run readback");
+    RunStateHeading().Text(L"Live run");
+    RunHistoryCard().Visibility(activity ? Visibility::Visible : Visibility::Collapsed);
     RigPanel().Visibility(rig ? Visibility::Visible : Visibility::Collapsed);
-    ProjectsPanel().Visibility(projects ? Visibility::Visible : Visibility::Collapsed);
-    LmStudioMcpPanel().Visibility(lmStudioMcp ? Visibility::Visible : Visibility::Collapsed);
-    ToolsPanel().Visibility(tools ? Visibility::Visible : Visibility::Collapsed);
-    OperationalPanel().Visibility(operational ? Visibility::Visible : Visibility::Collapsed);
+    WorkspaceProjectSection().Visibility(workspace ? Visibility::Visible : Visibility::Collapsed);
+    SettingsConnectorSection().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
+    SettingsToolCatalogSection().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
+    OperationalPanel().Visibility(activity ? Visibility::Visible : Visibility::Collapsed);
     SettingsPanel().Visibility(settings ? Visibility::Visible : Visibility::Collapsed);
-    GenericPanel().Visibility(
-        !provider && !settings && !guidedSetup && !rig && !autonomy && !projects && !lmStudioMcp && !tools && !operational
-            ? Visibility::Visible : Visibility::Collapsed);
     if (workspace) {
         HelpSearchChanged(nullptr, nullptr);
         PageDescription().Text(L"Bind the provider, project, instruction queue, CLU governance, and automatic continuity.");
@@ -1838,26 +1604,19 @@ void MainWindow::NavigationChanged(
         RunAction(Action::ProjectList);
     } else if (rig) {
         PageDescription().Text(L"Read and control the current native Manager runtime.");
-    } else if (autonomy) {
-        PageDescription().Text(continuityPage
-            ? L"Inspect retained context and control the exact Manager-owned run."
-            : L"Start, attach, pause, resume, and stop Manager-owned work.");
+    } else if (activity) {
+        PageDescription().Text(L"Read chronological Manager activity, CLU findings, package events, and exact managed-run readback.");
         RunAction(Action::RunHistory);
-    } else if (tag == L"Projects") {
-        PageDescription().Text(L"Register authorized folders, select exact project identities, and read or write persistent project memory.");
-        RunAction(Action::ProjectList);
-    } else if (lmStudioMcp) {
-        PageDescription().Text(L"Inspect, repair, and synchronize the native LM Studio MCP registration.");
+        RunAction(Action::OperationalInspect);
+    } else if (settings) {
+        PageDescription().Text(L"Edit and verify Manager-owned preferences, provider integration, and native tools.");
+        RunAction(Action::SettingsLoad);
         RunAction(Action::LmStudioInspect);
         if (telemetryUiInitialized_ && !providerDiscoveryAttempted_) RunAction(Action::ProviderModels);
-    } else if (tools) {
-        PageDescription().Text(L"Inspect and run the Manager-owned native tool catalog.");
         if (!selectedProjectId_.empty()) {
             ToolProjectId().Text(winrt::to_hstring(selectedProjectId_));
         }
         RunAction(Action::ToolsList);
-    } else if (settings) {
-        PageDescription().Text(L"Edit and verify Manager-owned preferences without editing files.");
         const auto project = selectedProjectId_.empty()
             ? std::string{"<select a project first>"} : selectedProjectId_;
         MaintenanceState().Text(winrt::to_hstring(
@@ -1866,21 +1625,8 @@ void MainWindow::NavigationChanged(
             "\nContinuity: RESET PROJECT CONTINUITY " + project +
             "\nCombined: RESET PROJECT DATA " + project +
             "\nAll registered project data: RESET ALL PROJECT DATA"));
-        RunAction(Action::SettingsLoad);
-    } else if (operational) {
-        PageDescription().Text(tag == L"Agents" ? L"Browse native specialists and their live sessions." :
-            tag == L"Feed" ? L"Read recent Manager-owned tool outcomes." :
-            tag == L"Events & Evidence" ? L"Distinguish audited activity from durable trusted evidence." :
-            tag == L"Runtimes" ? L"Inspect native resource ownership and service state." :
-            tag == L"Diagnostics" ? L"Run through health checks and diagnostic readback." :
-            L"Inspect Manager ownership and runtime state.");
-        RunAction(Action::OperationalInspect);
-        if (tag == L"Events & Evidence") RunAction(Action::EvidenceLoad);
-    } else {
-        PageDescription().Text(L"Inspect the current typed Manager operational snapshot.");
     }
     if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
-    RenderGuidedMode();
 }
 
 void MainWindow::TelemetryChartSizeChanged(
@@ -2099,9 +1845,6 @@ void MainWindow::ApplyTelemetryPresentation(
             ? "Canonical response " + snapshot.continuity.canonicalResponseId->value() +
                 " · no verified successor projected"
             : std::string{"No verified successor projected"}));
-    RunSelectedModel().Text(snapshot.provider.model
-        ? winrt::to_hstring(*snapshot.provider.model)
-        : L"Automatic · first compatible loaded model");
     if (snapshot.selectedRun && !selectedProjectId_.empty() &&
         snapshot.selectedRun->record.projectId.value() == selectedProjectId_ &&
         (RunId().Text().empty() || winrt::to_string(RunId().Text()) ==
@@ -2493,10 +2236,7 @@ void MainWindow::ApplyTelemetryPresentation(
     const auto page = winrt::to_string(PageTitle().Text());
     const auto detail = ::ForgeConductor::Hosts::App::telemetryDetailText(
         snapshot, page);
-    if (page != "Rig" && page != "Autonomy" && page != "Continuity" &&
-        page != "Provider") {
-        GenericState().Text(winrt::to_hstring(detail));
-    }
+    if (page == "Rig") ManagerState().Text(winrt::to_hstring(detail));
     ApplyLmStudioIdentities();
 }
 
@@ -2603,21 +2343,14 @@ void MainWindow::ApplyProjectList(
         selectedProjectId_ = project.id.value();
         const auto selected = winrt::to_hstring(selectedProjectId_);
         storeSavedText(selectedProjectValueName_.c_str(), selected);
-        const auto continuityValueName = selectedProjectValueName_ +
-            L".AutomaticContinuity." + selected.c_str();
-        updatingAutomaticContinuity_ = true;
-        AutomaticContinuityToggle().IsOn(
-            loadSavedText(continuityValueName.c_str()).value_or(L"1") != L"0");
-        updatingAutomaticContinuity_ = false;
-        AutomaticContinuityState().Text(AutomaticContinuityToggle().IsOn()
-            ? L"Enabled for this project/provider. Future managed runs may roll over automatically."
-            : L"Disabled for this project/provider. Future managed runs remain in the current context.");
-        RunProjectId().Text(selected);
+        AutomaticContinuityState().Text(
+            L"Reading this project/provider preference from the Manager…");
         ToolProjectId().Text(selected);
         ProjectHeroName().Text(winrt::to_hstring(project.displayName));
         ProjectHeroScope().Text(project.aliases.empty()
             ? L"Authorized folder pending"
             : winrt::to_hstring(project.aliases.front().value()));
+        RunAction(Action::ContinuityRead);
     } else {
         ClearSelectedProject();
         AutomaticContinuityState().Text(
@@ -2638,49 +2371,44 @@ void MainWindow::ApplyProjectList(
     }
     RunInstructionQueueAction(
         ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::List);
-    RenderGuidedMode();
 }
 
 void MainWindow::AutomaticContinuityToggled(
     Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&)
 {
+    // XAML raises Toggled while loading the toggle itself, before the following
+    // status TextBlock has necessarily been connected.  Defer all persistence
+    // and presentation work until the complete visual tree is available.
+    const auto continuityState = AutomaticContinuityState();
+    if (!continuityState) return;
     if (updatingAutomaticContinuity_) return;
     if (selectedProjectId_.empty()) {
         updatingAutomaticContinuity_ = true;
         AutomaticContinuityToggle().IsOn(true);
         updatingAutomaticContinuity_ = false;
-        AutomaticContinuityState().Text(
+        continuityState.Text(
             L"Select a project before changing automatic continuity.");
         return;
     }
-    const auto valueName = selectedProjectValueName_ +
-        L".AutomaticContinuity." + winrt::to_hstring(selectedProjectId_).c_str();
-    storeSavedText(valueName.c_str(),
-        AutomaticContinuityToggle().IsOn() ? L"1" : L"0");
-    AutomaticContinuityState().Text(AutomaticContinuityToggle().IsOn()
-        ? L"Enabled for this project/provider. Future managed runs may roll over automatically."
-        : L"Disabled for this project/provider. Future managed runs remain in the current context.");
+    continuityState.Text(
+        L"Saving this project/provider preference through the Manager…");
+    RunAction(Action::ContinuitySave);
 }
 
-void MainWindow::UpdateRunProjectLabel()
+void MainWindow::UpdateRunControlProjectLabel()
 {
     if (selectedProjectId_.empty()) {
-        RunSelectedProject().Text(
-            L"No project selected · choose an authorized project before starting");
         RunControlProjectLabel().Text(L"Select a project to bind run control.");
         return;
     }
     for (const auto& project : projects_) {
         if (project.id.value() == selectedProjectId_) {
-            RunSelectedProject().Text(winrt::to_hstring(
-                project.displayName));
             RunControlProjectLabel().Text(winrt::to_hstring(
                 "Bound to " + project.displayName + " · the Manager verifies an exact run before control."));
             return;
         }
     }
-    RunSelectedProject().Text(L"Loading selected project readback");
     RunControlProjectLabel().Text(L"Loading exact project binding from the Manager.");
 }
 
@@ -2720,9 +2448,8 @@ void MainWindow::ClearSelectedProject()
     ProjectEditCard().Visibility(Visibility::Collapsed);
     selectedProjectId_.clear();
     clearSavedText(selectedProjectValueName_.c_str());
-    RunProjectId().Text(L"");
     ToolProjectId().Text(L"");
-    UpdateRunProjectLabel();
+    UpdateRunControlProjectLabel();
     MaintenanceState().Text(
         L"Select the exact project on the Projects page first.\n"
         L"All registered project data: RESET ALL PROJECT DATA");
@@ -2758,9 +2485,8 @@ void MainWindow::ApplyProjectWorkspace(
     }
     const auto selected = winrt::to_hstring(selectedProjectId_);
     storeSavedText(selectedProjectValueName_.c_str(), selected);
-    RunProjectId().Text(selected);
     ToolProjectId().Text(selected);
-    UpdateRunProjectLabel();
+    UpdateRunControlProjectLabel();
     ProjectHeroName().Text(winrt::to_hstring(snapshot.project.displayName));
     ProjectHeroScope().Text(snapshot.project.aliases.empty()
         ? L"Authorized folder pending"
@@ -2920,7 +2646,6 @@ void MainWindow::ApplyProjectWorkspace(
     }
     RunInstructionQueueAction(
         ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::List);
-    RenderGuidedMode();
 }
 
 void MainWindow::ApplyDisconnectedTelemetry(const std::string_view reason)
@@ -4375,19 +4100,18 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     if (!connection_ || cancellation_.stop_requested()) co_return;
 
     std::optional<::ForgeConductor::Domain::ManagerSettings> submitted;
-    const bool runAction = action == Action::RunStart ||
-        action == Action::RunStatus || action == Action::RunPause ||
+    const bool runAction = action == Action::RunStatus || action == Action::RunPause ||
         action == Action::RunResume || action == Action::RunCancel;
-    const bool policyAction = action == Action::PolicyPreview || action == Action::PolicyAdopt ||
+    const bool policyAction = action == Action::PolicyBind || action == Action::PolicyRefresh ||
         action == Action::PolicyInspect || action == Action::PolicyRead || action == Action::PolicyNext ||
-        action == Action::PolicyReview || action == Action::PolicyExport;
+        action == Action::PolicyFindings || action == Action::PolicyExport;
     std::optional<::ForgeConductor::Contracts::ProjectPolicyRequest> policyRequest;
     if (policyAction) {
         using PolicyAction = ::ForgeConductor::Contracts::ProjectPolicyAction;
         auto project = ::ForgeConductor::Domain::ProjectId::parse(selectedProjectId_);
         if (!project) { PolicyState().Text(L"Prepare or select a project before importing a policy."); co_return; }
-        const auto operation = action == Action::PolicyPreview ? PolicyAction::Bind : action == Action::PolicyAdopt ? PolicyAction::Refresh
-            : action == Action::PolicyInspect ? PolicyAction::Inspect : action == Action::PolicyReview ? PolicyAction::ListFindings
+        const auto operation = action == Action::PolicyBind ? PolicyAction::Bind : action == Action::PolicyRefresh ? PolicyAction::Refresh
+            : action == Action::PolicyInspect ? PolicyAction::Inspect : action == Action::PolicyFindings ? PolicyAction::ListFindings
             : action == Action::PolicyExport ? PolicyAction::ExportLog : PolicyAction::ReadDocument;
         if (operation != PolicyAction::Bind && operation != PolicyAction::Inspect &&
             (policyProject_ != selectedProjectId_ || policyRevision_.empty())) {
@@ -4423,14 +4147,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const bool settingsAction = action == Action::SettingsLoad ||
         action == Action::SettingsSave || action == Action::SettingsTest ||
         action == Action::SettingsRestart;
+    const bool continuityPreferenceAction =
+        action == Action::ContinuityRead || action == Action::ContinuitySave;
     const bool maintenanceAction = action == Action::MaintenanceReset;
-    std::string runProject;
-    std::string runClient;
-    std::string runTask;
     std::string runId;
-    std::uint64_t runGeneration{};
-    bool runAllowTools{};
-    bool runAutomaticContinuity{true};
     std::string projectPath;
     if (action == Action::SetupPrepare) {
         projectPath = winrt::to_string(SetupFolder().Text());
@@ -4439,6 +4159,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     std::string projectDisplayName;
     std::string projectQuery;
     std::string requestedProjectId;
+    const std::string requestedContinuityProject =
+        continuityPreferenceAction ? selectedProjectId_ : std::string{};
+    const std::optional<bool> requestedContinuityEnabled =
+        action == Action::ContinuitySave
+            ? std::optional<bool>{AutomaticContinuityToggle().IsOn()}
+            : std::nullopt;
     std::string memoryTitle;
     std::string memorySummary;
     std::string memoryBody;
@@ -4464,6 +4190,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const std::string requestedEvidenceProject = selectedProjectId_;
     const std::string requestedEvidenceRun = selectedEvidenceRunId_;
     std::string requestedEvidenceCommand;
+    if (continuityPreferenceAction && requestedContinuityProject.empty()) {
+        AutomaticContinuityState().Text(
+            L"Select a project before reading automatic continuity.");
+        co_return;
+    }
     if (evidenceAction && requestedEvidenceProject.empty()) {
         evidenceSnapshot_.reset();
         OperationalEvidenceRunRows().Children().Clear();
@@ -4511,22 +4242,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     }
     if (runAction) {
         runId = winrt::to_string(RunId().Text());
-        if (action == Action::RunStart) {
-            runProject = selectedProjectId_;
-            runClient = "forge-conductor-manager";
-            runTask = winrt::to_string(RunTask().Text());
-            runGeneration = 0U;
-            runAllowTools = RunAllowNativeTools().IsOn();
-            runAutomaticContinuity = AutomaticContinuityToggle().IsOn();
-            if (runProject.empty()) {
-                RunState().Text(L"Select a named project before starting work.");
-                co_return;
-            }
-            if (runTask.empty()) {
-                RunState().Text(L"Describe work for the selected project first.");
-                co_return;
-            }
-        } else if (runId.empty()) {
+        if (runId.empty()) {
             RunState().Text(L"Enter a run ID to attach or control a Manager-owned run.");
             co_return;
         } else if (selectedProjectId_.empty()) {
@@ -4771,6 +4487,8 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             else if (evidenceAction) OperationalEvidenceState().Text(queued);
             else if (settingsAction) SettingsState().Text(queued);
             else if (maintenanceAction) MaintenanceState().Text(queued);
+            else if (continuityPreferenceAction)
+                AutomaticContinuityState().Text(queued);
             else if (action == Action::ProviderLoad ||
                       action == Action::ProviderSave ||
                       action == Action::ProviderTest ||
@@ -4782,16 +4500,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             else ManagerState().Text(queued);
         } else if (admission ==
                 ::ForgeConductor::Hosts::App::AppActionAdmission::Rejected) {
-            GenericState().Text(
-                L"The bounded Manager command queue is full; this action was not accepted. Retry after the current command completes.");
+            ManagerState().Text(
+                L"The bounded Manager command queue is full; retry after current work.");
             if (lmStudioAction) {
                 LmStudioActionStatus().Text(L"Manager command queue full · retry after current work");
                 LmStudioOverview().Text(L"Native command was not accepted");
                 LmStudioBadge().Text(L"WAITING");
-            }
-            if (action == Action::ProjectRegister && guidedRegistrationPending_) {
-                guidedRegistrationPending_ = false;
-                RenderGuidedMode();
             }
         }
         co_return;
@@ -4839,6 +4553,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         SettingsState().Text(L"Contacting the Manager…");
     } else if (maintenanceAction) {
         MaintenanceState().Text(L"The Manager is fencing the selected data scope…");
+    } else if (continuityPreferenceAction) {
+        AutomaticContinuityState().Text(action == Action::ContinuitySave
+            ? L"Saving this project/provider preference through the Manager…"
+            : L"Reading this project/provider preference from the Manager…");
     } else if (action == Action::ProviderLoad || action == Action::ProviderSave ||
         action == Action::ProviderTest || action == Action::ProviderModels ||
         action == Action::ProviderContract) {
@@ -4850,7 +4568,6 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
     } else {
         ManagerState().Text(L"Connecting…");
-        GenericState().Text(L"Connecting…");
     }
 
     std::string message;
@@ -4876,12 +4593,14 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     ::ForgeConductor::Hosts::App::ToolOutcomeView toolOutcomeView;
     ::ForgeConductor::Hosts::App::OperationalView operationalView;
     ::ForgeConductor::Hosts::App::MaintenanceView maintenanceView;
+    ::ForgeConductor::Hosts::App::AutomaticContinuityPreferenceView
+        continuityPreferenceView;
     bool failed{};
     try {
         co_await winrt::resume_background();
         switch (action) {
-        case Action::PolicyPreview: case Action::PolicyAdopt: case Action::PolicyInspect:
-        case Action::PolicyRead: case Action::PolicyNext: case Action::PolicyReview:
+        case Action::PolicyBind: case Action::PolicyRefresh: case Action::PolicyInspect:
+        case Action::PolicyRead: case Action::PolicyNext: case Action::PolicyFindings:
         case Action::PolicyExport:
             policyView = connection_->projectPolicy(*policyRequest, cancellation_.get_token());
             message = policyView.message;
@@ -4996,12 +4715,12 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 std::move(maintenanceToken), cancellation_.get_token());
             message = maintenanceView.message;
             break;
-        case Action::RunStart:
-            runView = connection_->startManagedRun(
-                std::move(runProject), std::move(runClient), runGeneration,
-                std::move(runTask), runAllowTools, cancellation_.get_token(),
-                runAutomaticContinuity);
-            message = runView.message;
+        case Action::ContinuityRead:
+        case Action::ContinuitySave:
+            continuityPreferenceView = connection_->automaticContinuityPreference(
+                requestedContinuityProject, requestedContinuityEnabled,
+                cancellation_.get_token());
+            message = continuityPreferenceView.message;
             break;
         case Action::RunStatus:
         case Action::RunPause:
@@ -5122,6 +4841,25 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     }
     std::optional<Action> followUp;
     if (!cancellation_.stop_requested()) {
+        if (continuityPreferenceAction &&
+            requestedContinuityProject == selectedProjectId_) {
+            if (continuityPreferenceView.loaded &&
+                continuityPreferenceView.preference &&
+                continuityPreferenceView.preference->projectId.value() ==
+                    requestedContinuityProject) {
+                const auto& preference = *continuityPreferenceView.preference;
+                updatingAutomaticContinuity_ = true;
+                AutomaticContinuityToggle().IsOn(preference.enabled);
+                updatingAutomaticContinuity_ = false;
+                AutomaticContinuityState().Text(winrt::to_hstring(
+                    std::string{preference.enabled ? "Enabled" : "Disabled"} +
+                    " for " + preference.providerId +
+                    ". The Manager will pass this exact value to managed runs."));
+            } else {
+                AutomaticContinuityState().Text(winrt::to_hstring(
+                    "Manager preference readback unavailable · " + message));
+            }
+        }
         if (policyAction) {
             if (policyRequest->projectId.value() != selectedProjectId_) PolicyState().Text(L"The selected project changed. Inspect its policy to continue.");
             else if (failed) PolicyState().Text(to_hstring(message));
@@ -5130,6 +4868,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         if (action == Action::SetupPrepare) {
             ApplySetupProgress(setupResult);
             preparedProjectId_ = setupResult.ready ? setupResult.projectId : std::string{};
+            if (setupResult.ready) {
+                storeSavedText((selectedPageValueName_ + L".SetupCompleted").c_str(), L"1");
+            }
             SetupFolderButton().IsEnabled(true);
             SetupRetryButton().IsEnabled(true);
             SetupCancelButton().IsEnabled(false);
@@ -5141,18 +4882,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             if (runView.snapshot) {
                 if (runView.snapshot->record.projectId.value() == selectedProjectId_) {
                     ApplyRunReadback(*runView.snapshot);
-                    if (action == Action::RunStart && preparedProjectId_ == selectedProjectId_)
-                        storeSavedText((selectedPageValueName_ + L".SetupCompleted").c_str(), L"1");
-                    if (action == Action::RunStart && guidedModeEnabled_ &&
-                        guidedStep_ == GuidedProjectStep::FirstRun) {
-                        SetGuidedStep(GuidedProjectStep::Complete);
-                    }
-                    if (action == Action::RunStart ||
-                        (action == Action::RunStatus &&
+                    if (action == Action::RunStatus &&
                          runView.snapshot->record.state !=
                              ::ForgeConductor::Domain::ManagedRunState::Running &&
                          runView.snapshot->record.state !=
-                             ::ForgeConductor::Domain::ManagedRunState::Paused)) {
+                             ::ForgeConductor::Domain::ManagedRunState::Paused) {
                         followUp = Action::RunHistory;
                     }
                 } else {
@@ -5192,20 +4926,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     ProjectMemorySummary().Text(L"");
                     ProjectMemoryBody().Text(L"");
                     ProjectMemoryTags().Text(L"");
-                    if (guidedModeEnabled_ &&
-                        guidedStep_ == GuidedProjectStep::Memory) {
-                        SetGuidedStep(GuidedProjectStep::Provider);
-                    }
                 }
             }
-            if (action == Action::ProjectRegister && guidedRegistrationPending_) {
-                guidedRegistrationPending_ = false;
-                if (guidedModeEnabled_ && projectView.loaded && projectView.snapshot) {
-                    SetGuidedStep(GuidedProjectStep::ReviewScope);
-                    ProjectRegistrationExpander().IsExpanded(false);
-                } else {
-                    RenderGuidedMode();
-                }
+            if (action == Action::ProjectRegister && projectView.loaded &&
+                projectView.snapshot) {
+                ProjectRegistrationExpander().IsExpanded(false);
             }
             if (action == Action::InstructionPackagePreview ||
                 action == Action::InstructionPackageActivate) {
@@ -5251,10 +4976,6 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                         InstructionPackageRevision().Text(winrt::to_hstring(
                             package.revision.value().substr(0U, 16U) +
                             "… · ACTIVE"));
-                        if (guidedModeEnabled_ &&
-                            guidedStep_ == GuidedProjectStep::Instructions) {
-                            SetGuidedStep(GuidedProjectStep::Memory);
-                        }
                         followUp = Action::ProjectLoad;
                     }
                     ProjectState().Text(winrt::to_hstring(message));
@@ -5523,6 +5244,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                     (providerEdited || settingsEdited
                         ? " Pending form edits were preserved; use Revert to replace them."
                         : "")));
+                if (!selectedProjectId_.empty()) {
+                    followUp = Action::ContinuityRead;
+                }
             } else {
                 SettingsState().Text(winrt::to_hstring(message));
                 if (action == Action::SettingsSave ||
@@ -5583,6 +5307,9 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 } else {
                     message += " Pending provider edits were preserved; reload after saving or reverting.";
                 }
+                if (!selectedProjectId_.empty()) {
+                    followUp = Action::ContinuityRead;
+                }
             } else if (action == Action::ProviderSave && submitted && !failed) {
                 providerSettings_ = submitted;
             }
@@ -5600,7 +5327,6 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ApplyDisconnectedTelemetry(message);
             }
             ManagerState().Text(winrt::to_hstring(message));
-            GenericState().Text(winrt::to_hstring(message));
         }
     }
     const auto scheduled = actionScheduler_.complete(lane);

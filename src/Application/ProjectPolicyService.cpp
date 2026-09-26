@@ -81,6 +81,20 @@ void redact(Json& value, std::string key = {})
         value = "[REDACTED]";
         return;
     }
+    if (value.is_string()) {
+        const auto& text = value.get_ref<const std::string&>();
+        if (!text.empty() && (text.front() == '{' || text.front() == '[')) {
+            try {
+                auto nested = Json::parse(text);
+                redact(nested);
+                value = nested.dump();
+            } catch (...) {
+                // Ordinary text remains unchanged. Export redaction must never
+                // turn a non-JSON evidence string into a policy failure.
+            }
+        }
+        return;
+    }
     if (value.is_object()) {
         for (auto iterator = value.begin(); iterator != value.end(); ++iterator) {
             redact(iterator.value(), iterator.key());
@@ -268,6 +282,7 @@ public:
             migrated["history"].push_back({
                 {"kind", "legacy_policy_review"},
                 {"evidence", snapshot.at("review")},
+                {"correlation_id", "legacy-migration"},
                 {"migrated_at_utc_ms", nowMilliseconds()}});
         }
         migrated["rules"] = compileRules(migrated.at("entries"));
@@ -286,6 +301,7 @@ public:
         auto snapshot = Json::parse(
             reinterpret_cast<const char*>(value.data()),
             reinterpret_cast<const char*>(value.data()) + value.size());
+        const auto legacy = snapshot.is_object() && snapshot.value("schema", 0) == 1;
         snapshot = migrateLegacy(std::move(snapshot));
         if (!snapshot.is_object() || snapshot.value("schema", 0) != 2 ||
             !snapshot.contains("binding") || !snapshot.contains("entries") ||
@@ -294,6 +310,7 @@ public:
             throw std::runtime_error{
                 "The CLU governance snapshot failed integrity validation."};
         }
+        if (legacy) save(paths, snapshot, true, context);
         return snapshot;
     }
 
@@ -357,6 +374,7 @@ public:
         snapshot["rules"] = compileRules(snapshot.at("entries"));
         snapshot["history"].push_back({{"kind", "policy_revision_bound"},
             {"revision", revision}, {"source", imported.source},
+            {"correlation_id", context.correlationId.value()},
             {"coverage_gap_count", gaps}, {"bound_at_utc_ms", nowMilliseconds()}});
         save(paths, snapshot, !current.is_null(), context);
         return snapshot;
@@ -491,6 +509,21 @@ public:
             auto result = Json{{"revision", current.at("binding").at("revision")},
                 {"findings", current.at("findings")},
                 {"notifications", current.at("notifications")}};
+            Json activity = Json::array();
+            const auto& history = current.at("history");
+            const auto first = history.size() > 100U ? history.size() - 100U : 0U;
+            for (auto index = first; index < history.size(); ++index) {
+                const auto& event = history.at(index);
+                activity.push_back({
+                    {"kind", event.value("kind", std::string{"policy_event"})},
+                    {"finding_id", event.value("finding_id", std::string{})},
+                    {"correlation_id", event.value("correlation_id", std::string{})},
+                    {"timestamp_utc_ms", event.value("resolved_at_utc_ms",
+                        event.value("evaluated_at_utc_ms",
+                            event.value("bound_at_utc_ms",
+                                event.value("migrated_at_utc_ms", std::int64_t{}))))}});
+            }
+            result["activity"] = std::move(activity);
             if (!request.detailsJson.empty()) {
                 const auto details = Json::parse(request.detailsJson);
                 if (details.value("acknowledge_notifications", false)) {
@@ -516,6 +549,7 @@ public:
             current["history"].push_back({{"kind", "evaluation"},
                 {"evidence", evidence},
                 {"finding_id", finding ? Json(*finding) : Json(nullptr)},
+                {"correlation_id", context.correlationId.value()},
                 {"evaluated_at_utc_ms", nowMilliseconds()}});
             save(paths, current, true, context);
             auto result = summary(current);
@@ -538,6 +572,7 @@ public:
             current["history"].push_back({{"kind", "finding_resolved"},
                 {"finding_id", findingId},
                 {"correction_evidence", details.at("correction_evidence")},
+                {"correlation_id", context.correlationId.value()},
                 {"resolved_at_utc_ms", nowMilliseconds()}});
             save(paths, current, true, context);
             return Json{{"finding", *found}, {"summary", summary(current)}}.dump();

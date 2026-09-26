@@ -997,6 +997,123 @@ private:
                 std::move(writtenRecordId)});
     }
 
+    [[nodiscard]] static std::string providerIdentity(
+        const Domain::ManagerSettings& settings)
+    {
+        return std::string{"lmstudio://"} +
+            (settings.localModelSecure ? "https/" : "http/") +
+            settings.localModelHost + ":" +
+            std::to_string(settings.localModelPort) + "/" +
+            (settings.localModelName.empty()
+                ? std::string{"<automatic>"} : settings.localModelName);
+    }
+
+    [[nodiscard]] Domain::Result<Domain::AutomaticContinuityPreference>
+    automaticContinuityPreference(
+        const Domain::ProjectId& projectId,
+        const std::optional<bool> enabled,
+        const Domain::OperationContext& context)
+    {
+        if (telemetrySources_.projectMemory == nullptr) {
+            return Domain::Result<Domain::AutomaticContinuityPreference>::failure(
+                error(Domain::ErrorCodes::InvalidRequest,
+                    "Automatic-continuity preferences are unavailable in this Manager composition."));
+        }
+        auto settings = controller_->settings(context);
+        if (!settings) {
+            return Domain::Result<Domain::AutomaticContinuityPreference>::failure(
+                std::move(settings).error());
+        }
+        const auto providerId = providerIdentity(settings.value());
+        const auto state = enabled.value_or(true)
+            ? Domain::AutomaticContinuityState::Preparing
+            : Domain::AutomaticContinuityState::Off;
+        const std::string detail = enabled.value_or(true)
+            ? "Enabled for this project/provider; live-provider lifecycle qualification has not been recorded."
+            : "Disabled for this project/provider.";
+
+        if (enabled) {
+            nlohmann::json document{{"provider_id", providerId},
+                {"enabled", *enabled},
+                {"state", *enabled ? "preparing" : "off"},
+                {"detail", detail}};
+            Domain::ProjectMemoryWrite write;
+            write.kind = "automatic_continuity_preference";
+            write.title = providerId;
+            write.summary = *enabled
+                ? "Automatic continuity enabled"
+                : "Automatic continuity disabled";
+            write.body = document.dump();
+            write.tags = {"automatic-continuity", "provider-binding"};
+            write.importance = 1.0;
+            write.confidence = 1.0;
+            write.sourceKind = "manager_automatic_continuity";
+            write.sourceReference = providerId;
+            auto remembered = telemetrySources_.projectMemory->remember(
+                Domain::RememberProjectMemoryRequest{projectId, std::move(write)},
+                context);
+            if (!remembered) {
+                return Domain::Result<Domain::AutomaticContinuityPreference>::failure(
+                    std::move(remembered).error());
+            }
+            return Domain::Result<Domain::AutomaticContinuityPreference>::success(
+                Domain::AutomaticContinuityPreference{
+                    projectId, providerId, *enabled, state, detail});
+        }
+
+        std::optional<std::string> cursor;
+        do {
+            auto page = telemetrySources_.projectMemory->listRecent(
+                Domain::ListRecentProjectMemoryRequest{
+                    projectId, {"automatic_continuity_preference"},
+                    std::nullopt, 100U, cursor, true, 256U * 1024U},
+                context);
+            if (!page) {
+                return Domain::Result<Domain::AutomaticContinuityPreference>::failure(
+                    std::move(page).error());
+            }
+            if (page.value().projectId != projectId) {
+                return Domain::Result<Domain::AutomaticContinuityPreference>::failure(
+                    error(Domain::ErrorCodes::ProjectScopeMismatch,
+                        "Automatic-continuity preferences crossed project scope."));
+            }
+            for (const auto& hit : page.value().records) {
+                const auto& record = hit.record;
+                if (record.projectId != projectId || record.kind !=
+                    "automatic_continuity_preference" || !record.body) {
+                    continue;
+                }
+                try {
+                    const auto document = nlohmann::json::parse(*record.body);
+                    if (document.value("provider_id", std::string{}) != providerId) {
+                        continue;
+                    }
+                    const bool storedEnabled = document.at("enabled").get<bool>();
+                    const auto storedState = storedEnabled
+                        ? Domain::AutomaticContinuityState::Preparing
+                        : Domain::AutomaticContinuityState::Off;
+                    return Domain::Result<Domain::AutomaticContinuityPreference>::success(
+                        Domain::AutomaticContinuityPreference{
+                            projectId, providerId, storedEnabled, storedState,
+                            document.value("detail", storedEnabled
+                                ? "Enabled for this project/provider; live-provider lifecycle qualification has not been recorded."
+                                : "Disabled for this project/provider.")});
+                } catch (...) {
+                    return Domain::Result<Domain::AutomaticContinuityPreference>::failure(
+                        error(Domain::ErrorCodes::IntegrityFailure,
+                            "The persisted automatic-continuity preference failed validation."));
+                }
+            }
+            cursor = page.value().nextCursor;
+        } while (cursor);
+
+        return Domain::Result<Domain::AutomaticContinuityPreference>::success(
+            Domain::AutomaticContinuityPreference{
+                projectId, providerId, true,
+                Domain::AutomaticContinuityState::Preparing,
+                "Default enabled; no project/provider override is stored. Live-provider lifecycle qualification has not been recorded."});
+    }
+
     [[nodiscard]] Domain::Result<ScannedInstructionPackage>
     scanInstructionPackage(
         const ManagerInstructionPackageRequest& request,
@@ -1330,6 +1447,7 @@ private:
                 {"content_bytes", scanned.contentBytes},
                 {"coverage_gap_count", scanned.coverageGapCount},
                 {"attempts", 1U},
+                {"correlation_id", context.correlationId.value()},
                 {"last_error", nullptr}};
             Domain::ProjectMemoryWrite manifestWrite;
             manifestWrite.kind = "instruction_package_queue";
@@ -1600,7 +1718,35 @@ private:
                         return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
                             std::move(saved).error());
                     }
-                    return packageQueueRows(projectId, context);
+                    const auto now = clock_->utcNow();
+                    auto migratedRecord = Domain::ProjectMemoryRecord{
+                        saved.value().recordId, projectId,
+                        saved.value().recordVersion,
+                        "instruction_package_queue",
+                        legacy.value("package_name",
+                            std::string{"Migrated instructions"}),
+                        "Migrated active instruction manifest · " + revisionText,
+                        migrated.dump(),
+                        {"instruction-package-queue", "migrated-v1"},
+                        1.0, 1.0,
+                        "manager_instruction_package_migration",
+                        legacyHit.record.id.value(), std::nullopt,
+                        now, now, now, std::nullopt,
+                        saved.value().contentHash, false,
+                        saved.value().schemaVersion};
+                    std::vector<StoredPackageQueueRow> migratedRows;
+                    migratedRows.push_back(StoredPackageQueueRow{
+                        std::move(migratedRecord),
+                        ManagerInstructionPackageQueueRowSnapshot{
+                            rowId, packageId,
+                            legacy.value("package_name",
+                                std::string{"Migrated instructions"}),
+                            path.value(), revision.value(), 1024U, "active",
+                            legacy.at("files").size(), contentBytes, 0U, 0U,
+                            0U,
+                            "Execution cursor was uncertain during migration and was reset to the first entry."}});
+                    return Domain::Result<std::vector<StoredPackageQueueRow>>::success(
+                        std::move(migratedRows));
                 } catch (...) {
                     continue;
                 }
@@ -1802,6 +1948,36 @@ private:
                     error(Domain::ErrorCodes::Conflict,
                         "The package changed; add the new revision as a queue row."));
             }
+            try {
+                auto document = nlohmann::json::parse(*selected->record.body);
+                document["state"] = "ready";
+                document["attempts"] = document.value("attempts", 0U) + 1U;
+                document["last_error"] = nullptr;
+                document["coverage_gap_count"] =
+                    rescanned.value().coverageGapCount;
+                document["correlation_id"] = context.correlationId.value();
+                auto updated = telemetrySources_.projectMemory->update(
+                    Domain::UpdateProjectMemoryRequest{
+                        request.projectId, selected->record.id,
+                        selected->record.version, std::nullopt,
+                        std::optional<std::string>{
+                            "Retry succeeded for the immutable package revision"},
+                        std::optional<std::string>{document.dump()},
+                        std::nullopt},
+                    context);
+                if (!updated) {
+                    return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                        std::move(updated).error());
+                }
+                selected->snapshot.state = "ready";
+                selected->snapshot.lastError.reset();
+                selected->snapshot.coverageGapCount =
+                    rescanned.value().coverageGapCount;
+            } catch (...) {
+                return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                    error(Domain::ErrorCodes::IntegrityFailure,
+                        "The failed package queue row could not be retried safely."));
+            }
         }
 
         ManagerInstructionPackageQueueSnapshot result{request.projectId};
@@ -1876,6 +2052,49 @@ private:
                         throw std::runtime_error{"relative path traversal"};
                     }
                 }
+                std::optional<Domain::Sha256Digest> expectedContentHash;
+                std::optional<std::string> entryCursor;
+                do {
+                    auto entries = telemetrySources_.projectMemory->search(
+                        Domain::SearchProjectMemoryRequest{
+                            request.projectId, selected->snapshot.queueRowId,
+                            {"instruction_package_entry"}, {}, std::nullopt,
+                            100U, entryCursor, true, 256U * 1024U},
+                        context);
+                    if (!entries) {
+                        return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                            std::move(entries).error());
+                    }
+                    for (const auto& hit : entries.value().records) {
+                        if (!hit.record.body) continue;
+                        const auto entry = nlohmann::json::parse(*hit.record.body);
+                        if (entry.value("queue_row_id", std::string{}) !=
+                                selected->snapshot.queueRowId ||
+                            entry.value("relative_path", std::string{}) !=
+                                *request.relativePath) {
+                            continue;
+                        }
+                        if (entry.value("revision", std::string{}) !=
+                                selected->snapshot.revision.value() ||
+                            entry.value("kind", std::string{}) != "file" ||
+                            !entry.contains("content_hash") ||
+                            entry.at("content_hash").is_null()) {
+                            throw std::runtime_error{
+                                "entry is not bound to an immutable file revision"};
+                        }
+                        auto parsed = Domain::Sha256Digest::parse(
+                            entry.at("content_hash").get<std::string>());
+                        if (!parsed) throw std::runtime_error{"invalid entry hash"};
+                        expectedContentHash = std::move(parsed).value();
+                        break;
+                    }
+                    entryCursor = entries.value().nextCursor;
+                } while (!expectedContentHash && entryCursor);
+                if (!expectedContentHash) {
+                    return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                        error(Domain::ErrorCodes::RecordNotFound,
+                            "The selected package entry binding was not found."));
+                }
                 const std::filesystem::path root{
                     utf8Path(selected->snapshot.packagePath.value())};
                 std::error_code pathError;
@@ -1899,6 +2118,12 @@ private:
                 if (pathError || request.contentOffset > size) {
                     throw std::runtime_error{"content offset is outside the entry"};
                 }
+                const auto before = streamInstructionFile(candidate, size, context);
+                if (!before.digest || *before.digest != *expectedContentHash) {
+                    return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                        error(Domain::ErrorCodes::Conflict,
+                            "The package entry changed after its immutable revision was recorded."));
+                }
                 const auto count = static_cast<std::size_t>((std::min)(
                     static_cast<std::uint64_t>(request.maximumContentBytes),
                     size - request.contentOffset));
@@ -1910,10 +2135,25 @@ private:
                 if (static_cast<std::size_t>(input.gcount()) != count) {
                     throw std::runtime_error{"content changed during paged read"};
                 }
+                input.close();
+                std::error_code afterSizeError;
+                const auto afterSize = std::filesystem::file_size(
+                    candidate, afterSizeError);
+                const auto after = afterSizeError
+                    ? StreamedFile{}
+                    : streamInstructionFile(candidate, afterSize, context);
+                if (afterSizeError || afterSize != size || !after.digest ||
+                    *after.digest != *expectedContentHash) {
+                    return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                        error(Domain::ErrorCodes::Conflict,
+                            "The package entry changed during paged content access."));
+                }
                 result.contentBase64 = base64Encode(page);
                 result.contentOffset = request.contentOffset;
                 result.nextContentOffset = request.contentOffset + count;
                 result.contentComplete = result.nextContentOffset == size;
+                result.contentRevision = selected->snapshot.revision;
+                result.contentHash = *expectedContentHash;
                 return Domain::Result<ManagerInstructionPackageQueueSnapshot>::success(
                     std::move(result));
             } catch (...) {
@@ -1981,6 +2221,9 @@ private:
                     std::to_string(row.entryCount) + "; coverage gaps: " +
                     std::to_string(row.coverageGapCount) + "\n";
                 std::optional<std::string> cursor;
+                std::uint64_t visited{};
+                std::uint64_t advanced = row.cursorEntry;
+                bool capacityReached{};
                 do {
                     auto page = telemetrySources_.projectMemory->search(
                         Domain::SearchProjectMemoryRequest{
@@ -1997,28 +2240,57 @@ private:
                         const auto entry = nlohmann::json::parse(*hit.record.body);
                         if (entry.value("queue_row_id", std::string{}) !=
                             row.queueRowId) continue;
+                        if (visited++ < row.cursorEntry) continue;
                         const auto relative = entry.value(
                             "relative_path", std::string{"unavailable"});
+                        std::string section;
                         if (allowTools) {
-                            enriched += "- " + relative + " [" +
+                            section += "- " + relative + " [" +
                                 entry.value("interpretation", std::string{"opaque"}) +
                                 "]\n";
                         }
-                        if (!entry.contains("derived_text") ||
-                            entry.at("derived_text").is_null()) continue;
-                        const auto section = "\n[INSTRUCTION ENTRY: " +
-                            relative + "]\n" +
-                            entry.at("derived_text").get<std::string>() + "\n";
+                        if (entry.contains("derived_text") &&
+                            !entry.at("derived_text").is_null()) {
+                            section += "\n[INSTRUCTION ENTRY: " +
+                                relative + "]\n" +
+                                entry.at("derived_text").get<std::string>() + "\n";
+                        }
                         if (enriched.size() + section.size() + footer.size() <=
                             Domain::MaximumManagedRunTaskBytes) {
                             enriched += section;
-                            ++embedded;
+                            if (entry.contains("derived_text") &&
+                                !entry.at("derived_text").is_null()) ++embedded;
+                            ++advanced;
+                        } else {
+                            capacityReached = true;
+                            break;
                         }
                     }
                     cursor = page.value().nextCursor;
-                } while (cursor && enriched.size() + footer.size() <
-                    Domain::MaximumManagedRunTaskBytes);
-                if (enriched.size() + footer.size() >=
+                } while (cursor && !capacityReached);
+                if (advanced != row.cursorEntry) {
+                    auto document = nlohmann::json::parse(*stored.record.body);
+                    document["cursor"] = {
+                        {"entry", advanced}, {"byte_offset", 0U}};
+                    document["state"] = advanced >= row.entryCount
+                        ? "completed" : "active";
+                    document["correlation_id"] = context.correlationId.value();
+                    document["last_error"] = nullptr;
+                    auto updated = telemetrySources_.projectMemory->update(
+                        Domain::UpdateProjectMemoryRequest{
+                            projectId, stored.record.id, stored.record.version,
+                            std::nullopt,
+                            std::optional<std::string>{
+                                "Execution cursor advanced to entry " +
+                                std::to_string(advanced)},
+                            std::optional<std::string>{document.dump()},
+                            std::nullopt}, context);
+                    if (!updated) {
+                        return Domain::Result<std::string>::failure(
+                            std::move(updated).error());
+                    }
+                }
+                if (capacityReached || enriched.size() + footer.size() >=
                     Domain::MaximumManagedRunTaskBytes) {
                     break;
                 }
@@ -2771,6 +3043,66 @@ private:
                     (event.duration ? " · " + std::to_string(event.duration->count()) + " ms" : "") +
                     (event.error ? "\n" + *event.error : ""));
             }
+            if (request.projectId && telemetrySources_.projectMemory != nullptr) {
+                auto packages = telemetrySources_.projectMemory->listRecent(
+                    Domain::ListRecentProjectMemoryRequest{
+                        *request.projectId, {"instruction_package_queue"},
+                        std::nullopt, 50U, std::nullopt, true, 256U * 1024U},
+                    context);
+                if (packages) {
+                    for (const auto& hit : packages.value().records) {
+                        if (!hit.record.body) continue;
+                        try {
+                            const auto package = nlohmann::json::parse(*hit.record.body);
+                            if (package.value("schema", std::string{}) !=
+                                "forge-instruction-package-queue-v2") continue;
+                            lines.push_back("persisted · package.queue · " +
+                                package.value("state", std::string{"unknown"}) +
+                                " · project " + request.projectId->value() +
+                                " · package " + package.value("package_id", std::string{}) +
+                                " · revision " + package.value("revision", std::string{}) +
+                                " · queue-row " + package.value("queue_row_id", std::string{}) +
+                                " · cursor " + std::to_string(
+                                    package.at("cursor").value("entry", std::uint64_t{})) +
+                                " · correlation " + package.value(
+                                    "correlation_id", std::string{"legacy-unavailable"}));
+                        } catch (...) {
+                            lines.push_back("persisted · package.queue · integrity_failure · project " +
+                                request.projectId->value() +
+                                " · correlation " + context.correlationId.value());
+                        }
+                    }
+                }
+            }
+            if (request.projectId && telemetrySources_.projectPolicy != nullptr) {
+                auto policy = telemetrySources_.projectPolicy->execute(
+                    Contracts::ProjectPolicyRequest{
+                        *request.projectId, Contracts::ProjectPolicyAction::ListFindings},
+                    context);
+                if (policy) {
+                    try {
+                        const auto state = nlohmann::json::parse(policy.value());
+                        const auto revision = state.value("revision", std::string{});
+                        if (state.contains("activity") && state.at("activity").is_array()) {
+                            for (const auto& event : state.at("activity")) {
+                                lines.push_back("persisted · clu." +
+                                    event.value("kind", std::string{"policy_event"}) +
+                                    " · recorded · project " + request.projectId->value() +
+                                    " · policy-revision " + revision +
+                                    (event.value("finding_id", std::string{}).empty()
+                                        ? std::string{} : " · finding " +
+                                            event.value("finding_id", std::string{})) +
+                                    " · correlation " + event.value(
+                                        "correlation_id", std::string{"legacy-unavailable"}));
+                            }
+                        }
+                    } catch (...) {
+                        lines.push_back("persisted · clu.repository · integrity_failure · project " +
+                            request.projectId->value() +
+                            " · correlation " + context.correlationId.value());
+                    }
+                }
+            }
             return Domain::Result<ManagerOperationalSnapshot>::success(
                 {request.area, "Recent activity", std::move(lines)});
         }
@@ -2782,6 +3114,86 @@ private:
             lines.push_back(std::string{"Overall health: "} + (doctor.value().ok ? "healthy" : "attention required"));
             for (const auto& check : doctor.value().checks) {
                 lines.push_back(std::string{check.ok ? "PASS " : "FAIL "} + check.name + " — " + check.detail);
+            }
+            if (request.projectId) {
+                const auto appendProjectCheck = [&lines](const bool ok,
+                    std::string name, std::string detail) {
+                    lines.push_back(std::string{ok ? "PASS " : "FAIL "} +
+                        std::move(name) + " — " + std::move(detail));
+                };
+                bool projectOk{};
+                if (telemetrySources_.projects != nullptr) {
+                    projectOk = static_cast<bool>(telemetrySources_.projects->descriptor(
+                        *request.projectId, context));
+                }
+                appendProjectCheck(projectOk, "project_root_git_identity",
+                    projectOk ? "selected project identity and roots resolved"
+                        : "selected project identity or roots unavailable");
+                bool memoryOk{};
+                if (telemetrySources_.projectMemory != nullptr) {
+                    memoryOk = static_cast<bool>(telemetrySources_.projectMemory->status(
+                        Domain::ProjectMemoryStatusRequest{*request.projectId}, context));
+                }
+                appendProjectCheck(memoryOk, "project_memory_integrity",
+                    memoryOk ? "project memory status readback succeeded"
+                        : "project memory status readback failed");
+
+                bool packageOk{};
+                if (projectOk && telemetrySources_.projectMemory != nullptr &&
+                    telemetrySources_.evidenceHasher != nullptr) {
+                    auto package = instructionPackageQueue(
+                        ManagerInstructionPackageQueueRequest{
+                            *request.projectId,
+                            ManagerInstructionPackageQueueAction::List}, context);
+                    if (package) {
+                        packageOk = std::all_of(package.value().rows.begin(),
+                            package.value().rows.end(), [](const auto& row) {
+                                return row.cursorEntry <= row.entryCount &&
+                                    !row.queueRowId.empty() && !row.packageId.empty();
+                            });
+                    }
+                }
+                appendProjectCheck(packageOk, "package_queue_cursor_integrity",
+                    packageOk ? "catalog revisions, ordering, cursors, and migration schema aligned"
+                        : "package queue or cursor integrity unavailable");
+
+                bool policyOk{};
+                if (telemetrySources_.projectPolicy != nullptr) {
+                    auto policy = telemetrySources_.projectPolicy->execute(
+                        Contracts::ProjectPolicyRequest{*request.projectId,
+                            Contracts::ProjectPolicyAction::ExportLog}, context);
+                    if (policy) {
+                        try {
+                            const auto exported = nlohmann::json::parse(policy.value());
+                            policyOk = exported.value("schema", std::string{}) ==
+                                    "forge-clu-governance-log-v1" &&
+                                exported.contains("findings") &&
+                                exported.contains("notifications") &&
+                                exported.contains("history");
+                        } catch (...) {
+                        }
+                    }
+                }
+                appendProjectCheck(policyOk, "clu_repository_notification_export",
+                    policyOk ? "policy revision, coverage, findings, notifications, and redacted export readable"
+                        : "CLU repository, notifications, or export unavailable");
+
+                bool continuityOk{};
+                auto preference = automaticContinuityPreference(
+                    *request.projectId, std::nullopt, context);
+                if (preference) {
+                    continuityOk = !preference.value().providerId.empty() &&
+                        preference.value().projectId == *request.projectId;
+                }
+                appendProjectCheck(continuityOk,
+                    "continuity_preference_provider_binding",
+                    continuityOk ? "project-plus-provider preference and recovery state readable"
+                        : "continuity preference/provider binding unavailable");
+                appendProjectCheck(packageOk && policyOk && continuityOk,
+                    "simplified_workflow_schema_alignment",
+                    packageOk && policyOk && continuityOk
+                        ? "package, CLU, continuity, migration, and export schemas aligned"
+                        : "one or more simplified-workflow schemas require attention");
             }
             if (diagnosticLines) {
                 for (const auto& line : diagnosticLines.value()) lines.push_back(line);
@@ -3135,6 +3547,13 @@ private:
                             payload.projectId, {}, 20U,
                             remembered.value().recordId, context));
                 } else if constexpr (
+                    std::is_same_v<Payload,
+                        ManagerAutomaticContinuityPreferenceRequest>) {
+                    return controllerResponse(
+                        request,
+                        automaticContinuityPreference(
+                            payload.projectId, payload.enabled, context));
+                } else if constexpr (
                     std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
                     return controllerResponse(
                         request, instructionPackage(payload, context));
@@ -3198,6 +3617,12 @@ private:
                                 Domain::ErrorCodes::InvalidRequest,
                                 "Managed runs are unavailable in this Manager composition."));
                     }
+                    auto preference = automaticContinuityPreference(
+                        payload.projectId, std::nullopt, context);
+                    if (!preference) {
+                        return responseWithError(
+                            request, std::move(preference).error());
+                    }
                     auto task = managedRunTaskWithInstructions(
                         payload.projectId, payload.task,
                         payload.allowTools, context);
@@ -3234,7 +3659,7 @@ private:
                                 payload.authorityGeneration,
                                 std::move(task).value(),
                                 payload.allowTools,
-                                payload.automaticContinuity},
+                                preference.value().enabled},
                             context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagedRunStatusRequest>) {

@@ -72,6 +72,29 @@ void policyAdoptionAndAuthorization()
     D::ToolAuthorizationRequest write{{{id<D::RequestId>("write"), context.correlationId, client, project, "test"},
         "fs_write", R"({"path":"src/main.cpp","content":"test"})"}, D::ToolEffect::Write, {scope.authorityId(), scope.generation()}};
     REQUIRE(service.check(write, scope, context));
+
+    const Json legacy{{"schema", 1}, {"project", project.value()},
+        {"revision", std::string(64U, '1')},
+        {"bundle", {{"source", "legacy-policy"}, {"commit", "legacy-commit"},
+            {"files", Json::array({{{"path", "POLICY.md"},
+                {"content", "FORBID_TOOL legacy_shell"}}})},
+            {"excluded_files", Json::array({"opaque.bin"})}}},
+        {"review", {{"reviewer", "owner"}, {"attestation", "accepted"}}}};
+    const auto legacyEncoded = legacy.dump();
+    store.content.assign(reinterpret_cast<const std::byte*>(legacyEncoded.data()),
+        reinterpret_cast<const std::byte*>(legacyEncoded.data()) + legacyEncoded.size());
+    const auto migrated = Json::parse(take(service.execute(
+        {project, C::ProjectPolicyAction::Inspect}, context)));
+    REQUIRE(migrated.at("active").get<bool>());
+    REQUIRE(migrated.at("coverage_gap_count").get<std::size_t>() == 1U);
+    const auto persistedMigration = Json::parse(
+        reinterpret_cast<const char*>(store.content.data()),
+        reinterpret_cast<const char*>(store.content.data()) + store.content.size());
+    REQUIRE(persistedMigration.at("schema") == 2);
+    REQUIRE(persistedMigration.at("history").at(0).at("kind") == "legacy_policy_review");
+    REQUIRE(persistedMigration.at("rules").size() == 1U);
+    store.content.clear();
+
     A::ProjectPolicyService overlapping{reader, store, hasher, projects, paths, "C:\\policy-test\\private-state"};
     REQUIRE(overlapping.check(write, scope, context));
     REQUIRE(!overlapping.execute({project, C::ProjectPolicyAction::Inspect}, context));
@@ -85,7 +108,8 @@ void policyAdoptionAndAuthorization()
     REQUIRE(document.at("content") == "Development policy evidence.");
 
     const Json evidence{{"phase", "post_operation"}, {"tool_name", "shell_exec"},
-        {"arguments", R"({"command":"build"})"}, {"effect", "execute"}};
+        {"arguments", R"({"command":"build","access_token":"native-secret"})"},
+        {"credential", "native-secret"}, {"effect", "execute"}};
     const auto evaluation = Json::parse(take(service.execute({project,
         C::ProjectPolicyAction::Evaluate, {}, revision, evidence.dump()}, context)));
     REQUIRE(evaluation.at("finding_id").is_string());
@@ -100,7 +124,8 @@ void policyAdoptionAndAuthorization()
     write.call.canonicalArguments = R"({"command":"build"})";
     REQUIRE(service.check(write, scope, context));
     const Json resolution{{"finding_id", findingId},
-        {"correction_evidence", {{"kind", "rerun"}, {"result", "clean"}}}};
+        {"correction_evidence", {{"kind", "rerun"}, {"result", "clean"},
+            {"private_key", "native-private-material"}}}};
     const auto resolved = Json::parse(take(service.execute({project,
         C::ProjectPolicyAction::Resolve, {}, revision, resolution.dump()}, context)));
     REQUIRE(resolved.at("finding").at("state") == "resolved");
@@ -108,6 +133,10 @@ void policyAdoptionAndAuthorization()
         C::ProjectPolicyAction::ExportLog, {}, revision}, context)));
     REQUIRE(exported.at("schema") == "forge-clu-governance-log-v1");
     for (const auto& coverage : exported.at("coverage")) REQUIRE(!coverage.contains("content"));
+    const auto exportedText = exported.dump();
+    REQUIRE(exportedText.find("native-secret") == std::string::npos);
+    REQUIRE(exportedText.find("native-private-material") == std::string::npos);
+    REQUIRE(exportedText.find("[REDACTED]") != std::string::npos);
     REQUIRE(service.execute({project, C::ProjectPolicyAction::Refresh}, context));
     A::ProjectPolicyService restarted{reader, store, hasher, projects, paths};
     REQUIRE(restarted.check(write, scope, context));
@@ -123,7 +152,8 @@ void policyAdoptionAndAuthorization()
     REQUIRE(!restarted.execute({project, C::ProjectPolicyAction::Inspect}, context));
     REQUIRE(restarted.check(write, scope, context));
     REQUIRE(!reader.read("https://example.com/policy", context));
-    std::cout << "Policy binding, coverage, findings, resolution, export, restart and failed-write checks passed.\n";
+    std::cout << "Policy binding, legacy migration, native finding correction, and redacted export receipt passed: finding="
+        << findingId << " state=resolved redacted=true.\n";
 }
 }
 int main(int argc, char** argv) {

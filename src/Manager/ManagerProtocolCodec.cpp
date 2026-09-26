@@ -1278,6 +1278,13 @@ void validateSettingsUpdateOutcome(
                 params["body"] = payload.body ? Json(*payload.body) : Json(nullptr);
                 params["tags"] = payload.tags;
             } else if constexpr (
+                std::is_same_v<Payload,
+                    ManagerAutomaticContinuityPreferenceRequest>) {
+                method = "projects.automatic_continuity";
+                params["project_id"] = payload.projectId.value();
+                params["enabled"] = payload.enabled
+                    ? Json(*payload.enabled) : Json(nullptr);
+            } else if constexpr (
                 std::is_same_v<Payload, ManagerInstructionPackageRequest>) {
                 method = "projects.instructions";
                 params["project_id"] = payload.projectId.value();
@@ -1501,6 +1508,13 @@ void validateSettingsUpdateOutcome(
             stringMember(params, "summary"),
             optionalField<std::string>(params, "body", stringMember),
             stringArray(member(params, "tags"), "projects.remember tags")};
+    } else if (method == "projects.automatic_continuity") {
+        requireExactFields(
+            params, {"enabled", "project_id"},
+            "projects.automatic_continuity params");
+        payload = ManagerAutomaticContinuityPreferenceRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            optionalField<bool>(params, "enabled", booleanMember)};
     } else if (method == "projects.instructions") {
         requireExactFields(
             params,
@@ -3007,7 +3021,11 @@ template <typename T, typename Parser>
             ? Json(*snapshot.contentBase64) : Json(nullptr)},
         {"content_offset", snapshot.contentOffset},
         {"next_content_offset", snapshot.nextContentOffset},
-        {"content_complete", snapshot.contentComplete}};
+        {"content_complete", snapshot.contentComplete},
+        {"content_revision", snapshot.contentRevision
+            ? Json(snapshot.contentRevision->value()) : Json(nullptr)},
+        {"content_hash", snapshot.contentHash
+            ? Json(snapshot.contentHash->value()) : Json(nullptr)}};
 }
 
 [[nodiscard]] ManagerInstructionPackageQueueSnapshot
@@ -3015,7 +3033,8 @@ parseInstructionPackageQueueSnapshot(const Json& value)
 {
     requireExactFields(
         value,
-        {"content_base64", "content_complete", "content_offset", "entries",
+        {"content_base64", "content_complete", "content_hash",
+         "content_offset", "content_revision", "entries",
          "next_content_offset", "next_cursor", "project_id", "rows",
          "truncated"},
         "Manager instruction package queue snapshot");
@@ -3080,6 +3099,16 @@ parseInstructionPackageQueueSnapshot(const Json& value)
     snapshot.contentOffset = uint64Member(value, "content_offset");
     snapshot.nextContentOffset = uint64Member(value, "next_content_offset");
     snapshot.contentComplete = booleanMember(value, "content_complete");
+    snapshot.contentRevision = optionalField<Domain::Sha256Digest>(
+        value, "content_revision",
+        [](const Json& object, const std::string_view name) {
+            return identifierMember<Domain::Sha256Digest>(object, name);
+        });
+    snapshot.contentHash = optionalField<Domain::Sha256Digest>(
+        value, "content_hash",
+        [](const Json& object, const std::string_view name) {
+            return identifierMember<Domain::Sha256Digest>(object, name);
+        });
     return snapshot;
 }
 
@@ -3385,6 +3414,59 @@ parseInstructionPackageQueueSnapshot(const Json& value)
         stringMember(value, "detail")};
 }
 
+[[nodiscard]] std::string_view automaticContinuityStateName(
+    const Domain::AutomaticContinuityState state)
+{
+    switch (state) {
+    case Domain::AutomaticContinuityState::Off: return "off";
+    case Domain::AutomaticContinuityState::Preparing: return "preparing";
+    case Domain::AutomaticContinuityState::Active: return "active";
+    case Domain::AutomaticContinuityState::Recovering: return "recovering";
+    case Domain::AutomaticContinuityState::NeedsAttention:
+        return "needs_attention";
+    }
+    return "needs_attention";
+}
+
+[[nodiscard]] Domain::AutomaticContinuityState parseAutomaticContinuityState(
+    const std::string_view value)
+{
+    if (value == "off") return Domain::AutomaticContinuityState::Off;
+    if (value == "preparing") return Domain::AutomaticContinuityState::Preparing;
+    if (value == "active") return Domain::AutomaticContinuityState::Active;
+    if (value == "recovering") return Domain::AutomaticContinuityState::Recovering;
+    if (value == "needs_attention") {
+        return Domain::AutomaticContinuityState::NeedsAttention;
+    }
+    reject(Domain::ErrorCodes::InvalidRequest,
+        "Automatic-continuity state is unknown.");
+}
+
+[[nodiscard]] Json automaticContinuityPreferenceJson(
+    const Domain::AutomaticContinuityPreference& preference)
+{
+    return Json{{"project_id", preference.projectId.value()},
+                {"provider_id", preference.providerId},
+                {"enabled", preference.enabled},
+                {"state", automaticContinuityStateName(preference.state)},
+                {"detail", preference.detail
+                    ? Json(*preference.detail) : Json(nullptr)}};
+}
+
+[[nodiscard]] Domain::AutomaticContinuityPreference
+parseAutomaticContinuityPreference(const Json& value)
+{
+    requireExactFields(value,
+        {"detail", "enabled", "project_id", "provider_id", "state"},
+        "automatic-continuity preference");
+    return Domain::AutomaticContinuityPreference{
+        identifierMember<Domain::ProjectId>(value, "project_id"),
+        stringMember(value, "provider_id"),
+        booleanMember(value, "enabled"),
+        parseAutomaticContinuityState(stringMember(value, "state")),
+        optionalField<std::string>(value, "detail", stringMember)};
+}
+
 [[nodiscard]] Json resultJson(const ManagerResult& result)
 {
     Json wrapper = Json::object();
@@ -3417,6 +3499,11 @@ parseInstructionPackageQueueSnapshot(const Json& value)
                 std::is_same_v<Value, ManagerProjectWorkspaceSnapshot>) {
                 wrapper["type"] = "project_workspace";
                 wrapper["value"] = projectWorkspaceSnapshotJson(value);
+            } else if constexpr (
+                std::is_same_v<Value,
+                    Domain::AutomaticContinuityPreference>) {
+                wrapper["type"] = "automatic_continuity_preference";
+                wrapper["value"] = automaticContinuityPreferenceJson(value);
             } else if constexpr (
                 std::is_same_v<Value, ManagerInstructionPackageSnapshot>) {
                 wrapper["type"] = "instruction_package";
@@ -3484,6 +3571,9 @@ parseInstructionPackageQueueSnapshot(const Json& value)
     }
     if (type == "project_workspace") {
         return ManagerResult{parseProjectWorkspaceSnapshot(value)};
+    }
+    if (type == "automatic_continuity_preference") {
+        return ManagerResult{parseAutomaticContinuityPreference(value)};
     }
     if (type == "instruction_package") {
         return ManagerResult{parseInstructionPackageSnapshot(value)};

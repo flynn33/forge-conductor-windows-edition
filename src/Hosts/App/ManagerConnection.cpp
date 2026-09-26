@@ -480,6 +480,41 @@ ProjectWorkspaceView ManagerConnection::rememberProjectMemory(
     }
 }
 
+AutomaticContinuityPreferenceView
+ManagerConnection::automaticContinuityPreference(
+    std::string projectId,
+    const std::optional<bool> enabled,
+    const std::stop_token cancellation) noexcept
+{
+    try {
+        if (!profileError_.empty()) return {false, profileError_, std::nullopt};
+        auto parsed = Domain::ProjectId::parse(projectId);
+        if (!parsed) return {false, parsed.error().message, std::nullopt};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(
+            clock, cancellation, std::chrono::seconds{15});
+        auto created = connectManager(alphaProfile_, context, clock);
+        if (!created) return {false, created.error().message, std::nullopt};
+        auto client = std::move(created).value();
+        auto result = client->automaticContinuityPreference(
+            Manager::ManagerAutomaticContinuityPreferenceRequest{
+                std::move(parsed).value(), enabled}, context);
+        client->shutdown();
+        if (!result) return {false, result.error().message, std::nullopt};
+        auto preference = std::move(result).value();
+        const auto message = std::string{enabled ? "Saved" : "Loaded"} +
+            " automatic-continuity preference for " +
+            preference.providerId + ".";
+        return {true, message, std::move(preference)};
+    } catch (const std::exception& error) {
+        return {false, error.what(), std::nullopt};
+    } catch (...) {
+        return {false,
+            "Could not read the automatic-continuity preference.",
+            std::nullopt};
+    }
+}
+
 InstructionPackageView ManagerConnection::instructionPackage(
     std::string projectId,
     std::string packagePath,

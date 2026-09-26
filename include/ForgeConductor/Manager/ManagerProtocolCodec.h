@@ -6,6 +6,7 @@
 #include "ForgeConductor/Domain/EnvironmentModels.h"
 #include "ForgeConductor/Domain/ProjectMemoryModels.h"
 #include "ForgeConductor/Domain/ToolModels.h"
+#include "ForgeConductor/Domain/WorkflowModels.h"
 #include "ForgeConductor/Contracts/IProjectPolicyService.h"
 
 #include <chrono>
@@ -62,6 +63,14 @@ struct ManagerInstructionPackageRequest final {
     Domain::PathText packagePath;
     bool activate{};
     std::optional<Domain::Sha256Digest> expectedRevision;
+};
+
+// A missing enabled value reads the preference for the Manager's current
+// provider binding. A present value persists it for that exact project and
+// provider pair before returning the effective readback.
+struct ManagerAutomaticContinuityPreferenceRequest final {
+    Domain::ProjectId projectId;
+    std::optional<bool> enabled;
 };
 
 enum class ManagerInstructionPackageQueueAction {
@@ -216,6 +225,8 @@ struct ManagerInstructionPackageQueueSnapshot final {
     std::uint64_t contentOffset{};
     std::uint64_t nextContentOffset{};
     bool contentComplete{};
+    std::optional<Domain::Sha256Digest> contentRevision;
+    std::optional<Domain::Sha256Digest> contentHash;
 };
 
 struct ManagerProjectPolicySnapshot final {
@@ -339,6 +350,7 @@ using ManagerRequestPayload = std::variant<
     ManagerProjectInitializeRequest,
     ManagerProjectMemoryRequest,
     ManagerProjectRememberRequest,
+    ManagerAutomaticContinuityPreferenceRequest,
     ManagerInstructionPackageRequest,
     ManagerInstructionPackageQueueRequest,
     Contracts::ProjectPolicyRequest,
@@ -382,6 +394,7 @@ using ManagerResult = std::variant<
     Domain::ManagerTelemetrySnapshot,
     ManagerProjectsSnapshot,
     ManagerProjectWorkspaceSnapshot,
+    Domain::AutomaticContinuityPreference,
     ManagerInstructionPackageSnapshot,
     ManagerInstructionPackageQueueSnapshot,
     ManagerProjectPolicySnapshot,

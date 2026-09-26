@@ -5,6 +5,11 @@
 #include "../Fakes/DeterministicWorkspaceAuthority.h"
 #include <nlohmann/json.hpp>
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -183,7 +188,7 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         ++settingsCalls_;
-        return Domain::Result<Domain::ManagerSettings>::success(settingsValue());
+        return Domain::Result<Domain::ManagerSettings>::success(currentSettings);
     }
 
     [[nodiscard]] Domain::Result<Domain::ManagerStatus> control(
@@ -204,10 +209,11 @@ public:
         ++updateCalls_;
         lastPatch_ = patch;
         lastApplyImmediately_ = applyImmediately;
-        auto settings = settingsValue();
+        auto settings = currentSettings;
         if (patch.dashboardPort) {
             settings.dashboardPort = *patch.dashboardPort;
         }
+        currentSettings = settings;
         auto status = statusValue();
         status.dashboardPort = settings.dashboardPort;
         return Domain::Result<Domain::ManagerSettingsUpdateOutcome>::success({
@@ -289,6 +295,7 @@ public:
     Domain::ManagerControlAction lastControlAction_{};
     Domain::ManagerSettingsPatch lastPatch_;
     bool lastApplyImmediately_{};
+    Domain::ManagerSettings currentSettings{settingsValue()};
 
 private:
     [[nodiscard]] static Domain::ManagerStatus statusValue()
@@ -580,6 +587,7 @@ public:
     Dashboard::DashboardSessionListing listing;
     std::size_t sessionCalls{};
     bool allowStatus{};
+    bool allowDoctor{};
     [[nodiscard]] Domain::Result<Dashboard::DashboardStatusData> status(
         const Domain::OperationContext&) noexcept override
     {
@@ -591,6 +599,13 @@ public:
     [[nodiscard]] Domain::Result<Domain::DoctorReport> doctor(
         const Domain::OperationContext&) noexcept override
     {
+        if (allowDoctor) {
+            const auto root = Domain::PathText::create("D:\\DoctorFixture").value();
+            return Domain::Result<Domain::DoctorReport>::success(
+                Domain::DoctorReport{true, "1.3.0", root,
+                    {Domain::DoctorCheck{"manager_ipc", true, "connected", true}},
+                    {}, true, root});
+        }
         return Domain::Result<Domain::DoctorReport>::failure(
             Domain::makeError(Domain::ErrorCodes::InvalidRequest,
                 "Unexpected doctor in run-history test."));
@@ -622,6 +637,43 @@ public:
                 "Unexpected close in run-history test."));
     }
     void shutdown() noexcept override {}
+};
+
+class FakeProjectPolicy final : public Contracts::IProjectPolicyService {
+public:
+    [[nodiscard]] Domain::Result<void> check(
+        const Domain::ToolAuthorizationRequest&,
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<void>::success();
+    }
+
+    [[nodiscard]] Domain::Result<std::string> execute(
+        const Contracts::ProjectPolicyRequest& request,
+        const Domain::OperationContext&) noexcept override
+    {
+        if (request.action == Contracts::ProjectPolicyAction::ListFindings) {
+            return Domain::Result<std::string>::success(nlohmann::json{
+                {"revision", std::string(64U, 'e')},
+                {"findings", nlohmann::json::array()},
+                {"notifications", nlohmann::json::array()},
+                {"activity", nlohmann::json::array({{
+                    {"kind", "finding_resolved"},
+                    {"finding_id", "finding-fixture"},
+                    {"correlation_id", "clu-correlation"},
+                    {"timestamp_utc_ms", 1'700'000'000'000LL}}})}}.dump());
+        }
+        if (request.action == Contracts::ProjectPolicyAction::ExportLog) {
+            return Domain::Result<std::string>::success(nlohmann::json{
+                {"schema", "forge-clu-governance-log-v1"},
+                {"findings", nlohmann::json::array()},
+                {"notifications", nlohmann::json::array()},
+                {"history", nlohmann::json::array()}}.dump());
+        }
+        return Domain::Result<std::string>::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest, "unexpected policy action"));
+    }
 };
 
 class FakeTelemetryService final : public Contracts::ITelemetryService {
@@ -771,14 +823,23 @@ void testManagedRunDispatchAndIdentity()
     auto clock = std::make_shared<FakeClock>();
     auto controller = std::make_shared<FakeController>();
     auto managedRuns = std::make_shared<FakeManagedRuns>();
+    TestFakes::RecordingProjectMemoryService memory;
+    const auto projectId = Domain::ProjectId::parse(uuidText(701U)).value();
+    memory.listRecentResult.set(Domain::Result<Domain::MemoryPage>::success(
+        Domain::MemoryPage{
+            projectId, {}, std::nullopt, false, 0U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    Manager::ManagerTelemetrySources sources;
+    sources.projectMemory = &memory;
     Manager::ManagerRequestDispatcher dispatcher{
         controller,
         clock,
         Manager::ManagerTransportLimits{},
-        managedRuns};
+        managedRuns,
+        sources};
 
     const auto runId = Domain::SessionId::parse(uuidText(700U)).value();
-    const auto projectId = Domain::ProjectId::parse(uuidText(701U)).value();
     const auto clientId = Domain::ClientId::parse(uuidText(702U)).value();
     const auto started = dispatcher.dispatch(request(
         *clock,
@@ -786,7 +847,9 @@ void testManagedRunDispatchAndIdentity()
         Manager::ManagedRunStartRequest{
             runId, projectId, clientId, 12U, "Inspect this project."}));
     const auto* startedRun = responseValue<Domain::ManagedRunSnapshot>(started);
-    require(startedRun != nullptr, "managed run start result");
+    require(startedRun != nullptr,
+        std::string{"managed run start result"} +
+        (responseError(started) ? ": " + responseError(started)->message : ""));
     require(startedRun->record.runId == runId, "managed run start identity");
     require(managedRuns->lastStart.has_value(), "managed start forwarding");
     require(managedRuns->lastStart->projectId == projectId, "managed project forwarding");
@@ -831,6 +894,110 @@ void testManagedRunDispatchAndIdentity()
             *clock, 75U, Manager::ManagedRunStatusRequest{runId})),
         Domain::ErrorCodes::InvalidRequest,
         "managed run unavailable composition");
+}
+
+void testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    auto managedRuns = std::make_shared<FakeManagedRuns>();
+    TestFakes::RecordingProjectMemoryService memory;
+    const auto project = Domain::ProjectId::parse(uuidText(703U)).value();
+    const auto digest = Domain::Sha256Digest::parse(std::string(64U, 'c')).value();
+    const auto firstRecordId = Domain::MemoryRecordId::parse(uuidText(704U)).value();
+    const auto secondRecordId = Domain::MemoryRecordId::parse(uuidText(705U)).value();
+    const auto writeOutcome = [&](const Domain::MemoryRecordId& id) {
+        return Domain::MemoryWriteOutcome{
+            project, id, 1U, Domain::MemoryWriteDisposition::Inserted,
+            digest, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion};
+    };
+    memory.rememberResult.set(
+        Domain::Result<Domain::MemoryWriteOutcome>::success(
+            writeOutcome(firstRecordId)));
+    Manager::ManagerTelemetrySources sources;
+    sources.projectMemory = &memory;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{},
+        managedRuns, sources};
+
+    controller->currentSettings.localModelName = "provider-a";
+    const auto savedA = dispatcher.dispatch(request(*clock, 760U,
+        Manager::ManagerAutomaticContinuityPreferenceRequest{project, false}));
+    const auto* preferenceA =
+        responseValue<Domain::AutomaticContinuityPreference>(savedA);
+    require(preferenceA != nullptr && !preferenceA->enabled &&
+        preferenceA->providerId.find("provider-a") != std::string::npos,
+        "provider A continuity preference is saved off");
+    require(memory.lastRememberRequest() &&
+        memory.lastRememberRequest()->write.body,
+        "provider A preference is persisted through project memory");
+    const auto bodyA = *memory.lastRememberRequest()->write.body;
+
+    controller->currentSettings.localModelName = "provider-b";
+    memory.rememberResult.set(
+        Domain::Result<Domain::MemoryWriteOutcome>::success(
+            writeOutcome(secondRecordId)));
+    const auto savedB = dispatcher.dispatch(request(*clock, 761U,
+        Manager::ManagerAutomaticContinuityPreferenceRequest{project, true}));
+    const auto* preferenceB =
+        responseValue<Domain::AutomaticContinuityPreference>(savedB);
+    require(preferenceB != nullptr && preferenceB->enabled &&
+        preferenceB->providerId.find("provider-b") != std::string::npos,
+        "provider B continuity preference is independently saved on");
+    const auto bodyB = *memory.lastRememberRequest()->write.body;
+
+    const auto now = clock->utc;
+    const auto stored = [&](const Domain::MemoryRecordId& id,
+                            std::string provider,
+                            std::string body) {
+        return Domain::ProjectMemoryRecord{
+            id, project, 1U, "automatic_continuity_preference",
+            std::move(provider), "automatic continuity preference",
+            std::move(body), {"automatic-continuity", "provider-binding"},
+            1.0, 1.0, "manager_automatic_continuity", std::nullopt,
+            std::nullopt, now, now, now, std::nullopt, digest, false,
+            Domain::ProjectMemorySchemaVersion};
+    };
+    auto recordB = stored(secondRecordId, preferenceB->providerId, bodyB);
+    auto recordA = stored(firstRecordId, preferenceA->providerId, bodyA);
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{recordB, 1.0}, {recordA, 1.0}}, std::nullopt,
+            false, 2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+
+    Manager::ManagerRequestDispatcher restarted{
+        controller, clock, Manager::ManagerTransportLimits{},
+        managedRuns, sources};
+    controller->currentSettings.localModelName = "provider-a";
+    const auto readA = restarted.dispatch(request(*clock, 762U,
+        Manager::ManagerAutomaticContinuityPreferenceRequest{
+            project, std::nullopt}));
+    const auto* durableA =
+        responseValue<Domain::AutomaticContinuityPreference>(readA);
+    require(durableA != nullptr && !durableA->enabled,
+        "provider A preference survives dispatcher restart/readback");
+
+    const auto runId = Domain::SessionId::parse(uuidText(706U)).value();
+    const auto clientId = Domain::ClientId::parse(uuidText(707U)).value();
+    const auto started = restarted.dispatch(request(*clock, 763U,
+        Manager::ManagedRunStartRequest{
+            runId, project, clientId, 0U, "Run with exact preference.",
+            true, true}));
+    require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
+        managedRuns->lastStart && !managedRuns->lastStart->automaticContinuity,
+        "managed run receives Manager-owned provider A off preference");
+
+    controller->currentSettings.localModelName = "provider-b";
+    const auto readB = restarted.dispatch(request(*clock, 764U,
+        Manager::ManagerAutomaticContinuityPreferenceRequest{
+            project, std::nullopt}));
+    const auto* durableB =
+        responseValue<Domain::AutomaticContinuityPreference>(readB);
+    require(durableB != nullptr && durableB->enabled,
+        "provider B preference remains independent after restart/readback");
 }
 
 void testRunHistoryIsBoundToSelectedProject()
@@ -927,6 +1094,90 @@ void testRunHistoryIsBoundToSelectedProject()
         "runtime inventory never projects another project's run or result");
     require(operational.sessionCalls == 3U,
         "runtime jobs read one bounded persisted session window");
+}
+
+void testActivityAndDoctorProjectSimplifiedWorkflowState()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    FakeOperationalSessions operational;
+    operational.allowDoctor = true;
+    const auto project = Domain::ProjectId::parse(uuidText(714U)).value();
+    const auto rowRecordId = Domain::MemoryRecordId::parse(uuidText(715U)).value();
+    const auto revision = Domain::Sha256Digest::parse(std::string(64U, 'e')).value();
+    FixedHasher hasher{revision};
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(
+        Domain::ProjectMemoryDescriptor{project, "Activity project", std::nullopt,
+            {Domain::PathText::create("D:\\ActivityFixture").value()}})),
+        "seed Activity project");
+    const auto queueBody = nlohmann::json{
+        {"schema", "forge-instruction-package-queue-v2"},
+        {"project_id", project.value()}, {"queue_row_id", "queue-fixture"},
+        {"package_id", "package-fixture"}, {"package_name", "fixture"},
+        {"package_path", "D:\\ActivityFixture\\instructions"},
+        {"revision", revision.value()}, {"order", 1024U}, {"state", "active"},
+        {"cursor", {{"entry", 1U}, {"byte_offset", 0U}}},
+        {"entry_count", 2U}, {"content_bytes", 20U},
+        {"coverage_gap_count", 0U}, {"attempts", 1U},
+        {"correlation_id", "package-correlation"}, {"last_error", nullptr}}.dump();
+    const auto now = clock->utc;
+    Domain::ProjectMemoryRecord queueRecord{
+        rowRecordId, project, 1U, "instruction_package_queue", "fixture",
+        "active fixture", queueBody, {"instruction-package-queue"}, 1.0, 1.0,
+        "manager_instruction_package", std::nullopt, std::nullopt,
+        now, now, now, std::nullopt, revision, false,
+        Domain::ProjectMemorySchemaVersion};
+    TestFakes::RecordingProjectMemoryService memory;
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{queueRecord, 1.0}}, std::nullopt, false, 2048U,
+            256U * 1024U, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.statusResult.set(
+        Domain::Result<Domain::ProjectMemoryStatus>::success(
+            Domain::ProjectMemoryStatus{project,
+                Domain::ProjectMemorySchemaVersion,
+                Domain::ProjectMemoryCapabilityVersion, 1U}));
+    FakeProjectPolicy policy;
+    Manager::ManagerTelemetrySources sources;
+    sources.operational = &operational;
+    sources.projects = &registry;
+    sources.projectMemory = &memory;
+    sources.evidenceHasher = &hasher;
+    sources.projectPolicy = &policy;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    const auto feedResponse = dispatcher.dispatch(request(*clock, 716U,
+        Manager::ManagerOperationalRequest{Manager::ManagerOperationalArea::Feed,
+            Manager::ManagerOperationalAction::Inspect, std::nullopt, {}, project}));
+    const auto* feed = responseValue<Manager::ManagerOperationalSnapshot>(feedResponse);
+    require(feed != nullptr, "project Activity feed succeeds");
+    std::string feedText;
+    for (const auto& line : feed->lines) feedText += line + "\n";
+    require(feedText.find("package.queue") != std::string::npos &&
+        feedText.find("queue-fixture") != std::string::npos &&
+        feedText.find("package-correlation") != std::string::npos,
+        "Activity includes package queue/cursor event correlation");
+    require(feedText.find("clu.finding_resolved") != std::string::npos &&
+        feedText.find("finding-fixture") != std::string::npos &&
+        feedText.find("clu-correlation") != std::string::npos,
+        "Activity includes CLU finding/resolution event correlation");
+
+    const auto doctorResponse = dispatcher.dispatch(request(*clock, 717U,
+        Manager::ManagerOperationalRequest{
+            Manager::ManagerOperationalArea::Diagnostics,
+            Manager::ManagerOperationalAction::Inspect, std::nullopt, {}, project}));
+    const auto* doctor = responseValue<Manager::ManagerOperationalSnapshot>(doctorResponse);
+    require(doctor != nullptr, "project Doctor succeeds");
+    std::string doctorText;
+    for (const auto& line : doctor->lines) doctorText += line + "\n";
+    require(doctorText.find("PASS package_queue_cursor_integrity") != std::string::npos &&
+        doctorText.find("PASS clu_repository_notification_export") != std::string::npos &&
+        doctorText.find("PASS continuity_preference_provider_binding") != std::string::npos &&
+        doctorText.find("PASS simplified_workflow_schema_alignment") != std::string::npos,
+        "Doctor checks package, CLU, continuity binding, migration, export, and schema alignment");
 }
 
 void testDurableEvidenceIsRedactedAndProjectBound()
@@ -1246,6 +1497,31 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
         output.seekp((4U * 1024U * 1024U) - 1U);
         output.put('\0');
     }
+    const auto reparseCreated = ::CreateSymbolicLinkW(
+        (packageRoot / "linked-specs").c_str(),
+        (packageRoot / "specs").c_str(),
+        SYMBOLIC_LINK_FLAG_DIRECTORY | 0x2U) != FALSE;
+    require(reparseCreated,
+        "instruction fixture creates a directory reparse point");
+    const auto transientCreated = ::CreateSymbolicLinkW(
+        (packageRoot / "transient-entry").c_str(),
+        (packageRoot / "already-gone.txt").c_str(),
+        0x2U) != FALSE;
+    require(transientCreated,
+        "instruction fixture creates a transient broken entry");
+    {
+        std::ofstream output{packageRoot / "unreadable.txt", std::ios::binary};
+        output << "temporarily locked";
+    }
+    const auto unreadableHandle = ::CreateFileW(
+        (packageRoot / "unreadable.txt").c_str(), GENERIC_READ,
+        0U, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    require(unreadableHandle != INVALID_HANDLE_VALUE,
+        "instruction fixture locks an unreadable entry");
+    struct CloseNativeHandle final {
+        HANDLE value;
+        ~CloseNativeHandle() { if (value != INVALID_HANDLE_VALUE) ::CloseHandle(value); }
+    } closeUnreadable{unreadableHandle};
     const auto packagePath = Domain::PathText::create(
         packageRoot.string()).value();
     Manager::ManagerTelemetrySources sources;
@@ -1263,10 +1539,10 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
     require(previewSnapshot != nullptr &&
         previewSnapshot->projectId == project &&
         previewSnapshot->revision == revision &&
-        previewSnapshot->fileCount == 48U &&
+        previewSnapshot->fileCount >= 51U &&
         previewSnapshot->ignoredFileCount == 0U &&
         previewSnapshot->contentBytes > 4U * 1024U * 1024U &&
-        previewSnapshot->coverageGapCount >= 3U &&
+        previewSnapshot->coverageGapCount >= 5U &&
         !previewSnapshot->activated &&
         !previewSnapshot->manifestRecordId,
         "instruction package preview accepts and inventories every entry");
@@ -1322,6 +1598,23 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
         memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 1U &&
         memory.lastProjectId() == project,
         "instruction files and manifest remain bound to exact project");
+    bool sawReparse{};
+    bool sawUnavailable{};
+    std::optional<std::string> startEntryBody;
+    for (const auto& batch : memory.rememberBatchRequests()) {
+        for (const auto& write : batch.writes) {
+            if (!write.body) continue;
+            const auto entry = nlohmann::json::parse(*write.body);
+            sawReparse = sawReparse ||
+                entry.value("kind", std::string{}) == "reparse_point";
+            sawUnavailable = sawUnavailable ||
+                entry.value("interpretation", std::string{}) == "unavailable";
+            if (entry.value("relative_path", std::string{}) ==
+                "START-HERE.md") startEntryBody = *write.body;
+        }
+    }
+    require(sawReparse && sawUnavailable && startEntryBody,
+        "reparse, unreadable, or transient entries remain explicit persisted records");
 
     const auto now = clock->utc;
     const auto record = [&](const Domain::MemoryRecordId& id,
@@ -1346,22 +1639,20 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
         {"package_path", packagePath.value()},
         {"revision", revision.value()},
         {"order", 1024U},
-        {"state", "ready"},
+        {"state", "failed"},
         {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}},
         {"entry_count", 2U},
         {"content_bytes", 64U},
         {"coverage_gap_count", 0U},
         {"attempts", 1U},
-        {"last_error", nullptr}}.dump();
+        {"last_error", "transient read failure"}}.dump();
     auto manifestRecord = record(
         manifest, "instruction_package_queue", "fixture", manifestBody);
+    memory.updateResult.set(
+        Domain::Result<Domain::ProjectMemoryRecord>::success(manifestRecord));
     auto firstFile = record(
         fileA, "instruction_package_entry", "START-HERE.md",
-        nlohmann::json{{"queue_row_id", queueRowId},
-            {"relative_path", "START-HERE.md"}, {"kind", "file"},
-            {"byte_length", 39U}, {"content_hash", revision.value()},
-            {"interpretation", "interpreted"}, {"coverage_detail", nullptr},
-            {"derived_text", "Always preserve exact project identity."}}.dump());
+        *startEntryBody);
     auto secondFile = record(
         fileB, "instruction_package_entry", "specs/policy.json",
         nlohmann::json{{"queue_row_id", queueRowId},
@@ -1380,6 +1671,19 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
             Domain::ProjectMemoryStatus{
                 project, 1U, 1U, 0U, 0U, 1U, 4'096U, 128U,
                 false, true, Domain::ProjectMemorySchemaVersion, {}}));
+    const auto retriedResponse = dispatcher.dispatch(request(
+        *clock, 8260U, Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::Retry,
+            queueRowId}));
+    const auto* retried = responseValue<
+        Manager::ManagerInstructionPackageQueueSnapshot>(retriedResponse);
+    require(retried != nullptr && !retried->rows.empty() &&
+        retried->rows.front().state == "ready" &&
+        !retried->rows.front().lastError && memory.lastUpdateRequest() &&
+        memory.lastUpdateRequest()->body &&
+        nlohmann::json::parse(*memory.lastUpdateRequest()->body)
+            .at("attempts").get<std::uint64_t>() == 2U,
+        "failed package row retry persists a cleared error and incremented attempt");
     const auto workspaceResponse = dispatcher.dispatch(request(
         *clock, 8261U,
         Manager::ManagerProjectMemoryRequest{project, {}, 20U}));
@@ -1391,10 +1695,33 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
         "project workspace projects the active instruction manifest outside pagination");
     memory.searchResult.set(
         Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
-            project, {{std::move(firstFile), 1.0}, {std::move(secondFile), 1.0}},
+            project, {{firstFile, 1.0}, {secondFile, 1.0}},
             std::nullopt, false, 2'048U, 256U * 1024U,
             Domain::ProjectMemorySchemaVersion,
             Domain::ProjectMemoryCapabilityVersion}));
+    const auto contentPage = dispatcher.dispatch(request(
+        *clock, 8262U, Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::ReadContent,
+            queueRowId, std::nullopt, std::nullopt, 50U,
+            std::string{"START-HERE.md"}, 0U, 8U}));
+    const auto* content = responseValue<
+        Manager::ManagerInstructionPackageQueueSnapshot>(contentPage);
+    require(content != nullptr && content->contentBase64 &&
+        content->contentRevision == revision && content->contentHash &&
+        content->nextContentOffset == 8U && !content->contentComplete,
+        "content page is bounded and bound to immutable revision and hash");
+    {
+        std::ofstream changed{packageRoot / "START-HERE.md",
+            std::ios::binary | std::ios::trunc};
+        changed << "changed after immutable package validation\n";
+    }
+    requireError(dispatcher.dispatch(request(
+        *clock, 8263U, Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::ReadContent,
+            queueRowId, std::nullopt, std::nullopt, 50U,
+            std::string{"START-HERE.md"}, 8U, 8U})),
+        Domain::ErrorCodes::Conflict,
+        "content change between page requests is rejected against immutable hash");
     auto managedRuns = std::make_shared<FakeManagedRuns>();
     Manager::ManagerRequestDispatcher runDispatcher{
         controller, clock, Manager::ManagerTransportLimits{},
@@ -1409,10 +1736,111 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
         managedRuns->lastStart->task.find("[ORDERED PROJECT INSTRUCTION PACKAGES]") !=
             std::string::npos &&
         managedRuns->lastStart->task.find(
-            "Always preserve exact project identity.") != std::string::npos &&
+            "Follow the project contract.") != std::string::npos &&
         managedRuns->lastStart->task.find("Complete the project work.") !=
             std::string::npos,
         "new managed run receives the ordered project instruction assignment");
+    require(memory.lastUpdateRequest() && memory.lastUpdateRequest()->body &&
+        nlohmann::json::parse(*memory.lastUpdateRequest()->body)
+            .at("cursor").at("entry").get<std::uint64_t>() == 2U,
+        "managed-run package attachment durably advances the execution cursor");
+}
+
+void testLegacyInstructionManifestMigratesToStableQueue()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    const auto project = Domain::ProjectId::parse(uuidText(830U)).value();
+    const auto legacyId = Domain::MemoryRecordId::parse(uuidText(831U)).value();
+    const auto legacyFileId = Domain::MemoryRecordId::parse(uuidText(832U)).value();
+    const auto migratedId = Domain::MemoryRecordId::parse(uuidText(833U)).value();
+    const auto revision = Domain::Sha256Digest::parse(std::string(64U, 'd')).value();
+    FixedHasher hasher{revision};
+    TestFakes::RecordingProjectMemoryService memory;
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(
+        Domain::ProjectMemoryDescriptor{project, "Legacy instruction project",
+            std::nullopt,
+            {Domain::PathText::create("D:\\Legacy").value()}})),
+        "seed legacy instruction project");
+    const auto now = clock->utc;
+    const auto record = [&](const Domain::MemoryRecordId& id,
+                            std::string kind, std::string body) {
+        return Domain::ProjectMemoryRecord{
+            id, project, 1U, std::move(kind), "legacy", "legacy", std::move(body),
+            {"instruction-package"}, 1.0, 1.0, "legacy", std::nullopt,
+            std::nullopt, now, now, now, std::nullopt, revision, false,
+            Domain::ProjectMemorySchemaVersion};
+    };
+    const auto legacyBody = nlohmann::json{
+        {"schema", "forge-instruction-package-v1"},
+        {"package_name", "Legacy package"},
+        {"package_path", "D:\\Legacy\\Instructions"},
+        {"revision", revision.value()},
+        {"files", nlohmann::json::array({{
+            {"path", "START-HERE.md"},
+            {"record_id", legacyFileId.value()}}})}}.dump();
+    auto legacyRecord = record(legacyId, "instruction_package", legacyBody);
+    auto legacyFile = record(legacyFileId, "instruction_package_file",
+        "Follow the migrated project contract.");
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{legacyRecord, 1.0}}, std::nullopt, false, 1024U,
+            256U * 1024U, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.getResult.set(
+        Domain::Result<Domain::MemoryRecords>::success(Domain::MemoryRecords{
+            project, {legacyFile}, 1024U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    const auto outcome = [&](const Domain::MemoryRecordId& id) {
+        return Domain::MemoryWriteOutcome{
+            project, id, 1U, Domain::MemoryWriteDisposition::Inserted,
+            revision, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion};
+    };
+    memory.rememberBatchResult.set(
+        Domain::Result<Domain::MemoryBatchOutcome>::success(
+            Domain::MemoryBatchOutcome{project, {outcome(legacyFileId)},
+                Domain::ProjectMemorySchemaVersion,
+                Domain::ProjectMemoryCapabilityVersion}));
+    memory.rememberResult.set(
+        Domain::Result<Domain::MemoryWriteOutcome>::success(outcome(migratedId)));
+    Manager::ManagerTelemetrySources sources;
+    sources.projects = &registry;
+    sources.projectMemory = &memory;
+    sources.evidenceHasher = &hasher;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    const auto first = dispatcher.dispatch(request(*clock, 834U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    const auto* firstQueue = responseValue<
+        Manager::ManagerInstructionPackageQueueSnapshot>(first);
+    require(firstQueue != nullptr,
+        std::string{"legacy manifest migration returns a queue snapshot: "} +
+        (responseError(first) ? responseError(first)->message : "wrong result type"));
+    require(firstQueue->rows.size() == 1U, "legacy manifest migration returns one row");
+    require(firstQueue->rows.front().state == "active",
+        "legacy manifest migration preserves the active state");
+    require(firstQueue->rows.front().cursorEntry == 0U,
+        "legacy manifest migration resets the cursor conservatively");
+    require(firstQueue->rows.front().lastError &&
+        firstQueue->rows.front().lastError->find("uncertain") != std::string::npos,
+        "legacy manifest migration records cursor uncertainty");
+    const auto stableRowId = firstQueue->rows.front().queueRowId;
+    const auto firstKey = memory.lastRememberRequest()->write.idempotencyKey.value();
+
+    const auto second = dispatcher.dispatch(request(*clock, 835U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    const auto* secondQueue = responseValue<
+        Manager::ManagerInstructionPackageQueueSnapshot>(second);
+    require(secondQueue != nullptr && secondQueue->rows.size() == 1U &&
+        secondQueue->rows.front().queueRowId == stableRowId &&
+        memory.lastRememberRequest()->write.idempotencyKey.value() == firstKey,
+        "legacy migration is idempotent and preserves a stable queue identity");
 }
 
 void testMaintenanceRequiresExactScopeAndCoordinatesStores()
@@ -1802,11 +2230,14 @@ int main()
     try {
         testPayloadMappingAndControllerFailures();
         testManagedRunDispatchAndIdentity();
+        testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable();
         testRunHistoryIsBoundToSelectedProject();
+        testActivityAndDoctorProjectSimplifiedWorkflowState();
         testDurableEvidenceIsRedactedAndProjectBound();
         testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt();
         testProjectWorkflowKeepsExactProjectIdentity();
         testInstructionPackagePreviewAndActivationStayProjectBound();
+        testLegacyInstructionManifestMigratesToStableQueue();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetrySnapshotUsesManagerOwnedRunValues();
         testDuplicateCapacityAndCancellationBypass();
@@ -1815,7 +2246,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 15 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 18 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

@@ -44,26 +44,14 @@ struct MainWindow : MainWindowT<MainWindow> {
     void SettingsTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void MaintenanceResetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void OpenProviderClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void OpenManagerClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void OpenAutonomyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void OpenFeedClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void OpenEvidenceClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OpenWorkspaceClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void OpenActivityClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenSettingsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void OpenToolsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void OpenProjectsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void GuidedModeToggled(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void GuidedModePrimaryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void GuidedModeSecondaryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void GuidedModeBackClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void GuidedModeCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void GuidedModeRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupFolderClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void PolicyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupRetryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void HelpSearchChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-    void RunStartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunHistoryRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void RunHistoryAttachClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -89,6 +77,10 @@ struct MainWindow : MainWindowT<MainWindow> {
     void InstructionQueueRemoveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void InstructionQueueSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void InstructionQueueDragItemsStarting(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::DragItemsStartingEventArgs const&);
+    void InstructionQueueDragItemsCompleted(Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::Controls::DragItemsCompletedEventArgs const&);
     void ProjectUpdateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectForgetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectEditCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -129,25 +121,15 @@ struct MainWindow : MainWindowT<MainWindow> {
     void EvidenceExportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
 private:
-    enum class GuidedProjectStep : std::uint32_t {
-        Welcome = 1U,
-        ChooseFolder = 2U,
-        RegisterProject = 3U,
-        ReviewScope = 4U,
-        Instructions = 5U,
-        Memory = 6U,
-        Provider = 7U,
-        FirstRun = 8U,
-        Complete = 9U
-    };
     enum class Action {
         Refresh, Start, Stop, Restart, ProviderLoad, ProviderSave, ProviderTest,
         ProviderModels, ProviderContract, SetupPrepare,
-        PolicyPreview, PolicyAdopt, PolicyInspect, PolicyRead, PolicyNext,
-        PolicyReview, PolicyExport,
+        PolicyBind, PolicyRefresh, PolicyInspect, PolicyRead, PolicyNext,
+        PolicyFindings, PolicyExport,
         SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
-        RunStart, RunStatus, RunPause, RunResume, RunCancel,
+        RunStatus, RunPause, RunResume, RunCancel,
         ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
+        ContinuityRead, ContinuitySave,
         ProjectArchiveExport, ProjectArchivePreview, ProjectArchiveImport,
         InstructionPackagePreview, InstructionPackageActivate,
         LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
@@ -156,7 +138,6 @@ private:
     winrt::fire_and_forget RunAction(Action action);
     void ApplySetupProgress(const ::ForgeConductor::Application::ProjectSetupSnapshot& snapshot);
     void ApplyPolicyView(const ::ForgeConductor::Hosts::App::ProjectPolicyView& view, bool document);
-    bool policyRequiresReview_{};
     std::unordered_map<std::string, Microsoft::UI::Xaml::Controls::TextBlock> runHistoryLabels_;
     std::string policyProject_;
     std::string policyRevision_;
@@ -195,20 +176,18 @@ private:
     void ApplyEvidence(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
     void SelectEvidenceRun(std::string_view runId);
     void SelectOperationalRecord(std::size_t index);
-    void UpdateRunProjectLabel();
+    void UpdateRunControlProjectLabel();
     void ClearSelectedRun();
     void ClearSelectedProject();
     void ClearArchivePreview();
     void ClearInstructionPackagePreview();
     winrt::fire_and_forget RunInstructionQueueAction(
         ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction action,
-        std::optional<std::size_t> targetOrder = std::nullopt);
+        std::optional<std::size_t> targetOrder = std::nullopt,
+        std::optional<std::string> rowIdOverride = std::nullopt);
     void ApplyInstructionQueue(
         const ::ForgeConductor::Manager::ManagerInstructionPackageQueueSnapshot& snapshot);
     void SelectPage(const winrt::hstring& tag);
-    void SetGuidedMode(bool enabled, bool restart);
-    void SetGuidedStep(GuidedProjectStep step);
-    void RenderGuidedMode();
     void ShowProjectRegistration();
     [[nodiscard]] bool BrowseForProjectFolder();
 
@@ -225,6 +204,7 @@ private:
     std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
     std::vector<::ForgeConductor::Manager::ManagerInstructionPackageQueueRowSnapshot>
         instructionQueueRows_;
+    std::optional<std::string> draggedInstructionQueueRowId_;
     struct ToolField final {
         std::string name;
         std::string type;
@@ -265,18 +245,12 @@ private:
     std::wstring selectedRunProjectValueName_{L"SelectedRunProjectId"};
     std::wstring selectedEvidenceRunValueName_{L"SelectedEvidenceRunId"};
     std::wstring selectedEvidenceProjectValueName_{L"SelectedEvidenceProjectId"};
-    std::wstring guidedModeValueName_{L"GuidedModeEnabled"};
-    std::wstring guidedStepValueName_{L"GuidedModeStep"};
     std::stop_source cancellation_;
     std::stop_source providerContractCancellation_;
     Microsoft::UI::Xaml::DispatcherTimer telemetryTimer_{nullptr};
     bool telemetryUiInitialized_{};
     bool rebuildingProjects_{};
     bool updatingAutomaticContinuity_{};
-    bool guidedModeEnabled_{true};
-    bool updatingGuidedModeControls_{};
-    bool guidedRegistrationPending_{};
-    GuidedProjectStep guidedStep_{GuidedProjectStep::Welcome};
     ::ForgeConductor::Manager::ManagerOperationalArea operationalArea_{
         ::ForgeConductor::Manager::ManagerOperationalArea::Agents};
     ::ForgeConductor::Hosts::App::AppActionScheduler actionScheduler_;

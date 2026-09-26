@@ -101,6 +101,12 @@ struct MaintenanceView final {
     std::optional<Manager::ManagerMaintenanceSnapshot> snapshot;
 };
 
+struct AutomaticContinuityPreferenceView final {
+    bool loaded{};
+    std::string message;
+    std::optional<Domain::AutomaticContinuityPreference> preference;
+};
+
 class IManagerConnection {
 public:
     virtual ~IManagerConnection() = default;
@@ -170,6 +176,10 @@ public:
         std::string summary,
         std::string body,
         std::vector<std::string> tags,
+        std::stop_token cancellation) noexcept = 0;
+    virtual AutomaticContinuityPreferenceView automaticContinuityPreference(
+        std::string projectId,
+        std::optional<bool> enabled,
         std::stop_token cancellation) noexcept = 0;
     virtual InstructionPackageView instructionPackage(
         std::string projectId,
@@ -268,6 +278,10 @@ public:
         std::string summary,
         std::string body,
         std::vector<std::string> tags,
+        std::stop_token cancellation) noexcept override;
+    AutomaticContinuityPreferenceView automaticContinuityPreference(
+        std::string projectId,
+        std::optional<bool> enabled,
         std::stop_token cancellation) noexcept override;
     InstructionPackageView instructionPackage(
         std::string projectId,

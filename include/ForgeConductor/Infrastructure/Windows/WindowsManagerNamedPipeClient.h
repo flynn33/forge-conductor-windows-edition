@@ -101,6 +101,11 @@ public:
         const Manager::ManagerProjectRememberRequest& request,
         const Domain::OperationContext& context) noexcept;
 
+    [[nodiscard]] Domain::Result<Domain::AutomaticContinuityPreference>
+    automaticContinuityPreference(
+        const Manager::ManagerAutomaticContinuityPreferenceRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
     [[nodiscard]] Domain::Result<Manager::ManagerInstructionPackageSnapshot>
     instructionPackage(
         const Manager::ManagerInstructionPackageRequest& request,

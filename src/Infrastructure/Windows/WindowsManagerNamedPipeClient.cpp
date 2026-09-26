@@ -1017,6 +1017,20 @@ WindowsManagerNamedPipeClient::rememberProjectMemory(
               "The manager client transport is unavailable."));
 }
 
+Domain::Result<Domain::AutomaticContinuityPreference>
+WindowsManagerNamedPipeClient::automaticContinuityPreference(
+    const Manager::ManagerAutomaticContinuityPreferenceRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Domain::AutomaticContinuityPreference>(
+              request, context)
+        : failure<Domain::AutomaticContinuityPreference>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
 Domain::Result<Manager::ManagerInstructionPackageSnapshot>
 WindowsManagerNamedPipeClient::instructionPackage(
     const Manager::ManagerInstructionPackageRequest& request,

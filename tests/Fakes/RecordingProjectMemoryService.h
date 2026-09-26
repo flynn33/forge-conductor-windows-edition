@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <vector>
 
 namespace ForgeConductor::Tests::Fakes {
 
@@ -65,22 +66,36 @@ public:
         const Domain::RememberProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        return complete(
-            ProjectMemoryCall::Remember,
-            &request.projectId,
-            context,
-            rememberResult);
+        try {
+            lastRememberRequest_ = request;
+            return complete(
+                ProjectMemoryCall::Remember,
+                &request.projectId,
+                context,
+                rememberResult);
+        } catch (...) {
+            return Domain::Result<Domain::MemoryWriteOutcome>::failure(
+                Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                    "The deterministic project-memory write could not be recorded."));
+        }
     }
 
     [[nodiscard]] Domain::Result<Domain::MemoryBatchOutcome> rememberBatch(
         const Domain::RememberProjectMemoryBatchRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        return complete(
-            ProjectMemoryCall::RememberBatch,
-            &request.projectId,
-            context,
-            rememberBatchResult);
+        try {
+            rememberBatchRequests_.push_back(request);
+            return complete(
+                ProjectMemoryCall::RememberBatch,
+                &request.projectId,
+                context,
+                rememberBatchResult);
+        } catch (...) {
+            return Domain::Result<Domain::MemoryBatchOutcome>::failure(
+                Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                    "The deterministic project-memory batch could not be recorded."));
+        }
     }
 
     [[nodiscard]] Domain::Result<Domain::MemoryPage> search(
@@ -109,11 +124,18 @@ public:
         const Domain::UpdateProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        return complete(
-            ProjectMemoryCall::Update,
-            &request.projectId,
-            context,
-            updateResult);
+        try {
+            lastUpdateRequest_ = request;
+            return complete(
+                ProjectMemoryCall::Update,
+                &request.projectId,
+                context,
+                updateResult);
+        } catch (...) {
+            return Domain::Result<Domain::ProjectMemoryRecord>::failure(
+                Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                    "The deterministic project-memory update could not be recorded."));
+        }
     }
 
     [[nodiscard]] Domain::Result<Domain::ForgetOutcome> forget(
@@ -288,6 +310,24 @@ public:
         return lastContext_;
     }
 
+    [[nodiscard]] const std::optional<Domain::RememberProjectMemoryRequest>&
+    lastRememberRequest() const noexcept
+    {
+        return lastRememberRequest_;
+    }
+
+    [[nodiscard]] const std::optional<Domain::UpdateProjectMemoryRequest>&
+    lastUpdateRequest() const noexcept
+    {
+        return lastUpdateRequest_;
+    }
+
+    [[nodiscard]] const std::vector<Domain::RememberProjectMemoryBatchRequest>&
+    rememberBatchRequests() const noexcept
+    {
+        return rememberBatchRequests_;
+    }
+
     [[nodiscard]] const std::optional<Contracts::WorkspaceAuthority>&
     lastExportAuthority() const noexcept
     {
@@ -347,6 +387,9 @@ private:
     std::optional<Domain::ProjectId> lastProjectId_;
     std::optional<Domain::OperationId> lastOperationId_;
     std::optional<Domain::OperationContext> lastContext_;
+    std::optional<Domain::RememberProjectMemoryRequest> lastRememberRequest_;
+    std::optional<Domain::UpdateProjectMemoryRequest> lastUpdateRequest_;
+    std::vector<Domain::RememberProjectMemoryBatchRequest> rememberBatchRequests_;
     std::optional<Contracts::WorkspaceAuthority> lastExportAuthority_;
     std::optional<Contracts::AuthorizedToolCall> lastExportAuthorization_;
     std::optional<Domain::DestructiveConfirmation> lastResetConfirmation_;

@@ -398,6 +398,10 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "Decision", "Keep project identity stable.",
         std::string{"Runs bind to the selected exact project ID."},
         {"architecture", "identity"}});
+    payloads.emplace_back(
+        Manager::ManagerAutomaticContinuityPreferenceRequest{
+            identifier<Domain::ProjectId>(
+                "20000000-0000-4000-8000-000000000002"), false});
     payloads.emplace_back(Manager::ManagerInstructionPackageRequest{
         identifier<Domain::ProjectId>(
             "20000000-0000-4000-8000-000000000002"),
@@ -462,6 +466,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "projects.initialize",
         "projects.memory",
         "projects.remember",
+        "projects.automatic_continuity",
         "projects.instructions",
         "projects.instruction_queue",
         "projects.policy",
@@ -879,6 +884,28 @@ void testProjectWorkflowRoundTrips()
     REQUIRE(actualQueue.contentBase64 == "AAEC/w==");
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedQueue)) ==
             queueFrame);
+}
+
+void testAutomaticContinuityPreferenceRoundTrips()
+{
+    const auto project = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    const Domain::AutomaticContinuityPreference preference{
+        project, "lmstudio://http/127.0.0.1:1234/model-a", false,
+        Domain::AutomaticContinuityState::Off,
+        "Disabled for this project/provider."};
+    const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
+        response(Manager::ManagerResult{preference})));
+    const auto decoded = take(
+        Manager::ManagerProtocolCodec::decodeResponse(frame));
+    const auto& actual = std::get<Domain::AutomaticContinuityPreference>(
+        std::get<Manager::ManagerResult>(decoded.body));
+    REQUIRE(actual.projectId == project);
+    REQUIRE(actual.providerId == preference.providerId);
+    REQUIRE(!actual.enabled);
+    REQUIRE(actual.state == Domain::AutomaticContinuityState::Off);
+    REQUIRE(actual.detail == preference.detail);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
 }
 
 void testResponseResultAndErrorRoundTrips()
@@ -1573,6 +1600,8 @@ int main()
         {"request-round-trips", testEveryRequestMethodRoundTripsDeterministically},
         {"response-round-trips", testResponseResultAndErrorRoundTrips},
         {"managed-run-round-trips", testManagedRunResultRoundTrips},
+        {"automatic-continuity-preference-round-trips",
+         testAutomaticContinuityPreferenceRoundTrips},
         {"manager-telemetry-round-trips",
          testManagerTelemetryRoundTripsWithoutLosingAvailability},
         {"tool-outcome-duration", testToolOutcomePreservesMeasuredDuration},
