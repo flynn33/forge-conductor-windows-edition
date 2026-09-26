@@ -514,10 +514,16 @@ public:
             const auto first = history.size() > 100U ? history.size() - 100U : 0U;
             for (auto index = first; index < history.size(); ++index) {
                 const auto& event = history.at(index);
+                const auto findingId = event.contains("finding_id") &&
+                        event.at("finding_id").is_string()
+                    ? event.at("finding_id").get<std::string>() : std::string{};
+                const auto correlationId = event.contains("correlation_id") &&
+                        event.at("correlation_id").is_string()
+                    ? event.at("correlation_id").get<std::string>() : std::string{};
                 activity.push_back({
                     {"kind", event.value("kind", std::string{"policy_event"})},
-                    {"finding_id", event.value("finding_id", std::string{})},
-                    {"correlation_id", event.value("correlation_id", std::string{})},
+                    {"finding_id", findingId},
+                    {"correlation_id", correlationId},
                     {"timestamp_utc_ms", event.value("resolved_at_utc_ms",
                         event.value("evaluated_at_utc_ms",
                             event.value("bound_at_utc_ms",

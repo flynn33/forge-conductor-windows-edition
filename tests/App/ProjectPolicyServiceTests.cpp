@@ -118,6 +118,16 @@ void policyAdoptionAndAuthorization()
         C::ProjectPolicyAction::ListFindings, {}, revision}, context)));
     REQUIRE(findings.at("findings").size() == 1U);
     REQUIRE(findings.at("notifications").size() == 1U);
+    const Json compliantEvidence{{"phase", "post_operation"},
+        {"tool_name", "project_policy.read"}, {"arguments", "{}"},
+        {"effect", "read"}};
+    const auto compliant = Json::parse(take(service.execute({project,
+        C::ProjectPolicyAction::Evaluate, {}, revision,
+        compliantEvidence.dump()}, context)));
+    REQUIRE(compliant.at("finding_id").is_null());
+    const auto activity = Json::parse(take(service.execute({project,
+        C::ProjectPolicyAction::ListFindings, {}, revision}, context)));
+    REQUIRE(activity.at("activity").back().at("finding_id") == "");
 
     write.call.toolName = "shell_exec";
     write.effect = D::ToolEffect::Execute;
