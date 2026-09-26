@@ -25,8 +25,17 @@ This record covers the native x64 Release implementation of the four-destination
 - Static native-stack gate: passed.
 - Static no-Python gate: passed.
 - Static no-attribution gate: passed.
+- Development-signed MSIX construction, signature validation, unpack, and payload rehash: passed.
 
-The development-signed MSIX result is recorded after packaging from the final committed release tree because the package script deliberately rejects dirty release inputs or staging provenance from another tree.
+Package receipt:
+
+- Source commit: `d514719e42baa1ca647fd26fbb51666a4670cb3d`
+- Source tree: `7cb4971b38f85405f2ebac026bbb8f2ec91c25a3`
+- Package: `ForgeConductor-1.3.0.0-x64.msix`
+- Package SHA-256: `56b87b1fd801e37d0cdc80c8ad7d7996eb1688a6d0b0fbdadefbfea0290fb33d`
+- Bundle: `ForgeConductor-1.3.0.0-x64.zip`
+- Bundle SHA-256: `85c3a3830d1dc13d1ac3e8c01a1cf1bf6c10b379a51230659a80454e65b30d32`
+- Signature status: `Valid` (development certificate)
 
 ## Boundaries
 

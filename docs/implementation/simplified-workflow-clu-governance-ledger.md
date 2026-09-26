@@ -68,5 +68,7 @@ Phase adjustments and verification commands are recorded below as implementation
 - Release x64 WinUI application and sibling-service staging: passed.
 - Full CTest matrix: 153/153 passed.
 - Native-stack, no-Python, and no-attribution static gates: passed.
-
-Packaging is performed only after the release inputs are committed and rebuilt so the staging manifest can bind the exact commit and tree.
+- Development-signed 1.3.0.0 MSIX: created, signature valid, unpacked, and payload rehashed.
+- Package source commit: `d514719e42baa1ca647fd26fbb51666a4670cb3d`.
+- MSIX SHA-256: `56b87b1fd801e37d0cdc80c8ad7d7996eb1688a6d0b0fbdadefbfea0290fb33d`.
+- Distribution ZIP SHA-256: `85c3a3830d1dc13d1ac3e8c01a1cf1bf6c10b379a51230659a80454e65b30d32`.
