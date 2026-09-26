@@ -184,21 +184,21 @@ foreach ($relative in $requiredPayload) {
 $mainWindowXbf = Join-Path $payload 'MainWindow.xbf'
 $mainWindowText = [Text.Encoding]::Unicode.GetString(
     [IO.File]::ReadAllBytes($mainWindowXbf))
-$guidedModeMarkers = @(
-    'Guided setup',
-    'Open Guided Mode setup',
-    'Guided Mode on home',
-    'Guided Mode setting',
-    'Start here · Guided setup',
-    'Install or repair all three plugins',
-    '1 · Prepare your project automatically',
-    'Choose folder and prepare',
-    'Retry preparation',
-    'Start task',
+$workspaceMarkers = @(
+    'Workspace',
+    'Activity',
+    'Settings',
+    'Workspace readiness',
+    'Automatic continuity for this project/provider',
+    'CLU governance (optional)',
+    'Instruction-package queue',
+    'Add folder',
+    'Move up',
+    'Retry',
     'Version loading · Windows 11 · x64')
-foreach ($marker in $guidedModeMarkers) {
+foreach ($marker in $workspaceMarkers) {
     if (-not $mainWindowText.Contains($marker, [StringComparison]::Ordinal)) {
-        throw "Compiled application surface is missing required Guided Mode marker: $marker"
+        throw "Compiled application surface is missing required Workspace marker: $marker"
     }
 }
 foreach ($debugRuntime in @('vcruntime140d.dll','msvcp140d.dll','ucrtbased.dll')) {
