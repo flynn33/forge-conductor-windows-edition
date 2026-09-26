@@ -52,7 +52,7 @@ CTest ran the same five focused tests with five passes and no failures.
 
 Phase adjustments and verification commands are recorded below as implementation proceeds.
 
-## Implemented candidate
+## Implemented release
 
 - Version advanced to 1.3.0.
 - Normal navigation reduced to Workspace, Rig, Activity, and Settings.
@@ -70,6 +70,6 @@ Phase adjustments and verification commands are recorded below as implementation
 - Full CTest matrix: 153/153 passed.
 - Native-stack, no-Python, and no-attribution static gates: passed.
 - Disposable native launch: responsive window and Manager, with no startup crash event.
-- Current package creation/publication: not run. The package from `d514719` is superseded and does not validate the current branch.
+- Package publication: source-bound development-signed engineering artifacts are attached to `v1.3.0`; the package from `d514719` is superseded.
 - Live supported-provider successor lifecycle: not run; enabled continuity remains `Preparing`, never `Active`.
-- Pull request, merge, tag, and release: not performed.
+- Publication: owner-authorized direct update to `main`, `v1.3.0` tag, GitHub release, and synchronized wiki; no pull request was required.

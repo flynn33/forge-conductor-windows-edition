@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0 (unreleased candidate) — Simplified Workspace and CLU governance
+## 1.3.0 — Simplified Workspace and CLU governance
 
 - Replace normal wizard/mission navigation with Workspace, Rig, Activity, and Settings.
 - Add a persistent project-scoped ordered queue of universal instruction-package folders with streamed hashes, revision-bound paging, explicit opaque/reparse/failure records, retry, removal, and ordered managed-run attachment.
@@ -11,7 +11,7 @@
 - Add project-correlated package/cursor and CLU finding/resolution rows to Activity, plus Settings Doctor checks for queue/cursor, policy repository/notification/export, continuity provider binding, migration, and schema alignment.
 - Advance native runtime and package identity to 1.3.0.
 
-The candidate opens successfully under a disposable profile and passes the local Release matrix. A current package has not been published, and live supported-provider successor qualification has not been rerun; continuity therefore remains `Preparing`, not `Active`.
+The release opens successfully under a disposable profile and passes the 153-test local Release matrix and static gates. The published engineering package is development-signed; live supported-provider successor qualification has not been rerun, so continuity remains `Preparing`, not `Active`.
 
 ## 1.2.1 — Complete plugin setup and visible guidance
 

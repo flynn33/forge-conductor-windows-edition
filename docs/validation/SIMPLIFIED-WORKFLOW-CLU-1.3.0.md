@@ -4,7 +4,7 @@ Date: 2026-09-26
 
 ## Scope
 
-This record covers local native x64 Release verification of the four-destination workflow, universal ordered instruction packages, CLU governance, independent automatic continuity, persistence migration, and 1.3.0 identity. It is not a package-publication or live-provider qualification record.
+This record covers native x64 Release verification of the four-destination workflow, universal ordered instruction packages, CLU governance, independent automatic continuity, persistence migration, 1.3.0 identity, and the source-bound development-signed engineering package. It is not a production-signature or live-provider qualification record.
 
 ## Focused verification
 
@@ -28,9 +28,9 @@ This record covers local native x64 Release verification of the four-destination
 
 ## Package and provider boundaries
 
-- The previous development-signed MSIX and ZIP were built from `d514719e42baa1ca647fd26fbb51666a4670cb3d`; their hashes do not validate the current fixes and are intentionally not presented as current artifacts.
-- No current package was created, published, tagged, released, or installed by this work.
-- No pull request exists or is implied by this record.
+- The previous development-signed MSIX and ZIP were built from `d514719e42baa1ca647fd26fbb51666a4670cb3d`; they are superseded by the artifacts attached to `v1.3.0`.
+- The `v1.3.0` release artifacts are bound to the tagged source commit and include `distribution.json`, payload hashes, a bundle checksum, and the public development certificate.
+- Publication is a direct owner-authorized release; no pull request is implied by this record.
 - A real supported-provider successor create/restore/acknowledge/fence run was not performed. Continuity remains implemented-but-unqualified and must not be reported `Active`.
 
 ## Boundaries

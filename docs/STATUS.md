@@ -1,6 +1,6 @@
 # Product status
 
-The unreleased 1.3.0 candidate implements the simplified Workspace workflow, universal ordered instruction-package intake, CLU development governance, and an independent Manager-owned project-plus-provider automatic-continuity preference. Current local verification is recorded in [the 1.3.0 validation record](validation/SIMPLIFIED-WORKFLOW-CLU-1.3.0.md).
+Release 1.3.0 implements the simplified Workspace workflow, universal ordered instruction-package intake, CLU development governance, and an independent Manager-owned project-plus-provider automatic-continuity preference. Verification is recorded in [the 1.3.0 validation record](validation/SIMPLIFIED-WORKFLOW-CLU-1.3.0.md), and the published engineering distribution is development-signed.
 
 | Area | Implemented behavior |
 |---|---|
@@ -19,8 +19,8 @@ Policy interpretation is intentionally honest: binary/opaque entries and access 
 
 LM Studio desktop chats and Manager-owned tasks remain separate. Existing desktop chats without a native task binding are not automatically enrolled in managed continuity.
 
-Live supported-provider successor creation, restore, acknowledgement, and fencing have not been rerun for this 1.3.0 candidate. Enabled preferences are reported as `Preparing`; this status does not claim live continuity qualification or an `Active` lifecycle.
+Live supported-provider successor creation, restore, acknowledgement, and fencing have not been rerun for this 1.3.0 release. Enabled preferences are reported as `Preparing`; this status does not claim live continuity qualification or an `Active` lifecycle.
 
-No current 1.3.0 package, tag, release, merge, or pull request is part of this status. The earlier development-signed package was built from an older commit and is superseded as validation evidence for the current branch.
+The `v1.3.0` GitHub release carries the source-bound development-signed engineering package and checksums. It supersedes the earlier package built from `d514719e42baa1ca647fd26fbb51666a4670cb3d`.
 
 Ordinary data remains at `%LOCALAPPDATA%\Forge Conductor`. The historical `--alpha-root` option supports isolated validation. Historical reports describe their own artifacts and are not evidence for newer binaries.
