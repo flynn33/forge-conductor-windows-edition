@@ -56,6 +56,8 @@ LM Studio desktop chats and Forge-managed runs are separate modes. Connecting MC
 
 - **Rig** shows live resource, provider, storage, process, context, continuity, and workflow health. Missing observations are displayed as unavailable, never as zero.
 - **Activity** presents operational outcomes and is the normal place to correlate work with CLU findings, corrections, notifications, and exported evidence.
-- **Settings** contains persistent runtime controls and explicitly scoped maintenance actions. It is not required for ordinary workspace setup.
+- **Settings** contains persistent runtime controls, explicitly scoped maintenance actions, and Doctor. With a project selected, Doctor checks package queue/cursor integrity, CLU repository/notification/export state, project memory, continuity provider binding, migrations, and schema alignment.
+
+An enabled automatic-continuity preference can read `Preparing`. That means the Manager has the project/provider preference but the current candidate has not established a live supported-provider successor lifecycle. Only real provider create/restore/acknowledge/fence evidence can justify `Active`.
 
 Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`. For disposable validation only, launch `ForgeConductorApp.exe --alpha-root <absolute-empty-folder>`.

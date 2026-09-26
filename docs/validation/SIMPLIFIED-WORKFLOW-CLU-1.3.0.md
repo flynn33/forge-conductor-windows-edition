@@ -4,13 +4,14 @@ Date: 2026-09-26
 
 ## Scope
 
-This record covers the native x64 Release implementation of the four-destination workflow, universal ordered instruction packages, CLU governance, independent automatic continuity, persistence migration, and package identity.
+This record covers local native x64 Release verification of the four-destination workflow, universal ordered instruction packages, CLU governance, independent automatic continuity, persistence migration, and 1.3.0 identity. It is not a package-publication or live-provider qualification record.
 
 ## Focused verification
 
-- Manager protocol codec: passed, 727 assertions.
-- Manager request dispatcher: passed, 15 test groups.
+- Manager protocol codec: passed.
+- Manager request dispatcher: passed, 18 test groups, including package edge records, revision-bound paging, retry/cursor durability, legacy queue migration, Activity correlation, Doctor checks, and project/provider continuity readback.
 - Managed-run service: passed.
+- Project policy service: passed, including durable legacy migration, a real finding correction, a visibly redacted export receipt, and null-finding Activity projection.
 - MCP catalog codec: passed, 500 assertions.
 - MCP tool-pack adapter: passed, 571 assertions.
 - MCP tool contract matrix: passed.
@@ -21,21 +22,16 @@ This record covers the native x64 Release implementation of the four-destination
 
 - Complete CMake Release x64 backend build: passed.
 - WinUI Release x64 application and sibling-service staging: passed.
-- Configured CTest matrix: 153 of 153 passed.
-- Static native-stack gate: passed.
-- Static no-Python gate: passed.
-- Static no-attribution gate: passed.
-- Development-signed MSIX construction, signature validation, unpack, and payload rehash: passed.
+- Configured CTest matrix: 153 of 153 passed after repairing a null-finding Activity projection found by the first 152/153 run.
+- Static native-stack, no-Python, and no-attribution gates: passed.
+- Disposable native launch: passed; responsive `Forge Conductor` window, nonzero main-window handle, disposable Manager started, and no `0xc0000005`/WER event.
 
-Package receipt:
+## Package and provider boundaries
 
-- Source commit: `d514719e42baa1ca647fd26fbb51666a4670cb3d`
-- Source tree: `7cb4971b38f85405f2ebac026bbb8f2ec91c25a3`
-- Package: `ForgeConductor-1.3.0.0-x64.msix`
-- Package SHA-256: `56b87b1fd801e37d0cdc80c8ad7d7996eb1688a6d0b0fbdadefbfea0290fb33d`
-- Bundle: `ForgeConductor-1.3.0.0-x64.zip`
-- Bundle SHA-256: `85c3a3830d1dc13d1ac3e8c01a1cf1bf6c10b379a51230659a80454e65b30d32`
-- Signature status: `Valid` (development certificate)
+- The previous development-signed MSIX and ZIP were built from `d514719e42baa1ca647fd26fbb51666a4670cb3d`; their hashes do not validate the current fixes and are intentionally not presented as current artifacts.
+- No current package was created, published, tagged, released, or installed by this work.
+- No pull request exists or is implied by this record.
+- A real supported-provider successor create/restore/acknowledge/fence run was not performed. Continuity remains implemented-but-unqualified and must not be reported `Active`.
 
 ## Boundaries
 

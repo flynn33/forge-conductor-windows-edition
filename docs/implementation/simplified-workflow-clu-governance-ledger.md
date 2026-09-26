@@ -52,7 +52,7 @@ CTest ran the same five focused tests with five passes and no failures.
 
 Phase adjustments and verification commands are recorded below as implementation proceeds.
 
-## Implemented release
+## Implemented candidate
 
 - Version advanced to 1.3.0.
 - Normal navigation reduced to Workspace, Rig, Activity, and Settings.
@@ -60,6 +60,7 @@ Phase adjustments and verification commands are recorded below as implementation
 - CLU replaced with nonblocking development-governance tools and policy coverage/findings/correction/export state.
 - Automatic continuity carried independently on managed-run start requests and skipped when disabled.
 - Legacy active instruction-package state migrates into the queue; existing policy snapshots migrate to the current governance schema.
+- Package and CLU events project into Activity with persisted project, revision, queue-row/finding, cursor, and correlation identifiers; project-aware Doctor covers the new repository/export/binding/schema surfaces.
 - In-app help, README, user guide, architecture, status, roadmap, changelog, and release notes updated.
 
 ## Qualification
@@ -68,7 +69,7 @@ Phase adjustments and verification commands are recorded below as implementation
 - Release x64 WinUI application and sibling-service staging: passed.
 - Full CTest matrix: 153/153 passed.
 - Native-stack, no-Python, and no-attribution static gates: passed.
-- Development-signed 1.3.0.0 MSIX: created, signature valid, unpacked, and payload rehashed.
-- Package source commit: `d514719e42baa1ca647fd26fbb51666a4670cb3d`.
-- MSIX SHA-256: `56b87b1fd801e37d0cdc80c8ad7d7996eb1688a6d0b0fbdadefbfea0290fb33d`.
-- Distribution ZIP SHA-256: `85c3a3830d1dc13d1ac3e8c01a1cf1bf6c10b379a51230659a80454e65b30d32`.
+- Disposable native launch: responsive window and Manager, with no startup crash event.
+- Current package creation/publication: not run. The package from `d514719` is superseded and does not validate the current branch.
+- Live supported-provider successor lifecycle: not run; enabled continuity remains `Preparing`, never `Active`.
+- Pull request, merge, tag, and release: not performed.
