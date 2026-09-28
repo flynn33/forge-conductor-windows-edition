@@ -1,6 +1,6 @@
 # Product status
 
-Release 1.3.1 retains the simplified Workspace workflow and adds complete project-memory browsing, direct record-level Data maintenance, and reliable Git/PowerShell discovery for constrained MCP launch environments. Verification is recorded in [the 1.3.1 validation record](validation/MEMORY-MAINTENANCE-1.3.1.md), and the published engineering distribution is development-signed.
+Release 1.3.2 retains the simplified Workspace, complete project-memory maintenance, and constrained-host tool discovery from 1.3.1 while correcting LM Studio's outer MCP request deadline. Verification is recorded in [the 1.3.2 validation record](validation/LM-STUDIO-TIMEOUT-1.3.2.md), and the published engineering distribution is development-signed.
 
 | Area | Implemented behavior |
 |---|---|
@@ -14,6 +14,7 @@ Release 1.3.1 retains the simplified Workspace workflow and adds complete projec
 | Activity/Doctor | Bounded project-correlated package and CLU activity is projected with persisted identifiers. Settings Doctor checks project/package queue/cursor, CLU repository/notifications/export, continuity provider binding, memory, migration, and schema alignment. |
 | Data maintenance | Scrollable project-memory rows support visible per-row deletion and extended multi-selection deletion through `project_memory.forget`; continuity reset and exact-confirmation scope reset remain separate. |
 | Native host tools | Git and PowerShell 7 are discovered by exact executable path and receive a bounded explicit Windows tool environment even when the MCP launcher starts with a minimal `PATH`. |
+| LM Studio MCP | Primary, Fallback, and CLU registrations and synchronized bridges use an exact 180-second outer request deadline. Missing or stale values are repairable drift. Fallback remains separately selected; it is not an automatic call replay path. |
 | Persistence | Durable per-user state with legacy instruction-package migration and compatible governance-state migration. |
 | Packaging | Signed MSIX workflow with payload hashes, source provenance, certificate verification, and installer helper. |
 
@@ -21,8 +22,8 @@ Policy interpretation is intentionally honest: binary/opaque entries and access 
 
 LM Studio desktop chats and Manager-owned tasks remain separate. Existing desktop chats without a native task binding are not automatically enrolled in managed continuity.
 
-Live supported-provider successor creation, restore, acknowledgement, and fencing have not been rerun for this 1.3.1 release. Enabled preferences are reported as `Preparing`; this status does not claim live continuity qualification or an `Active` lifecycle.
+Live supported-provider successor creation, restore, acknowledgement, and fencing have not been rerun for this 1.3.2 release. Enabled preferences are reported as `Preparing`; this status does not claim live continuity qualification or an `Active` lifecycle.
 
-The `v1.3.1` GitHub release carries the source-bound development-signed engineering package and checksums.
+The `v1.3.2` GitHub release carries the source-bound development-signed engineering package and checksums.
 
 Ordinary data remains at `%LOCALAPPDATA%\Forge Conductor`. The historical `--alpha-root` option supports isolated validation. Historical reports describe their own artifacts and are not evidence for newer binaries.

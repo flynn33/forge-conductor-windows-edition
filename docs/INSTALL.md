@@ -24,4 +24,6 @@ Launch **Forge Conductor** from Start after installation. Ordinary use stores du
 
 LM Studio and a loaded tool-capable model are external prerequisites for inference features. The GUI, Manager, CLI, MCP server, local tools, project management, memory, settings, and telemetry are packaged together and do not require a development checkout.
 
+After upgrading from 1.3.1 or earlier, finish or stop active MCP calls and use **Settings → LM Studio plugins → Install or repair all three plugins**. Repair updates Primary, Fallback, and CLU to the 180-second request deadline while preserving foreign MCP registrations and unknown fields. Then choose **Open LM Studio and connect plugins** and select the intended integration in the chat.
+
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.

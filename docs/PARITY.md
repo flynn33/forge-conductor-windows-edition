@@ -9,7 +9,7 @@ Forge Conductor 1.0 is a complete native Windows 11 x64 product. This map record
 | Provider integration | Configurable LM Studio endpoint/model discovery and Responses transport with persistent settings, validation, visible failure states, and reconnect behavior. |
 | Managed inference and continuity | Manager-owned turns, tool dispatch, response correlation, context-triggered rollover, handoff, pause/resume/stop, and retained run state. |
 | Projects and memory | Stable project identities, project isolation, relinking, legacy and project memory, guarded full-list paging, record-level deletion, generation fencing, and scoped reset behavior. |
-| MCP and native tools | Native stdio MCP host, authenticated Manager routing, 53-tool catalog, filesystem/search/Git/shell operations, and LM Studio deployment/verification. |
+| MCP and native tools | Native stdio MCP host, authenticated Manager routing, 53-tool catalog, filesystem/search/Git/shell operations, and LM Studio deployment/verification with an exact 180-second outer deadline for all three roles. |
 | Operational telemetry | Native CPU, RAM, GPU-engine/memory, disk, volume, process, provider, store, workflow, and continuity observations with bounded histories and freshness. |
 | Operational pages | Typed Rig, Autonomy, Continuity, Projects, Memory, Tools, Feed, Runtimes, Provider, Events, Diagnostics, Manager, and Settings surfaces. |
 | Settings and maintenance | Effective readback, save/revert, provider controls, startup/logging/session controls, context configuration, scrollable per-record/multi-selection deletion, and separate confirmed scoped/global reset. |
