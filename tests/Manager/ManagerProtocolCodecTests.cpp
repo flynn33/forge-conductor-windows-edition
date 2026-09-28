@@ -391,7 +391,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
     payloads.emplace_back(Manager::ManagerProjectMemoryRequest{
         identifier<Domain::ProjectId>(
             "20000000-0000-4000-8000-000000000002"),
-        "decision", 20U});
+        "decision", 20U, std::string{"djE6MjA="}});
     payloads.emplace_back(Manager::ManagerProjectRememberRequest{
         identifier<Domain::ProjectId>(
             "20000000-0000-4000-8000-000000000002"),
@@ -503,6 +503,20 @@ void testEveryRequestMethodRoundTripsDeterministically()
         REQUIRE(json.size() == 7U);
         REQUIRE(json.at("method").get<std::string>() == methods[index]);
     }
+
+    const auto legacyMemoryRequest = request(
+        Manager::ManagerProjectMemoryRequest{
+            identifier<Domain::ProjectId>(
+                "20000000-0000-4000-8000-000000000002"),
+            {}, 20U});
+    const auto legacyMemoryFrame = take(
+        Manager::ManagerProtocolCodec::encodeRequest(legacyMemoryRequest));
+    const auto legacyMemoryJson = Json::parse(payloadText(legacyMemoryFrame));
+    REQUIRE(!legacyMemoryJson.at("params").contains("cursor"));
+    const auto legacyMemoryDecoded = take(
+        Manager::ManagerProtocolCodec::decodeRequest(legacyMemoryFrame));
+    REQUIRE(!std::get<Manager::ManagerProjectMemoryRequest>(
+        legacyMemoryDecoded.payload).cursor);
 
     const auto update = take(Manager::ManagerProtocolCodec::decodeRequest(
         take(Manager::ManagerProtocolCodec::encodeRequest(request(
@@ -810,6 +824,25 @@ void testProjectWorkflowRoundTrips()
     REQUIRE(actual.writtenRecordId == recordId);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedWorkspace)) ==
             workspaceFrame);
+
+    auto legacyWorkspaceRoot = Json::parse(payloadText(workspaceFrame));
+    auto& legacyWorkspaceValue =
+        legacyWorkspaceRoot.at("result").at("value");
+    legacyWorkspaceValue.erase("continuity_operation_count");
+    legacyWorkspaceValue.erase("continuity_handoff_count");
+    legacyWorkspaceValue.erase("continuity_recovery_required");
+    legacyWorkspaceValue.erase("continuity_active");
+    const auto legacyWorkspaceDecoded = take(
+        Manager::ManagerProtocolCodec::decodeResponse(
+            frameFromJson(legacyWorkspaceRoot)));
+    const auto& legacyWorkspace =
+        std::get<Manager::ManagerProjectWorkspaceSnapshot>(
+            std::get<Manager::ManagerResult>(legacyWorkspaceDecoded.body));
+    REQUIRE(legacyWorkspace.project.id == descriptor.id);
+    REQUIRE(legacyWorkspace.continuityOperationCount == 0U);
+    REQUIRE(legacyWorkspace.continuityHandoffCount == 0U);
+    REQUIRE(!legacyWorkspace.continuityRecoveryRequired);
+    REQUIRE(!legacyWorkspace.continuityActive);
 
     const auto revision = identifier<Domain::Sha256Digest>(
         "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");

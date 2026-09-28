@@ -85,6 +85,44 @@ void requireError(
     REQUIRE(result.error().code == expectedCode);
 }
 
+class ScopedEnvironmentValue final {
+public:
+    ScopedEnvironmentValue(
+        const wchar_t* const name,
+        const std::wstring& value)
+        : name_{name}
+    {
+        std::wstring existing(32U * 1024U, L'\0');
+        ::SetLastError(ERROR_SUCCESS);
+        const DWORD length = ::GetEnvironmentVariableW(
+            name_.c_str(), existing.data(),
+            static_cast<DWORD>(existing.size()));
+        if (length != 0U && length < existing.size()) {
+            existing.resize(length);
+            previous_ = std::move(existing);
+        } else {
+            REQUIRE(length == 0U &&
+                (::GetLastError() == ERROR_ENVVAR_NOT_FOUND ||
+                 ::GetLastError() == ERROR_SUCCESS));
+        }
+        REQUIRE(::SetEnvironmentVariableW(
+            name_.c_str(), value.c_str()) != FALSE);
+    }
+
+    ~ScopedEnvironmentValue() noexcept
+    {
+        static_cast<void>(::SetEnvironmentVariableW(
+            name_.c_str(), previous_ ? previous_->c_str() : nullptr));
+    }
+
+    ScopedEnvironmentValue(const ScopedEnvironmentValue&) = delete;
+    ScopedEnvironmentValue& operator=(const ScopedEnvironmentValue&) = delete;
+
+private:
+    std::wstring name_;
+    std::optional<std::wstring> previous_;
+};
+
 struct HttpRequest final {
     std::string method;
     std::string path;
@@ -1250,6 +1288,87 @@ void automaticModelPreparationRejectsUnusableAndMalformedInventory()
     server.requireHealthy();
 }
 
+template <typename ContextFactory>
+void projectMemoryDisplayAllConcatenatesManagerPages(
+    ForgeConductor::Hosts::App::ManagerConnection& connection,
+    InfrastructureWindows::WindowsManagerNamedPipeClient& client,
+    const std::string& projectId,
+    ContextFactory&& context)
+{
+    namespace Manager = ForgeConductor::Manager;
+    const auto parsedProjectId = parse<Domain::ProjectId>(projectId);
+    std::vector<std::string> seededRecordIds;
+    constexpr std::size_t seededRecordCount = 101U;
+    seededRecordIds.reserve(seededRecordCount);
+    for (std::size_t index{}; index < seededRecordCount; ++index) {
+        auto remembered = take(client.rememberProjectMemory(
+            Manager::ManagerProjectRememberRequest{
+                parsedProjectId,
+                "Display All record " + std::to_string(index),
+                "Deterministic multi-page ManagerConnection coverage.",
+                std::nullopt,
+                {"display-all-test"}},
+            context()));
+        REQUIRE(remembered.writtenRecordId.has_value());
+        seededRecordIds.push_back(remembered.writtenRecordId->value());
+    }
+
+    std::vector<std::string> expectedRecordIds;
+    std::optional<std::string> cursor;
+    std::size_t expectedRecordCount{};
+    std::size_t pageCount{};
+    do {
+        const auto page = take(client.projectMemory(
+            Manager::ManagerProjectMemoryRequest{
+                parsedProjectId, {}, 100U, cursor},
+            context()));
+        ++pageCount;
+        if (pageCount == 1U) {
+            expectedRecordCount = page.recordCount;
+        } else {
+            REQUIRE(page.recordCount == expectedRecordCount);
+        }
+        for (const auto& record : page.records) {
+            expectedRecordIds.push_back(record.id.value());
+        }
+        if (!page.truncated) {
+            REQUIRE(!page.nextCursor.has_value());
+            break;
+        }
+        REQUIRE(page.nextCursor.has_value());
+        REQUIRE(!page.nextCursor->empty());
+        cursor = page.nextCursor;
+        REQUIRE(pageCount <= expectedRecordCount);
+    } while (true);
+
+    REQUIRE(pageCount > 1U);
+    REQUIRE(expectedRecordCount >= seededRecordCount);
+    REQUIRE(expectedRecordIds.size() == expectedRecordCount);
+    for (const auto& seededId : seededRecordIds) {
+        REQUIRE(std::find(expectedRecordIds.begin(), expectedRecordIds.end(),
+                    seededId) != expectedRecordIds.end());
+    }
+
+    const auto loaded = connection.projectMemory(
+        projectId, "this query is intentionally ignored", {}, true);
+    REQUIRE(loaded.loaded);
+    REQUIRE(loaded.snapshot.has_value());
+    REQUIRE(loaded.snapshot->recordCount == expectedRecordCount);
+    REQUIRE(loaded.snapshot->records.size() == expectedRecordCount);
+    REQUIRE(!loaded.snapshot->truncated);
+    REQUIRE(!loaded.snapshot->nextCursor.has_value());
+    std::vector<std::string> actualRecordIds;
+    actualRecordIds.reserve(loaded.snapshot->records.size());
+    for (const auto& record : loaded.snapshot->records) {
+        actualRecordIds.push_back(record.id.value());
+    }
+    REQUIRE(actualRecordIds == expectedRecordIds);
+    REQUIRE(loaded.message ==
+        "Loaded all " + std::to_string(expectedRecordCount) +
+            " memory records.");
+    std::cout << "PASS manager_connection.project_memory_display_all_pages\n";
+}
+
 void automaticSetupUsesRealManagerAndPersistsProject()
 {
     namespace App = ForgeConductor::Hosts::App;
@@ -1277,6 +1396,15 @@ void automaticSetupUsesRealManagerAndPersistsProject()
         (L"setup-proof-" + std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
     const auto project = root / L"project";
     std::filesystem::create_directories(project);
+    const auto testUserProfile = root / L"user-profile";
+    std::filesystem::create_directories(testUserProfile / L".lmstudio");
+    {
+        std::ofstream mcpConfiguration{
+            testUserProfile / L".lmstudio" / L"mcp.json"};
+        mcpConfiguration << R"({"mcpServers":{}})";
+    }
+    ScopedEnvironmentValue userProfileEnvironment{
+        L"USERPROFILE", testUserProfile.native()};
     const auto profile = take(W::WindowsAlphaManagerProfile::create((root / L"profile").wstring()));
     std::uint16_t dashboardPort{};
     {
@@ -1332,6 +1460,8 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     const auto projects = connection.projects({});
     REQUIRE(projects.loaded && projects.snapshot);
     REQUIRE(projects.snapshot->projects.size() == 1U);
+    projectMemoryDisplayAllConcatenatesManagerPages(
+        connection, *client, prepared.projectId, context);
     const auto freshSettings = connection.providerSettings({});
     REQUIRE(freshSettings.loaded);
     REQUIRE(freshSettings.settings.localModelName == prepared.model);
@@ -1479,7 +1609,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=14 failed=0 assertions="
+        std::cout << "SUMMARY passed=15 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

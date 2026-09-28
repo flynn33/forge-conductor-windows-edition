@@ -102,11 +102,18 @@ public:
         const Domain::SearchProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        return complete(
-            ProjectMemoryCall::Search,
-            &request.projectId,
-            context,
-            searchResult);
+        try {
+            searchRequests_.push_back(request);
+            return complete(
+                ProjectMemoryCall::Search,
+                &request.projectId,
+                context,
+                searchResult);
+        } catch (...) {
+            return Domain::Result<Domain::MemoryPage>::failure(
+                Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                    "The deterministic project-memory search could not be recorded."));
+        }
     }
 
     [[nodiscard]] Domain::Result<Domain::MemoryRecords> get(
@@ -153,11 +160,18 @@ public:
         const Domain::ListRecentProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        return complete(
-            ProjectMemoryCall::ListRecent,
-            &request.projectId,
-            context,
-            listRecentResult);
+        try {
+            listRecentRequests_.push_back(request);
+            return complete(
+                ProjectMemoryCall::ListRecent,
+                &request.projectId,
+                context,
+                listRecentResult);
+        } catch (...) {
+            return Domain::Result<Domain::MemoryPage>::failure(
+                Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                    "The deterministic recent project-memory read could not be recorded."));
+        }
     }
 
     [[nodiscard]] Domain::Result<Domain::LinkOutcome> link(
@@ -328,6 +342,18 @@ public:
         return rememberBatchRequests_;
     }
 
+    [[nodiscard]] const std::vector<Domain::SearchProjectMemoryRequest>&
+    searchRequests() const noexcept
+    {
+        return searchRequests_;
+    }
+
+    [[nodiscard]] const std::vector<Domain::ListRecentProjectMemoryRequest>&
+    listRecentRequests() const noexcept
+    {
+        return listRecentRequests_;
+    }
+
     [[nodiscard]] const std::optional<Contracts::WorkspaceAuthority>&
     lastExportAuthority() const noexcept
     {
@@ -390,6 +416,8 @@ private:
     std::optional<Domain::RememberProjectMemoryRequest> lastRememberRequest_;
     std::optional<Domain::UpdateProjectMemoryRequest> lastUpdateRequest_;
     std::vector<Domain::RememberProjectMemoryBatchRequest> rememberBatchRequests_;
+    std::vector<Domain::SearchProjectMemoryRequest> searchRequests_;
+    std::vector<Domain::ListRecentProjectMemoryRequest> listRecentRequests_;
     std::optional<Contracts::WorkspaceAuthority> lastExportAuthority_;
     std::optional<Contracts::AuthorizedToolCall> lastExportAuthorization_;
     std::optional<Domain::DestructiveConfirmation> lastResetConfirmation_;

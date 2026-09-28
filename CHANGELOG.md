@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.1 — Complete memory browsing and direct record maintenance
+
+- Add **Display All** to project-memory browsing. The Manager protocol accepts stable cursors and the native app retrieves 100 records per page with duplicate, consistency, and termination guards.
+- Replace the slow one-record maintenance path with a scrollable, extended-selection list. Every memory row has a visible **Delete record** action; **Delete selected** confirms once, calls `project_memory.forget` for each selected memory key, and refreshes the remaining rows.
+- Keep continuity cleanup visibly separate as **Reset project continuity**, and retain the existing exact-confirmation scope reset as a separate control.
+- Include continuity operation, handoff, recovery, and active-state readback in the project workspace snapshot used by Data maintenance.
+- Prefer PowerShell 7 for native shell execution and construct an explicit safe child environment containing Windows system tools, PowerShell 7, Git, `PATHEXT`, and `COMSPEC` even when the MCP launcher supplies a minimal environment.
+- Advance the native runtime, session-host adapter, and stable MSIX package to 1.3.1 / `1.3.1.0`.
+
+The Release build passes all 153 configured tests and both static gates. Automated coverage includes a 101-record multi-page Display All read and native host environment checks. The engineering package is development-signed; installed UI interaction remains an operator acceptance step.
+
 ## 1.3.0 — Simplified Workspace and CLU governance
 
 - Replace normal wizard/mission navigation with Workspace, Rig, Activity, and Settings.

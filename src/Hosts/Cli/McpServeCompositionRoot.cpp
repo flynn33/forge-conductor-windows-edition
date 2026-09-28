@@ -303,6 +303,85 @@ void requireSuccess(Domain::Result<void> result)
     return searched;
 }
 
+[[nodiscard]] std::optional<Domain::PathText> tryDiscoverExecutable(
+    const wchar_t* const name)
+{
+    const DWORD required = ::SearchPathW(nullptr, name, nullptr, 0U, nullptr, nullptr);
+    if (required == 0U || required > MaximumEnvironmentValueCharacters) {
+        return std::nullopt;
+    }
+    std::wstring buffer(static_cast<std::size_t>(required) + 1U, L'\0');
+    const DWORD written = ::SearchPathW(
+        nullptr, name, nullptr, static_cast<DWORD>(buffer.size()),
+        buffer.data(), nullptr);
+    if (written == 0U || written >= buffer.size()) {
+        return std::nullopt;
+    }
+    buffer.resize(static_cast<std::size_t>(written));
+    auto converted = strictWideToUtf8(buffer);
+    if (!converted) {
+        return std::nullopt;
+    }
+    auto text = Domain::PathText::create(converted.value());
+    if (!text) {
+        return std::nullopt;
+    }
+    const auto wide = strictUtf8ToWide(text.value().value());
+    if (!wide || !isSingleLinkRegularExecutable(std::filesystem::path{wide.value()})) {
+        return std::nullopt;
+    }
+    return std::move(text).value();
+}
+
+[[nodiscard]] std::optional<std::wstring> installedProgramFilesDirectory()
+{
+    DWORD size = 0U;
+    const LSTATUS measured = ::RegGetValueW(
+        HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
+        L"ProgramFilesDir",
+        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
+        nullptr, nullptr, &size);
+    if (measured != ERROR_SUCCESS || size < sizeof(wchar_t) || size > 1024U) {
+        return std::nullopt;
+    }
+    std::wstring value(size / sizeof(wchar_t), L'\0');
+    DWORD bytes = size;
+    const LSTATUS read = ::RegGetValueW(
+        HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
+        L"ProgramFilesDir",
+        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
+        nullptr, value.data(), &bytes);
+    if (read != ERROR_SUCCESS) {
+        return std::nullopt;
+    }
+    while (!value.empty() && value.back() == L'\0') {
+        value.pop_back();
+    }
+    if (value.empty()) {
+        return std::nullopt;
+    }
+    return value;
+}
+
+// PowerShell 7 (pwsh.exe) is the host shell. Windows PowerShell 5.1 remains
+// the fallback when pwsh is not installed as a regular executable.
+[[nodiscard]] Domain::PathText discoverPowerShellExecutable()
+{
+    if (auto powerShell7 = tryDiscoverExecutable(L"pwsh.exe")) {
+        return std::move(*powerShell7);
+    }
+    if (const auto programFiles = installedProgramFilesDirectory()) {
+        const auto candidate = std::filesystem::path{*programFiles} /
+            L"PowerShell" / L"7" / L"pwsh.exe";
+        if (isSingleLinkRegularExecutable(candidate)) {
+            return pathText(take(strictWideToUtf8(candidate.wstring())));
+        }
+    }
+    return discoverExecutable(L"powershell.exe");
+}
+
 [[nodiscard]] Domain::PathText childPath(
     const Domain::PathText& root,
     const std::string_view relative)
@@ -621,7 +700,7 @@ private:
             configuration_.shell.enabled);
 
         const auto gitExecutable = discoverGitExecutable();
-        const auto powerShellExecutable = discoverExecutable(L"powershell.exe");
+        const auto powerShellExecutable = discoverPowerShellExecutable();
 
         auto centralDatabase = take(PersistenceWindows::WindowsCentralDatabase::open(
             applicationPaths_, runtimeDiagnostics_, clock_, startupContext));

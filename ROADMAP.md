@@ -1,8 +1,8 @@
 # Forge Conductor roadmap
 
-## 1.2 automatic setup and governance
+## 1.3 workspace and maintenance
 
-Version 1.2.1 delivers folder-to-task preparation, automatic deployment and synchronization of all three LM Studio plugins, a persistent visible setup entry, installed LM Studio server startup, compatible model loading, response verification, retry/cancellation, pinned repository policy import, reviewed tool permissions and 42 offline help articles. See [release notes](docs/releases/1.2.1.md) and [validation evidence](docs/validation/SETUP-CORRECTION-1.2.1.md).
+Version 1.3.1 delivers the direct Workspace workflow, ordered universal instruction packages, optional CLU development governance, independent automatic continuity, guarded Display All project-memory paging, scrollable record-level Data maintenance, and reliable Git/PowerShell discovery for constrained MCP launches. See [release notes](docs/releases/1.3.1.md) and [validation evidence](docs/validation/MEMORY-MAINTENANCE-1.3.1.md).
 
 The release uses the existing native C++20/WinUI architecture, Manager-owned execution, stable project identities, durable memory and native telemetry. Existing runs retain their selected provider binding across restart. Private GitHub policy import uses existing Git authentication and never executes imported scripts.
 

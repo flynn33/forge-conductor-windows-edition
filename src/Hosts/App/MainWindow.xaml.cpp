@@ -627,8 +627,239 @@ void MainWindow::SettingsTestClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsTest); }
 void MainWindow::SettingsRestartClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::SettingsRestart); }
-void MainWindow::MaintenanceResetClicked(Windows::Foundation::IInspectable const&,
-    Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::MaintenanceReset); }
+void MainWindow::MaintenanceResetClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    RunAction(Action::MaintenanceReset);
+}
+void MainWindow::MaintenanceRefreshClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (selectedProjectId_.empty()) {
+        MaintenanceState().Text(
+            L"Select an authorized project on the Projects page first.");
+        return;
+    }
+    RefreshMaintenanceRecords();
+}
+
+void MainWindow::MaintenanceSelectionChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    MaintenanceDeleteSelected().IsEnabled(
+        MaintenanceRecords().SelectedItems().Size() != 0U);
+}
+
+void MainWindow::MaintenanceRowDeleteClicked(
+    Windows::Foundation::IInspectable const& sender,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    const auto button =
+        sender.try_as<Microsoft::UI::Xaml::Controls::Button>();
+    if (!button || !button.Tag()) return;
+    ConfirmMaintenanceDelete({
+        winrt::to_string(unbox_value<hstring>(button.Tag()))});
+}
+
+void MainWindow::MaintenanceDeleteSelectedClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    std::vector<std::string> keys;
+    for (const auto& selected : MaintenanceRecords().SelectedItems()) {
+        const auto row = selected.try_as<Microsoft::UI::Xaml::FrameworkElement>();
+        if (!row || !row.Tag()) continue;
+        keys.push_back(winrt::to_string(unbox_value<hstring>(row.Tag())));
+    }
+    ConfirmMaintenanceDelete(std::move(keys));
+}
+
+winrt::fire_and_forget MainWindow::ConfirmMaintenanceDelete(
+    std::vector<std::string> keys)
+{
+    const auto lifetime = get_strong();
+    if (keys.empty()) co_return;
+    Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+    dialog.XamlRoot(Content().XamlRoot());
+    dialog.Title(box_value(keys.size() == 1U
+        ? L"Delete selected memory record?"
+        : L"Delete selected memory records?"));
+    dialog.Content(box_value(winrt::to_hstring(
+        std::to_string(keys.size()) +
+        " selected project-memory record(s) will be forgotten. "
+        "This cannot be undone from Data Maintenance.")));
+    dialog.PrimaryButtonText(L"Delete");
+    dialog.CloseButtonText(L"Cancel");
+    dialog.DefaultButton(Microsoft::UI::Xaml::Controls::ContentDialogButton::Close);
+    const auto result = co_await dialog.ShowAsync();
+    if (result != Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+        co_return;
+    DeleteMaintenanceRecords(std::move(keys));
+}
+
+winrt::fire_and_forget MainWindow::DeleteMaintenanceRecords(
+    std::vector<std::string> keys)
+{
+    const auto lifetime = get_strong();
+    const auto projectId = selectedProjectId_;
+    if (projectId.empty() || keys.empty()) co_return;
+    MaintenanceDeleteSelected().IsEnabled(false);
+    MaintenanceRecords().IsEnabled(false);
+    MaintenanceState().Text(L"Deleting the confirmed selection through the Manager…");
+    winrt::apartment_context ui;
+    std::size_t removed{};
+    std::string failure;
+    try {
+        co_await winrt::resume_background();
+        for (const auto& key : keys) {
+            if (!key.starts_with("memory:")) {
+                failure = "Only project-memory rows can be deleted as records.";
+                break;
+            }
+            const auto arguments = nlohmann::json{
+                {"project_id", projectId}, {"id", key.substr(7U)}}.dump();
+            const auto result = connection_->invokeTool(
+                projectId, "project_memory.forget", arguments,
+                cancellation_.get_token());
+            if (!result.snapshot || !result.snapshot->ok) {
+                failure = result.message.empty()
+                    ? "A project-memory record could not be deleted." : result.message;
+                break;
+            }
+            ++removed;
+        }
+    } catch (const std::exception& exception) {
+        failure = exception.what();
+    } catch (...) {
+        failure = "The confirmed delete did not complete.";
+    }
+    try { co_await ui; } catch (...) { co_return; }
+    MaintenanceRecords().IsEnabled(true);
+    if (selectedProjectId_ != projectId) {
+        MaintenanceState().Text(
+            L"The project selection changed while deletion was running. Refresh to inspect the result.");
+        co_return;
+    }
+    if (!failure.empty()) {
+        RefreshMaintenanceRecords(
+            std::to_string(removed) +
+            " memory record(s) deleted before the Manager stopped: " + failure);
+    } else {
+        RefreshMaintenanceRecords(
+            std::to_string(removed) + " selected memory record(s) deleted.");
+    }
+}
+
+winrt::fire_and_forget MainWindow::RefreshMaintenanceRecords(
+    std::string completionMessage)
+{
+    const auto lifetime = get_strong();
+    const auto projectId = selectedProjectId_;
+    if (projectId.empty()) co_return;
+    MaintenanceRecords().IsEnabled(false);
+    MaintenanceDeleteSelected().IsEnabled(false);
+    MaintenanceState().Text(L"Refreshing Data Maintenance records through the Manager…");
+    winrt::apartment_context ui;
+    ::ForgeConductor::Hosts::App::ProjectWorkspaceView view;
+    try {
+        co_await winrt::resume_background();
+        view = connection_->projectMemory(
+            projectId, {}, cancellation_.get_token(), true);
+    } catch (const std::exception& exception) {
+        view.message = exception.what();
+    } catch (...) {
+        view.message = "Could not refresh Data Maintenance records.";
+    }
+    try { co_await ui; } catch (...) { co_return; }
+    MaintenanceRecords().IsEnabled(true);
+    if (selectedProjectId_ != projectId) {
+        MaintenanceState().Text(
+            L"The project selection changed while records were loading.");
+        co_return;
+    }
+    if (view.loaded && view.snapshot) {
+        RenderMaintenanceRecords(*view.snapshot);
+        if (!completionMessage.empty())
+            MaintenanceState().Text(winrt::to_hstring(completionMessage));
+        co_return;
+    }
+    const auto message = view.message.empty()
+        ? std::string{"Could not refresh Data Maintenance records."}
+        : view.message;
+    MaintenanceState().Text(winrt::to_hstring(
+        completionMessage.empty()
+            ? message
+            : completionMessage + " Refresh failed: " + message));
+}
+
+void MainWindow::MaintenanceContinuityResetClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    ConfirmContinuityReset();
+}
+
+winrt::fire_and_forget MainWindow::ConfirmContinuityReset()
+{
+    const auto lifetime = get_strong();
+    if (selectedProjectId_.empty()) co_return;
+    Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+    dialog.XamlRoot(Content().XamlRoot());
+    dialog.Title(box_value(L"Reset project continuity?"));
+    dialog.Content(box_value(
+        L"This clears all continuity operations and handoffs for the selected "
+        L"project. It is a scope reset, not deletion of one record, and cannot "
+        L"be undone from Data Maintenance."));
+    dialog.PrimaryButtonText(L"Reset continuity");
+    dialog.CloseButtonText(L"Cancel");
+    dialog.DefaultButton(
+        Microsoft::UI::Xaml::Controls::ContentDialogButton::Close);
+    const auto result = co_await dialog.ShowAsync();
+    if (result != Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+        co_return;
+    ResetContinuity();
+}
+
+winrt::fire_and_forget MainWindow::ResetContinuity()
+{
+    const auto lifetime = get_strong();
+    const auto projectId = selectedProjectId_;
+    if (projectId.empty()) co_return;
+    MaintenanceContinuityReset().IsEnabled(false);
+    MaintenanceState().Text(L"Resetting the selected project's continuity scope…");
+    winrt::apartment_context ui;
+    ::ForgeConductor::Hosts::App::MaintenanceView view;
+    try {
+        co_await winrt::resume_background();
+        view = connection_->resetData(
+            ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectContinuity,
+            projectId, "RESET PROJECT CONTINUITY " + projectId,
+            cancellation_.get_token());
+    } catch (const std::exception& exception) {
+        view.message = exception.what();
+    } catch (...) {
+        view.message = "The project continuity reset did not complete.";
+    }
+    try { co_await ui; } catch (...) { co_return; }
+    MaintenanceContinuityReset().IsEnabled(true);
+    if (selectedProjectId_ != projectId) {
+        MaintenanceState().Text(
+            L"The project selection changed while continuity was resetting.");
+        co_return;
+    }
+    if (!view.loaded) {
+        MaintenanceState().Text(winrt::to_hstring(view.message.empty()
+            ? "Project continuity is locked or could not be reset."
+            : view.message));
+        co_return;
+    }
+    RefreshMaintenanceRecords(view.message.empty()
+        ? "Project continuity reset completed."
+        : view.message);
+}
 void MainWindow::OpenWorkspaceClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { SelectPage(L"Workspace"); }
 void MainWindow::OpenActivityClicked(Windows::Foundation::IInspectable const&,
@@ -875,6 +1106,28 @@ void MainWindow::ProjectRefreshClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectList); }
 void MainWindow::ProjectSearchClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectLoad); }
+void MainWindow::ProjectDisplayAllClicked(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    if (selectedProjectId_.empty()) {
+        ProjectState().Text(L"Select or register a project first.");
+        return;
+    }
+    ProjectMemoryQuery().Text(L"");
+    RunAction(Action::ProjectDisplayAll);
+}
+void MainWindow::ProjectMemorySelectionChanged(
+    Windows::Foundation::IInspectable const&,
+    Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
+{
+    const auto index = ProjectMemoryRecords().SelectedIndex();
+    if (index < 0 ||
+        static_cast<std::size_t>(index) >= visibleMemoryRecords_.size()) {
+        return;
+    }
+    SelectMemoryRecord(visibleMemoryRecords_[static_cast<std::size_t>(index)]);
+}
 void MainWindow::ProjectRememberClicked(Windows::Foundation::IInspectable const&,
     Microsoft::UI::Xaml::RoutedEventArgs const&) { RunAction(Action::ProjectRemember); }
 void MainWindow::InstructionPackagePreviewClicked(
@@ -1092,6 +1345,7 @@ void MainWindow::ProjectEditCloseClicked(Windows::Foundation::IInspectable const
 {
     selectedMemoryRecord_.reset();
     selectedMemoryProjectId_.clear();
+    ProjectMemoryRecords().SelectedIndex(-1);
     ProjectForgetConfirmation().Text(L"");
     ProjectEditCard().Visibility(Visibility::Collapsed);
 }
@@ -1617,14 +1871,12 @@ void MainWindow::NavigationChanged(
             ToolProjectId().Text(winrt::to_hstring(selectedProjectId_));
         }
         RunAction(Action::ToolsList);
-        const auto project = selectedProjectId_.empty()
-            ? std::string{"<select a project first>"} : selectedProjectId_;
-        MaintenanceState().Text(winrt::to_hstring(
-            "Exact confirmations for the current selection:\n"
-            "Memory: RESET PROJECT MEMORY " + project +
-            "\nContinuity: RESET PROJECT CONTINUITY " + project +
-            "\nCombined: RESET PROJECT DATA " + project +
-            "\nAll registered project data: RESET ALL PROJECT DATA"));
+        if (selectedProjectId_.empty()) {
+            MaintenanceState().Text(
+                L"Select a project on the Projects page, then refresh records.");
+        } else {
+            RefreshMaintenanceRecords();
+        }
     }
     if (telemetrySnapshot_) ApplyTelemetryPresentation(*telemetrySnapshot_);
 }
@@ -2367,7 +2619,6 @@ void MainWindow::ApplyProjectList(
         ProjectTechnicalIdentity().Text(L"No exact binding loaded.");
         ProjectFolders().Text(L"Register an authorized folder to begin.");
         ProjectPersistence().Text(L"No project memory store is active.");
-        ProjectMemoryRecords().Children().Clear();
     }
     RunInstructionQueueAction(
         ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::List);
@@ -2446,17 +2697,105 @@ void MainWindow::ClearSelectedProject()
     selectedMemoryRecord_.reset();
     selectedMemoryProjectId_.clear();
     ProjectEditCard().Visibility(Visibility::Collapsed);
+    visibleMemoryRecords_.clear();
+    ProjectMemoryRecords().Items().Clear();
+    ProjectMemoryEmptyState().Visibility(Visibility::Visible);
     selectedProjectId_.clear();
     clearSavedText(selectedProjectValueName_.c_str());
     ToolProjectId().Text(L"");
+    MaintenanceRecords().Items().Clear();
+    MaintenanceEmptyState().Visibility(Visibility::Visible);
+    MaintenanceDeleteSelected().IsEnabled(false);
+    MaintenanceContinuityPanel().Visibility(Visibility::Collapsed);
+    MaintenanceContinuitySummary().Text(L"");
+    MaintenanceContinuityReset().IsEnabled(false);
+    MaintenanceProject().Text(L"Select a project on the Projects page.");
+    MaintenanceResetConfirmation().Text(
+        L"Select a project to see project-scoped confirmations.\n"
+        L"All registered project data: RESET ALL PROJECT DATA");
     UpdateRunControlProjectLabel();
     MaintenanceState().Text(
-        L"Select the exact project on the Projects page first.\n"
-        L"All registered project data: RESET ALL PROJECT DATA");
+        L"Select the exact project on the Projects page first.");
+}
+
+void MainWindow::RenderMaintenanceRecords(
+    const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot)
+{
+    using namespace Microsoft::UI::Xaml;
+    using namespace Microsoft::UI::Xaml::Controls;
+    MaintenanceRecords().Items().Clear();
+    MaintenanceDeleteSelected().IsEnabled(false);
+    MaintenanceProject().Text(winrt::to_hstring(
+        snapshot.project.displayName + " · " + snapshot.project.id.value()));
+    const auto projectId = snapshot.project.id.value();
+    MaintenanceResetConfirmation().Text(winrt::to_hstring(
+        "Exact confirmations for the current selection:\n"
+        "Memory: RESET PROJECT MEMORY " + projectId +
+        "\nContinuity: RESET PROJECT CONTINUITY " + projectId +
+        "\nCombined: RESET PROJECT DATA " + projectId +
+        "\nAll registered project data: RESET ALL PROJECT DATA"));
+
+    const auto appendRow = [this](const std::string& key,
+                                  const std::string& titleText,
+                                  const std::string& detailText) {
+        StackPanel content;
+        content.Spacing(7);
+        TextBlock title;
+        title.Text(winrt::to_hstring(titleText));
+        title.FontSize(16);
+        title.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
+        title.TextWrapping(TextWrapping::Wrap);
+        content.Children().Append(title);
+        TextBlock detail;
+        detail.Text(winrt::to_hstring(detailText));
+        detail.TextWrapping(TextWrapping::Wrap);
+        detail.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
+            Windows::UI::Color{255,184,197,211}));
+        content.Children().Append(detail);
+        content.Tag(box_value(winrt::to_hstring(key)));
+        content.HorizontalAlignment(HorizontalAlignment::Stretch);
+        MaintenanceRecords().Items().Append(content);
+    };
+
+    for (const auto& record : snapshot.records) {
+        appendRow(
+            "memory:" + record.id.value(),
+            record.title,
+            "Project memory · " + record.kind + " · v" +
+                std::to_string(record.version) + " · " + record.summary);
+    }
+    const bool hasContinuity = snapshot.continuityOperationCount != 0U ||
+        snapshot.continuityHandoffCount != 0U ||
+        snapshot.continuityRecoveryRequired || snapshot.continuityActive;
+    MaintenanceContinuityPanel().Visibility(
+        hasContinuity ? Visibility::Visible : Visibility::Collapsed);
+    MaintenanceContinuityReset().IsEnabled(
+        hasContinuity && !snapshot.continuityActive);
+    if (hasContinuity) {
+        std::string detail = "Project continuity · " +
+            std::to_string(snapshot.continuityHandoffCount) + " handoff(s) · " +
+            std::to_string(snapshot.continuityOperationCount) + " operation(s)";
+        if (snapshot.continuityActive)
+            detail += " · Reset blocked while an operation is active";
+        else if (snapshot.continuityRecoveryRequired)
+            detail += " · Recovery is required; the Manager may refuse the reset";
+        detail += " · This clears the continuity scope; it is not a single-record delete";
+        MaintenanceContinuitySummary().Text(winrt::to_hstring(detail));
+    } else {
+        MaintenanceContinuitySummary().Text(L"");
+    }
+    const bool empty = MaintenanceRecords().Items().Size() == 0U;
+    MaintenanceEmptyState().Visibility(
+        empty ? Visibility::Visible : Visibility::Collapsed);
+    MaintenanceState().Text(winrt::to_hstring(empty
+        ? "No project-memory records remain."
+        : std::to_string(MaintenanceRecords().Items().Size()) +
+            " visible memory record(s). Use Ctrl or Shift to select multiple rows."));
 }
 
 void MainWindow::ApplyProjectWorkspace(
-    const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot)
+    ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot,
+    const bool updateMaintenance)
 {
     if (selectedMemoryProjectId_ != snapshot.project.id.value()) {
         selectedMemoryRecord_.reset();
@@ -2579,29 +2918,14 @@ void MainWindow::ApplyProjectWorkspace(
         }
     }
 
-    ProjectMemoryRecords().Children().Clear();
-    if (snapshot.records.empty()) {
-        Microsoft::UI::Xaml::Controls::TextBlock empty;
-        empty.Text(L"No matching project memory records.");
-        empty.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
-            Windows::UI::Color{255,184,197,211}));
-        ProjectMemoryRecords().Children().Append(empty);
-    }
-    for (const auto& record : snapshot.records) {
-        Microsoft::UI::Xaml::Controls::StackPanel content;
-        content.Spacing(6);
-        Microsoft::UI::Xaml::Controls::TextBlock title;
-        title.Text(winrt::to_hstring(record.title));
-        title.FontSize(16);
-        title.FontWeight(Windows::UI::Text::FontWeights::SemiBold());
-        title.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
-        content.Children().Append(title);
-        Microsoft::UI::Xaml::Controls::TextBlock summary;
-        summary.Text(winrt::to_hstring(record.summary));
-        summary.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
-            Windows::UI::Color{255,184,197,211}));
-        summary.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
-        content.Children().Append(summary);
+    ProjectMemoryRecords().Items().Clear();
+    visibleMemoryRecords_ = updateMaintenance
+        ? snapshot.records
+        : std::move(snapshot.records);
+    ProjectMemoryEmptyState().Visibility(visibleMemoryRecords_.empty()
+        ? Microsoft::UI::Xaml::Visibility::Visible
+        : Microsoft::UI::Xaml::Visibility::Collapsed);
+    for (const auto& record : visibleMemoryRecords_) {
         std::string metadata = record.kind + " · v" +
             std::to_string(record.version);
         if (!record.tags.empty()) {
@@ -2611,39 +2935,11 @@ void MainWindow::ApplyProjectWorkspace(
                 metadata += record.tags[index];
             }
         }
-        Microsoft::UI::Xaml::Controls::TextBlock meta;
-        meta.Text(winrt::to_hstring(metadata));
-        meta.FontSize(12);
-        meta.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush(
-            Windows::UI::Color{255,43,168,255}));
-        content.Children().Append(meta);
-        Microsoft::UI::Xaml::Controls::Button select;
-        select.Content(box_value(L"Inspect & edit this record"));
-        const auto weak = get_weak();
-        select.Click([weak, record](auto const&, auto const&) {
-            if (const auto self = weak.get()) self->SelectMemoryRecord(record);
-        });
-        content.Children().Append(select);
-        Microsoft::UI::Xaml::Controls::Expander detail;
-        detail.Header(box_value(L"Record detail & identity"));
-        Microsoft::UI::Xaml::Controls::TextBlock body;
-        body.Text(winrt::to_hstring((record.body ? *record.body : std::string{}) +
-            "\n\nExact record ID: " + record.id.value()));
-        body.TextWrapping(Microsoft::UI::Xaml::TextWrapping::Wrap);
-        body.IsTextSelectionEnabled(true);
-        detail.Content(body);
-        content.Children().Append(detail);
-        Microsoft::UI::Xaml::Controls::Border row;
-        row.Padding(Microsoft::UI::Xaml::Thickness{12});
-        row.CornerRadius(Microsoft::UI::Xaml::CornerRadius{9});
-        row.BorderThickness(Microsoft::UI::Xaml::Thickness{1});
-        row.Background(Microsoft::UI::Xaml::Media::SolidColorBrush(
-            Windows::UI::Color{255,13,27,42}));
-        row.BorderBrush(Microsoft::UI::Xaml::Media::SolidColorBrush(
-            Windows::UI::Color{90,102,128,153}));
-        row.Child(content);
-        ProjectMemoryRecords().Children().Append(row);
+        ProjectMemoryRecords().Items().Append(box_value(winrt::to_hstring(
+            record.title + "\n" + record.summary + "\n" + metadata +
+            "\nSelect to inspect and edit.")));
     }
+    if (updateMaintenance) RenderMaintenanceRecords(snapshot);
     RunInstructionQueueAction(
         ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction::List);
 }
@@ -4097,7 +4393,12 @@ void MainWindow::ApplyOperational(
 winrt::fire_and_forget MainWindow::RunAction(const Action action)
 {
     auto lifetime = get_strong();
-    if (!connection_ || cancellation_.stop_requested()) co_return;
+    const bool displayAllAction = action == Action::ProjectDisplayAll;
+    if (!connection_ || cancellation_.stop_requested()) {
+        if (displayAllAction) ProjectDisplayAllButton().IsEnabled(true);
+        co_return;
+    }
+    if (displayAllAction) ProjectDisplayAllButton().IsEnabled(false);
 
     std::optional<::ForgeConductor::Domain::ManagerSettings> submitted;
     const bool runAction = action == Action::RunStatus || action == Action::RunPause ||
@@ -4127,8 +4428,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
         PolicyState().Text(L"Updating CLU governance for the selected project…");
     }
+    const bool projectReadAction = action == Action::ProjectLoad ||
+        action == Action::ProjectDisplayAll;
     const bool projectAction = action == Action::ProjectList ||
-        action == Action::ProjectRegister || action == Action::ProjectLoad ||
+        action == Action::ProjectRegister || projectReadAction ||
         action == Action::ProjectRemember || action == Action::ProjectUpdate ||
         action == Action::ProjectForget ||
         action == Action::ProjectArchiveExport ||
@@ -4190,6 +4493,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
     const std::string requestedEvidenceProject = selectedProjectId_;
     const std::string requestedEvidenceRun = selectedEvidenceRunId_;
     std::string requestedEvidenceCommand;
+    ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
+        ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectMemory};
+    std::optional<std::string> maintenanceProject;
+    std::string maintenanceToken;
     if (continuityPreferenceAction && requestedContinuityProject.empty()) {
         AutomaticContinuityState().Text(
             L"Select a project before reading automatic continuity.");
@@ -4224,10 +4531,6 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             co_return;
         }
     }
-    ::ForgeConductor::Manager::ManagerMaintenanceScope maintenanceScope{
-        ::ForgeConductor::Manager::ManagerMaintenanceScope::ProjectMemory};
-    std::optional<std::string> maintenanceProject;
-    std::string maintenanceToken;
     if (action == Action::Refresh) {
         runId = winrt::to_string(RunId().Text());
     }
@@ -4271,10 +4574,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 ProjectState().Text(L"Enter the project folder to authorize.");
                 co_return;
             }
-        } else if (action == Action::ProjectLoad ||
-            action == Action::ProjectRemember) {
+        } else if (projectReadAction || action == Action::ProjectRemember) {
             if (selectedProjectId_.empty()) {
                 ProjectState().Text(L"Select or register a project first.");
+                if (displayAllAction) ProjectDisplayAllButton().IsEnabled(true);
                 co_return;
             }
             projectQuery = winrt::to_string(ProjectMemoryQuery().Text());
@@ -4442,18 +4745,19 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         if (maintenanceScope != ::ForgeConductor::Manager::
                 ManagerMaintenanceScope::AllProjectsAllData) {
             if (selectedProjectId_.empty()) {
-                MaintenanceState().Text(L"Select the exact project on the Projects page first.");
+                MaintenanceState().Text(
+                    L"Select the exact project on the Projects page first.");
                 co_return;
             }
             maintenanceProject = selectedProjectId_;
         }
         maintenanceToken = winrt::to_string(MaintenanceConfirmation().Text());
         if (maintenanceToken.empty()) {
-            MaintenanceState().Text(L"Type the exact confirmation before running a reset.");
+            MaintenanceState().Text(
+                L"Type the exact confirmation before running a reset.");
             co_return;
         }
     }
-
     const auto lane = action == Action::Refresh
         ? ::ForgeConductor::Hosts::App::AppActionLane::Observation
         : ::ForgeConductor::Hosts::App::AppActionLane::Command;
@@ -4507,6 +4811,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 LmStudioOverview().Text(L"Native command was not accepted");
                 LmStudioBadge().Text(L"WAITING");
             }
+        }
+        if (displayAllAction && admission !=
+                ::ForgeConductor::Hosts::App::AppActionAdmission::Queued) {
+            ProjectDisplayAllButton().IsEnabled(true);
         }
         co_return;
     }
@@ -4747,9 +5055,11 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             message = projectView.message;
             break;
         case Action::ProjectLoad:
+        case Action::ProjectDisplayAll:
             projectView = connection_->projectMemory(
                 requestedProjectId, std::move(projectQuery),
-                cancellation_.get_token());
+                cancellation_.get_token(),
+                action == Action::ProjectDisplayAll);
             message = projectView.message;
             break;
         case Action::ProjectRemember:
@@ -4912,13 +5222,15 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 if (!selectedProjectId_.empty()) followUp = Action::ProjectLoad;
             }
             if (projectView.loaded && projectView.snapshot &&
-                ((action != Action::ProjectLoad && action != Action::ProjectRemember) ||
+                ((!projectReadAction && action != Action::ProjectRemember) ||
                     (selectedProjectId_ == requestedProjectId &&
                      projectView.snapshot->project.id.value() == requestedProjectId))) {
-                ApplyProjectWorkspace(*projectView.snapshot);
+                ApplyProjectWorkspace(
+                    *projectView.snapshot,
+                    action != Action::ProjectDisplayAll);
                 if (action == Action::ProjectRegister) {
                     followUp = Action::ProjectList;
-                } else if (action == Action::ProjectLoad &&
+                } else if (projectReadAction &&
                     !RunId().Text().empty() && verifiedRunId_.empty()) {
                     followUp = Action::RunStatus;
                 } else if (action == Action::ProjectRemember) {
@@ -5330,6 +5642,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         }
     }
     const auto scheduled = actionScheduler_.complete(lane);
+    if (displayAllAction) ProjectDisplayAllButton().IsEnabled(true);
     if (scheduled) RunAction(static_cast<Action>(*scheduled));
     if (action == Action::Start || action == Action::Restart) {
         RunAction(Action::Refresh);

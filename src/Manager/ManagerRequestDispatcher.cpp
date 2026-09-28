@@ -865,6 +865,7 @@ private:
         const Domain::ProjectId& projectId,
         const std::string& query,
         const std::size_t maximumCount,
+        const std::optional<std::string>& cursor,
         std::optional<Domain::MemoryRecordId> writtenRecordId,
         const Domain::OperationContext& context)
     {
@@ -903,13 +904,13 @@ private:
         Domain::Result<Domain::MemoryPage> page = query.empty()
             ? telemetrySources_.projectMemory->listRecent(
                   Domain::ListRecentProjectMemoryRequest{
-                      projectId, {}, std::nullopt, maximumCount, std::nullopt,
+                      projectId, {}, std::nullopt, maximumCount, cursor,
                       true, 256U * 1024U},
                   context)
             : telemetrySources_.projectMemory->search(
                   Domain::SearchProjectMemoryRequest{
                       projectId, query, {}, {}, std::nullopt, maximumCount,
-                      std::nullopt, true, 256U * 1024U},
+                      cursor, true, 256U * 1024U},
                   context);
         if (!page) {
             return Domain::Result<ManagerProjectWorkspaceSnapshot>::failure(
@@ -979,6 +980,21 @@ private:
                 record.updatedAt};
         }
 
+        std::size_t continuityOperationCount{};
+        std::size_t continuityHandoffCount{};
+        bool continuityRecoveryRequired{};
+        bool continuityActive{};
+        if (telemetrySources_.continuity != nullptr) {
+            auto continuityStatus = telemetrySources_.continuity->status(
+                projectId, context);
+            if (continuityStatus) {
+                continuityOperationCount = continuityStatus.value().operationCount;
+                continuityHandoffCount = continuityStatus.value().handoffCount;
+                continuityRecoveryRequired = continuityStatus.value().recoveryRequired;
+                continuityActive = continuityStatus.value().activeOperation.has_value();
+            }
+        }
+
         const auto& memoryStatus = status.value();
         return Domain::Result<ManagerProjectWorkspaceSnapshot>::success(
             ManagerProjectWorkspaceSnapshot{
@@ -994,7 +1010,11 @@ private:
                 std::move(activeInstructionManifest),
                 std::move(page.value().nextCursor),
                 page.value().truncated,
-                std::move(writtenRecordId)});
+                std::move(writtenRecordId),
+                continuityOperationCount,
+                continuityHandoffCount,
+                continuityRecoveryRequired,
+                continuityActive});
     }
 
     [[nodiscard]] static std::string providerIdentity(
@@ -3509,14 +3529,15 @@ private:
                         request,
                         projectWorkspace(
                             initialized.value().project.id, {}, 20U,
-                            std::nullopt, context));
+                            std::nullopt, std::nullopt, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerProjectMemoryRequest>) {
                     return controllerResponse(
                         request,
                         projectWorkspace(
                             payload.projectId, payload.query,
-                            payload.maximumCount, std::nullopt, context));
+                            payload.maximumCount, payload.cursor,
+                            std::nullopt, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerProjectRememberRequest>) {
                     if (telemetrySources_.projectMemory == nullptr) {
@@ -3545,7 +3566,8 @@ private:
                         request,
                         projectWorkspace(
                             payload.projectId, {}, 20U,
-                            remembered.value().recordId, context));
+                            std::nullopt, remembered.value().recordId,
+                            context));
                 } else if constexpr (
                     std::is_same_v<Payload,
                         ManagerAutomaticContinuityPreferenceRequest>) {

@@ -1269,6 +1269,7 @@ void validateSettingsUpdateOutcome(
                 params["project_id"] = payload.projectId.value();
                 params["query"] = payload.query;
                 params["maximum_count"] = payload.maximumCount;
+                if (payload.cursor) params["cursor"] = *payload.cursor;
             } else if constexpr (
                 std::is_same_v<Payload, ManagerProjectRememberRequest>) {
                 method = "projects.remember";
@@ -1489,14 +1490,25 @@ void validateSettingsUpdateOutcome(
             optionalField<std::string>(
                 params, "repository_identity", stringMember)};
     } else if (method == "projects.memory") {
-        requireExactFields(
-            params,
-            {"maximum_count", "project_id", "query"},
-            "projects.memory params");
+        std::optional<std::string> cursor;
+        if (params.contains("cursor")) {
+            requireExactFields(
+                params,
+                {"cursor", "maximum_count", "project_id", "query"},
+                "projects.memory params");
+            cursor = optionalField<std::string>(
+                params, "cursor", stringMember);
+        } else {
+            requireExactFields(
+                params,
+                {"maximum_count", "project_id", "query"},
+                "projects.memory params");
+        }
         payload = ManagerProjectMemoryRequest{
             identifierMember<Domain::ProjectId>(params, "project_id"),
             stringMember(params, "query"),
-            sizeMember(params, "maximum_count")};
+            sizeMember(params, "maximum_count"),
+            std::move(cursor)};
     } else if (method == "projects.remember") {
         requireExactFields(
             params,
@@ -2869,20 +2881,39 @@ template <typename T, typename Parser>
             ? Json(*snapshot.nextCursor) : Json(nullptr)},
         {"truncated", snapshot.truncated},
         {"written_record_id", snapshot.writtenRecordId
-            ? Json(snapshot.writtenRecordId->value()) : Json(nullptr)}};
+            ? Json(snapshot.writtenRecordId->value()) : Json(nullptr)},
+        {"continuity_operation_count", snapshot.continuityOperationCount},
+        {"continuity_handoff_count", snapshot.continuityHandoffCount},
+        {"continuity_recovery_required", snapshot.continuityRecoveryRequired},
+        {"continuity_active", snapshot.continuityActive}};
 }
 
 [[nodiscard]] ManagerProjectWorkspaceSnapshot parseProjectWorkspaceSnapshot(
     const Json& value)
 {
-    requireExactFields(
-        value,
-        {"active_instruction_manifest", "database_bytes", "event_count",
-         "full_text_search_available", "integrity_ok", "next_cursor", "project",
-         "record_count", "records",
-         "tombstone_count", "truncated", "write_ahead_log_bytes",
-         "written_record_id"},
-        "Manager project workspace snapshot");
+    const bool hasContinuity = value.contains("continuity_active") ||
+        value.contains("continuity_handoff_count") ||
+        value.contains("continuity_operation_count") ||
+        value.contains("continuity_recovery_required");
+    if (hasContinuity) {
+        requireExactFields(
+            value,
+            {"active_instruction_manifest", "continuity_active",
+             "continuity_handoff_count", "continuity_operation_count",
+             "continuity_recovery_required", "database_bytes", "event_count",
+             "full_text_search_available", "integrity_ok", "next_cursor",
+             "project", "record_count", "records", "tombstone_count",
+             "truncated", "write_ahead_log_bytes", "written_record_id"},
+            "Manager project workspace snapshot");
+    } else {
+        requireExactFields(
+            value,
+            {"active_instruction_manifest", "database_bytes", "event_count",
+             "full_text_search_available", "integrity_ok", "next_cursor",
+             "project", "record_count", "records", "tombstone_count",
+             "truncated", "write_ahead_log_bytes", "written_record_id"},
+            "Manager project workspace snapshot");
+    }
     const auto& recordValues = member(value, "records");
     if (!recordValues.is_array()) {
         reject(
@@ -2915,7 +2946,11 @@ template <typename T, typename Parser>
             value, "written_record_id",
             [](const Json& object, const std::string_view name) {
                 return identifierMember<Domain::MemoryRecordId>(object, name);
-            })};
+            }),
+        hasContinuity ? sizeMember(value, "continuity_operation_count") : 0U,
+        hasContinuity ? sizeMember(value, "continuity_handoff_count") : 0U,
+        hasContinuity && booleanMember(value, "continuity_recovery_required"),
+        hasContinuity && booleanMember(value, "continuity_active")};
 }
 
 [[nodiscard]] Json instructionPackageSnapshotJson(

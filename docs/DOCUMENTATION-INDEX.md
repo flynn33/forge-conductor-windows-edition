@@ -14,6 +14,8 @@
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
+- [Release 1.3.1](releases/1.3.1.md)
+- [Release 1.3.1 validation](validation/MEMORY-MAINTENANCE-1.3.1.md)
 
 ## Historical delivery records
 

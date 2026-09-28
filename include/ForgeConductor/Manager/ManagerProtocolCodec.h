@@ -48,6 +48,7 @@ struct ManagerProjectMemoryRequest final {
     Domain::ProjectId projectId;
     std::string query;
     std::size_t maximumCount{20U};
+    std::optional<std::string> cursor;
 };
 
 struct ManagerProjectRememberRequest final {
@@ -170,6 +171,10 @@ struct ManagerProjectWorkspaceSnapshot final {
     std::optional<std::string> nextCursor;
     bool truncated{};
     std::optional<Domain::MemoryRecordId> writtenRecordId;
+    std::size_t continuityOperationCount{};
+    std::size_t continuityHandoffCount{};
+    bool continuityRecoveryRequired{};
+    bool continuityActive{};
 };
 
 struct ManagerInstructionPackageSnapshot final {

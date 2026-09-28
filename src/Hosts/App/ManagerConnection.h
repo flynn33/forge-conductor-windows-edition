@@ -169,7 +169,8 @@ public:
     virtual ProjectWorkspaceView projectMemory(
         std::string projectId,
         std::string query,
-        std::stop_token cancellation) noexcept = 0;
+        std::stop_token cancellation,
+        bool displayAll = false) noexcept = 0;
     virtual ProjectWorkspaceView rememberProjectMemory(
         std::string projectId,
         std::string title,
@@ -271,7 +272,8 @@ public:
     ProjectWorkspaceView projectMemory(
         std::string projectId,
         std::string query,
-        std::stop_token cancellation) noexcept override;
+        std::stop_token cancellation,
+        bool displayAll = false) noexcept override;
     ProjectWorkspaceView rememberProjectMemory(
         std::string projectId,
         std::string title,

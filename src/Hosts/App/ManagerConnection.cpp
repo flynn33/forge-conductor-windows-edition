@@ -21,6 +21,7 @@
 #include <memory>
 #include <sstream>
 #include <thread>
+#include <unordered_set>
 
 namespace ForgeConductor::Hosts::App {
 namespace W = Infrastructure::Windows;
@@ -402,35 +403,147 @@ ProjectWorkspaceView ManagerConnection::initializeProject(
 ProjectWorkspaceView ManagerConnection::projectMemory(
     std::string projectId,
     std::string query,
-    const std::stop_token cancellation) noexcept
+    const std::stop_token cancellation,
+    const bool displayAll) noexcept
 {
     try {
         if (!profileError_.empty()) return {false, profileError_, std::nullopt};
         auto parsed = Domain::ProjectId::parse(projectId);
         if (!parsed) return {false, parsed.error().message, std::nullopt};
+        if (displayAll) query.clear();
         auto clock = std::make_shared<W::SystemClock>();
-        auto context = operationContext(clock, cancellation);
+        auto context = operationContext(
+            clock,
+            cancellation,
+            displayAll ? std::chrono::seconds{60} : std::chrono::seconds{5});
         auto created = connectManager(alphaProfile_, context, clock);
         if (!created) return {false, created.error().message, std::nullopt};
         auto client = std::move(created).value();
-        const auto request = Manager::ManagerProjectMemoryRequest{
-            parsed.value(), query, 20U};
-        auto result = client->projectMemory(request, context);
-        for (std::size_t retry{}; retry < 4U && !result &&
-             !cancellation.stop_requested() &&
-             result.error().code == Domain::ErrorCodes::DatabaseBusy &&
-             result.error().message ==
-                 "The selected project repository is already opening.";
-             ++retry) {
-            std::this_thread::sleep_for(std::chrono::milliseconds{80});
-            result = client->projectMemory(request, context);
-        }
+        std::optional<Manager::ManagerProjectWorkspaceSnapshot> aggregate;
+        std::optional<std::string> cursor;
+        std::unordered_set<std::string> cursors;
+        std::unordered_set<std::string> recordIds;
+        std::size_t expectedRecordCount{};
+        std::size_t expectedEventCount{};
+        std::size_t pageCount{};
+        do {
+            const auto request = Manager::ManagerProjectMemoryRequest{
+                parsed.value(), query, displayAll ? 100U : 20U, cursor};
+            auto result = client->projectMemory(request, context);
+            for (std::size_t retry{}; retry < 4U && !result &&
+                 !cancellation.stop_requested() &&
+                 result.error().code == Domain::ErrorCodes::DatabaseBusy &&
+                 result.error().message ==
+                     "The selected project repository is already opening.";
+                 ++retry) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{80});
+                result = client->projectMemory(request, context);
+            }
+            if (!result) {
+                auto message = result.error().message;
+                if (displayAll && cursor &&
+                    result.error().code == Domain::ErrorCodes::InvalidRequest) {
+                    message =
+                        "Display All requires the updated Manager. Use "
+                        "Settings > Restart Manager, then try again. Manager response: " +
+                        message;
+                }
+                client->shutdown();
+                return {false, std::move(message), std::nullopt};
+            }
+
+            auto page = std::move(result).value();
+            const auto pageRecordCount = page.records.size();
+            if (page.project.id != parsed.value()) {
+                client->shutdown();
+                return {false,
+                    "Project memory paging returned a different project identity.",
+                    std::nullopt};
+            }
+            ++pageCount;
+            if (!aggregate) {
+                expectedRecordCount = page.recordCount;
+                expectedEventCount = page.eventCount;
+                for (const auto& record : page.records) {
+                    if (!recordIds.insert(record.id.value()).second) {
+                        client->shutdown();
+                        return {false,
+                            "Project memory returned duplicate records on its first page.",
+                            std::nullopt};
+                    }
+                }
+                aggregate.emplace(std::move(page));
+            } else {
+                if (page.recordCount != expectedRecordCount ||
+                    page.eventCount != expectedEventCount) {
+                    client->shutdown();
+                    return {false,
+                        "Project memory changed or reordered while Display All was loading. Retry to read a consistent list.",
+                        std::nullopt};
+                }
+                aggregate->nextCursor = page.nextCursor;
+                aggregate->truncated = page.truncated;
+                for (auto& record : page.records) {
+                    if (!recordIds.insert(record.id.value()).second) {
+                        client->shutdown();
+                        return {false,
+                            "Project memory changed while Display All was loading. Retry to avoid duplicate records.",
+                            std::nullopt};
+                    }
+                    aggregate->records.push_back(std::move(record));
+                }
+            }
+            if (!displayAll) break;
+            if (aggregate->records.size() > expectedRecordCount) {
+                client->shutdown();
+                return {false,
+                    "Project memory returned more records than its active-record count.",
+                    std::nullopt};
+            }
+            if (!aggregate->truncated) {
+                if (aggregate->nextCursor) {
+                    client->shutdown();
+                    return {false,
+                        "Project memory returned a continuation cursor for a complete page.",
+                        std::nullopt};
+                }
+                break;
+            }
+            if (!aggregate->nextCursor || pageRecordCount == 0U ||
+                aggregate->nextCursor->empty() ||
+                !cursors.insert(*aggregate->nextCursor).second) {
+                client->shutdown();
+                return {false,
+                    "Project memory returned an invalid or repeated continuation cursor.",
+                    std::nullopt};
+            }
+            if (aggregate->records.size() == expectedRecordCount ||
+                pageCount > expectedRecordCount) {
+                client->shutdown();
+                return {false,
+                    "Project memory paging did not terminate within the active-record count.",
+                    std::nullopt};
+            }
+            cursor = aggregate->nextCursor;
+        } while (displayAll);
         client->shutdown();
-        if (!result) return {false, result.error().message, std::nullopt};
-        auto snapshot = std::move(result).value();
-        const auto message = "Loaded " + std::to_string(snapshot.records.size()) +
-            " memory record" + (snapshot.records.size() == 1U ? "." : "s.");
-        return {true, message, std::move(snapshot)};
+
+        if (!aggregate) {
+            return {false, "Project memory returned no snapshot.", std::nullopt};
+        }
+        if (displayAll && aggregate->records.size() != expectedRecordCount) {
+            return {false,
+                "Project memory changed while Display All was loading. Retry to read every active record.",
+                std::nullopt};
+        }
+        if (displayAll) {
+            aggregate->nextCursor.reset();
+            aggregate->truncated = false;
+        }
+        const auto message = std::string{displayAll ? "Loaded all " : "Loaded "} +
+            std::to_string(aggregate->records.size()) + " memory record" +
+            (aggregate->records.size() == 1U ? "." : "s.");
+        return {true, message, std::move(aggregate)};
     } catch (const std::exception& error) {
         return {false, error.what(), std::nullopt};
     } catch (...) {

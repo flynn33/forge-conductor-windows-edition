@@ -682,16 +682,89 @@ void shellUsesFixedPowerShellAndClampedBudgets()
                 "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);"
                 "$OutputEncoding=[Console]::OutputEncoding;Write-Output 'ok'"},
         "Shell did not own the exact PowerShell argv");
+    const auto environmentValue = [](
+                                      const std::vector<Domain::EnvironmentVariable>& environment,
+                                      const std::string_view name) -> const std::string* {
+        for (const auto& variable : environment) {
+            if (variable.name.size() != name.size()) {
+                continue;
+            }
+            bool matches = true;
+            for (std::size_t index = 0U; index < name.size(); ++index) {
+                unsigned char left = static_cast<unsigned char>(variable.name[index]);
+                unsigned char right = static_cast<unsigned char>(name[index]);
+                if (left >= 'A' && left <= 'Z') {
+                    left = static_cast<unsigned char>(left - 'A' + 'a');
+                }
+                if (right >= 'A' && right <= 'Z') {
+                    right = static_cast<unsigned char>(right - 'A' + 'a');
+                }
+                if (left != right) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                return &variable.value;
+            }
+        }
+        return nullptr;
+    };
+    const auto containsAscii = [](const std::string_view value, const std::string_view needle) {
+        if (needle.empty() || needle.size() > value.size()) {
+            return false;
+        }
+        for (std::size_t start = 0U; start <= value.size() - needle.size(); ++start) {
+            bool matches = true;
+            for (std::size_t index = 0U; index < needle.size(); ++index) {
+                unsigned char left = static_cast<unsigned char>(value[start + index]);
+                unsigned char right = static_cast<unsigned char>(needle[index]);
+                if (left >= 'A' && left <= 'Z') {
+                    left = static_cast<unsigned char>(left - 'A' + 'a');
+                }
+                if (right >= 'A' && right <= 'Z') {
+                    right = static_cast<unsigned char>(right - 'A' + 'a');
+                }
+                if (left != right) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto* forgeTest = environmentValue(normalized.environment, "FORGE_TEST");
+    const auto* path = environmentValue(normalized.environment, "PATH");
+    const auto* pathExt = environmentValue(normalized.environment, "PATHEXT");
+    const auto* comSpec = environmentValue(normalized.environment, "COMSPEC");
+    for (const auto& variable : normalized.environment) {
+        const auto nul = variable.value.find('\0');
+        require(
+            !variable.name.empty() &&
+                variable.name.find('=') == std::string::npos &&
+                variable.name.find('\0') == std::string::npos &&
+                nul == std::string::npos,
+            "Shell produced an invalid explicit environment entry: " + variable.name +
+                " value_bytes=" + std::to_string(variable.value.size()) +
+                " nul_at=" + std::to_string(nul));
+    }
     require(
         normalized.workingDirectory == fixture.workspaceRoot &&
             normalized.timeout == 30s &&
             normalized.maximumStdoutBytes == 80'000U &&
             normalized.maximumStderrBytes == 20'000U &&
-            normalized.environment.size() == 1U &&
-            normalized.environment.front().name == "FORGE_TEST" &&
-            normalized.environment.front().value == "one" &&
+            normalized.environment.size() == 4U &&
+            forgeTest != nullptr && *forgeTest == "one" &&
+            path != nullptr && containsAscii(*path, "system32") &&
+            containsAscii(*path, "powershell\\7") &&
+            containsAscii(*path, "git\\cmd") &&
+            pathExt != nullptr && containsAscii(*pathExt, ".exe") &&
+            comSpec != nullptr && containsAscii(*comSpec, "cmd.exe") &&
             normalized.inheritEnvironment,
-        "Shell did not preserve its authorized envelope, safe host environment, and budgets");
+        "Shell did not preserve its authorized envelope, toolchain PATH, and budgets");
     require(
         supervisor->authorityIds().front() == fixture.authority.authorityId() &&
             supervisor->projectIds().front() == fixture.projectId,

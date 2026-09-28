@@ -602,7 +602,7 @@ public:
         if (allowDoctor) {
             const auto root = Domain::PathText::create("D:\\DoctorFixture").value();
             return Domain::Result<Domain::DoctorReport>::success(
-                Domain::DoctorReport{true, "1.3.0", root,
+                Domain::DoctorReport{true, "1.3.1", root,
                     {Domain::DoctorCheck{"manager_ipc", true, "connected", true}},
                     {}, true, root});
         }
@@ -1400,16 +1400,22 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectB)));
     memory.listRecentResult.set(
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectB)));
+    const std::string pageCursor{"djE6MjA="};
     const auto selectedB = dispatcher.dispatch(request(
         *clock,
         81U,
-        Manager::ManagerProjectMemoryRequest{projectB, "decision", 20U}));
+        Manager::ManagerProjectMemoryRequest{
+            projectB, "decision", 20U, pageCursor}));
     const auto* workspaceB =
         responseValue<Manager::ManagerProjectWorkspaceSnapshot>(selectedB);
     require(workspaceB != nullptr && workspaceB->project.id == projectB,
             "project B selection returns project B");
     require(memory.lastProjectId() == projectB,
             "project B memory is routed with project B identity");
+    require(!memory.searchRequests().empty() &&
+            memory.searchRequests().back().cursor == pageCursor &&
+            memory.searchRequests().back().limit == 20U,
+            "project-memory search forwards the continuation cursor");
 
     memory.searchResult.set(
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
@@ -1427,14 +1433,21 @@ void testProjectWorkflowKeepsExactProjectIdentity()
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
     memory.listRecentResult.set(
         Domain::Result<Domain::MemoryPage>::success(pageFor(projectA)));
+    const auto listRequestCount = memory.listRecentRequests().size();
     const auto selectedA = dispatcher.dispatch(request(
         *clock,
         83U,
-        Manager::ManagerProjectMemoryRequest{projectA, "decision", 20U}));
+        Manager::ManagerProjectMemoryRequest{
+            projectA, {}, 20U, pageCursor}));
     const auto* workspaceA =
         responseValue<Manager::ManagerProjectWorkspaceSnapshot>(selectedA);
     require(workspaceA != nullptr && workspaceA->project.id == projectA,
             "project A selection remains isolated from project B");
+    require(memory.listRecentRequests().size() == listRequestCount + 2U &&
+            memory.listRecentRequests()[listRequestCount].kinds.empty() &&
+            memory.listRecentRequests()[listRequestCount].cursor == pageCursor &&
+            memory.listRecentRequests()[listRequestCount].limit == 20U,
+            "recent project-memory reads forward the continuation cursor");
 }
 
 void testInstructionPackagePreviewAndActivationStayProjectBound()

@@ -44,6 +44,11 @@ struct MainWindow : MainWindowT<MainWindow> {
     void SettingsTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void MaintenanceResetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void MaintenanceRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void MaintenanceRowDeleteClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void MaintenanceDeleteSelectedClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void MaintenanceSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
+    void MaintenanceContinuityResetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenWorkspaceClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenActivityClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenSettingsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -64,6 +69,8 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProjectBrowseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSearchClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectDisplayAllClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ProjectMemorySelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void ProjectRememberClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void InstructionPackageBrowseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void InstructionPackagePathChanged(Windows::Foundation::IInspectable const&,
@@ -128,7 +135,8 @@ private:
         PolicyFindings, PolicyExport,
         SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
         RunStatus, RunPause, RunResume, RunCancel,
-        ProjectList, ProjectRegister, ProjectLoad, ProjectRemember, ProjectUpdate, ProjectForget,
+        ProjectList, ProjectRegister, ProjectLoad, ProjectDisplayAll,
+        ProjectRemember, ProjectUpdate, ProjectForget,
         ContinuityRead, ContinuitySave,
         ProjectArchiveExport, ProjectArchivePreview, ProjectArchiveImport,
         InstructionPackagePreview, InstructionPackageActivate,
@@ -159,9 +167,17 @@ private:
     void ApplyProjectList(
         const ::ForgeConductor::Manager::ManagerProjectsSnapshot& snapshot);
     void ApplyProjectWorkspace(
-        const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
+        ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot,
+        bool updateMaintenance = true);
     void SelectMemoryRecord(
         const ::ForgeConductor::Manager::ManagerProjectMemoryRecord& record);
+    void RenderMaintenanceRecords(
+        const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
+    winrt::fire_and_forget RefreshMaintenanceRecords(std::string completionMessage = {});
+    winrt::fire_and_forget ConfirmMaintenanceDelete(std::vector<std::string> keys);
+    winrt::fire_and_forget DeleteMaintenanceRecords(std::vector<std::string> keys);
+    winrt::fire_and_forget ConfirmContinuityReset();
+    winrt::fire_and_forget ResetContinuity();
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
     void ApplyLmStudioIdentities();
     void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
@@ -199,6 +215,8 @@ private:
         lmStudioSnapshot_;
     std::string activityTimelineKey_;
     std::vector<::ForgeConductor::Domain::ProjectMemoryDescriptor> projects_;
+    std::vector<::ForgeConductor::Manager::ManagerProjectMemoryRecord>
+        visibleMemoryRecords_;
     std::optional<::ForgeConductor::Manager::ManagerProjectMemoryRecord> selectedMemoryRecord_;
     std::string selectedMemoryProjectId_;
     std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
