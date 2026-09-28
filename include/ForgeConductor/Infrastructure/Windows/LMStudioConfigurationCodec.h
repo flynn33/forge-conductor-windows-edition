@@ -4,6 +4,7 @@
 #include "ForgeConductor/Domain/Result.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -15,6 +16,9 @@ namespace ForgeConductor::Infrastructure::Windows {
 inline constexpr char LMStudioPrimaryServerId[] = "forge-conductor";
 inline constexpr char LMStudioFallbackServerId[] = "forge-conductor-fallback";
 inline constexpr char LMStudioCluServerId[] = "forge-conductor-clu";
+// LM Studio owns the outer request deadline. Keep it above Forge's
+// 120-second synchronous tool ceiling so Forge can return its own result.
+inline constexpr std::int64_t LMStudioMcpRequestTimeoutMilliseconds{180'000};
 
 struct LMStudioRoleConfigurationStatus final {
     Domain::LMStudioConnectorRole role{Domain::LMStudioConnectorRole::Primary};

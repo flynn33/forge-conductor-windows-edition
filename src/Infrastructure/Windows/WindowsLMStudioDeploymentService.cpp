@@ -431,6 +431,7 @@ struct PluginLayout final {
     return Json{
         {"command", binary.value()},
         {"args", Json::array({"serve"})},
+        {"timeout", LMStudioMcpRequestTimeoutMilliseconds},
         {"env", Json{
             {"FORGE_MCP_ROLE", roleText(role)},
             {"FORGE_CONDUCTOR_HOME", forgeHome.value()},
@@ -479,9 +480,12 @@ struct PluginLayout final {
         return false;
     }
     const auto args = bridge.find("args");
+    const auto timeout = bridge.find("timeout");
     const auto environment = bridge.find("env");
     if (args == bridge.end() || !args->is_array() || args->size() != 1U ||
         !(*args)[0].is_string() || (*args)[0].get<std::string>() != "serve" ||
+        timeout == bridge.end() || !timeout->is_number_integer() ||
+        *timeout != LMStudioMcpRequestTimeoutMilliseconds ||
         environment == bridge.end() || !environment->is_object()) {
         return false;
     }
