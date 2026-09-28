@@ -352,6 +352,7 @@ struct Fixture final {
         servers[id] = Json{
             {"command", "C:\\Forge\\forge-conductor.exe"},
             {"args", Json::array({"serve"})},
+            {"timeout", 180'000},
             {"env", Json{
                 {"FORGE_MCP_ROLE", role},
                 {"FORGE_CONDUCTOR_HOME", "C:\\Forge\\home"},
@@ -421,6 +422,26 @@ void testWrongRevisionFailsWithoutUnsupportedRestart()
                  "A stale host-synchronized revision was accepted.");
     require(fixture.platformView->launches() == 0U,
             "The activator attempted an unsupported restart of a running host.");
+}
+
+void testStaleTimeoutFailsWithoutUnsupportedRestart()
+{
+    Fixture fixture;
+    fixture.platformView->running = true;
+    fixture.files.seed(
+        LiveConfigurationPath, synchronizedState("timeout-revision"));
+    auto stale = Json::parse(synchronizedState("timeout-revision"));
+    stale["mcpServers"][LMStudioFallbackServerId]["timeout"] = 60'000;
+    fixture.files.seed(SynchronizedPath, stale.dump());
+
+    requireError(
+        fixture.activator.activate(
+            environment(), request("timeout-revision", 5ms), fixture.authority,
+            fixture.context()),
+        Domain::ErrorCodes::AcknowledgementTimeout,
+        "Host synchronization accepted a stale 60000 ms request timeout.");
+    require(fixture.platformView->launches() == 0U,
+            "Stale timeout evidence triggered an unsupported host restart.");
 }
 
 void testDuplicateSyncKeysAreNeverAcknowledged()
@@ -599,6 +620,8 @@ void registerWindowsLMStudioHostActivatorTests(TestRegistry& tests)
             testRunningHostHotSynchronizesWithoutRestart);
     addTest(tests, "lmstudio.host.stale-revision-no-unsupported-restart",
             testWrongRevisionFailsWithoutUnsupportedRestart);
+    addTest(tests, "lmstudio.host.stale-timeout-no-unsupported-restart",
+            testStaleTimeoutFailsWithoutUnsupportedRestart);
     addTest(tests, "lmstudio.host.duplicate-sync-keys",
             testDuplicateSyncKeysAreNeverAcknowledged);
     addTest(tests, "lmstudio.host.live-sync-identity",

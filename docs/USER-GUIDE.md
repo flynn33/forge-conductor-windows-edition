@@ -50,6 +50,14 @@ Governance is nonblocking by design. No bound policy produces an inactive state 
 
 The dedicated `clu` MCP role exposes `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read`.
 
+## LM Studio MCP roles
+
+Forge installs three independent LM Studio integrations: **Primary**, **Fallback**, and **CLU**. Each registration uses an exact 180-second LM Studio request timeout. Forge `shell_exec` requests remain capped at 120 seconds, leaving time for Forge to return the result before LM Studio closes the request.
+
+Fallback is a separately selected integration and health role. A timeout does not automatically replay the call through Fallback or switch the chat back to Primary. Before retrying a timed-out command that can change files, processes, or external state, inspect the relevant state because the original call may have completed after the client stopped waiting.
+
+If a tool reports `MCP error -32001 Request timed out` near 60 seconds, finish or stop active calls, open **Settings → LM Studio plugins**, choose **Install or repair all three plugins**, then choose **Open LM Studio and connect plugins**. Select the intended Forge integration in the chat before retrying. Repair all three roles together; do not hand-edit only one registration. LM Studio reloads MCP configuration during repair, so an in-flight call can disconnect.
+
 ## Automatic continuity
 
 The **Automatic continuity** toggle is saved per selected project/provider profile. When enabled, a Manager-owned run may use the existing context-capacity continuity path. When disabled, the run skips automatic continuity observations and remains otherwise unchanged.
@@ -64,6 +72,6 @@ LM Studio desktop chats and Forge-managed runs are separate modes. Connecting MC
 
 Under **Settings → Data maintenance**, the selected project's memory appears in a scrollable list. Use **Delete record** on a row, or select multiple rows with the normal Windows Ctrl/Shift selection gestures and choose **Delete selected**. One destructive confirmation is shown, each selected memory key is sent through `project_memory.forget`, and the list refreshes afterward. **Reset project continuity** is a separate wipe action. The older exact-confirmation reset remains separate for project memory, project continuity, combined project data, or all registered project data.
 
-An enabled automatic-continuity preference can read `Preparing`. That means the Manager has the project/provider preference but release 1.3.1 has not established a live supported-provider successor lifecycle. Only real provider create/restore/acknowledge/fence evidence can justify `Active`.
+An enabled automatic-continuity preference can read `Preparing`. That means the Manager has the project/provider preference but release 1.3.2 has not established a live supported-provider successor lifecycle. Only real provider create/restore/acknowledge/fence evidence can justify `Active`.
 
 Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`. For disposable validation only, launch `ForgeConductorApp.exe --alpha-root <absolute-empty-folder>`.

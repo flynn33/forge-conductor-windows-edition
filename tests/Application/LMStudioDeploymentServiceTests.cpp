@@ -37,6 +37,7 @@
 namespace ForgeConductor::Tests {
 namespace {
 
+using Infrastructure::Windows::LMStudioCluServerId;
 using Infrastructure::Windows::LMStudioFallbackServerId;
 using Infrastructure::Windows::LMStudioPrimaryServerId;
 using Infrastructure::Windows::WindowsLMStudioDeploymentService;
@@ -1050,6 +1051,13 @@ void testTransactionalDeployPreservesForeignAndOrdersFallbackFirst()
 
     const auto configuration = Json::parse(
         fixture.storage.fileText(fixture.configurationPath.value()).value());
+    for (const auto* const id : {
+             LMStudioPrimaryServerId, LMStudioFallbackServerId, LMStudioCluServerId}) {
+        const auto& timeout = configuration.at("mcpServers").at(id).at("timeout");
+        require(timeout.is_number_integer() &&
+                    timeout.get<std::int64_t>() == 180'000,
+                "A deployed MCP registration does not have the exact 180000 ms timeout.");
+    }
     require(configuration.at("foreignRoot").at("keep").get<bool>() &&
                 configuration.at("mcpServers").at("continuity").at("unknown").get<int>() == 7,
             "The deployment changed foreign configuration content.");
@@ -1113,10 +1121,22 @@ void testTransactionalDeployPreservesForeignAndOrdersFallbackFirst()
         "C:\\fixture\\.lmstudio\\extensions\\plugins\\mcp\\forge-conductor-fallback";
     const auto primaryTarget =
         "C:\\fixture\\.lmstudio\\extensions\\plugins\\mcp\\forge-conductor";
+    const auto cluTarget =
+        "C:\\fixture\\.lmstudio\\extensions\\plugins\\mcp\\forge-conductor-clu";
     const auto fallback = std::find(moves.begin(), moves.end(), fallbackTarget);
     const auto primary = std::find(moves.begin(), moves.end(), primaryTarget);
     require(fallback != moves.end() && primary != moves.end() && fallback < primary,
             "The active fallback plugin was not committed before primary.");
+
+    for (const auto* const target : {primaryTarget, fallbackTarget, cluTarget}) {
+        const auto bridge = Json::parse(
+            fixture.storage.fileText(
+                std::string{target} + "\\mcp-bridge-config.json").value());
+        const auto& timeout = bridge.at("timeout");
+        require(timeout.is_number_integer() &&
+                    timeout.get<std::int64_t>() == 180'000,
+                "A deployed plugin bridge does not have the exact 180000 ms timeout.");
+    }
 
     const auto installState = Json::parse(
         fixture.storage.fileText(
@@ -1209,13 +1229,12 @@ void testRepeatedDeployUsesFreshRevisionAndStatusDetectsDrift()
             "Repeated deployment reused a stale revision.");
     auto configuration = Json::parse(
         fixture.storage.fileText(fixture.configurationPath.value()).value());
-    configuration["mcpServers"][LMStudioPrimaryServerId]["env"]["FORGE_MCP_ROLE"] =
-        "fallback";
+    configuration["mcpServers"][LMStudioPrimaryServerId]["timeout"] = 60'000;
     fixture.storage.seedFile(fixture.configurationPath.value(), configuration.dump());
     const auto status = take(fixture.service.status(
         fixture.request(), fixture.authority, fixture.context()));
     require(!status.mcpConfigurationRegistered && !status.primaryPluginInstalled,
-            "Status accepted a wrong role or stale shared configuration revision.");
+            "Status accepted a stale MCP request timeout.");
 }
 
 void testLmStudioOwnedInstallStatePreservesExactBridgeRegistration()
@@ -1253,6 +1272,17 @@ void testLmStudioOwnedInstallStatePreservesExactBridgeRegistration()
                 drifted.fallbackPluginInstalled &&
                 drifted.continuityPluginInstalled,
             "LM Studio's runtime marker bypassed exact bridge revision validation.");
+
+    bridge["env"]["FORGE_DEPLOYMENT_ID"] = deployed.deploymentId.value();
+    bridge["timeout"] = "180000";
+    fixture.storage.seedFile(
+        pluginDirectories.front() + "\\mcp-bridge-config.json", bridge.dump());
+    const auto malformedTimeout = take(fixture.service.status(
+        fixture.request(), fixture.authority, fixture.context()));
+    require(!malformedTimeout.primaryPluginInstalled &&
+                malformedTimeout.fallbackPluginInstalled &&
+                malformedTimeout.continuityPluginInstalled,
+            "LM Studio's runtime marker bypassed exact bridge timeout validation.");
 }
 
 void testPluginAndConfigurationCommitMoveFaultsRestoreExactSnapshot()

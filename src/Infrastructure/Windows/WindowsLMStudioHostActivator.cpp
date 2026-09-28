@@ -323,10 +323,13 @@ private:
     }
     const auto command = jsonString(*entry, "command");
     const auto args = entry->find("args");
+    const auto timeout = entry->find("timeout");
     const auto environment = entry->find("env");
     if (!command || command->empty() || args == entry->end() || !args->is_array() ||
         args->size() != 1U || !(*args)[0].is_string() ||
         (*args)[0].get<std::string>() != "serve" ||
+        timeout == entry->end() || !timeout->is_number_integer() ||
+        *timeout != LMStudioMcpRequestTimeoutMilliseconds ||
         environment == entry->end() || !environment->is_object()) {
         return false;
     }

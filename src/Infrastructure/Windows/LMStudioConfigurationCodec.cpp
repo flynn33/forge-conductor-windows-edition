@@ -220,6 +220,13 @@ void enforceBounds(const Json& value, const std::size_t depth, std::size_t& node
         status.detail = std::string{serverId(role)} + " args must be exactly [\"serve\"]";
         return status;
     }
+    const auto timeout = entry->find("timeout");
+    if (timeout == entry->end() || !timeout->is_number_integer() ||
+        *timeout != LMStudioMcpRequestTimeoutMilliseconds) {
+        status.detail = std::string{serverId(role)} +
+            " timeout must be exactly 180000 milliseconds";
+        return status;
+    }
     const auto environment = entry->find("env");
     if (environment == entry->end() || !environment->is_object()) {
         status.detail = std::string{serverId(role)} + " env must be a JSON object";
@@ -273,6 +280,7 @@ void mergeRole(
     }
     entry["command"] = binary.value();
     entry["args"] = Json::array({"serve"});
+    entry["timeout"] = LMStudioMcpRequestTimeoutMilliseconds;
     auto& environment = entry["env"];
     if (!environment.is_object()) {
         environment = Json::object();

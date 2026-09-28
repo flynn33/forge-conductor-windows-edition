@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.2 — Reliable long-running LM Studio MCP calls
+
+- Write an exact integer `timeout: 180000` to the Primary, Fallback, and CLU registrations so LM Studio's outer request deadline exceeds Forge's 120-second `shell_exec` limit.
+- Emit and validate the same timeout in each synchronized plugin bridge and host-activation acknowledgment. Missing, stale, or non-integer timeout values are reported as drift instead of being accepted as healthy.
+- Preserve foreign MCP registrations and unknown fields while repairing Forge-owned timeout values.
+- Keep Fallback as an independent selectable integration and health role. A timed-out call is not automatically replayed through Fallback because a mutating operation can have an ambiguous completion state.
+- Repair the no-attribution gate's self-referential policy exclusions and make the G15 source invariant independent of checkout line endings.
+
+The complete Release build passes all 153 configured tests and the static release gates. A live Windows LM Studio call completed after more than 70 seconds with the repaired configuration, beyond the former 60-second cutoff. The engineering package remains development-signed.
+
 ## 1.3.1 — Complete memory browsing and direct record maintenance
 
 - Add **Display All** to project-memory browsing. The Manager protocol accepts stable cursors and the native app retrieves 100 records per page with duplicate, consistency, and termination guards.

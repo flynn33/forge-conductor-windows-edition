@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -16,6 +17,7 @@ namespace {
 
 using Infrastructure::Windows::LMStudioConfigurationCodec;
 using Infrastructure::Windows::LMStudioConfigurationDocument;
+using Infrastructure::Windows::LMStudioCluServerId;
 using Infrastructure::Windows::LMStudioFallbackServerId;
 using Infrastructure::Windows::LMStudioPrimaryServerId;
 using Json = nlohmann::json;
@@ -97,13 +99,18 @@ void testMergePreservesForeignAndUnknownFields()
             "The codec removed an unknown field from an existing Forge server entry.");
     require(primary.at("env").at("FOREIGN_ENV").get<std::string>() == "keep",
             "The codec removed an unknown environment field from a Forge entry.");
-    for (const auto* const id : {LMStudioPrimaryServerId, LMStudioFallbackServerId}) {
+    for (const auto* const id : {
+             LMStudioPrimaryServerId, LMStudioFallbackServerId, LMStudioCluServerId}) {
         const auto& entry = servers.at(id);
         require(entry.at("command").get<std::string>() ==
                     "C:\\Forge\\forge-conductor.exe",
                 "A merged role has the wrong command.");
         require(entry.at("args") == Json::array({"serve"}),
                 "A merged role has arguments other than exactly [serve].");
+        const auto& timeout = entry.at("timeout");
+        require(timeout.is_number_integer() &&
+                    timeout.get<std::int64_t>() == 180'000,
+                "A merged role does not have the exact 180000 ms timeout.");
         require(entry.at("env").at("FORGE_DEPLOYMENT_ID").get<std::string>() ==
                     deploymentId.value(),
                 "A merged role has the wrong shared revision.");
@@ -194,6 +201,40 @@ void testDriftMatrixFailsClosed()
                      "C:\\wrong-home";
              }).registered,
             "A stale Forge home was accepted.");
+    require(!inspectMutated([](Json& root) {
+                 root["mcpServers"][LMStudioPrimaryServerId].erase("timeout");
+             }).registered,
+            "A registration without a request timeout was accepted.");
+    require(!inspectMutated([](Json& root) {
+                 root["mcpServers"][LMStudioFallbackServerId]["timeout"] = 60'000;
+             }).registered,
+            "A stale 60000 ms request timeout was accepted.");
+    require(inspectMutated([](Json& root) {
+                root["mcpServers"][LMStudioPrimaryServerId]["timeout"] =
+                    Json::number_integer_t{180'000};
+            }).registered,
+            "An exact signed integer request timeout was rejected.");
+    require(inspectMutated([](Json& root) {
+                root["mcpServers"][LMStudioFallbackServerId]["timeout"] =
+                    Json::number_unsigned_t{180'000};
+            }).registered,
+            "An exact unsigned integer request timeout was rejected.");
+    require(!inspectMutated([](Json& root) {
+                 root["mcpServers"][LMStudioCluServerId]["timeout"] = 180'000.0;
+             }).registered,
+            "A non-integer request timeout was accepted.");
+    require(!inspectMutated([](Json& root) {
+                 root["mcpServers"][LMStudioCluServerId]["timeout"] = "180000";
+             }).registered,
+            "A string request timeout was accepted.");
+    require(!inspectMutated([](Json& root) {
+                 root["mcpServers"][LMStudioCluServerId]["timeout"] = nullptr;
+             }).registered,
+            "A null request timeout was accepted.");
+    require(!inspectMutated([](Json& root) {
+                 root["mcpServers"][LMStudioCluServerId]["timeout"] = true;
+             }).registered,
+            "A boolean request timeout was accepted.");
 }
 
 void testEveryMergePublishesFreshRevisionBytes()

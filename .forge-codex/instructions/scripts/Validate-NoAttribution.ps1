@@ -12,6 +12,8 @@ $patterns = @(
 $violations = [System.Collections.Generic.List[string]]::new()
 Get-ChildItem -LiteralPath $WorkspaceRoot -Recurse -Force -File | ForEach-Object {
     if ($_.Name -eq "AGENTS.md") { return }
+    if ($_.FullName -match '\\.forge-qwen\\instructions\\governance\\NO_ATTRIBUTION_POLICY[.]md$') { return }
+    if ($_.FullName -match '\\.forge-qwen\\instructions\\scripts\\Validate-NoAttribution[.]ps1$') { return }
     if ($_.FullName -match '\\.git\\|\\.forge-inputs\\|\\.forge-codex\\|\\build\\|\\out\\|\\artifacts\\') { return }
     if ($_.Length -gt 4MB) { return }
     $text = Get-Content -Raw -LiteralPath $_.FullName -ErrorAction SilentlyContinue
