@@ -114,6 +114,15 @@ function Assert-Set {
     }
 }
 
+function Get-NormalizedUtf8TextSha256 {
+    param([Parameter(Mandatory)][string]$Path)
+    $resolved = (Resolve-Path -LiteralPath $Path).Path
+    $utf8 = New-Object System.Text.UTF8Encoding($false, $true)
+    $text = $utf8.GetString([System.IO.File]::ReadAllBytes($resolved))
+    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    Get-StringSha256 -Value $normalized
+}
+
 function Assert-Match {
     param([string]$Text, [string]$Pattern, [string]$Message, [switch]$CaseSensitive)
     $options = [Text.RegularExpressions.RegexOptions]::Multiline -bor
@@ -559,9 +568,9 @@ Assert-Match $deploymentServiceText `
     -CaseSensitive
 $atomicReplaceEnginePath = Join-Path $WorkspaceRoot `
     'src\Infrastructure\Windows\Detail\AtomicReplaceEngine.cpp'
-Assert-Exact (Get-FileSha256 $atomicReplaceEnginePath) `
-    'bde6810bf959a781a3aab0554d4bf0ac07c3580b78ee6f2f0a03cbef58640045' `
-    'global atomic replacement engine remains byte-identical to the passed invariant'
+Assert-Exact (Get-NormalizedUtf8TextSha256 $atomicReplaceEnginePath) `
+    '973804be53226e8533a97d49380d74d9fca3af68189103a7f91dc6abb039c60e' `
+    'global atomic replacement engine remains source-identical to the passed invariant'
 $deploymentTestsText = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
     'tests\Application\LMStudioDeploymentServiceTests.cpp')
 Assert-Match $deploymentTestsText `
