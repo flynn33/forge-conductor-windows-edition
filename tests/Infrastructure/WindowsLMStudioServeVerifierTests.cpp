@@ -156,6 +156,8 @@ public:
          Json{{"capabilities",
                Json{{"projectMemory", projectMemoryCapability()},
                     {"tools", Json{{"listChanged", false}}}}},
+              {"instructions",
+               "Project folder: C:\\Forge\nInstruction package folders (ordered): none configured\nDevelopment policy source: none configured"},
               {"protocolVersion", "2025-11-25"},
               {"serverInfo",
                Json{{"name", role == Domain::LMStudioConnectorRole::Primary
@@ -163,7 +165,7 @@ public:
                                   : role == Domain::LMStudioConnectorRole::Fallback
                                       ? "forge-conductor-fallback"
                                       : "forge-conductor-clu"},
-                    {"version", "1.3.2"}}}}}};
+                    {"version", "1.3.3"}}}}}};
     Json tools = canonicalTools();
     if (role == Domain::LMStudioConnectorRole::Clu) {
         tools.erase(std::remove_if(

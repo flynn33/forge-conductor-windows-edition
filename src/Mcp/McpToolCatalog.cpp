@@ -57,7 +57,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"continuity.request_rollover", "Prepare rollover; reports memory-only readiness unless a host adapter confirms creation.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.resume", "Seal an acknowledged rollover and atomically select the successor.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.status", "Report durable continuity state, retry metadata, and active session.", "ContinuityLifecycleToolPack", Read, true, false},
-        {"forge_status", "Runtime status: home, agents, open sessions, tools.", "AgentToolPack", Read, false, false},
+        {"forge_status", "Runtime and project context: project folder, ordered instruction-package folders, development-policy source, home, agents, sessions, and tools.", "AgentToolPack", Read, false, false},
         {"fs_delete", "Delete a file or directory.", "FilesystemToolPack", Write, true, false},
         {"fs_edit", "Replace occurrences of old with new in a file.", "FilesystemToolPack", Write, true, false},
         {"fs_glob", "Find files by name pattern under a path.", "FilesystemToolPack", Read, true, false},

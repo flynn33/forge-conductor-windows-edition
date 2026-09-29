@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
 
 namespace ForgeConductor::Mcp {
 
@@ -16,13 +17,15 @@ public:
     static constexpr std::size_t MaximumRequestIdBytes = 256U;
     static constexpr std::size_t MaximumMethodNameBytes = 128U;
     static constexpr std::size_t MaximumToolNameBytes = 128U;
+    static constexpr std::size_t MaximumInstructionsBytes = 32U * 1024U;
 
     McpServer(
         Contracts::IToolCatalog& catalog,
         Contracts::IToolRouter& router,
         Contracts::IMcpExecutionContextResolver& contextResolver,
         Contracts::IUuidGenerator& uuidGenerator,
-        const Contracts::IClock& clock);
+        const Contracts::IClock& clock,
+        std::string instructions);
     ~McpServer() noexcept override;
 
     McpServer(const McpServer&) = delete;

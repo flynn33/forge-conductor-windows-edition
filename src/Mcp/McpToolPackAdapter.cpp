@@ -41,6 +41,8 @@ constexpr std::size_t MaximumGitLogEntries = 200U;
 constexpr std::size_t MaximumShellOutputBytes = 80'000U;
 constexpr std::size_t MaximumShellErrorBytes = 20'000U;
 constexpr std::size_t MaximumMcpTextContentBytes = 96U * 1024U;
+constexpr std::size_t MaximumStatusInstructionPackages = 100U;
+constexpr std::size_t MaximumBootstrapInstructionPackages = 16U;
 constexpr std::int64_t DefaultReadWindowLines = 200;
 
 template <typename T>
@@ -1615,6 +1617,247 @@ public:
         return dependencies_.catalog.tools();
     }
 
+    [[nodiscard]] Domain::Result<Json> workspaceContext(
+        const Domain::ProjectId& projectId,
+        const std::optional<Domain::PathText>& preferredRoot,
+        const Domain::OperationContext& context) noexcept
+    {
+        try {
+            auto descriptor = dependencies_.projectRegistry.descriptor(
+                projectId, context);
+            if (!descriptor) {
+                return propagate<Json>(std::move(descriptor));
+            }
+
+            Json roots = Json::array();
+            for (const auto& alias : descriptor.value().aliases) {
+                roots.push_back(alias.value());
+            }
+            const auto projectRoot = preferredRoot
+                ? preferredRoot->value()
+                : descriptor.value().aliases.empty()
+                    ? std::string{}
+                    : descriptor.value().aliases.front().value();
+            if (projectRoot.empty()) {
+                return failure<Json>(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The registered MCP project has no project folder.");
+            }
+
+            struct PackageRow final {
+                std::uint64_t order{};
+                Json value;
+            };
+            std::vector<PackageRow> packageRows;
+            std::size_t invalidPackageRows{};
+            bool packageReadAvailable{};
+            bool packagesTruncated{};
+            Json packageReadError = nullptr;
+            const Domain::OperationContext projectMemoryContext{
+                context.operationId,
+                (std::min)(
+                    context.deadline,
+                    dependencies_.clock.monotonicNow() +
+                        std::chrono::seconds{30}),
+                context.cancellation,
+                context.correlationId};
+            auto packages = dependencies_.projectMemory.listRecent(
+                Domain::ListRecentProjectMemoryRequest{
+                    projectId,
+                    {"instruction_package_queue"},
+                    std::nullopt,
+                    MaximumStatusInstructionPackages,
+                    std::nullopt,
+                    true,
+                    256U * 1024U},
+                projectMemoryContext);
+            if (packages) {
+                packageReadAvailable = true;
+                packagesTruncated = packages.value().truncated ||
+                    packages.value().nextCursor.has_value();
+                for (const auto& hit : packages.value().records) {
+                    if (!hit.record.body) {
+                        ++invalidPackageRows;
+                        continue;
+                    }
+                    try {
+                        const auto saved = Json::parse(*hit.record.body);
+                        if (saved.value("schema", std::string{}) !=
+                                "forge-instruction-package-queue-v2" ||
+                            saved.value("project_id", std::string{}) !=
+                                projectId.value() ||
+                            !saved.contains("package_path") ||
+                            !saved.at("package_path").is_string()) {
+                            ++invalidPackageRows;
+                            continue;
+                        }
+                        packageRows.push_back(PackageRow{
+                            saved.value("order", std::uint64_t{}),
+                            Json{
+                                {"name", saved.value(
+                                    "package_name", hit.record.title)},
+                                {"path", saved.at("package_path")},
+                                {"revision", saved.value(
+                                    "revision", std::string{})},
+                                {"state", saved.value(
+                                    "state", std::string{"unknown"})},
+                                {"order", saved.value(
+                                    "order", std::uint64_t{})}}});
+                    } catch (...) {
+                        ++invalidPackageRows;
+                    }
+                }
+                std::ranges::sort(
+                    packageRows,
+                    [](const PackageRow& left, const PackageRow& right) {
+                        return left.order < right.order;
+                    });
+            } else {
+                packageReadError = Json{
+                    {"code", packages.error().code},
+                    {"message", packages.error().message},
+                    {"retryable", packages.error().retryable}};
+            }
+            Json packageValues = Json::array();
+            for (auto& row : packageRows) {
+                packageValues.push_back(std::move(row.value));
+            }
+
+            Json policy{
+                {"available", dependencies_.projectPolicy != nullptr},
+                {"active", false},
+                {"state", "not_configured"},
+                {"source", nullptr},
+                {"revision", nullptr},
+                {"entry_count", 0U},
+                {"coverage_gap_count", 0U},
+                {"read_and_follow_required", false},
+                {"instruction", "No development policy is configured."},
+                {"read_tool", "project_policy.read"}};
+            if (dependencies_.projectPolicy != nullptr) {
+                auto inspected = dependencies_.projectPolicy->execute(
+                    {projectId, Contracts::ProjectPolicyAction::Inspect},
+                    context);
+                if (!inspected) {
+                    policy["available"] = false;
+                    policy["state"] = "unavailable";
+                } else {
+                    try {
+                        const auto value = Json::parse(inspected.value());
+                        const bool active = value.value("active", false);
+                        policy["active"] = active;
+                        policy["state"] = value.value(
+                            "state", active ? std::string{"enforcing"}
+                                             : std::string{"not_configured"});
+                        policy["source"] = active && value.contains("source")
+                            ? value.at("source")
+                            : Json(nullptr);
+                        policy["revision"] = active && value.contains("revision")
+                            ? value.at("revision")
+                            : Json(nullptr);
+                        policy["read_and_follow_required"] = active;
+                        policy["instruction"] = active
+                            ? "Read and follow the development policy before project work."
+                            : "No development policy is configured.";
+                        policy["entry_count"] = value.value(
+                            "entry_count", std::size_t{});
+                        policy["coverage_gap_count"] = value.value(
+                            "coverage_gap_count", std::size_t{});
+                    } catch (...) {
+                        policy["available"] = false;
+                        policy["state"] = "integrity_failure";
+                    }
+                }
+            }
+
+            return Domain::Result<Json>::success(Json{
+                {"workspace",
+                 Json{
+                     {"project_id", descriptor.value().id.value()},
+                     {"display_name", descriptor.value().displayName},
+                     {"project_root", projectRoot},
+                     {"binding_source", "mcp_authorized_root"},
+                     {"continuity_packet_independent", true},
+                     {"authorized_roots", std::move(roots)}}},
+                {"instruction_packages",
+                 Json{
+                     {"available", packageReadAvailable},
+                     {"read_in_order", true},
+                     {"instruction",
+                      "Read and follow these folders in the listed order before project work."},
+                     {"count", packageValues.size()},
+                     {"truncated", packagesTruncated},
+                     {"invalid_rows", invalidPackageRows},
+                     {"error", std::move(packageReadError)},
+                     {"packages", std::move(packageValues)}}},
+                {"development_policy", std::move(policy)}});
+        } catch (...) {
+            return failure<Json>(
+                Domain::ErrorCodes::InternalFailure,
+                "The MCP workspace context could not be projected.");
+        }
+    }
+
+    [[nodiscard]] Domain::Result<std::string> bootstrapInstructions(
+        const Domain::ProjectId& projectId,
+        const Domain::PathText& projectRoot,
+        const Domain::OperationContext& context) noexcept
+    {
+        auto projected = workspaceContext(projectId, projectRoot, context);
+        if (!projected) {
+            return propagate<std::string>(std::move(projected));
+        }
+        try {
+            const auto& value = projected.value();
+            const auto& workspace = value.at("workspace");
+            const auto& packages = value.at("instruction_packages");
+            const auto& policy = value.at("development_policy");
+            std::string instructions =
+                "Forge Conductor has bound this MCP session to an explicit project.\n"
+                "Project folder: " + workspace.at("project_root").get<std::string>() +
+                "\nProject ID: " + workspace.at("project_id").get<std::string>() +
+                "\nRead and follow the instruction package folders in the listed order "
+                "before project work.\nInstruction package folders (ordered):";
+            const auto& rows = packages.at("packages");
+            if (rows.empty()) {
+                instructions += " none configured";
+            } else {
+                const auto count = (std::min)(
+                    rows.size(), MaximumBootstrapInstructionPackages);
+                for (std::size_t index{}; index < count; ++index) {
+                    const auto& package = rows.at(index);
+                    instructions += "\n- " + package.at("path").get<std::string>() +
+                        " [" + package.value("state", std::string{"unknown"}) + "]";
+                }
+                if (rows.size() > count || packages.value("truncated", false)) {
+                    instructions += "\n- Additional package folders: call forge_status.";
+                }
+            }
+            instructions += "\nDevelopment policy source: ";
+            if (policy.value("active", false) &&
+                policy.at("source").is_string()) {
+                instructions += policy.at("source").get<std::string>();
+                if (policy.at("revision").is_string()) {
+                    instructions += "\nDevelopment policy revision: " +
+                        policy.at("revision").get<std::string>();
+                }
+                instructions +=
+                    "\nRead and follow the development policy. Use project_policy.read "
+                    "for its exact adopted index or document.";
+            } else {
+                instructions += "none configured";
+            }
+            instructions +=
+                "\nCall forge_status for this complete structured context. The Forge home "
+                "path is application data only, not the project folder.";
+            return Domain::Result<std::string>::success(std::move(instructions));
+        } catch (...) {
+            return failure<std::string>(
+                Domain::ErrorCodes::InternalFailure,
+                "The MCP bootstrap instructions could not be formatted.");
+        }
+    }
+
     [[nodiscard]] Domain::Result<Domain::ToolCallOutcome> handle(
         const Contracts::AuthorizedToolCall& authorizedCall,
         const Contracts::WorkspaceAuthority& authority,
@@ -1965,6 +2208,15 @@ private:
         ToolContinuityObservationBuilder& observation)
     {
         if (name == "forge_status") {
+            const auto roots = authority.trustedRoots();
+            const std::optional<Domain::PathText> preferredRoot = roots.empty()
+                ? std::nullopt
+                : std::optional<Domain::PathText>{roots.front()};
+            auto projectContext = workspaceContext(
+                authority.projectId(), preferredRoot, context);
+            if (!projectContext) {
+                return propagate<Json>(std::move(projectContext));
+            }
             auto home = dependencies_.applicationPaths.dataRoot(context);
             if (!home) {
                 return propagate<Json>(std::move(home));
@@ -2049,6 +2301,8 @@ private:
                 {"version", dependencies_.productVersion},
                 {"runtime", dependencies_.runtimeName},
                 {"home", home.value().value()},
+                {"home_kind", "application_data"},
+                {"home_is_project", false},
                 {"client_id", call.clientId().value()},
                 {"agents", std::move(agents)},
                 {"tools", std::move(tools)},
@@ -2058,6 +2312,11 @@ private:
                 {"open_session_ids", std::move(openIds)},
                 {"continuity", std::move(continuityStatus)},
                 {"auto_continuity", std::move(automaticStatus)},
+                {"workspace", std::move(projectContext.value().at("workspace"))},
+                {"instruction_packages",
+                 std::move(projectContext.value().at("instruction_packages"))},
+                {"development_policy",
+                 std::move(projectContext.value().at("development_policy"))},
                 {"pid", dependencies_.processId}});
         }
         if (name == "agent_list") {
@@ -4654,6 +4913,20 @@ McpToolPackAdapter::tools() const noexcept
 {
     return implementation_ ? implementation_->tools()
                            : std::span<const Domain::McpToolDescriptor>{};
+}
+
+Domain::Result<std::string> McpToolPackAdapter::bootstrapInstructions(
+    const Domain::ProjectId& projectId,
+    const Domain::PathText& projectRoot,
+    const Domain::OperationContext& context) noexcept
+{
+    if (!implementation_) {
+        return failure<std::string>(
+            Domain::ErrorCodes::TransportClosed,
+            "The MCP tool-pack adapter is unavailable.");
+    }
+    return implementation_->bootstrapInstructions(
+        projectId, projectRoot, context);
 }
 
 Domain::Result<Domain::ToolCallOutcome> McpToolPackAdapter::handle(

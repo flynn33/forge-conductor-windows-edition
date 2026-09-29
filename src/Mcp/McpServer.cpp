@@ -161,7 +161,8 @@ constexpr std::string_view CluServerName = "forge-conductor-clu";
 
 [[nodiscard]] Json initializeResult(
     const Domain::McpRole role,
-    const std::string_view protocolVersion)
+    const std::string_view protocolVersion,
+    const std::string_view instructions)
 {
     const auto serverName = [&]() -> std::string_view {
         switch (role) {
@@ -181,6 +182,7 @@ constexpr std::string_view CluServerName = "forge-conductor-clu";
                   {"schemaVersion", Domain::ProjectMemorySchemaVersion}}},
              {"tools", Json{{"listChanged", false}}}}},
         {"protocolVersion", protocolVersion},
+        {"instructions", instructions},
         {"serverInfo",
          Json{
              {"name", serverName},
@@ -210,12 +212,14 @@ public:
         Contracts::IToolRouter& router,
         Contracts::IMcpExecutionContextResolver& contextResolver,
         Contracts::IUuidGenerator& uuidGenerator,
-        const Contracts::IClock& clock) noexcept
+        const Contracts::IClock& clock,
+        std::string instructions) noexcept
         : catalog_{catalog},
           router_{router},
           contextResolver_{contextResolver},
           uuidGenerator_{uuidGenerator},
-          clock_{clock}
+          clock_{clock},
+          instructions_{std::move(instructions)}
     {
     }
 
@@ -552,7 +556,7 @@ private:
                 transport,
                 jsonRpcResult(
                     externalId,
-                    initializeResult(role, negotiated)),
+                    initializeResult(role, negotiated, instructions_)),
                 transportContext);
             return;
         }
@@ -1213,6 +1217,7 @@ private:
     Contracts::IMcpTransport* transport_{};
     std::string negotiatedProtocol_{
         McpProtocol::SupportedVersions.front()};
+    std::string instructions_;
     bool running_{};
     bool stopping_{};
     bool inputClosed_{};
@@ -1224,13 +1229,15 @@ McpServer::McpServer(
     Contracts::IToolRouter& router,
     Contracts::IMcpExecutionContextResolver& contextResolver,
     Contracts::IUuidGenerator& uuidGenerator,
-    const Contracts::IClock& clock)
+    const Contracts::IClock& clock,
+    std::string instructions)
     : implementation_{std::make_unique<Implementation>(
           catalog,
           router,
           contextResolver,
           uuidGenerator,
-          clock)}
+          clock,
+          std::move(instructions))}
 {
 }
 

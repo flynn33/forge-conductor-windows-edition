@@ -34,6 +34,8 @@ namespace {
 using Json = nlohmann::json;
 using namespace std::chrono_literals;
 
+constexpr std::size_t MaximumInitializeInstructionsBytes = 32U * 1024U;
+
 constexpr auto VerificationTimeout = 15s;
 constexpr std::size_t VerificationStdoutBytesMaximum = 80'000U;
 constexpr std::size_t VerificationStderrBytesMaximum = 20'000U;
@@ -102,7 +104,7 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "b8664cebcb8d0f23eb180a28727e67304f6ed3860181a972ee0a7ecdc1b46c0e";
+    "681f607be69d470877bc4219557dd5db8db6b9b5234524f7c3470dc68fb3e1c7";
 constexpr std::array<std::string_view, 5U> CluToolNames{
     "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
     "project_policy.read"};
@@ -421,7 +423,27 @@ struct BoundedJsonRejected final {};
             return Domain::Result<std::string>::failure(verificationFailure(
                 "The MCP serve initialize reply did not expose the exact static tools capability."));
         }
-        if (result != expectedInitializeResult(role)) {
+        if (!result.contains("instructions") ||
+            !result.at("instructions").is_string()) {
+            return Domain::Result<std::string>::failure(verificationFailure(
+                "The MCP serve initialize reply did not expose workspace instructions."));
+        }
+        const auto& instructions =
+            result.at("instructions").get_ref<const std::string&>();
+        if (instructions.empty() ||
+            instructions.size() > MaximumInitializeInstructionsBytes ||
+            !Domain::isValidUtf8(instructions) ||
+            instructions.find("Project folder: ") == std::string::npos ||
+            instructions.find("Instruction package folders (ordered):") ==
+                std::string::npos ||
+            instructions.find("Development policy source: ") ==
+                std::string::npos) {
+            return Domain::Result<std::string>::failure(verificationFailure(
+                "The MCP serve initialize workspace instructions were incomplete or invalid."));
+        }
+        auto staticResult = result;
+        staticResult.erase("instructions");
+        if (staticResult != expectedInitializeResult(role)) {
             return Domain::Result<std::string>::failure(verificationFailure(
                 "The MCP serve initialize reply drifted from the exact product capabilities."));
         }
