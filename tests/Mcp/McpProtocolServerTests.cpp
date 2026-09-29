@@ -538,7 +538,13 @@ struct SessionResult final {
     FixedClock clock;
     ScriptedTransport transport{
         std::move(inbound), responses, std::move(beforeReceive)};
-    Mcp::McpServer server{catalog, router, resolver, uuids, clock};
+    Mcp::McpServer server{
+        catalog,
+        router,
+        resolver,
+        uuids,
+        clock,
+        "Project folder: D:\\workspace\nInstruction package folders (ordered): none configured\nDevelopment policy source: none configured"};
     const Domain::OperationContext context{
         id<Domain::OperationId>("30000000-0000-0000-0000-000000000003"),
         Domain::MonotonicTimePoint{} + std::chrono::minutes{5},
@@ -621,6 +627,8 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
                     std::string{Mcp::McpProtocol::SupportedVersions[index]});
         }
         const auto response = parse(session.output.front());
+        REQUIRE(response.at("result").at("instructions").get<std::string>().find(
+                    "Project folder: D:\\workspace") != std::string::npos);
         REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.2");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
@@ -1175,7 +1183,8 @@ void testDestructorStopsActiveRun(Contracts::IToolCatalog& catalog)
     SequenceUuidGenerator uuids;
     ScriptedTransport transport{{}, 1U};
     auto server = std::make_unique<Mcp::McpServer>(
-        catalog, router, resolver, uuids, clock);
+        catalog, router, resolver, uuids, clock,
+        "Project folder: D:\\workspace\nInstruction package folders (ordered): none configured\nDevelopment policy source: none configured");
     auto* activeServer = server.get();
     const Domain::OperationContext context{
         id<Domain::OperationId>("40000000-0000-0000-0000-000000000004"),

@@ -91,6 +91,37 @@ public:
     }
 };
 
+class StaticProjectPolicy final : public Contracts::IProjectPolicyService {
+public:
+    explicit StaticProjectPolicy(std::string inspection)
+        : inspection_{std::move(inspection)}
+    {
+    }
+
+    [[nodiscard]] Domain::Result<std::string> execute(
+        const Contracts::ProjectPolicyRequest& request,
+        const Domain::OperationContext&) noexcept override
+    {
+        if (request.action != Contracts::ProjectPolicyAction::Inspect) {
+            return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "The static policy fake only supports inspection."));
+        }
+        return Domain::Result<std::string>::success(inspection_);
+    }
+
+    [[nodiscard]] Domain::Result<void> check(
+        const Domain::ToolAuthorizationRequest&,
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return Domain::Result<void>::success();
+    }
+
+private:
+    std::string inspection_;
+};
+
 class PassiveLegacyContinuity final
     : public Contracts::ILegacyContextContinuityService {
 public:
@@ -566,6 +597,60 @@ void testRuntimeDispatchAndSchemaPolicy()
         std::optional<std::string>{"adapter-project"},
         {root}}));
     Fakes::RecordingProjectMemoryService projectMemory;
+    const auto packageRevision = parse<Domain::Sha256Digest>(
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+    const auto packageRecordId = parse<Domain::MemoryRecordId>(
+        "cccccccc-cccc-4ccc-8ccc-cccccccccccc");
+    const auto packageBody = Json{
+        {"schema", "forge-instruction-package-queue-v2"},
+        {"project_id", projectId.value()},
+        {"queue_row_id", "queue-runtime-adapter"},
+        {"package_id", "package-runtime-adapter"},
+        {"package_name", "Runtime instructions"},
+        {"package_path", "D:/instructions/runtime"},
+        {"revision", packageRevision.value()},
+        {"order", 1024U},
+        {"state", "ready"}}.dump();
+    const auto packageTime = Domain::UtcTimePoint{1'700'000'000s};
+    projectMemory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            projectId,
+            {Domain::MemorySearchHit{
+                Domain::ProjectMemoryRecord{
+                    packageRecordId,
+                    projectId,
+                    1U,
+                    "instruction_package_queue",
+                    "Runtime instructions",
+                    "One configured instruction package",
+                    packageBody,
+                    {"instruction-package-queue"},
+                    1.0,
+                    1.0,
+                    "manager_instruction_package",
+                    std::optional<std::string>{"D:/instructions/runtime"},
+                    std::nullopt,
+                    packageTime,
+                    packageTime,
+                    packageTime,
+                    std::nullopt,
+                    packageRevision,
+                    false,
+                    Domain::ProjectMemorySchemaVersion},
+                1.0}},
+            std::nullopt,
+            false,
+            packageBody.size(),
+            256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    StaticProjectPolicy projectPolicy{Json{
+        {"active", true},
+        {"state", "enforcing"},
+        {"source", "A:/development-policy"},
+        {"revision", packageRevision.value()},
+        {"entry_count", 7U},
+        {"coverage_gap_count", 1U}}.dump()};
     Fakes::RecordingContinuityCoordinator continuity;
     PassiveContinuityCodec continuityCodec;
     PassiveContinuityAutomation continuityAutomation;
@@ -630,7 +715,8 @@ void testRuntimeDispatchAndSchemaPolicy()
             shellExecutable,
             "0.9.0",
             "windows-cpp",
-            42U}));
+            42U,
+            &projectPolicy}));
     REQUIRE(adapter->tools().size() == 58U);
 
     const auto authorizeFor = [&] (
@@ -700,6 +786,24 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(forgeStatusPayload.at("open_sessions") == 2U);
     REQUIRE(forgeStatusPayload.at("open_session_ids") == Json::array(
         {firstOpenSession.value(), secondOpenSession.value()}));
+    REQUIRE(forgeStatusPayload.at("workspace").at("project_root") ==
+            root.value());
+    REQUIRE(forgeStatusPayload.at("workspace").at("project_id") ==
+            projectId.value());
+    REQUIRE(forgeStatusPayload.at("instruction_packages").at("count") == 1U);
+    REQUIRE(forgeStatusPayload.at("instruction_packages").at("packages").at(0)
+                .at("path") == "D:/instructions/runtime");
+    REQUIRE(forgeStatusPayload.at("development_policy").at("source") ==
+            "A:/development-policy");
+    REQUIRE(forgeStatusPayload.at("development_policy").at("revision") ==
+            packageRevision.value());
+    const auto bootstrap = take(adapter->bootstrapInstructions(
+        projectId, root, context));
+    REQUIRE(bootstrap.find("Project folder: D:/workspace") !=
+            std::string::npos);
+    REQUIRE(bootstrap.find("D:/instructions/runtime") != std::string::npos);
+    REQUIRE(bootstrap.find("Development policy source: A:/development-policy") !=
+            std::string::npos);
     REQUIRE((forgeStatusPayload.at("continuity") == Json{
         {"latest_id", "status-latest-handoff"},
         {"latest_updated_at", "2023-11-14T22:13:20.000Z"},
@@ -1798,6 +1902,11 @@ void testRealRouterContinuityIntegration()
     Fakes::RecordingTextSearchServiceFake textSearch;
     Fakes::RecordingShellServiceFake shell;
     Fakes::ProjectRegistryRepositoryFake projectRegistry{8U};
+    take(projectRegistry.seedDescriptor(Domain::ProjectMemoryDescriptor{
+        projectId,
+        "Continuity integration project",
+        std::optional<std::string>{"continuity-integration-project"},
+        {root}}));
     Fakes::RecordingProjectMemoryService projectMemory;
     Fakes::RecordingContinuityCoordinator continuity;
     PassiveContinuityCodec continuityCodec;

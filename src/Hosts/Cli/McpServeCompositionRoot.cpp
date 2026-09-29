@@ -892,9 +892,18 @@ private:
             Mcp::McpExecutionContextResolver>(
             *workspaceAuthority_, defaultProjectId_, *clock_,
             clientWorkspaceContext_.get());
+        auto bootstrapInstructions = take(toolPack_->bootstrapInstructions(
+            defaultProjectId_, initialization.project.aliases.front(),
+            startupContext));
+        if (bootstrapInstructions.empty() ||
+            bootstrapInstructions.size() >
+                Mcp::McpServer::MaximumInstructionsBytes) {
+            throw std::runtime_error{
+                "integrity_failure: The MCP workspace instructions exceeded their bound."};
+        }
         server_ = std::make_unique<Mcp::McpServer>(
             *toolCatalog_, *toolRouter_, *executionContextResolver_,
-            *uuidGenerator_, *clock_);
+            *uuidGenerator_, *clock_, std::move(bootstrapInstructions));
         stdioTransport_ = take(Mcp::WindowsStdioMcpTransport::create());
         presenceLifecycle_ = std::make_unique<
             Application::ClientPresenceLifecycle>(

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Send an MCP `initialize` instruction block that names the registered project folder, ordered instruction-package folders, and active development-policy source and revision before the model's first tool call.
+- Extend `forge_status` with structured `workspace`, `instruction_packages`, and `development_policy` fields sourced from the authoritative project registry, project memory, and policy service.
+- Make the LM Studio serve verifier reject integrations that omit or corrupt this workspace bootstrap context, and describe the expanded status contract in the canonical tool catalog.
+
 ## 1.3.2 — Reliable long-running LM Studio MCP calls
 
 - Write an exact integer `timeout: 180000` to the Primary, Fallback, and CLU registrations so LM Studio's outer request deadline exceeds Forge's 120-second `shell_exec` limit.

@@ -696,7 +696,7 @@
       "name": "continuity.status"
     },
     {
-      "description": "Runtime status: home, agents, open sessions, tools.",
+      "description": "Runtime and project context: project folder, ordered instruction-package folders, development-policy source, home, agents, sessions, and tools.",
       "inputSchema": {
         "additionalProperties": true,
         "properties": {},

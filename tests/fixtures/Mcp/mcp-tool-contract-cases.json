@@ -231,9 +231,9 @@
       "name": "forge_status",
       "macos_behavior": "Aggregates runtime identity, agents, tools, memory, presence, and continuity status.",
       "cases": {
-        "valid": {"arguments": {}, "expect": {"payload_contains": {"version": "0.9.0", "runtime": "windows-cpp", "home": "D:/workspace"}, "effects_exact": ["agent_catalog.all", "application_paths.data_root", "continuity_automation.snapshot", "forge_status.snapshot", "legacy_continuity.status_summary", "legacy_memory.list"]}},
+        "valid": {"arguments": {}, "expect": {"payload_contains": {"version": "0.9.0", "runtime": "windows-cpp", "home": "D:/workspace"}, "effects_exact": ["agent_catalog.all", "application_paths.data_root", "continuity_automation.snapshot", "forge_status.snapshot", "legacy_continuity.status_summary", "legacy_memory.list", "project_memory.list_recent", "project_registry.descriptor"]}},
         "invalid": {},
-        "dependency_error": {"expect": {"effects_exact": ["application_paths.data_root"]}},
+        "dependency_error": {"expect": {"effects_exact": ["project_registry.descriptor"]}},
         "boundary": {}
       }
     },

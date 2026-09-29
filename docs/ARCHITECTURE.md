@@ -48,6 +48,8 @@ network placement does not change project identity, cancellation or data-safety 
 
 Forge writes an exact integer `timeout: 180000` to the Primary, Fallback, and CLU LM Studio registrations. The configuration codec, deployed bridge state, and host-synchronization acknowledgment validate the same value. LM Studio owns this outer request deadline; Forge `shell_exec` requests remain capped at 120 seconds. `FallbackPromoted` is derived health/status, not automatic call routing. A timed-out request is never replayed across roles because a mutating call can have an ambiguous completion state.
 
+The MCP composition root binds the current working directory through the project registry and projects that authoritative binding into both the protocol-level `initialize.instructions` field and `forge_status`. The projection also reads the ordered instruction-package queue from project memory and the active policy source/revision from `IProjectPolicyService`. Handoff paths and continuity implicit roots are evidence carried by those subsystems, not substitutes for the registered project root. The LM Studio serve verifier treats missing or malformed bootstrap instructions as deployment drift.
+
 R2 implements that snapshot as `ManagerTelemetrySnapshot`. The Manager joins its existing telemetry service with
 status, settings, selected-run context, continuity identity, runtime diagnostics, project/tool catalogs, audit events,
 and store-read health before encoding one authenticated pipe response. The WinUI process renders the typed values and

@@ -80,6 +80,15 @@ public:
     [[nodiscard]] std::span<const Domain::McpToolDescriptor>
     tools() const noexcept override;
 
+    // Produces the exact project, ordered instruction-package, and development-
+    // policy locations advertised during MCP initialization. The same bounded
+    // projection is returned by forge_status so clients do not have to infer
+    // workspace identity from continuity packets or the application data root.
+    [[nodiscard]] Domain::Result<std::string> bootstrapInstructions(
+        const Domain::ProjectId& projectId,
+        const Domain::PathText& projectRoot,
+        const Domain::OperationContext& context) noexcept;
+
     [[nodiscard]] Domain::Result<Domain::ToolCallOutcome> handle(
         const Contracts::AuthorizedToolCall& authorizedCall,
         const Contracts::WorkspaceAuthority& authority,

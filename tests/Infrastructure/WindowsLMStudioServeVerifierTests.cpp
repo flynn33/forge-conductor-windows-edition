@@ -156,6 +156,8 @@ public:
          Json{{"capabilities",
                Json{{"projectMemory", projectMemoryCapability()},
                     {"tools", Json{{"listChanged", false}}}}},
+              {"instructions",
+               "Project folder: C:\\Forge\nInstruction package folders (ordered): none configured\nDevelopment policy source: none configured"},
               {"protocolVersion", "2025-11-25"},
               {"serverInfo",
                Json{{"name", role == Domain::LMStudioConnectorRole::Primary
