@@ -1,6 +1,6 @@
 # Roadmap
 
-## Current candidate: 1.3.3
+## Current release: 1.3.3
 
 The simplified-workflow and memory-maintenance milestones are implemented:
 

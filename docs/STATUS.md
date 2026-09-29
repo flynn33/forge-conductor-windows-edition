@@ -1,6 +1,6 @@
 # Product status
 
-The 1.3.3 candidate retains the simplified Workspace, complete project-memory maintenance, constrained-host tool discovery, and reliable outer MCP deadline from 1.3.2. It adds explicit LM Studio disclosure of the authorized project folder, ordered instruction-package folders, and active development-policy source/revision. Verification is recorded in [the 1.3.3 validation record](validation/LM-STUDIO-WORKSPACE-CONTEXT-1.3.3.md).
+The 1.3.3 release retains the simplified Workspace, complete project-memory maintenance, constrained-host tool discovery, and reliable outer MCP deadline from 1.3.2. It adds explicit LM Studio disclosure of the authorized project folder, ordered instruction-package folders, and active development-policy source/revision. Verification is recorded in [the 1.3.3 validation record](validation/LM-STUDIO-WORKSPACE-CONTEXT-1.3.3.md).
 
 | Area | Implemented behavior |
 |---|---|
@@ -22,8 +22,8 @@ Policy interpretation is intentionally honest: binary/opaque entries and access 
 
 LM Studio desktop chats and Manager-owned tasks remain separate. Existing desktop chats without a native task binding are not automatically enrolled in managed continuity.
 
-Live supported-provider successor creation, restore, acknowledgement, and fencing have not been rerun for this 1.3.3 candidate. Enabled preferences are reported as `Preparing`; this status does not claim live continuity qualification or an `Active` lifecycle.
+Live supported-provider successor creation, restore, acknowledgement, and fencing have not been rerun for this 1.3.3 release. Enabled preferences are reported as `Preparing`; this status does not claim live continuity qualification or an `Active` lifecycle.
 
-The `v1.3.2` GitHub release remains the latest published package while 1.3.3 is reviewed and qualified.
+The `v1.3.3` GitHub release is the latest published package.
 
 Ordinary data remains at `%LOCALAPPDATA%\Forge Conductor`. The historical `--alpha-root` option supports isolated validation. Historical reports describe their own artifacts and are not evidence for newer binaries.

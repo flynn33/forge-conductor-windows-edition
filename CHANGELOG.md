@@ -6,6 +6,7 @@
 - Extend `forge_status` with structured `workspace`, `instruction_packages`, and `development_policy` fields sourced from the authoritative project registry, project memory, and policy service.
 - Mark Forge `home` as application data only, require instruction packages to be read in listed order, and require an active development policy to be read and followed.
 - Make the LM Studio serve verifier reject integrations that omit or corrupt this workspace bootstrap context, and describe the expanded status contract in the canonical tool catalog.
+- Record that live qualification quarantined the ordinary-profile SQLite main/WAL/shared-memory snapshot after a failed migrated-database quick-check, and that the snapshot was restored byte-for-byte while all recovery copies were retained.
 
 ## 1.3.2 — Reliable long-running LM Studio MCP calls
 

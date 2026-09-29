@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-The **1.3.3 candidate** gives LM Studio the exact authorized project folder, ordered instruction-package folders, and active development-policy source/revision during MCP initialization and through structured `forge_status` fields. Forge `home` is labeled as application data only, independent of continuity packet contents. It retains the validated 180-second Primary, Fallback, and CLU request timeout from 1.3.2. See the [release notes](docs/releases/1.3.3.md).
+The **1.3.3 release** gives LM Studio the exact authorized project folder, ordered instruction-package folders, and active development-policy source/revision during MCP initialization and through structured `forge_status` fields. Forge `home` is labeled as application data only, independent of continuity packet contents. It retains the validated 180-second Primary, Fallback, and CLU request timeout from 1.3.2. See the [release notes](docs/releases/1.3.3.md).
 
 ## Product surfaces
 
@@ -30,7 +30,7 @@ Requirements and reproducible commands are in [Build](docs/BUILD.md). The comple
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Release 1.3.3 is prepared as a development-signed engineering candidate. After committing the exact release inputs and rebuilding from that commit, reproduce that package with:
+Release 1.3.3 is published as a development-signed engineering distribution. Reproduce the package from committed release inputs with:
 
 ```powershell
 ./scripts/package.ps1 -DevelopmentSigning
