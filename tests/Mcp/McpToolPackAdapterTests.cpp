@@ -790,19 +790,31 @@ void testRuntimeDispatchAndSchemaPolicy()
             root.value());
     REQUIRE(forgeStatusPayload.at("workspace").at("project_id") ==
             projectId.value());
+    REQUIRE(forgeStatusPayload.at("workspace").at("binding_source") ==
+            "mcp_authorized_root");
+    REQUIRE(forgeStatusPayload.at("home_kind") == "application_data");
+    REQUIRE(forgeStatusPayload.at("home_is_project") == false);
     REQUIRE(forgeStatusPayload.at("instruction_packages").at("count") == 1U);
+    REQUIRE(forgeStatusPayload.at("instruction_packages").at("read_in_order") ==
+            true);
     REQUIRE(forgeStatusPayload.at("instruction_packages").at("packages").at(0)
                 .at("path") == "D:/instructions/runtime");
     REQUIRE(forgeStatusPayload.at("development_policy").at("source") ==
             "A:/development-policy");
     REQUIRE(forgeStatusPayload.at("development_policy").at("revision") ==
             packageRevision.value());
+    REQUIRE(forgeStatusPayload.at("development_policy")
+                .at("read_and_follow_required") == true);
     const auto bootstrap = take(adapter->bootstrapInstructions(
         projectId, root, context));
     REQUIRE(bootstrap.find("Project folder: D:/workspace") !=
             std::string::npos);
     REQUIRE(bootstrap.find("D:/instructions/runtime") != std::string::npos);
+    REQUIRE(bootstrap.find("Read and follow the instruction package folders") !=
+            std::string::npos);
     REQUIRE(bootstrap.find("Development policy source: A:/development-policy") !=
+            std::string::npos);
+    REQUIRE(bootstrap.find("Read and follow the development policy") !=
             std::string::npos);
     REQUIRE((forgeStatusPayload.at("continuity") == Json{
         {"latest_id", "status-latest-handoff"},

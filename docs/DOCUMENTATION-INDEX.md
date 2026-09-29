@@ -16,6 +16,8 @@
 - [Packaging inputs](../packaging/README.md)
 - [Release 1.3.2](releases/1.3.2.md)
 - [Release 1.3.2 validation](validation/LM-STUDIO-TIMEOUT-1.3.2.md)
+- [Release 1.3.3](releases/1.3.3.md)
+- [Release 1.3.3 validation](validation/LM-STUDIO-WORKSPACE-CONTEXT-1.3.3.md)
 - [Release 1.3.1](releases/1.3.1.md)
 - [Release 1.3.1 validation](validation/MEMORY-MAINTENANCE-1.3.1.md)
 

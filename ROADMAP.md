@@ -2,7 +2,7 @@
 
 ## 1.3 workspace and maintenance
 
-Version 1.3.2 retains the direct Workspace, memory-maintenance, governance, continuity, and constrained-host improvements from 1.3.1 while making long-running LM Studio MCP calls reliable. Primary, Fallback, and CLU registrations now carry a validated 180-second outer request deadline. See [release notes](docs/releases/1.3.2.md) and [validation evidence](docs/validation/LM-STUDIO-TIMEOUT-1.3.2.md).
+Version 1.3.3 retains the direct Workspace, memory-maintenance, governance, continuity, constrained-host, and long-running MCP improvements from 1.3.2. Primary, Fallback, and CLU now disclose the authorized project folder, ordered instruction-package folders, and active development-policy identity at initialization and in `forge_status`. See [release notes](docs/releases/1.3.3.md) and [validation evidence](docs/validation/LM-STUDIO-WORKSPACE-CONTEXT-1.3.3.md).
 
 The release uses the existing native C++20/WinUI architecture, Manager-owned execution, stable project identities, durable memory and native telemetry. Existing runs retain their selected provider binding across restart. Private GitHub policy import uses existing Git authentication and never executes imported scripts.
 

@@ -76,6 +76,6 @@ LM Studio desktop chats and Forge-managed runs are separate modes. Connecting MC
 
 Under **Settings → Data maintenance**, the selected project's memory appears in a scrollable list. Use **Delete record** on a row, or select multiple rows with the normal Windows Ctrl/Shift selection gestures and choose **Delete selected**. One destructive confirmation is shown, each selected memory key is sent through `project_memory.forget`, and the list refreshes afterward. **Reset project continuity** is a separate wipe action. The older exact-confirmation reset remains separate for project memory, project continuity, combined project data, or all registered project data.
 
-An enabled automatic-continuity preference can read `Preparing`. That means the Manager has the project/provider preference but release 1.3.2 has not established a live supported-provider successor lifecycle. Only real provider create/restore/acknowledge/fence evidence can justify `Active`.
+An enabled automatic-continuity preference can read `Preparing`. That means the Manager has the project/provider preference but release 1.3.3 has not established a live supported-provider successor lifecycle. Only real provider create/restore/acknowledge/fence evidence can justify `Active`.
 
 Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`. For disposable validation only, launch `ForgeConductorApp.exe --alpha-root <absolute-empty-folder>`.

@@ -1652,6 +1652,15 @@ public:
             std::size_t invalidPackageRows{};
             bool packageReadAvailable{};
             bool packagesTruncated{};
+            Json packageReadError = nullptr;
+            const Domain::OperationContext projectMemoryContext{
+                context.operationId,
+                (std::min)(
+                    context.deadline,
+                    dependencies_.clock.monotonicNow() +
+                        std::chrono::seconds{30}),
+                context.cancellation,
+                context.correlationId};
             auto packages = dependencies_.projectMemory.listRecent(
                 Domain::ListRecentProjectMemoryRequest{
                     projectId,
@@ -1661,7 +1670,7 @@ public:
                     std::nullopt,
                     true,
                     256U * 1024U},
-                context);
+                projectMemoryContext);
             if (packages) {
                 packageReadAvailable = true;
                 packagesTruncated = packages.value().truncated ||
@@ -1703,6 +1712,11 @@ public:
                     [](const PackageRow& left, const PackageRow& right) {
                         return left.order < right.order;
                     });
+            } else {
+                packageReadError = Json{
+                    {"code", packages.error().code},
+                    {"message", packages.error().message},
+                    {"retryable", packages.error().retryable}};
             }
             Json packageValues = Json::array();
             for (auto& row : packageRows) {
@@ -1717,6 +1731,8 @@ public:
                 {"revision", nullptr},
                 {"entry_count", 0U},
                 {"coverage_gap_count", 0U},
+                {"read_and_follow_required", false},
+                {"instruction", "No development policy is configured."},
                 {"read_tool", "project_policy.read"}};
             if (dependencies_.projectPolicy != nullptr) {
                 auto inspected = dependencies_.projectPolicy->execute(
@@ -1739,6 +1755,10 @@ public:
                         policy["revision"] = active && value.contains("revision")
                             ? value.at("revision")
                             : Json(nullptr);
+                        policy["read_and_follow_required"] = active;
+                        policy["instruction"] = active
+                            ? "Read and follow the development policy before project work."
+                            : "No development policy is configured.";
                         policy["entry_count"] = value.value(
                             "entry_count", std::size_t{});
                         policy["coverage_gap_count"] = value.value(
@@ -1756,13 +1776,19 @@ public:
                      {"project_id", descriptor.value().id.value()},
                      {"display_name", descriptor.value().displayName},
                      {"project_root", projectRoot},
+                     {"binding_source", "mcp_authorized_root"},
+                     {"continuity_packet_independent", true},
                      {"authorized_roots", std::move(roots)}}},
                 {"instruction_packages",
                  Json{
                      {"available", packageReadAvailable},
+                     {"read_in_order", true},
+                     {"instruction",
+                      "Read and follow these folders in the listed order before project work."},
                      {"count", packageValues.size()},
                      {"truncated", packagesTruncated},
                      {"invalid_rows", invalidPackageRows},
+                     {"error", std::move(packageReadError)},
                      {"packages", std::move(packageValues)}}},
                 {"development_policy", std::move(policy)}});
         } catch (...) {
@@ -1790,7 +1816,8 @@ public:
                 "Forge Conductor has bound this MCP session to an explicit project.\n"
                 "Project folder: " + workspace.at("project_root").get<std::string>() +
                 "\nProject ID: " + workspace.at("project_id").get<std::string>() +
-                "\nInstruction package folders (ordered):";
+                "\nRead and follow the instruction package folders in the listed order "
+                "before project work.\nInstruction package folders (ordered):";
             const auto& rows = packages.at("packages");
             if (rows.empty()) {
                 instructions += " none configured";
@@ -1814,13 +1841,15 @@ public:
                     instructions += "\nDevelopment policy revision: " +
                         policy.at("revision").get<std::string>();
                 }
+                instructions +=
+                    "\nRead and follow the development policy. Use project_policy.read "
+                    "for its exact adopted index or document.";
             } else {
                 instructions += "none configured";
             }
             instructions +=
-                "\nCall forge_status for this structured context and project_policy.read "
-                "for the exact adopted policy index or document. The Forge home path is "
-                "application data, not the project folder.";
+                "\nCall forge_status for this complete structured context. The Forge home "
+                "path is application data only, not the project folder.";
             return Domain::Result<std::string>::success(std::move(instructions));
         } catch (...) {
             return failure<std::string>(
@@ -2272,6 +2301,8 @@ private:
                 {"version", dependencies_.productVersion},
                 {"runtime", dependencies_.runtimeName},
                 {"home", home.value().value()},
+                {"home_kind", "application_data"},
+                {"home_is_project", false},
                 {"client_id", call.clientId().value()},
                 {"agents", std::move(agents)},
                 {"tools", std::move(tools)},
