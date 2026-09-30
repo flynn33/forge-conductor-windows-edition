@@ -8,6 +8,8 @@
 - Make the LM Studio serve verifier reject integrations that omit or corrupt this workspace bootstrap context, and describe the expanded status contract in the canonical tool catalog.
 - Record that live qualification quarantined the ordinary-profile SQLite main/WAL/shared-memory snapshot after a failed migrated-database quick-check, and that the snapshot was restored byte-for-byte while all recovery copies were retained.
 
+Operational note for the installed 1.3.3 package: the local LM Studio connection contract is unauthenticated loopback. Enabling LM Studio **Require Authentication** (`json.tokenMode=required`) can leave the LM Studio UI showing connected while Work Space **Model & connection** discovery and **Run contract probe** fail. Keep Require Authentication disabled for this same-host connection. Forge does not require a local LM Studio token, bearer-auth configuration, or authentication setup UX. This is a host-setting requirement, not a shipped 1.3.3 product-code correction; the investigated diagnostic hunks were not included in the installed binary or this release.
+
 ## 1.3.2 — Reliable long-running LM Studio MCP calls
 
 - Write an exact integer `timeout: 180000` to the Primary, Fallback, and CLU registrations so LM Studio's outer request deadline exceeds Forge's 120-second `shell_exec` limit.
