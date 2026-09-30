@@ -1288,6 +1288,27 @@ void automaticModelPreparationRejectsUnusableAndMalformedInventory()
     server.requireHealthy();
 }
 
+void lmStudioAuthenticationRequirementIsDiagnosed()
+{
+    LoopbackHttpServer server{{
+        {"GET", "/v1/models", 401U,
+         R"({"error":{"code":"invalid_api_key"}})"}}};
+    InfrastructureWindows::LMStudioResponsesTransport transport{
+        responsesConfiguration(server.port())};
+
+    const auto result = transport.createSession(
+        creationRequest(),
+        operationContext("61616161-6161-4161-8161-616161616161", 5s));
+    REQUIRE(!result);
+    REQUIRE(result.error().code == Domain::ErrorCodes::Unauthorized);
+    REQUIRE(result.error().message.find(
+        "LM Studio authentication is enabled") != std::string::npos);
+    REQUIRE(result.error().message.find(
+        "turn off Require Authentication") != std::string::npos);
+    REQUIRE(server.waitUntilHandled(1U, 5s));
+    server.requireHealthy();
+}
+
 template <typename ContextFactory>
 void projectMemoryDisplayAllConcatenatesManagerPages(
     ForgeConductor::Hosts::App::ManagerConnection& connection,
@@ -1595,6 +1616,8 @@ int main()
         std::cout << "PASS winhttp_transport.loopback_configuration\n";
         createBootstrapAndQueryUseExactRoutes();
         std::cout << "PASS winhttp_transport.create_bootstrap_query\n";
+        lmStudioAuthenticationRequirementIsDiagnosed();
+        std::cout << "PASS lmstudio_responses.authentication_diagnostic\n";
         lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId();
         std::cout << "PASS lmstudio_responses.fresh_root_tool_ack\n";
         lmStudioResponsesCompletesAnOrdinaryManagedTurn();
@@ -1609,7 +1632,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=15 failed=0 assertions="
+        std::cout << "SUMMARY passed=16 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

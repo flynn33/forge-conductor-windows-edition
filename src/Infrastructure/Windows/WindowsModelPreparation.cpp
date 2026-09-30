@@ -68,9 +68,14 @@ Json request(const Domain::ManagerSettings& settings, const wchar_t* path,
     check(context);
     DWORD status{}, size{sizeof(status)};
     if (!WinHttpQueryHeaders(operation.get(), WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-        WINHTTP_HEADER_NAME_BY_INDEX, &status, &size, WINHTTP_NO_HEADER_INDEX) || status != 200)
+        WINHTTP_HEADER_NAME_BY_INDEX, &status, &size, WINHTTP_NO_HEADER_INDEX))
+        throw std::runtime_error{"LM Studio model management returned no HTTP status."};
+    if (status == 401U || status == 403U)
+        throw std::runtime_error{
+            "LM Studio authentication is enabled. Turn off Require Authentication in LM Studio Developer > Server Settings, then retry preparation."};
+    if (status != 200U)
         throw std::runtime_error{"LM Studio model management returned HTTP " + std::to_string(status) +
-            ". Check server authentication or update LM Studio."};
+            ". Update LM Studio or inspect its server log."};
     std::string response;
     for (;;) {
         check(context);

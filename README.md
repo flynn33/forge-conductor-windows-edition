@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-The **1.3.3 release** gives LM Studio the exact authorized project folder, ordered instruction-package folders, and active development-policy source/revision during MCP initialization and through structured `forge_status` fields. Forge `home` is labeled as application data only, independent of continuity packet contents. It retains the validated 180-second Primary, Fallback, and CLU request timeout from 1.3.2. See the [release notes](docs/releases/1.3.3.md).
+The **1.3.4 release** documents and diagnoses the unauthenticated same-host loopback contract used by Work Space model discovery, Responses probes, and automatic model preparation. LM Studio **Require Authentication** must remain disabled for this local connection; Forge does not store or configure a bearer token. The release retains the explicit project/package/policy disclosure added in 1.3.3. See the [release notes](docs/releases/1.3.4.md).
 
 ## Product surfaces
 
@@ -15,7 +15,7 @@ Instruction-package intake inventories the selected folder without extension, en
 
 CLU is a nonblocking governance role, not a continuity controller. Its tools evaluate development evidence, list findings and notifications, accept correction evidence, export a redacted governance log, and read bound policy documents. Automatic continuity remains an independent per-project/provider preference used only by Manager-owned runs.
 
-The implementation deliberately reports enabled continuity as `Preparing` until a real supported-provider successor create/restore/acknowledge/fence path qualifies it. Release 1.3.3 has not rerun that live-provider qualification and does not claim `Active`.
+The implementation deliberately reports enabled continuity as `Preparing` until a real supported-provider successor create/restore/acknowledge/fence path qualifies it. Release 1.3.4 has not rerun that live-provider qualification and does not claim `Active`.
 
 Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`. Released schema data is migrated in place. The historical `--alpha-root <absolute-path>` option remains available for disposable isolated profiles.
 
@@ -30,7 +30,7 @@ Requirements and reproducible commands are in [Build](docs/BUILD.md). The comple
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Release 1.3.3 is published as a development-signed engineering distribution. Reproduce the package from committed release inputs with:
+Release 1.3.4 is published as a development-signed engineering distribution. Reproduce the package from committed release inputs with:
 
 ```powershell
 ./scripts/package.ps1 -DevelopmentSigning

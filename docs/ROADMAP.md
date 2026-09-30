@@ -1,6 +1,6 @@
 # Roadmap
 
-## Current release: 1.3.3
+## Current release: 1.3.4
 
 The simplified-workflow and memory-maintenance milestones are implemented:
 
@@ -14,11 +14,12 @@ The simplified-workflow and memory-maintenance milestones are implemented:
 - deterministic Git and PowerShell 7 discovery for constrained MCP hosts;
 - exact 180-second LM Studio MCP request deadlines for Primary, Fallback, and CLU;
 - exact authorized project, ordered instruction-package, and development-policy context for LM Studio at initialization and through `forge_status`;
+- explicit unauthenticated-loopback diagnostics when LM Studio Require Authentication rejects discovery, Responses, or model preparation;
 - migration and regression coverage for retained state.
 
 ## Follow-up
 
-- Validate the signed 1.3.3 package on an additional clean Windows 11 account.
+- Validate the signed 1.3.4 package on an additional clean Windows 11 account.
 - Continue accessibility and scaling walkthroughs as the Workspace content evolves.
 - Expand provider-profile management only through the existing typed Manager boundary.
 

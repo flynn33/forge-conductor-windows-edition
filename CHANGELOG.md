@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.4 — LM Studio unauthenticated-loopback diagnostics
+
+- Record the supported same-host contract: LM Studio must allow unauthenticated loopback requests. Enabling **Require Authentication** (`json.tokenMode=required`) can leave the LM Studio UI showing connected while Work Space model discovery and the Responses contract probe fail.
+- Diagnose HTTP 401/403 explicitly in Work Space model discovery, Responses transport, and automatic model preparation, directing the operator to disable LM Studio Require Authentication.
+- Add a loopback regression proving the Responses transport returns the Unauthorized error code and the unauthenticated-loopback guidance for an HTTP 401 model-discovery response.
+- Keep the local integration free of Forge token storage, bearer-auth configuration, permissions UX, and authentication setup flows. The existing 1.3.3 installation is not replaced during release construction.
+
 ## 1.3.3 — Explicit LM Studio workspace context
 
 - Send an MCP `initialize` instruction block that names the registered project folder, ordered instruction-package folders, and active development-policy source and revision before the model's first tool call.
@@ -7,8 +14,6 @@
 - Mark Forge `home` as application data only, require instruction packages to be read in listed order, and require an active development policy to be read and followed.
 - Make the LM Studio serve verifier reject integrations that omit or corrupt this workspace bootstrap context, and describe the expanded status contract in the canonical tool catalog.
 - Record that live qualification quarantined the ordinary-profile SQLite main/WAL/shared-memory snapshot after a failed migrated-database quick-check, and that the snapshot was restored byte-for-byte while all recovery copies were retained.
-
-Operational note for the installed 1.3.3 package: the local LM Studio connection contract is unauthenticated loopback. Enabling LM Studio **Require Authentication** (`json.tokenMode=required`) can leave the LM Studio UI showing connected while Work Space **Model & connection** discovery and **Run contract probe** fail. Keep Require Authentication disabled for this same-host connection. Forge does not require a local LM Studio token, bearer-auth configuration, or authentication setup UX. This is a host-setting requirement, not a shipped 1.3.3 product-code correction; the investigated diagnostic hunks were not included in the installed binary or this release.
 
 ## 1.3.2 — Reliable long-running LM Studio MCP calls
 

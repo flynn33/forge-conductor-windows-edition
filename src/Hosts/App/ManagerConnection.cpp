@@ -1457,6 +1457,11 @@ ProviderModelsView ManagerConnection::providerModels(
                 WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
                 WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusBytes,
                 WINHTTP_NO_HEADER_INDEX) || status != 200U) {
+            if (status == 401U || status == 403U) {
+                return {false,
+                    "LM Studio authentication is enabled. Turn off Require Authentication in LM Studio Developer > Server Settings, then retry discovery.",
+                    {}};
+            }
             return {false, "LM Studio model discovery returned HTTP " +
                 std::to_string(status) + ".", {}};
         }

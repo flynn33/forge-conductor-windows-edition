@@ -14,6 +14,7 @@
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
+- [Release 1.3.4](releases/1.3.4.md)
 - [Release 1.3.3](releases/1.3.3.md)
 - [Release 1.3.3 validation](validation/LM-STUDIO-WORKSPACE-CONTEXT-1.3.3.md)
 - [Release 1.3.2](releases/1.3.2.md)

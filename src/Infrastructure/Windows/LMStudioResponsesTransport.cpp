@@ -1134,7 +1134,7 @@ private:
         if (status == 401U || status == 403U) {
             return failure<HttpResponse>(
                 Domain::ErrorCodes::Unauthorized,
-                "LM Studio rejected the configured local bearer token.");
+                "LM Studio authentication is enabled. Forge Conductor requires the local LM Studio server to allow unauthenticated loopback requests; turn off Require Authentication in LM Studio Developer > Server Settings.");
         }
         if (status == 408U || status == 504U) {
             return failure<HttpResponse>(
