@@ -17,13 +17,19 @@ separate operating surfaces.
 Instruction intake is an inventory pipeline rather than a text-file admission gate. The Manager streams hashes,
 persists revision identities and deterministic entry records, records directories/reparse points/read failures, and
 derives bounded text only when the bytes can be represented safely. Protocol paging uses revision-bound cursors.
-Managed work receives package identities in queue order and a bounded text projection; opaque content is recorded,
-not silently omitted.
+Managed work receives package identities in queue order and a bounded text projection. The durable agent-session goal
+limit is 128 KiB so that accepted projection can survive managed-run persistence and reach session startup; opaque
+content is recorded, not silently omitted. If the next interpreted entry cannot fit beside the task and package
+headers, run admission returns an explicit payload error without advancing that durable queue cursor. Successful admission persists the exact bounded cursor plan with a dispatch-pending run before any provider or tool effect. Cursor updates for all selected rows commit in one project-repository transaction; only after commit, or restart reconciliation of an already committed plan, does the managed-run worker dispatch. A persisted digest of the original pre-enrichment request resolves exact replay before mutable package, policy, or preference state is recomputed.
 
 CLU is composed through `IProjectPolicyService` as optional, nonblocking development governance. Its state contains
 the bound source/revision, coverage, findings, notification receipts, correction evidence, and redacted history.
 Its MCP role has no continuity operations. Runtime continuity remains owned by the managed-run service and is
-conditionally observed from the explicit `automaticContinuity` request value.
+conditionally observed from the explicit `automaticContinuity` request value. That value is persisted and participates
+in start-request idempotency across Manager restart. Each rollover derives a distinct sequenced operation/handoff
+identity from the run identity so repeated rollovers cannot collide with an earlier continuity record. Before successor
+creation, later completed work may refresh the persisted checkpoint only through compare-and-swap against its exact
+prior content digest; exact replay succeeds, while stale content and post-successor changes fail closed. Successor continuation receives a UTF-8-safe bounded restatement of the original task and newest completed work. Any unconsumed idle, preparing, checkpoint-retry, or persisted checkpoint is explicitly abandoned when its owning run terminates or rollover fails, before automation and coordinator shutdown. After the process-wide Manager lease is acquired and persistence is composed, a synchronous pre-ingress pass abandons equivalent checkpoint-only orphans left by an earlier process; failure aborts startup before LM Studio, dashboard, or Manager ingress. Periodic maintenance leaves live checkpoint-only state stable and resumes only operations with durable successor intent. The 4,096-transition operation bound reserves enough transitions for the longest allowed retry completion path and terminal cancellation.
 
 ## Build boundaries
 Retain the current CMake targets for backend libraries, manager, CLI, session host and native tests.
@@ -46,6 +52,19 @@ persistent configuration, not constants copied into separate pages. Manager IPC 
 Add support for an explicitly configured LAN model endpoint only through the same provider configuration/transport;
 network placement does not change project identity, cancellation or data-safety behavior.
 
+Work Space discovery and Responses-session bootstrap use LM Studio's native `/api/v1/models` inventory. They admit
+only valid IDs from `loaded_instances` on LLM entries, deduplicate repeated IDs, and do not treat downloaded-but-unloaded
+models or loaded embeddings as response-ready. Work Space accepts the same bounded 2 MiB inventory as the Responses
+transport, and catalog keys are never substituted for loaded instance IDs. The provider connection remains an unauthenticated same-host loopback
+contract; this inventory correction adds no bearer-token path.
+
+Native-shell execution replaces caller-provided `PATH`, `PATHEXT`, and `COMSPEC` with a bounded environment built from
+Windows, installed-tool, and machine-level locations. The same resolver supplies Manager, CLI/MCP, policy import,
+Doctor, native-shell execution, and LM Studio serve verification. HKCU `PATH` is not imported, so per-user command
+shims cannot change product command resolution. Registry strings are read raw from HKLM with no-expand semantics;
+caller-controlled environment variables are not substituted into machine configuration, and only absolute, existing,
+non-reparse machine directories enter the search path.
+
 Forge writes an exact integer `timeout: 180000` to the Primary, Fallback, and CLU LM Studio registrations. The configuration codec, deployed bridge state, and host-synchronization acknowledgment validate the same value. LM Studio owns this outer request deadline; Forge `shell_exec` requests remain capped at 120 seconds. `FallbackPromoted` is derived health/status, not automatic call routing. A timed-out request is never replayed across roles because a mutating call can have an ambiguous completion state.
 
 The MCP composition root binds the current working directory through the project registry and projects that authoritative binding into both the protocol-level `initialize.instructions` field and `forge_status`. The projection also reads the ordered instruction-package queue from project memory and the active policy source/revision from `IProjectPolicyService`. Handoff paths and continuity implicit roots are evidence carried by those subsystems, not substitutes for the registered project root. The LM Studio serve verifier treats missing or malformed bootstrap instructions as deployment drift.
@@ -65,10 +84,10 @@ The Mac Swift source is behavioral evidence only. No Swift binaries belong in th
 
 ## Product and package identity
 
-`ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `1.3.4` value; the stable MSIX identity is `ForgeConductor.Windows` with numeric version `1.3.4.0`. The packaged GUI displays its actual installed package version in the navigation footer, operational context, and locally exported diagnostic context. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` compatibility option. Production view state retains stable registry names; isolated profiles derive deterministic per-profile names and validate a saved project ID against the authoritative Manager snapshot before use.
+`ForgeConductor::Domain::ProductIdentity` is the single native product-version source consumed by the Manager, CLI/MCP host, LM Studio transports, and diagnostics. CMake and packaging validate the same `1.3.5` value; the stable MSIX identity is `ForgeConductor.Windows` with numeric version `1.3.5.0`. The packaged GUI displays its actual installed package version in the navigation footer, operational context, and locally exported diagnostic context. Release staging records the commit, tree, configuration, architecture, and hashes of all four product executables before packaging. The Manager uses a dedicated process exit code for an unsupported newer central store so the GUI can explain the non-destructive failure and the explicit disposable `--alpha-root` compatibility option. Production view state retains stable registry names; isolated profiles derive deterministic per-profile names and validate a saved project ID against the authoritative Manager snapshot before use.
 
 Terminal managed-run summaries now carry an unkeyed SHA-256 consistency seal over the persisted summary and immutable run/project/client/task identities. The native run store recalculates it on read and reports verified, mismatch, or legacy-unsealed status. This detects accidental or partial alteration, but it is not an authenticity signature against an actor able to rewrite both the record and seal. The exact-project Events & Evidence projection reads this durable store independently of the live run cache and exposes response provenance, token counts, and redacted task/stored-output digests. The local export excludes task and model text. Record integrity and a completed provider response are not task-outcome verification; until an approved native task check is attached and executed, the result is explicitly unverified.
 
-Ordinary startup selects `%LOCALAPPDATA%\Forge Conductor`. The MSIX manifest exempts only that directory from AppData write virtualization through `unvirtualizedResources`, keeping project, settings, memory, and continuity stores outside package-private data that Windows removes on uninstall. A focused manifest contract test rejects a broader exclusion or any different profile path. Central schema versions 3, 5, 6, 7, 8, 9, and 10 are handled explicitly; version 9 receives a guarded, backed-up C010 upgrade and unsupported future versions are refused without mutation. Newly recorded native MCP outcomes retain exact role/deployment provenance; earlier audit rows remain unqualified.
+Ordinary startup selects `%LOCALAPPDATA%\Forge Conductor`. The MSIX manifest exempts only that directory from AppData write virtualization through `unvirtualizedResources`, keeping project, settings, memory, and continuity stores outside package-private data that Windows removes on uninstall. A focused manifest contract test rejects a broader exclusion or any different profile path. Central schema versions 3, 5, 6, 7, 8, 9, 10, and 11 are handled explicitly; released version 9 receives guarded, backed-up C010 and C011 upgrades, current version 11 reopens byte-stably, and unsupported future versions are refused without mutation. Newly recorded native MCP outcomes retain exact role/deployment and project provenance; earlier audit rows remain unqualified.
 
-Historical phase records are retained under `docs/implementation/alpha-recovery/`; [Product status](STATUS.md) is authoritative for the current release.
+Historical phase records are retained under `docs/implementation/alpha-recovery/`; [Product status](STATUS.md) is authoritative for the current product candidate and latest-published distinction.

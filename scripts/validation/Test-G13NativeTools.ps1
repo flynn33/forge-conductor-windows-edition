@@ -313,10 +313,12 @@ $p13Files = @(
     'include/ForgeConductor/Domain/FileSystemModels.h',
     'include/ForgeConductor/Domain/PdfModels.h',
     'include/ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h',
+    'include/ForgeConductor/Infrastructure/Windows/WindowsMachineToolResolver.h',
     'include/ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h',
     'src/Infrastructure/Windows/Detail/WindowsPathResolver.h',
     'src/Infrastructure/Windows/Detail/WindowsPathResolver.cpp',
     'src/Infrastructure/Windows/WindowsLegacyContinuityProjectionStore.cpp',
+    'src/Infrastructure/Windows/WindowsMachineToolResolver.cpp',
     'src/Infrastructure/Windows/WindowsWorkspaceAuthority.cpp',
     'tests/Continuity/LegacyContinuityPersistenceWindowsTests.cpp',
     'tests/Contracts/NativeToolBoundaryFakeContractTests.h',
@@ -676,6 +678,38 @@ Assert-Match $shellSource `
     'shell passes its durable local stop token to the supervisor' -CaseSensitive
 Assert-Match $shellSource 'operationCancellation->request_stop\(\)' `
     'shell cancellation persists before supervisor admission' -CaseSensitive
+Assert-NoMatch $shellSource 'HKEY_CURRENT_USER|UserEnvironmentKey' `
+    'shell execution excludes per-user PATH entries and command shims' `
+    -CaseSensitive
+$machineResolverSource = Get-Content -Raw -LiteralPath (Join-Path `
+    $WorkspaceRoot `
+    'src\Infrastructure\Windows\WindowsMachineToolResolver.cpp')
+Assert-Match $machineResolverSource 'HKEY_LOCAL_MACHINE' `
+    'machine-tool resolution uses product-wide machine configuration' `
+    -CaseSensitive
+Assert-NoMatch $machineResolverSource `
+    'HKEY_CURRENT_USER|GetEnvironmentVariableW\s*\(\s*L"PATH"' `
+    'machine-tool resolution excludes ambient and per-user PATH configuration' `
+    -CaseSensitive
+Assert-Match $machineResolverSource 'RRF_NOEXPAND' `
+    'machine-tool resolution does not expand machine values through caller environment variables' `
+    -CaseSensitive
+$machineToolConsumers = @(
+    'src\NativeTools\Windows\WindowsShellService.cpp',
+    'src\Hosts\Manager\ManagerCompositionRoot.cpp',
+    'src\Hosts\Cli\McpServeCompositionRoot.cpp',
+    'src\Infrastructure\Windows\WindowsPolicySourceReader.cpp',
+    'src\Infrastructure\Windows\WindowsLMStudioServeVerifier.cpp',
+    'src\Composition\Windows\ManagerDoctorService.cpp')
+foreach ($consumer in $machineToolConsumers) {
+    $consumerSource = Get-Content -Raw -LiteralPath (
+        Join-Path $WorkspaceRoot $consumer)
+    Assert-Match $consumerSource 'WindowsMachineToolResolver' `
+        "$consumer uses shared machine-tool resolution" -CaseSensitive
+    Assert-NoMatch $consumerSource `
+        'SearchPathW\s*\(\s*nullptr|GetEnvironmentVariableW\s*\(\s*L"PATH"' `
+        "$consumer excludes ambient PATH tool resolution" -CaseSensitive
+}
 Assert-NoMatch $shellSource `
     'processSupervisor\s*->\s*(?:cancelAll|shutdown)\s*\(' `
     'shell does not cancel all work or shut down its shared supervisor' `

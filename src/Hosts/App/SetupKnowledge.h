@@ -32,7 +32,7 @@ inline constexpr std::array SetupKnowledge{
     HelpArticle{L"Read Rig telemetry", L"Rig shows resource, provider, storage, process, context, continuity, and workflow observations. Missing, stale, or disconnected data is not a zero measurement."},
     HelpArticle{L"Use Activity evidence", L"Activity correlates operational outcomes with project/run identity and governance findings. A model response, process completion, native check, and policy evaluation are distinct evidence types."},
     HelpArticle{L"Settings and recovery", L"Settings persists runtime preferences and exposes explicitly scoped maintenance. Check the selected project and confirmation text before reset operations; a reset is not a routine provider-recovery step."},
-    HelpArticle{L"Report a problem", L"Record version 1.3.4, project identity, provider profile, package revision or policy revision when relevant, action, expected result, actual result, error text, and time. Remove credentials and private content before sharing diagnostics."},
+    HelpArticle{L"Report a problem", L"Record version 1.3.5, project identity, provider profile, package revision or policy revision when relevant, action, expected result, actual result, error text, and time. Remove credentials and private content before sharing diagnostics."},
 };
 
 } // namespace ForgeConductor::Hosts::App

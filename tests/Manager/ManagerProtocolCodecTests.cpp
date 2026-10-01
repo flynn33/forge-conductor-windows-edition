@@ -210,6 +210,10 @@ void replaceOne(
             {},
             Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'600'123LL}},
             Domain::UtcTimePoint{std::chrono::milliseconds{1'767'225'601'456LL}},
+            false,
+            std::nullopt,
+            Domain::ManagedRunEvidenceIntegrity::NotTerminal,
+            {},
             false},
         true,
         false};
@@ -569,6 +573,7 @@ void testManagedRunResultRoundTrips()
     REQUIRE(root.at("result").at("type") == "managed_run");
     REQUIRE(root.at("result").at("value").size() == 19U);
     REQUIRE(root.at("result").at("value").at("allow_tools") == false);
+    REQUIRE(!root.at("result").at("value").contains("automatic_continuity"));
     const auto decoded = take(
         Manager::ManagerProtocolCodec::decodeResponse(frame));
     const auto& actual = std::get<Domain::ManagedRunSnapshot>(
@@ -581,10 +586,20 @@ void testManagedRunResultRoundTrips()
     REQUIRE(actual.record.retainedContextTokens == 4096U);
     REQUIRE(actual.record.outputText == "The managed result.");
     REQUIRE(!actual.record.allowTools);
+    REQUIRE(actual.record.automaticContinuity);
     REQUIRE(actual.managerOwned);
     REQUIRE(!actual.cancellationRequested);
     REQUIRE(!actual.pauseRequested);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+
+    auto transitionalRoot = root;
+    transitionalRoot["result"]["value"]["automatic_continuity"] = false;
+    const auto transitional = take(
+        Manager::ManagerProtocolCodec::decodeResponse(
+            frameFromJson(transitionalRoot)));
+    const auto& transitionalRun = std::get<Domain::ManagedRunSnapshot>(
+        std::get<Manager::ManagerResult>(transitional.body));
+    REQUIRE(!transitionalRun.record.automaticContinuity);
 }
 
 void testManagerTelemetryRoundTripsWithoutLosingAvailability()
@@ -599,6 +614,8 @@ void testManagerTelemetryRoundTripsWithoutLosingAvailability()
                 .at("gpus").at(0).at("utilization_percent").is_null());
     REQUIRE(root.at("result").at("value").at("store_healthy")
                 .at("availability") == "temporarily_unavailable");
+    REQUIRE(!root.at("result").at("value").at("selected_run")
+                 .contains("automatic_continuity"));
 
     const auto decoded = take(
         Manager::ManagerProtocolCodec::decodeResponse(frame));

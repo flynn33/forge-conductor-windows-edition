@@ -19,6 +19,7 @@ struct ManagedRunToolDependencies final {
     Contracts::IToolCatalog* catalog{};
     Contracts::IToolRouter* router{};
     Contracts::IWorkspaceAuthority* workspaceAuthority{};
+    Contracts::IProjectMemoryService* projectMemory{};
 };
 
 struct ManagedRunContinuityDependencies final {
@@ -47,7 +48,12 @@ public:
     ManagedRunService(ManagedRunService&&) = delete;
     ManagedRunService& operator=(ManagedRunService&&) = delete;
 
-    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> start(
+    [[nodiscard]] Domain::Result<
+        std::optional<Domain::ManagedRunSnapshot>> resolveReplay(
+        const Domain::ManagedRunStartRequest& request,
+        const Domain::OperationContext& context) noexcept override;
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunStartOutcome> start(
         const Domain::ManagedRunStartRequest& request,
         const Domain::OperationContext& context) noexcept override;
 

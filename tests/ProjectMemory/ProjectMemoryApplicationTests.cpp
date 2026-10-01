@@ -94,6 +94,12 @@ struct Fixture final {
                 projectId, {record()}, 512U, limits.defaultResponseBytes}));
         repository->updateResult.set(
             Domain::Result<Domain::ProjectMemoryRecord>::success(record()));
+        repository->updateBatchResult.set(
+            Domain::Result<Domain::MemoryUpdateBatchOutcome>::success(
+                Domain::MemoryUpdateBatchOutcome{
+                    projectId, {record()},
+                    Domain::ProjectMemorySchemaVersion,
+                    Domain::ProjectMemoryCapabilityVersion}));
         repository->forgetResult.set(
             Domain::Result<Domain::ForgetOutcome>::success(
                 Domain::ForgetOutcome{
@@ -289,6 +295,24 @@ void allTwelveOperationsAndRedaction()
             std::nullopt,
             std::nullopt},
         operation));
+    REQUIRE(service.updateBatch(
+        Domain::UpdateProjectMemoryBatchRequest{
+            fixture.projectId,
+            {Domain::UpdateProjectMemoryRequest{
+                fixture.projectId,
+                fixture.recordId,
+                1U,
+                std::nullopt,
+                std::nullopt,
+                std::nullopt,
+                std::nullopt}}},
+        operation));
+    const auto* updatedBatch = std::get_if<
+        Domain::UpdateProjectMemoryBatchRequest>(
+        &fixture.repository->lastRequest().value());
+    REQUIRE(updatedBatch != nullptr);
+    REQUIRE(updatedBatch->projectId == fixture.projectId);
+    REQUIRE(updatedBatch->updates.size() == 1U);
     REQUIRE(service.forget(
         Domain::ForgetProjectMemoryRequest{fixture.projectId, fixture.recordId},
         operation));

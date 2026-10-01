@@ -13,6 +13,7 @@ namespace ForgeConductor::Domain {
 
 inline constexpr std::size_t MaximumManagedRunTaskBytes = 128U * 1024U;
 inline constexpr std::size_t MaximumManagedRunOutputBytes = 256U * 1024U;
+inline constexpr std::size_t MaximumManagedRunCursorAdvances = 16U;
 
 enum class ManagedRunState {
     Running,
@@ -28,6 +29,12 @@ enum class ManagedRunEvidenceIntegrity {
     LegacyUnsealed,
     Verified,
     Mismatch
+};
+
+enum class ManagedRunDispatchPhase {
+    CursorPending,
+    Ready,
+    ProviderClaimed
 };
 
 struct ManagedNativeTaskCheck final {
@@ -52,6 +59,16 @@ struct ManagedFunctionCall final {
 struct ManagedFunctionCallOutput final {
     std::string callId;
     std::string canonicalOutput;
+};
+
+struct ManagedRunInstructionCursorAdvance final {
+    MemoryRecordId recordId;
+    std::uint32_t expectedVersion{};
+    std::string queueRowId;
+    std::uint64_t targetEntry{};
+    bool completed{};
+
+    bool operator==(const ManagedRunInstructionCursorAdvance&) const = default;
 };
 
 struct ManagedProviderTurnRequest final {
@@ -94,6 +111,17 @@ struct ManagedRunRecord final {
     ManagedRunEvidenceIntegrity evidenceIntegrity{
         ManagedRunEvidenceIntegrity::NotTerminal};
     std::vector<ManagedNativeTaskCheck> nativeTaskChecks;
+    bool automaticContinuity{true};
+    // Stable identity of the caller's pre-enrichment start request. Manager
+    // policy and instruction snapshots may change after initial admission.
+    std::optional<Sha256Digest> admissionIdentity;
+    // Pending admissions are durable but cannot dispatch until the exact
+    // instruction cursor plan is committed or reconciled.
+    bool dispatchPending{};
+    std::vector<ManagedRunInstructionCursorAdvance> instructionCursorAdvances;
+    ManagedRunDispatchPhase dispatchPhase{ManagedRunDispatchPhase::Ready};
+    std::optional<OperationId> dispatchOperationId;
+    std::optional<CorrelationId> dispatchCorrelationId;
 };
 
 struct ManagedRunStartRequest final {
@@ -106,6 +134,8 @@ struct ManagedRunStartRequest final {
     std::string task;
     bool allowTools{true};
     bool automaticContinuity{true};
+    std::optional<Sha256Digest> admissionIdentity;
+    std::vector<ManagedRunInstructionCursorAdvance> instructionCursorAdvances;
 };
 
 struct ManagedRunSnapshot final {
@@ -113,6 +143,17 @@ struct ManagedRunSnapshot final {
     bool managerOwned{true};
     bool cancellationRequested{};
     bool pauseRequested{};
+};
+
+enum class ManagedRunAdmissionDisposition {
+    Admitted,
+    Replayed
+};
+
+struct ManagedRunStartOutcome final {
+    ManagedRunSnapshot snapshot;
+    ManagedRunAdmissionDisposition disposition{
+        ManagedRunAdmissionDisposition::Admitted};
 };
 
 } // namespace ForgeConductor::Domain

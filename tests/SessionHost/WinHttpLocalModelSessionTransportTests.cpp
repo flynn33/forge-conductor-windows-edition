@@ -762,8 +762,8 @@ void lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId()
         "\",\"successor_session_id\":\"" +
         std::string{SuccessorSessionIdText} + "\"}";
     ResponseScript models{
-        "GET", "/v1/models", 200U,
-        R"({"object":"list","data":[{"id":"fixture-model","owned_by":"local"}]})"};
+        "GET", "/api/v1/models", 200U,
+        R"({"models":[{"type":"llm","key":"fixture-model","loaded_instances":[{"id":"fixture-model"}]}]})"};
     ResponseScript toolCall{
         "POST", "/v1/responses", 200U,
         "{\"id\":\"resp_fresh_root\",\"status\":\"completed\","
@@ -825,8 +825,8 @@ void lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId()
 void lmStudioResponsesCompletesAnOrdinaryManagedTurn()
 {
     ResponseScript models{
-        "GET", "/v1/models", 200U,
-        R"({"object":"list","data":[{"id":"fixture-model"}]})"};
+        "GET", "/api/v1/models", 200U,
+        R"({"models":[{"type":"llm","key":"fixture-model","loaded_instances":[{"id":"fixture-model"}]}]})"};
     ResponseScript ordinary{
         "POST", "/v1/responses", 200U,
         R"({"id":"resp_ordinary","status":"completed","output_text":"ordinary result","usage":{"input_tokens":12,"output_tokens":4}})"};
@@ -863,8 +863,8 @@ void lmStudioResponsesCompletesAnOrdinaryManagedTurn()
 void lmStudioResponsesCorrelatesManagedFunctionOutput()
 {
     ResponseScript models{
-        "GET", "/v1/models", 200U,
-        R"({"object":"list","data":[{"id":"fixture-model"}]})"};
+        "GET", "/api/v1/models", 200U,
+        R"({"models":[{"type":"llm","key":"fixture-model","loaded_instances":[{"id":"fixture-model"}]}]})"};
     ResponseScript toolCall{
         "POST", "/v1/responses", 200U,
         R"({"id":"resp_tool_call","status":"completed","output":[{"type":"function_call","name":"fixture_read","call_id":"call_fixture_1","arguments":"{\"path\":\"README.md\"}"}],"usage":{"input_tokens":20,"output_tokens":3}})"};
@@ -1184,13 +1184,13 @@ void providerSettingsApplyToNewRunsAndPreserveExistingRuns()
             {"usage", {{"input_tokens", 1}, {"output_tokens", 1}}}}.dump();
     };
     LoopbackHttpServer first{{
-        {"GET", "/v1/models", 200U, R"({"data":[{"id":"first-model"}]})"},
+        {"GET", "/api/v1/models", 200U, R"({"models":[{"type":"llm","key":"first-model","loaded_instances":[{"id":"first-model"}]}]})"},
         {"POST", "/v1/responses", 200U, reply("first-response")},
         {"POST", "/v1/responses", 200U, reply("continued-response")},
-        {"GET", "/v1/models", 200U, R"({"data":[{"id":"first-model"}]})"},
+        {"GET", "/api/v1/models", 200U, R"({"models":[{"type":"llm","key":"first-model","loaded_instances":[{"id":"first-model"}]}]})"},
         {"POST", "/v1/responses", 200U, reply("recovered-response")}}};
     LoopbackHttpServer second{{
-        {"GET", "/v1/models", 200U, R"({"data":[{"id":"second-model"}]})"},
+        {"GET", "/api/v1/models", 200U, R"({"models":[{"type":"llm","key":"second-model","loaded_instances":[{"id":"second-model"}]}]})"},
         {"POST", "/v1/responses", 200U, reply("second-response")}}};
     std::uint16_t selectedPort = first.port();
     int resolved{};
@@ -1291,7 +1291,7 @@ void automaticModelPreparationRejectsUnusableAndMalformedInventory()
 void lmStudioAuthenticationRequirementIsDiagnosed()
 {
     LoopbackHttpServer server{{
-        {"GET", "/v1/models", 401U,
+        {"GET", "/api/v1/models", 401U,
          R"({"error":{"code":"invalid_api_key"}})"}}};
     InfrastructureWindows::LMStudioResponsesTransport transport{
         responsesConfiguration(server.port())};
@@ -1307,6 +1307,353 @@ void lmStudioAuthenticationRequirementIsDiagnosed()
         "turn off Require Authentication") != std::string::npos);
     REQUIRE(server.waitUntilHandled(1U, 5s));
     server.requireHealthy();
+}
+
+void workspaceProviderDiscoveryAndTestUseLoadedInventory()
+{
+    const std::string inventory = Json{{"models", Json::array({
+        {{"type", "llm"}, {"key", "downloaded-only"},
+         {"loaded_instances", Json::array()}},
+        {{"type", "embedding"}, {"key", "loaded-embedding"},
+         {"loaded_instances", Json::array({{{"id", "loaded-embedding"}}})}},
+        {{"type", "llm"}, {"key", "catalog-model-key"},
+         {"metadata_padding", std::string(70U * 1024U, 'x')},
+         {"loaded_instances", Json::array({
+             {{"id", "loaded-instance-id"}},
+             {{"id", "loaded-instance-id"}}})}}})}}.dump();
+    LoopbackHttpServer server{{
+        {"GET", "/api/v1/models", 200U, inventory},
+        {"GET", "/api/v1/models", 200U, inventory}}};
+    ForgeConductor::Hosts::App::ManagerConnection connection;
+    Domain::ManagerSettings settings;
+    settings.localModelPort = server.port();
+
+    const auto discovered = connection.providerModels(settings, {});
+    REQUIRE(discovered.loaded);
+    REQUIRE(inventory.size() > 64U * 1024U);
+    REQUIRE(discovered.models ==
+            std::vector<std::string>{"loaded-instance-id"});
+    REQUIRE(discovered.message == "1 loaded model discovered.");
+    const auto tested = connection.testProvider(settings, {});
+    REQUIRE(tested ==
+        "LM Studio model discovery succeeded. Loaded model: loaded-instance-id.");
+    REQUIRE(server.waitUntilHandled(2U, 5s));
+    server.requireHealthy();
+    std::cout << "PASS workspace_provider.loaded_only_discovery_and_test\n";
+}
+
+void liveLmStudioWorkspaceProviderCheck()
+{
+    ForgeConductor::Hosts::App::ManagerConnection connection;
+    Domain::ManagerSettings settings;
+    settings.localModelHost = "127.0.0.1";
+    settings.localModelPort = 1234U;
+    settings.localModelSecure = false;
+
+    auto discovered = connection.providerModels(settings, {});
+    if (discovered.loaded && discovered.models.empty()) {
+        InfrastructureWindows::WindowsModelPreparation preparation;
+        const auto prepared = preparation.prepare(settings,
+            operationContext(
+                "45454545-4545-4545-8545-454545454545", 180s));
+        if (!prepared) {
+            throw std::runtime_error{
+                "Live model preparation failed: " + prepared.error().message};
+        }
+        discovered = connection.providerModels(settings, {});
+    }
+    if (!discovered.loaded || discovered.models.empty()) {
+        throw std::runtime_error{
+            "Live loaded-model discovery failed: " + discovered.message};
+    }
+    settings.localModelName = discovered.models.front();
+    const auto tested = connection.testProvider(settings, {});
+    if (!tested.starts_with("LM Studio model discovery succeeded.")) {
+        throw std::runtime_error{"Live connection test failed: " + tested};
+    }
+    const auto probed = connection.probeProviderContract(settings, {});
+    if (!probed.starts_with("Responses contract passed:")) {
+        throw std::runtime_error{"Live Responses probe failed: " + probed};
+    }
+    std::cout << "PASS live_workspace_provider.loaded_model="
+              << settings.localModelName << '\n'
+              << tested << '\n'
+              << probed << '\n';
+}
+
+void liveLmStudioManagedContinuityCheck()
+{
+    namespace App = ForgeConductor::Hosts::App;
+    namespace W = InfrastructureWindows;
+    App::ManagerConnection providerConnection;
+    Domain::ManagerSettings endpoint;
+    endpoint.localModelHost = "127.0.0.1";
+    endpoint.localModelPort = 1234U;
+    endpoint.localModelSecure = false;
+    const auto discovered = providerConnection.providerModels(endpoint, {});
+    if (!discovered.loaded || discovered.models.empty()) {
+        throw std::runtime_error{
+            "Live continuity requires a loaded LM Studio model: " +
+            discovered.message};
+    }
+    const auto model = discovered.models.front();
+
+    const auto root = std::filesystem::temp_directory_path() /
+        (L"ForgeConductor-live-continuity-" +
+            std::to_wstring(GetCurrentProcessId()) + L"-" +
+            std::to_wstring(GetTickCount64()));
+    const auto project = root / L"project";
+    const auto testUserProfile = root / L"user-profile";
+    std::filesystem::create_directories(project);
+    std::filesystem::create_directories(testUserProfile / L".lmstudio");
+    {
+        std::ofstream mcpConfiguration{
+            testUserProfile / L".lmstudio" / L"mcp.json"};
+        mcpConfiguration << R"({"mcpServers":{}})";
+    }
+    ScopedEnvironmentValue userProfileEnvironment{
+        L"USERPROFILE", testUserProfile.native()};
+    const auto profile = take(W::WindowsAlphaManagerProfile::create(
+        (root / L"profile").wstring()));
+    std::uint16_t dashboardPort{};
+    {
+        LoopbackHttpServer portProbe{std::vector<ResponseScript>{}};
+        dashboardPort = portProbe.port();
+    }
+    std::filesystem::create_directories(root / L"profile" / L"config");
+    {
+        std::ofstream config{
+            root / L"profile" / L"config" / L"config.json"};
+        config << Json{
+            {"schema_version", 1},
+            {"dashboard", {{"port", dashboardPort}}},
+            {"local_model",
+                {{"host", "127.0.0.1"},
+                 {"port", 1234U},
+                 {"secure", false},
+                 {"model", model},
+                 {"effective_context_capacity", 4096U},
+                 {"next_response_reserve", 1U},
+                 {"handoff_reserve", 1U},
+                 {"estimation_safety_margin", 1U}}}}
+                   .dump();
+    }
+
+    App::ManagerConnection connection{
+        std::wstring{profile.nativeDataRoot()}};
+    const auto folderBytes = project.u8string();
+    const std::string folder{
+        reinterpret_cast<const char*>(folderBytes.data()),
+        folderBytes.size()};
+    const auto started = connection.start({});
+    const auto context = [] {
+        return operationContext(
+            "56565656-5656-4565-8565-565656565656", 30s);
+    };
+    auto clock = std::make_shared<W::SystemClock>();
+    auto identity = take(W::WindowsCurrentUserIdentity::load());
+    W::WindowsManagerInstanceLeaseOptions options;
+    options.purposeSuffix = profile.purposeSuffix();
+    auto names = take(W::WindowsManagerInstanceLease::namesFor(
+        identity, options));
+    W::DpapiSecureStorage secure{
+        std::wstring{profile.secureStorageRegistrySubkey()}};
+    W::WindowsManagerAuthenticationTokenGenerator generator;
+    W::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
+    auto nonce = take(tokens.load(context()));
+    if (!nonce) {
+        throw std::runtime_error{
+            "The isolated live-continuity Manager has no authentication nonce."};
+    }
+    auto client = take(W::WindowsManagerNamedPipeClient::create(
+        clock, std::wstring{names.pipeName()}, *nonce));
+    struct Cleanup final {
+        std::unique_ptr<W::WindowsManagerNamedPipeClient>& client;
+        ~Cleanup()
+        {
+            if (client) {
+                (void)client->requestShutdown(operationContext(
+                    "56565656-5656-4565-8565-565656565657", 30s));
+            }
+        }
+    } cleanup{client};
+
+    const auto configured = connection.providerSettings({});
+    if (!configured.loaded) {
+        throw std::runtime_error{
+            "Live continuity settings readback failed after " + started +
+            " " + configured.message};
+    }
+    if (configured.settings.effectiveContextCapacity != 4096U ||
+        configured.settings.nextResponseReserve != 1U ||
+        configured.settings.handoffReserve != 1U ||
+        configured.settings.estimationSafetyMargin != 1U) {
+        throw std::runtime_error{
+            "Live continuity settings did not preserve the isolated context "
+            "budget."};
+    }
+    const auto service = connection.control(
+        Domain::ManagerControlAction::Start, {});
+    if (!service.starts_with("Manager service is active.")) {
+        throw std::runtime_error{
+            "Live continuity Manager service did not start: " + service};
+    }
+    const auto initialized = connection.initializeProject(
+        folder, "Live continuity fixture", {});
+    if (!initialized.loaded || !initialized.snapshot) {
+        throw std::runtime_error{
+            "Live continuity project initialization failed: " +
+            initialized.message};
+    }
+    const auto projectId = initialized.snapshot->project.id.value();
+
+    const auto package = root / L"instruction-package";
+    std::filesystem::create_directories(package);
+    {
+        std::ofstream guidance{package / L"CONTEXT.md", std::ios::binary};
+        guidance << "This reference is inert context padding. The user task "
+                    "remains authoritative.\n";
+        for (std::size_t index{}; index < 3'000U; ++index) {
+            guidance << "continuity context padding " << index << "\n";
+        }
+    }
+    const auto packageBytes = package.u8string();
+    const std::string packagePath{
+        reinterpret_cast<const char*>(packageBytes.data()),
+        packageBytes.size()};
+    const auto inspectedPackage = connection.instructionPackage(
+        projectId, packagePath, false, {}, {});
+    if (!inspectedPackage.loaded || !inspectedPackage.snapshot ||
+        inspectedPackage.snapshot->fileCount != 1U) {
+        throw std::runtime_error{
+            "Live continuity instruction-package inspection failed: " +
+            inspectedPackage.message};
+    }
+    const auto activatedPackage = connection.instructionPackage(
+        projectId, packagePath, true,
+        inspectedPackage.snapshot->revision.value(), {});
+    if (!activatedPackage.loaded || !activatedPackage.snapshot ||
+        !activatedPackage.snapshot->activated) {
+        throw std::runtime_error{
+            "Live continuity instruction-package activation failed: " +
+            activatedPackage.message};
+    }
+
+    const auto seed = "LIVE_CONTINUITY_" +
+        std::to_string(GetCurrentProcessId()) + "_" +
+        std::to_string(GetTickCount64());
+    {
+        std::ofstream seedFile{
+            project / L"live-continuity-seed.txt", std::ios::binary};
+        seedFile << seed;
+    }
+    std::string task =
+        "First call fs_read on live-continuity-seed.txt. Its content is "
+        "unknown to you. After the read, return that exact content as your "
+        "entire final response with no second tool call. Do not guess or "
+        "answer before reading the file.";
+    auto run = connection.startManagedRun(
+        projectId, "forge-conductor-manager", 0U,
+        std::move(task), true, {}, true);
+    if (!run.loaded || !run.snapshot) {
+        throw std::runtime_error{
+            "Live continuity run did not start: " + run.message};
+    }
+    const auto runId = run.snapshot->record.runId.value();
+    const auto deadline = std::chrono::steady_clock::now() + 8min;
+    while ((run.snapshot->record.state == Domain::ManagedRunState::Running ||
+               run.snapshot->record.state == Domain::ManagedRunState::Paused) &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(250ms);
+        run = connection.controlManagedRun(
+            runId, App::ManagedRunAction::Status, {});
+        if (!run.loaded || !run.snapshot) {
+            throw std::runtime_error{
+                "Live continuity status failed: " + run.message};
+        }
+    }
+    if (run.snapshot->record.state != Domain::ManagedRunState::Completed) {
+        const auto detail = run.snapshot->record.lastError
+            ? run.snapshot->record.lastError->code + ": " +
+                run.snapshot->record.lastError->message
+            : std::string{"no Manager error detail"};
+        throw std::runtime_error{
+            "Live continuity run did not complete: " + detail};
+    }
+    auto finalText = run.snapshot->record.outputText.value_or("");
+    while (!finalText.empty() &&
+           (finalText.back() == '\r' || finalText.back() == '\n' ||
+               finalText.back() == ' ' || finalText.back() == '\t')) {
+        finalText.pop_back();
+    }
+    const auto firstContent = finalText.find_first_not_of("\r\n \t");
+    if (firstContent != std::string::npos && firstContent != 0U) {
+        finalText.erase(0U, firstContent);
+    }
+    if (finalText != seed) {
+        throw std::runtime_error{
+            "Live continuity successor did not return the predecessor's "
+            "unknown native-tool result exactly. Final response: " +
+            finalText};
+    }
+    if (!run.snapshot->record.providerResponseId) {
+        throw std::runtime_error{
+            "Live continuity completed without a canonical provider response."};
+    }
+    const auto workspace = connection.projectMemory(
+        projectId, {}, {}, true);
+    if (!workspace.loaded || !workspace.snapshot) {
+        throw std::runtime_error{
+            "Live continuity evidence readback failed: " + workspace.message};
+    }
+    if (workspace.snapshot->continuityOperationCount == 0U ||
+        workspace.snapshot->continuityHandoffCount == 0U ||
+        workspace.snapshot->continuityActive ||
+        workspace.snapshot->continuityRecoveryRequired) {
+        throw std::runtime_error{
+            "Live continuity did not leave a completed, recoverable-free "
+            "successor chain."};
+    }
+    std::ifstream ledgerFile{
+        root / L"profile" / L"memory" / L"native-session-ledger.json",
+        std::ios::binary};
+    const Json ledger = Json::parse(std::string{
+        std::istreambuf_iterator<char>{ledgerFile},
+        std::istreambuf_iterator<char>{}});
+    const auto record = std::find_if(
+        ledger.at("records").begin(), ledger.at("records").end(),
+        [&](const Json& candidate) {
+            return candidate.value("operation_id", "") == runId;
+        });
+    if (record == ledger.at("records").end() ||
+        record->value("project_id", "") != projectId ||
+        record->value("handoff_id", "") != runId ||
+        record->value("predecessor_session_id", "") != runId ||
+        record->value("status", "") != "ready" ||
+        record->value("session_id", "").empty() ||
+        record->value("provider_session_id", "").empty() ||
+        record->value("provider_session_id", "").starts_with(
+            "forge-pending-") ||
+        record->value("provider_session_id", "") ==
+            run.snapshot->record.providerResponseId->value()) {
+        throw std::runtime_error{
+            "Live continuity native successor ledger binding is incomplete."};
+    }
+    std::cout << "PASS live_continuity.successor_lifecycle model=" << model
+              << " project=" << projectId
+              << " run=" << runId
+              << " handoff=" << runId
+              << " successor_session=" << record->at("session_id").get<std::string>()
+              << " bootstrap_response="
+              << record->at("provider_session_id").get<std::string>()
+              << " final_response="
+              << run.snapshot->record.providerResponseId->value()
+              << " operations="
+              << workspace.snapshot->continuityOperationCount
+              << " handoffs=" << workspace.snapshot->continuityHandoffCount
+              << " retained_tokens="
+              << run.snapshot->record.retainedContextTokens.value_or(0U)
+              << " fixture=" << root.string() << '\n';
 }
 
 template <typename ContextFactory>
@@ -1388,6 +1735,37 @@ void projectMemoryDisplayAllConcatenatesManagerPages(
         "Loaded all " + std::to_string(expectedRecordCount) +
             " memory records.");
     std::cout << "PASS manager_connection.project_memory_display_all_pages\n";
+
+    const auto forget = [&](const std::string& recordId) {
+        const auto outcome = connection.invokeTool(projectId,
+            "project_memory.forget",
+            Json{{"project_id", projectId}, {"id", recordId}}.dump(), {});
+        REQUIRE(outcome.loaded);
+        REQUIRE(outcome.snapshot.has_value());
+        REQUIRE(outcome.snapshot->ok);
+    };
+    forget(seededRecordIds[0]);
+    const auto afterSingle = connection.projectMemory(projectId, {}, {}, true);
+    REQUIRE(afterSingle.loaded && afterSingle.snapshot);
+    REQUIRE(afterSingle.snapshot->recordCount == expectedRecordCount - 1U);
+    REQUIRE(std::none_of(afterSingle.snapshot->records.begin(),
+        afterSingle.snapshot->records.end(), [&](const auto& record) {
+            return record.id.value() == seededRecordIds[0];
+        }));
+
+    forget(seededRecordIds[1]);
+    forget(seededRecordIds[2]);
+    const auto afterMultiple = connection.projectMemory(projectId, {}, {}, true);
+    REQUIRE(afterMultiple.loaded && afterMultiple.snapshot);
+    REQUIRE(afterMultiple.snapshot->recordCount == expectedRecordCount - 3U);
+    for (const auto& removed : {seededRecordIds[0], seededRecordIds[1],
+             seededRecordIds[2]}) {
+        REQUIRE(std::none_of(afterMultiple.snapshot->records.begin(),
+            afterMultiple.snapshot->records.end(), [&](const auto& record) {
+                return record.id.value() == removed;
+            }));
+    }
+    std::cout << "PASS manager_connection.project_memory_single_and_multi_delete\n";
 }
 
 void automaticSetupUsesRealManagerAndPersistsProject()
@@ -1399,15 +1777,15 @@ void automaticSetupUsesRealManagerAndPersistsProject()
             {"usage", {{"input_tokens", 1}, {"output_tokens", 1}}}}.dump();
     };
     const auto inventory = R"({"models":[{"type":"llm","key":"test-model","capabilities":{"trained_for_tool_use":true},"loaded_instances":[{"id":"test-model","config":{"context_length":32768}}]}]})";
-    const auto models = R"({"data":[{"id":"test-model"}]})";
+    const auto models = R"({"models":[{"type":"llm","key":"test-model","loaded_instances":[{"id":"test-model","config":{"context_length":32768}}]}]})";
     LoopbackHttpServer server{{
         {"GET", "/api/v1/models", 200U, inventory},
-        {"GET", "/v1/models", 200U, models},
+        {"GET", "/api/v1/models", 200U, models},
         {"POST", "/v1/responses", 200U, reply("setup-check-1")},
         {"GET", "/api/v1/models", 200U, inventory},
-        {"GET", "/v1/models", 200U, models},
+        {"GET", "/api/v1/models", 200U, models},
         {"POST", "/v1/responses", 200U, reply("setup-check-2")},
-        {"GET", "/v1/models", 200U, models},
+        {"GET", "/api/v1/models", 200U, models},
         {"POST", "/v1/responses", 200U,
             R"({"id":"first-task-tool","status":"completed","output":[{"type":"function_call","name":"fs_write","call_id":"setup-first-write","arguments":"{\"path\":\"setup-proof.txt\",\"content\":\"Project setup completed real native work.\"}"}],"usage":{"input_tokens":20,"output_tokens":3}})"},
         {"POST", "/v1/responses", 200U, reply("first-task")}}};
@@ -1603,9 +1981,18 @@ void shutdownClosesActiveAndFutureRequests()
 
 } // namespace
 
-int main()
+int main(const int argc, const char* const argv[])
 {
     try {
+        if (argc == 2 && std::string_view{argv[1]} == "--live-lmstudio") {
+            liveLmStudioWorkspaceProviderCheck();
+            return EXIT_SUCCESS;
+        }
+        if (argc == 2 &&
+            std::string_view{argv[1]} == "--live-lmstudio-continuity") {
+            liveLmStudioManagedContinuityCheck();
+            return EXIT_SUCCESS;
+        }
         automaticSetupUsesRealManagerAndPersistsProject();
         automaticModelPreparationCancelsPendingLoad();
         providerSettingsApplyToNewRunsAndPreserveExistingRuns();
@@ -1616,6 +2003,7 @@ int main()
         std::cout << "PASS winhttp_transport.loopback_configuration\n";
         createBootstrapAndQueryUseExactRoutes();
         std::cout << "PASS winhttp_transport.create_bootstrap_query\n";
+        workspaceProviderDiscoveryAndTestUseLoadedInventory();
         lmStudioAuthenticationRequirementIsDiagnosed();
         std::cout << "PASS lmstudio_responses.authentication_diagnostic\n";
         lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId();
@@ -1632,7 +2020,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=16 failed=0 assertions="
+        std::cout << "SUMMARY passed=18 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

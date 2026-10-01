@@ -24,6 +24,11 @@ public:
         const Domain::ContinuityHandoff& handoff,
         const Domain::OperationContext& context) noexcept = 0;
 
+    [[nodiscard]] virtual Domain::Result<void> refreshCheckpointHandoff(
+        const Domain::ContinuityHandoff& handoff,
+        const Domain::Sha256Digest& expectedHandoffSha256,
+        const Domain::OperationContext& context) noexcept = 0;
+
     [[nodiscard]] virtual Domain::Result<std::optional<Domain::ContinuityHandoff>> handoff(
         const Domain::ProjectId& projectId,
         const Domain::ContinuityHandoffId& handoffId,
@@ -103,6 +108,11 @@ public:
 
     [[nodiscard]] virtual Domain::Result<Domain::CheckpointOutcome> checkpoint(
         const Domain::CheckpointRequest& request,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<void> abandonCheckpoint(
+        const Domain::ProjectId& projectId,
+        const Domain::ContinuityOperationId& operationId,
         const Domain::OperationContext& context) noexcept = 0;
 
     [[nodiscard]] virtual Domain::Result<Domain::CheckpointOutcome> prepareHandoff(

@@ -200,6 +200,18 @@ struct UpdateProjectMemoryRequest final {
     std::optional<std::vector<std::string>> tags;
 };
 
+struct UpdateProjectMemoryBatchRequest final {
+    ProjectId projectId;
+    std::vector<UpdateProjectMemoryRequest> updates;
+};
+
+struct MemoryUpdateBatchOutcome final {
+    ProjectId projectId;
+    std::vector<ProjectMemoryRecord> records;
+    std::uint32_t schemaVersion{ProjectMemorySchemaVersion};
+    std::uint32_t capabilityVersion{ProjectMemoryCapabilityVersion};
+};
+
 struct ForgetProjectMemoryRequest final {
     ProjectId projectId;
     MemoryRecordId recordId;

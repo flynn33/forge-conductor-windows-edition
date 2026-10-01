@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.4
+    VERSION 1.3.5
     LANGUAGES CXX RC
 )
 
@@ -341,6 +341,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsManagerNamedPipeClient.cpp
     src/Infrastructure/Windows/WindowsManagerNamedPipeServer.cpp
     src/Infrastructure/Windows/WindowsManagerStartupService.cpp
+    src/Infrastructure/Windows/WindowsMachineToolResolver.cpp
     src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
     src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp

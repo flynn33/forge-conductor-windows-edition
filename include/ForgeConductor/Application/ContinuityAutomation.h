@@ -29,6 +29,11 @@ public:
         const Domain::ContinuityAutomationObservation& observation,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<void> abandonCheckpoint(
+        const Domain::ProjectId& projectId,
+        const Domain::ContinuityOperationId& operationId,
+        const Domain::OperationContext& context) noexcept override;
+
     void cancel(const Domain::OperationId& operationId) noexcept override;
     [[nodiscard]] std::size_t trackedProjectCount() const noexcept override;
     void shutdown() noexcept override;

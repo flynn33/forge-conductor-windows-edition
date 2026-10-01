@@ -579,6 +579,11 @@ void healthyPassPrunesRecoversAndInspectsWithoutDeployment()
             Fakes::ContinuityCall::RecoverIncompleteOperations) == 1U &&
             !fixture.continuity.lastProjectId(),
         "healthy maintenance did not recover all-project continuity exactly once");
+    const auto recovery = fixture.continuity.lastRecoveryRequest();
+    require(
+        recovery && recovery->resumeOperations &&
+            !recovery->abandonPreSuccessorOperations,
+        "periodic maintenance attempted to claim live pre-successor checkpoints");
     require(
         fixture.lmStudio.statusCalls() == 1U &&
             fixture.lmStudio.deployCalls() == 0U &&

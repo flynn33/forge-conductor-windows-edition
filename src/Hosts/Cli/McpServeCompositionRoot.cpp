@@ -240,148 +240,6 @@ void requireSuccess(Domain::Result<void> result)
     return pathText(take(strictWideToUtf8(buffer)));
 }
 
-[[nodiscard]] Domain::PathText discoverExecutable(const wchar_t* const name)
-{
-    const DWORD required = ::SearchPathW(nullptr, name, nullptr, 0U, nullptr, nullptr);
-    if (required == 0U || required > MaximumEnvironmentValueCharacters) {
-        throw std::runtime_error{
-            "host_capability_unavailable: A required native executable was not found."};
-    }
-    std::wstring buffer(static_cast<std::size_t>(required) + 1U, L'\0');
-    const DWORD written = ::SearchPathW(
-        nullptr, name, nullptr, static_cast<DWORD>(buffer.size()),
-        buffer.data(), nullptr);
-    if (written == 0U || written >= buffer.size()) {
-        throw std::runtime_error{
-            "host_capability_unavailable: A required native executable path could not be resolved."};
-    }
-    buffer.resize(static_cast<std::size_t>(written));
-    return pathText(take(strictWideToUtf8(buffer)));
-}
-
-[[nodiscard]] bool isSingleLinkRegularExecutable(
-    const std::filesystem::path& candidate) noexcept
-{
-    const HANDLE file = ::CreateFileW(
-        candidate.c_str(), FILE_READ_ATTRIBUTES,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        nullptr, OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
-    if (file == INVALID_HANDLE_VALUE) return false;
-    FILE_ATTRIBUTE_TAG_INFO attributes{};
-    FILE_STANDARD_INFO standard{};
-    const bool valid =
-        ::GetFileInformationByHandleEx(
-            file, FileAttributeTagInfo, &attributes, sizeof(attributes)) != FALSE &&
-        ::GetFileInformationByHandleEx(
-            file, FileStandardInfo, &standard, sizeof(standard)) != FALSE &&
-        (attributes.FileAttributes &
-            (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) == 0U &&
-        standard.DeletePending == FALSE && standard.NumberOfLinks == 1U;
-    ::CloseHandle(file);
-    return valid;
-}
-
-[[nodiscard]] Domain::PathText discoverGitExecutable()
-{
-    const auto searched = discoverExecutable(L"git.exe");
-    const auto searchedWide = take(strictUtf8ToWide(searched.value()));
-    const std::filesystem::path searchedPath{searchedWide};
-    if (isSingleLinkRegularExecutable(searchedPath)) return searched;
-
-    // Git for Windows may hard-link cmd\git.exe to git-lfs.exe. Its adjacent
-    // bin\git.exe is the supported command entry point with a unique file
-    // identity, which satisfies the process supervisor's launch invariant.
-    if (_wcsicmp(
-            searchedPath.parent_path().filename().c_str(), L"cmd") == 0) {
-        const auto candidate = searchedPath.parent_path().parent_path() /
-            L"bin" / L"git.exe";
-        if (isSingleLinkRegularExecutable(candidate)) {
-            return pathText(take(strictWideToUtf8(candidate.wstring())));
-        }
-    }
-    return searched;
-}
-
-[[nodiscard]] std::optional<Domain::PathText> tryDiscoverExecutable(
-    const wchar_t* const name)
-{
-    const DWORD required = ::SearchPathW(nullptr, name, nullptr, 0U, nullptr, nullptr);
-    if (required == 0U || required > MaximumEnvironmentValueCharacters) {
-        return std::nullopt;
-    }
-    std::wstring buffer(static_cast<std::size_t>(required) + 1U, L'\0');
-    const DWORD written = ::SearchPathW(
-        nullptr, name, nullptr, static_cast<DWORD>(buffer.size()),
-        buffer.data(), nullptr);
-    if (written == 0U || written >= buffer.size()) {
-        return std::nullopt;
-    }
-    buffer.resize(static_cast<std::size_t>(written));
-    auto converted = strictWideToUtf8(buffer);
-    if (!converted) {
-        return std::nullopt;
-    }
-    auto text = Domain::PathText::create(converted.value());
-    if (!text) {
-        return std::nullopt;
-    }
-    const auto wide = strictUtf8ToWide(text.value().value());
-    if (!wide || !isSingleLinkRegularExecutable(std::filesystem::path{wide.value()})) {
-        return std::nullopt;
-    }
-    return std::move(text).value();
-}
-
-[[nodiscard]] std::optional<std::wstring> installedProgramFilesDirectory()
-{
-    DWORD size = 0U;
-    const LSTATUS measured = ::RegGetValueW(
-        HKEY_LOCAL_MACHINE,
-        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
-        L"ProgramFilesDir",
-        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
-        nullptr, nullptr, &size);
-    if (measured != ERROR_SUCCESS || size < sizeof(wchar_t) || size > 1024U) {
-        return std::nullopt;
-    }
-    std::wstring value(size / sizeof(wchar_t), L'\0');
-    DWORD bytes = size;
-    const LSTATUS read = ::RegGetValueW(
-        HKEY_LOCAL_MACHINE,
-        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
-        L"ProgramFilesDir",
-        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
-        nullptr, value.data(), &bytes);
-    if (read != ERROR_SUCCESS) {
-        return std::nullopt;
-    }
-    while (!value.empty() && value.back() == L'\0') {
-        value.pop_back();
-    }
-    if (value.empty()) {
-        return std::nullopt;
-    }
-    return value;
-}
-
-// PowerShell 7 (pwsh.exe) is the host shell. Windows PowerShell 5.1 remains
-// the fallback when pwsh is not installed as a regular executable.
-[[nodiscard]] Domain::PathText discoverPowerShellExecutable()
-{
-    if (auto powerShell7 = tryDiscoverExecutable(L"pwsh.exe")) {
-        return std::move(*powerShell7);
-    }
-    if (const auto programFiles = installedProgramFilesDirectory()) {
-        const auto candidate = std::filesystem::path{*programFiles} /
-            L"PowerShell" / L"7" / L"pwsh.exe";
-        if (isSingleLinkRegularExecutable(candidate)) {
-            return pathText(take(strictWideToUtf8(candidate.wstring())));
-        }
-    }
-    return discoverExecutable(L"powershell.exe");
-}
-
 [[nodiscard]] Domain::PathText childPath(
     const Domain::PathText& root,
     const std::string_view relative)
@@ -699,8 +557,12 @@ private:
             *projectRegistry_, *uuidGenerator_, clientId_,
             configuration_.shell.enabled);
 
-        const auto gitExecutable = discoverGitExecutable();
-        const auto powerShellExecutable = discoverPowerShellExecutable();
+        const auto gitExecutable = take(
+            InfrastructureWindows::WindowsMachineToolResolver::
+                gitExecutable());
+        const auto powerShellExecutable = take(
+            InfrastructureWindows::WindowsMachineToolResolver::
+                powerShellExecutable());
 
         auto centralDatabase = take(PersistenceWindows::WindowsCentralDatabase::open(
             applicationPaths_, runtimeDiagnostics_, clock_, startupContext));

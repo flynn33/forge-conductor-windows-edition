@@ -17,6 +17,8 @@ namespace ForgeConductor::Domain {
 inline constexpr std::string_view ContinuityHandoffSchemaVersion = "1.0";
 inline constexpr std::size_t MaximumContinuityHandoffEncodedBytes = 128 * 1024;
 inline constexpr std::size_t MaximumContinuityHandoffListItems = 128;
+inline constexpr std::uint32_t MaximumContinuityTransitionsPerOperation = 4'096U;
+inline constexpr std::uint32_t ContinuityTerminalTransitionReserve = 2U;
 
 enum class ContinuityState {
     Idle,
@@ -44,6 +46,53 @@ enum class LegacyContinuityState {
     SuccessorAcknowledged,
     PredecessorSealed
 };
+
+[[nodiscard]] constexpr std::uint32_t
+continuityCompletionTransitionsFrom(
+    const ContinuityState resumeState) noexcept
+{
+    switch (resumeState) {
+    case ContinuityState::CheckpointPreparing: return 7U;
+    case ContinuityState::SuccessorCreating: return 5U;
+    case ContinuityState::BootstrapSending: return 3U;
+    case ContinuityState::PredecessorSealing: return 1U;
+    default: return 0U;
+    }
+}
+
+[[nodiscard]] constexpr bool canScheduleContinuityRetry(
+    const std::uint32_t currentAttempt,
+    const ContinuityState resumeState) noexcept
+{
+    const auto completionTransitions =
+        continuityCompletionTransitionsFrom(resumeState);
+    if (completionTransitions == 0U) return false;
+    // FailedRecoverable + RetryWait + resume consume three transitions. The
+    // longest remaining successful path must still fit while every
+    // nonterminal state retains Cancelling -> Cancelled capacity.
+    const auto required = 3U + completionTransitions;
+    return currentAttempt <=
+        MaximumContinuityTransitionsPerOperation - 2U - required;
+}
+
+[[nodiscard]] constexpr bool canCommitContinuityTransition(
+    const std::uint32_t currentAttempt,
+    const ContinuityState next) noexcept
+{
+    if (next == ContinuityState::Completed ||
+        next == ContinuityState::Cancelled) {
+        return currentAttempt <
+            MaximumContinuityTransitionsPerOperation - 1U;
+    }
+    if (next == ContinuityState::Cancelling) {
+        return currentAttempt <=
+            MaximumContinuityTransitionsPerOperation - 1U -
+                ContinuityTerminalTransitionReserve;
+    }
+    return currentAttempt <
+        MaximumContinuityTransitionsPerOperation - 1U -
+            ContinuityTerminalTransitionReserve;
+}
 
 [[nodiscard]] std::string_view wireName(ContinuityState value) noexcept;
 [[nodiscard]] Result<ContinuityState> parseContinuityStateWireName(
@@ -328,6 +377,7 @@ struct HostRecoveryReport final {
 struct CheckpointRequest final {
     ContinuityHandoff handoff;
     std::optional<IdempotencyKey> idempotencyKey;
+    std::optional<Sha256Digest> expectedHandoffSha256;
 };
 
 struct CheckpointOutcome final {
@@ -370,6 +420,10 @@ struct HandoffResumeOutcome final {
 struct ContinuityRecoveryRequest final {
     std::optional<ProjectId> projectId;
     bool resumeOperations{true};
+    // Only a pre-ingress startup pass under the process-wide instance lease
+    // may claim pre-existing pre-successor checkpoints as orphaned. Periodic
+    // recovery leaves live checkpoints stable.
+    bool abandonPreSuccessorOperations{};
 };
 
 struct ContinuityRecoveryReport final {

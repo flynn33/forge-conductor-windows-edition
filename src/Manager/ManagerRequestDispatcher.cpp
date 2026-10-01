@@ -40,10 +40,10 @@ namespace {
 
 [[nodiscard]] Domain::Error error(
     const std::string_view code,
-    const char* const message,
+    std::string message,
     const bool retryable = false)
 {
-    return Domain::makeError(code, message, retryable);
+    return Domain::makeError(code, std::move(message), retryable);
 }
 
 [[nodiscard]] ManagerResponse responseWithError(
@@ -207,6 +207,70 @@ struct ScannedInstructionPackage final {
         result[index * 2U + 1U] = Hex[bytes[index] & 0x0fU];
     }
     return result;
+}
+
+[[nodiscard]] Domain::Result<Domain::Sha256Digest> sha256Text(
+    const std::string_view value) noexcept
+{
+    BCRYPT_ALG_HANDLE algorithm{};
+    BCRYPT_HASH_HANDLE hash{};
+    std::vector<unsigned char> object;
+    const auto close = [&]() noexcept {
+        if (hash != nullptr) static_cast<void>(::BCryptDestroyHash(hash));
+        if (algorithm != nullptr) {
+            static_cast<void>(::BCryptCloseAlgorithmProvider(algorithm, 0));
+        }
+    };
+    try {
+        if (value.size() > (std::numeric_limits<ULONG>::max)() ||
+            ::BCryptOpenAlgorithmProvider(
+                &algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0) {
+            close();
+            return Domain::Result<Domain::Sha256Digest>::failure(error(
+                Domain::ErrorCodes::InternalFailure,
+                "The managed-run admission identity provider is unavailable."));
+        }
+        ULONG objectBytes{};
+        ULONG returned{};
+        if (::BCryptGetProperty(
+                algorithm, BCRYPT_OBJECT_LENGTH,
+                reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes),
+                &returned, 0) < 0 || returned != sizeof(objectBytes)) {
+            close();
+            return Domain::Result<Domain::Sha256Digest>::failure(error(
+                Domain::ErrorCodes::InternalFailure,
+                "The managed-run admission identity state is unavailable."));
+        }
+        object.resize(objectBytes);
+        if (::BCryptCreateHash(
+                algorithm, &hash, object.data(), objectBytes,
+                nullptr, 0, 0) < 0 ||
+            ::BCryptHashData(
+                hash,
+                reinterpret_cast<PUCHAR>(
+                    const_cast<char*>(value.data())),
+                static_cast<ULONG>(value.size()), 0) < 0) {
+            close();
+            return Domain::Result<Domain::Sha256Digest>::failure(error(
+                Domain::ErrorCodes::InternalFailure,
+                "The managed-run admission identity could not be hashed."));
+        }
+        std::array<unsigned char, 32U> bytes{};
+        if (::BCryptFinishHash(
+                hash, bytes.data(), static_cast<ULONG>(bytes.size()), 0) < 0) {
+            close();
+            return Domain::Result<Domain::Sha256Digest>::failure(error(
+                Domain::ErrorCodes::InternalFailure,
+                "The managed-run admission identity could not be finalized."));
+        }
+        close();
+        return Domain::Sha256Digest::parse(hexDigest(bytes));
+    } catch (...) {
+        close();
+        return Domain::Result<Domain::Sha256Digest>::failure(error(
+            Domain::ErrorCodes::InternalFailure,
+            "The managed-run admission identity could not be created safely."));
+    }
 }
 
 struct StreamedFile final {
@@ -1057,24 +1121,104 @@ private:
                 {"enabled", *enabled},
                 {"state", *enabled ? "preparing" : "off"},
                 {"detail", detail}};
-            Domain::ProjectMemoryWrite write;
-            write.kind = "automatic_continuity_preference";
-            write.title = providerId;
-            write.summary = *enabled
-                ? "Automatic continuity enabled"
-                : "Automatic continuity disabled";
-            write.body = document.dump();
-            write.tags = {"automatic-continuity", "provider-binding"};
-            write.importance = 1.0;
-            write.confidence = 1.0;
-            write.sourceKind = "manager_automatic_continuity";
-            write.sourceReference = providerId;
-            auto remembered = telemetrySources_.projectMemory->remember(
-                Domain::RememberProjectMemoryRequest{projectId, std::move(write)},
-                context);
-            if (!remembered) {
-                return Domain::Result<Domain::AutomaticContinuityPreference>::failure(
-                    std::move(remembered).error());
+            std::optional<Domain::ProjectMemoryRecord> existing;
+            std::optional<bool> existingEnabled;
+            std::optional<std::string> cursor;
+            do {
+                auto page = telemetrySources_.projectMemory->listRecent(
+                    Domain::ListRecentProjectMemoryRequest{
+                        projectId, {"automatic_continuity_preference"},
+                        std::nullopt, 100U, cursor, true, 256U * 1024U},
+                    context);
+                if (!page) {
+                    return Domain::Result<
+                        Domain::AutomaticContinuityPreference>::failure(
+                        std::move(page).error());
+                }
+                if (page.value().projectId != projectId) {
+                    return Domain::Result<
+                        Domain::AutomaticContinuityPreference>::failure(
+                        error(
+                            Domain::ErrorCodes::ProjectScopeMismatch,
+                            "Automatic-continuity preferences crossed project scope."));
+                }
+                try {
+                    for (const auto& hit : page.value().records) {
+                        const auto& record = hit.record;
+                        if (record.projectId != projectId ||
+                            record.kind !=
+                                "automatic_continuity_preference" ||
+                            !record.body) {
+                            continue;
+                        }
+                        const auto saved =
+                            nlohmann::json::parse(*record.body);
+                        if (saved.value(
+                                "provider_id", std::string{}) !=
+                            providerId) {
+                            continue;
+                        }
+                        existing = record;
+                        existingEnabled =
+                            saved.at("enabled").get<bool>();
+                        break;
+                    }
+                } catch (...) {
+                    return Domain::Result<
+                        Domain::AutomaticContinuityPreference>::failure(
+                        error(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The persisted automatic-continuity preference failed validation."));
+                }
+                if (existing) break;
+                cursor = page.value().nextCursor;
+            } while (cursor);
+
+            if (!existing) {
+                Domain::ProjectMemoryWrite write;
+                write.kind = "automatic_continuity_preference";
+                write.title = providerId;
+                write.summary = *enabled
+                    ? "Automatic continuity enabled"
+                    : "Automatic continuity disabled";
+                write.body = document.dump();
+                write.tags = {
+                    "automatic-continuity", "provider-binding"};
+                write.importance = 1.0;
+                write.confidence = 1.0;
+                write.sourceKind =
+                    "manager_automatic_continuity";
+                write.sourceReference = providerId;
+                auto remembered =
+                    telemetrySources_.projectMemory->remember(
+                        Domain::RememberProjectMemoryRequest{
+                            projectId, std::move(write)},
+                        context);
+                if (!remembered) {
+                    return Domain::Result<
+                        Domain::AutomaticContinuityPreference>::failure(
+                        std::move(remembered).error());
+                }
+            } else if (existingEnabled != enabled) {
+                auto updated = telemetrySources_.projectMemory->update(
+                    Domain::UpdateProjectMemoryRequest{
+                        projectId,
+                        existing->id,
+                        existing->version,
+                        std::optional<std::string>{providerId},
+                        std::optional<std::string>{*enabled
+                            ? "Automatic continuity enabled"
+                            : "Automatic continuity disabled"},
+                        std::optional<std::string>{document.dump()},
+                        std::optional<std::vector<std::string>>{{
+                            "automatic-continuity",
+                            "provider-binding"}}},
+                    context);
+                if (!updated) {
+                    return Domain::Result<
+                        Domain::AutomaticContinuityPreference>::failure(
+                        std::move(updated).error());
+                }
             }
             return Domain::Result<Domain::AutomaticContinuityPreference>::success(
                 Domain::AutomaticContinuityPreference{
@@ -2209,27 +2353,52 @@ private:
             std::move(result));
     }
 
-    [[nodiscard]] Domain::Result<std::string> managedRunTaskWithInstructions(
+    struct ManagedRunInstructionAssignment final {
+        std::string task;
+        std::vector<Domain::ManagedRunInstructionCursorAdvance> cursorAdvances;
+    };
+
+    [[nodiscard]] Domain::Result<Domain::Sha256Digest>
+    managedRunAdmissionIdentity(const ManagedRunStartRequest& request) const
+    {
+        const auto canonical = nlohmann::json{
+            {"allow_tools", request.allowTools},
+            {"authority_generation", request.authorityGeneration},
+            {"client_id", request.clientId.value()},
+            {"project_id", request.projectId.value()},
+            {"run_id", request.runId.value()},
+            {"schema", "forge-managed-run-admission-v1"},
+            {"task", request.task}}.dump();
+        return sha256Text(canonical);
+    }
+
+    [[nodiscard]] Domain::Result<ManagedRunInstructionAssignment>
+    managedRunTaskWithInstructions(
         const Domain::ProjectId& projectId,
         std::string task,
         const bool allowTools,
         const Domain::OperationContext& context)
     {
         if (telemetrySources_.projectMemory == nullptr ||
-            task.size() >= Domain::MaximumManagedRunTaskBytes) {
-            return Domain::Result<std::string>::success(std::move(task));
+            task.size() > Domain::MaximumManagedRunTaskBytes) {
+            return Domain::Result<ManagedRunInstructionAssignment>::success(
+                ManagedRunInstructionAssignment{std::move(task), {}});
         }
         auto queue = packageQueueRows(projectId, context);
         if (!queue) {
-            return Domain::Result<std::string>::failure(std::move(queue).error());
+            return Domain::Result<ManagedRunInstructionAssignment>::failure(
+                std::move(queue).error());
         }
         if (queue.value().empty()) {
-            return Domain::Result<std::string>::success(std::move(task));
+            return Domain::Result<ManagedRunInstructionAssignment>::success(
+                ManagedRunInstructionAssignment{std::move(task), {}});
         }
         try {
             std::string enriched = "[PROVIDER DEVELOPMENT INSTRUCTIONS]\n" + task +
                 "\n\n[ORDERED PROJECT INSTRUCTION PACKAGES]\n";
             std::size_t embedded{};
+            std::vector<Domain::ManagedRunInstructionCursorAdvance>
+                cursorAdvances;
             const std::string footer =
                 "\n[END ORDERED PROJECT INSTRUCTION PACKAGES]\n";
             for (const auto& stored : queue.value()) {
@@ -2252,7 +2421,8 @@ private:
                             100U, cursor, true, 256U * 1024U},
                         context);
                     if (!page) {
-                        return Domain::Result<std::string>::failure(
+                        return Domain::Result<
+                            ManagedRunInstructionAssignment>::failure(
                             std::move(page).error());
                     }
                     for (const auto& hit : page.value().records) {
@@ -2282,6 +2452,16 @@ private:
                                 !entry.at("derived_text").is_null()) ++embedded;
                             ++advanced;
                         } else {
+                            if (advanced == row.cursorEntry) {
+                                return Domain::Result<
+                                    ManagedRunInstructionAssignment>::failure(error(
+                                    Domain::ErrorCodes::PayloadTooLarge,
+                                    "Instruction entry '" + relative +
+                                        "' in queue row " + row.queueRowId +
+                                        " cannot fit beside this managed-run task. "
+                                        "Shorten the task or remove/reorder the package; "
+                                        "the entry was not silently skipped."));
+                            }
                             capacityReached = true;
                             break;
                         }
@@ -2289,26 +2469,21 @@ private:
                     cursor = page.value().nextCursor;
                 } while (cursor && !capacityReached);
                 if (advanced != row.cursorEntry) {
-                    auto document = nlohmann::json::parse(*stored.record.body);
-                    document["cursor"] = {
-                        {"entry", advanced}, {"byte_offset", 0U}};
-                    document["state"] = advanced >= row.entryCount
-                        ? "completed" : "active";
-                    document["correlation_id"] = context.correlationId.value();
-                    document["last_error"] = nullptr;
-                    auto updated = telemetrySources_.projectMemory->update(
-                        Domain::UpdateProjectMemoryRequest{
-                            projectId, stored.record.id, stored.record.version,
-                            std::nullopt,
-                            std::optional<std::string>{
-                                "Execution cursor advanced to entry " +
-                                std::to_string(advanced)},
-                            std::optional<std::string>{document.dump()},
-                            std::nullopt}, context);
-                    if (!updated) {
-                        return Domain::Result<std::string>::failure(
-                            std::move(updated).error());
+                    if (cursorAdvances.size() >=
+                        Domain::MaximumManagedRunCursorAdvances) {
+                        return Domain::Result<
+                            ManagedRunInstructionAssignment>::failure(error(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "The managed run instruction assignment exceeds "
+                            "the durable cursor-plan limit."));
                     }
+                    cursorAdvances.push_back(
+                        Domain::ManagedRunInstructionCursorAdvance{
+                            stored.record.id,
+                            stored.record.version,
+                            row.queueRowId,
+                            advanced,
+                            advanced >= row.entryCount});
                 }
                 if (capacityReached || enriched.size() + footer.size() >=
                     Domain::MaximumManagedRunTaskBytes) {
@@ -2319,13 +2494,15 @@ private:
                 " interpreted entries. Opaque and remaining entries stay available "
                 "through bounded package content retrieval." + footer;
             if (enriched.size() > Domain::MaximumManagedRunTaskBytes) {
-                return Domain::Result<std::string>::failure(error(
+                return Domain::Result<ManagedRunInstructionAssignment>::failure(error(
                     Domain::ErrorCodes::PayloadTooLarge,
                     "Provider instructions leave no safe context budget for the package assignment."));
             }
-            return Domain::Result<std::string>::success(std::move(enriched));
+            return Domain::Result<ManagedRunInstructionAssignment>::success(
+                ManagedRunInstructionAssignment{
+                    std::move(enriched), std::move(cursorAdvances)});
         } catch (const std::exception&) {
-            return Domain::Result<std::string>::failure(error(
+            return Domain::Result<ManagedRunInstructionAssignment>::failure(error(
                 Domain::ErrorCodes::IntegrityFailure,
                 "The ordered instruction package assignment could not be assembled safely."));
         }
@@ -3639,6 +3816,32 @@ private:
                                 Domain::ErrorCodes::InvalidRequest,
                                 "Managed runs are unavailable in this Manager composition."));
                     }
+                    auto admissionIdentity = managedRunAdmissionIdentity(payload);
+                    if (!admissionIdentity) {
+                        return responseWithError(
+                            request, std::move(admissionIdentity).error());
+                    }
+                    auto replayed = managedRuns_->resolveReplay(
+                        Domain::ManagedRunStartRequest{
+                            payload.runId,
+                            payload.projectId,
+                            payload.clientId,
+                            context.operationId,
+                            context.correlationId,
+                            payload.authorityGeneration,
+                            payload.task,
+                            payload.allowTools,
+                            payload.automaticContinuity,
+                            admissionIdentity.value()},
+                        context);
+                    if (!replayed) {
+                        return responseWithError(
+                            request, std::move(replayed).error());
+                    }
+                    if (replayed.value()) {
+                        return responseWithResult(
+                            request, std::move(*replayed.value()));
+                    }
                     auto preference = automaticContinuityPreference(
                         payload.projectId, std::nullopt, context);
                     if (!preference) {
@@ -3652,6 +3855,7 @@ private:
                         return responseWithError(
                             request, std::move(task).error());
                     }
+                    auto assignment = std::move(task).value();
                     if (telemetrySources_.projectPolicy) {
                         auto policy = telemetrySources_.projectPolicy->execute(
                             {payload.projectId, Contracts::ProjectPolicyAction::Inspect}, context);
@@ -3664,25 +3868,32 @@ private:
                                 "CLU findings are non-blocking governance guidance: correct reported violations and retain evidence. "
                                 "Open findings: " + std::to_string(state.value("open_findings", 0U)) +
                                 "; coverage gaps: " + std::to_string(state.value("coverage_gap_count", 0U)) + ".\n";
-                            if (task.value().size() + guidance.size() > Domain::MaximumManagedRunTaskBytes)
+                            if (assignment.task.size() + guidance.size() > Domain::MaximumManagedRunTaskBytes)
                                 return responseWithError(request, error(Domain::ErrorCodes::PayloadTooLarge, "Task and policy guidance exceed the run input limit."));
-                            task.value() += guidance;
+                            assignment.task += guidance;
                         }
                     }
-                    return controllerResponse(
-                        request,
-                        managedRuns_->start(
-                            Domain::ManagedRunStartRequest{
-                                payload.runId,
-                                payload.projectId,
-                                payload.clientId,
-                                context.operationId,
-                                context.correlationId,
-                                payload.authorityGeneration,
-                                std::move(task).value(),
-                                payload.allowTools,
-                                preference.value().enabled},
-                            context));
+                    auto started = managedRuns_->start(
+                        Domain::ManagedRunStartRequest{
+                            payload.runId,
+                            payload.projectId,
+                            payload.clientId,
+                            context.operationId,
+                            context.correlationId,
+                            payload.authorityGeneration,
+                            std::move(assignment.task),
+                            payload.allowTools,
+                            preference.value().enabled,
+                            admissionIdentity.value(),
+                            std::move(assignment.cursorAdvances)},
+                        context);
+                    if (!started) {
+                        return responseWithError(
+                            request, std::move(started).error());
+                    }
+                    auto outcome = std::move(started).value();
+                    return responseWithResult(
+                        request, std::move(outcome.snapshot));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagedRunStatusRequest>) {
                     if (!managedRuns_) {
