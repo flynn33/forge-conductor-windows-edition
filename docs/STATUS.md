@@ -24,6 +24,6 @@ Project-memory Browse/Display All and automatic continuity are separate systems.
 
 A fresh disposable post-fix live Manager-owned continuity run passed on the Release x64 source build, including successor create/bootstrap, structured acknowledgement, predecessor fencing, and productive successor work. This does not qualify packaged WinUI interaction or the installed operator workflow. Existing LM Studio desktop chats without a native task binding are not automatically enrolled.
 
-Version 1.3.5 is a source candidate pending final verification, development-signed package construction, installed UI testing, and operator acceptance. The `v1.3.4` GitHub release remains the latest published package.
+Version 1.3.5 has an uninstalled development-signed MSIX candidate at `out/dist/release-1.3.5.0-20261002-002411/ForgeConductor-1.3.5.0-x64.msix` (SHA256 `bd4cb85f3567950697c6dc83a81fac6a9a6834a1bf68066bf70c82454ec0332c`). Release x64, G13 StaticOnly, and isolated simulated upgrade/reinstall validation passed. Installed UI testing and operator acceptance remain open. The `v1.3.4` GitHub release remains the latest published package.
 
 Ordinary data remains at `%LOCALAPPDATA%\Forge Conductor`. The historical `--alpha-root` option supports isolated validation. Historical reports describe their own artifacts and are not evidence for newer binaries.

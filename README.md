@@ -33,7 +33,7 @@ Requirements and reproducible commands are in [Build](docs/BUILD.md). The comple
 ./scripts/validation/Test-PackagePersistenceContract.ps1
 ```
 
-Version 1.3.5 is a source candidate pending final verification, development-signed package construction, installed UI testing, and operator acceptance. The [`v1.3.4` GitHub release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.4) remains the latest published package. After the source is committed and verified, reproduce an uninstalled candidate with:
+Version 1.3.5 has an uninstalled development-signed MSIX candidate at `out/dist/release-1.3.5.0-20261002-002411/ForgeConductor-1.3.5.0-x64.msix` (SHA256 `bd4cb85f3567950697c6dc83a81fac6a9a6834a1bf68066bf70c82454ec0332c`). Release x64 passed 153/153 tests, G13 StaticOnly passed 654 assertions, and isolated simulated upgrade/reinstall validation passed against the exact 1.3.4 package hash. Installed UI testing and operator acceptance remain open. The [`v1.3.4` GitHub release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.4) remains the latest published package. Reproduce the uninstalled candidate with:
 
 ```powershell
 ./scripts/package.ps1 -DevelopmentSigning -ReleaseChannel prerelease

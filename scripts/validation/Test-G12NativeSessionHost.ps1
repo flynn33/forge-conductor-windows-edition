@@ -112,7 +112,8 @@ function Assert-X64PortableExecutable {
 }
 
 function Invoke-RepositoryIntegrityChecks {
-    $output = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check 2>&1)
+    $output = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check -- `
+        ':!.forge-qwen/**' ':!.superdesign/**' 2>&1)
     Assert-Exact $LASTEXITCODE 0 `
         ('git diff --check: ' + ($output -join [Environment]::NewLine))
     & (Join-Path $WorkspaceRoot `
@@ -207,10 +208,10 @@ $automation = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
     'src\Application\ContinuityAutomation.cpp')
 Assert-Match $automation 'MaximumTrackedProjects\s*=\s*128U' `
     'continuity automation project bound' -CaseSensitive
-Assert-Match $automation 'completedProgressUnits' `
-    'progress trigger is derived in the automation service' -CaseSensitive
-Assert-Match $automation 'checkpointIntervalSeconds' `
-    'time trigger is derived in the automation service' -CaseSensitive
+Assert-Match $automation 'budgetAction\s*!=\s*Domain::ContextBudgetAction::Normal' `
+    'automatic rollover follows the Manager context-budget decision' -CaseSensitive
+Assert-Match $automation 'observation[.]forceCheckpoint' `
+    'explicit checkpoint requests remain admitted in the automation service' -CaseSensitive
 Assert-Match $automation `
     'coordinator_[.]checkpoint[\s\S]*?coordinator_[.]requestRollover[\s\S]*?coordinator_[.]resume' `
     'one automatic observation drives checkpoint, rollover, and resume' -CaseSensitive

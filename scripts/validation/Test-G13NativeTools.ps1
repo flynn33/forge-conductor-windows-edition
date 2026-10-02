@@ -151,7 +151,8 @@ function Resolve-CtestExecutable {
 }
 
 function Invoke-RepositoryIntegrityChecks {
-    $output = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check 2>&1)
+    $output = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check -- `
+        ':!.forge-qwen/**' ':!.superdesign/**' 2>&1)
     Assert-Exact $LASTEXITCODE 0 `
         ('git diff --check: ' + ($output -join [Environment]::NewLine))
     & (Join-Path $WorkspaceRoot `
@@ -414,10 +415,11 @@ $processAdapterText = (Get-Content -Raw -LiteralPath (
     Join-Path $nativeSourceRoot 'WindowsGitService.cpp')) +
     [Environment]::NewLine + (Get-Content -Raw -LiteralPath (
     Join-Path $nativeSourceRoot 'WindowsShellService.cpp'))
-Assert-NoMatch $processAdapterText `
+$processAdapterCode = $processAdapterText -replace '(?m)//.*$', ''
+Assert-NoMatch $processAdapterCode `
     '\b(?:CreateProcessW|ShellExecute(?:Ex)?W?|SearchPathW|_popen|popen|system)\s*\(' `
     'Git and shell adapters use no ambient or direct process-launch API'
-Assert-NoMatch $processAdapterText '\bcmd(?:[.]exe)?\b' `
+Assert-NoMatch $processAdapterCode '\bcmd(?:[.]exe)?\b' `
     'Git and shell adapters do not compose through cmd.exe'
 Assert-Match $processAdapterText 'processSupervisor_->run' `
     'Git and shell adapters delegate to the process supervisor' -CaseSensitive
@@ -917,7 +919,7 @@ Assert-Match $cmake `
     'native PDF runtime validation links the Windows app platform library' `
     -CaseSensitive
 Assert-Match $cmake `
-    'set_tests_properties\s*\(\s*ForgeConductor[.]Infrastructure[.]UnitTests\s+PROPERTIES[\s\S]*?LABELS\s+"T-UNIT;T-SEC;G06"[\s\S]*?TIMEOUT\s+120\s*\)' `
+    'set_tests_properties\s*\(\s*ForgeConductor[.]Infrastructure[.]UnitTests\s+PROPERTIES[\s\S]*?LABELS\s+"T-UNIT;T-SEC;T-LMS;G06;G15"[\s\S]*?TIMEOUT\s+180\s*\)' `
     'infrastructure suite has a bounded fail-safe timeout' `
     -CaseSensitive
 

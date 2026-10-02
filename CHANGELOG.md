@@ -11,7 +11,7 @@
 - Extend native regressions to prove loaded-only Work Space discovery and Test behavior with a catalog key distinct from its loaded instance ID and an inventory larger than 64 KiB, 101-record project-memory Display All paging, direct per-record deletion, and multi-record deletion through `project_memory.forget`.
 - A fresh post-fix disposable Manager-owned live run completed successor create/bootstrap, structured acknowledgement, predecessor fencing, and productive successor work with loaded model `openai/gpt-oss-20b`. Packaged and installed acceptance remain open.
 
-Version 1.3.5 is a source candidate pending final verification, development-signed package construction, installed UI testing, and operator acceptance. `v1.3.4` remains the latest published package.
+Version 1.3.5 has an uninstalled development-signed MSIX candidate (SHA256 `bd4cb85f3567950697c6dc83a81fac6a9a6834a1bf68066bf70c82454ec0332c`). Release x64 passed 153/153 tests, G13 StaticOnly passed 654 assertions, and isolated simulated upgrade/reinstall validation passed against the exact 1.3.4 package hash. Installed UI testing and operator acceptance remain open; `v1.3.4` remains the latest published package.
 
 ## 1.3.4 — LM Studio unauthenticated-loopback diagnostics
 

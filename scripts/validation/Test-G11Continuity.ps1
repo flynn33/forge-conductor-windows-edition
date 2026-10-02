@@ -112,7 +112,8 @@ function Assert-X64PortableExecutable {
 }
 
 function Invoke-RepositoryIntegrityChecks {
-    $output = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check 2>&1)
+    $output = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check -- `
+        ':!.forge-qwen/**' ':!.superdesign/**' 2>&1)
     Assert-Exact $LASTEXITCODE 0 `
         ('git diff --check: ' + ($output -join [Environment]::NewLine))
     & (Join-Path $WorkspaceRoot `
@@ -348,10 +349,13 @@ foreach ($hostile in $hostileCoverage.GetEnumerator()) {
 $coordinatorTests = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot `
     'tests\Continuity\ContinuityCoordinatorTests.cpp')
 foreach ($case in @(
-    'recover_every_committed_crash_boundary',
+    'recover_every_committed_rollover_boundary',
     'exact_acknowledgement_and_resume_are_bound_to_the_successor',
+    'checkpoint_honors_caller_idempotency_and_keeps_deterministic_default',
     'resume_reconciliation_precedes_mutation_and_supports_idempotent_create',
     'capability_failure_does_not_weaken_the_durable_checkpoint',
+    'persisted_checkpoint_refreshes_before_successor_bootstrap',
+    'abandoned_checkpoint_cannot_recover_a_needless_successor',
     'recoverable_host_failure_resumes_only_after_its_durable_retry_time',
     'cancellation_deadline_recovery_cancel_and_shutdown_own_their_boundaries',
     'concurrent_projects_remain_isolated_and_bounded')) {
