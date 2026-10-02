@@ -1,3 +1,0 @@
-Ledger validation passed: 147 event(s).
-No-attribution gate passed.
-No-Python gate passed.

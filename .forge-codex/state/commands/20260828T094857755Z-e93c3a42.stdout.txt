@@ -1,1 +1,0 @@
-Validated 35 checkpoint text files as UTF-8 without BOM, CRLF-only, with final CRLF.

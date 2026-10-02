@@ -1,1 +1,0 @@
-MCP tool-pack adapter tests passed: 387 assertions

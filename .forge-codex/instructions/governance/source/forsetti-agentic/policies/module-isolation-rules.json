@@ -1,9 +1,0 @@
-{
-  "rules": [
-    {
-      "id": "MODULE-ISO-001",
-      "decision": "block",
-      "description": "Modules must not import, include, call, or directly reference other module implementation symbols."
-    }
-  ]
-}
