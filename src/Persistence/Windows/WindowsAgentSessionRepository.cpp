@@ -1587,9 +1587,6 @@ WindowsAgentSessionRepository::startRun(
     return guarded<Domain::AgentRunStartPersistenceOutcome>([&]() {
         validateRun(mutation.run);
         validateSummary(mutation.supersedeSummary, "Agent supersede summary");
-        if (mutation.initialSummary) {
-            validateSummary(*mutation.initialSummary, "Agent initial summary");
-        }
         const bool hasClient = mutation.run.session.clientId.has_value();
         if (hasClient != mutation.activeBinding.has_value() || !mutation.run.goal ||
             mutation.run.session.status != Domain::SessionStatus::Open ||
@@ -1599,8 +1596,6 @@ WindowsAgentSessionRepository::startRun(
                 Domain::ErrorCodes::InvalidRequest,
                 "A new agent run must be open, uncompleted, binding-consistent, and timestamp-consistent."));
         }
-        auto persistedRun = mutation.run;
-        persistedRun.session.summary = mutation.initialSummary;
         if (mutation.activeBinding) {
             take(Domain::validateActiveBinding(*mutation.activeBinding));
             if (mutation.activeBinding->sessionId != mutation.run.session.id ||
@@ -1638,12 +1633,12 @@ WindowsAgentSessionRepository::startRun(
                         "INSERT INTO agent_sessions("
                         "id,agent_id,client_id,status,summary,created_at,updated_at,"
                         "project_id,goal,cwd,report_json) VALUES(?,?,?,?,?,?,?,?,?,?,?)"));
-                    bindRunColumns(insert, persistedRun);
+                    bindRunColumns(insert, mutation.run);
                     stepDone(insert);
                     writeRunProjection(
                         transaction,
-                        persistedRun,
-                        persistedRun.session.updatedAt,
+                        mutation.run,
+                        mutation.run.session.updatedAt,
                         context);
                     if (mutation.run.session.clientId && mutation.activeBinding) {
                         writeActiveProjection(
@@ -1663,7 +1658,7 @@ WindowsAgentSessionRepository::startRun(
                         AgentSessionTransactionKind::Start,
                         AgentSessionTransactionCheckpoint::AfterCommit);
                     return Domain::AgentRunStartPersistenceOutcome{
-                        persistedRun, mutation.activeBinding, superseded};
+                        mutation.run, mutation.activeBinding, superseded};
                 });
             }));
     });

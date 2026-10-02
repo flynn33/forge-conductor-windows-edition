@@ -32,7 +32,7 @@ After committing the product inputs and rebuilding from that commit:
 
 ```powershell
 # Local validation only
-./scripts/package.ps1 -DevelopmentSigning -ReleaseChannel prerelease
+./scripts/package.ps1 -DevelopmentSigning
 
 # Production signing
 ./scripts/package.ps1 -PfxPath '<certificate.pfx>' -PfxPassword '<password>'

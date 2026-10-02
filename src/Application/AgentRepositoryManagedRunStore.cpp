@@ -72,62 +72,15 @@ namespace {
     const Domain::ManagedRunRecord& record,
     Contracts::IHasher& hasher)
 {
-    const bool cursorPending = record.dispatchPhase ==
-        Domain::ManagedRunDispatchPhase::CursorPending;
-    if (cursorPending != record.dispatchPending ||
-        (cursorPending && record.instructionCursorAdvances.empty()) ||
-        (!cursorPending && !record.instructionCursorAdvances.empty())) {
-        return Domain::Result<std::optional<std::string>>::failure(
-            Domain::makeError(
-                Domain::ErrorCodes::IntegrityFailure,
-                "The durable managed-run dispatch phase and cursor plan disagree."));
-    }
     nlohmann::json value{
         {"allow_tools", record.allowTools},
-        {"automatic_continuity", record.automaticContinuity},
         {"authority_generation", record.authorityGeneration},
-        {"dispatch_pending", record.dispatchPending},
-        {"dispatch_phase", static_cast<std::uint32_t>(record.dispatchPhase)},
         {"input_tokens", record.inputTokens},
         {"kind", "forge_managed_run"},
         {"output_tokens", record.outputTokens},
         {"pending_count", record.pendingFunctionCalls.size()},
         {"state", static_cast<std::uint32_t>(record.state)},
         {"version", 1U}};
-    if (record.dispatchOperationId) {
-        value["dispatch_operation_id"] =
-            record.dispatchOperationId->value();
-    } else {
-        value["dispatch_operation_id"] = nullptr;
-    }
-    if (record.dispatchCorrelationId) {
-        value["dispatch_correlation_id"] =
-            record.dispatchCorrelationId->value();
-    } else {
-        value["dispatch_correlation_id"] = nullptr;
-    }
-    if (record.instructionCursorAdvances.size() >
-        Domain::MaximumManagedRunCursorAdvances) {
-        return Domain::Result<std::optional<std::string>>::failure(
-            Domain::makeError(
-                Domain::ErrorCodes::LimitExceeded,
-                "The durable managed run has too many cursor advances."));
-    }
-    value["instruction_cursor_advances"] = nlohmann::json::array();
-    for (const auto& advance : record.instructionCursorAdvances) {
-        value["instruction_cursor_advances"].push_back(nlohmann::json{
-            {"completed", advance.completed},
-            {"expected_version", advance.expectedVersion},
-            {"queue_row_id", advance.queueRowId},
-            {"record_id", advance.recordId.value()},
-            {"target_entry", advance.targetEntry}});
-    }
-    if (record.admissionIdentity) {
-        value["admission_identity_sha256"] =
-            record.admissionIdentity->value();
-    } else {
-        value["admission_identity_sha256"] = nullptr;
-    }
     if (record.providerResponseId) {
         value["provider_response_id"] = record.providerResponseId->value();
     } else {
@@ -181,15 +134,7 @@ namespace {
         }
         value["evidence_seal_sha256"] = seal.value().value();
     }
-    auto encoded = value.dump();
-    if (encoded.size() > Domain::AgentSessionLimits::MaximumSummaryUnits) {
-        return Domain::Result<std::optional<std::string>>::failure(
-            Domain::makeError(
-                Domain::ErrorCodes::LimitExceeded,
-                "The durable managed-run admission metadata exceeds its bound."));
-    }
-    return Domain::Result<std::optional<std::string>>::success(
-        std::move(encoded));
+    return Domain::Result<std::optional<std::string>>::success(value.dump());
 }
 
 void applySummary(
@@ -217,80 +162,6 @@ void applySummary(
         record.authorityGeneration =
             value.value("authority_generation", 0ULL);
         record.allowTools = value.value("allow_tools", true);
-        record.automaticContinuity =
-            value.value("automatic_continuity", true);
-        record.dispatchPending = value.value("dispatch_pending", false);
-        const bool hasDispatchPhase = value.contains("dispatch_phase");
-        if (hasDispatchPhase) {
-            const auto dispatchPhase = value.at("dispatch_phase")
-                .get<std::uint32_t>();
-            if (dispatchPhase > static_cast<std::uint32_t>(
-                    Domain::ManagedRunDispatchPhase::ProviderClaimed)) {
-                throw std::runtime_error{
-                    "Managed-run dispatch phase is malformed."};
-            }
-            record.dispatchPhase =
-                static_cast<Domain::ManagedRunDispatchPhase>(dispatchPhase);
-        }
-        if (value.contains("dispatch_operation_id") &&
-            value["dispatch_operation_id"].is_string()) {
-            auto operationId = Domain::OperationId::parse(
-                value["dispatch_operation_id"].get<std::string>());
-            if (!operationId) {
-                throw std::runtime_error{
-                    "Managed-run dispatch operation id is malformed."};
-            }
-            record.dispatchOperationId = std::move(operationId).value();
-        }
-        if (value.contains("dispatch_correlation_id") &&
-            value["dispatch_correlation_id"].is_string()) {
-            auto correlationId = Domain::CorrelationId::parse(
-                value["dispatch_correlation_id"].get<std::string>());
-            if (!correlationId) {
-                throw std::runtime_error{
-                    "Managed-run dispatch correlation id is malformed."};
-            }
-            record.dispatchCorrelationId =
-                std::move(correlationId).value();
-        }
-        if (value.contains("admission_identity_sha256") &&
-            value["admission_identity_sha256"].is_string()) {
-            auto identity = Domain::Sha256Digest::parse(
-                value["admission_identity_sha256"].get<std::string>());
-            if (!identity) {
-                throw std::runtime_error{
-                    "Managed-run admission identity is malformed."};
-            }
-            record.admissionIdentity = std::move(identity).value();
-        }
-        if (value.contains("instruction_cursor_advances")) {
-            if (!value["instruction_cursor_advances"].is_array() ||
-                value["instruction_cursor_advances"].size() >
-                    Domain::MaximumManagedRunCursorAdvances) {
-                throw std::runtime_error{
-                    "Managed-run cursor advances are malformed."};
-            }
-            for (const auto& item :
-                 value["instruction_cursor_advances"]) {
-                if (!item.is_object()) {
-                    throw std::runtime_error{
-                        "Managed-run cursor advance is malformed."};
-                }
-                auto recordId = Domain::MemoryRecordId::parse(
-                    item.at("record_id").get<std::string>());
-                if (!recordId) {
-                    throw std::runtime_error{
-                        "Managed-run cursor record id is malformed."};
-                }
-                record.instructionCursorAdvances.push_back(
-                    Domain::ManagedRunInstructionCursorAdvance{
-                        std::move(recordId).value(),
-                        item.at("expected_version").get<std::uint32_t>(),
-                        item.at("queue_row_id").get<std::string>(),
-                        item.at("target_entry").get<std::uint64_t>(),
-                        item.at("completed").get<bool>()});
-            }
-        }
         record.inputTokens = value.value("input_tokens", 0ULL);
         record.outputTokens = value.value("output_tokens", 0ULL);
         if (value.contains("retained_context_tokens") &&
@@ -320,24 +191,9 @@ void applySummary(
                 Domain::ManagedRunState::Paused)) {
             record.state = static_cast<Domain::ManagedRunState>(state);
         }
-        if (!hasDispatchPhase) {
-            // A legacy pending cursor plan is safe to reconcile. A legacy
-            // released Running record is ambiguous and must never cause a
-            // provider request to be issued again after restart.
-            record.dispatchPhase = record.dispatchPending
-                ? Domain::ManagedRunDispatchPhase::CursorPending
-                : Domain::ManagedRunDispatchPhase::ProviderClaimed;
-        }
-        const bool cursorPending = record.dispatchPhase ==
-            Domain::ManagedRunDispatchPhase::CursorPending;
-        if (cursorPending != record.dispatchPending ||
-            (cursorPending && record.instructionCursorAdvances.empty()) ||
-            (!cursorPending && !record.instructionCursorAdvances.empty())) {
-            throw std::runtime_error{
-                "Managed-run dispatch phase and cursor plan disagree."};
-        }
         const auto pendingCount = value.value("pending_count", 0U);
         if (pendingCount > 0U ||
+            record.state == Domain::ManagedRunState::Running ||
             record.state == Domain::ManagedRunState::Cancelling ||
             record.state == Domain::ManagedRunState::Paused) {
             record.state = Domain::ManagedRunState::Failed;
@@ -508,20 +364,13 @@ public:
                         {},
                         {},
                         std::nullopt},
-                    "Superseded by a newer Manager-owned run.",
-                    session.summary};
+                    "Superseded by a newer Manager-owned run."};
                 auto saved = repository_.startRun(mutation, context);
                 if (!saved) {
                     return Domain::Result<void>::failure(
                         std::move(saved).error());
                 }
-                if (saved.value().run.session.summary != session.summary) {
-                    return Domain::Result<void>::failure(
-                        Domain::makeError(
-                            Domain::ErrorCodes::IntegrityFailure,
-                            "The managed-run admission metadata was not inserted atomically."));
-                }
-                return Domain::Result<void>::success();
+                return repository_.save(session, context);
             }
             if (loaded.value()->session.agentId != managedAgentId_ ||
                 loaded.value()->projectId !=

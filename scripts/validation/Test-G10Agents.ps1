@@ -202,8 +202,7 @@ function Assert-X64PortableExecutable {
 }
 
 function Invoke-RepositoryIntegrityChecks {
-    $gitOutput = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check -- `
-        ':!.forge-qwen/**' ':!.superdesign/**' 2>&1)
+    $gitOutput = @(& git -c core.safecrlf=false -C $WorkspaceRoot diff --check 2>&1)
     $gitExitCode = $LASTEXITCODE
     Assert-Exact $gitExitCode 0 `
         ('git diff --check failed: ' + ($gitOutput -join [Environment]::NewLine))
@@ -295,7 +294,26 @@ $requiredFiles = @(
     $completionInspectorFiles + $supportFiles +
     $testFiles + $resourceFiles + $adrFiles
 
-foreach ($relativePath in @($requiredFiles | Sort-Object -Unique)) {
+$sourceAnchors = [ordered]@{
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/AgentCatalog.swift' = @('e5bb41f33660dba2a20fb97da0cb3df9147b6a4d40da0d2a760f650603ad3a48',21945L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/AgentSessionService.swift' = @('9b9dc37ee186e5d195484fbabd1d5cef25f701675d1e60e082e18d06f9d0cb00',19831L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/Tools/AgentToolPack.swift' = @('df7e04af91142c8f9d1c9f6a27acc6b7f4ddb44d9c4d1009df98035805ed19bd',4603L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift' = @('a5c7ec5750be9c5342dbc9fe5c1adde8e6c5a1f57d3009681b5ac1fb751f5ca0',39463L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Tests/ForgeConductorTests/CoreTests.swift' = @('574d4a2b3a51d73240da36881ffbd32519b5382fd35c19a11804b0cab7f70f4e',25483L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Tests/ForgeConductorTests/ContinuityTests.swift' = @('698660433a240038b6347258743f6eaca12e2232b5ca3e0f9557b8f2ddbc4d00',82407L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/debug.md' = @('4013e3cfa6a4af1b51d69d4dc8445cc1e0590b0658fb5d250b4a431c70224bef',1789L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/docs.md' = @('e1118265e19562bf5e470ad6de16cd0c4e009b01e55f263049b24f714649ee55',4047L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/explore.md' = @('0cfd24d91a74e24a64a8716e7fb6f57bb4a5a6388f5f0d2d843bbc4775e09b92',2703L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/implement.md' = @('1459a82d77ceebd099a6fce5ef2504bffac451f0bd9e41c96318c3ff85a70142',2130L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/plan.md' = @('89e9ad8543beaa7a681c48a153569b9b340bdf7fd4f34a9164354c5a6874aaff',1670L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/precommit-audit.md' = @('9dc5693035148f124b1b990e8177aa799b5149fd818da7b9a1d447d537db8ea0',1383L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/research.md' = @('e5b0141797297ae5a5f647d9487445cfbffb43956ce1093e2edfad18ce4cb7e5',1301L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/review.md' = @('cfab52c5a3ecb384dba6bfa022db773729a0b48c2828e7716d970b873826a9cc',1523L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/security.md' = @('b7a7bd4a6174499b75ce095f9208cbec26f6e158a0cd7cffd9d204d782340c99',1453L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Resources/Agents/test.md' = @('bc29c81555acd940eccfe692d4ded50717f43b87943a13644c62b11783d30cc0',1381L)
+}
+
+foreach ($relativePath in @($requiredFiles + $sourceAnchors.Keys | Sort-Object -Unique)) {
     $fullPath = Join-Path $WorkspaceRoot $relativePath.Replace('/', '\')
     Assert-True (Test-Path -LiteralPath $fullPath -PathType Leaf) `
         "required P10 file $relativePath"
@@ -304,12 +322,12 @@ foreach ($relativePath in @($requiredFiles | Sort-Object -Unique)) {
 Assert-Set @(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot `
     'include\ForgeConductor\Application') -File -Filter '*Agent*' |
     ForEach-Object { $_.Name }) `
-    @('AgentCatalog.h','AgentRepositoryManagedRunStore.h','AgentSessionService.h') `
+    @('AgentCatalog.h','AgentSessionService.h') `
     'exact P10 Application agent-header inventory'
 Assert-Set @(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot `
     'src\Application') -File -Filter '*Agent*' |
     ForEach-Object { $_.Name }) `
-    @('AgentCatalog.cpp','AgentRepositoryManagedRunStore.cpp','AgentSessionService.cpp') `
+    @('AgentCatalog.cpp','AgentSessionService.cpp') `
     'exact P10 Application agent-source inventory'
 Assert-Set @(Get-ChildItem -LiteralPath (Join-Path $WorkspaceRoot `
     'include\ForgeConductor\Persistence\Windows') -File -Filter '*Agent*' |
@@ -354,6 +372,16 @@ Assert-Set @(Get-ChildItem -LiteralPath $decisionRoot -Force -File `
     -Filter 'P10-*.md' | ForEach-Object { $_.Name }) `
     @($adrFiles | ForEach-Object { [IO.Path]::GetFileName($_) }) `
     'exact P10 four-ADR inventory'
+
+foreach ($relativePath in $sourceAnchors.Keys) {
+    $fullPath = Join-Path $WorkspaceRoot $relativePath.Replace('/', '\')
+    Assert-Exact ([long](Get-Item -LiteralPath $fullPath).Length) `
+        ([long]$sourceAnchors[$relativePath][1]) `
+        "authoritative source byte count $relativePath"
+    Assert-Exact (Get-FileSha256 $fullPath) `
+        ([string]$sourceAnchors[$relativePath][0]) `
+        "authoritative source SHA-256 $relativePath"
+}
 
 $tokens = $null
 $parseErrors = $null
@@ -522,7 +550,7 @@ Assert-Sequence $catalogTools @($toolInventory.tools | ForEach-Object { $_.name 
 
 $fallbackBlock = Get-SourceSlice $catalogSource `
     'std::vector<Domain::AgentSpec> mandatoryFallbacks()' `
-    '[[nodiscard]] bool isMandatoryId(' `
+    'constexpr std::array<std::string_view, AgentCatalog::MandatoryEntryCount>' `
     'embedded mandatory fallbacks'
 $fallbackIds = @([regex]::Matches(
     $fallbackBlock,
@@ -841,8 +869,8 @@ Assert-NoMatch $repositorySource `
     'production repository has no environment-controlled crash switch'
 Assert-Exact ([regex]::Matches(
     $repositorySource,
-    'WinsqliteTransaction::beginImmediate\(').Count) 7 `
-    'exact seven serialized repository mutation transactions'
+    'WinsqliteTransaction::beginImmediate\(').Count) 6 `
+    'exact six serialized repository mutation transactions'
 Assert-Exact ([regex]::Matches(
     $repositorySource,
     'AgentSessionTransactionCheckpoint::BeforeCommit').Count) 5 `
@@ -918,8 +946,8 @@ Assert-Match $repositorySource `
     -CaseSensitive
 Assert-Exact ([regex]::Matches(
     $repositorySource,
-    'ORDER BY julianday\((?:updated_at|created_at)\) DESC').Count) 5 `
-    'exact five newest-first chronological SQLite ordering anchors'
+    'ORDER BY julianday\((?:updated_at|created_at)\) DESC').Count) 4 `
+    'exact four newest-first chronological SQLite ordering anchors'
 Assert-Exact ([regex]::Matches(
     $repositorySource,
     'ORDER BY julianday\(updated_at\) ASC').Count) 1 `
@@ -1355,16 +1383,14 @@ Assert-Set $repositoryCaseNames @(
     'agent_session_repository.recovery_repair',
     'agent_session_repository.v5_hostile_rows',
     'agent_session_repository.bounds_shutdown',
-    'agent_session_repository.administrative_close',
     'agent_session_repository.timestamp_report_bounds',
-    'agent_session_repository.legacy_continuity_source',
     'agent_session_repository.crash_atomicity',
     'agent_session_repository.completion_crash_retry',
     'agent_session_repository.cross_process_cas') `
     'exact repository Windows native test-case inventory'
 Assert-Match $repositoryTestText `
-    '"SUMMARY passed=10 failed=0\\n"' `
-    'repository test main has the exact fail-closed ten-case summary' `
+    '"SUMMARY passed=8 failed=0\\n"' `
+    'repository test main has the exact fail-closed eight-case summary' `
     -CaseSensitive
 Assert-Exact ([regex]::Matches(
     $repositoryTestText,

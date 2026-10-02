@@ -17,7 +17,6 @@ enum class ProjectMemoryCall : std::size_t {
     Search,
     Get,
     Update,
-    UpdateBatch,
     Forget,
     ListRecent,
     Link,
@@ -39,7 +38,6 @@ public:
     DeterministicResult<Domain::MemoryPage> searchResult;
     DeterministicResult<Domain::MemoryRecords> getResult;
     DeterministicResult<Domain::ProjectMemoryRecord> updateResult;
-    DeterministicResult<Domain::MemoryUpdateBatchOutcome> updateBatchResult;
     DeterministicResult<Domain::ForgetOutcome> forgetResult;
     DeterministicResult<Domain::MemoryPage> listRecentResult;
     DeterministicResult<Domain::LinkOutcome> linkResult;
@@ -144,24 +142,6 @@ public:
             return Domain::Result<Domain::ProjectMemoryRecord>::failure(
                 Domain::makeError(Domain::ErrorCodes::InternalFailure,
                     "The deterministic project-memory update could not be recorded."));
-        }
-    }
-
-    [[nodiscard]] Domain::Result<Domain::MemoryUpdateBatchOutcome> updateBatch(
-        const Domain::UpdateProjectMemoryBatchRequest& request,
-        const Domain::OperationContext& context) noexcept override
-    {
-        try {
-            lastUpdateBatchRequest_ = request;
-            return complete(
-                ProjectMemoryCall::UpdateBatch,
-                &request.projectId,
-                context,
-                updateBatchResult);
-        } catch (...) {
-            return Domain::Result<Domain::MemoryUpdateBatchOutcome>::failure(
-                Domain::makeError(Domain::ErrorCodes::InternalFailure,
-                    "The deterministic project-memory update batch could not be recorded."));
         }
     }
 
@@ -356,13 +336,6 @@ public:
         return lastUpdateRequest_;
     }
 
-    [[nodiscard]] const std::optional<
-        Domain::UpdateProjectMemoryBatchRequest>&
-    lastUpdateBatchRequest() const noexcept
-    {
-        return lastUpdateBatchRequest_;
-    }
-
     [[nodiscard]] const std::vector<Domain::RememberProjectMemoryBatchRequest>&
     rememberBatchRequests() const noexcept
     {
@@ -442,8 +415,6 @@ private:
     std::optional<Domain::OperationContext> lastContext_;
     std::optional<Domain::RememberProjectMemoryRequest> lastRememberRequest_;
     std::optional<Domain::UpdateProjectMemoryRequest> lastUpdateRequest_;
-    std::optional<Domain::UpdateProjectMemoryBatchRequest>
-        lastUpdateBatchRequest_;
     std::vector<Domain::RememberProjectMemoryBatchRequest> rememberBatchRequests_;
     std::vector<Domain::SearchProjectMemoryRequest> searchRequests_;
     std::vector<Domain::ListRecentProjectMemoryRequest> listRecentRequests_;

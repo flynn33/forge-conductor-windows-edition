@@ -110,9 +110,7 @@ function Get-LayerGraph {
         Assert-True (-not $graph.Contains([string]$tokens[0])) "duplicate layer target $($tokens[0])"
         $graph[[string]$tokens[0]] = [ordered]@{
             alias = [string]$tokens[1]
-            dependencies = @(
-                $tokens |
-                    Microsoft.PowerShell.Utility\Select-Object -Skip 2)
+            dependencies = @($tokens | Select-Object -Skip 2)
         }
     }
     return $graph
@@ -156,7 +154,7 @@ $externalCMake = Get-Content -Raw -LiteralPath $externalCMakePath
 $policyCMake = Get-Content -Raw -LiteralPath $policyCMakePath
 
 Assert-Match $rootCMake 'cmake_minimum_required\s*\(\s*VERSION\s+3\.28\s*\)' 'root CMake minimum version'
-Assert-Match $rootCMake 'VERSION\s+1\.3\.5' 'project version 1.3.5'
+Assert-Match $rootCMake 'VERSION\s+1\.1\.43' 'project version 1.1.43'
 Assert-Match $rootCMake 'Visual Studio 17 2022' 'VS17 generator pin'
 Assert-Match $rootCMake '\bv143\b' 'v143 toolset pin'
 Assert-Match $rootCMake '10\.0\.26100\.0' 'Windows SDK pin'

@@ -165,19 +165,6 @@ template <typename T, typename U>
 }
 
 [[nodiscard]] bool matchesProject(
-    const Domain::MemoryUpdateBatchOutcome& outcome,
-    const Domain::ProjectId& projectId) noexcept
-{
-    return outcome.projectId == projectId &&
-        std::all_of(
-            outcome.records.begin(),
-            outcome.records.end(),
-            [&](const Domain::ProjectMemoryRecord& record) {
-                return matchesProject(record, projectId);
-            });
-}
-
-[[nodiscard]] bool matchesProject(
     const Domain::LinkOutcome& outcome,
     const Domain::ProjectId& projectId) noexcept
 {
@@ -476,55 +463,6 @@ public:
             auto repository = std::move(scoped).value();
             return enforceProjectScope(
                 repository.repository->update(validated.value(), context),
-                request.projectId);
-        });
-    }
-
-    [[nodiscard]] Domain::Result<Domain::MemoryUpdateBatchOutcome> updateBatch(
-        const Domain::UpdateProjectMemoryBatchRequest& request,
-        const Domain::OperationContext& context) noexcept
-    {
-        return execute<Domain::MemoryUpdateBatchOutcome>(context, [&]() {
-            if (request.updates.empty() ||
-                request.updates.size() > limits_.maximumBatchCount) {
-                return Domain::Result<Domain::MemoryUpdateBatchOutcome>::failure(
-                    Domain::makeError(
-                        Domain::ErrorCodes::PayloadTooLarge,
-                        "Project memory update batch count is outside its configured bound."));
-            }
-            std::vector<Domain::UpdateProjectMemoryRequest> normalized;
-            normalized.reserve(request.updates.size());
-            for (const auto& update : request.updates) {
-                if (update.projectId != request.projectId) {
-                    return Domain::Result<Domain::MemoryUpdateBatchOutcome>::failure(
-                        Domain::makeError(
-                            Domain::ErrorCodes::ProjectScopeMismatch,
-                            "A project memory update batch crossed project scope."));
-                }
-                auto redacted = redactUpdateRequest(update);
-                if (!redacted) {
-                    return propagateFailure<Domain::MemoryUpdateBatchOutcome>(
-                        std::move(redacted));
-                }
-                auto validated = Domain::validateUpdateProjectMemoryRequest(
-                    std::move(redacted).value(), limits_);
-                if (!validated) {
-                    return propagateFailure<Domain::MemoryUpdateBatchOutcome>(
-                        std::move(validated));
-                }
-                normalized.push_back(std::move(validated).value());
-            }
-            auto scoped = openScoped(request.projectId, context);
-            if (!scoped) {
-                return propagateFailure<Domain::MemoryUpdateBatchOutcome>(
-                    std::move(scoped));
-            }
-            auto repository = std::move(scoped).value();
-            return enforceProjectScope(
-                repository.repository->updateBatch(
-                    Domain::UpdateProjectMemoryBatchRequest{
-                        request.projectId, std::move(normalized)},
-                    context),
                 request.projectId);
         });
     }
@@ -1237,14 +1175,6 @@ Domain::Result<Domain::ProjectMemoryRecord> ProjectMemoryService::update(
     const Domain::OperationContext& context) noexcept
 {
     return implementation_->update(request, context);
-}
-
-Domain::Result<Domain::MemoryUpdateBatchOutcome>
-ProjectMemoryService::updateBatch(
-    const Domain::UpdateProjectMemoryBatchRequest& request,
-    const Domain::OperationContext& context) noexcept
-{
-    return implementation_->updateBatch(request, context);
 }
 
 Domain::Result<Domain::ForgetOutcome> ProjectMemoryService::forget(

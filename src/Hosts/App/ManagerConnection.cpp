@@ -26,8 +26,6 @@
 namespace ForgeConductor::Hosts::App {
 namespace W = Infrastructure::Windows;
 namespace {
-constexpr std::size_t MaximumModelInventoryBytes = 2U * 1024U * 1024U;
-
 struct ProcessHandles final {
     PROCESS_INFORMATION value{};
     ~ProcessHandles() { if (value.hThread) CloseHandle(value.hThread); if (value.hProcess) CloseHandle(value.hProcess); }
@@ -1446,13 +1444,13 @@ ProviderModelsView ManagerConnection::providerModels(
             static_cast<INTERNET_PORT>(settings.localModelPort), 0)};
         if (!connection.value) return {false, "Could not connect to the configured loopback endpoint.", {}};
         InternetHandle request{::WinHttpOpenRequest(connection.value, L"GET",
-            L"/api/v1/models", nullptr, WINHTTP_NO_REFERER,
+            L"/v1/models", nullptr, WINHTTP_NO_REFERER,
             WINHTTP_DEFAULT_ACCEPT_TYPES,
             settings.localModelSecure ? WINHTTP_FLAG_SECURE : 0)};
         if (!request.value || !::WinHttpSendRequest(request.value,
                 WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA,
                 0, 0, 0) || !::WinHttpReceiveResponse(request.value, nullptr)) {
-            return {false, "LM Studio loaded-model inventory is not reachable at the configured endpoint.", {}};
+            return {false, "LM Studio /v1/models is not reachable at the configured endpoint.", {}};
         }
         DWORD status{}, statusBytes{sizeof(status)};
         if (!::WinHttpQueryHeaders(request.value,
@@ -1473,9 +1471,8 @@ ProviderModelsView ManagerConnection::providerModels(
             if (!::WinHttpQueryDataAvailable(request.value, &available))
                 return {false, "Could not read LM Studio model metadata.", {}};
             if (available == 0U) break;
-            if (body.size() > MaximumModelInventoryBytes ||
-                available > MaximumModelInventoryBytes - body.size())
-                return {false, "LM Studio model metadata exceeded the safe inventory limit.", {}};
+            if (available > 65536U - body.size())
+                return {false, "LM Studio model metadata exceeded the safe display limit.", {}};
             const auto begin = body.size();
             body.resize(begin + available);
             DWORD read{};
@@ -1488,26 +1485,19 @@ ProviderModelsView ManagerConnection::providerModels(
         }
         if (cancellation.stop_requested()) return {false, "Model discovery cancelled.", {}};
         const auto document = nlohmann::json::parse(body);
-        if (!document.is_object() || !document.contains("models") ||
-            !document.at("models").is_array()) {
+        if (!document.is_object() || !document.contains("data") ||
+            !document.at("data").is_array()) {
             return {false, "LM Studio returned no model collection.", {}};
         }
         std::vector<std::string> models;
-        for (const auto& item : document.at("models")) {
-            if (!item.is_object() || item.value("type", "") != "llm" ||
-                !item.contains("loaded_instances") ||
-                !item.at("loaded_instances").is_array()) continue;
-            for (const auto& instance : item.at("loaded_instances")) {
-                if (!instance.is_object() || !instance.contains("id") ||
-                    !instance.at("id").is_string()) continue;
-                auto id = instance.at("id").get<std::string>();
-                if (id.empty() || id.size() > 256U ||
-                    id.find('\0') != std::string::npos ||
-                    !Domain::isValidUtf8(id)) continue;
-                if (std::find(models.begin(), models.end(), id) == models.end())
-                    models.push_back(std::move(id));
-                if (models.size() == 128U) break;
-            }
+        for (const auto& item : document.at("data")) {
+            if (!item.is_object() || !item.contains("id") ||
+                !item.at("id").is_string()) continue;
+            auto id = item.at("id").get<std::string>();
+            if (id.empty() || id.size() > 256U || id.find('\0') != std::string::npos ||
+                !Domain::isValidUtf8(id)) continue;
+            if (std::find(models.begin(), models.end(), id) == models.end())
+                models.push_back(std::move(id));
             if (models.size() == 128U) break;
         }
         return {true, models.empty()

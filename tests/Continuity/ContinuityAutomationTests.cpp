@@ -6,7 +6,6 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
-#include <future>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -241,32 +240,6 @@ public:
         }
     }
 
-    [[nodiscard]] Domain::Result<void> abandonCheckpoint(
-        const Domain::ProjectId& projectId,
-        const Domain::ContinuityOperationId& operationId,
-        const Domain::OperationContext& context) noexcept override
-    {
-        try {
-            std::lock_guard lock{mutex_};
-            ++abandonCalls_;
-            if (shutdown_ || containsCancelled(context.operationId) ||
-                context.isCancellationRequested()) {
-                return cancelled<void>();
-            }
-            const auto found = find(projectId);
-            if (found == handoffs_.end()) {
-                return Domain::Result<void>::success();
-            }
-            if (found->operationId != operationId) {
-                return missing<void>();
-            }
-            handoffs_.erase(found);
-            return Domain::Result<void>::success();
-        } catch (...) {
-            return internal<void>();
-        }
-    }
-
     [[nodiscard]] Domain::Result<Domain::CheckpointOutcome> prepareHandoff(
         const Domain::CheckpointRequest& request,
         const Domain::OperationContext& context) noexcept override
@@ -475,24 +448,11 @@ public:
         checkpointError_ = std::move(error);
     }
 
-    void setRolloverError(Domain::Error error)
-    {
-        std::lock_guard lock{mutex_};
-        rolloverError_ = std::move(error);
-    }
-
     void blockCheckpoint() noexcept
     {
         std::lock_guard lock{mutex_};
         blockCheckpoint_ = true;
         checkpointEntered_ = false;
-    }
-
-    void releaseCheckpoint() noexcept
-    {
-        std::lock_guard lock{mutex_};
-        blockCheckpoint_ = false;
-        condition_.notify_all();
     }
 
     [[nodiscard]] bool waitForCheckpointEntry()
@@ -512,12 +472,6 @@ public:
     {
         std::lock_guard lock{mutex_};
         return rolloverCalls_;
-    }
-
-    [[nodiscard]] std::size_t abandonCalls() const noexcept
-    {
-        std::lock_guard lock{mutex_};
-        return abandonCalls_;
     }
 
     [[nodiscard]] std::size_t resumeCalls() const noexcept
@@ -623,7 +577,6 @@ private:
     std::optional<Domain::Error> rolloverError_;
     std::optional<Domain::Error> resumeError_;
     std::size_t checkpointCalls_{};
-    std::size_t abandonCalls_{};
     std::size_t rolloverCalls_{};
     std::size_t resumeCalls_{};
     bool corruptCheckpointBinding_{};
@@ -677,12 +630,6 @@ void normalAndCheckpointActionsAreNarrow()
         operationContext(clock, 3U, "automation-checkpoint-replay")));
     REQUIRE(replay.operationId == checkpoint.operationId);
     REQUIRE(coordinator.checkpointCalls() == 2U);
-
-    take(automation.abandonCheckpoint(
-        handoff.project.projectId,
-        handoff.operationId,
-        operationContext(clock, 4U, "automation-abandon-checkpoint")));
-    REQUIRE(coordinator.abandonCalls() == 1U);
 }
 
 void rolloverAndEmergencyActivateWithoutOperatorAction()
@@ -792,27 +739,6 @@ void bindingAndCoordinatorFailuresStopTheChain()
     {
         Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
         ScriptedCoordinator coordinator;
-        coordinator.setRolloverError(Domain::makeError(
-            Domain::ErrorCodes::TransportClosed,
-            "The deterministic rollover failed after checkpoint persistence."));
-        Application::ContinuityAutomation automation{coordinator, clock};
-        requireError(
-            automation.observe(
-                observation,
-                operationContext(clock, 23U, "automation-rollover-error")),
-            Domain::ErrorCodes::TransportClosed);
-        REQUIRE(coordinator.checkpointCalls() == 1U);
-        REQUIRE(coordinator.rolloverCalls() == 1U);
-        take(automation.abandonCheckpoint(
-            handoff.project.projectId,
-            handoff.operationId,
-            operationContext(clock, 24U, "automation-abandon-failed-rollover")));
-        REQUIRE(coordinator.abandonCalls() == 1U);
-    }
-
-    {
-        Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
-        ScriptedCoordinator coordinator;
         coordinator.setCheckpointError(Domain::makeError(
             Domain::ErrorCodes::DatabaseBusy,
             "The deterministic checkpoint is busy.",
@@ -820,16 +746,11 @@ void bindingAndCoordinatorFailuresStopTheChain()
         Application::ContinuityAutomation automation{coordinator, clock};
         const auto result = automation.observe(
             observation,
-            operationContext(clock, 25U, "automation-checkpoint-error"));
+            operationContext(clock, 23U, "automation-checkpoint-error"));
         requireError(result, Domain::ErrorCodes::DatabaseBusy);
         REQUIRE(result.error().retryable);
         REQUIRE(coordinator.rolloverCalls() == 0U);
         REQUIRE(coordinator.resumeCalls() == 0U);
-        take(automation.abandonCheckpoint(
-            handoff.project.projectId,
-            handoff.operationId,
-            operationContext(clock, 26U, "automation-abandon-missing-checkpoint")));
-        REQUIRE(coordinator.abandonCalls() == 1U);
     }
 }
 
@@ -954,93 +875,6 @@ void sameProjectContentionIsImmediateAndShutdownCancelsActiveWork()
         Domain::ErrorCodes::TransportClosed);
 }
 
-void checkpointAbandonmentCommitsDuringSameProjectObservation()
-{
-    const auto now = Domain::UtcTimePoint{1'800'000'000s};
-    Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
-    ScriptedCoordinator coordinator;
-    Application::ContinuityAutomation automation{coordinator, clock};
-    const auto handoff = handoffFor(43U, now);
-    const Domain::ContinuityAutomationObservation observation{
-        handoff, signalsFor(Domain::ContextBudgetAction::Checkpoint)};
-    const auto checkpoint = take(automation.observe(
-        observation,
-        operationContext(clock, 43U, "automation-cleanup-checkpoint")));
-    REQUIRE(checkpoint.checkpointPersisted);
-
-    coordinator.setCheckpointError(Domain::makeError(
-        Domain::ErrorCodes::DatabaseBusy,
-        "The scripted competing observation stopped without mutation.",
-        true));
-    coordinator.blockCheckpoint();
-    std::optional<Domain::Result<Domain::ContinuityAutomationOutcome>> competing;
-    std::jthread observer{[&] {
-        competing.emplace(automation.observe(
-            observation,
-            operationContext(clock, 44U, "automation-cleanup-competing")));
-    }};
-    REQUIRE(coordinator.waitForCheckpointEntry());
-
-    auto cleanup = std::async(std::launch::async, [&] {
-        return automation.abandonCheckpoint(
-            handoff.project.projectId,
-            handoff.operationId,
-            operationContext(clock, 45U, "automation-cleanup-wait"));
-    });
-    const auto cleanupWhileBusy = cleanup.wait_for(250ms);
-    REQUIRE(cleanupWhileBusy == std::future_status::ready);
-    take(cleanup.get());
-    REQUIRE(coordinator.abandonCalls() == 1U);
-
-    coordinator.releaseCheckpoint();
-    observer.join();
-    REQUIRE(competing.has_value());
-    requireError(*competing, Domain::ErrorCodes::DatabaseBusy);
-    REQUIRE(coordinator.abandonCalls() == 2U);
-}
-
-void checkpointAbandonmentReconcilesThePreCreateRace()
-{
-    const auto now = Domain::UtcTimePoint{1'800'000'000s};
-    Fakes::FakeClock clock{now, Domain::MonotonicTimePoint{10s}};
-    ScriptedCoordinator coordinator;
-    Application::ContinuityAutomation automation{coordinator, clock};
-    const auto handoff = handoffFor(44U, now);
-    const Domain::ContinuityAutomationObservation observation{
-        handoff, signalsFor(Domain::ContextBudgetAction::Rollover)};
-
-    coordinator.blockCheckpoint();
-    std::optional<Domain::Result<Domain::ContinuityAutomationOutcome>> observed;
-    std::jthread observer{[&] {
-        observed.emplace(automation.observe(
-            observation,
-            operationContext(clock, 46U, "automation-cleanup-pre-create")));
-    }};
-    REQUIRE(coordinator.waitForCheckpointEntry());
-
-    auto cleanup = std::async(std::launch::async, [&] {
-        return automation.abandonCheckpoint(
-            handoff.project.projectId,
-            handoff.operationId,
-            operationContext(clock, 47U, "automation-cleanup-pre-create-race"));
-    });
-    REQUIRE(cleanup.wait_for(250ms) == std::future_status::ready);
-    take(cleanup.get());
-    REQUIRE(coordinator.abandonCalls() == 1U);
-
-    coordinator.releaseCheckpoint();
-    observer.join();
-    REQUIRE(observed.has_value());
-    requireError(*observed, Domain::ErrorCodes::Cancelled);
-    REQUIRE(coordinator.abandonCalls() == 2U);
-    REQUIRE(coordinator.rolloverCalls() == 0U);
-    REQUIRE(coordinator.resumeCalls() == 0U);
-    const auto pending = take(coordinator.getPendingHandoff(
-        handoff.project.projectId,
-        operationContext(clock, 48U, "automation-cleanup-pre-create-proof")));
-    REQUIRE(!pending.has_value());
-}
-
 void budgetSourcePrecedenceIsDeterministic()
 {
     Domain::ContextBudgetSignals signals{
@@ -1143,15 +977,11 @@ int main()
         std::cout << "PASS continuity_automation.project_bound\n";
         sameProjectContentionIsImmediateAndShutdownCancelsActiveWork();
         std::cout << "PASS continuity_automation.contention_cancellation\n";
-        checkpointAbandonmentCommitsDuringSameProjectObservation();
-        std::cout << "PASS continuity_automation.cleanup_commits_during_observation\n";
-        checkpointAbandonmentReconcilesThePreCreateRace();
-        std::cout << "PASS continuity_automation.cleanup_reconciles_pre_create_race\n";
         budgetSourcePrecedenceIsDeterministic();
         std::cout << "PASS continuity_automation.budget_source_precedence\n";
         normalBudgetNeverTriggersCountOrTimeRollover();
         std::cout << "PASS continuity_automation.context_only_policy\n";
-        std::cout << "SUMMARY passed=10 failed=0 assertions="
+        std::cout << "SUMMARY passed=8 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

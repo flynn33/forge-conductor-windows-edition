@@ -1027,6 +1027,7 @@ namespace {
 constexpr std::size_t MaximumContinuityIdentifierBytes = 4U * 1024U;
 constexpr std::size_t MaximumContinuityErrorBytes = 2U * 1024U;
 constexpr std::size_t MaximumContinuityEvidenceBytes = 2U * 1024U;
+constexpr std::uint32_t MaximumContinuityTransitionsPerOperation = 4'096U;
 constexpr std::size_t MaximumContinuityOperationsPerProject = 4'096U;
 constexpr std::string_view ContinuityOperationColumns =
     "operation_id,project_id,predecessor_session_id,successor_session_id,"
@@ -1355,7 +1356,7 @@ void validateContinuityTransitionLedger(
     take(statement.bindInt64(
         3,
         static_cast<std::int64_t>(
-            Domain::MaximumContinuityTransitionsPerOperation) + 1));
+            MaximumContinuityTransitionsPerOperation) + 1));
     std::size_t count{};
     std::optional<Domain::ContinuityState> previousTo;
     std::uint32_t previousAttempt{};
@@ -1364,7 +1365,7 @@ void validateContinuityTransitionLedger(
     Domain::Sha256Digest lastChecksum = operation.stateChecksum;
     while (take(statement.step()) == WinsqliteStepResult::Row) {
         ++count;
-        if (count > Domain::MaximumContinuityTransitionsPerOperation) {
+        if (count > MaximumContinuityTransitionsPerOperation) {
             fail(integrityError(
                 "A continuity transition ledger exceeds its durable bound."));
         }
@@ -4388,100 +4389,6 @@ Domain::Result<Domain::MemoryRecords> WindowsProjectMemoryRepository::get(
     });
 }
 
-namespace {
-
-[[nodiscard]] Domain::ProjectMemoryRecord updateProjectMemoryRecord(
-    WinsqliteTransaction& transaction,
-    const Domain::UpdateProjectMemoryRequest& request,
-    const Domain::ProjectMemoryLimits& limits,
-    Contracts::IHasher& hasher,
-    const std::string& timestamp,
-    const Domain::OperationContext& context)
-{
-    auto current = recordById(
-        transaction,
-        request.projectId,
-        request.recordId,
-        false,
-        true,
-        limits,
-        hasher,
-        context);
-    if (!current) {
-        fail(Domain::makeError(
-            Domain::ErrorCodes::RecordNotFound,
-            "The project memory record was not found."));
-    }
-    if (current->version != request.expectedVersion) {
-        fail(Domain::makeError(
-            Domain::ErrorCodes::Conflict,
-            "The project memory record version does not match expected_version."));
-    }
-    const std::string nextTitle = request.title.value_or(current->title);
-    const std::string nextSummary = request.summary.value_or(current->summary);
-    const std::optional<std::string> nextBody =
-        request.body ? request.body : current->body;
-    const std::vector<std::string> nextTags =
-        request.tags.value_or(current->tags);
-    Domain::ProjectMemoryWrite hashInput{
-        current->kind,
-        nextTitle,
-        nextSummary,
-        nextBody,
-        nextTags,
-        current->importance,
-        current->confidence,
-        current->sourceKind,
-        current->sourceReference,
-        current->sessionId,
-        current->expiresAt,
-        {},
-        std::nullopt};
-    const auto hash = contentHash(hashInput, hasher);
-    {
-        auto statement = take(transaction.prepare(R"sql(
-UPDATE memory_records SET version=version+1,title=?,summary=?,body=?,
- updated_at=?,last_accessed_at=?,content_hash=?
-WHERE id=? AND project_id=? AND version=? AND is_tombstone=0
-)sql"));
-        take(statement.bindText(1, nextTitle));
-        take(statement.bindText(2, nextSummary));
-        bindOptionalText(statement, 3, nextBody);
-        take(statement.bindText(4, timestamp));
-        take(statement.bindText(5, timestamp));
-        take(statement.bindText(6, hash.value()));
-        take(statement.bindText(7, request.recordId.value()));
-        take(statement.bindText(8, request.projectId.value()));
-        take(statement.bindInt64(9, request.expectedVersion));
-        stepDone(statement);
-    }
-    replaceTags(transaction, request.recordId, nextTags);
-    appendEvent(
-        transaction,
-        request.projectId,
-        request.recordId,
-        "updated",
-        hash.value(),
-        timestamp);
-    auto updated = recordById(
-        transaction,
-        request.projectId,
-        request.recordId,
-        false,
-        true,
-        limits,
-        hasher,
-        context);
-    if (!updated) {
-        fail(Domain::makeError(
-            Domain::ErrorCodes::RecordNotFound,
-            "The updated project memory record could not be read."));
-    }
-    return std::move(*updated);
-}
-
-} // namespace
-
 Domain::Result<Domain::ProjectMemoryRecord>
 WindowsProjectMemoryRepository::update(
     const Domain::UpdateProjectMemoryRequest& request,
@@ -4606,80 +4513,6 @@ WHERE id=? AND project_id=? AND version=? AND is_tombstone=0
                     enforceEventJournalRetention(transaction);
                     take(transaction.commit());
                     return std::move(*updated);
-                });
-            }));
-    });
-}
-
-Domain::Result<Domain::MemoryUpdateBatchOutcome>
-WindowsProjectMemoryRepository::updateBatch(
-    const Domain::UpdateProjectMemoryBatchRequest& request,
-    const Domain::OperationContext& context) noexcept
-{
-    return guarded<Domain::MemoryUpdateBatchOutcome>([&]() {
-        requireScope(projectId(), request.projectId);
-        if (request.updates.empty() ||
-            request.updates.size() > implementation_->options.limits.maximumBatchCount) {
-            fail(Domain::makeError(
-                Domain::ErrorCodes::PayloadTooLarge,
-                "Project memory update batch count is outside its configured bound."));
-        }
-        std::vector<Domain::UpdateProjectMemoryRequest> validated;
-        validated.reserve(request.updates.size());
-        for (const auto& update : request.updates) {
-            requireScope(request.projectId, update.projectId);
-            auto item = take(Domain::validateUpdateProjectMemoryRequest(
-                update, implementation_->options.limits));
-            if (item.title) {
-                item.title = take(implementation_->redactor->redact(*item.title));
-            }
-            if (item.summary) {
-                item.summary = take(implementation_->redactor->redact(*item.summary));
-            }
-            if (item.body) {
-                item.body = take(implementation_->redactor->redact(*item.body));
-            }
-            if (item.tags) {
-                for (auto& tag : *item.tags) {
-                    tag = take(implementation_->redactor->redact(tag));
-                }
-            }
-            validated.push_back(take(Domain::validateUpdateProjectMemoryRequest(
-                std::move(item), implementation_->options.limits)));
-        }
-        auto* store = implementation_->database->repositoryStore();
-        if (store == nullptr) {
-            fail(Domain::makeError(
-                Domain::ErrorCodes::InvalidRequest,
-                "The project memory repository is closed."));
-        }
-        return take(runOnStore<Domain::MemoryUpdateBatchOutcome>(
-            *store,
-            "Update project memory batch",
-            context,
-            [&](WinsqliteConnection& connection) noexcept {
-                return guarded<Domain::MemoryUpdateBatchOutcome>([&]() {
-                    auto transaction = take(WinsqliteTransaction::beginImmediate(
-                        connection, context));
-                    Domain::MemoryUpdateBatchOutcome outcome{
-                        request.projectId, {},
-                        Domain::ProjectMemorySchemaVersion,
-                        Domain::ProjectMemoryCapabilityVersion};
-                    outcome.records.reserve(validated.size());
-                    const auto timestamp = timestampText(
-                        implementation_->clock->utcNow());
-                    for (const auto& update : validated) {
-                        outcome.records.push_back(updateProjectMemoryRecord(
-                            transaction,
-                            update,
-                            implementation_->options.limits,
-                            *implementation_->hasher,
-                            timestamp,
-                            context));
-                    }
-                    enforceEventJournalRetention(transaction);
-                    take(transaction.commit());
-                    return outcome;
                 });
             }));
     });
@@ -5544,112 +5377,6 @@ Domain::Result<void> WindowsProjectMemoryRepository::storeHandoff(
     });
 }
 
-Domain::Result<void>
-WindowsProjectMemoryRepository::refreshCheckpointHandoff(
-    const Domain::ContinuityHandoff& handoffValue,
-    const Domain::Sha256Digest& expectedHandoffSha256,
-    const Domain::OperationContext& context) noexcept
-{
-    return guarded<void>([&]() {
-        requireScope(projectId(), handoffValue.project.projectId);
-        auto document = take(implementation_->continuityCodec->encode(
-            handoffValue, context));
-        const auto& handoff = document.handoff;
-        auto* store = implementation_->database->repositoryStore();
-        if (store == nullptr) {
-            fail(Domain::makeError(
-                Domain::ErrorCodes::InvalidRequest,
-                "The project continuity repository is closed."));
-        }
-        take(runOnStore<void>(
-            *store,
-            "Refresh persisted continuity checkpoint",
-            context,
-            [&](WinsqliteConnection& connection) noexcept {
-                return guarded<void>([&]() {
-                    auto transaction = take(WinsqliteTransaction::beginImmediate(
-                        connection, context));
-                    const auto operation = continuityOperationById(
-                        transaction,
-                        projectId(),
-                        handoff.operationId,
-                        *implementation_->hasher,
-                        context);
-                    if (!operation) {
-                        fail(Domain::makeError(
-                            Domain::ErrorCodes::RecordNotFound,
-                            "The checkpoint continuity operation was not found."));
-                    }
-                    if (operation->handoffId != handoff.handoffId ||
-                        operation->predecessorSessionId !=
-                            handoff.predecessorSession.sessionId ||
-                        operation->adapterId != handoff.hostState.adapterId ||
-                        operation->state !=
-                            Domain::ContinuityState::CheckpointPersisted ||
-                        operation->successorSessionId ||
-                        operation->acknowledgedSessionId ||
-                        operation->acknowledgedHandoffId) {
-                        fail(Domain::makeError(
-                            Domain::ErrorCodes::Conflict,
-                            "The handoff is not an unconsumed persisted checkpoint."));
-                    }
-                    const auto existing = continuityHandoffById(
-                        transaction,
-                        projectId(),
-                        handoff.handoffId,
-                        *implementation_->continuityCodec,
-                        context);
-                    if (!existing) {
-                        fail(integrityError(
-                            "The persisted checkpoint handoff is missing."));
-                    }
-                    if (existing->contentSha256 == handoff.contentSha256) {
-                        take(transaction.commit());
-                        return;
-                    }
-                    if (existing->contentSha256 != expectedHandoffSha256) {
-                        fail(Domain::makeError(
-                            Domain::ErrorCodes::Conflict,
-                            "The persisted checkpoint changed before it could be refreshed."));
-                    }
-                    auto update = take(transaction.prepare(
-                        "UPDATE continuity_handoffs SET "
-                        "payload_json=?,content_sha256=?,created_at=? "
-                        "WHERE handoff_id=? AND project_id=? AND operation_id=? "
-                        "AND content_sha256=? "
-                        "AND acknowledged_session_id IS NULL"));
-                    take(update.bindText(1, document.canonicalUtf8));
-                    take(update.bindText(2, handoff.contentSha256.value()));
-                    take(update.bindText(3, timestampText(handoff.createdAt)));
-                    take(update.bindText(4, handoff.handoffId.value()));
-                    take(update.bindText(5, projectId().value()));
-                    take(update.bindText(6, handoff.operationId.value()));
-                    take(update.bindText(7, expectedHandoffSha256.value()));
-                    stepDone(update);
-                    if (changedRows(transaction) != 1) {
-                        fail(Domain::makeError(
-                            Domain::ErrorCodes::Conflict,
-                            "The checkpoint refresh lost its digest comparison."));
-                    }
-                    const auto persisted = continuityHandoffById(
-                        transaction,
-                        projectId(),
-                        handoff.handoffId,
-                        *implementation_->continuityCodec,
-                        context);
-                    if (!persisted ||
-                        persisted->contentSha256 != handoff.contentSha256) {
-                        fail(integrityError(
-                            "The refreshed checkpoint handoff could not be verified."));
-                    }
-                    take(transaction.commit());
-                    return;
-                });
-            }));
-        return;
-    });
-}
-
 Domain::Result<std::optional<Domain::ContinuityHandoff>>
 WindowsProjectMemoryRepository::handoff(
     const Domain::ProjectId& requestedProjectId,
@@ -5797,7 +5524,6 @@ WindowsProjectMemoryRepository::compareAndSet(
                             "The requested continuity transition is invalid."));
                     }
                     if (expected == Domain::ContinuityState::RetryWait &&
-                        next != Domain::ContinuityState::Cancelling &&
                         current->retryResumeState != next) {
                         fail(Domain::makeError(
                             Domain::ErrorCodes::Conflict,
@@ -5832,8 +5558,8 @@ WindowsProjectMemoryRepository::compareAndSet(
                         fail(integrityError(
                             "Predecessor sealing requires an exact durable acknowledgement."));
                     }
-                    if (!Domain::canCommitContinuityTransition(
-                            current->attempt, next)) {
+                    if (current->attempt >=
+                        MaximumContinuityTransitionsPerOperation - 1U) {
                         fail(Domain::makeError(
                             Domain::ErrorCodes::LimitExceeded,
                             "The continuity transition attempt bound was reached."));
@@ -6006,9 +5732,8 @@ WindowsProjectMemoryRepository::acknowledge(
                             Domain::ErrorCodes::Conflict,
                             "The continuity operation is not awaiting acknowledgement."));
                     }
-                    if (!Domain::canCommitContinuityTransition(
-                            current->attempt,
-                            Domain::ContinuityState::Acknowledged)) {
+                    if (current->attempt >=
+                        MaximumContinuityTransitionsPerOperation - 1U) {
                         fail(Domain::makeError(
                             Domain::ErrorCodes::LimitExceeded,
                             "The continuity transition attempt bound was reached."));
@@ -6179,8 +5904,8 @@ WindowsProjectMemoryRepository::recordRetry(
                         !Domain::isAllowedContinuityTransition(
                             current->state,
                             Domain::ContinuityState::FailedRecoverable) ||
-                        !Domain::canScheduleContinuityRetry(
-                            current->attempt, resumeState)) {
+                        current->attempt >
+                            MaximumContinuityTransitionsPerOperation - 3U) {
                         fail(Domain::makeError(
                             Domain::ErrorCodes::Conflict,
                             "The continuity operation cannot enter retry wait from its current state."));

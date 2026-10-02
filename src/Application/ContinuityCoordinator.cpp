@@ -67,49 +67,6 @@ template <typename T>
            (capabilities.idempotency || capabilities.queryByIdempotencyKey);
 }
 
-[[nodiscard]] bool hasDurableRolloverIntent(
-    const Domain::ContinuityOperation& operation) noexcept
-{
-    if (operation.state == Domain::ContinuityState::RetryWait) {
-        return operation.retryResumeState ==
-                   Domain::ContinuityState::SuccessorCreating ||
-               operation.retryResumeState ==
-                   Domain::ContinuityState::BootstrapSending ||
-               operation.retryResumeState ==
-                   Domain::ContinuityState::PredecessorSealing;
-    }
-    switch (operation.state) {
-    case Domain::ContinuityState::SuccessorCreating:
-    case Domain::ContinuityState::SuccessorCreated:
-    case Domain::ContinuityState::BootstrapSending:
-    case Domain::ContinuityState::Acknowledged:
-    case Domain::ContinuityState::PredecessorSealing:
-    case Domain::ContinuityState::Cancelling:
-        return true;
-    case Domain::ContinuityState::Idle:
-    case Domain::ContinuityState::CheckpointPreparing:
-    case Domain::ContinuityState::CheckpointPersisted:
-    case Domain::ContinuityState::Completed:
-    case Domain::ContinuityState::RetryWait:
-    case Domain::ContinuityState::FailedRecoverable:
-    case Domain::ContinuityState::Cancelled:
-        return false;
-    }
-    return false;
-}
-
-[[nodiscard]] bool isPreSuccessorCheckpoint(
-    const Domain::ContinuityOperation& operation) noexcept
-{
-    if (operation.state == Domain::ContinuityState::RetryWait) {
-        return operation.retryResumeState ==
-            Domain::ContinuityState::CheckpointPreparing;
-    }
-    return operation.state == Domain::ContinuityState::Idle ||
-        operation.state == Domain::ContinuityState::CheckpointPreparing ||
-        operation.state == Domain::ContinuityState::CheckpointPersisted;
-}
-
 } // namespace
 
 class ContinuityCoordinator::Impl final {
@@ -216,23 +173,6 @@ public:
             }
             operation = std::move(persisted).value();
         }
-        if (operation.state == Domain::ContinuityState::CheckpointPersisted &&
-            request.expectedHandoffSha256) {
-            auto refreshed = repository->refreshCheckpointHandoff(
-                request.handoff,
-                *request.expectedHandoffSha256,
-                context);
-            if (!refreshed) {
-                return propagate<Domain::CheckpointOutcome>(
-                    std::move(refreshed));
-            }
-        }
-        if (operation.state == Domain::ContinuityState::Completed &&
-            request.expectedHandoffSha256) {
-            return failure<Domain::CheckpointOutcome>(
-                Domain::ErrorCodes::Conflict,
-                "A completed successor cannot accept a checkpoint refresh.");
-        }
         auto durable = repository->handoff(
             operation.projectId, operation.handoffId, context);
         if (!durable) {
@@ -243,124 +183,8 @@ public:
                 Domain::ErrorCodes::IntegrityFailure,
                 "The checkpoint operation has no durable canonical handoff.");
         }
-        if (durable.value()->contentSha256 != request.handoff.contentSha256) {
-            return failure<Domain::CheckpointOutcome>(
-                request.expectedHandoffSha256
-                    ? Domain::ErrorCodes::IntegrityFailure
-                    : Domain::ErrorCodes::Conflict,
-                request.expectedHandoffSha256
-                    ? "The refreshed checkpoint does not match the latest handoff content."
-                    : "Changing a persisted checkpoint requires its exact previous digest.");
-        }
-        auto current = repository->operation(
-            operation.projectId, operation.operationId, context);
-        if (!current) {
-            return propagate<Domain::CheckpointOutcome>(std::move(current));
-        }
-        if (!current.value() ||
-            (current.value()->state !=
-                 Domain::ContinuityState::CheckpointPersisted &&
-             current.value()->state != Domain::ContinuityState::Completed) ||
-            current.value()->handoffId != operation.handoffId ||
-            current.value()->predecessorSessionId !=
-                operation.predecessorSessionId ||
-            current.value()->adapterId != operation.adapterId) {
-            return failure<Domain::CheckpointOutcome>(
-                Domain::ErrorCodes::Conflict,
-                "The checkpoint state changed before its durable snapshot could be returned.",
-                true);
-        }
-        operation = *std::move(current).value();
         return Domain::Result<Domain::CheckpointOutcome>::success(
             Domain::CheckpointOutcome{operation, *std::move(durable).value()});
-    }
-
-    [[nodiscard]] Domain::Result<void> abandonCheckpoint(
-        const Domain::ProjectId& projectId,
-        const Domain::ContinuityOperationId& operationId,
-        const Domain::OperationContext& context) noexcept
-    {
-        auto valid = validateContext(context, clock_, shutdownRequested_);
-        if (!valid) {
-            return valid;
-        }
-        auto opened = repositoryFactory_.openContinuity(projectId, context);
-        if (!opened) {
-            return Domain::Result<void>::failure(std::move(opened).error());
-        }
-        auto repository = std::move(opened).value();
-        auto loaded = repository->operation(projectId, operationId, context);
-        if (!loaded) {
-            return Domain::Result<void>::failure(std::move(loaded).error());
-        }
-        if (!loaded.value()) {
-            return Domain::Result<void>::success();
-        }
-        auto operation = *std::move(loaded).value();
-        if (operation.projectId != projectId ||
-            operation.operationId != operationId) {
-            return failure<void>(
-                Domain::ErrorCodes::IntegrityFailure,
-                "The checkpoint abandonment resolved another continuity operation.");
-        }
-        if (operation.state == Domain::ContinuityState::Cancelled &&
-            !operation.successorSessionId) {
-            return Domain::Result<void>::success();
-        }
-        if (operation.successorSessionId || operation.acknowledgedSessionId ||
-            operation.acknowledgedHandoffId) {
-            return failure<void>(
-                Domain::ErrorCodes::Conflict,
-                "The checkpoint already has successor effects and cannot be abandoned.");
-        }
-        if (operation.state == Domain::ContinuityState::RetryWait) {
-            if (operation.retryResumeState !=
-                Domain::ContinuityState::CheckpointPreparing) {
-                return failure<void>(
-                    Domain::ErrorCodes::Conflict,
-                    "Only a retry bound to checkpoint preparation can be abandoned.");
-            }
-        }
-        if (operation.state == Domain::ContinuityState::Idle ||
-            operation.state == Domain::ContinuityState::CheckpointPreparing ||
-            operation.state == Domain::ContinuityState::CheckpointPersisted ||
-            operation.state == Domain::ContinuityState::RetryWait) {
-            const auto checkpointState = operation.state;
-            auto cancelling = repository->compareAndSet(
-                operation.operationId,
-                checkpointState,
-                Domain::ContinuityState::Cancelling,
-                std::nullopt,
-                std::optional<std::string>{"checkpoint_owner_terminal"},
-                context);
-            if (!cancelling) {
-                return Domain::Result<void>::failure(
-                    std::move(cancelling).error());
-            }
-            operation = std::move(cancelling).value();
-        }
-        if (operation.state != Domain::ContinuityState::Cancelling) {
-            return failure<void>(
-                Domain::ErrorCodes::Conflict,
-                "Only an unconsumed pre-successor checkpoint can be abandoned.");
-        }
-        auto cancelled = repository->compareAndSet(
-            operation.operationId,
-            Domain::ContinuityState::Cancelling,
-            Domain::ContinuityState::Cancelled,
-            std::nullopt,
-            std::optional<std::string>{"checkpoint_abandoned"},
-            context);
-        if (!cancelled) {
-            return Domain::Result<void>::failure(std::move(cancelled).error());
-        }
-        if (cancelled.value().state != Domain::ContinuityState::Cancelled ||
-            cancelled.value().successorSessionId) {
-            return failure<void>(
-                Domain::ErrorCodes::IntegrityFailure,
-                "The abandoned checkpoint did not reach a clean terminal state.");
-        }
-        return Domain::Result<void>::success();
     }
 
     [[nodiscard]] Domain::Result<std::optional<Domain::ContinuityHandoff>>
@@ -880,49 +704,6 @@ public:
             }
             ++report.inspected;
             auto operation = *std::move(active).value();
-            if (operation.state == Domain::ContinuityState::Cancelling) {
-                auto cancelled = repository->compareAndSet(
-                    operation.operationId,
-                    Domain::ContinuityState::Cancelling,
-                    Domain::ContinuityState::Cancelled,
-                    operation.successorSessionId,
-                    std::optional<std::string>{"recovery_cancelled"},
-                    context);
-                if (!cancelled) {
-                    ++report.failed;
-                    continue;
-                }
-                ++report.cancelled;
-                report.operations.push_back(std::move(cancelled).value());
-                continue;
-            }
-            if (request.abandonPreSuccessorOperations &&
-                isPreSuccessorCheckpoint(operation)) {
-                auto abandoned = abandonCheckpoint(
-                    projectId, operation.operationId, context);
-                if (!abandoned) {
-                    ++report.failed;
-                    continue;
-                }
-                auto terminal = repository->operation(
-                    projectId, operation.operationId, context);
-                if (!terminal || !terminal.value() ||
-                    terminal.value()->state !=
-                        Domain::ContinuityState::Cancelled) {
-                    ++report.failed;
-                    continue;
-                }
-                ++report.cancelled;
-                report.operations.push_back(*std::move(terminal).value());
-                continue;
-            }
-            if (request.abandonPreSuccessorOperations &&
-                !request.resumeOperations) {
-                // The pre-ingress orphan pass owns only stable checkpoints.
-                // Durable rollover intent remains for ordinary recovery, but
-                // a previously committed cancellation is finalized now.
-                continue;
-            }
             if (!request.resumeOperations) {
                 if (operation.state != Domain::ContinuityState::Cancelling) {
                     auto cancelling = repository->compareAndSet(
@@ -952,9 +733,6 @@ public:
                 operation = std::move(cancelled).value();
                 ++report.cancelled;
                 report.operations.push_back(operation);
-                continue;
-            }
-            if (!hasDurableRolloverIntent(operation)) {
                 continue;
             }
             auto outcome = rollover(
@@ -1066,19 +844,6 @@ Domain::Result<Domain::CheckpointOutcome> ContinuityCoordinator::checkpoint(
             "The continuity coordinator has no implementation.");
     }
     return implementation_->checkpoint(request, context);
-}
-
-Domain::Result<void> ContinuityCoordinator::abandonCheckpoint(
-    const Domain::ProjectId& projectId,
-    const Domain::ContinuityOperationId& operationId,
-    const Domain::OperationContext& context) noexcept
-{
-    if (!implementation_) {
-        return failure<void>(
-            Domain::ErrorCodes::TransportClosed,
-            "The continuity coordinator has no implementation.");
-    }
-    return implementation_->abandonCheckpoint(projectId, operationId, context);
 }
 
 Domain::Result<Domain::CheckpointOutcome> ContinuityCoordinator::prepareHandoff(
