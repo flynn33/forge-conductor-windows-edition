@@ -1,3 +1,0 @@
-Historical workflow superseded for the Windows Alpha.
-Read AGENTS.md, ROADMAP.md and .forge-alpha/NEXT.md at the repository root.
-The current human-provided repository path is authoritative. Old quota and all-gates selectors are inactive.
