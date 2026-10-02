@@ -472,11 +472,51 @@ void fullCasAcknowledgementAndTerminalSlotRelease()
         operation.operationId,
         Domain::ContinuityState::CheckpointPreparing,
         Domain::ContinuityState::CheckpointPersisted));
+    auto refreshedHandoff = handoff;
+    refreshedHandoff.completedWork.push_back({
+        std::optional<std::string>{"post-checkpoint"},
+        "Work completed after the initial checkpoint",
+        std::optional<std::string>{"complete"}});
+    refreshedHandoff = take(fixture.codec->encode(
+        refreshedHandoff,
+        context("continuity-full-refresh-encode"))).handoff;
+    take(fixture.repository->refreshCheckpointHandoff(
+        refreshedHandoff,
+        handoff.contentSha256,
+        context("continuity-full-refresh-checkpoint")));
+    take(fixture.repository->refreshCheckpointHandoff(
+        refreshedHandoff,
+        handoff.contentSha256,
+        context("continuity-full-refresh-checkpoint-replay")));
+    const auto refreshedDurable = take(fixture.repository->handoff(
+        projectId,
+        handoff.handoffId,
+        context("continuity-full-read-refreshed-checkpoint")));
+    REQUIRE(refreshedDurable.has_value());
+    REQUIRE(refreshedDurable->contentSha256 ==
+            refreshedHandoff.contentSha256);
+    REQUIRE(refreshedDurable->completedWork.size() ==
+            refreshedHandoff.completedWork.size());
+    requireError(
+        fixture.repository->refreshCheckpointHandoff(
+            handoff,
+            handoff.contentSha256,
+            context("continuity-full-reject-stale-refresh")),
+        Domain::ErrorCodes::Conflict);
     static_cast<void>(transition(
         *fixture.repository,
         operation.operationId,
         Domain::ContinuityState::CheckpointPersisted,
         Domain::ContinuityState::SuccessorCreating));
+    auto tooLateHandoff = refreshedHandoff;
+    tooLateHandoff.contentSha256 = parse<Domain::Sha256Digest>(
+        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
+    requireError(
+        fixture.repository->refreshCheckpointHandoff(
+            tooLateHandoff,
+            refreshedHandoff.contentSha256,
+            context("continuity-full-refresh-after-successor-intent")),
+        Domain::ErrorCodes::Conflict);
 
     requireError(
         fixture.repository->compareAndSet(
@@ -743,6 +783,59 @@ void retryResumeStatePersistsAndBindsExactResume()
     REQUIRE(take(reopened.repository->transitionCount(
                 operationId,
                 context("continuity-retry-transition-count"))) == 5U);
+}
+
+void retryWaitCanEnterDurableCancellationWithoutResumingWork()
+{
+    Support::ScopedTestDirectory directory{
+        L"continuity-repository-retry-cancel"};
+    const auto projectId = parse<Domain::ProjectId>(
+        "19191919-1919-4919-8919-191919191919");
+    const auto operationId = parse<Domain::ContinuityOperationId>(
+        "59595959-5959-4959-8959-595959595959");
+    RepositoryFixture fixture{directory.path(), projectId};
+    const auto handoff = handoffFor(
+        fixture,
+        operationId.value(),
+        "69696969-6969-4969-8969-696969696969",
+        "79797979-7979-4979-8979-797979797979");
+    static_cast<void>(take(fixture.repository->createOperation(
+        handoff,
+        take(Domain::IdempotencyKey::create("retry-cancel-operation")),
+        context("continuity-retry-cancel-create"))));
+    static_cast<void>(transition(
+        *fixture.repository,
+        operationId,
+        Domain::ContinuityState::Idle,
+        Domain::ContinuityState::CheckpointPreparing));
+    const auto retry = take(fixture.repository->recordRetry(
+        operationId,
+        Domain::ContinuityState::CheckpointPreparing,
+        "checkpoint write interrupted",
+        fixture.clock->utcNow() + 1h,
+        context("continuity-retry-cancel-record")));
+    REQUIRE(retry.state == Domain::ContinuityState::RetryWait);
+
+    const auto cancelling = take(fixture.repository->compareAndSet(
+        operationId,
+        Domain::ContinuityState::RetryWait,
+        Domain::ContinuityState::Cancelling,
+        std::nullopt,
+        std::optional<std::string>{"checkpoint_owner_terminal"},
+        context("continuity-retry-cancel-intent")));
+    REQUIRE(cancelling.state == Domain::ContinuityState::Cancelling);
+    REQUIRE(!cancelling.retryResumeState);
+    REQUIRE(!cancelling.retryAt);
+    const auto cancelled = take(fixture.repository->compareAndSet(
+        operationId,
+        Domain::ContinuityState::Cancelling,
+        Domain::ContinuityState::Cancelled,
+        std::nullopt,
+        std::optional<std::string>{"checkpoint_abandoned"},
+        context("continuity-retry-cancel-complete")));
+    REQUIRE(cancelled.state == Domain::ContinuityState::Cancelled);
+    REQUIRE(!take(fixture.repository->activeOperation(
+        projectId, context("continuity-retry-cancel-no-active"))));
 }
 
 void operationHandoffAndTransitionTamperingFailClosed()
@@ -1091,13 +1184,15 @@ int main()
         std::cout << "PASS continuity_repository.cas_ack_pointer_slot_release\n";
         retryResumeStatePersistsAndBindsExactResume();
         std::cout << "PASS continuity_repository.retry_resume_persistence\n";
+        retryWaitCanEnterDurableCancellationWithoutResumingWork();
+        std::cout << "PASS continuity_repository.retry_wait_cancel\n";
         operationHandoffAndTransitionTamperingFailClosed();
         std::cout << "PASS continuity_repository.integrity_tamper_rejection\n";
         continuityResetPreservesProjectMemoryAndMetadata();
         std::cout << "PASS continuity_repository.reset_preserves_project_data\n";
         sameProjectContentionAndIndependentProjectsRemainBounded();
         std::cout << "PASS continuity_repository.project_concurrency\n";
-        std::cout << "SUMMARY passed=6 failed=0\n";
+        std::cout << "SUMMARY passed=7 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

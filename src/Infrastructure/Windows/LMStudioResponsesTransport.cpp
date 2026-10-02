@@ -406,7 +406,7 @@ public:
         : configuration_{validateConfiguration(std::move(configuration))},
           host_{Detail::strictUtf8ToUtf16(configuration_.loopbackHost).value()},
           session_{std::make_shared<InternetHandle>(WinHttpOpen(
-              L"Forge Conductor LM Studio Responses/1.1.43",
+              L"Forge Conductor LM Studio Responses/1.3.5",
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,
@@ -846,20 +846,30 @@ private:
                 document.error().retryable);
         }
         try {
-            if (!document.value().contains("data") ||
-                !document.value().at("data").is_array()) {
+            if (!document.value().contains("models") ||
+                !document.value().at("models").is_array()) {
                 return failure<std::string>(
                     Domain::ErrorCodes::MalformedMessage,
-                    "LM Studio /models returned no model collection.");
+                    "LM Studio loaded-model inventory returned no model collection.");
             }
             std::vector<std::string> discovered;
-            for (const auto& item : document.value().at("data")) {
-                if (item.is_object() && item.contains("id") &&
-                    item.at("id").is_string()) {
-                    const auto id = item.at("id").get<std::string>();
+            for (const auto& item : document.value().at("models")) {
+                if (!item.is_object() || item.value("type", "") != "llm" ||
+                    !item.contains("loaded_instances") ||
+                    !item.at("loaded_instances").is_array()) {
+                    continue;
+                }
+                for (const auto& instance : item.at("loaded_instances")) {
+                    if (!instance.is_object() || !instance.contains("id") ||
+                        !instance.at("id").is_string()) {
+                        continue;
+                    }
+                    const auto id = instance.at("id").get<std::string>();
                     if (!id.empty() && id.size() <= 256U &&
                         id.find('\0') == std::string::npos &&
-                        Domain::isValidUtf8(id)) {
+                        Domain::isValidUtf8(id) &&
+                        std::find(discovered.begin(), discovered.end(), id) ==
+                            discovered.end()) {
                         discovered.push_back(id);
                     }
                 }
@@ -893,7 +903,7 @@ private:
         } catch (const nlohmann::json::exception&) {
             return failure<std::string>(
                 Domain::ErrorCodes::MalformedMessage,
-                "LM Studio /models returned malformed model metadata.");
+                "LM Studio loaded-model inventory returned malformed metadata.");
         }
     }
 
@@ -918,7 +928,7 @@ private:
 
     [[nodiscard]] std::string modelsPath() const
     {
-        return configuration_.basePath + "/models";
+        return "/api/v1/models";
     }
 
     [[nodiscard]] std::string responsesPath() const

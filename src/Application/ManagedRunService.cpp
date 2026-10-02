@@ -47,6 +47,26 @@ namespace {
             Domain::ErrorCodes::InvalidRequest,
             "The managed run task is empty, invalid, or exceeds its bound."));
     }
+    if (request.instructionCursorAdvances.size() >
+        Domain::MaximumManagedRunCursorAdvances) {
+        return Domain::Result<void>::failure(failure(
+            Domain::ErrorCodes::LimitExceeded,
+            "The managed run cursor plan exceeds its durable bound."));
+    }
+    std::set<Domain::MemoryRecordId> cursorRecords;
+    for (const auto& advance : request.instructionCursorAdvances) {
+        if (advance.expectedVersion == 0U ||
+            advance.expectedVersion ==
+                (std::numeric_limits<std::uint32_t>::max)() ||
+            advance.queueRowId.empty() ||
+            advance.queueRowId.size() > 256U ||
+            advance.targetEntry == 0U ||
+            !cursorRecords.insert(advance.recordId).second) {
+            return Domain::Result<void>::failure(failure(
+                Domain::ErrorCodes::InvalidRequest,
+                "The managed run cursor plan is invalid or duplicated."));
+        }
+    }
     return Domain::Result<void>::success();
 }
 
@@ -60,6 +80,50 @@ namespace {
         true,
         cancellationRequested,
         pauseRequested};
+}
+
+[[nodiscard]] std::string continuityIdentity(
+    const Domain::SessionId& runId,
+    std::uint64_t sequence)
+{
+    auto value = runId.value();
+    if (sequence == 0U) return value;
+    const auto digitValue = [](const char digit) -> std::optional<unsigned> {
+        if (digit >= '0' && digit <= '9') {
+            return static_cast<unsigned>(digit - '0');
+        }
+        if (digit >= 'a' && digit <= 'f') {
+            return static_cast<unsigned>(digit - 'a' + 10);
+        }
+        if (digit >= 'A' && digit <= 'F') {
+            return static_cast<unsigned>(digit - 'A' + 10);
+        }
+        return std::nullopt;
+    };
+    constexpr std::string_view Hex{"0123456789abcdef"};
+    for (auto cursor = value.rbegin();
+         cursor != value.rend() && sequence != 0U; ++cursor) {
+        if (*cursor == '-') continue;
+        const auto digit = digitValue(*cursor);
+        if (!digit) return {};
+        const auto sum = *digit + static_cast<unsigned>(sequence & 0xFU);
+        *cursor = Hex[sum & 0xFU];
+        sequence = (sequence >> 4U) + (sum >> 4U);
+    }
+    return sequence == 0U ? value : std::string{};
+}
+
+[[nodiscard]] std::string_view utf8PrefixByBytes(
+    const std::string_view value,
+    const std::size_t maximumBytes) noexcept
+{
+    if (value.size() <= maximumBytes) return value;
+    auto prefixBytes = maximumBytes;
+    while (prefixBytes > 0U &&
+           (static_cast<unsigned char>(value[prefixBytes]) & 0xc0U) == 0x80U) {
+        --prefixBytes;
+    }
+    return value.substr(0U, prefixBytes);
 }
 
 } // namespace
@@ -82,70 +146,49 @@ public:
 
     ~Impl() noexcept { shutdown(); }
 
-    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> start(
+    [[nodiscard]] Domain::Result<
+        std::optional<Domain::ManagedRunSnapshot>> resolveReplay(
         const Domain::ManagedRunStartRequest& requested,
         const Domain::OperationContext& context) noexcept
     {
         try {
-            auto request = requested;
-            if (request.authorityGeneration == 0U && tools_.workspaceAuthority) {
-                auto resolved = tools_.workspaceAuthority->authorityFor(
-                    request.projectId, context);
-                if (!resolved) {
-                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                        std::move(resolved).error());
-                }
-                request.authorityGeneration = resolved.value().generation();
-                request.clientId = resolved.value().callerId();
+            auto prepared = prepareRequest(requested, context);
+            if (!prepared) {
+                return Domain::Result<
+                    std::optional<Domain::ManagedRunSnapshot>>::failure(
+                    std::move(prepared).error());
             }
-            if (auto valid = validate(request, context); !valid) {
-                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                    std::move(valid).error());
-            }
-            {
-                std::lock_guard lock{mutex_};
-                if (shutdown_) {
-                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                        failure(
-                            Domain::ErrorCodes::TransportClosed,
-                            "The managed run service is shut down."));
-                }
-                const auto found = active_.find(request.runId);
-                if (found != active_.end()) {
-                    if (sameRequest(found->second->request, request)) {
-                        return Domain::Result<Domain::ManagedRunSnapshot>::success(
-                            snapshot(
-                                found->second->record,
-                                found->second->worker.get_stop_token()
-                                    .stop_requested(),
-                                found->second->pauseRequested));
-                    }
-                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                        failure(
-                            Domain::ErrorCodes::Conflict,
-                            "The managed run id is already bound to another request."));
-                }
-            }
+            std::lock_guard admissionLock{admissionMutex_};
+            return resolvePreparedReplay(prepared.value(), context);
+        } catch (...) {
+            return Domain::Result<
+                std::optional<Domain::ManagedRunSnapshot>>::failure(failure(
+                Domain::ErrorCodes::InternalFailure,
+                "The managed run replay could not be resolved safely."));
+        }
+    }
 
-            auto persisted = store_.load(request.runId, context);
-            if (!persisted) {
-                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                    std::move(persisted).error());
+    [[nodiscard]] Domain::Result<Domain::ManagedRunStartOutcome> start(
+        const Domain::ManagedRunStartRequest& requested,
+        const Domain::OperationContext& context) noexcept
+    {
+        try {
+            auto prepared = prepareRequest(requested, context);
+            if (!prepared) {
+                return Domain::Result<Domain::ManagedRunStartOutcome>::failure(
+                    std::move(prepared).error());
             }
-            if (persisted.value()) {
-                if (persisted.value()->projectId == request.projectId &&
-                    persisted.value()->clientId == request.clientId &&
-                    persisted.value()->task == request.task &&
-                    persisted.value()->authorityGeneration ==
-                        request.authorityGeneration &&
-                    persisted.value()->allowTools == request.allowTools) {
-                    return Domain::Result<Domain::ManagedRunSnapshot>::success(
-                        snapshot(*persisted.value(), false));
-                }
-                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                    failure(
-                        Domain::ErrorCodes::Conflict,
-                        "The durable managed run id belongs to another request."));
+            auto request = std::move(prepared).value();
+            std::lock_guard admissionLock{admissionMutex_};
+            auto replayed = resolvePreparedReplay(request, context);
+            if (!replayed) {
+                return Domain::Result<Domain::ManagedRunStartOutcome>::failure(
+                    std::move(replayed).error());
+            }
+            if (replayed.value()) {
+                return Domain::Result<Domain::ManagedRunStartOutcome>::success({
+                    std::move(*replayed.value()),
+                    Domain::ManagedRunAdmissionDisposition::Replayed});
             }
 
             const auto now = clock_.utcNow();
@@ -166,8 +209,19 @@ public:
                 now,
                 now,
                 request.allowTools};
+            record.automaticContinuity = request.automaticContinuity;
+            record.admissionIdentity = request.admissionIdentity;
+            record.dispatchPending =
+                !request.instructionCursorAdvances.empty();
+            record.instructionCursorAdvances =
+                request.instructionCursorAdvances;
+            record.dispatchPhase = record.dispatchPending
+                ? Domain::ManagedRunDispatchPhase::CursorPending
+                : Domain::ManagedRunDispatchPhase::Ready;
+            record.dispatchOperationId = request.operationId;
+            record.dispatchCorrelationId = request.correlationId;
             if (auto saved = store_.save(record, context); !saved) {
-                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                return Domain::Result<Domain::ManagedRunStartOutcome>::failure(
                     std::move(saved).error());
             }
 
@@ -175,7 +229,7 @@ public:
             {
                 std::lock_guard lock{mutex_};
                 if (shutdown_) {
-                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                    return Domain::Result<Domain::ManagedRunStartOutcome>::failure(
                         failure(
                             Domain::ErrorCodes::TransportClosed,
                             "The managed run service shut down during admission."));
@@ -183,20 +237,29 @@ public:
                 const auto [_, inserted] =
                     active_.emplace(request.runId, active);
                 if (!inserted) {
-                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                        failure(
-                            Domain::ErrorCodes::Conflict,
-                            "The managed run id was admitted concurrently."));
+                    const auto& existing = active_.at(request.runId);
+                    if (sameRequest(existing->request, request)) {
+                        return Domain::Result<
+                            Domain::ManagedRunStartOutcome>::success({
+                            snapshot(existing->record, false),
+                            Domain::ManagedRunAdmissionDisposition::Replayed});
+                    }
+                    return Domain::Result<
+                        Domain::ManagedRunStartOutcome>::failure(failure(
+                        Domain::ErrorCodes::Conflict,
+                        "The managed run id was admitted concurrently."));
                 }
-                active->worker = std::jthread{
-                    [this, request](const std::stop_token token) {
-                        execute(request, token);
-                    }};
             }
-            return Domain::Result<Domain::ManagedRunSnapshot>::success(
-                snapshot(record, false));
+            auto released = releaseDispatch(active, context);
+            if (!released) {
+                return Domain::Result<Domain::ManagedRunStartOutcome>::failure(
+                    std::move(released).error());
+            }
+            return Domain::Result<Domain::ManagedRunStartOutcome>::success({
+                std::move(released).value(),
+                Domain::ManagedRunAdmissionDisposition::Admitted});
         } catch (...) {
-            return Domain::Result<Domain::ManagedRunSnapshot>::failure(failure(
+            return Domain::Result<Domain::ManagedRunStartOutcome>::failure(failure(
                 Domain::ErrorCodes::InternalFailure,
                 "The managed run could not be started safely."));
         }
@@ -244,27 +307,93 @@ public:
         const Domain::OperationContext& context) noexcept
     {
         try {
+            std::lock_guard admissionLock{admissionMutex_};
             std::shared_ptr<ActiveRun> active;
             std::optional<Domain::ProviderSessionId> responseId;
+            std::optional<Domain::ManagedRunRecord> cancelledPending;
             {
                 std::lock_guard lock{mutex_};
                 const auto found = active_.find(runId);
                 if (found != active_.end()) {
                     active = found->second;
-                    if (active->record.state == Domain::ManagedRunState::Running ||
-                        active->record.state == Domain::ManagedRunState::Paused) {
-                        active->record.state =
-                            Domain::ManagedRunState::Cancelling;
-                        active->record.updatedAt = clock_.utcNow();
+                    if (active->record.dispatchPending &&
+                        !active->worker.joinable()) {
+                        cancelledPending = active->record;
+                        cancelledPending->state =
+                            Domain::ManagedRunState::Cancelled;
+                        cancelledPending->dispatchPending = false;
+                        cancelledPending->instructionCursorAdvances.clear();
+                        cancelledPending->dispatchPhase =
+                            Domain::ManagedRunDispatchPhase::Ready;
+                        cancelledPending->updatedAt = clock_.utcNow();
                     }
-                    active->pauseRequested = false;
-                    active->worker.request_stop();
-                    responseId = active->record.providerResponseId;
-                    active->boundaryChanged.notify_all();
+                    if (cancelledPending) {
+                        responseId = active->record.providerResponseId;
+                    } else {
+                        if (active->record.state ==
+                                Domain::ManagedRunState::Running ||
+                            active->record.state ==
+                                Domain::ManagedRunState::Paused) {
+                            active->record.state =
+                                Domain::ManagedRunState::Cancelling;
+                            active->record.updatedAt = clock_.utcNow();
+                        }
+                        active->pauseRequested = false;
+                        active->worker.request_stop();
+                        responseId = active->record.providerResponseId;
+                        active->boundaryChanged.notify_all();
+                    }
                 }
             }
             if (!active) {
-                return status(runId, context);
+                auto persisted = store_.load(runId, context);
+                if (!persisted) {
+                    return Domain::Result<
+                        Domain::ManagedRunSnapshot>::failure(
+                        std::move(persisted).error());
+                }
+                if (!persisted.value()) {
+                    return Domain::Result<
+                        Domain::ManagedRunSnapshot>::failure(failure(
+                        Domain::ErrorCodes::SessionNotFound,
+                        "The managed run was not found."));
+                }
+                auto durable = std::move(*persisted.value());
+                if (!terminal(durable.state) &&
+                    (durable.dispatchPhase ==
+                            Domain::ManagedRunDispatchPhase::CursorPending ||
+                     durable.dispatchPhase ==
+                            Domain::ManagedRunDispatchPhase::Ready)) {
+                    durable.state = Domain::ManagedRunState::Cancelled;
+                    durable.dispatchPending = false;
+                    durable.instructionCursorAdvances.clear();
+                    durable.dispatchPhase =
+                        Domain::ManagedRunDispatchPhase::Ready;
+                    durable.updatedAt = clock_.utcNow();
+                    if (auto saved = store_.save(durable, context); !saved) {
+                        return Domain::Result<
+                            Domain::ManagedRunSnapshot>::failure(
+                            std::move(saved).error());
+                    }
+                    return Domain::Result<
+                        Domain::ManagedRunSnapshot>::success(
+                        snapshot(durable, true));
+                }
+                return Domain::Result<Domain::ManagedRunSnapshot>::success(
+                    snapshot(durable, false));
+            }
+            if (cancelledPending) {
+                if (auto saved = store_.save(*cancelledPending, context);
+                    !saved) {
+                    return Domain::Result<
+                        Domain::ManagedRunSnapshot>::failure(
+                        std::move(saved).error());
+                }
+                std::lock_guard lock{mutex_};
+                active->record = *cancelledPending;
+                active->request.instructionCursorAdvances.clear();
+                return Domain::Result<Domain::ManagedRunSnapshot>::success(
+                    snapshot(active->record, true));
             }
             transport_.cancel(
                 active->request.operationId,
@@ -411,17 +540,463 @@ private:
         std::jthread worker;
     };
 
+    [[nodiscard]] static bool terminal(
+        const Domain::ManagedRunState state) noexcept
+    {
+        return state == Domain::ManagedRunState::Completed ||
+            state == Domain::ManagedRunState::Failed ||
+            state == Domain::ManagedRunState::Cancelled;
+    }
+
+    [[nodiscard]] static Domain::ManagedRunStartRequest requestForRecord(
+        const Domain::ManagedRunRecord& record,
+        const Domain::ManagedRunStartRequest& incoming)
+    {
+        return Domain::ManagedRunStartRequest{
+            record.runId,
+            record.projectId,
+            record.clientId,
+            record.dispatchOperationId.value_or(incoming.operationId),
+            record.dispatchCorrelationId.value_or(incoming.correlationId),
+            record.authorityGeneration,
+            record.task,
+            record.allowTools,
+            record.automaticContinuity,
+            record.admissionIdentity,
+            record.instructionCursorAdvances};
+    }
+
+    [[nodiscard]] Domain::Result<
+        std::vector<Domain::UpdateProjectMemoryRequest>>
+    pendingCursorUpdates(
+        const Domain::ManagedRunRecord& record,
+        const Domain::OperationContext& context)
+    {
+        if (record.instructionCursorAdvances.empty()) {
+            return Domain::Result<
+                std::vector<Domain::UpdateProjectMemoryRequest>>::success({});
+        }
+        if (!record.dispatchCorrelationId) {
+            return Domain::Result<
+                std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                failure(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The durable managed-run cursor plan has no dispatch correlation."));
+        }
+        if (tools_.projectMemory == nullptr) {
+            return Domain::Result<
+                std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                failure(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "Managed-run cursor admission is unavailable."));
+        }
+        std::vector<Domain::MemoryRecordId> ids;
+        ids.reserve(record.instructionCursorAdvances.size());
+        for (const auto& advance : record.instructionCursorAdvances) {
+            ids.push_back(advance.recordId);
+        }
+        auto loaded = tools_.projectMemory->get(
+            Domain::GetProjectMemoryRequest{
+                record.projectId, std::move(ids), true, 256U * 1024U},
+            context);
+        if (!loaded) {
+            return Domain::Result<
+                std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                std::move(loaded).error());
+        }
+        std::map<Domain::MemoryRecordId, Domain::ProjectMemoryRecord> byId;
+        for (auto& stored : loaded.value().records) {
+            byId.insert_or_assign(stored.id, std::move(stored));
+        }
+        std::vector<Domain::UpdateProjectMemoryRequest> updates;
+        updates.reserve(record.instructionCursorAdvances.size());
+        std::size_t alreadyApplied{};
+        try {
+            for (const auto& advance : record.instructionCursorAdvances) {
+                const auto found = byId.find(advance.recordId);
+                if (found == byId.end() || !found->second.body) {
+                    return Domain::Result<
+                        std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                        failure(
+                            Domain::ErrorCodes::Conflict,
+                            "A durable managed-run cursor row is unavailable."));
+                }
+                const auto& stored = found->second;
+                auto document = nlohmann::json::parse(*stored.body);
+                if (document.value("schema", std::string{}) !=
+                        "forge-instruction-package-queue-v2" ||
+                    document.value("project_id", std::string{}) !=
+                        record.projectId.value() ||
+                    document.value("queue_row_id", std::string{}) !=
+                        advance.queueRowId ||
+                    !document.contains("cursor") ||
+                    !document.at("cursor").is_object()) {
+                    return Domain::Result<
+                        std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                        failure(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "A durable managed-run cursor row changed identity."));
+                }
+                const auto currentEntry = document.at("cursor").value(
+                    "entry", std::uint64_t{});
+                const auto targetState =
+                    advance.completed ? "completed" : "active";
+                if (stored.version ==
+                        static_cast<std::uint32_t>(
+                            advance.expectedVersion + 1U) &&
+                    currentEntry == advance.targetEntry &&
+                    document.value("state", std::string{}) == targetState) {
+                    if (document.value(
+                            "correlation_id", std::string{}) ==
+                            record.dispatchCorrelationId->value() &&
+                        document.value(
+                            "managed_run_id", std::string{}) ==
+                            record.runId.value()) {
+                        ++alreadyApplied;
+                        continue;
+                    }
+                    return Domain::Result<
+                        std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                        failure(
+                            Domain::ErrorCodes::Conflict,
+                            "The durable managed-run cursor row was advanced by another admission."));
+                }
+                if (stored.version != advance.expectedVersion ||
+                    currentEntry > advance.targetEntry) {
+                    return Domain::Result<
+                        std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                        failure(
+                            Domain::ErrorCodes::Conflict,
+                            "A durable managed-run cursor row changed before dispatch."));
+                }
+                document["cursor"] = {
+                    {"entry", advance.targetEntry}, {"byte_offset", 0U}};
+                document["state"] = targetState;
+                document["correlation_id"] =
+                    record.dispatchCorrelationId->value();
+                document["managed_run_id"] = record.runId.value();
+                document["last_error"] = nullptr;
+                updates.push_back(Domain::UpdateProjectMemoryRequest{
+                    record.projectId,
+                    advance.recordId,
+                    advance.expectedVersion,
+                    std::nullopt,
+                    std::optional<std::string>{
+                        "Execution cursor advanced to entry " +
+                        std::to_string(advance.targetEntry)},
+                    std::optional<std::string>{document.dump()},
+                    std::nullopt});
+            }
+        } catch (...) {
+            return Domain::Result<
+                std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                failure(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "A durable managed-run cursor row is malformed."));
+        }
+        if (alreadyApplied != 0U && !updates.empty()) {
+            return Domain::Result<
+                std::vector<Domain::UpdateProjectMemoryRequest>>::failure(
+                failure(
+                    Domain::ErrorCodes::Conflict,
+                    "The durable managed-run cursor plan is only partially applied."));
+        }
+        return Domain::Result<
+            std::vector<Domain::UpdateProjectMemoryRequest>>::success(
+            std::move(updates));
+    }
+
+    [[nodiscard]] Domain::Result<void> commitInstructionCursors(
+        const Domain::ManagedRunRecord& record,
+        const Domain::OperationContext& context)
+    {
+        auto pending = pendingCursorUpdates(record, context);
+        if (!pending) {
+            return Domain::Result<void>::failure(
+                std::move(pending).error());
+        }
+        if (pending.value().empty()) {
+            return Domain::Result<void>::success();
+        }
+        Domain::Result<void> committed = Domain::Result<void>::success();
+        if (pending.value().size() == 1U) {
+            auto updated = tools_.projectMemory->update(
+                pending.value().front(), context);
+            if (!updated) {
+                committed = Domain::Result<void>::failure(
+                    std::move(updated).error());
+            }
+        } else {
+            auto updated = tools_.projectMemory->updateBatch(
+                Domain::UpdateProjectMemoryBatchRequest{
+                    record.projectId, pending.value()},
+                context);
+            if (!updated) {
+                committed = Domain::Result<void>::failure(
+                    std::move(updated).error());
+            }
+        }
+        if (committed) {
+            return committed;
+        }
+        auto originalError = std::move(committed).error();
+        auto reconciled = pendingCursorUpdates(record, context);
+        if (reconciled && reconciled.value().empty()) {
+            return Domain::Result<void>::success();
+        }
+        return Domain::Result<void>::failure(std::move(originalError));
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> releaseDispatch(
+        const std::shared_ptr<ActiveRun>& active,
+        const Domain::OperationContext& context)
+    {
+        {
+            std::lock_guard lock{mutex_};
+            if (active->worker.joinable() || terminal(active->record.state)) {
+                return Domain::Result<Domain::ManagedRunSnapshot>::success(
+                    snapshot(
+                        active->record,
+                        active->worker.joinable() &&
+                            active->worker.get_stop_token().stop_requested(),
+                        active->pauseRequested));
+            }
+        }
+        const bool cursorPending = active->record.dispatchPhase ==
+            Domain::ManagedRunDispatchPhase::CursorPending;
+        if (cursorPending != active->record.dispatchPending ||
+            (cursorPending &&
+                active->record.instructionCursorAdvances.empty()) ||
+            (!cursorPending &&
+                !active->record.instructionCursorAdvances.empty())) {
+            return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                failure(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The managed run dispatch phase and cursor plan disagree."));
+        }
+        if (active->record.dispatchPhase ==
+            Domain::ManagedRunDispatchPhase::ProviderClaimed) {
+            auto indeterminate = active->record;
+            indeterminate.state = Domain::ManagedRunState::Failed;
+            indeterminate.lastError = failure(
+                Domain::ErrorCodes::Conflict,
+                "The previous provider dispatch outcome is indeterminate; it was not replayed.");
+            indeterminate.updatedAt = clock_.utcNow();
+            if (auto saved = store_.save(indeterminate, context); !saved) {
+                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                    std::move(saved).error());
+            }
+            {
+                std::lock_guard lock{mutex_};
+                active->record = std::move(indeterminate);
+            }
+            return Domain::Result<Domain::ManagedRunSnapshot>::success(
+                snapshot(active->record, false));
+        }
+        if (cursorPending) {
+            auto committed = commitInstructionCursors(active->record, context);
+            if (!committed) {
+                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                    std::move(committed).error());
+            }
+            auto released = active->record;
+            released.dispatchPending = false;
+            released.instructionCursorAdvances.clear();
+            released.dispatchPhase =
+                Domain::ManagedRunDispatchPhase::Ready;
+            released.updatedAt = clock_.utcNow();
+            if (auto saved = store_.save(released, context); !saved) {
+                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                    std::move(saved).error());
+            }
+            {
+                std::lock_guard lock{mutex_};
+                active->record = std::move(released);
+                active->request.instructionCursorAdvances.clear();
+            }
+        }
+        if (active->record.dispatchPhase !=
+            Domain::ManagedRunDispatchPhase::Ready) {
+            return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                failure(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The managed run is not ready for provider dispatch."));
+        }
+        std::lock_guard lock{mutex_};
+        if (shutdown_) {
+            return Domain::Result<Domain::ManagedRunSnapshot>::failure(
+                failure(
+                    Domain::ErrorCodes::TransportClosed,
+                    "The managed run service shut down during dispatch."));
+        }
+        if (!terminal(active->record.state) && !active->worker.joinable()) {
+            const auto request = active->request;
+            active->worker = std::jthread{
+                [this, request](const std::stop_token token) {
+                    execute(request, token);
+                }};
+        }
+        return Domain::Result<Domain::ManagedRunSnapshot>::success(
+            snapshot(
+                active->record,
+                active->worker.joinable() &&
+                    active->worker.get_stop_token().stop_requested(),
+                active->pauseRequested));
+    }
+
+    [[nodiscard]] Domain::Result<
+        std::optional<Domain::ManagedRunSnapshot>> resolvePreparedReplay(
+        const Domain::ManagedRunStartRequest& request,
+        const Domain::OperationContext& context)
+    {
+        std::shared_ptr<ActiveRun> active;
+        {
+            std::lock_guard lock{mutex_};
+            if (shutdown_) {
+                return Domain::Result<
+                    std::optional<Domain::ManagedRunSnapshot>>::failure(
+                    failure(
+                        Domain::ErrorCodes::TransportClosed,
+                        "The managed run service is shut down."));
+            }
+            const auto found = active_.find(request.runId);
+            if (found != active_.end()) {
+                if (!sameRequest(found->second->request, request)) {
+                    return Domain::Result<
+                        std::optional<Domain::ManagedRunSnapshot>>::failure(
+                        failure(
+                            Domain::ErrorCodes::Conflict,
+                            "The managed run id is already bound to another request."));
+                }
+                active = found->second;
+            }
+        }
+        if (active) {
+            auto released = releaseDispatch(active, context);
+            return released
+                ? Domain::Result<
+                      std::optional<Domain::ManagedRunSnapshot>>::success(
+                      std::move(released).value())
+                : Domain::Result<
+                      std::optional<Domain::ManagedRunSnapshot>>::failure(
+                      std::move(released).error());
+        }
+
+        auto persisted = store_.load(request.runId, context);
+        if (!persisted) {
+            return Domain::Result<
+                std::optional<Domain::ManagedRunSnapshot>>::failure(
+                std::move(persisted).error());
+        }
+        if (!persisted.value()) {
+            return Domain::Result<
+                std::optional<Domain::ManagedRunSnapshot>>::success(
+                std::nullopt);
+        }
+        if (!sameDurableRequest(*persisted.value(), request)) {
+            return Domain::Result<
+                std::optional<Domain::ManagedRunSnapshot>>::failure(
+                failure(
+                    Domain::ErrorCodes::Conflict,
+                    "The durable managed run id belongs to another request."));
+        }
+        if (terminal(persisted.value()->state)) {
+            return Domain::Result<
+                std::optional<Domain::ManagedRunSnapshot>>::success(
+                snapshot(*persisted.value(), false));
+        }
+        auto resumed = std::make_shared<ActiveRun>(
+            requestForRecord(*persisted.value(), request),
+            *persisted.value());
+        {
+            std::lock_guard lock{mutex_};
+            if (shutdown_) {
+                return Domain::Result<
+                    std::optional<Domain::ManagedRunSnapshot>>::failure(
+                    failure(
+                        Domain::ErrorCodes::TransportClosed,
+                        "The managed run service shut down during replay."));
+            }
+            const auto [found, inserted] =
+                active_.emplace(request.runId, resumed);
+            if (!inserted) {
+                if (!sameRequest(found->second->request, request)) {
+                    return Domain::Result<
+                        std::optional<Domain::ManagedRunSnapshot>>::failure(
+                        failure(
+                            Domain::ErrorCodes::Conflict,
+                            "The managed run id was resumed concurrently."));
+                }
+                resumed = found->second;
+            }
+        }
+        auto released = releaseDispatch(resumed, context);
+        return released
+            ? Domain::Result<
+                  std::optional<Domain::ManagedRunSnapshot>>::success(
+                  std::move(released).value())
+            : Domain::Result<
+                  std::optional<Domain::ManagedRunSnapshot>>::failure(
+                  std::move(released).error());
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunStartRequest> prepareRequest(
+        const Domain::ManagedRunStartRequest& requested,
+        const Domain::OperationContext& context)
+    {
+        auto request = requested;
+        if (request.authorityGeneration == 0U && tools_.workspaceAuthority) {
+            auto resolved = tools_.workspaceAuthority->authorityFor(
+                request.projectId, context);
+            if (!resolved) {
+                return Domain::Result<Domain::ManagedRunStartRequest>::failure(
+                    std::move(resolved).error());
+            }
+            request.authorityGeneration = resolved.value().generation();
+            request.clientId = resolved.value().callerId();
+        }
+        if (auto valid = validate(request, context); !valid) {
+            return Domain::Result<Domain::ManagedRunStartRequest>::failure(
+                std::move(valid).error());
+        }
+        return Domain::Result<Domain::ManagedRunStartRequest>::success(
+            std::move(request));
+    }
+
     [[nodiscard]] static bool sameRequest(
         const Domain::ManagedRunStartRequest& left,
         const Domain::ManagedRunStartRequest& right) noexcept
     {
+        const bool stableAdmission =
+            left.admissionIdentity && right.admissionIdentity;
         return left.runId == right.runId &&
             left.projectId == right.projectId &&
             left.clientId == right.clientId &&
-            left.operationId == right.operationId &&
             left.authorityGeneration == right.authorityGeneration &&
-            left.task == right.task &&
-            left.allowTools == right.allowTools;
+            left.allowTools == right.allowTools &&
+            (stableAdmission
+                ? left.admissionIdentity == right.admissionIdentity
+                : left.operationId == right.operationId &&
+                    left.task == right.task &&
+                    left.automaticContinuity == right.automaticContinuity);
+    }
+
+    [[nodiscard]] static bool sameDurableRequest(
+        const Domain::ManagedRunRecord& record,
+        const Domain::ManagedRunStartRequest& request) noexcept
+    {
+        const bool stableAdmission =
+            record.admissionIdentity && request.admissionIdentity;
+        return record.runId == request.runId &&
+            record.projectId == request.projectId &&
+            record.clientId == request.clientId &&
+            record.authorityGeneration == request.authorityGeneration &&
+            record.allowTools == request.allowTools &&
+            (stableAdmission
+                ? record.admissionIdentity == request.admissionIdentity
+                : record.task == request.task &&
+                    record.automaticContinuity ==
+                        request.automaticContinuity);
     }
 
     void publishActive(const Domain::ManagedRunRecord& record) noexcept
@@ -514,6 +1089,8 @@ private:
         const Domain::ManagedRunStartRequest& request,
         const Domain::ManagedRunRecord& record,
         const std::vector<Domain::ContinuityWorkEntry>& completedToolWork,
+        const Domain::SessionId& predecessorSessionId,
+        const std::uint64_t sequence,
         const Domain::OperationContext& context) noexcept
     {
         if (!request.automaticContinuity || !record.retainedContextTokens ||
@@ -538,10 +1115,9 @@ private:
                     Domain::ErrorCodes::IntegrityFailure,
                     "The managed run project has no canonical workspace alias."));
         }
-        auto handoffId = Domain::ContinuityHandoffId::parse(
-            request.runId.value());
-        auto operationId = Domain::ContinuityOperationId::parse(
-            request.runId.value());
+        const auto identity = continuityIdentity(request.runId, sequence);
+        auto handoffId = Domain::ContinuityHandoffId::parse(identity);
+        auto operationId = Domain::ContinuityOperationId::parse(identity);
         auto placeholder = Domain::Sha256Digest::parse(std::string(64U, '0'));
         if (!handoffId || !operationId || !placeholder) {
             return Domain::Result<
@@ -553,9 +1129,7 @@ private:
         auto completedWork = completedToolWork;
         if (record.outputText) {
             auto summary = *record.outputText;
-            if (summary.size() > 2U * 1024U) {
-                summary.resize(2U * 1024U);
-            }
+            summary.resize(utf8PrefixByBytes(summary, 2U * 1024U).size());
             completedWork.push_back({
                 std::nullopt,
                 std::move(summary),
@@ -568,10 +1142,8 @@ private:
                 "Resolve pending provider tool calls without repeating uncertain effects.",
                 std::optional<std::string>{"open"}});
         }
-        auto mission = request.task;
-        if (mission.size() > 8U * 1024U) {
-            mission.resize(8U * 1024U);
-        }
+        auto mission = std::string{utf8PrefixByBytes(
+            request.task, 8U * 1024U)};
         auto activeFiles = descriptor.value().aliases;
         if (activeFiles.size() > Domain::MaximumContinuityHandoffListItems) {
             activeFiles.erase(
@@ -592,7 +1164,7 @@ private:
                 "unknown",
                 {}},
             Domain::ContinuitySession{
-                request.runId,
+                predecessorSessionId,
                 record.providerResponseId,
                 continuity_.model,
                 continuity_.provider},
@@ -656,6 +1228,74 @@ private:
             std::move(observed).value());
     }
 
+    [[nodiscard]] bool claimProviderDispatch(
+        const Domain::ManagedRunStartRequest& request,
+        Domain::ManagedRunRecord& record,
+        const Domain::OperationContext& persistenceContext,
+        const std::stop_token token) noexcept
+    {
+        try {
+            std::lock_guard admissionLock{admissionMutex_};
+            {
+                std::lock_guard lock{mutex_};
+                const auto found = active_.find(request.runId);
+                if (found == active_.end()) {
+                    return false;
+                }
+                record = found->second->record;
+            }
+            if (token.stop_requested() ||
+                record.state == Domain::ManagedRunState::Cancelling ||
+                record.state == Domain::ManagedRunState::Cancelled) {
+                record.state = Domain::ManagedRunState::Cancelled;
+                record.dispatchPending = false;
+                record.instructionCursorAdvances.clear();
+                record.dispatchPhase = Domain::ManagedRunDispatchPhase::Ready;
+                record.updatedAt = clock_.utcNow();
+                static_cast<void>(store_.save(record, persistenceContext));
+                publishActive(record);
+                return false;
+            }
+            if (record.state != Domain::ManagedRunState::Running ||
+                record.dispatchPending ||
+                !record.instructionCursorAdvances.empty() ||
+                record.dispatchPhase !=
+                    Domain::ManagedRunDispatchPhase::Ready) {
+                record.state = Domain::ManagedRunState::Failed;
+                record.lastError = failure(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The managed run provider dispatch was not durably ready.");
+                record.updatedAt = clock_.utcNow();
+                static_cast<void>(store_.save(record, persistenceContext));
+                publishActive(record);
+                return false;
+            }
+            auto claimed = record;
+            claimed.dispatchPhase =
+                Domain::ManagedRunDispatchPhase::ProviderClaimed;
+            claimed.updatedAt = clock_.utcNow();
+            if (auto saved = store_.save(claimed, persistenceContext); !saved) {
+                record.state = Domain::ManagedRunState::Failed;
+                record.lastError = saved.error();
+                record.updatedAt = clock_.utcNow();
+                static_cast<void>(store_.save(record, persistenceContext));
+                publishActive(record);
+                return false;
+            }
+            record = std::move(claimed);
+            publishActive(record);
+            return true;
+        } catch (...) {
+            record.state = Domain::ManagedRunState::Failed;
+            record.lastError = failure(
+                Domain::ErrorCodes::InternalFailure,
+                "The managed run provider dispatch could not be claimed safely.");
+            record.updatedAt = clock_.utcNow();
+            publishActive(record);
+            return false;
+        }
+    }
+
     void execute(
         const Domain::ManagedRunStartRequest& request,
         const std::stop_token token) noexcept
@@ -674,6 +1314,11 @@ private:
             Domain::MonotonicTimePoint::max(),
             {},
             request.correlationId};
+
+        if (!claimProviderDispatch(
+                request, record, persistenceContext, token)) {
+            return;
+        }
 
         if (token.stop_requested()) {
             record.state = Domain::ManagedRunState::Cancelled;
@@ -709,6 +1354,10 @@ private:
         std::vector<Domain::ManagedFunctionCallOutput> toolOutputs;
         std::vector<Domain::ContinuityWorkEntry> completedToolWork;
         std::set<Domain::ProviderSessionId> observedResponses;
+        Domain::SessionId continuityPredecessorSessionId = request.runId;
+        std::uint64_t continuitySequence{};
+        std::optional<Domain::ContinuityOperationId>
+            pendingContinuityCheckpoint;
         while (record.state == Domain::ManagedRunState::Running) {
             if (!awaitDispatchBoundary(
                     request, record, persistenceContext, token)) {
@@ -820,9 +1469,8 @@ private:
                 }
                 auto summary = "Native tool " + call.name + " result: " +
                     toolOutputs.back().canonicalOutput;
-                if (summary.size() > 2U * 1024U) {
-                    summary.resize(2U * 1024U);
-                }
+                summary.resize(
+                    utf8PrefixByBytes(summary, 2U * 1024U).size());
                 if (completedToolWork.size() ==
                     Domain::MaximumContinuityHandoffListItems) {
                     completedToolWork.erase(completedToolWork.begin());
@@ -842,29 +1490,96 @@ private:
             }
             publishActive(record);
             auto continuity = observeContinuity(
-                request, record, completedToolWork, providerContext);
+                request, record, completedToolWork,
+                continuityPredecessorSessionId,
+                continuitySequence, providerContext);
             if (!continuity) {
+                auto attemptedOperationId =
+                    Domain::ContinuityOperationId::parse(
+                        continuityIdentity(
+                            request.runId, continuitySequence));
+                if (attemptedOperationId) {
+                    pendingContinuityCheckpoint =
+                        std::move(attemptedOperationId).value();
+                }
                 record.state = Domain::ManagedRunState::Failed;
                 record.lastError = std::move(continuity).error();
                 break;
             }
             if (continuity.value() &&
-                continuity.value()->successorActivated) {
-                if (!continuity.value()->successorProviderResponseId) {
+                continuity.value()->checkpointPersisted) {
+                if (!continuity.value()->operationId) {
                     record.state = Domain::ManagedRunState::Failed;
                     record.lastError = failure(
                         Domain::ErrorCodes::IntegrityFailure,
-                        "Continuity activated a successor without a provider response identity.");
+                        "Continuity persisted a checkpoint without an operation identity.");
+                    break;
+                }
+                pendingContinuityCheckpoint =
+                    continuity.value()->operationId;
+            }
+            if (continuity.value() &&
+                continuity.value()->successorActivated) {
+                if (!continuity.value()->successorSessionId ||
+                    !continuity.value()->successorProviderResponseId) {
+                    record.state = Domain::ManagedRunState::Failed;
+                    record.lastError = failure(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "Continuity activated a successor without complete session and provider response identities.");
+                    break;
+                }
+                if (continuitySequence ==
+                    (std::numeric_limits<std::uint64_t>::max)()) {
+                    record.state = Domain::ManagedRunState::Failed;
+                    record.lastError = failure(
+                        Domain::ErrorCodes::LimitExceeded,
+                        "The managed run exhausted its continuity identity sequence.");
                     break;
                 }
                 record.providerResponseId =
                     continuity.value()->successorProviderResponseId;
+                continuityPredecessorSessionId =
+                    *continuity.value()->successorSessionId;
+                ++continuitySequence;
+                pendingContinuityCheckpoint.reset();
                 toolOutputs.clear();
                 input =
-                    "Continue the Manager-owned task from the canonical handoff. "
-                    "Treat completed_work as authoritative and do not repeat "
-                    "completed tool effects. When the task is satisfied, return "
-                    "a terminal response without another tool call.";
+                    "Continue the exact original Manager-owned task below from "
+                    "the canonical handoff. Treat completed_work as authoritative "
+                    "and do not repeat completed tool effects. Do not return a "
+                    "status object, progress summary, or handoff acknowledgement. "
+                    "Satisfy the original task's requested final-response format "
+                    "exactly. Use authorized tools only if remaining work requires "
+                    "them; once the original task is satisfied, return a terminal "
+                    "response.\n\n[ORIGINAL MANAGER TASK]\n";
+                constexpr std::size_t MaximumRepeatedTaskBytes = 8U * 1024U;
+                const auto repeatedTask = utf8PrefixByBytes(
+                    request.task, MaximumRepeatedTaskBytes);
+                input.append(repeatedTask.data(), repeatedTask.size());
+                input += "\n[END ORIGINAL MANAGER TASK]\n\n"
+                    "[AUTHORITATIVE COMPLETED WORK - OLDEST TO NEWEST]\n";
+                constexpr std::size_t MaximumRepeatedCompletedWorkBytes =
+                    32U * 1024U;
+                std::size_t repeatedCompletedWorkBytes{};
+                std::size_t firstRepeatedCompletedWork =
+                    completedToolWork.size();
+                while (firstRepeatedCompletedWork > 0U) {
+                    const auto& candidate =
+                        completedToolWork[firstRepeatedCompletedWork - 1U]
+                            .summary;
+                    const auto addition = candidate.size() + 3U;
+                    if (repeatedCompletedWorkBytes + addition >
+                        MaximumRepeatedCompletedWorkBytes) {
+                        break;
+                    }
+                    repeatedCompletedWorkBytes += addition;
+                    --firstRepeatedCompletedWork;
+                }
+                for (auto index = firstRepeatedCompletedWork;
+                     index < completedToolWork.size(); ++index) {
+                    input += "- " + completedToolWork[index].summary + "\n";
+                }
+                input += "[END AUTHORITATIVE COMPLETED WORK]";
                 if (auto saved = store_.save(record, persistenceContext); !saved) {
                     record.state = Domain::ManagedRunState::Failed;
                     record.lastError = saved.error();
@@ -880,6 +1595,16 @@ private:
                 Domain::ErrorCodes::LimitExceeded,
                 "The managed run exceeded the bounded provider tool loop.");
             record.state = Domain::ManagedRunState::Failed;
+        }
+        if (pendingContinuityCheckpoint && continuity_.automation) {
+            auto abandoned = continuity_.automation->abandonCheckpoint(
+                request.projectId,
+                *pendingContinuityCheckpoint,
+                persistenceContext);
+            if (!abandoned) {
+                record.state = Domain::ManagedRunState::Failed;
+                record.lastError = std::move(abandoned).error();
+            }
         }
         record.updatedAt = clock_.utcNow();
         if (auto saved = store_.save(record, persistenceContext); !saved) {
@@ -901,6 +1626,7 @@ private:
     Contracts::IClock& clock_;
     ManagedRunToolDependencies tools_;
     ManagedRunContinuityDependencies continuity_;
+    std::mutex admissionMutex_;
     std::mutex mutex_;
     std::map<Domain::SessionId, std::shared_ptr<ActiveRun>> active_;
     bool shutdown_{};
@@ -920,7 +1646,15 @@ ManagedRunService::ManagedRunService(
 
 ManagedRunService::~ManagedRunService() noexcept = default;
 
-Domain::Result<Domain::ManagedRunSnapshot> ManagedRunService::start(
+Domain::Result<std::optional<Domain::ManagedRunSnapshot>>
+ManagedRunService::resolveReplay(
+    const Domain::ManagedRunStartRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    return implementation_->resolveReplay(request, context);
+}
+
+Domain::Result<Domain::ManagedRunStartOutcome> ManagedRunService::start(
     const Domain::ManagedRunStartRequest& request,
     const Domain::OperationContext& context) noexcept
 {

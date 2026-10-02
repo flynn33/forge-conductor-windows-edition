@@ -1830,7 +1830,17 @@ void validateSettingsUpdateOutcome(
 [[nodiscard]] Domain::ManagedRunSnapshot parseManagedRunSnapshot(
     const Json& value)
 {
-    if (value.contains("allow_tools")) {
+    if (value.contains("automatic_continuity")) {
+        requireExactFields(
+            value,
+            {"allow_tools", "automatic_continuity", "authority_generation",
+             "cancellation_requested", "client_id", "created_at_utc_ms",
+             "input_tokens", "last_error", "manager_owned", "output_text",
+             "output_tokens", "pause_requested", "pending_function_calls",
+             "project_id", "provider_response_id", "retained_context_tokens",
+             "run_id", "state", "task", "updated_at_utc_ms"},
+            "Managed run snapshot");
+    } else if (value.contains("allow_tools")) {
         requireExactFields(
             value,
             {"allow_tools", "authority_generation", "cancellation_requested", "client_id",
@@ -1909,7 +1919,13 @@ void validateSettingsUpdateOutcome(
             utcTimePointFromMilliseconds(
                 nonnegativeIntegerMember(value, "updated_at_utc_ms")),
             value.contains("allow_tools") ? booleanMember(value, "allow_tools")
-                                           : true},
+                                           : true,
+            std::nullopt,
+            Domain::ManagedRunEvidenceIntegrity::NotTerminal,
+            {},
+            value.contains("automatic_continuity")
+                ? booleanMember(value, "automatic_continuity")
+                : true},
         booleanMember(value, "manager_owned"),
         booleanMember(value, "cancellation_requested"),
         booleanMember(value, "pause_requested")};

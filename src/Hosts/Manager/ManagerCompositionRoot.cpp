@@ -141,7 +141,6 @@ constexpr auto ProductVersion = Domain::ProductVersion;
 constexpr std::string_view RuntimeName{"windows-manager"};
 constexpr std::size_t MaximumLmStudioSelectionRoots =
     InfrastructureWindows::WindowsWorkspaceAuthority::MaximumTrustedRootsPerPolicy;
-constexpr std::size_t MaximumEnvironmentValueCharacters = 32U * 1024U;
 
 class CompositionFailure final : public std::exception {
 public:
@@ -261,179 +260,6 @@ void requireSuccess(Domain::Result<void> result)
             Domain::ErrorCodes::InternalFailure,
             "A Manager path conversion failed safely."));
     }
-}
-
-[[nodiscard]] Domain::Result<std::string> strictWideToUtf8(
-    const std::wstring_view value) noexcept
-{
-    try {
-        if (value.empty() || value.size() >
-                static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
-            return Domain::Result<std::string>::failure(Domain::makeError(
-                Domain::ErrorCodes::InvalidRequest,
-                "A Manager path could not be converted to UTF-8."));
-        }
-        const auto inputLength = static_cast<int>(value.size());
-        const int required = ::WideCharToMultiByte(
-            CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), inputLength,
-            nullptr, 0, nullptr, nullptr);
-        if (required <= 0) {
-            return Domain::Result<std::string>::failure(Domain::makeError(
-                Domain::ErrorCodes::InvalidRequest,
-                "A Manager path is not valid Unicode."));
-        }
-        std::string converted(static_cast<std::size_t>(required), '\0');
-        if (::WideCharToMultiByte(
-                CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), inputLength,
-                converted.data(), required, nullptr, nullptr) != required) {
-            return Domain::Result<std::string>::failure(Domain::makeError(
-                Domain::ErrorCodes::InternalFailure,
-                "A Manager path conversion was incomplete."));
-        }
-        return Domain::Result<std::string>::success(std::move(converted));
-    } catch (...) {
-        return Domain::Result<std::string>::failure(Domain::makeError(
-            Domain::ErrorCodes::InternalFailure,
-            "A Manager path conversion failed safely."));
-    }
-}
-
-[[nodiscard]] Domain::PathText discoverExecutable(const wchar_t* const name)
-{
-    const DWORD required = ::SearchPathW(nullptr, name, nullptr, 0U, nullptr, nullptr);
-    if (required == 0U || required > MaximumEnvironmentValueCharacters) {
-        throw CompositionFailure{Domain::makeError(
-            Domain::ErrorCodes::HostCapabilityUnavailable,
-            "A required native executable was not found.")};
-    }
-    std::wstring buffer(static_cast<std::size_t>(required) + 1U, L'\0');
-    const DWORD written = ::SearchPathW(
-        nullptr, name, nullptr, static_cast<DWORD>(buffer.size()),
-        buffer.data(), nullptr);
-    if (written == 0U || written >= buffer.size()) {
-        throw CompositionFailure{Domain::makeError(
-            Domain::ErrorCodes::HostCapabilityUnavailable,
-            "A required native executable path could not be resolved.")};
-    }
-    buffer.resize(static_cast<std::size_t>(written));
-    return pathText(take(strictWideToUtf8(buffer)));
-}
-
-[[nodiscard]] bool isSingleLinkRegularExecutable(
-    const std::filesystem::path& candidate) noexcept
-{
-    const HANDLE file = ::CreateFileW(
-        candidate.c_str(), FILE_READ_ATTRIBUTES,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        nullptr, OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
-    if (file == INVALID_HANDLE_VALUE) return false;
-    FILE_ATTRIBUTE_TAG_INFO attributes{};
-    FILE_STANDARD_INFO standard{};
-    const bool valid = ::GetFileInformationByHandleEx(
-            file, FileAttributeTagInfo, &attributes, sizeof(attributes)) != FALSE &&
-        ::GetFileInformationByHandleEx(
-            file, FileStandardInfo, &standard, sizeof(standard)) != FALSE &&
-        (attributes.FileAttributes &
-            (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) == 0U &&
-        standard.DeletePending == FALSE && standard.NumberOfLinks == 1U;
-    ::CloseHandle(file);
-    return valid;
-}
-
-[[nodiscard]] Domain::PathText discoverGitExecutable()
-{
-    const auto searched = discoverExecutable(L"git.exe");
-    const std::filesystem::path searchedPath{
-        take(strictUtf8ToWide(searched.value()))};
-    if (isSingleLinkRegularExecutable(searchedPath)) return searched;
-    if (_wcsicmp(searchedPath.parent_path().filename().c_str(), L"cmd") == 0) {
-        const auto candidate = searchedPath.parent_path().parent_path() /
-            L"bin" / L"git.exe";
-        if (isSingleLinkRegularExecutable(candidate)) {
-            return pathText(take(strictWideToUtf8(candidate.wstring())));
-        }
-    }
-    return searched;
-}
-
-[[nodiscard]] std::optional<Domain::PathText> tryDiscoverExecutable(
-    const wchar_t* const name)
-{
-    const DWORD required = ::SearchPathW(nullptr, name, nullptr, 0U, nullptr, nullptr);
-    if (required == 0U || required > MaximumEnvironmentValueCharacters) {
-        return std::nullopt;
-    }
-    std::wstring buffer(static_cast<std::size_t>(required) + 1U, L'\0');
-    const DWORD written = ::SearchPathW(
-        nullptr, name, nullptr, static_cast<DWORD>(buffer.size()),
-        buffer.data(), nullptr);
-    if (written == 0U || written >= buffer.size()) {
-        return std::nullopt;
-    }
-    buffer.resize(static_cast<std::size_t>(written));
-    auto converted = strictWideToUtf8(buffer);
-    if (!converted) {
-        return std::nullopt;
-    }
-    auto text = Domain::PathText::create(std::move(converted).value());
-    if (!text) {
-        return std::nullopt;
-    }
-    const auto wide = strictUtf8ToWide(text.value().value());
-    if (!wide || !isSingleLinkRegularExecutable(std::filesystem::path{wide.value()})) {
-        return std::nullopt;
-    }
-    return std::move(text).value();
-}
-
-[[nodiscard]] std::optional<std::wstring> installedProgramFilesDirectory()
-{
-    DWORD size = 0U;
-    const LSTATUS measured = ::RegGetValueW(
-        HKEY_LOCAL_MACHINE,
-        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
-        L"ProgramFilesDir",
-        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
-        nullptr, nullptr, &size);
-    if (measured != ERROR_SUCCESS || size < sizeof(wchar_t) || size > 1024U) {
-        return std::nullopt;
-    }
-    std::wstring value(size / sizeof(wchar_t), L'\0');
-    DWORD bytes = size;
-    const LSTATUS read = ::RegGetValueW(
-        HKEY_LOCAL_MACHINE,
-        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion",
-        L"ProgramFilesDir",
-        RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
-        nullptr, value.data(), &bytes);
-    if (read != ERROR_SUCCESS) {
-        return std::nullopt;
-    }
-    while (!value.empty() && value.back() == L'\0') {
-        value.pop_back();
-    }
-    if (value.empty()) {
-        return std::nullopt;
-    }
-    return value;
-}
-
-// PowerShell 7 (pwsh.exe) is the host shell. Windows PowerShell 5.1 remains
-// the fallback when pwsh is not installed as a regular executable.
-[[nodiscard]] Domain::PathText discoverPowerShellExecutable()
-{
-    if (auto powerShell7 = tryDiscoverExecutable(L"pwsh.exe")) {
-        return std::move(*powerShell7);
-    }
-    if (const auto programFiles = installedProgramFilesDirectory()) {
-        const auto candidate = std::filesystem::path{*programFiles} /
-            L"PowerShell" / L"7" / L"pwsh.exe";
-        if (isSingleLinkRegularExecutable(candidate)) {
-            return pathText(take(strictWideToUtf8(candidate.wstring())));
-        }
-    }
-    return discoverExecutable(L"powershell.exe");
 }
 
 [[nodiscard]] bool equalWindowsPath(
@@ -804,6 +630,19 @@ void ManagerCompositionRoot::Impl::initialize()
     initializeFoundation(compositionContext);
     migrateNativeSessionLedger(compositionContext);
     initializePersistence(compositionContext);
+    const auto startupContinuity = take(
+        continuity_->recoverIncompleteOperations(
+            Domain::ContinuityRecoveryRequest{
+                std::nullopt,
+                false,
+                true},
+            compositionContext));
+    if (startupContinuity.failed != 0U) {
+        throw CompositionFailure{Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "Manager startup could not abandon every orphaned pre-successor continuity checkpoint.",
+            true)};
+    }
     initializeLmStudio(compositionContext);
     initializeDashboard(compositionContext);
     initializeManagerHost(compositionContext);
@@ -1031,9 +870,13 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     pdf_ = std::make_unique<NativeToolsWindows::WindowsPdfService>(
         *atomicFileStore_);
     git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
-        discoverGitExecutable(), processSupervisor_);
+        take(InfrastructureWindows::WindowsMachineToolResolver::
+            gitExecutable()),
+        processSupervisor_);
     shell_ = std::make_unique<NativeToolsWindows::WindowsShellService>(
-        discoverPowerShellExecutable(), processSupervisor_);
+        take(InfrastructureWindows::WindowsMachineToolResolver::
+            powerShellExecutable()),
+        processSupervisor_);
     projectArtifactStore_ = std::make_shared<
         PersistenceWindows::WindowsProjectMemoryArtifactStore>(
         applicationPaths_, uuidGenerator_);
@@ -1208,7 +1051,8 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             *uuidGenerator_,
             projectMemoryLimits,
             initialConfiguration_->shell.defaultTimeout,
-            discoverPowerShellExecutable(),
+            take(InfrastructureWindows::WindowsMachineToolResolver::
+                powerShellExecutable()),
             std::string{ProductVersion},
             std::string{RuntimeName},
             static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()}));
@@ -1227,7 +1071,8 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         Application::ManagedRunToolDependencies{
             toolCatalog_.get(),
             toolRouter_.get(),
-            projectWorkspaceAuthority_.get()},
+            projectWorkspaceAuthority_.get(),
+            projectMemory_.get()},
         Application::ManagedRunContinuityDependencies{
             continuityAutomation_.get(),
             continuityCodec_.get(),
@@ -1775,11 +1620,11 @@ void ManagerCompositionRoot::Impl::shutdownServices(
             lmStudioDiscovery_->shutdown();
         }
 
-        if (continuityAutomation_) {
-            continuityAutomation_->shutdown();
-        }
         if (managedRuns_) {
             managedRuns_->shutdown();
+        }
+        if (continuityAutomation_) {
+            continuityAutomation_->shutdown();
         }
         if (toolRouter_) {
             toolRouter_->shutdown();

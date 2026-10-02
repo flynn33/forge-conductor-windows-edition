@@ -2,6 +2,12 @@
 
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioServeVerifier.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsMachineToolResolver.h"
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
 
 #include <nlohmann/json.hpp>
 
@@ -28,6 +34,7 @@ namespace ForgeConductor::Tests {
 namespace {
 
 using Infrastructure::Windows::WindowsLMStudioServeVerifier;
+using Infrastructure::Windows::WindowsMachineToolResolver;
 using Json = nlohmann::json;
 using namespace std::chrono_literals;
 
@@ -165,7 +172,7 @@ public:
                                   : role == Domain::LMStudioConnectorRole::Fallback
                                       ? "forge-conductor-fallback"
                                       : "forge-conductor-clu"},
-                    {"version", "1.3.4"}}}}}};
+                    {"version", "1.3.5"}}}}}};
     Json tools = canonicalTools();
     if (role == Domain::LMStudioConnectorRole::Clu) {
         tools.erase(std::remove_if(
@@ -448,6 +455,86 @@ private:
         return std::nullopt;
     }
     return match->value;
+}
+
+class ScopedEnvironmentVariable final {
+public:
+    ScopedEnvironmentVariable(
+        std::wstring name,
+        const std::wstring_view replacement)
+        : name_{std::move(name)}
+    {
+        ::SetLastError(ERROR_SUCCESS);
+        const DWORD required = ::GetEnvironmentVariableW(name_.c_str(), nullptr, 0U);
+        if (required != 0U) {
+            original_.resize(static_cast<std::size_t>(required));
+            const DWORD written = ::GetEnvironmentVariableW(
+                name_.c_str(), original_.data(), required);
+            require(
+                written < required,
+                "the original test environment value could not be captured");
+            original_.resize(static_cast<std::size_t>(written));
+            existed_ = true;
+        } else {
+            require(
+                ::GetLastError() == ERROR_ENVVAR_NOT_FOUND,
+                "the original test environment value could not be measured");
+        }
+        require(
+            ::SetEnvironmentVariableW(
+                name_.c_str(), std::wstring{replacement}.c_str()) != FALSE,
+            "the ambient test environment value could not be installed");
+    }
+
+    ~ScopedEnvironmentVariable()
+    {
+        static_cast<void>(::SetEnvironmentVariableW(
+            name_.c_str(), existed_ ? original_.c_str() : nullptr));
+    }
+
+    ScopedEnvironmentVariable(const ScopedEnvironmentVariable&) = delete;
+    ScopedEnvironmentVariable& operator=(const ScopedEnvironmentVariable&) = delete;
+
+private:
+    std::wstring name_;
+    std::wstring original_;
+    bool existed_{};
+};
+
+void testAmbientToolchainEnvironmentIsExcluded()
+{
+    ScopedEnvironmentVariable pathOverride{
+        L"PATH", L"C:\\Users\\fixture\\ForgeConductor-user-shim"};
+    ScopedEnvironmentVariable pathExtOverride{L"PATHEXT", L".PS1"};
+    ScopedEnvironmentVariable comSpecOverride{
+        L"COMSPEC", L"C:\\Users\\fixture\\cmd.exe"};
+
+    ScriptedProcessSupervisor processes;
+    processes.setOutput(successfulResponse(Domain::LMStudioConnectorRole::Primary));
+    WindowsLMStudioServeVerifier verifier{processes};
+    const auto health = take(verifier.verify(
+        path("C:\\Forge\\forge-conductor.exe"),
+        path("C:\\Forge\\home"),
+        Domain::LMStudioConnectorRole::Primary,
+        std::nullopt,
+        AuthorityIssuer::create(),
+        operationContext(44U)));
+    require(health.ready, "the machine-environment verifier probe was not ready");
+
+    const auto captured = processes.lastRequest();
+    require(captured.has_value(), "the verifier did not issue a process request");
+    require(
+        environmentValue(*captured, "PATH") ==
+                WindowsMachineToolResolver::searchPath() &&
+            environmentValue(*captured, "PATHEXT") ==
+                WindowsMachineToolResolver::pathExt() &&
+            environmentValue(*captured, "COMSPEC") ==
+                WindowsMachineToolResolver::commandInterpreter(),
+        "the verifier inherited caller toolchain variables instead of the machine resolver");
+    require(
+        environmentValue(*captured, "PATH")->find(
+            "ForgeConductor-user-shim") == std::string::npos,
+        "the verifier propagated an ambient per-user PATH shim");
 }
 
 void testSuccessfulRoleVerificationAndRequestShape()
@@ -923,6 +1010,8 @@ void testShutdownWaitsForActiveVerificationDrain()
 
 void registerLMStudioServeVerifierTests(TestRegistry& tests)
 {
+    addTest(tests, "lmstudio.verifier.machine-toolchain-environment",
+            testAmbientToolchainEnvironmentIsExcluded);
     addTest(tests, "lmstudio.verifier.success-and-request-shape",
             testSuccessfulRoleVerificationAndRequestShape);
     addTest(tests, "lmstudio.verifier.fail-closed",

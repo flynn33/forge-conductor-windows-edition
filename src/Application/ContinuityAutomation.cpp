@@ -130,6 +130,7 @@ template <typename T>
         handoff.predecessorSession.sessionId !=
             requested.predecessorSession.sessionId ||
         handoff.hostState.adapterId != requested.hostState.adapterId ||
+        handoff.contentSha256 != requested.contentSha256 ||
         operation.projectId != handoff.project.projectId ||
         operation.operationId != handoff.operationId ||
         operation.handoffId != handoff.handoffId) {
@@ -280,11 +281,12 @@ public:
                     std::move(slotResult));
             }
             auto slot = std::move(slotResult).value();
-            ProjectExecutionLease execution{*slot};
+            ProjectExecutionLease execution{
+                *slot, observation.handoff.operationId};
             if (!execution.owns()) {
                 return failure<Domain::ContinuityAutomationOutcome>(
                     Domain::ErrorCodes::DatabaseBusy,
-                    "Another continuity observation is active for this project.",
+                    "Another continuity observation or checkpoint cleanup is active for this project.",
                     true);
             }
             const auto decision = triggerDecision(
@@ -307,13 +309,49 @@ public:
                     std::move(valid));
             }
 
+            bool sameCheckpointOperation{};
+            std::optional<Domain::Sha256Digest> expectedHandoffSha256;
+            {
+                std::lock_guard lock{slot->stateMutex};
+                sameCheckpointOperation =
+                    slot->checkpointOperationId &&
+                    *slot->checkpointOperationId ==
+                        observation.handoff.operationId;
+                if (sameCheckpointOperation) {
+                    expectedHandoffSha256 = slot->checkpointContentSha256;
+                }
+            }
             auto checkpointResult = coordinator_.checkpoint(
-                Domain::CheckpointRequest{observation.handoff}, context);
+                Domain::CheckpointRequest{
+                    observation.handoff,
+                    std::nullopt,
+                    std::move(expectedHandoffSha256)},
+                context);
+            auto cleanup = reconcileCheckpointCleanup(
+                *slot,
+                observation.handoff.project.projectId,
+                observation.handoff.operationId,
+                context);
+            if (!cleanup) {
+                return propagate<Domain::ContinuityAutomationOutcome>(
+                    std::move(cleanup));
+            }
             if (!checkpointResult) {
                 return propagate<Domain::ContinuityAutomationOutcome>(
                     std::move(checkpointResult));
             }
+            if (cleanup.value()) {
+                return failure<Domain::ContinuityAutomationOutcome>(
+                    Domain::ErrorCodes::Cancelled,
+                    "The continuity checkpoint was abandoned before successor dispatch.");
+            }
             auto checkpoint = std::move(checkpointResult).value();
+            {
+                std::lock_guard lock{slot->stateMutex};
+                slot->checkpointOperationId = observation.handoff.operationId;
+                slot->checkpointContentSha256 =
+                    observation.handoff.contentSha256;
+            }
             valid = validateCheckpointBinding(
                 observation.handoff, checkpoint);
             if (!valid) {
@@ -322,6 +360,12 @@ public:
             }
             outcome.operationId = checkpoint.operation.operationId;
             outcome.checkpointPersisted = true;
+            {
+                std::lock_guard lock{slot->stateMutex};
+                slot->checkpointOperationId = checkpoint.operation.operationId;
+                slot->checkpointContentSha256 =
+                    checkpoint.handoff.contentSha256;
+            }
             if (decision.action ==
                 Domain::ContextBudgetAction::Checkpoint) {
                 return Domain::Result<
@@ -378,6 +422,15 @@ public:
             outcome.successorActivated = true;
             outcome.successorProviderResponseId =
                 resumed.session.providerSessionId;
+            {
+                std::lock_guard lock{slot->stateMutex};
+                if (slot->checkpointOperationId ==
+                    std::optional<Domain::ContinuityOperationId>{
+                        observation.handoff.operationId}) {
+                    slot->checkpointOperationId.reset();
+                    slot->checkpointContentSha256.reset();
+                }
+            }
             return Domain::Result<
                 Domain::ContinuityAutomationOutcome>::success(
                     std::move(outcome));
@@ -385,6 +438,63 @@ public:
             return failure<Domain::ContinuityAutomationOutcome>(
                 Domain::ErrorCodes::InternalFailure,
                 "The continuity automation observation failed safely.");
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> abandonCheckpoint(
+        const Domain::ProjectId& projectId,
+        const Domain::ContinuityOperationId& operationId,
+        const Domain::OperationContext& context) noexcept
+    {
+        try {
+            auto valid = validateContext(context);
+            if (!valid) return valid;
+            auto slotResult = slotFor(projectId);
+            if (!slotResult) {
+                return Domain::Result<void>::failure(
+                    std::move(slotResult).error());
+            }
+            auto slot = std::move(slotResult).value();
+            bool targetsActiveObservation{};
+            {
+                std::lock_guard lock{slot->stateMutex};
+                targetsActiveObservation =
+                    slot->activeContinuityOperationId &&
+                    *slot->activeContinuityOperationId == operationId;
+                if (slot->cleanupOperationId &&
+                    *slot->cleanupOperationId != operationId) {
+                    return Domain::Result<void>::failure(Domain::makeError(
+                        Domain::ErrorCodes::DatabaseBusy,
+                        "Another continuity checkpoint cleanup is active for this project.",
+                        true));
+                }
+                if (targetsActiveObservation ||
+                    !slot->activeContinuityOperationId) {
+                    slot->cleanupOperationId = operationId;
+                }
+            }
+            auto abandoned = coordinator_.abandonCheckpoint(
+                projectId, operationId, context);
+            {
+                std::lock_guard lock{slot->stateMutex};
+                if (slot->cleanupOperationId ==
+                        std::optional<Domain::ContinuityOperationId>{operationId} &&
+                    !slot->executing.load(std::memory_order_acquire)) {
+                    slot->cleanupOperationId.reset();
+                }
+                if (abandoned &&
+                    (!slot->checkpointOperationId ||
+                     *slot->checkpointOperationId == operationId)) {
+                    slot->checkpointOperationId.reset();
+                    slot->checkpointContentSha256.reset();
+                }
+            }
+            if (!abandoned) return abandoned;
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The continuity checkpoint could not be abandoned safely."));
         }
     }
 
@@ -453,22 +563,43 @@ private:
         std::atomic_bool executing{};
         std::mutex stateMutex;
         std::optional<Domain::OperationId> activeOperationId;
+        std::optional<Domain::ContinuityOperationId>
+            activeContinuityOperationId;
+        std::optional<Domain::ContinuityOperationId> checkpointOperationId;
+        std::optional<Domain::Sha256Digest> checkpointContentSha256;
+        std::optional<Domain::ContinuityOperationId> cleanupOperationId;
     };
 
     class ProjectExecutionLease final {
     public:
-        explicit ProjectExecutionLease(ProjectSlot& slot) noexcept
+        ProjectExecutionLease(
+            ProjectSlot& slot,
+            const Domain::ContinuityOperationId& operationId) noexcept
             : slot_{slot}
         {
+            std::lock_guard lock{slot_.stateMutex};
+            if (slot_.cleanupOperationId) {
+                return;
+            }
             bool expected = false;
             owns_ = slot_.executing.compare_exchange_strong(
                 expected, true, std::memory_order_acq_rel);
+            if (owns_) {
+                slot_.activeContinuityOperationId = operationId;
+            }
         }
 
         ~ProjectExecutionLease() noexcept
         {
             if (owns_) {
-                slot_.executing.store(false, std::memory_order_release);
+                try {
+                    std::lock_guard lock{slot_.stateMutex};
+                    slot_.activeContinuityOperationId.reset();
+                    slot_.executing.store(false, std::memory_order_release);
+                    slot_.cleanupOperationId.reset();
+                } catch (...) {
+                    slot_.executing.store(false, std::memory_order_release);
+                }
             }
         }
 
@@ -487,6 +618,54 @@ private:
     struct TriggerDecision final {
         Domain::ContextBudgetAction action;
     };
+
+    [[nodiscard]] Domain::Result<bool> reconcileCheckpointCleanup(
+        ProjectSlot& slot,
+        const Domain::ProjectId& projectId,
+        const Domain::ContinuityOperationId& operationId,
+        const Domain::OperationContext& context) noexcept
+    {
+        try {
+            bool requested{};
+            {
+                std::lock_guard lock{slot.stateMutex};
+                if (slot.cleanupOperationId &&
+                    *slot.cleanupOperationId != operationId) {
+                    return Domain::Result<bool>::failure(Domain::makeError(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The continuity checkpoint cleanup is bound to another operation."));
+                }
+                requested = slot.cleanupOperationId.has_value();
+            }
+            if (!requested) {
+                return Domain::Result<bool>::success(false);
+            }
+            auto abandoned = coordinator_.abandonCheckpoint(
+                projectId, operationId, context);
+            {
+                std::lock_guard lock{slot.stateMutex};
+                if (slot.cleanupOperationId ==
+                    std::optional<Domain::ContinuityOperationId>{operationId}) {
+                    slot.cleanupOperationId.reset();
+                }
+                if (abandoned &&
+                    (!slot.checkpointOperationId ||
+                     *slot.checkpointOperationId == operationId)) {
+                    slot.checkpointOperationId.reset();
+                    slot.checkpointContentSha256.reset();
+                }
+            }
+            if (!abandoned) {
+                return Domain::Result<bool>::failure(
+                    std::move(abandoned).error());
+            }
+            return Domain::Result<bool>::success(true);
+        } catch (...) {
+            return Domain::Result<bool>::failure(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The continuity checkpoint cleanup could not be reconciled safely."));
+        }
+    }
 
     class ActiveCall final {
     public:
@@ -617,6 +796,19 @@ ContinuityAutomation::observe(
             "The continuity automation has no implementation.");
     }
     return implementation_->observe(observation, context);
+}
+
+Domain::Result<void> ContinuityAutomation::abandonCheckpoint(
+    const Domain::ProjectId& projectId,
+    const Domain::ContinuityOperationId& operationId,
+    const Domain::OperationContext& context) noexcept
+{
+    if (!implementation_) {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::TransportClosed,
+            "The continuity automation has no implementation."));
+    }
+    return implementation_->abandonCheckpoint(projectId, operationId, context);
 }
 
 void ContinuityAutomation::cancel(

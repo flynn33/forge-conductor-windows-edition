@@ -318,6 +318,29 @@ void crudSearchConflictLinkAndReset()
     REQUIRE(page.truncated);
     REQUIRE(page.nextCursor.has_value());
 
+    const auto batchConflict = fixture.repository->updateBatch(
+        Domain::UpdateProjectMemoryBatchRequest{
+            projectId,
+            {Domain::UpdateProjectMemoryRequest{
+                 projectId, first.recordId, first.recordVersion,
+                 std::nullopt, std::string{"must roll back"},
+                 std::nullopt, std::nullopt},
+             Domain::UpdateProjectMemoryRequest{
+                 projectId, second.recordId, 99U,
+                 std::nullopt, std::string{"conflict"},
+                 std::nullopt, std::nullopt}}},
+        context("project-memory-update-batch-conflict"));
+    REQUIRE(!batchConflict);
+    REQUIRE(batchConflict.error().code == Domain::ErrorCodes::Conflict);
+    const auto afterBatchConflict = take(fixture.repository->get(
+        Domain::GetProjectMemoryRequest{
+            projectId, {first.recordId, second.recordId}, true},
+        context("project-memory-update-batch-rollback")));
+    REQUIRE(afterBatchConflict.records.size() == 2U);
+    REQUIRE(afterBatchConflict.records[0].version == first.recordVersion);
+    REQUIRE(afterBatchConflict.records[0].summary != "must roll back");
+    REQUIRE(afterBatchConflict.records[1].version == second.recordVersion);
+
     const auto conflict = fixture.repository->update(
         Domain::UpdateProjectMemoryRequest{
             projectId, first.recordId, 99U, std::nullopt, std::nullopt,
@@ -334,6 +357,24 @@ void crudSearchConflictLinkAndReset()
     REQUIRE(touched.version == first.recordVersion + 1U);
     REQUIRE(touched.contentHash == first.contentHash);
 
+    const auto batchUpdated = take(fixture.repository->updateBatch(
+        Domain::UpdateProjectMemoryBatchRequest{
+            projectId,
+            {Domain::UpdateProjectMemoryRequest{
+                 projectId, first.recordId, touched.version,
+                 std::nullopt, std::string{"first batch update"},
+                 std::nullopt, std::nullopt},
+             Domain::UpdateProjectMemoryRequest{
+                 projectId, second.recordId, second.recordVersion,
+                 std::nullopt, std::string{"second batch update"},
+                 std::nullopt, std::nullopt}}},
+        context("project-memory-update-batch")));
+    REQUIRE(batchUpdated.records.size() == 2U);
+    REQUIRE(batchUpdated.records[0].version == touched.version + 1U);
+    REQUIRE(batchUpdated.records[0].summary == "first batch update");
+    REQUIRE(batchUpdated.records[1].version == second.recordVersion + 1U);
+    REQUIRE(batchUpdated.records[1].summary == "second batch update");
+
     const auto forgotten = take(fixture.repository->forget(
         Domain::ForgetProjectMemoryRequest{projectId, second.recordId},
         context("project-memory-forget")));
@@ -349,7 +390,7 @@ void crudSearchConflictLinkAndReset()
         forgottenRetry.disposition ==
         Domain::MemoryWriteDisposition::Deduplicated);
     REQUIRE(forgottenRetry.recordId == second.recordId);
-    REQUIRE(forgottenRetry.recordVersion == second.recordVersion + 1U);
+    REQUIRE(forgottenRetry.recordVersion == second.recordVersion + 2U);
     REQUIRE(forgottenRetry.contentHash != second.contentHash);
 
     const auto status = take(fixture.repository->status(

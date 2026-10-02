@@ -2,7 +2,7 @@
 param([Parameter(Mandatory)][string]$WorkspaceRoot)
 $ErrorActionPreference = "Stop"
 
-$excluded = @("\.git\","\.forge-inputs\","\.forge-codex\instructions\inputs\","\build\","\out\","\artifacts\","\packages\")
+$excluded = @("\.git\","\.forge-inputs\","\.forge-qwen\","\.forge-codex\instructions\inputs\","\build\","\out\","\artifacts\","\packages\")
 $violations = [System.Collections.Generic.List[string]]::new()
 Get-ChildItem -LiteralPath $WorkspaceRoot -Recurse -Force -File | ForEach-Object {
     $full = $_.FullName

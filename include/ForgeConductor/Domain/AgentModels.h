@@ -66,7 +66,7 @@ struct ActiveBinding final {
 };
 
 struct AgentSessionLimits final {
-    static constexpr std::size_t MaximumGoalBytes = 512U;
+    static constexpr std::size_t MaximumGoalBytes = 128U * 1024U;
     static constexpr std::size_t MaximumReportJsonBytes = 512U * 1024U;
     static constexpr std::size_t MaximumReportFields = 128U;
     static constexpr std::size_t MaximumSchemaItems = 128U;
@@ -106,6 +106,9 @@ struct AgentRunStartMutation final {
     AgentRunRecord run;
     std::optional<ActiveBinding> activeBinding;
     std::string supersedeSummary;
+    // When supplied, this summary is inserted atomically with the new open
+    // run. The input run remains summary-free to preserve start validation.
+    std::optional<std::string> initialSummary;
 };
 
 struct AgentRunStartPersistenceOutcome final {

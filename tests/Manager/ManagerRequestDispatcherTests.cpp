@@ -23,6 +23,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <span>
 #include <stdexcept>
 #include <stop_token>
@@ -369,15 +370,72 @@ private:
 
 class FakeManagedRuns final : public Contracts::IManagedRunService {
 public:
-    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> start(
+    [[nodiscard]] Domain::Result<
+        std::optional<Domain::ManagedRunSnapshot>> resolveReplay(
+        const Domain::ManagedRunStartRequest& requestValue,
+        const Domain::OperationContext& context) noexcept override
+    {
+        ++resolveReplayCalls;
+        const auto found = startsByRun.find(requestValue.runId.value());
+        if (found == startsByRun.end()) {
+            return Domain::Result<
+                std::optional<Domain::ManagedRunSnapshot>>::success(
+                std::nullopt);
+        }
+        if (!sameAdmission(found->second, requestValue)) {
+            return Domain::Result<
+                std::optional<Domain::ManagedRunSnapshot>>::failure(
+                Domain::makeError(
+                    Domain::ErrorCodes::Conflict,
+                    "fake managed run id belongs to another request"));
+        }
+        if (pendingRuns.contains(requestValue.runId.value())) {
+            auto committed = commitCursorPlan(found->second, context);
+            if (!committed) {
+                return Domain::Result<
+                    std::optional<Domain::ManagedRunSnapshot>>::failure(
+                    std::move(committed).error());
+            }
+            pendingRuns.erase(requestValue.runId.value());
+        }
+        return Domain::Result<
+            std::optional<Domain::ManagedRunSnapshot>>::success(
+            snapshot(found->second, Domain::ManagedRunState::Running));
+    }
+
+    [[nodiscard]] Domain::Result<Domain::ManagedRunStartOutcome> start(
         const Domain::ManagedRunStartRequest& requestValue,
         const Domain::OperationContext& context) noexcept override
     {
         ++startCalls;
         lastStart = requestValue;
         lastContextOperation = context.operationId;
-        return Domain::Result<Domain::ManagedRunSnapshot>::success(
-            snapshot(requestValue, Domain::ManagedRunState::Running));
+        if (const auto found = startsByRun.find(requestValue.runId.value());
+            found != startsByRun.end()) {
+            if (!sameAdmission(found->second, requestValue)) {
+                return Domain::Result<Domain::ManagedRunStartOutcome>::failure(
+                    Domain::makeError(
+                        Domain::ErrorCodes::Conflict,
+                        "fake managed run id belongs to another request"));
+            }
+            return Domain::Result<Domain::ManagedRunStartOutcome>::success({
+                snapshot(found->second, Domain::ManagedRunState::Running),
+                Domain::ManagedRunAdmissionDisposition::Replayed});
+        }
+        startsByRun.emplace(requestValue.runId.value(), requestValue);
+        if (!requestValue.instructionCursorAdvances.empty()) {
+            pendingRuns.insert(requestValue.runId.value());
+            auto committed = commitCursorPlan(requestValue, context);
+            if (!committed) {
+                return Domain::Result<
+                    Domain::ManagedRunStartOutcome>::failure(
+                    std::move(committed).error());
+            }
+            pendingRuns.erase(requestValue.runId.value());
+        }
+        return Domain::Result<Domain::ManagedRunStartOutcome>::success({
+            snapshot(requestValue, Domain::ManagedRunState::Running),
+            Domain::ManagedRunAdmissionDisposition::Admitted});
     }
 
     [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> status(
@@ -440,7 +498,11 @@ public:
     std::map<std::string, Domain::ProjectId> projectByRun;
     std::map<std::string, Domain::ManagedRunState> stateByRun;
     std::map<std::string, std::string> outputByRun;
+    std::map<std::string, Domain::ManagedRunStartRequest> startsByRun;
+    std::set<std::string> pendingRuns;
+    Contracts::IProjectMemoryService* admissionMemory{};
     std::optional<Domain::OperationId> lastContextOperation;
+    std::atomic_size_t resolveReplayCalls{};
     std::atomic_size_t startCalls{};
     std::atomic_size_t statusCalls{};
     std::atomic_size_t cancelCalls{};
@@ -449,12 +511,75 @@ public:
     std::atomic_size_t shutdownCalls{};
 
 private:
+    [[nodiscard]] Domain::Result<void> commitCursorPlan(
+        const Domain::ManagedRunStartRequest& requestValue,
+        const Domain::OperationContext& context)
+    {
+        if (requestValue.instructionCursorAdvances.empty() ||
+            admissionMemory == nullptr) {
+            return Domain::Result<void>::success();
+        }
+        std::vector<Domain::UpdateProjectMemoryRequest> updates;
+        for (const auto& advance :
+             requestValue.instructionCursorAdvances) {
+            updates.push_back(Domain::UpdateProjectMemoryRequest{
+                requestValue.projectId,
+                advance.recordId,
+                advance.expectedVersion,
+                std::nullopt,
+                std::optional<std::string>{
+                    "Execution cursor advanced to entry " +
+                    std::to_string(advance.targetEntry)},
+                nlohmann::json{
+                    {"queue_row_id", advance.queueRowId},
+                    {"cursor", {
+                        {"entry", advance.targetEntry},
+                        {"byte_offset", 0U}}},
+                    {"state", advance.completed
+                        ? "completed" : "active"}}.dump(),
+                std::nullopt});
+        }
+        if (updates.size() == 1U) {
+            auto updated = admissionMemory->update(
+                updates.front(), context);
+            return updated
+                ? Domain::Result<void>::success()
+                : Domain::Result<void>::failure(
+                    std::move(updated).error());
+        }
+        auto updated = admissionMemory->updateBatch(
+            Domain::UpdateProjectMemoryBatchRequest{
+                requestValue.projectId, std::move(updates)},
+            context);
+        return updated
+            ? Domain::Result<void>::success()
+            : Domain::Result<void>::failure(
+                std::move(updated).error());
+    }
+
+    [[nodiscard]] static bool sameAdmission(
+        const Domain::ManagedRunStartRequest& left,
+        const Domain::ManagedRunStartRequest& right) noexcept
+    {
+        const bool stableAdmission =
+            left.admissionIdentity && right.admissionIdentity;
+        return left.projectId == right.projectId &&
+            left.clientId == right.clientId &&
+            left.authorityGeneration == right.authorityGeneration &&
+            left.allowTools == right.allowTools &&
+            (stableAdmission
+                ? left.admissionIdentity == right.admissionIdentity
+                : left.operationId == right.operationId &&
+                    left.task == right.task &&
+                    left.automaticContinuity == right.automaticContinuity);
+    }
+
     [[nodiscard]] static Domain::ManagedRunSnapshot snapshot(
         const Domain::ManagedRunStartRequest& requestValue,
         const Domain::ManagedRunState state)
     {
         const auto time = Domain::UtcTimePoint{std::chrono::seconds{1'700'000'000}};
-        return Domain::ManagedRunSnapshot{
+        auto result = Domain::ManagedRunSnapshot{
             Domain::ManagedRunRecord{
                 requestValue.runId,
                 requestValue.projectId,
@@ -470,9 +595,17 @@ private:
                 std::nullopt,
                 {},
                 time,
-                time},
+                time,
+                requestValue.allowTools,
+                std::nullopt,
+                Domain::ManagedRunEvidenceIntegrity::NotTerminal,
+                {},
+                requestValue.automaticContinuity},
             true,
             false};
+        result.record.admissionIdentity = requestValue.admissionIdentity;
+        result.record.automaticContinuity = requestValue.automaticContinuity;
+        return result;
     }
 
     [[nodiscard]] static Domain::ManagedRunSnapshot snapshotFor(
@@ -602,7 +735,7 @@ public:
         if (allowDoctor) {
             const auto root = Domain::PathText::create("D:\\DoctorFixture").value();
             return Domain::Result<Domain::DoctorReport>::success(
-                Domain::DoctorReport{true, "1.3.4", root,
+                Domain::DoctorReport{true, "1.3.5", root,
                     {Domain::DoctorCheck{"manager_ipc", true, "connected", true}},
                     {}, true, root});
         }
@@ -915,6 +1048,11 @@ void testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable()
     memory.rememberResult.set(
         Domain::Result<Domain::MemoryWriteOutcome>::success(
             writeOutcome(firstRecordId)));
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {}, std::nullopt, false, 0U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
     Manager::ManagerTelemetrySources sources;
     sources.projectMemory = &memory;
     Manager::ManagerRequestDispatcher dispatcher{
@@ -961,24 +1099,84 @@ void testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable()
     };
     auto recordB = stored(secondRecordId, preferenceB->providerId, bodyB);
     auto recordA = stored(firstRecordId, preferenceA->providerId, bodyA);
+
+    controller->currentSettings.localModelName = "provider-a";
     memory.listRecentResult.set(
         Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
             project, {{recordB, 1.0}, {recordA, 1.0}}, std::nullopt,
             false, 2'048U, 256U * 1024U,
             Domain::ProjectMemorySchemaVersion,
             Domain::ProjectMemoryCapabilityVersion}));
+    auto recordAEnabled = recordA;
+    recordAEnabled.version = 2U;
+    memory.updateResult.set(
+        Domain::Result<Domain::ProjectMemoryRecord>::success(
+            recordAEnabled));
+    const auto enabledA = dispatcher.dispatch(request(*clock, 7611U,
+        Manager::ManagerAutomaticContinuityPreferenceRequest{
+            project, true}));
+    const auto* enabledPreferenceA =
+        responseValue<Domain::AutomaticContinuityPreference>(enabledA);
+    require(enabledPreferenceA != nullptr &&
+        enabledPreferenceA->enabled &&
+        memory.lastUpdateRequest() &&
+        memory.lastUpdateRequest()->recordId == firstRecordId &&
+        memory.lastUpdateRequest()->expectedVersion == 1U &&
+        memory.lastUpdateRequest()->body,
+        "provider A toggle to on updates its existing durable record");
+    recordAEnabled.body = *memory.lastUpdateRequest()->body;
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{recordAEnabled, 1.0}, {recordB, 1.0}},
+            std::nullopt, false, 2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    auto recordAFinal = recordAEnabled;
+    recordAFinal.version = 3U;
+    memory.updateResult.set(
+        Domain::Result<Domain::ProjectMemoryRecord>::success(recordAFinal));
+    const auto disabledAgainA = dispatcher.dispatch(request(*clock, 7612U,
+        Manager::ManagerAutomaticContinuityPreferenceRequest{
+            project, false}));
+    const auto* disabledAgainPreferenceA =
+        responseValue<Domain::AutomaticContinuityPreference>(
+            disabledAgainA);
+    require(disabledAgainPreferenceA != nullptr &&
+        !disabledAgainPreferenceA->enabled &&
+        memory.lastUpdateRequest() &&
+        memory.lastUpdateRequest()->recordId == firstRecordId &&
+        memory.lastUpdateRequest()->expectedVersion == 2U &&
+        memory.lastUpdateRequest()->body &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 2U &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Update) == 2U,
+        "provider A false-to-true-to-false toggles update one record without deduplicated remember");
+    recordAFinal.body = *memory.lastUpdateRequest()->body;
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{recordAFinal, 1.0}, {recordB, 1.0}},
+            std::nullopt, false, 2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    const auto idempotentDisabledA = dispatcher.dispatch(request(
+        *clock, 7613U,
+        Manager::ManagerAutomaticContinuityPreferenceRequest{
+            project, false}));
+    require(responseValue<Domain::AutomaticContinuityPreference>(
+                idempotentDisabledA) != nullptr &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Remember) == 2U &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Update) == 2U,
+        "same provider continuity value is idempotent without a timestamp-only rewrite");
 
     Manager::ManagerRequestDispatcher restarted{
         controller, clock, Manager::ManagerTransportLimits{},
         managedRuns, sources};
-    controller->currentSettings.localModelName = "provider-a";
     const auto readA = restarted.dispatch(request(*clock, 762U,
         Manager::ManagerAutomaticContinuityPreferenceRequest{
             project, std::nullopt}));
     const auto* durableA =
         responseValue<Domain::AutomaticContinuityPreference>(readA);
     require(durableA != nullptr && !durableA->enabled,
-        "provider A preference survives dispatcher restart/readback");
+        "provider A false-to-true-to-false preference survives restart/readback");
 
     const auto runId = Domain::SessionId::parse(uuidText(706U)).value();
     const auto clientId = Domain::ClientId::parse(uuidText(707U)).value();
@@ -986,7 +1184,10 @@ void testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable()
         Manager::ManagedRunStartRequest{
             runId, project, clientId, 0U, "Run with exact preference.",
             true, true}));
-    require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
+    const auto* startedRun =
+        responseValue<Domain::ManagedRunSnapshot>(started);
+    require(startedRun != nullptr &&
+        !startedRun->record.automaticContinuity &&
         managedRuns->lastStart && !managedRuns->lastStart->automaticContinuity,
         "managed run receives Manager-owned provider A off preference");
 
@@ -1736,14 +1937,16 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
         Domain::ErrorCodes::Conflict,
         "content change between page requests is rejected against immutable hash");
     auto managedRuns = std::make_shared<FakeManagedRuns>();
+    managedRuns->admissionMemory = &memory;
     Manager::ManagerRequestDispatcher runDispatcher{
         controller, clock, Manager::ManagerTransportLimits{},
         managedRuns, sources};
     const auto runId = Domain::SessionId::parse(uuidText(827U)).value();
     const auto clientId = Domain::ClientId::parse(uuidText(828U)).value();
+    const auto runPayload = Manager::ManagedRunStartRequest{
+        runId, project, clientId, 7U, "Complete the project work."};
     const auto started = runDispatcher.dispatch(request(
-        *clock, 829U, Manager::ManagedRunStartRequest{
-            runId, project, clientId, 7U, "Complete the project work."}));
+        *clock, 829U, runPayload));
     require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
         managedRuns->lastStart &&
         managedRuns->lastStart->task.find("[ORDERED PROJECT INSTRUCTION PACKAGES]") !=
@@ -1757,6 +1960,244 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
         nlohmann::json::parse(*memory.lastUpdateRequest()->body)
             .at("cursor").at("entry").get<std::uint64_t>() == 2U,
         "managed-run package attachment durably advances the execution cursor");
+
+    const auto admittedTask = managedRuns->lastStart->task;
+    const auto admittedIdentity = managedRuns->lastStart->admissionIdentity;
+    auto resetManifestDocument = nlohmann::json::parse(manifestBody);
+    resetManifestDocument["cursor"] = {
+        {"entry", 0U}, {"byte_offset", 0U}};
+    resetManifestDocument["state"] = "active";
+    auto resetManifest = manifestRecord;
+    resetManifest.version = 2U;
+    resetManifest.body = resetManifestDocument.dump();
+    const auto continuityPreference = record(
+        Domain::MemoryRecordId::parse(uuidText(8280U)).value(),
+        "automatic_continuity_preference", "local LM Studio",
+        nlohmann::json{
+            {"provider_id", "lmstudio://http/127.0.0.1:1234/<automatic>"},
+            {"enabled", false},
+            {"state", "off"},
+            {"detail", "Disabled after initial admission."}}.dump());
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project,
+            {{resetManifest, 1.0}, {continuityPreference, 1.0}},
+            std::nullopt, false, 2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::failure(Domain::makeError(
+            Domain::ErrorCodes::IntegrityFailure,
+            "newly active package cannot be read")));
+    const auto replayUpdateCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::Update);
+    const auto replayListCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::ListRecent);
+    const auto replaySearchCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::Search);
+    const auto replayStartCalls = managedRuns->startCalls.load();
+    const auto replayed = runDispatcher.dispatch(request(
+        *clock, 82901U, runPayload));
+    const auto* replayedSnapshot =
+        responseValue<Domain::ManagedRunSnapshot>(replayed);
+    require(replayedSnapshot != nullptr && admittedIdentity &&
+        replayedSnapshot->record.task == admittedTask &&
+        replayedSnapshot->record.automaticContinuity &&
+        managedRuns->lastStart &&
+        managedRuns->lastStart->automaticContinuity &&
+        managedRuns->lastStart->admissionIdentity == admittedIdentity &&
+        managedRuns->startCalls.load() == replayStartCalls &&
+        memory.callCount(TestFakes::ProjectMemoryCall::ListRecent) ==
+            replayListCalls &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Search) ==
+            replaySearchCalls &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Update) ==
+            replayUpdateCalls,
+        "exact replay bypasses a newly active unreadable package and returns the admitted assignment without cursor effects");
+    auto conflictingReplay = runPayload;
+    conflictingReplay.task = "Complete different project work.";
+    requireError(runDispatcher.dispatch(request(
+        *clock, 82902U, conflictingReplay)),
+        Domain::ErrorCodes::Conflict,
+        "same run id with a different original task remains a conflict");
+
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{manifestRecord, 1.0}}, std::nullopt,
+            false, 1'024U, 64U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{firstFile, 1.0}, {secondFile, 1.0}},
+            std::nullopt, false, 2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+
+    const auto exactBoundStartCalls = managedRuns->startCalls.load();
+    const auto exactBoundUpdateCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::Update);
+    requireError(runDispatcher.dispatch(request(
+        *clock, 8290U, Manager::ManagedRunStartRequest{
+            Domain::SessionId::parse(uuidText(8290U)).value(),
+            project,
+            clientId,
+            7U,
+            std::string(Domain::MaximumManagedRunTaskBytes, 't')})),
+        Domain::ErrorCodes::PayloadTooLarge,
+        "exact-limit managed task fails explicitly when an active instruction entry cannot fit");
+    require(managedRuns->startCalls.load() == exactBoundStartCalls &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Update) ==
+            exactBoundUpdateCalls,
+        "exact-limit managed task neither starts nor advances its active package cursor");
+
+    const auto laterQueueRowId = std::string{"queue-later-failure"};
+    auto laterManifestDocument = nlohmann::json::parse(manifestBody);
+    laterManifestDocument["queue_row_id"] = laterQueueRowId;
+    laterManifestDocument["package_id"] = std::string(64U, 'c');
+    laterManifestDocument["package_name"] = "later fixture";
+    laterManifestDocument["order"] = 2048U;
+    laterManifestDocument["entry_count"] = 1U;
+    const auto laterManifest = record(
+        Domain::MemoryRecordId::parse(uuidText(8292U)).value(),
+        "instruction_package_queue", "later fixture",
+        laterManifestDocument.dump());
+    const auto laterOversizedEntry = record(
+        Domain::MemoryRecordId::parse(uuidText(8293U)).value(),
+        "instruction_package_entry", "LATER.md",
+        nlohmann::json{{"queue_row_id", laterQueueRowId},
+            {"relative_path", "LATER.md"}, {"kind", "file"},
+            {"byte_length", Domain::MaximumManagedRunTaskBytes},
+            {"content_hash", revision.value()},
+            {"interpretation", "interpreted"}, {"coverage_detail", nullptr},
+            {"derived_text", std::string(
+                Domain::MaximumManagedRunTaskBytes, 'y')}}.dump());
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{manifestRecord, 1.0}, {laterManifest, 1.0}},
+            std::nullopt, false, 2'048U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{firstFile, 1.0}, {laterOversizedEntry, 1.0}},
+            std::nullopt, false, Domain::MaximumManagedRunTaskBytes,
+            256U * 1024U, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    const auto laterFailureStartCalls = managedRuns->startCalls.load();
+    const auto laterFailureUpdateCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::Update);
+    requireError(runDispatcher.dispatch(request(
+        *clock, 8294U, Manager::ManagedRunStartRequest{
+            Domain::SessionId::parse(uuidText(8294U)).value(),
+            project,
+            clientId,
+            7U,
+            "Run every ordered instruction package."})),
+        Domain::ErrorCodes::PayloadTooLarge,
+        "later package admission failure is explicit after an earlier row fits");
+    require(managedRuns->startCalls.load() == laterFailureStartCalls &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Update) ==
+            laterFailureUpdateCalls,
+        "later package admission failure leaves every ordered row cursor unchanged");
+
+    const auto laterSmallEntry = record(
+        Domain::MemoryRecordId::parse(uuidText(8295U)).value(),
+        "instruction_package_entry", "LATER.md",
+        nlohmann::json{{"queue_row_id", laterQueueRowId},
+            {"relative_path", "LATER.md"}, {"kind", "file"},
+            {"byte_length", 18U}, {"content_hash", revision.value()},
+            {"interpretation", "interpreted"}, {"coverage_detail", nullptr},
+            {"derived_text", "Complete the later package."}}.dump());
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{firstFile, 1.0}, {laterSmallEntry, 1.0}},
+            std::nullopt, false, 4'096U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.updateBatchResult.set(
+        Domain::Result<Domain::MemoryUpdateBatchOutcome>::failure(
+            Domain::makeError(
+                Domain::ErrorCodes::Conflict,
+                "deterministic atomic cursor update conflict")));
+    const auto atomicRunId =
+        Domain::SessionId::parse(uuidText(8296U)).value();
+    const auto atomicPayload = Manager::ManagedRunStartRequest{
+        atomicRunId,
+        project,
+        clientId,
+        7U,
+        "Run every ordered instruction package."};
+    const auto atomicUpdateCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::Update);
+    const auto atomicBatchCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::UpdateBatch);
+    requireError(runDispatcher.dispatch(request(
+        *clock, 8296U, atomicPayload)),
+        Domain::ErrorCodes::Conflict,
+        "multi-row cursor persistence failure is explicit after run admission");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::Update) ==
+            atomicUpdateCalls &&
+        memory.callCount(TestFakes::ProjectMemoryCall::UpdateBatch) ==
+            atomicBatchCalls + 1U &&
+        memory.lastUpdateBatchRequest() &&
+        memory.lastUpdateBatchRequest()->updates.size() == 2U,
+        "multi-row cursor persistence uses one all-or-none update batch");
+    const auto atomicAdmittedTask = managedRuns->lastStart->task;
+    memory.updateBatchResult.set(
+        Domain::Result<Domain::MemoryUpdateBatchOutcome>::success(
+            Domain::MemoryUpdateBatchOutcome{
+                project, {manifestRecord, laterManifest},
+                Domain::ProjectMemorySchemaVersion,
+                Domain::ProjectMemoryCapabilityVersion}));
+    const auto atomicRetry = runDispatcher.dispatch(request(
+        *clock, 8297U, atomicPayload));
+    require(responseValue<Domain::ManagedRunSnapshot>(atomicRetry) != nullptr &&
+        managedRuns->lastStart &&
+        managedRuns->lastStart->task == atomicAdmittedTask &&
+        memory.callCount(TestFakes::ProjectMemoryCall::UpdateBatch) ==
+            atomicBatchCalls + 2U,
+        "exact replay after cursor persistence failure retries the admitted durable cursor plan");
+
+    memory.listRecentResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{manifestRecord, 1.0}}, std::nullopt,
+            false, 1'024U, 64U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+
+    auto oversizedFile = record(
+        fileA, "instruction_package_entry", "START-HERE.md",
+        nlohmann::json{{"queue_row_id", queueRowId},
+            {"relative_path", "START-HERE.md"}, {"kind", "file"},
+            {"byte_length", Domain::MaximumManagedRunTaskBytes},
+            {"content_hash", revision.value()},
+            {"interpretation", "interpreted"}, {"coverage_detail", nullptr},
+            {"derived_text", std::string(
+                Domain::MaximumManagedRunTaskBytes, 'x')}}.dump());
+    memory.searchResult.set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{oversizedFile, 1.0}}, std::nullopt, false,
+            Domain::MaximumManagedRunTaskBytes, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    const auto previousStartCalls = managedRuns->startCalls.load();
+    const auto previousUpdateCalls =
+        memory.callCount(TestFakes::ProjectMemoryCall::Update);
+    requireError(runDispatcher.dispatch(request(
+        *clock, 8291U, Manager::ManagedRunStartRequest{
+            Domain::SessionId::parse(uuidText(8291U)).value(),
+            project,
+            clientId,
+            7U,
+            "Run with the exact instruction package."})),
+        Domain::ErrorCodes::PayloadTooLarge,
+        "unembeddable instruction entry fails explicitly");
+    require(managedRuns->startCalls.load() == previousStartCalls,
+        "unembeddable instruction entry never starts a run");
+    require(memory.callCount(TestFakes::ProjectMemoryCall::Update) ==
+            previousUpdateCalls,
+        "unembeddable instruction entry never advances the queue cursor");
 }
 
 void testLegacyInstructionManifestMigratesToStableQueue()

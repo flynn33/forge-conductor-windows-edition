@@ -40,6 +40,12 @@ public:
                 return Domain::Result<void>::failure(
                     std::move(validRetry).error());
             }
+            if (operation.attempt >=
+                Domain::MaximumContinuityTransitionsPerOperation) {
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::LimitExceeded,
+                    "The continuity transition attempt bound was reached."));
+            }
             operation_.emplace(std::move(operation));
             transitionCount_ = 0U;
             if (operation_->state == Domain::ContinuityState::Completed) {
@@ -141,10 +147,63 @@ public:
                     Domain::ErrorCodes::Conflict,
                     "The deterministic continuity handoff slot is occupied."));
             }
+            if (handoff_ &&
+                handoff_->contentSha256 != handoff.contentSha256) {
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::Conflict,
+                    "A different deterministic continuity handoff is already bound."));
+            }
             if (operation_->acknowledgedSessionId) {
                 return Domain::Result<void>::failure(Domain::makeError(
                     Domain::ErrorCodes::Conflict,
                     "The deterministic continuity handoff is already acknowledged."));
+            }
+            handoff_ = handoff;
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return fakeInternalFailure<void>();
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> refreshCheckpointHandoff(
+        const Domain::ContinuityHandoff& handoff,
+        const Domain::Sha256Digest& expectedHandoffSha256,
+        const Domain::OperationContext& context) noexcept override
+    {
+        try {
+            auto accepted = gate_.enter(context);
+            if (!accepted) {
+                return accepted;
+            }
+            if (handoff.project.projectId != projectId_) {
+                return projectMismatch<void>(
+                    "The continuity handoff belongs to another project.");
+            }
+            if (!operation_ || !handoff_) {
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::RecordNotFound,
+                    "The persisted checkpoint handoff was not found."));
+            }
+            if (operation_->operationId != handoff.operationId ||
+                operation_->handoffId != handoff.handoffId ||
+                operation_->predecessorSessionId !=
+                    handoff.predecessorSession.sessionId ||
+                operation_->adapterId != handoff.hostState.adapterId ||
+                operation_->state != Domain::ContinuityState::CheckpointPersisted ||
+                operation_->successorSessionId ||
+                operation_->acknowledgedSessionId ||
+                operation_->acknowledgedHandoffId) {
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::Conflict,
+                    "The handoff is not an unconsumed persisted checkpoint."));
+            }
+            if (handoff_->contentSha256 == handoff.contentSha256) {
+                return Domain::Result<void>::success();
+            }
+            if (handoff_->contentSha256 != expectedHandoffSha256) {
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::Conflict,
+                    "The persisted checkpoint changed before it could be refreshed."));
             }
             handoff_ = handoff;
             return Domain::Result<void>::success();
@@ -275,6 +334,7 @@ public:
                         "The requested continuity transition is invalid."));
             }
             if (expected == Domain::ContinuityState::RetryWait &&
+                next != Domain::ContinuityState::Cancelling &&
                 operation_->retryResumeState != next) {
                 return Domain::Result<Domain::ContinuityOperation>::failure(
                     Domain::makeError(
@@ -309,8 +369,8 @@ public:
                         Domain::ErrorCodes::IntegrityFailure,
                         "Predecessor sealing requires an exact acknowledgement."));
             }
-            if (operation_->attempt ==
-                (std::numeric_limits<std::uint32_t>::max)()) {
+            if (!Domain::canCommitContinuityTransition(
+                    operation_->attempt, next)) {
                 return Domain::Result<Domain::ContinuityOperation>::failure(
                     Domain::makeError(
                         Domain::ErrorCodes::LimitExceeded,
@@ -390,8 +450,9 @@ public:
                         Domain::ErrorCodes::Conflict,
                         "The operation is not awaiting a handoff acknowledgement."));
             }
-            if (operation_->attempt ==
-                (std::numeric_limits<std::uint32_t>::max)()) {
+            if (!Domain::canCommitContinuityTransition(
+                    operation_->attempt,
+                    Domain::ContinuityState::Acknowledged)) {
                 return Domain::Result<Domain::ContinuityOperation>::failure(
                     Domain::makeError(
                         Domain::ErrorCodes::LimitExceeded,
@@ -456,8 +517,8 @@ public:
                 !Domain::isAllowedContinuityTransition(
                     operation_->state,
                     Domain::ContinuityState::FailedRecoverable) ||
-                operation_->attempt >
-                    (std::numeric_limits<std::uint32_t>::max)() - 2U) {
+                !Domain::canScheduleContinuityRetry(
+                    operation_->attempt, resumeState)) {
                 return Domain::Result<Domain::ContinuityOperation>::failure(
                     Domain::makeError(
                         Domain::ErrorCodes::Conflict,

@@ -11,6 +11,7 @@ namespace ForgeConductor::Tests::Fakes {
 
 enum class ContinuityCall : std::size_t {
     Checkpoint,
+    AbandonCheckpoint,
     PrepareHandoff,
     GetPendingHandoff,
     AcknowledgeHandoff,
@@ -26,6 +27,7 @@ class RecordingContinuityCoordinator final
     : public Contracts::IContinuityCoordinator {
 public:
     DeterministicResult<Domain::CheckpointOutcome> checkpointResult;
+    DeterministicResult<void> abandonCheckpointResult;
     DeterministicResult<Domain::CheckpointOutcome> prepareHandoffResult;
     DeterministicResult<std::optional<Domain::ContinuityHandoff>>
         pendingHandoffResult;
@@ -50,6 +52,23 @@ public:
                 checkpointResult);
         } catch (...) {
             return recordingFailure<Domain::CheckpointOutcome>();
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> abandonCheckpoint(
+        const Domain::ProjectId& projectId,
+        const Domain::ContinuityOperationId& operationId,
+        const Domain::OperationContext& context) noexcept override
+    {
+        try {
+            lastContinuityOperationId_ = operationId;
+            return complete(
+                ContinuityCall::AbandonCheckpoint,
+                &projectId,
+                context,
+                abandonCheckpointResult);
+        } catch (...) {
+            return recordingFailure<void>();
         }
     }
 
@@ -144,14 +163,19 @@ public:
         const Domain::ContinuityRecoveryRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
-        const auto* projectId = request.projectId
-            ? &request.projectId.value()
-            : nullptr;
-        return complete(
-            ContinuityCall::RecoverIncompleteOperations,
-            projectId,
-            context,
-            recoveryResult);
+        try {
+            lastRecoveryRequest_ = request;
+            const auto* projectId = request.projectId
+                ? &request.projectId.value()
+                : nullptr;
+            return complete(
+                ContinuityCall::RecoverIncompleteOperations,
+                projectId,
+                context,
+                recoveryResult);
+        } catch (...) {
+            return recordingFailure<Domain::ContinuityRecoveryReport>();
+        }
     }
 
     [[nodiscard]] Domain::Result<Domain::ContinuityResetReport>
@@ -226,6 +250,12 @@ public:
         return lastCheckpointRequest_;
     }
 
+    [[nodiscard]] const std::optional<Domain::ContinuityRecoveryRequest>&
+    lastRecoveryRequest() const noexcept
+    {
+        return lastRecoveryRequest_;
+    }
+
     [[nodiscard]] const std::optional<Domain::OperationId>&
     lastCancelledOperationId() const noexcept
     {
@@ -282,6 +312,7 @@ private:
     std::optional<Domain::ContinuityOperationId> lastContinuityOperationId_;
     std::optional<Domain::HandoffAcknowledgement> lastAcknowledgement_;
     std::optional<Domain::CheckpointRequest> lastCheckpointRequest_;
+    std::optional<Domain::ContinuityRecoveryRequest> lastRecoveryRequest_;
     std::optional<Domain::OperationId> lastCancelledOperationId_;
     Domain::MonotonicTimePoint now_{};
     std::size_t cancelCalls_{};

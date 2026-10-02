@@ -31,6 +31,11 @@ public:
         const Domain::CheckpointRequest& request,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<void> abandonCheckpoint(
+        const Domain::ProjectId& projectId,
+        const Domain::ContinuityOperationId& operationId,
+        const Domain::OperationContext& context) noexcept override;
+
     [[nodiscard]] Domain::Result<Domain::CheckpointOutcome> prepareHandoff(
         const Domain::CheckpointRequest& request,
         const Domain::OperationContext& context) noexcept override;

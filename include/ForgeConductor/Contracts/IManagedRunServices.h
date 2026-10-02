@@ -39,7 +39,12 @@ class IManagedRunService {
 public:
     virtual ~IManagedRunService() = default;
 
-    [[nodiscard]] virtual Domain::Result<Domain::ManagedRunSnapshot> start(
+    [[nodiscard]] virtual Domain::Result<
+        std::optional<Domain::ManagedRunSnapshot>> resolveReplay(
+        const Domain::ManagedRunStartRequest& request,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    [[nodiscard]] virtual Domain::Result<Domain::ManagedRunStartOutcome> start(
         const Domain::ManagedRunStartRequest& request,
         const Domain::OperationContext& context) noexcept = 0;
 

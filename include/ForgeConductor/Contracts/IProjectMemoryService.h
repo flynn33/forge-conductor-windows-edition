@@ -59,6 +59,13 @@ public:
         const Domain::UpdateProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept = 0;
 
+    // Applies every compare-and-set update in one repository transaction. A
+    // failure leaves every requested record unchanged.
+    [[nodiscard]] virtual Domain::Result<Domain::MemoryUpdateBatchOutcome>
+    updateBatch(
+        const Domain::UpdateProjectMemoryBatchRequest& request,
+        const Domain::OperationContext& context) noexcept = 0;
+
     [[nodiscard]] virtual Domain::Result<Domain::ForgetOutcome> forget(
         const Domain::ForgetProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept = 0;
@@ -166,6 +173,13 @@ public:
 
     [[nodiscard]] virtual Domain::Result<Domain::ProjectMemoryRecord> update(
         const Domain::UpdateProjectMemoryRequest& request,
+        const Domain::OperationContext& context) noexcept = 0;
+
+    // Applies every compare-and-set update in one repository transaction. A
+    // failure leaves every requested record unchanged.
+    [[nodiscard]] virtual Domain::Result<Domain::MemoryUpdateBatchOutcome>
+    updateBatch(
+        const Domain::UpdateProjectMemoryBatchRequest& request,
         const Domain::OperationContext& context) noexcept = 0;
 
     [[nodiscard]] virtual Domain::Result<Domain::ForgetOutcome> forget(
