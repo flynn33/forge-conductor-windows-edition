@@ -481,6 +481,12 @@ $umbrellaFiles = @(
     'include/ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h',
     'include/ForgeConductor/Persistence/Windows/PersistenceWindows.h')
 $requiredFiles = @(
+    '.forge-inputs/archives/SOURCE-HASHES.json',
+    '.forge-inputs/archives/Forge-Conductor-MacOS-main.zip',
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Package.swift',
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift',
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift',
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Tests/ForgeConductorTests/MemoryToolTests.swift',
     'CMakeLists.txt',
     'scripts/build.ps1',
     'scripts/test.ps1',
@@ -519,6 +525,38 @@ Assert-Set @(Get-ChildItem -LiteralPath $legacyTestRoot -Force -File | ForEach-O
 Assert-Set @(Get-ChildItem -LiteralPath $legacyTestRoot -Force -Directory | ForEach-Object { $_.Name }) @() 'P09 test subdirectory inventory'
 $decisionRoot = Join-Path $WorkspaceRoot '.forge-codex\state\decisions'
 Assert-Set @(Get-ChildItem -LiteralPath $decisionRoot -Force -File -Filter 'P09-*.md' | ForEach-Object { $_.Name }) @($adrFiles | ForEach-Object { [IO.Path]::GetFileName($_) }) 'exact P09 four-ADR inventory'
+
+$sourceHashManifestPath = Join-Path $WorkspaceRoot '.forge-inputs\archives\SOURCE-HASHES.json'
+Assert-Exact ([long](Get-Item -LiteralPath $sourceHashManifestPath).Length) 723L 'source-hash manifest byte count'
+Assert-Exact (Get-FileSha256 $sourceHashManifestPath) '1032838a2da517f391693bef862167bdb7cf434520ef42e314c2983bc2195cd3' 'source-hash manifest SHA-256'
+try {
+    $sourceHashManifest = Get-Content -Raw -LiteralPath $sourceHashManifestPath | ConvertFrom-Json
+} catch {
+    throw "G09 assertion failed: invalid source-hash manifest - $($_.Exception.Message)"
+}
+Assert-Exact ([int]$sourceHashManifest.schema_version) 1 'source-hash manifest schema'
+Assert-Exact @($sourceHashManifest.files).Count 4 'source-hash manifest exact archive count'
+$macArchiveEntry = @($sourceHashManifest.files | Where-Object { $_.file -ceq 'Forge-Conductor-MacOS-main.zip' })
+Assert-Exact $macArchiveEntry.Count 1 'source-hash manifest exact macOS archive entry'
+Assert-Exact ([long]$macArchiveEntry[0].bytes) 15040337L 'macOS source archive manifest byte count'
+Assert-Exact ([string]$macArchiveEntry[0].sha256) '3e344d4b3bb0fff80487f99a7c69e7ceadf22aa1e64da3a6f2640ea2fa0072dd' 'macOS source archive manifest SHA-256'
+$macArchivePath = Join-Path $WorkspaceRoot '.forge-inputs\archives\Forge-Conductor-MacOS-main.zip'
+Assert-Exact ([long](Get-Item -LiteralPath $macArchivePath).Length) 15040337L 'macOS source archive actual byte count'
+Assert-Exact (Get-FileSha256 $macArchivePath) '3e344d4b3bb0fff80487f99a7c69e7ceadf22aa1e64da3a6f2640ea2fa0072dd' 'macOS source archive actual SHA-256'
+
+$sourceAnchors = [ordered]@{
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Package.swift' = @('2b9da6f8c1debce8fcf55ad647f6efb209a8b8b73e0fe11778feb9362bcbd146',2032L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Application/Tools/MemoryToolPack.swift' = @('916df67b5ddd32538732cbe82e9c1382e1ddcf2817723055368e54298e325ee7',8116L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Sources/ForgeConductorCore/Infrastructure/SQLiteStore.swift' = @('a5c7ec5750be9c5342dbc9fe5c1adde8e6c5a1f57d3009681b5ac1fb751f5ca0',39463L)
+    '.forge-inputs/macos/Forge-Conductor-MacOS-main/Tests/ForgeConductorTests/MemoryToolTests.swift' = @('cc6fb5cce18ac243fae179f66535bfc6ffc173860e3935d240aa64fa815a821a',12488L)
+}
+foreach ($relativePath in $sourceAnchors.Keys) {
+    $fullPath = Join-Path $WorkspaceRoot $relativePath.Replace('/', '\')
+    Assert-Exact ([long](Get-Item -LiteralPath $fullPath).Length) ([long]$sourceAnchors[$relativePath][1]) "source anchor byte count $relativePath"
+    Assert-Exact (Get-FileSha256 $fullPath) ([string]$sourceAnchors[$relativePath][0]) "source anchor SHA-256 $relativePath"
+}
+$swiftPackage = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot '.forge-inputs\macos\Forge-Conductor-MacOS-main\Package.swift')
+Assert-Exact ([regex]::Matches($swiftPackage,'^//\s*swift-tools-version:\s*6[.]2\s*$',[Text.RegularExpressions.RegexOptions]::Multiline).Count) 1 'source package pins Swift 6.2 canonical-string evidence'
 
 $tokens = $null
 $parseErrors = $null
@@ -1014,13 +1052,13 @@ $infrastructureCaseNames = @([regex]::Matches(
     $infrastructureRegistrationText,
     'addTest\(\s*tests\s*,\s*"(?<name>[^"]+)"') |
     ForEach-Object { $_.Groups['name'].Value })
-Assert-Exact $infrastructureCaseNames.Count 57 'infrastructure registry exact total including two command-line child cases'
-Assert-Exact @($infrastructureCaseNames | Sort-Object -Unique).Count 57 'infrastructure registry case names are unique'
+Assert-Exact $infrastructureCaseNames.Count 54 'infrastructure registry exact total including two command-line child cases'
+Assert-Exact @($infrastructureCaseNames | Sort-Object -Unique).Count 54 'infrastructure registry case names are unique'
 Assert-Set @($infrastructureCaseNames | Where-Object { $_ -like '*-child' }) @(
     'diagnostics.rotation-crash-child',
     'storage.atomic.crash-recovery-child') `
     'infrastructure command-line-only child case inventory'
-Assert-Exact @($infrastructureCaseNames | Where-Object { $_ -notlike '*-child' }).Count 55 'retained Infrastructure.UnitTests default suite exact case count'
+Assert-Exact @($infrastructureCaseNames | Where-Object { $_ -notlike '*-child' }).Count 52 'retained Infrastructure.UnitTests default suite exact case count'
 $infrastructureTestMain = $textByPath['tests/Infrastructure/InfrastructureTestMain.cpp']
 Assert-Sequence @([regex]::Matches(
     $infrastructureTestMain,
@@ -1172,7 +1210,7 @@ Assert-Exact ([regex]::Matches($centralMigrations,$expectedMemorySchema,[Text.Re
 Assert-NoMatch $centralMigrations '(?i)ALTER\s+TABLE\s+memory_notes|DROP\s+TABLE\s+memory_notes' 'central migrations never reshape or drop memory_notes'
 $schemaMigrator = Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot 'src\Persistence\Windows\Migrations\SchemaMigrator.cpp')
 Assert-Match $schemaMigrator 'constexpr\s+std::array\s+MemoryNoteColumns\s*\{\s*column\("key",\s*"TEXT",\s*false,\s*1\),\s*column\("body",\s*"TEXT",\s*true\),\s*columnWithDefault\("tags_json",\s*"TEXT",\s*true,\s*"''\[\]''"\),\s*column\("created_at",\s*"TEXT",\s*true\),\s*column\("updated_at",\s*"TEXT",\s*true\),\s*\};' 'schema admission retains exact five memory_notes columns'
-Assert-Exact ([regex]::Matches($schemaMigrator,'TableSpec\{"memory_notes",\s*MemoryNoteColumns,\s*\{\}\}').Count) 6 'central migrations share the unchanged memory_notes table spec'
+Assert-Exact ([regex]::Matches($schemaMigrator,'TableSpec\{"memory_notes",\s*MemoryNoteColumns,\s*\{\}\}').Count) 3 'central v3, v5, and v6 share the unchanged memory_notes table spec'
 
 $fixturePath = Join-Path $WorkspaceRoot 'tests\Persistence\Fixtures\central-v5.sql'
 $fixtureText = Get-Content -Raw -LiteralPath $fixturePath
@@ -1227,7 +1265,7 @@ Assert-Set @(Get-CMakeTokens $infrastructureBody | Where-Object { $_ -match '^sr
 $persistenceBody = Get-CMakeInvocationBody $cmake 'set' 'FORGE_PERSISTENCE_WINDOWS_SOURCES' 'FORGE_PERSISTENCE_WINDOWS_SOURCES declaration'
 Assert-Set @(Get-CMakeTokens $persistenceBody | Where-Object { $_ -match '^src/Persistence/Windows/.*LegacyMemory.*[.]cpp$' }) @('src/Persistence/Windows/WindowsLegacyMemoryRepository.cpp') 'CMake exact P09 persistence source placement'
 Assert-Match $cmake 'forge_add_layer\s*\(\s*ForgeConductor[.]Application\s+ForgeConductor::Application\s+ForgeConductor::Contracts\s*\)' 'application layer depends only on contracts' -CaseSensitive
-Assert-Match $cmake 'forge_add_layer\s*\(\s*ForgeConductor[.]Infrastructure[.]Windows\s+ForgeConductor::Infrastructure[.]Windows\s+ForgeConductor::Contracts\s+ForgeConductor::Manager[.]Protocol\s*\)' 'Windows infrastructure declares its contracts and Manager protocol dependencies' -CaseSensitive
+Assert-Match $cmake 'forge_add_layer\s*\(\s*ForgeConductor[.]Infrastructure[.]Windows\s+ForgeConductor::Infrastructure[.]Windows\s+ForgeConductor::Contracts\s*\)' 'Windows Unicode infrastructure remains below the contracts layer' -CaseSensitive
 Assert-Match $cmake 'forge_add_layer\s*\(\s*ForgeConductor[.]Persistence[.]Windows\s+ForgeConductor::Persistence[.]Windows\s+ForgeConductor::Contracts\s+ForgeConductor::Infrastructure[.]Windows\s*\)' 'persistence layer depends only on contracts and Windows infrastructure' -CaseSensitive
 $infrastructureLinks = Get-CMakeTokens (Get-CMakeInvocationBody $cmake `
     'target_link_libraries' 'ForgeConductor.Infrastructure.Windows' `
@@ -1235,17 +1273,12 @@ $infrastructureLinks = Get-CMakeTokens (Get-CMakeInvocationBody $cmake `
 Assert-Exact @($infrastructureLinks | Where-Object { $_ -ceq 'normaliz' }).Count 1 'Windows infrastructure links the exact Windows NFC import library once'
 Assert-Exact ([regex]::Matches($cmake,'\bnormaliz\b').Count) 1 'normaliz appears only at the approved Windows infrastructure boundary'
 Assert-Set (Get-CMakeExecutableSources $cmake 'ForgeConductor.Infrastructure.UnitTests') @(
-    'tests/Application/LMStudioDeploymentServiceTests.cpp',
     'tests/Infrastructure/FoundationWindowsTests.cpp',
     'tests/Infrastructure/InfrastructureTestMain.cpp',
-    'tests/Infrastructure/LMStudioConfigurationCodecTests.cpp',
     'tests/Infrastructure/StorageWindowsTests.cpp',
-    'tests/Infrastructure/WindowsLMStudioEnvironmentTests.cpp',
-    'tests/Infrastructure/WindowsLMStudioHostActivatorTests.cpp',
-    'tests/Infrastructure/WindowsLMStudioServeVerifierTests.cpp',
     'tests/Infrastructure/WindowsDiagnosticSinkTests.cpp',
     'tests/Infrastructure/WindowsUnicodeCanonicalizerTests.cpp') `
-    'CMake exact retained infrastructure unit-test source inventory'
+    'CMake exact retained 52-case infrastructure unit-test source inventory'
 
 $expectedTargets = [ordered]@{
     'ForgeConductor.LegacyMemory.ApplicationTests' = @('tests/LegacyMemory/LegacyMemoryApplicationTests.cpp')

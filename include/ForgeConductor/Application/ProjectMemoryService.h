@@ -48,10 +48,6 @@ public:
         const Domain::UpdateProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override;
 
-    [[nodiscard]] Domain::Result<Domain::MemoryUpdateBatchOutcome> updateBatch(
-        const Domain::UpdateProjectMemoryBatchRequest& request,
-        const Domain::OperationContext& context) noexcept override;
-
     [[nodiscard]] Domain::Result<Domain::ForgetOutcome> forget(
         const Domain::ForgetProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override;

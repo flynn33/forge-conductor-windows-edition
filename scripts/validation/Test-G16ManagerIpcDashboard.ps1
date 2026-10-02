@@ -26,7 +26,6 @@ $WorkspaceRoot = (Resolve-Path -LiteralPath $WorkspaceRoot).Path
 . (Join-Path $WorkspaceRoot '.forge-codex\instructions\scripts\Common.ps1')
 
 $script:AssertionCount = 0
-$script:G16RunnerLock = $null
 $script:GitTool = $null
 $loadedGateScriptBytes = [Text.UTF8Encoding]::new($false, $true).GetBytes(
     $MyInvocation.MyCommand.ScriptBlock.Ast.Extent.Text)
@@ -1062,7 +1061,7 @@ function Invoke-RepositoryIntegrityChecks {
     Assert-True (-not [string]::IsNullOrWhiteSpace($script:GitTool)) `
         'repository integrity uses the selected Git executable'
     $output = @(& $script:GitTool -c core.safecrlf=false -C $WorkspaceRoot `
-        diff --check -- ':!.forge-qwen/**' ':!.superdesign/**' 2>&1)
+        diff --check 2>&1)
     Assert-Exact $LASTEXITCODE 0 `
         ('git diff --check: ' + ($output -join [Environment]::NewLine))
     & (Join-Path $WorkspaceRoot `
@@ -2672,29 +2671,6 @@ Assert-NoMatch $productionText `
 
 $cmakePath = Join-Path $WorkspaceRoot 'CMakeLists.txt'
 $cmakeText = Get-Content -Raw -LiteralPath $cmakePath
-$managerCompositionSource = Get-Content -Raw -LiteralPath (Join-Path `
-    $WorkspaceRoot 'src\Hosts\Manager\ManagerCompositionRoot.cpp')
-$managedRunShutdown = $managerCompositionSource.IndexOf(
-    'managedRuns_->shutdown();', [StringComparison]::Ordinal)
-$continuityAutomationShutdown = $managerCompositionSource.IndexOf(
-    'continuityAutomation_->shutdown();', [StringComparison]::Ordinal)
-Assert-True ($managedRunShutdown -ge 0 -and
-    $continuityAutomationShutdown -gt $managedRunShutdown) `
-    'Manager drains managed runs before closing continuity automation'
-$persistenceInitialization = $managerCompositionSource.IndexOf(
-    'initializePersistence(compositionContext);', [StringComparison]::Ordinal)
-$startupContinuityRecovery = $managerCompositionSource.IndexOf(
-    'continuity_->recoverIncompleteOperations(', [StringComparison]::Ordinal)
-$managerIngressInitialization = $managerCompositionSource.IndexOf(
-    'initializeManagerHost(compositionContext);', [StringComparison]::Ordinal)
-Assert-True ($persistenceInitialization -ge 0 -and
-    $startupContinuityRecovery -gt $persistenceInitialization -and
-    $managerIngressInitialization -gt $startupContinuityRecovery) `
-    'Manager abandons orphaned stable checkpoints after persistence and before ingress'
-Assert-Match $managerCompositionSource `
-    'ContinuityRecoveryRequest\s*\{\s*std::nullopt\s*,\s*false\s*,\s*true\s*\}' `
-    'Manager startup recovery is limited to pre-successor orphan abandonment' `
-    -CaseSensitive
 $labelsByTest = Get-CmakeTestLabels $cmakeText
 Assert-CmakeTestCommandTargets $cmakeText
 $cmakeG16Tests = @($labelsByTest.Keys | Where-Object {
@@ -2830,12 +2806,11 @@ if ($StaticOnly -and -not $Resume) {
 
 $script:G16RunnerLock = $null
 trap {
-    $failure = $_
     if ($null -ne $script:G16RunnerLock) {
         $script:G16RunnerLock.Dispose()
         $script:G16RunnerLock = $null
     }
-    throw $failure
+    throw
 }
 $runnerLockPath = Join-Path $WorkspaceRoot `
     '.forge-codex\state\evidence\P16\g16-runner.lock'

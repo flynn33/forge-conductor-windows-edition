@@ -3,11 +3,17 @@
 #include "NativeToolValidation.h"
 
 #include "ForgeConductor/Domain/Utf8.h"
-#include "ForgeConductor/Infrastructure/Windows/WindowsMachineToolResolver.h"
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
 
 #include <algorithm>
+#include <climits>
 #include <chrono>
 #include <mutex>
+#include <optional>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -20,6 +26,13 @@ namespace {
 constexpr std::string_view Utf8OutputPrefix =
     "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);"
     "$OutputEncoding=[Console]::OutputEncoding;";
+
+constexpr std::size_t MaximumShellPathBytes = 4'000U;
+constexpr wchar_t MachineEnvironmentKey[] =
+    L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment";
+constexpr wchar_t UserEnvironmentKey[] = L"Environment";
+constexpr wchar_t WindowsCurrentVersionKey[] =
+    L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion";
 
 [[nodiscard]] bool asciiNameEquals(
     const std::string_view left,
@@ -44,15 +57,221 @@ constexpr std::string_view Utf8OutputPrefix =
     return true;
 }
 
-void eraseEnvironmentName(
-    std::vector<Domain::EnvironmentVariable>& environment,
-    const std::string_view name)
+[[nodiscard]] bool hasEnvironmentName(
+    const std::vector<Domain::EnvironmentVariable>& environment,
+    const std::string_view name) noexcept
 {
-    std::erase_if(
-        environment,
+    return std::any_of(
+        environment.begin(), environment.end(),
         [name](const Domain::EnvironmentVariable& variable) noexcept {
             return asciiNameEquals(variable.name, name);
         });
+}
+
+[[nodiscard]] std::optional<std::string> wideToUtf8(const std::wstring_view value)
+{
+    if (value.empty()) {
+        return std::string{};
+    }
+    if (value.size() > static_cast<std::size_t>(INT_MAX)) {
+        return std::nullopt;
+    }
+    const int inputLength = static_cast<int>(value.size());
+    const int required = ::WideCharToMultiByte(
+        CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), inputLength,
+        nullptr, 0, nullptr, nullptr);
+    if (required <= 0) {
+        return std::nullopt;
+    }
+    std::string converted(static_cast<std::size_t>(required), '\0');
+    const int written = ::WideCharToMultiByte(
+        CP_UTF8, WC_ERR_INVALID_CHARS, value.data(), inputLength,
+        converted.data(), required, nullptr, nullptr);
+    if (written != required) {
+        return std::nullopt;
+    }
+    return converted;
+}
+
+[[nodiscard]] std::optional<std::wstring> registryString(
+    const HKEY root,
+    const wchar_t* const subkey,
+    const wchar_t* const name)
+{
+    DWORD size = 0U;
+    const LSTATUS measured = ::RegGetValueW(
+        root, subkey, name, RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
+        nullptr, nullptr, &size);
+    if (measured != ERROR_SUCCESS || size < sizeof(wchar_t) || size > 32U * 1024U) {
+        return std::nullopt;
+    }
+    std::wstring value(size / sizeof(wchar_t), L'\0');
+    DWORD bytes = size;
+    const LSTATUS read = ::RegGetValueW(
+        root, subkey, name, RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ,
+        nullptr, value.data(), &bytes);
+    if (read != ERROR_SUCCESS) {
+        return std::nullopt;
+    }
+    while (!value.empty() && value.back() == L'\0') {
+        value.pop_back();
+    }
+    if (value.find(L'\0') != std::wstring::npos) {
+        return std::nullopt;
+    }
+    return value;
+}
+
+[[nodiscard]] std::wstring windowsDirectory()
+{
+    wchar_t buffer[MAX_PATH]{};
+    const UINT written = ::GetWindowsDirectoryW(buffer, MAX_PATH);
+    if (written == 0U || written >= MAX_PATH) {
+        return L"C:\\Windows";
+    }
+    return std::wstring{buffer, written};
+}
+
+[[nodiscard]] std::wstring systemDirectory()
+{
+    wchar_t buffer[MAX_PATH]{};
+    const UINT written = ::GetSystemDirectoryW(buffer, MAX_PATH);
+    if (written == 0U || written >= MAX_PATH) {
+        return L"C:\\Windows\\System32";
+    }
+    return std::wstring{buffer, written};
+}
+
+[[nodiscard]] std::wstring programFilesDirectory()
+{
+    if (const auto configured = registryString(
+            HKEY_LOCAL_MACHINE, WindowsCurrentVersionKey, L"ProgramFilesDir")) {
+        return *configured;
+    }
+    return L"C:\\Program Files";
+}
+
+[[nodiscard]] bool isDirectory(const std::wstring_view path)
+{
+    if (path.empty() || path.size() > static_cast<std::size_t>(MAX_PATH) * 4U) {
+        return false;
+    }
+    const DWORD attributes = ::GetFileAttributesW(std::wstring{path}.c_str());
+    return attributes != INVALID_FILE_ATTRIBUTES &&
+        (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U;
+}
+
+void appendUniqueDirectory(
+    std::vector<std::wstring>& directories,
+    std::wstring candidate)
+{
+    while (!candidate.empty() &&
+           (candidate.back() == L'\\' || candidate.back() == L'/')) {
+        candidate.pop_back();
+    }
+    if (candidate.empty() || !isDirectory(candidate)) {
+        return;
+    }
+    const auto duplicate = std::any_of(
+        directories.begin(), directories.end(),
+        [&](const std::wstring& existing) noexcept {
+            return existing.size() <= static_cast<std::size_t>(INT_MAX) &&
+                candidate.size() <= static_cast<std::size_t>(INT_MAX) &&
+                ::CompareStringOrdinal(
+                    existing.data(), static_cast<int>(existing.size()),
+                    candidate.data(), static_cast<int>(candidate.size()),
+                    TRUE) == CSTR_EQUAL;
+        });
+    if (!duplicate) {
+        directories.push_back(std::move(candidate));
+    }
+}
+
+void appendPathList(
+    std::vector<std::wstring>& directories,
+    const std::wstring_view pathList)
+{
+    std::size_t start = 0U;
+    while (start <= pathList.size()) {
+        const auto end = pathList.find(L';', start);
+        auto entry = std::wstring{
+            pathList.substr(start, end == std::wstring_view::npos ? std::wstring_view::npos : end - start)};
+        const auto first = entry.find_first_not_of(L" \t\"");
+        if (first == std::wstring::npos) {
+            entry.clear();
+        } else {
+            const auto last = entry.find_last_not_of(L" \t\"");
+            entry = entry.substr(first, last - first + 1U);
+        }
+        appendUniqueDirectory(directories, std::move(entry));
+        if (end == std::wstring_view::npos) {
+            break;
+        }
+        start = end + 1U;
+    }
+}
+
+[[nodiscard]] std::string shellSearchPath()
+{
+    std::vector<std::wstring> directories;
+    const auto windows = windowsDirectory();
+    const auto system = systemDirectory();
+    const auto programFiles = programFilesDirectory();
+    appendUniqueDirectory(directories, system);
+    appendUniqueDirectory(directories, windows);
+    appendUniqueDirectory(directories, system + L"\\Wbem");
+    appendUniqueDirectory(directories, system + L"\\WindowsPowerShell\\v1.0");
+    appendUniqueDirectory(directories, system + L"\\OpenSSH");
+    appendUniqueDirectory(directories, programFiles + L"\\PowerShell\\7");
+    appendUniqueDirectory(directories, programFiles + L"\\Git\\cmd");
+    appendUniqueDirectory(directories, programFiles + L"\\Git\\bin");
+    appendUniqueDirectory(directories, programFiles + L"\\Python312\\Scripts");
+    appendUniqueDirectory(directories, programFiles + L"\\Python312");
+    appendUniqueDirectory(directories, programFiles + L"\\nodejs");
+    appendUniqueDirectory(directories, programFiles + L"\\CMake\\bin");
+    appendUniqueDirectory(directories, programFiles + L"\\GitHub CLI");
+    if (const auto machine = registryString(
+            HKEY_LOCAL_MACHINE, MachineEnvironmentKey, L"Path")) {
+        appendPathList(directories, *machine);
+    }
+    if (const auto user = registryString(HKEY_CURRENT_USER, UserEnvironmentKey, L"Path")) {
+        appendPathList(directories, *user);
+    }
+
+    std::string joined;
+    for (const auto& directory : directories) {
+        const auto utf8 = wideToUtf8(directory);
+        if (!utf8) {
+            continue;
+        }
+        const std::size_t extra = utf8->size() + (joined.empty() ? 0U : 1U);
+        if (joined.size() + extra > MaximumShellPathBytes) {
+            break;
+        }
+        if (!joined.empty()) {
+            joined.push_back(';');
+        }
+        joined.append(*utf8);
+    }
+    return joined;
+}
+
+[[nodiscard]] std::string shellPathExt()
+{
+    std::wstring value;
+    if (const auto machine = registryString(
+            HKEY_LOCAL_MACHINE, MachineEnvironmentKey, L"PATHEXT")) {
+        value = *machine;
+    }
+    if (value.find(L".EXE") == std::wstring::npos &&
+        value.find(L".exe") == std::wstring::npos) {
+        value = L".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC";
+    }
+    auto utf8 = wideToUtf8(value);
+    if (!utf8 || utf8->size() > MaximumShellPathBytes) {
+        return ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC";
+    }
+    return std::move(*utf8);
 }
 
 void ensureShellToolchainEnvironment(
@@ -60,26 +279,21 @@ void ensureShellToolchainEnvironment(
 {
     // The process supervisor inherits only SystemRoot, WINDIR, TEMP, and TMP.
     // Without PATH and PATHEXT, PowerShell cannot resolve git.exe, cmd.exe, or
-    // pwsh.exe, so an explicit machine-owned toolchain path is supplied here.
-    // Per-user PATH entries are intentionally excluded so user command shims
-    // cannot shadow the product's system and installed-tool resolution.
-    eraseEnvironmentName(environment, "PATH");
-    auto path = ::ForgeConductor::Infrastructure::Windows::
-        WindowsMachineToolResolver::searchPath();
-    if (!path.empty()) {
-        environment.push_back(Domain::EnvironmentVariable{"PATH", std::move(path)});
+    // pwsh.exe, so an explicit toolchain path is supplied here.
+    if (!hasEnvironmentName(environment, "PATH")) {
+        auto path = shellSearchPath();
+        if (!path.empty()) {
+            environment.push_back(Domain::EnvironmentVariable{"PATH", std::move(path)});
+        }
     }
-    eraseEnvironmentName(environment, "PATHEXT");
-    environment.push_back(Domain::EnvironmentVariable{
-        "PATHEXT",
-        ::ForgeConductor::Infrastructure::Windows::
-            WindowsMachineToolResolver::pathExt()});
-    eraseEnvironmentName(environment, "COMSPEC");
-    auto comspec = ::ForgeConductor::Infrastructure::Windows::
-        WindowsMachineToolResolver::commandInterpreter();
-    if (!comspec.empty()) {
-        environment.push_back(Domain::EnvironmentVariable{
-            "COMSPEC", std::move(comspec)});
+    if (!hasEnvironmentName(environment, "PATHEXT")) {
+        environment.push_back(Domain::EnvironmentVariable{"PATHEXT", shellPathExt()});
+    }
+    if (!hasEnvironmentName(environment, "COMSPEC")) {
+        const auto comspec = wideToUtf8(systemDirectory() + L"\\cmd.exe");
+        if (comspec && !comspec->empty() && comspec->size() <= MaximumShellPathBytes) {
+            environment.push_back(Domain::EnvironmentVariable{"COMSPEC", *comspec});
+        }
     }
 }
 

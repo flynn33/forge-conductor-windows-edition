@@ -3,7 +3,6 @@
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
-#include "ForgeConductor/Infrastructure/Windows/WindowsMachineToolResolver.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include <Windows.h>
@@ -230,9 +229,17 @@ Contracts::PolicySourceBundle cloneRepository(
     const std::string& source,
     const Domain::OperationContext& context)
 {
-    const auto executablePath = take(
-        WindowsMachineToolResolver::gitExecutable());
-    const auto git = nativePath(executablePath.value());
+    std::array<wchar_t, 32768> search{}, executable{};
+    const auto length = GetEnvironmentVariableW(L"PATH", search.data(), static_cast<DWORD>(search.size()));
+    const auto found = length && length < search.size()
+        ? SearchPathW(search.data(), L"git.exe", nullptr,
+            static_cast<DWORD>(executable.size()), executable.data(), nullptr) : 0;
+    if (!found || found >= executable.size()) {
+        throw std::runtime_error{"Git is required to bind a remote development-policy repository."};
+    }
+    std::filesystem::path git{executable.data()};
+    const auto launcher = git.parent_path().parent_path() / L"bin" / L"git.exe";
+    if (git.parent_path().filename() == L"cmd" && std::filesystem::is_regular_file(launcher)) git = launcher;
 
     WindowsUuidGenerator ids;
     const auto identity = take(ids.next()).value();
@@ -261,6 +268,7 @@ Contracts::PolicySourceBundle cloneRepository(
     auto diagnostics = std::make_shared<WindowsRuntimeDiagnostics>(clock, budgets);
     WindowsProcessSupervisor processes{budgets, diagnostics};
     const auto project = take(Domain::ProjectId::parse(identity));
+    const auto executablePath = nativePathText(git);
     WindowsWorkspaceAuthority authority{{WindowsWorkspaceAuthorityPolicy{
         take(Domain::AuthorityId::parse(identity)), project,
         take(Domain::ClientId::parse("policy-import")),

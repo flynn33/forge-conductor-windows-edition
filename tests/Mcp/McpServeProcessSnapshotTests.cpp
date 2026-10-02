@@ -951,7 +951,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.5");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.4");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();

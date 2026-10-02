@@ -675,15 +675,6 @@ public:
         return inner_->storeHandoff(handoff, context);
     }
 
-    [[nodiscard]] Domain::Result<void> refreshCheckpointHandoff(
-        const Domain::ContinuityHandoff& handoff,
-        const Domain::Sha256Digest& expectedHandoffSha256,
-        const Domain::OperationContext& context) noexcept override
-    {
-        return inner_->refreshCheckpointHandoff(
-            handoff, expectedHandoffSha256, context);
-    }
-
     [[nodiscard]] Domain::Result<std::optional<Domain::ContinuityHandoff>> handoff(
         const Domain::ProjectId& projectId,
         const Domain::ContinuityHandoffId& handoffId,
@@ -956,23 +947,7 @@ int runRecoveryChild(
             Domain::ContinuityRecoveryRequest{handoff.project.projectId, true},
             context));
         appendChildProgress(root, "recovery-coordinator-returned");
-        if (boundary == CrashBoundary::CheckpointIntent ||
-            boundary == CrashBoundary::CheckpointPersisted) {
-            // A checkpoint alone is stable state. Recovery cannot infer that
-            // the owner intended to create a successor; the explicit replay
-            // below supplies that intent after the process restart.
-            if (recovered.inspected != 1U || recovered.resumed != 0U ||
-                recovered.failed != 0U) {
-                return 42;
-            }
-            static_cast<void>(take(coordinator.checkpoint(
-                Domain::CheckpointRequest{handoff, std::nullopt, std::nullopt},
-                context)));
-            static_cast<void>(take(coordinator.requestRollover(
-                Domain::RolloverRequest{
-                    handoff.project.projectId, handoff.operationId},
-                context)));
-        } else if (boundary == CrashBoundary::CompletedPointerCommit) {
+        if (boundary == CrashBoundary::CompletedPointerCommit) {
             if (recovered.inspected != 0U || recovered.resumed != 0U) {
                 return 41;
             }

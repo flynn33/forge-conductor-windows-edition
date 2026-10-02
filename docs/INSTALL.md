@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.0 targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;

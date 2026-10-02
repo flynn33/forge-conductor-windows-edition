@@ -11,7 +11,6 @@
 #include "ForgeConductor/Domain/Error.h"
 #include "ForgeConductor/Domain/TelemetryModels.h"
 #include "ForgeConductor/Domain/Utf8.h"
-#include "ForgeConductor/Infrastructure/Windows/WindowsMachineToolResolver.h"
 
 #include <algorithm>
 #include <array>
@@ -209,6 +208,51 @@ static_assert(LegacyLauncherNames.size() == MaximumLegacyLauncherCount);
     }
 }
 
+[[nodiscard]] Domain::Result<std::string> strictWideToUtf8(
+    const std::wstring_view value) noexcept
+{
+    try {
+        if (value.empty() ||
+            value.size() > static_cast<std::size_t>(
+                (std::numeric_limits<int>::max)())) {
+            return Domain::Result<std::string>::failure(integrityError(
+                "A discovered Manager Doctor path is invalid."));
+        }
+        const auto length = static_cast<int>(value.size());
+        const int required = ::WideCharToMultiByte(
+            CP_UTF8,
+            WC_ERR_INVALID_CHARS,
+            value.data(),
+            length,
+            nullptr,
+            0,
+            nullptr,
+            nullptr);
+        if (required <= 0 ||
+            static_cast<std::size_t>(required) > Domain::PathText::MaximumBytes) {
+            return Domain::Result<std::string>::failure(integrityError(
+                "A discovered Manager Doctor path could not be encoded."));
+        }
+        std::string converted(static_cast<std::size_t>(required), '\0');
+        if (::WideCharToMultiByte(
+                CP_UTF8,
+                WC_ERR_INVALID_CHARS,
+                value.data(),
+                length,
+                converted.data(),
+                required,
+                nullptr,
+                nullptr) != required) {
+            return Domain::Result<std::string>::failure(integrityError(
+                "A discovered Manager Doctor path could not be encoded."));
+        }
+        return Domain::Result<std::string>::success(std::move(converted));
+    } catch (...) {
+        return Domain::Result<std::string>::failure(internalError(
+            "A discovered Manager Doctor path conversion failed safely."));
+    }
+}
+
 [[nodiscard]] bool isAbsoluteWindowsPath(
     const Domain::PathText& value) noexcept
 {
@@ -308,19 +352,55 @@ static_assert(!isLegacyLauncherEntry(
 
 [[nodiscard]] Domain::Result<std::optional<Domain::PathText>> discoverGit()
 {
-    auto resolved = ::ForgeConductor::Infrastructure::Windows::
-        WindowsMachineToolResolver::gitExecutable();
-    if (!resolved &&
-        resolved.error().code == Domain::ErrorCodes::HostCapabilityUnavailable) {
+    ::SetLastError(ERROR_SUCCESS);
+    const DWORD required =
+        ::SearchPathW(nullptr, L"git.exe", nullptr, 0U, nullptr, nullptr);
+    if (required == 0U) {
         return Domain::Result<std::optional<Domain::PathText>>::success(
             std::nullopt);
     }
-    if (!resolved) {
+    if (required > MaximumWindowsPathCharacters) {
         return Domain::Result<std::optional<Domain::PathText>>::failure(
-            std::move(resolved).error());
+            integrityError("The discovered Git path exceeds its bound."));
+    }
+    std::wstring buffer(static_cast<std::size_t>(required), L'\0');
+    const DWORD written = ::SearchPathW(
+        nullptr,
+        L"git.exe",
+        nullptr,
+        static_cast<DWORD>(buffer.size()),
+        buffer.data(),
+        nullptr);
+    if (written == 0U || written >= buffer.size()) {
+        return Domain::Result<std::optional<Domain::PathText>>::failure(
+            internalError("The discovered Git path could not be read."));
+    }
+    buffer.resize(static_cast<std::size_t>(written));
+    auto attributes = attributesFor(buffer);
+    if (!attributes) {
+        return Domain::Result<std::optional<Domain::PathText>>::failure(
+            std::move(attributes).error());
+    }
+    DWORD binaryType{};
+    if (!isRegularFile(attributes.value()) ||
+        ::GetBinaryTypeW(buffer.c_str(), &binaryType) == FALSE ||
+        (binaryType != SCS_32BIT_BINARY &&
+         binaryType != SCS_64BIT_BINARY)) {
+        return Domain::Result<std::optional<Domain::PathText>>::success(
+            std::nullopt);
+    }
+    auto encoded = strictWideToUtf8(buffer);
+    if (!encoded) {
+        return Domain::Result<std::optional<Domain::PathText>>::failure(
+            std::move(encoded).error());
+    }
+    auto path = Domain::PathText::create(std::move(encoded).value());
+    if (!path) {
+        return Domain::Result<std::optional<Domain::PathText>>::failure(
+            std::move(path).error());
     }
     return Domain::Result<std::optional<Domain::PathText>>::success(
-        std::move(resolved).value());
+        std::move(path).value());
 }
 
 } // namespace

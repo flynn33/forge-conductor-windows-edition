@@ -219,7 +219,6 @@ enum class ProjectMemoryRepositoryCall {
     Search,
     Get,
     Update,
-    UpdateBatch,
     Forget,
     ListRecent,
     Link,
@@ -235,7 +234,6 @@ using ProjectMemoryRepositoryRequest = std::variant<
     Domain::SearchProjectMemoryRequest,
     Domain::GetProjectMemoryRequest,
     Domain::UpdateProjectMemoryRequest,
-    Domain::UpdateProjectMemoryBatchRequest,
     Domain::ForgetProjectMemoryRequest,
     Domain::ListRecentProjectMemoryRequest,
     Domain::LinkProjectMemoryRequest,
@@ -258,7 +256,6 @@ public:
     DeterministicResult<Domain::MemoryPage> searchResult;
     DeterministicResult<Domain::MemoryRecords> getResult;
     DeterministicResult<Domain::ProjectMemoryRecord> updateResult;
-    DeterministicResult<Domain::MemoryUpdateBatchOutcome> updateBatchResult;
     DeterministicResult<Domain::ForgetOutcome> forgetResult;
     DeterministicResult<Domain::MemoryPage> listRecentResult;
     DeterministicResult<Domain::LinkOutcome> linkResult;
@@ -326,17 +323,6 @@ public:
             request,
             context,
             updateResult);
-    }
-
-    [[nodiscard]] Domain::Result<Domain::MemoryUpdateBatchOutcome> updateBatch(
-        const Domain::UpdateProjectMemoryBatchRequest& request,
-        const Domain::OperationContext& context) noexcept override
-    {
-        return complete(
-            ProjectMemoryRepositoryCall::UpdateBatch,
-            request,
-            context,
-            updateBatchResult);
     }
 
     [[nodiscard]] Domain::Result<Domain::ForgetOutcome> forget(
@@ -471,15 +457,6 @@ public:
         const Domain::OperationContext& context) noexcept override
     {
         return continuity_.storeHandoff(handoff, context);
-    }
-
-    [[nodiscard]] Domain::Result<void> refreshCheckpointHandoff(
-        const Domain::ContinuityHandoff& handoff,
-        const Domain::Sha256Digest& expectedHandoffSha256,
-        const Domain::OperationContext& context) noexcept override
-    {
-        return continuity_.refreshCheckpointHandoff(
-            handoff, expectedHandoffSha256, context);
     }
 
     [[nodiscard]] Domain::Result<std::optional<Domain::ContinuityHandoff>> handoff(

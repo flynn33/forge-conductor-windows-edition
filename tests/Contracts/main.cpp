@@ -917,18 +917,6 @@ void testAllProjectMemoryOperations(const Fixture& fixture)
             std::nullopt,
             std::nullopt},
         context);
-    (void)memory.updateBatch(
-        Domain::UpdateProjectMemoryBatchRequest{
-            fixture.projectId,
-            {Domain::UpdateProjectMemoryRequest{
-                fixture.projectId,
-                fixture.recordId,
-                1,
-                std::string{"Updated"},
-                std::nullopt,
-                std::nullopt,
-                std::nullopt}}},
-        context);
     (void)memory.forget(
         Domain::ForgetProjectMemoryRequest{
             fixture.projectId,
@@ -980,7 +968,7 @@ void testAllProjectMemoryOperations(const Fixture& fixture)
          ++value) {
         expect(
             memory.callCount(static_cast<Fakes::ProjectMemoryCall>(value)) == 1,
-            "one of the thirteen project-memory operations was not recorded");
+            "one of the twelve project-memory operations was not recorded");
     }
     expect(
         memory.lastProjectId() &&
@@ -1691,10 +1679,6 @@ void testContinuityLifecycle(const Fixture& fixture)
         fixture.digest};
 
     (void)continuity.checkpoint(checkpoint, context);
-    (void)continuity.abandonCheckpoint(
-        fixture.projectId,
-        fixture.continuityOperationId,
-        context);
     (void)continuity.prepareHandoff(checkpoint, context);
     (void)continuity.getPendingHandoff(fixture.projectId, context);
     (void)continuity.acknowledgeHandoff(

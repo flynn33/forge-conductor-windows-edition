@@ -82,9 +82,6 @@ public:
     [[nodiscard]] Domain::Result<Domain::ProjectMemoryRecord> update(
         const Domain::UpdateProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override;
-    [[nodiscard]] Domain::Result<Domain::MemoryUpdateBatchOutcome> updateBatch(
-        const Domain::UpdateProjectMemoryBatchRequest& request,
-        const Domain::OperationContext& context) noexcept override;
     [[nodiscard]] Domain::Result<Domain::ForgetOutcome> forget(
         const Domain::ForgetProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override;
@@ -117,11 +114,6 @@ public:
         const Domain::OperationContext& context) noexcept override;
     [[nodiscard]] Domain::Result<void> storeHandoff(
         const Domain::ContinuityHandoff& handoff,
-        const Domain::OperationContext& context) noexcept override;
-
-    [[nodiscard]] Domain::Result<void> refreshCheckpointHandoff(
-        const Domain::ContinuityHandoff& handoff,
-        const Domain::Sha256Digest& expectedHandoffSha256,
         const Domain::OperationContext& context) noexcept override;
     [[nodiscard]] Domain::Result<std::optional<Domain::ContinuityHandoff>> handoff(
         const Domain::ProjectId& projectId,

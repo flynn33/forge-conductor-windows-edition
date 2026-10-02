@@ -3,8 +3,12 @@
 #include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Domain/Utf8.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
-#include "ForgeConductor/Infrastructure/Windows/WindowsMachineToolResolver.h"
 #include "Detail/UtfConversion.h"
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
 
 #include <nlohmann/json.hpp>
 
@@ -112,6 +116,8 @@ constexpr std::size_t MaximumJsonEvents = 16'384U;
 constexpr std::size_t MaximumToolNameBytes = 128U;
 constexpr std::size_t MaximumToolDescriptionBytes = 4U * 1024U;
 constexpr std::size_t MaximumInputSchemaBytes = 32U * 1024U;
+constexpr std::size_t MaximumExecutableSearchPathCharacters =
+    Domain::MaximumProcessEnvironmentValueBytes + 1U;
 constexpr std::string_view RequestedProtocolVersion = "2025-11-25";
 constexpr auto ExpectedServerVersion = Domain::ProductVersion;
 
@@ -171,6 +177,41 @@ struct BoundedJsonRejected final {};
         return Domain::Result<Domain::PathText>::failure(std::move(utf8).error());
     }
     return Domain::PathText::create(utf8.value());
+}
+
+[[nodiscard]] Domain::Result<std::string> executableSearchPath() noexcept
+{
+    try {
+        std::array<wchar_t, MaximumExecutableSearchPathCharacters> buffer{};
+        ::SetLastError(ERROR_SUCCESS);
+        const DWORD length = ::GetEnvironmentVariableW(
+            L"PATH", buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (length == 0U) {
+            return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::HostCapabilityUnavailable,
+                "The LM Studio serve verifier requires a bounded executable search path."));
+        }
+        if (length >= buffer.size()) {
+            return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::PayloadTooLarge,
+                "The LM Studio serve verifier executable search path exceeds its bound."));
+        }
+        auto converted = Detail::strictUtf16ToUtf8(
+            std::wstring_view{buffer.data(), static_cast<std::size_t>(length)});
+        if (!converted) {
+            return converted;
+        }
+        if (converted.value().size() > Domain::MaximumProcessEnvironmentValueBytes) {
+            return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::PayloadTooLarge,
+                "The LM Studio serve verifier executable search path exceeds its process bound."));
+        }
+        return converted;
+    } catch (...) {
+        return Domain::Result<std::string>::failure(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "The LM Studio serve verifier could not capture its executable search path."));
+    }
 }
 
 [[nodiscard]] Json expectedInitializeResult(const Domain::LMStudioConnectorRole role)
@@ -578,12 +619,10 @@ public:
             activeVerification->cancellation.get_token(),
             context.correlationId};
 
-        auto searchPath = WindowsMachineToolResolver::searchPath();
-        if (searchPath.empty()) {
+        auto searchPath = executableSearchPath();
+        if (!searchPath) {
             return Domain::Result<Domain::LMStudioConnectorHealth>::failure(
-                Domain::makeError(
-                    Domain::ErrorCodes::HostCapabilityUnavailable,
-                    "The LM Studio serve verifier requires the machine toolchain path."));
+                std::move(searchPath).error());
         }
 
         const auto probeHome = verificationHome(forgeHome, context, role);
@@ -606,11 +645,7 @@ public:
             // the serve composition root then creates an isolated probe ID.
             Domain::EnvironmentVariable{
                 "FORGE_DEPLOYMENT_ID", deploymentId ? deploymentId->value() : std::string{}},
-            Domain::EnvironmentVariable{"PATH", std::move(searchPath)},
-            Domain::EnvironmentVariable{
-                "PATHEXT", WindowsMachineToolResolver::pathExt()},
-            Domain::EnvironmentVariable{
-                "COMSPEC", WindowsMachineToolResolver::commandInterpreter()}};
+            Domain::EnvironmentVariable{"PATH", std::move(searchPath).value()}};
         request.inheritEnvironment = true;
         request.timeout = VerificationTimeout;
         request.maximumStdoutBytes = VerificationStdoutBytesMaximum;

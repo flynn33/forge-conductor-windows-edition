@@ -1,14 +1,8 @@
 #include "../Infrastructure/TestSupport.h"
 
 #include "Fakes/DeterministicWorkspaceAuthority.h"
-#include "ForgeConductor/Infrastructure/Windows/WindowsMachineToolResolver.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsGitService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <Windows.h>
 
 #include <algorithm>
 #include <chrono>
@@ -17,14 +11,12 @@
 #include <cstdlib>
 #include <deque>
 #include <exception>
-#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <span>
 #include <stop_token>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -36,7 +28,6 @@ namespace {
 
 using namespace ForgeConductor;
 using namespace ForgeConductor::Tests;
-using Infrastructure::Windows::WindowsMachineToolResolver;
 using NativeTools::Windows::WindowsGitService;
 using NativeTools::Windows::WindowsShellService;
 using namespace std::chrono_literals;
@@ -667,9 +658,6 @@ void shellUsesFixedPowerShellAndClampedBudgets()
     request.maximumStdoutBytes = 100'000U;
     request.maximumStderrBytes = 30'000U;
     request.environment.push_back({"FORGE_TEST", "one"});
-    request.environment.push_back({"Path", "C:\\Users\\fixture\\shim-bin"});
-    request.environment.push_back({"PathExt", ".PS1"});
-    request.environment.push_back({"ComSpec", "C:\\Users\\fixture\\cmd.exe"});
     request.inheritEnvironment = false;
     const auto response = take(shell.execute(
         request, callerAuthority, context(40U)));
@@ -773,16 +761,10 @@ void shellUsesFixedPowerShellAndClampedBudgets()
             path != nullptr && containsAscii(*path, "system32") &&
             containsAscii(*path, "powershell\\7") &&
             containsAscii(*path, "git\\cmd") &&
-            !containsAscii(*path, ".forge-conductor\\bin") &&
-            !containsAscii(*path, ".lmstudio\\bin") &&
-            !containsAscii(*path, ".dotnet\\tools") &&
-            !containsAscii(*path, "fixture\\shim-bin") &&
             pathExt != nullptr && containsAscii(*pathExt, ".exe") &&
-            !containsAscii(*pathExt, ".ps1") &&
             comSpec != nullptr && containsAscii(*comSpec, "cmd.exe") &&
-            !containsAscii(*comSpec, "users\\fixture") &&
             normalized.inheritEnvironment,
-        "Shell did not preserve its authorized envelope, machine-owned toolchain PATH, and budgets");
+        "Shell did not preserve its authorized envelope, toolchain PATH, and budgets");
     require(
         supervisor->authorityIds().front() == fixture.authority.authorityId() &&
             supervisor->projectIds().front() == fixture.projectId,
@@ -1054,103 +1036,6 @@ void shellShutdownCancelsBeforeSupervisorAdmission()
         "Shell admission race reached launch after destruction");
 }
 
-void machineToolResolutionIgnoresAmbientUserPath()
-{
-    class ScopedEnvironmentVariable final {
-    public:
-        ScopedEnvironmentVariable(
-            std::wstring name,
-            const std::wstring& replacement)
-            : name_{std::move(name)}
-        {
-            ::SetLastError(ERROR_SUCCESS);
-            const DWORD required = ::GetEnvironmentVariableW(
-                name_.c_str(), nullptr, 0U);
-            existed_ = required != 0U || ::GetLastError() != ERROR_ENVVAR_NOT_FOUND;
-            if (required != 0U) {
-                std::wstring buffer(required, L'\0');
-                const DWORD written = ::GetEnvironmentVariableW(
-                    name_.c_str(), buffer.data(), required);
-                if (written >= required) {
-                    throw std::runtime_error{
-                        "Could not preserve the test process environment."};
-                }
-                buffer.resize(written);
-                original_ = std::move(buffer);
-            }
-            if (::SetEnvironmentVariableW(
-                    name_.c_str(), replacement.c_str()) == FALSE) {
-                throw std::runtime_error{
-                    "Could not replace the test process environment."};
-            }
-        }
-
-        ~ScopedEnvironmentVariable()
-        {
-            ::SetEnvironmentVariableW(
-                name_.c_str(), existed_ ? original_.c_str() : nullptr);
-        }
-
-        ScopedEnvironmentVariable(const ScopedEnvironmentVariable&) = delete;
-        ScopedEnvironmentVariable& operator=(
-            const ScopedEnvironmentVariable&) = delete;
-
-    private:
-        std::wstring name_;
-        bool existed_{};
-        std::wstring original_;
-    };
-
-    const auto temporary = std::filesystem::temp_directory_path() /
-        (L"ForgeConductor-machine-tool-resolver-" +
-         std::to_wstring(::GetCurrentProcessId()) + L"-" +
-         std::to_wstring(::GetTickCount64()));
-    require(
-        std::filesystem::create_directory(temporary),
-        "Could not create the machine-tool resolver test directory");
-    struct TemporaryDirectory final {
-        std::filesystem::path root;
-        ~TemporaryDirectory()
-        {
-            std::error_code ignored;
-            if (root.is_absolute() &&
-                root.filename().wstring().starts_with(
-                    L"ForgeConductor-machine-tool-resolver-")) {
-                std::filesystem::remove_all(root, ignored);
-            }
-        }
-    } cleanup{temporary};
-
-    std::wstring module(32U * 1024U, L'\0');
-    const DWORD moduleLength = ::GetModuleFileNameW(
-        nullptr, module.data(), static_cast<DWORD>(module.size()));
-    require(
-        moduleLength != 0U && moduleLength < module.size(),
-        "Could not resolve the test executable for ambient-path shims");
-    module.resize(moduleLength);
-    std::filesystem::copy_file(
-        module, temporary / L"git.exe",
-        std::filesystem::copy_options::none);
-    std::filesystem::copy_file(
-        module, temporary / L"pwsh.exe",
-        std::filesystem::copy_options::none);
-
-    ScopedEnvironmentVariable ambientPath{L"PATH", temporary.wstring()};
-    ScopedEnvironmentVariable ambientSystemRoot{
-        L"SYSTEMROOT", temporary.wstring()};
-    const auto git = take(WindowsMachineToolResolver::gitExecutable());
-    const auto powerShell = take(
-        WindowsMachineToolResolver::powerShellExecutable());
-    const auto searchPath = WindowsMachineToolResolver::searchPath();
-    constexpr std::string_view marker{
-        "ForgeConductor-machine-tool-resolver-"};
-    require(
-        git.value().find(marker) == std::string::npos &&
-            powerShell.value().find(marker) == std::string::npos &&
-            searchPath.find(marker) == std::string::npos,
-        "Machine-tool resolution accepted an ambient per-user environment shim");
-}
-
 } // namespace
 
 int main()
@@ -1175,9 +1060,7 @@ int main()
         std::cout << "PASS native_tools.per_project_execution_scope\n";
         shellShutdownCancelsBeforeSupervisorAdmission();
         std::cout << "PASS native_tools.shell_admission_shutdown_race\n";
-        machineToolResolutionIgnoresAmbientUserPath();
-        std::cout << "PASS native_tools.machine_tool_resolver\n";
-        std::cout << "SUMMARY passed=8 failed=0\n";
+        std::cout << "SUMMARY passed=7 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

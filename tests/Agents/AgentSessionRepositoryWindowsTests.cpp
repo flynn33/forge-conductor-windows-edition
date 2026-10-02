@@ -766,27 +766,6 @@ void durableStartSupersedeCompleteAndRestart()
     require(conflict.error().code == Domain::ErrorCodes::Conflict,
             "different completion returned the wrong error");
 
-    const auto atomicClient =
-        parse<Domain::ClientId>("client-atomic-initial-summary");
-    const auto atomicId = parse<Domain::SessionId>(
-        "31000000-0000-4000-8000-000000000003");
-    auto atomicMutation = startMutation(
-        atomicId, atomicClient, fixture.clock->utcNow(),
-        "persist admission metadata atomically");
-    atomicMutation.initialSummary =
-        "{\"kind\":\"managed-admission\",\"dispatch_phase\":0}";
-    const auto atomicStarted = take(fixture.repository->startRun(
-        atomicMutation,
-        activeContext(*fixture.clock, "p10-lifecycle-atomic-summary")));
-    require(atomicStarted.run.session.summary == atomicMutation.initialSummary,
-            "atomic start outcome omitted the initial summary");
-    const auto atomicDurable = take(fixture.repository->getRun(
-        atomicId,
-        activeContext(*fixture.clock, "p10-lifecycle-atomic-summary-read")));
-    require(atomicDurable &&
-                atomicDurable->session.summary == atomicMutation.initialSummary,
-            "initial summary was not inserted atomically with the run");
-
     const auto recovered = take(fixture.repository->recoverRun(
         Domain::AgentRunRecoveryRequest{client},
         activeContext(*fixture.clock, "p10-lifecycle-recover-closed")));
