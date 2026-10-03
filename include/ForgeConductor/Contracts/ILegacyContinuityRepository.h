@@ -58,6 +58,12 @@ public:
     [[nodiscard]] virtual Domain::Result<void> quickCheck(
         const Domain::OperationContext& context) noexcept = 0;
 
+    [[nodiscard]] virtual Domain::Result<void> erase(
+        const Domain::LegacyHandoffId&, const Domain::OperationContext&) noexcept
+    {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable, "Packet deletion is unavailable."));
+    }
     // Closes only this repository's admission. The composition root retains
     // ownership of the shared central database until all attached repositories drain.
     virtual void close() noexcept = 0;

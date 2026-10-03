@@ -33,6 +33,10 @@ public:
         const Domain::ProjectId& projectId,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> storedProjectAuthorityFor(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context) noexcept override;
+
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> narrow(
         const Contracts::WorkspaceAuthority& authority,
         const std::vector<Domain::PathText>& trustedRoots,

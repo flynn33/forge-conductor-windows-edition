@@ -392,12 +392,12 @@ void testPackagedLocalAppDataWorkingDirectory(const FixtureContext& fixture)
     WindowsApplicationPaths paths;
     const auto dataRoot = take(paths.dataRoot(context(72U)));
     const auto dataRootWide = take(CommandLineBuilder::utf8ToUtf16(dataRoot.value()));
-    const std::filesystem::path dataRootPath{dataRootWide};
-    std::error_code directoryError;
-    static_cast<void>(std::filesystem::create_directories(dataRootPath, directoryError));
-    require(!directoryError,
-            "the packaged LocalAppData process fixture root could not be established");
-    TemporaryProcessTree workingTree{dataRootPath};
+    const auto localAppDataPath = std::filesystem::path{dataRootWide}.parent_path();
+    require(std::filesystem::is_directory(localAppDataPath),
+            "the packaged LocalAppData process fixture parent is absent");
+    // The redirect applies throughout LocalAppData; keep the fixture outside the
+    // running installed app's data root and its retained directory handles.
+    TemporaryProcessTree workingTree{localAppDataPath};
     const auto workingRoot = pathText(workingTree.path().wstring());
     const auto authority = AuthorityIssuer::create(
         std::vector<Domain::PathText>{fixture.root, workingRoot}, true);

@@ -1,20 +1,17 @@
 # Windows capability map
 
-Forge Conductor 1.0 is a complete native Windows 11 x64 product. This map records the implemented release surface; historical 0.9.x acceptance records remain available under `docs/implementation/alpha-recovery/`.
+This map describes version 1.3.5. Historical delivery records retain their original scope.
 
-| Capability | Windows 1.0 implementation |
+| Capability | Implementation and bounds |
 |---|---|
-| Native desktop shell | C++20/WinUI 3 navigation shell with typed Manager attachment, all operator destinations, keyboard operation, High Contrast support, and scaled-text layouts. |
-| Manager lifecycle | Per-user native Manager owns runs, telemetry, continuity, and long-running services independently of GUI attachment. |
-| Provider integration | Configurable LM Studio endpoint/model discovery and Responses transport with persistent settings, validation, visible failure states, and reconnect behavior. |
-| Managed inference and continuity | Manager-owned turns, tool dispatch, response correlation, context-triggered rollover, handoff, pause/resume/stop, and retained run state. |
-| Projects and memory | Stable project identities, project isolation, relinking, legacy and project memory, guarded full-list paging, record-level deletion, generation fencing, and scoped reset behavior. |
-| MCP and native tools | Native stdio MCP host, authenticated Manager routing, 53-tool catalog, filesystem/search/Git/shell operations, and LM Studio deployment/verification with an exact 180-second outer deadline for all three roles. |
-| Operational telemetry | Native CPU, RAM, GPU-engine/memory, disk, volume, process, provider, store, workflow, and continuity observations with bounded histories and freshness. |
-| Operational pages | Typed Rig, Autonomy, Continuity, Projects, Memory, Tools, Feed, Runtimes, Provider, Events, Diagnostics, Manager, and Settings surfaces. |
-| Settings and maintenance | Effective readback, save/revert, provider controls, startup/logging/session controls, context configuration, scrollable per-record/multi-selection deletion, and separate confirmed scoped/global reset. |
-| Persistence compatibility | Production `%LOCALAPPDATA%\Forge Conductor` profile; central schema versions 3, 5, 6, 7, 8, and 9 are explicitly supported, with byte-stable version-9 open and non-mutating future-version refusal. |
-| Installer | Stable `ForgeConductor.Windows` MSIX identity, signed x64 Release payload, verified hashes/provenance, install helper, public certificate for development builds, and optional App Installer updates. |
-| Release automation | Windows Release CI plus tag/manual secret-backed production signing and artifact publication workflows. |
+| Native shell | WinUI 3 Workspace, Rig, Continuity, Activity, and Settings; existing visual design retained. |
+| Project context | Authoritative project ID/root, ordered instruction packages, development-policy identity, tool names/count, and agent count in `get_forge_status`. |
+| Package reading | `instruction_package.read` selects a project queue row and returns paged entries/content with revision identity. |
+| CLU | Immediate policy-repository folder binding, policy readback, evidence evaluation, findings, model notifications, correction receipts, and visible history. |
+| Native chat continuity | Primary worker reads actual selected-chat usage, pauses at a completed tool boundary, obtains a model packet, opens/sends a native successor, and verifies recovery plus a following call. |
+| Packet controls | Continuity list/detail/refresh/delete-selection/clear. |
+| Settings records | Load/save/readback/revert/test/restart retained; selectable saved records and delete buttons. |
+| MCP/agents | Existing Primary and Fallback general catalogs, five CLU governance tools, and ten baseline specialist playbooks/session tools. |
+| Persistence/package | Existing per-user stores, retained migration history, stable ForgeConductor.Windows identity, native x64 build/package workflow. |
 
-The macOS implementation is behavioral reference material only. Optional browser dashboards, additional CPU architectures, public update hosting, and advanced analytics/connectors are post-1.0 enhancements rather than missing core product behavior.
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.

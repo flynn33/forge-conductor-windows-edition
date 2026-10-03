@@ -37,6 +37,11 @@ public:
         const Domain::ProjectId& projectId,
         const Domain::OperationContext& context) noexcept = 0;
 
+    [[nodiscard]] virtual Domain::Result<WorkspaceAuthority> storedProjectAuthorityFor(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context) noexcept
+    { return authorityFor(projectId, context); }
+
     [[nodiscard]] virtual Domain::Result<WorkspaceAuthority> narrow(
         const WorkspaceAuthority& authority,
         const std::vector<Domain::PathText>& trustedRoots,

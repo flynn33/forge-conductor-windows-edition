@@ -1,3 +1,19 @@
+# Native LM Studio chat Auto Continuity
+
+## Current 1.3.5 implementation
+
+The primary stdio MCP composition owns `WindowsLMStudioChatContinuity`; Fallback and CLU do not start competing rollover workers. `WindowsLMStudioConversationReader` reads selected native conversation identity, actual generation stats, active-tool state, and correlated tool requests/results. `WindowsLMStudioChatControl` uses native Windows UI Automation for a completed-tool-boundary pause, New chat, loaded-model/integration retention, and Send.
+
+After context reserve pressure, the worker requests a detailed model-written `session_handoff` packet. The adapter publishes `continuity/project/<project-id>` for shared connector initialization. The worker creates and confirms a fresh native conversation ID, sends the complete packet message, verifies all three integrations and the exact persisted message, then observes native `context_get` recovery and a following Forge tool result. A local connection ID or logger event alone is not treated as native chat proof.
+
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
+
+The worker's in-flight phase is process-local. Durable packet storage and connector pickup exist, but they do not make interrupted native UI handoff recoverable after primary-worker eviction. The release notes identify native on-disk predecessor/successor evidence and unexercised cases.
+
+## Historical provider-run implementation record
+
+The following specification and Alpha observations describe earlier Manager-owned Responses execution. They are retained as history, not the 1.3.5 product path or native-chat durability claim.
+
 # Real provider execution and context-only continuity
 ## Existing seams to change
 Start in `src/Application/ContinuityAutomation.cpp` and its policy model/consumers.

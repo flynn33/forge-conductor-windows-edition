@@ -159,7 +159,17 @@ McpExecutionContextResolver::resolve(
             : adoptedWorkspace
                 ? adoptedWorkspace->projectId
                 : defaultProjectId_;
-        auto issued = workspaceAuthority_.authorityFor(projectId, context);
+        auto issued = [&]() {
+            auto workspace = workspaceAuthority_.authorityFor(projectId, context);
+            const bool storedRead = request.toolName == "get_forge_status" ||
+                request.toolName == "forge_status" || request.toolName == "instruction_package.read" ||
+                request.toolName == "project_policy.read";
+            if (!workspace && workspace.error().code == Domain::ErrorCodes::RecordNotFound &&
+                storedRead && effect == Domain::ToolEffect::Read && !adoptedWorkspace) {
+                return workspaceAuthority_.storedProjectAuthorityFor(projectId, context);
+            }
+            return workspace;
+        }();
         if (!issued) {
             return issued;
         }

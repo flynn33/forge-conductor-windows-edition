@@ -78,28 +78,6 @@ template <typename T>
     return matches(tool, Values);
 }
 
-[[nodiscard]] bool isResumeTool(const std::string_view tool) noexcept
-{
-    constexpr std::string_view Values[]{
-        "forge_status",
-        "context_get",
-        "context_list",
-        "session_checkpoint",
-        "session_handoff",
-        "memory_get",
-        "memory_list",
-        "memory_search",
-        "memory_set",
-        "memory_delete",
-        "agent_list",
-        "agent_get",
-        "agent_context",
-        "agent_recommend",
-        "agent_run_status",
-        "agent_run_complete"};
-    return matches(tool, Values);
-}
-
 [[nodiscard]] bool isProgressTool(const std::string_view tool) noexcept
 {
     constexpr std::string_view Values[]{
@@ -473,7 +451,6 @@ public:
                 fingerprint = request.toolName + "|" + digest.value().value();
             }
 
-            std::optional<BlockSnapshot> blocked;
             std::optional<StateToken> hardLoopState;
             std::uint64_t loopCount{};
             {
@@ -484,23 +461,6 @@ public:
                         "The MCP invocation guard is shutting down.");
                 }
                 const auto clientKey = request.metadata.clientId.value();
-                if (legacyContinuityPolicy && !continuityTool &&
-                    !isResumeTool(request.toolName)) {
-                    const auto state = continuityStates_.find(clientKey);
-                    if (state != continuityStates_.end() &&
-                        state->second.blocked) {
-                        blocked = BlockSnapshot{
-                            state->second.handoffId,
-                            state->second.resumeSeed};
-                    }
-                }
-                if (blocked) {
-                    return Domain::Result<
-                        Domain::ToolInvocationAdmission>::success(
-                            Domain::ToolInvocationAdmission{
-                                contextBudgetOutcome(request, *blocked)});
-                }
-
                 if (legacyContinuityPolicy && !continuityTool) {
                     makeRoom(loopStates_, MaximumTrackedLoopClients, clientKey);
                     auto& loop = loopStates_[clientKey];
@@ -737,7 +697,7 @@ public:
                                     additions["continuity_note"] =
                                         "Context budget: Forge auto-saved handoff " +
                                         receipt.value().id +
-                                        ". Further project tools are blocked on this client until context_get in a new chat.";
+                                        ". At the next pause, write a detailed session_handoff packet. Forge tools and agents remain available. Auto Continuity evaluates the selected LM Studio chat at the next pause.";
                                     additions["handoff_id"] = receipt.value().id;
                                     additions["handoff_required"] = true;
                                     additions["resume_seed"] =
@@ -820,7 +780,8 @@ public:
             if (found == continuityStates_.end()) {
                 return result;
             }
-            result.blocked = found->second.blocked;
+            result.blocked = false;
+            result.handoffPending = found->second.blocked;
             result.handoffId = found->second.handoffId;
             result.implicitRoots = found->second.implicitRoots;
         } catch (...) {
@@ -880,11 +841,6 @@ private:
         bool progressTool{};
         bool forcePersist{};
         std::optional<StateToken> continuityState;
-    };
-
-    struct BlockSnapshot final {
-        std::optional<std::string> handoffId;
-        std::optional<std::string> resumeSeed;
     };
 
     struct RecoveryDecision final {
@@ -1014,24 +970,6 @@ private:
             releaseContinuityStateLocked(token);
         } catch (...) {
         }
-    }
-
-    [[nodiscard]] Domain::ToolCallOutcome contextBudgetOutcome(
-        const Domain::ToolCallRequest& request,
-        const BlockSnapshot& blocked) const
-    {
-        Json additions{
-            {"handoff_id",
-             blocked.handoffId ? Json(*blocked.handoffId) : Json(nullptr)},
-            {"handoff_required", true},
-            {"resume_seed",
-             blocked.resumeSeed ? Json(*blocked.resumeSeed) : Json(nullptr)}};
-        return policyErrorOutcome(
-            request,
-            "context_budget_exceeded",
-            "This chat has been handed off. Start a new LM Studio chat with Forge MCP enabled, then call context_get. Further filesystem, shell, and Git tools are blocked here.",
-            false,
-            std::move(additions));
     }
 
     [[nodiscard]] Domain::ToolCallOutcome hardLoopOutcome(

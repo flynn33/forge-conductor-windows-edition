@@ -1,23 +1,16 @@
-# Forge Conductor roadmap
+# Roadmap
 
-## 1.3 workspace and maintenance
+## Current release: 1.3.5
 
-Version 1.3.4 retains the direct Workspace, memory-maintenance, governance, continuity, constrained-host, and workspace-context improvements from 1.3.3. It records the unauthenticated same-host LM Studio contract and diagnoses HTTP 401/403 consistently across discovery, Responses, and model preparation. See [release notes](docs/releases/1.3.4.md).
+Native LM Studio chat Auto Continuity, callable selected-package reading, authoritative workspace disclosure, direct policy-folder binding, packet browsing/deletion, and requested UI/callable-route removals are implemented. The native app architecture and three existing integrations remain in place. See [release notes](docs/releases/1.3.5.md).
 
-The release uses the existing native C++20/WinUI architecture, Manager-owned execution, stable project identities, durable memory and native telemetry. Existing runs retain their selected provider binding across restart. Private GitHub policy import uses existing Git authentication and never executes imported scripts.
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
-## Next improvements
+## Follow-up
 
-- Explicit model download/installation choices for hosts without prerequisites.
-- Policy-specific semantic validators and richer structured review evidence, with source parity fixtures.
-- Unicode-aware policy path scopes; the current gate rejects ambiguous names rather than treating them as allowed.
-- Richer contextual help links and policy update comparison.
-- Expanded model/hardware compatibility and accessibility acceptance on additional Windows configurations.
-- Explicit enrollment and takeover of existing LM Studio desktop chats when a supported native task binding is available. MCP registration alone does not provide this.
-- Production certificate distribution and Store delivery.
+- Make interrupted native handoff recovery durable across primary MCP worker eviction/restart.
+- Exercise physical context exhaustion and reattachment of an already-running agent separately from reserve pressure.
+- Validate additional LM Studio versions/models and Windows accessibility/scaling configurations.
+- Validate the package on a separate disposable Windows account without replacing the preserved host baseline.
 
-Historical engineering reports retain their original evidence and open items. They do not establish qualification for later binaries. Current release evidence identifies what was actually tested and distinguishes automated contracts, host observations and distribution checks.
-
-## Preservation requirements
-
-Future changes must preserve Manager ownership, project isolation, stable package identity, existing user data and immutable migration history. Additional architectures or providers must not replace the native Windows runtime.
+Historical Alpha milestones describe their own artifacts and do not establish qualification for current binaries.

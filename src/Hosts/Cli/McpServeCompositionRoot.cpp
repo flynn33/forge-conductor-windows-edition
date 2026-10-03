@@ -11,6 +11,7 @@
 #include "ForgeConductor/Application/ProjectPolicyService.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsPolicySourceReader.h"
 #include "ForgeConductor/Domain/ProductIdentity.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioChatContinuity.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
@@ -505,7 +506,7 @@ public:
               nextUuid(*uuidGenerator_).value()))},
           deploymentId_{deploymentIdentity()}
     {
-        initialize();
+        initialize(options.projectId);
     }
 
     ~Impl() noexcept { shutdown(); }
@@ -537,8 +538,10 @@ public:
                 Domain::MonotonicTimePoint::max(),
                 {},
                 take(Domain::CorrelationId::parse("mcp-stdio-serve"))};
+            if (visibleChatContinuity_ && role_ == Domain::McpRole::Primary) visibleChatContinuity_->start();
             auto outcome = server_->run(
                 *stdioTransport_, role_, deploymentId_, clientId_, serveContext);
+            if (visibleChatContinuity_) visibleChatContinuity_->shutdown();
             stopPresence();
             if (!outcome) {
                 std::cerr << outcome.error().code << ": "
@@ -568,7 +571,7 @@ private:
             nextUuid(*uuidGenerator_).value()));
     }
 
-    void initialize()
+    void initialize(const std::optional<Domain::ProjectId>& explicitProject)
     {
         const auto startupContext = makeContext(
             *uuidGenerator_, *clock_, StartupTimeout, "mcp-serve-startup");
@@ -684,13 +687,13 @@ private:
                     Domain::FileAccess::Read, startupContext)},
             uuidGenerator_, hasher_, clock_, projectMemoryLimits_);
 
-        const auto initialization = take(projectRegistry_->initialize(
-            Domain::InitializeProjectRequest{
-                currentDirectory(), std::nullopt, std::nullopt,
-                std::nullopt, std::nullopt},
-            startupContext));
-        defaultProjectId_ = initialization.project.id;
-        if (initialization.project.aliases.empty()) {
+        const auto startupProject = explicitProject
+            ? take(projectRegistry_->descriptor(*explicitProject, startupContext))
+            : take(projectRegistry_->initialize(
+                Domain::InitializeProjectRequest{currentDirectory(), std::nullopt,
+                    std::nullopt, std::nullopt, std::nullopt}, startupContext)).project;
+        defaultProjectId_ = startupProject.id;
+        if (startupProject.aliases.empty()) {
             throw std::runtime_error{
                 "integrity_failure: The startup project has no canonical alias."};
         }
@@ -851,6 +854,16 @@ private:
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Write, operation),
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Create, operation)});
             }, dataRoot.value());
+        if (const auto profileRoot = environmentValue(L"USERPROFILE")) {
+            const auto studioRoot = childPath(pathText(*profileRoot), ".lmstudio");
+            const auto localData = environmentValue(L"LOCALAPPDATA");
+            if (localData) {
+                const auto executable = childPath(pathText(*localData), "Programs/LM Studio/LM Studio.exe");
+                visibleChatContinuity_ = std::make_unique<InfrastructureWindows::WindowsLMStudioChatContinuity>(
+                    defaultProjectId_, startupProject.aliases.front(), dataRoot, studioRoot, executable,
+                    configuration_.localModel, *legacyMemory_, *legacyContinuity_, *projectMemory_, *clock_, *uuidGenerator_, *configurationStore_, explicitProject.has_value());
+            }
+        }
         toolPack_ = take(Mcp::McpToolPackAdapter::create(
             Mcp::McpToolPackDependencies{
                 *toolCatalog_,
@@ -882,7 +895,15 @@ private:
                 powerShellExecutable,
                 std::string{ProductVersion},
                 std::string{RuntimeName},
-                static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()}));
+                static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get(),
+                explicitProject ? "explicit_project_id" : "process_working_directory",
+                [this] { return visibleChatContinuity_ ? visibleChatContinuity_->status() : std::string{"{}"}; },
+                [this](std::string_view name, bool ok, std::string_view payload) {
+                    if (visibleChatContinuity_) visibleChatContinuity_->recordTool(name, ok, payload);
+                },
+                [this](const Domain::ProjectId& project, const Domain::PathText& root) {
+                    if (visibleChatContinuity_) visibleChatContinuity_->bindWorkspace(project, root);
+                }}));
         toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_, projectPolicy_.get());
         const std::array<Contracts::IToolHandler*, 1U> handlers{toolPack_.get()};
         toolRouter_ = take(Mcp::McpToolRouter::create(
@@ -893,7 +914,7 @@ private:
             *workspaceAuthority_, defaultProjectId_, *clock_,
             clientWorkspaceContext_.get());
         auto bootstrapInstructions = take(toolPack_->bootstrapInstructions(
-            defaultProjectId_, initialization.project.aliases.front(),
+            defaultProjectId_, startupProject.aliases.front(),
             startupContext));
         if (bootstrapInstructions.empty() ||
             bootstrapInstructions.size() >
@@ -935,6 +956,8 @@ private:
             return;
         }
         shutdown_ = true;
+        if (visibleChatContinuity_) visibleChatContinuity_->shutdown();
+        visibleChatContinuity_.reset();
         stopPresence();
         presenceLifecycle_.reset();
 
@@ -1166,6 +1189,7 @@ private:
     std::unique_ptr<Mcp::McpToolCatalog> toolCatalog_;
     std::unique_ptr<Mcp::McpClientWorkspaceContext> clientWorkspaceContext_;
     std::unique_ptr<Mcp::McpInvocationGuard> invocationGuard_;
+    std::unique_ptr<InfrastructureWindows::WindowsLMStudioChatContinuity> visibleChatContinuity_;
     std::unique_ptr<Mcp::McpToolPackAdapter> toolPack_;
     std::unique_ptr<Mcp::McpToolAuthorizer> toolAuthorizer_;
     std::unique_ptr<InfrastructureWindows::WindowsPolicySourceReader> policySource_;

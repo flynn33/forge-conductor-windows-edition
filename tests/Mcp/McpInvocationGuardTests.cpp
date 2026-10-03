@@ -485,15 +485,9 @@ void identicalCallsSoftHandoffHardBlockAndResume()
 
     const auto changed = request(
         caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 10U);
-    const auto blockedBudget = take(guard->beforeInvoke(
-        changed, descriptor(changed), context(changed, 10U)));
-    REQUIRE(blockedBudget.immediateOutcome.has_value());
-    REQUIRE(payload(*blockedBudget.immediateOutcome).at("code") ==
-            "context_budget_exceeded");
-    REQUIRE(payload(*blockedBudget.immediateOutcome).at("handoff_id") ==
-            "handoff-2");
-    REQUIRE(payload(*blockedBudget.immediateOutcome).at("resume_seed") ==
-            "resume-seed-2");
+    REQUIRE(take(execute(*guard, changed, context(changed, 10U))).receipt.ok);
+    REQUIRE(!guard->snapshot(caller).blocked);
+    REQUIRE(guard->snapshot(caller).handoffPending);
 
     const auto missingResume = request(
         caller, "context_get", R"json({})json", 11U);
@@ -507,11 +501,7 @@ void identicalCallsSoftHandoffHardBlockAndResume()
 
     const auto stillBlocked = request(
         caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 12U);
-    const auto stillBlockedAdmission = take(guard->beforeInvoke(
-        stillBlocked, descriptor(stillBlocked), context(stillBlocked, 12U)));
-    REQUIRE(stillBlockedAdmission.immediateOutcome.has_value());
-    REQUIRE(payload(*stillBlockedAdmission.immediateOutcome).at("code") ==
-            "context_budget_exceeded");
+    REQUIRE(take(execute(*guard, stillBlocked, context(stillBlocked, 12U))).receipt.ok);
 
     const auto staleResume = request(
         caller, "context_get", R"json({})json", 13U);
@@ -531,10 +521,7 @@ void identicalCallsSoftHandoffHardBlockAndResume()
 
     const auto blockedAfterStale = request(
         caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 14U);
-    REQUIRE(take(guard->beforeInvoke(
-        blockedAfterStale,
-        descriptor(blockedAfterStale),
-        context(blockedAfterStale, 14U))).immediateOutcome.has_value());
+    REQUIRE(take(execute(*guard, blockedAfterStale, context(blockedAfterStale, 14U))).receipt.ok);
 
     const auto expiredResume = request(
         caller, "context_get", R"json({})json", 15U);
@@ -557,10 +544,7 @@ void identicalCallsSoftHandoffHardBlockAndResume()
 
     const auto blockedAfterExpiry = request(
         caller, "fs_write", R"json({"content":"x","path":"new.txt"})json", 16U);
-    REQUIRE(take(guard->beforeInvoke(
-        blockedAfterExpiry,
-        descriptor(blockedAfterExpiry),
-        context(blockedAfterExpiry, 16U))).immediateOutcome.has_value());
+    REQUIRE(take(execute(*guard, blockedAfterExpiry, context(blockedAfterExpiry, 16U))).receipt.ok);
 
     const auto malformedResume = request(
         caller, "context_get", R"json({})json", 19U);
@@ -587,7 +571,8 @@ void identicalCallsSoftHandoffHardBlockAndResume()
     REQUIRE(!rejectedMalformed);
     REQUIRE(rejectedMalformed.error().code ==
             Domain::ErrorCodes::IntegrityFailure);
-    REQUIRE(guard->snapshot(caller).blocked);
+    REQUIRE(!guard->snapshot(caller).blocked);
+    REQUIRE(guard->snapshot(caller).handoffPending);
     REQUIRE(guard->snapshot(caller).implicitRoots.empty());
 
     const auto resume = request(

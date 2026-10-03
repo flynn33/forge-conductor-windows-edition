@@ -1,26 +1,16 @@
 # Roadmap
 
-## Current release: 1.3.4
+## Current release: 1.3.5
 
-The simplified-workflow and memory-maintenance milestones are implemented:
+Native LM Studio chat Auto Continuity, callable selected-package reading, authoritative workspace disclosure, direct policy-folder binding, packet browsing/deletion, and requested UI/callable-route removals are implemented. The native app architecture and three existing integrations remain in place. See [release notes](releases/1.3.5.md).
 
-- four normal destinations: Workspace, Rig, Activity, and Settings;
-- direct project/provider readiness without a wizard;
-- universal, ordered, project-scoped instruction-package intake;
-- optional nonblocking CLU development governance;
-- independent automatic-continuity control;
-- complete project-memory browsing with guarded multi-page loading;
-- scrollable record-level and multi-selection deletion in Data maintenance;
-- deterministic Git and PowerShell 7 discovery for constrained MCP hosts;
-- exact 180-second LM Studio MCP request deadlines for Primary, Fallback, and CLU;
-- exact authorized project, ordered instruction-package, and development-policy context for LM Studio at initialization and through `forge_status`;
-- explicit unauthenticated-loopback diagnostics when LM Studio Require Authentication rejects discovery, Responses, or model preparation;
-- migration and regression coverage for retained state.
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 ## Follow-up
 
-- Validate the signed 1.3.4 package on an additional clean Windows 11 account.
-- Continue accessibility and scaling walkthroughs as the Workspace content evolves.
-- Expand provider-profile management only through the existing typed Manager boundary.
+- Make interrupted native handoff recovery durable across primary MCP worker eviction/restart.
+- Exercise physical context exhaustion and reattachment of an already-running agent separately from reserve pressure.
+- Validate additional LM Studio versions/models and Windows accessibility/scaling configurations.
+- Validate the package on a separate disposable Windows account without replacing the preserved host baseline.
 
-Historical Alpha milestones under `docs/implementation/alpha-recovery/` remain archived evidence and are not the active roadmap.
+Historical Alpha milestones describe their own artifacts and do not establish qualification for current binaries.

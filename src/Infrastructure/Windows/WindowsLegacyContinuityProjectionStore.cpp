@@ -17,6 +17,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -55,7 +56,12 @@ template <typename T, typename Callable>
 [[nodiscard]] Domain::Result<T> guarded(Callable&& callable) noexcept
 {
     try {
-        return Domain::Result<T>::success(std::forward<Callable>(callable)());
+        if constexpr (std::is_void_v<T>) {
+            std::forward<Callable>(callable)();
+            return Domain::Result<void>::success();
+        } else {
+            return Domain::Result<T>::success(std::forward<Callable>(callable)());
+        }
     } catch (ProjectionFailure& failure) {
         return Domain::Result<T>::failure(std::move(failure.error));
     } catch (...) {
@@ -577,6 +583,13 @@ WindowsLegacyContinuityProjectionStore::repair(
         }
         std::lock_guard admission{implementation_->admission};
         auto lease = implementation_->acquire(context);
+        if (records.empty()) {
+            static_cast<void>(implementation_->removePath(childPath(implementation_->handoffsRoot,
+                "LATEST"), implementation_->memoryRoot, context));
+            for (const auto name : {".LATEST.sequence", "current-task.md"})
+                static_cast<void>(implementation_->removePath(childPath(implementation_->memoryRoot,
+                    name), implementation_->memoryRoot, context));
+        }
         for (const auto& record : records) {
             implementation_->writePacket(record, true, context);
         }
@@ -652,6 +665,20 @@ Domain::Result<std::size_t> WindowsLegacyContinuityProjectionStore::reset(
                 context);
         }
         return removed;
+    });
+}
+
+Domain::Result<void> WindowsLegacyContinuityProjectionStore::erase(
+    const Domain::LegacyHandoffId& handoffId, const Domain::OperationContext& context) noexcept
+{
+    return guarded<void>([&]() {
+        if (!implementation_) fail(Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Projection store is closed."));
+        std::lock_guard admission{implementation_->admission};
+        auto lease = implementation_->acquire(context);
+        static_cast<void>(implementation_->removePath(childPath(implementation_->handoffsRoot,
+            handoffId.value() + ".json"), implementation_->memoryRoot, context));
+        static_cast<void>(implementation_->removePath(childPath(implementation_->handoffsRoot,
+            "." + handoffId.value() + ".sequence"), implementation_->memoryRoot, context));
     });
 }
 

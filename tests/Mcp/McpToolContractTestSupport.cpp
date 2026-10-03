@@ -400,6 +400,10 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         effects_.record("legacy_memory.get");
+        if (request.key.starts_with("continuity/project/")) {
+            return resultFor(mode_, Domain::LegacyMemoryGetOutcome{
+                request.key, std::nullopt});
+        }
         return resultFor(
             mode_,
             Domain::LegacyMemoryGetOutcome{
@@ -1189,6 +1193,9 @@ private:
             Domain::ForgetOutcome{
                 projectId_, recordId, Domain::ForgetDisposition::Tombstoned});
         seed(projectMemory_.listRecentResult, mode_, page);
+        auto orderPage = page;
+        orderPage.records.clear();
+        seed(projectMemory_.listRecentByKind["instruction_package_queue_order"], mode_, orderPage);
         seed(
             projectMemory_.linkResult,
             mode_,

@@ -3,6 +3,7 @@
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsModelPreparation.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioConversationReader.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsCurrentUserIdentity.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerAuthentication.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
@@ -13,6 +14,7 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <nlohmann/json.hpp>
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <filesystem>
@@ -93,6 +95,46 @@ struct InternetHandle final {
         clock->monotonicNow() + timeout,
         cancellation,
         Domain::CorrelationId::parse(id.value().value()).value()};
+}
+
+
+[[nodiscard]] NativeChatContextView nativeChatContext(
+    const Domain::OperationContext& context) noexcept
+{
+    try {
+        std::wstring profile(32U * 1024U, L'\0');
+        const auto length = ::GetEnvironmentVariableW(
+            L"USERPROFILE", profile.data(), static_cast<DWORD>(profile.size()));
+        if (length == 0U || length >= profile.size()) {
+            return {"Unavailable", "The LM Studio profile location is unavailable.", {}, {}};
+        }
+        profile.resize(length);
+        const auto root = (std::filesystem::path{profile} / L".lmstudio").generic_u8string();
+        auto path = Domain::PathText::create(std::string{
+            reinterpret_cast<const char*>(root.data()), root.size()});
+        if (!path) return {"Unavailable", path.error().message, {}, {}};
+        const auto read = W::WindowsLMStudioConversationReader::read(path.value(), context);
+        if (!read) return {"Unavailable", read.error().message, {}, {}};
+        if (!read.value()) {
+            return {"No selected chat", "Select an LM Studio chat to see its latest completed generation.", {}, {}};
+        }
+        const auto& chat = *read.value();
+        if (chat.generationEvidence.empty() || chat.contextCapacity == 0U) {
+            return {"Awaiting usage",
+                "The selected LM Studio chat has no completed provider usage sample.", {}, chat.conversationId};
+        }
+        const auto percent = std::clamp(100.0 * static_cast<double>(chat.usedTokens) /
+            static_cast<double>(chat.contextCapacity), 0.0, 100.0);
+        return {std::to_string(chat.usedTokens) + " / " +
+            std::to_string(chat.contextCapacity) + " tokens",
+            "Latest completed generation in selected LM Studio chat" +
+                std::string{chat.overflow ? " · context limit reached" : ""},
+            percent, chat.conversationId};
+    } catch (const std::exception& error) {
+        return {"Unavailable", error.what(), {}, {}};
+    } catch (...) {
+        return {"Unavailable", "The selected LM Studio chat could not be read.", {}, {}};
+    }
 }
 
 [[nodiscard]] Domain::Result<std::unique_ptr<W::WindowsManagerNamedPipeClient>>
@@ -330,8 +372,10 @@ TelemetryView ManagerConnection::telemetry(
                 std::nullopt};
         }
         auto snapshot = std::move(result).value();
+        auto chat = nativeChatContext(operationContext(clock, cancellation));
         auto message = telemetryMessage(snapshot);
-        return {true, std::move(message), std::move(snapshot)};
+        message += "\nSelected LM Studio chat: " + chat.value + " · " + chat.state;
+        return {true, std::move(message), std::move(snapshot), std::move(chat)};
     } catch (const std::exception& error) {
         return {false, error.what(), std::nullopt};
     } catch (...) {
@@ -1336,7 +1380,7 @@ Application::SetupOperationResult ManagerConnection::ensurePlugins(std::stop_tok
     if (!complete(activated) || !activated.snapshot->connectionCheckPerformed)
         return {false, "Plugins are installed, but LM Studio has not confirmed them: " + activated.message +
             " Retry preparation after LM Studio finishes opening."};
-    return {true, "Primary, Fallback and Continuity plugins are installed and synchronized with LM Studio. Other plugins were preserved."};
+    return {true, "Primary, Fallback and CLU plugins are installed and synchronized with LM Studio. Other plugins were preserved."};
 }
 
 Application::SetupOperationResult ManagerConnection::ensureManager(std::stop_token cancellation)

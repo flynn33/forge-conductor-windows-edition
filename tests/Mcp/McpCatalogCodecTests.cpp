@@ -72,11 +72,11 @@ void testCanonicalCatalog()
         "continuity.prepare_handoff", "continuity.request_rollover",
         "continuity.resume", "continuity.status", "forge_status", "fs_delete",
         "fs_edit", "fs_glob", "fs_list", "fs_mkdir", "fs_move", "fs_read",
-        "fs_write", "git_add", "git_commit", "git_diff", "git_log",
-        "git_status", "memory_delete", "memory_get", "memory_list",
+        "fs_write", "get_forge_status", "git_add", "git_commit", "git_diff", "git_log",
+        "git_status", "instruction_package.read", "memory_delete", "memory_get", "memory_list",
         "memory_search", "memory_set", "pdf_from_file", "pdf_write",
-        "project_memory.export", "project_memory.forget", "project_memory.get",
-        "project_memory.import", "project_memory.initialize",
+        "project_memory.forget", "project_memory.get",
+        "project_memory.initialize",
         "project_memory.link", "project_memory.list_recent",
         "project_memory.remember", "project_memory.remember_batch",
         "project_memory.search", "project_memory.status",
@@ -111,10 +111,10 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 26U);
-    REQUIRE(writeEffects == 32U);
+    REQUIRE(readEffects == 28U);
+    REQUIRE(writeEffects == 30U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
-    REQUIRE(descriptor(tools, "project_memory.export").tool.effect == Domain::ToolEffect::Write);
+    REQUIRE(descriptor(tools, "instruction_package.read").tool.effect == Domain::ToolEffect::Read);
     REQUIRE(descriptor(tools, "fs_read").tool.description.find("next_offset") !=
         std::string::npos);
     REQUIRE(descriptor(tools, "session_handoff").tool.description.ends_with(
@@ -184,15 +184,12 @@ void testSourceSchemasAndWindowsDelta()
 
     const auto recent = schema(tools, "project_memory.list_recent");
     REQUIRE(recent.at("properties").at("kinds").at("maxItems") == 100U);
-    const auto exported = schema(tools, "project_memory.export");
-    REQUIRE(exported.at("required") == Json::array({"project_id"}));
-    REQUIRE(exported.at("properties").size() == 2U);
-    REQUIRE(exported.at("properties").contains("deadline_ms"));
-
-    const auto imported = schema(tools, "project_memory.import");
-    REQUIRE(imported.at("additionalProperties") == false);
-    REQUIRE(imported.at("required") == Json::array({"project_id", "artifact"}));
-    REQUIRE(imported.at("properties").at("expected_checksum").at("type") == "string");
+    REQUIRE(std::none_of(tools.begin(), tools.end(), [](const auto& item) {
+        return item.tool.name == "project_memory.export" || item.tool.name == "project_memory.import";
+    }));
+    const auto package = schema(tools, "instruction_package.read");
+    REQUIRE(package.at("required") == Json::array({"queue_row_id"}));
+    REQUIRE(package.at("properties").at("offset").at("minimum") == 0);
 
     const auto checkpoint = schema(tools, "continuity.checkpoint");
     REQUIRE(checkpoint.at("additionalProperties") == false);

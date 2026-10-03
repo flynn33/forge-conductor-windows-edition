@@ -87,7 +87,12 @@ template <typename T, typename Callable>
 [[nodiscard]] Domain::Result<T> guarded(Callable&& callable) noexcept
 {
     try {
-        return Domain::Result<T>::success(std::forward<Callable>(callable)());
+        if constexpr (std::is_void_v<T>) {
+            std::forward<Callable>(callable)();
+            return Domain::Result<void>::success();
+        } else {
+            return Domain::Result<T>::success(std::forward<Callable>(callable)());
+        }
     } catch (RepositoryFailure& failure) {
         return Domain::Result<T>::failure(std::move(failure.error));
     } catch (...) {
@@ -1259,6 +1264,26 @@ Domain::Result<void> WindowsLegacyContinuityRepository::quickCheck(
             "The legacy continuity repository is closed."));
     }
     return implementation_->database->quickCheck(context);
+}
+
+Domain::Result<void> WindowsLegacyContinuityRepository::erase(
+    const Domain::LegacyHandoffId& handoffId, const Domain::OperationContext& context) noexcept
+{
+    return guarded<void>([&]() {
+        auto& store = requireStore(implementation_ ? implementation_->repositoryStore() : nullptr);
+        const auto timestamp = timestampText(implementation_->clock->utcNow());
+        take(runOnStore<void>(store, "Delete selected continuity packet", context,
+            [&](WinsqliteConnection& connection) noexcept {
+                return guarded<void>([&]() {
+                    auto transaction = take(WinsqliteTransaction::beginImmediate(connection, context));
+                    auto deletion = take(transaction.prepare("DELETE FROM context_handoffs WHERE id=?"));
+                    take(deletion.bindText(1, handoffId.value()));
+                    stepDone(deletion);
+                    static_cast<void>(repairPointersIn(transaction, timestamp));
+                    take(transaction.commit());
+                });
+            }));
+    });
 }
 
 void WindowsLegacyContinuityRepository::close() noexcept

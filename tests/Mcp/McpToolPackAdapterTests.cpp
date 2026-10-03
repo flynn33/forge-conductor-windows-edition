@@ -140,6 +140,11 @@ public:
         automaticOutcome_ = std::move(outcome);
     }
 
+    void setPersistOutcome(Domain::LegacyContinuityPersistOutcome outcome)
+    {
+        persistOutcome_ = std::move(outcome);
+    }
+
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityPersistOutcome>
     checkpoint(
         const Domain::LegacyContinuityWriteRequest&,
@@ -147,16 +152,26 @@ public:
         Domain::LegacyHandoffSource,
         const Domain::OperationContext&) noexcept override
     {
+        if (persistOutcome_) {
+            return Domain::Result<Domain::LegacyContinuityPersistOutcome>::success(
+                *persistOutcome_);
+        }
         return unavailable<Domain::LegacyContinuityPersistOutcome>(message_);
     }
 
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityPersistOutcome>
     handoff(
-        const Domain::LegacyContinuityWriteRequest&,
+        const Domain::LegacyContinuityWriteRequest& request,
         const Domain::ClientId&,
         Domain::LegacyHandoffSource,
         const Domain::OperationContext&) noexcept override
     {
+        ++handoffCalls_;
+        lastHandoffRequest_ = request;
+        if (persistOutcome_) {
+            return Domain::Result<Domain::LegacyContinuityPersistOutcome>::success(
+                *persistOutcome_);
+        }
         return unavailable<Domain::LegacyContinuityPersistOutcome>(message_);
     }
 
@@ -240,6 +255,17 @@ public:
 
     void shutdown() noexcept override {}
 
+    [[nodiscard]] std::size_t handoffCalls() const noexcept
+    {
+        return handoffCalls_;
+    }
+
+    [[nodiscard]] const std::optional<Domain::LegacyContinuityWriteRequest>&
+    lastHandoffRequest() const noexcept
+    {
+        return lastHandoffRequest_;
+    }
+
     [[nodiscard]] std::size_t automaticCalls() const noexcept
     {
         return automaticCalls_;
@@ -273,6 +299,9 @@ private:
     std::optional<Domain::LegacyContinuityGetOutcome> getOutcome_;
     std::optional<Domain::LegacyContinuityStatusSummary> statusSummary_;
     std::optional<Domain::LegacyContinuityPersistOutcome> automaticOutcome_;
+    std::size_t handoffCalls_{};
+    std::optional<Domain::LegacyContinuityWriteRequest> lastHandoffRequest_;
+    std::optional<Domain::LegacyContinuityPersistOutcome> persistOutcome_;
     std::optional<Domain::LegacyContinuityAutomaticRequest>
         lastAutomaticRequest_;
     std::optional<Domain::ClientId> lastAutomaticClientId_;
@@ -489,7 +518,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
     REQUIRE(tools.size() == 58U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
-        {"AgentToolPack", 8U},
+        {"AgentToolPack", 9U},
         {"CluGovernanceToolPack", 4U},
         {"ContinuityLifecycleToolPack", 7U},
         {"ContinuityToolPack", 4U},
@@ -497,7 +526,8 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         {"FilesystemToolPack", 8U},
         {"GitToolPack", 5U},
         {"MemoryToolPack", 5U},
-        {"ProjectMemoryToolPack", 12U},
+        {"ProjectMemoryToolPack", 10U},
+        {"InstructionPackageToolPack", 1U},
         {"ProjectPolicyToolPack", 1U},
         {"SearchToolPack", 1U},
         {"ShellToolPack", 1U}};
@@ -511,6 +541,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         REQUIRE(schema.value("type", "") == "object");
 
         const bool closedPack =
+            descriptor.tool.pack == "InstructionPackageToolPack" ||
             descriptor.tool.pack == "ProjectPolicyToolPack" ||
             descriptor.tool.pack == "ProjectMemoryToolPack" ||
             descriptor.tool.pack == "ContinuityLifecycleToolPack" ||
@@ -667,9 +698,9 @@ void testRuntimeDispatchAndSchemaPolicy()
     continuityAutomation.setSnapshot(
         Domain::ContinuityAutomationStatusSnapshot{
             true,
-            true,
+            false,
             std::optional<std::string>{"automatic-handoff"},
-            {root, secondaryRoot}});
+            {root, secondaryRoot}, true});
     RecordingForgeStatusRepository forgeStatus;
     const auto firstOpenSession = parse<Domain::SessionId>(
         "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
@@ -684,6 +715,13 @@ void testRuntimeDispatchAndSchemaPolicy()
     const auto shellExecutable = take(Domain::PathText::create(
         "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"));
 
+    bool throwToolObservation{};
+    bool throwWorkspaceObservation{};
+    std::optional<std::pair<Domain::ProjectId, Domain::PathText>> observedWorkspace;
+    bool throwStatusObservation{};
+    std::size_t toolObservationCalls{};
+    std::size_t statusObservationCalls{};
+    std::string visibleStatusPayload{"{}"};
     auto adapter = take(Mcp::McpToolPackAdapter::create(
         Mcp::McpToolPackDependencies{
             *catalog,
@@ -716,7 +754,27 @@ void testRuntimeDispatchAndSchemaPolicy()
             "0.9.0",
             "windows-cpp",
             42U,
-            &projectPolicy}));
+            &projectPolicy,
+            "unspecified",
+            [&] {
+                ++statusObservationCalls;
+                if (throwStatusObservation) {
+                    throw std::runtime_error{"Optional chat status failed"};
+                }
+                return visibleStatusPayload;
+            },
+            [&](std::string_view, bool, std::string_view) {
+                ++toolObservationCalls;
+                if (throwToolObservation) {
+                    throw std::runtime_error{"Optional chat tool observation failed"};
+                }
+            },
+            [&](const Domain::ProjectId& project, const Domain::PathText& selectedRoot) {
+                if (throwWorkspaceObservation) {
+                    throw std::runtime_error{"Optional chat workspace observation failed"};
+                }
+                observedWorkspace = std::make_pair(project, selectedRoot);
+            }}));
     REQUIRE(adapter->tools().size() == 58U);
 
     const auto authorizeFor = [&] (
@@ -770,6 +828,10 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(!cluFindings);
     REQUIRE(cluFindings.error().code == Domain::ErrorCodes::InvalidRequest);
 
+    auto orderPage = projectMemory.listRecentResult.get().value();
+    orderPage.records.clear();
+    projectMemory.listRecentByKind["instruction_package_queue_order"].set(
+        Domain::Result<Domain::MemoryPage>::success(orderPage));
     auto forgeStatusCall = authorize(
         "forge_status",
         Domain::ToolEffect::Read,
@@ -778,6 +840,9 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto forgeStatusResult = adapter->handle(
         forgeStatusCall, authority, context);
     REQUIRE(forgeStatusResult);
+    REQUIRE(observedWorkspace.has_value());
+    REQUIRE(observedWorkspace->first == projectId);
+    REQUIRE(observedWorkspace->second == root);
     const auto forgeStatusPayload = Json::parse(
         forgeStatusResult.value().canonicalPayload);
     REQUIRE(forgeStatusPayload.at("ok") == true);
@@ -791,9 +856,32 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(forgeStatusPayload.at("workspace").at("project_id") ==
             projectId.value());
     REQUIRE(forgeStatusPayload.at("workspace").at("binding_source") ==
-            "mcp_authorized_root");
+            "registered_project");
     REQUIRE(forgeStatusPayload.at("home_kind") == "application_data");
     REQUIRE(forgeStatusPayload.at("home_is_project") == false);
+    REQUIRE(forgeStatusPayload.at("tool_count") == catalog->tools().size());
+    REQUIRE(forgeStatusPayload.at("agent_count") == forgeStatusPayload.at("agents").size());
+    auto aliasCall = authorize("get_forge_status", Domain::ToolEffect::Read, "{}", "status-alias");
+    auto alias = take(adapter->handle(aliasCall, authority, context));
+    REQUIRE(Json::parse(alias.canonicalPayload).at("workspace") == forgeStatusPayload.at("workspace"));
+    auto entryPage = projectMemory.listRecentResult.get().value();
+    auto& entryRecord = entryPage.records.front().record;
+    entryRecord.kind = "instruction_package_entry";
+    const std::string longText(20U * 1024U, 'x');
+    entryRecord.body = Json{{"queue_row_id", "queue-runtime-adapter"},
+        {"revision", packageRevision.value()}, {"relative_path", "task.txt"},
+        {"derived_text", longText}, {"interpretation", "interpreted"}}.dump();
+    projectMemory.searchResult.set(Domain::Result<Domain::MemoryPage>::success(entryPage));
+    auto readPackage = authorize("instruction_package.read", Domain::ToolEffect::Read,
+        R"({"queue_row_id":"queue-runtime-adapter"})", "package-read");
+    auto firstPage = Json::parse(take(adapter->handle(readPackage, authority, context)).canonicalPayload);
+    REQUIRE(firstPage.at("entries").at(0).at("content") == longText.substr(0, 16U * 1024U));
+    REQUIRE(firstPage.at("entries").at(0).at("complete") == false);
+    auto nextPackage = authorize("instruction_package.read", Domain::ToolEffect::Read,
+        R"({"queue_row_id":"queue-runtime-adapter","path":"task.txt","offset":16384})", "package-next");
+    auto lastPage = Json::parse(take(adapter->handle(nextPackage, authority, context)).canonicalPayload);
+    REQUIRE(lastPage.at("entries").at(0).at("content") == longText.substr(16U * 1024U));
+    REQUIRE(lastPage.at("entries").at(0).at("complete") == true);
     REQUIRE(forgeStatusPayload.at("instruction_packages").at("count") == 1U);
     REQUIRE(forgeStatusPayload.at("instruction_packages").at("read_in_order") ==
             true);
@@ -835,12 +923,16 @@ void testRuntimeDispatchAndSchemaPolicy()
              {"note",
               "Forge checkpoints lifecycle changes and requests handoff only from measured context pressure."}}}}));
     REQUIRE((forgeStatusPayload.at("auto_continuity") == Json{
+        {"packet_transport", "mcp_initialize_and_context_get"},
+        {"project_handoff", nullptr},
         {"enabled", true},
-        {"blocked", true},
+        {"blocked", false},
+        {"handoff_pending", true},
+        {"visible_chat_handoff_available", false},
         {"handoff_id", "automatic-handoff"},
         {"implicit_roots",
          Json::array({root.value(), secondaryRoot.value()})}}));
-    REQUIRE(forgeStatus.calls() == 1U);
+    REQUIRE(forgeStatus.calls() == 2U);
 
     forgeStatus.setFailure(
         std::string{Domain::ErrorCodes::DatabaseBusy});
@@ -854,9 +946,53 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(!failedForgeStatus);
     REQUIRE(failedForgeStatus.error().code ==
             Domain::ErrorCodes::DatabaseBusy);
-    REQUIRE(forgeStatus.calls() == 2U);
+    REQUIRE(forgeStatus.calls() == 3U);
     forgeStatus.setProjection(Domain::ForgeStatusProjection{
         3U, {firstOpenSession, secondOpenSession}});
+
+    // Optional UI diagnostics must not invalidate a completed Forge tool.
+    throwToolObservation = true;
+    throwWorkspaceObservation = true;
+    const auto toolCallsBeforeFailure = toolObservationCalls;
+    auto observedAgentListCall = authorize(
+        "agent_list", Domain::ToolEffect::Read, "{}", "throwing-tool-observation");
+    const auto observedAgentList = take(adapter->handle(
+        observedAgentListCall, authority, context));
+    REQUIRE(observedAgentList.receipt.ok);
+    REQUIRE(Json::parse(observedAgentList.canonicalPayload).at("ok") == true);
+    REQUIRE(Json::parse(observedAgentList.canonicalPayload).at("agents") == Json::array());
+    REQUIRE(toolObservationCalls == toolCallsBeforeFailure + 1U);
+    throwToolObservation = false;
+    throwWorkspaceObservation = false;
+
+    // A failed or malformed optional status leaves the core status callable.
+    throwStatusObservation = true;
+    const auto statusCallsBeforeFailure = statusObservationCalls;
+    auto throwingStatusCall = authorize(
+        "get_forge_status", Domain::ToolEffect::Read, "{}", "throwing-chat-status");
+    const auto throwingStatus = take(adapter->handle(throwingStatusCall, authority, context));
+    const auto throwingStatusPayload = Json::parse(throwingStatus.canonicalPayload);
+    REQUIRE(throwingStatus.receipt.ok);
+    REQUIRE(throwingStatusPayload.at("ok") == true);
+    REQUIRE(throwingStatusPayload.at("workspace").at("project_id") == projectId.value());
+    REQUIRE(throwingStatusPayload.at("tool_count") == catalog->tools().size());
+    REQUIRE(throwingStatusPayload.at("visible_chat_continuity").contains("error"));
+    REQUIRE(statusObservationCalls == statusCallsBeforeFailure + 1U);
+    throwStatusObservation = false;
+
+    visibleStatusPayload = "{incomplete";
+    auto malformedStatusCall = authorize(
+        "get_forge_status", Domain::ToolEffect::Read, "{}", "malformed-chat-status");
+    const auto malformedStatus = take(adapter->handle(malformedStatusCall, authority, context));
+    const auto malformedStatusPayload = Json::parse(malformedStatus.canonicalPayload);
+    REQUIRE(malformedStatus.receipt.ok);
+    REQUIRE(malformedStatusPayload.at("ok") == true);
+    REQUIRE(malformedStatusPayload.at("workspace").at("project_id") == projectId.value());
+    REQUIRE(malformedStatusPayload.at("tool_count") == catalog->tools().size());
+    REQUIRE(malformedStatusPayload.at("visible_chat_continuity").is_object());
+    REQUIRE(malformedStatusPayload.at("auto_continuity").at("visible_chat_handoff_available") == false);
+    REQUIRE(statusObservationCalls == statusCallsBeforeFailure + 2U);
+    visibleStatusPayload = "{}";
 
     const auto handoffId = parse<Domain::LegacyHandoffId>(
         "recovered-adapter-context");
@@ -885,11 +1021,321 @@ void testRuntimeDispatchAndSchemaPolicy()
         recoveredPacket, 7U, {}};
     legacyContinuity.setGetOutcome(
         Domain::LegacyContinuityGetOutcome{recoveredRecord, false});
+    // A global packet must not leak into a project's bootstrap without its pointer.
+    const auto unboundBootstrap = take(adapter->bootstrapInstructions(projectId, root, context));
+    REQUIRE(unboundBootstrap.find("Recovered context") == std::string::npos);
+    const std::string resumePointer = "continuity/project/" + projectId.value();
+    auto pendingRecord = recoveredRecord;
+    pendingRecord.packet.id = parse<Domain::LegacyHandoffId>("fresh-checkpoint");
+    pendingRecord.packet.resumeReady = false;
+    legacyContinuity.setPersistOutcome({pendingRecord, false});
+    auto initialCheckpointCall = authorize(
+        "session_checkpoint", Domain::ToolEffect::Write,
+        R"({"goal":"Work before handoff"})", "initial-checkpoint");
+    REQUIRE(adapter->handle(initialCheckpointCall, authority, context));
+    REQUIRE(!take(legacyMemory.get({resumePointer}, context)).note);
+
+    const auto handoffCallsBeforeAuto = legacyContinuity.handoffCalls();
+    const Json incompleteAuto{
+        {"goal", "Continue the product changes"},
+        {"narrative", "Summary-only completion"},
+        {"resume_seed", "placeholder"}};
+    for (const auto state : {"requesting_model_packet", "waiting_for_model_packet", "repairing_model_packet"}) {
+        visibleStatusPayload = Json{{"state", state}}.dump();
+        auto incompleteCall = authorize(
+            "session_handoff", Domain::ToolEffect::Write, incompleteAuto.dump(),
+            std::string{"incomplete-auto-"} + state);
+        auto incomplete = adapter->handle(incompleteCall, authority, context);
+        REQUIRE(!incomplete);
+        REQUIRE(incomplete.error().code == Domain::ErrorCodes::InvalidRequest);
+        for (const auto field : {"narrative", "resume_seed", "key_files", "next_actions", "decisions"}) {
+            REQUIRE(incomplete.error().message.find(field) != std::string::npos);
+        }
+        REQUIRE(incomplete.error().message.find("packet_json string") != std::string::npos);
+        REQUIRE(incomplete.error().message.find("same schema") != std::string::npos);
+        REQUIRE(incomplete.error().message.find("Do not invent handoff_id") != std::string::npos);
+        REQUIRE(incomplete.error().message.find("lorem ipsum") == std::string::npos);
+        REQUIRE(incomplete.error().message.find("placeholder") == std::string::npos);
+        REQUIRE(legacyContinuity.handoffCalls() == handoffCallsBeforeAuto);
+        REQUIRE(!take(legacyMemory.get({resumePointer}, context)).note);
+    }
+    const std::string detailedNarrative =
+        "Observed the adapter's session_handoff route and the project pointer publication in "
+        "src/Mcp/McpToolPackAdapter.cpp. The repository is D:/workspace. The active tool catalog "
+        "contains 58 tools. No install, commit, push, version bump or documentation rewrite is authorized. "
+        "The successor must read this exact packet and continue the ordered actions with Forge tools available.";
+    const std::string detailedSeed =
+        "Resume the product task in D:/workspace. Preserve the existing three integrations and the "
+        "bound package/policy order. The completed work added synchronous validation before any packet "
+        "or pointer write. Verify the native successor receives the detailed packet; next inspect "
+        "src/Mcp/McpToolPackAdapter.cpp, then run the narrow adapter check. No application installation, "
+        "commit, push, version bump or documentation change is authorized.";
+    const std::vector<std::string> explicitConstraints{
+        "Do not commit, push, bump VERSION, or rewrite README, changelog, docs or wiki.",
+        "Do not install over or stop the installed 1.3.4 app.",
+        "Use only forge-conductor, forge-conductor-fallback and forge-conductor-clu; no fourth plugin, authentication or model-instruction files."};
+    const Json completeAuto{
+        {"goal", "Continue the product changes"},
+        {"narrative", detailedNarrative},
+        {"resume_seed", detailedSeed},
+        {"decisions", explicitConstraints},
+        {"key_files", Json::array({"D:/workspace/src/Mcp/McpToolPackAdapter.cpp"})},
+        {"next_actions", Json::array({"Continue the source audit with fs_read and report actual findings", "Run the narrow adapter check"})}};
+    auto rejectAuto = [&](Json arguments, const std::string& field, const std::string& requestId) {
+        auto call = authorize("session_handoff", Domain::ToolEffect::Write, arguments.dump(), requestId);
+        auto result = adapter->handle(call, authority, context);
+        REQUIRE(!result);
+        REQUIRE(result.error().code == Domain::ErrorCodes::InvalidRequest);
+        REQUIRE(result.error().message.find(field) != std::string::npos);
+        REQUIRE(result.error().message.find("lorem ipsum") == std::string::npos);
+        REQUIRE(result.error().message.find("placeholder") == std::string::npos);
+        REQUIRE(legacyContinuity.handoffCalls() == handoffCallsBeforeAuto);
+        REQUIRE(!take(legacyMemory.get({resumePointer}, context)).note);
+    };
+    auto missingGoal = completeAuto;
+    missingGoal.erase("goal");
+    rejectAuto(missingGoal, "goal", "auto-missing-goal");
+    auto shortNarrative = completeAuto;
+    shortNarrative["narrative"] = detailedNarrative.substr(0U, 255U);
+    rejectAuto(shortNarrative, "narrative", "auto-short-narrative");
+    auto shortSeed = completeAuto;
+    shortSeed["resume_seed"] = detailedSeed.substr(0U, 255U);
+    rejectAuto(shortSeed, "resume_seed", "auto-short-seed");
+    auto placeholderSeed = completeAuto;
+    placeholderSeed["resume_seed"] = detailedSeed + " placeholder";
+    rejectAuto(placeholderSeed, "resume_seed", "auto-placeholder-seed");
+    std::size_t fillerCase{};
+    for (const auto field : {"narrative", "resume_seed"}) {
+        for (const auto marker : {"Lorem ipsum dolor sit amet, consectetur adipiscing elit. ", "PLACEHOLDER draft packet. ",
+                 " \tLorem ipsum dolor sit amet. ", "\nplaceholder\n"}) {
+            auto fillerPacket = completeAuto;
+            fillerPacket[field] = std::string{marker} + completeAuto.at(field).get<std::string>();
+            rejectAuto(fillerPacket, field, "auto-filler-" + std::to_string(++fillerCase));
+        }
+    }
+    std::size_t paddingCase{};
+    for (const auto field : {"narrative", "resume_seed"}) {
+        for (const auto& padding : {std::string(256U, 'a'), std::string(128U, 'a') + " \t\r\n" + std::string(128U, 'a')}) {
+            auto paddedPacket = completeAuto;
+            paddedPacket[field] = padding;
+            rejectAuto(paddedPacket, field, "auto-padding-" + std::to_string(++paddingCase));
+        }
+    }
+    std::size_t opaqueActionCase{};
+    for (const auto action : {" continue ", "RESUME", "\tNeXt\r\n"}) {
+        auto opaqueActionPacket = completeAuto;
+        opaqueActionPacket["next_actions"] = Json::array({action});
+        rejectAuto(opaqueActionPacket, "next_actions", "auto-opaque-action-" + std::to_string(++opaqueActionCase));
+    }
+    auto nestedCollections = completeAuto;
+    nestedCollections["narrative"] = detailedNarrative + completeAuto.at("key_files").dump() +
+        completeAuto.at("next_actions").dump();
+    nestedCollections.erase("key_files");
+    nestedCollections.erase("next_actions");
+    rejectAuto(nestedCollections, "key_files", "auto-collections-only-in-narrative");
+    auto emptyPaths = completeAuto;
+    emptyPaths["key_files"] = Json::array({" "});
+    rejectAuto(emptyPaths, "key_files", "auto-empty-key-path");
+    auto emptyActions = completeAuto;
+    emptyActions["next_actions"] = Json::array();
+    rejectAuto(emptyActions, "next_actions", "auto-empty-actions");
+
+    auto missingDecisions = completeAuto;
+    missingDecisions.erase("decisions");
+    rejectAuto(missingDecisions, "decisions", "auto-missing-user-constraints");
+    auto emptyDecisions = completeAuto;
+    emptyDecisions["decisions"] = Json::array();
+    rejectAuto(emptyDecisions, "decisions", "auto-empty-user-constraints");
+    auto blankDecisions = completeAuto;
+    blankDecisions["decisions"] = Json::array({" \t\r\n"});
+    rejectAuto(blankDecisions, "decisions", "auto-blank-user-constraints");
+
+    auto completeAutoRecord = recoveredRecord;
+    completeAutoRecord.packet.id = parse<Domain::LegacyHandoffId>("complete-auto-packet");
+    completeAutoRecord.packet.narrative = detailedNarrative;
+    completeAutoRecord.packet.resumeSeed = detailedSeed;
+    completeAutoRecord.packet.keyFiles = {"D:/workspace/src/Mcp/McpToolPackAdapter.cpp"};
+    completeAutoRecord.packet.nextActions = {"Continue the source audit with fs_read and report actual findings", "Run the narrow adapter check"};
+    completeAutoRecord.packet.decisions = explicitConstraints;
+    legacyContinuity.setPersistOutcome({completeAutoRecord, true});
+    auto completeAutoCall = authorize(
+        "session_handoff", Domain::ToolEffect::Write, completeAuto.dump(), "complete-auto-handoff");
+    const auto completeAutoResult = take(adapter->handle(completeAutoCall, authority, context));
+    REQUIRE(completeAutoResult.receipt.ok);
+    REQUIRE(Json::parse(completeAutoResult.canonicalPayload).at("handoff_id") == completeAutoRecord.packet.id.value());
+    REQUIRE(legacyContinuity.handoffCalls() == handoffCallsBeforeAuto + 1U);
+    REQUIRE(legacyContinuity.lastHandoffRequest().has_value());
+    REQUIRE(legacyContinuity.lastHandoffRequest()->patch.narrative == detailedNarrative);
+    REQUIRE(legacyContinuity.lastHandoffRequest()->patch.resumeSeed == detailedSeed);
+    REQUIRE(legacyContinuity.lastHandoffRequest()->patch.keyFiles == completeAutoRecord.packet.keyFiles);
+    REQUIRE(legacyContinuity.lastHandoffRequest()->patch.nextActions == completeAutoRecord.packet.nextActions);
+    REQUIRE(legacyContinuity.lastHandoffRequest()->patch.decisions == explicitConstraints);
+    REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == completeAutoRecord.packet.id.value());
+
+    const auto handoffCallsBeforeSerialized = legacyContinuity.handoffCalls();
+    auto rejectSerialized = [&](Json arguments, const std::string& field, const std::string& requestId) {
+        auto call = authorize("session_handoff", Domain::ToolEffect::Write, arguments.dump(), requestId);
+        auto result = adapter->handle(call, authority, context);
+        REQUIRE(!result);
+        REQUIRE(result.error().code == Domain::ErrorCodes::InvalidRequest);
+        REQUIRE(result.error().message.find(field) != std::string::npos);
+        REQUIRE(legacyContinuity.handoffCalls() == handoffCallsBeforeSerialized);
+        REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == completeAutoRecord.packet.id.value());
+    };
+    rejectSerialized(Json{{"packet_json", 17U}}, "packet_json", "packet-json-not-string");
+    rejectSerialized(Json{{"packet_json", "{invalid"}}, "packet_json", "packet-json-invalid");
+    rejectSerialized(Json{{"packet_json", "[]"}}, "packet_json", "packet-json-array");
+    rejectSerialized(Json{{"packet_json", "null"}}, "packet_json", "packet-json-null");
+    rejectSerialized(Json{{"packet_json", completeAuto.dump()}, {"goal", "Conflicting outer goal"}},
+        "goal", "packet-json-conflicting-goal");
+    rejectSerialized(Json{{"packet_json", completeAuto.dump()}, {"key_files", Json::array({"D:/different.cpp"})}},
+        "key_files", "packet-json-conflicting-collection");
+    auto recursivePacket = completeAuto;
+    recursivePacket["packet_json"] = completeAuto.dump();
+    rejectSerialized(Json{{"packet_json", recursivePacket.dump()}}, "packet_json", "packet-json-nested-envelope");
+    auto incompleteSerialized = completeAuto;
+    incompleteSerialized.erase("key_files");
+    incompleteSerialized.erase("next_actions");
+    rejectSerialized(Json{{"packet_json", incompleteSerialized.dump()}}, "key_files", "packet-json-incomplete-auto");
+    auto missingSerializedDecisions = completeAuto;
+    missingSerializedDecisions.erase("decisions");
+    rejectSerialized(Json{{"packet_json", missingSerializedDecisions.dump()}},
+        "decisions", "packet-json-missing-user-constraints");
+    auto shortSerialized = completeAuto;
+    shortSerialized["resume_seed"] = detailedSeed.substr(0U, 255U);
+    rejectSerialized(Json{{"packet_json", shortSerialized.dump()}}, "resume_seed", "packet-json-short-auto-seed");
+
+    auto serializedFiller = completeAuto;
+    serializedFiller["narrative"] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. " + detailedNarrative;
+    rejectSerialized(Json{{"packet_json", serializedFiller.dump()}},
+        "narrative", "packet-json-filler-narrative");
+
+    auto serializedPadding = completeAuto;
+    serializedPadding["resume_seed"] = std::string(128U, 'a') + " \t\r\n" + std::string(128U, 'a');
+    rejectSerialized(Json{{"packet_json", serializedPadding.dump()}},
+        "resume_seed", "packet-json-padding-seed");
+    auto serializedOpaqueAction = completeAuto;
+    serializedOpaqueAction["next_actions"] = Json::array({" Continue "});
+    rejectSerialized(Json{{"packet_json", serializedOpaqueAction.dump()}},
+        "next_actions", "packet-json-opaque-action");
+
+    auto serializedRecord = completeAutoRecord;
+    serializedRecord.packet.id = parse<Domain::LegacyHandoffId>("serialized-auto-packet");
+    serializedRecord.packet.goal = completeAuto.at("goal").get<std::string>();
+    serializedRecord.packet.status = "handoff_ready";
+    serializedRecord.packet.decisions = explicitConstraints;
+    legacyContinuity.setPersistOutcome({serializedRecord, true});
+    auto serializedPacket = completeAuto;
+    serializedPacket["handoff_id"] = serializedRecord.packet.id.value();
+    serializedPacket["cwd"] = root.value();
+    serializedPacket["status"] = serializedRecord.packet.status;
+    serializedPacket["blockers"] = Json::array();
+    serializedPacket["decisions"] = serializedRecord.packet.decisions;
+    auto serializedCall = authorize("session_handoff", Domain::ToolEffect::Write,
+        Json{{"packet_json", serializedPacket.dump()}, {"goal", serializedRecord.packet.goal}}.dump(),
+        "packet-json-complete-auto");
+    const auto serializedResult = take(adapter->handle(serializedCall, authority, context));
+    REQUIRE(serializedResult.receipt.ok);
+    REQUIRE(Json::parse(serializedResult.canonicalPayload).at("handoff_id") == serializedRecord.packet.id.value());
+    REQUIRE(legacyContinuity.handoffCalls() == handoffCallsBeforeSerialized + 1U);
+    const auto& serializedRequest = *legacyContinuity.lastHandoffRequest();
+    REQUIRE(serializedRequest.handoffId == serializedRecord.packet.id);
+    REQUIRE(serializedRequest.patch.goal == serializedRecord.packet.goal);
+    REQUIRE(serializedRequest.patch.status == serializedRecord.packet.status);
+    REQUIRE(serializedRequest.patch.workingDirectory == root.value());
+    REQUIRE(serializedRequest.patch.narrative == detailedNarrative);
+    REQUIRE(serializedRequest.patch.resumeSeed == detailedSeed);
+    REQUIRE(serializedRequest.patch.keyFiles == serializedRecord.packet.keyFiles);
+    REQUIRE(serializedRequest.patch.nextActions == serializedRecord.packet.nextActions);
+    REQUIRE(serializedRequest.patch.blockers == serializedRecord.packet.blockers);
+    REQUIRE(serializedRequest.patch.decisions == serializedRecord.packet.decisions);
+    REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == serializedRecord.packet.id.value());
+
+    std::size_t mentionCase{};
+    for (const auto field : {"narrative", "resume_seed"}) {
+        for (const auto evidence : {
+                 "<br>No filler or placeholder text is present; unverified claims are marked as such.",
+                 " The native validation error named \"lorem ipsum\" and \"placeholder\"; this records the error as evidence.",
+                 " User constraint: do not use lorem ipsum or placeholder filler to pad continuity text."}) {
+            auto evidencePacket = completeAuto;
+            evidencePacket[field] = completeAuto.at(field).get<std::string>() + evidence;
+            const auto callsBeforeEvidence = legacyContinuity.handoffCalls();
+            auto evidenceCall = authorize("session_handoff", Domain::ToolEffect::Write,
+                Json{{"packet_json", evidencePacket.dump()}}.dump(),
+                "packet-json-filler-mention-" + std::to_string(++mentionCase));
+            const auto evidenceResult = take(adapter->handle(evidenceCall, authority, context));
+            REQUIRE(evidenceResult.receipt.ok);
+            REQUIRE(legacyContinuity.handoffCalls() == callsBeforeEvidence + 1U);
+            REQUIRE(legacyContinuity.lastHandoffRequest()->patch.narrative ==
+                evidencePacket.at("narrative").get<std::string>());
+            REQUIRE(legacyContinuity.lastHandoffRequest()->patch.resumeSeed ==
+                evidencePacket.at("resume_seed").get<std::string>());
+            REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == serializedRecord.packet.id.value());
+        }
+    }
+    visibleStatusPayload = "{}";
+
+    legacyContinuity.setPersistOutcome({recoveredRecord, true});
+    auto publishHandoffCall = authorize(
+        "session_handoff", Domain::ToolEffect::Write,
+        R"({"goal":"Continue the adapter test","narrative":"Recovered context","next_actions":["Run the recovered tool"]})",
+        "publish-handoff");
+    REQUIRE(adapter->handle(publishHandoffCall, authority, context));
+    REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == handoffId.value());
+
+    const auto manualHandoffCalls = legacyContinuity.handoffCalls();
+    const std::string manualNarrative = "Lorem ipsum draft text retained for manual compatibility.";
+    const std::string manualSeed = "PLACEHOLDER manual draft.";
+    auto manualFillerCall = authorize("session_handoff", Domain::ToolEffect::Write,
+        Json{{"narrative", manualNarrative}, {"resume_seed", manualSeed}}.dump(),
+        "manual-filler-compatibility");
+    REQUIRE(adapter->handle(manualFillerCall, authority, context));
+    REQUIRE(legacyContinuity.handoffCalls() == manualHandoffCalls + 1U);
+    REQUIRE(legacyContinuity.lastHandoffRequest()->patch.narrative == manualNarrative);
+    REQUIRE(legacyContinuity.lastHandoffRequest()->patch.resumeSeed == manualSeed);
+
+    const auto manualPaddingCalls = legacyContinuity.handoffCalls();
+    auto manualPaddingCall = authorize("session_handoff", Domain::ToolEffect::Write,
+        Json{{"resume_seed", std::string(256U, 'a')}, {"next_actions", Json::array({"continue"})}}.dump(),
+        "manual-padding-compatibility");
+    REQUIRE(adapter->handle(manualPaddingCall, authority, context));
+    REQUIRE(legacyContinuity.handoffCalls() == manualPaddingCalls + 1U);
+
+    // A successor checkpoint must preserve the finalized resume pointer.
+    legacyContinuity.setPersistOutcome({pendingRecord, false});
+    auto successorCheckpointCall = authorize(
+        "session_checkpoint", Domain::ToolEffect::Write,
+        R"({"goal":"Successor work"})", "successor-checkpoint");
+    REQUIRE(adapter->handle(successorCheckpointCall, authority, context));
+    REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == handoffId.value());
+    const auto resumedBootstrap = take(adapter->bootstrapInstructions(projectId, root, context));
+    REQUIRE(resumedBootstrap.find("Recovered context") != std::string::npos);
+    REQUIRE(resumedBootstrap.find("Run the recovered tool") != std::string::npos);
+    REQUIRE(resumedBootstrap.find(handoffId.value()) != std::string::npos);
+    REQUIRE(resumedBootstrap.find("call context_get through forge-conductor or forge-conductor-fallback") !=
+        std::string::npos);
+    REQUIRE(resumedBootstrap.find("CLU connector receives this packet as policy context") !=
+        std::string::npos);
+    REQUIRE(resumedBootstrap.find("Before continuing, call context_get with") == std::string::npos);
+    auto oversizedRecord = recoveredRecord;
+    oversizedRecord.packet.resumeSeed = std::string(40U * 1024U, 'x');
+    legacyContinuity.setGetOutcome({oversizedRecord, true});
+    const auto oversizedBootstrap = take(adapter->bootstrapInstructions(projectId, root, context));
+    REQUIRE(oversizedBootstrap.size() < 32U * 1024U);
+    REQUIRE(oversizedBootstrap.find("without truncation") != std::string::npos);
+    auto checkpointRecord = recoveredRecord;
+    checkpointRecord.packet.resumeReady = false;
+    legacyContinuity.setGetOutcome({checkpointRecord, true});
+    REQUIRE(take(adapter->bootstrapInstructions(projectId, root, context))
+        .find("Recovered context") == std::string::npos);
+    legacyContinuity.setGetOutcome({recoveredRecord, true});
+    const auto adoptedProjectId = parse<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000099");
     clientWorkspaceContext.setAdoption(Domain::ClientWorkspaceAdoption{
         Domain::ClientWorkspaceSnapshot{
             clientId,
-            projectId,
-            root,
+            adoptedProjectId,
+            secondaryRoot,
             handoffId,
             recoveredRecord.writeSequence,
             12U},
@@ -920,8 +1366,13 @@ void testRuntimeDispatchAndSchemaPolicy()
     const auto contextPayload = Json::parse(
         contextGetResult.value().canonicalPayload);
     REQUIRE(contextPayload.at("found") == true);
-    REQUIRE(contextPayload.at("workspace_adopted") == root.value());
-    REQUIRE(contextPayload.at("workspace_project_id") == projectId.value());
+    REQUIRE(contextPayload.at("successor_session_id") == clientId.value());
+    REQUIRE(contextPayload.at("session_kind") == "mcp_connection");
+    REQUIRE(contextPayload.at("workspace_adopted") == secondaryRoot.value());
+    REQUIRE(observedWorkspace.has_value());
+    REQUIRE(observedWorkspace->first == adoptedProjectId);
+    REQUIRE(observedWorkspace->second == secondaryRoot);
+    REQUIRE(contextPayload.at("workspace_project_id") == adoptedProjectId.value());
     REQUIRE(contextPayload.at("projection_checked") == false);
     REQUIRE(contextPayload.at("projection_ok").is_null());
     REQUIRE(contextPayload.at("paths").empty());
@@ -1255,7 +1706,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto normalizedSearch = adapter->handle(
         normalizedSearchCall, authority, context);
     REQUIRE(normalizedSearch);
-    REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Search) == 1U);
+    REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Search) == 3U);
     REQUIRE(projectMemory.lastContext().has_value());
     REQUIRE(projectMemory.lastContext()->deadline ==
             Domain::MonotonicTimePoint{} +
@@ -1326,14 +1777,8 @@ void testRuntimeDispatchAndSchemaPolicy()
         "request-project-memory-preview-import");
     auto previewImport = adapter->handle(
         previewImportCall, authority, context);
-    REQUIRE(previewImport);
-    const auto previewImportPayload = Json::parse(
-        previewImport.value().canonicalPayload);
-    REQUIRE(previewImportPayload.at("preview") == true);
-    REQUIRE(previewImportPayload.at("disposition") == "preview");
-    REQUIRE(previewImportPayload.at("record_count") == 4U);
-    REQUIRE(previewImportPayload.contains("imported"));
-    REQUIRE(!previewImportPayload.contains("results"));
+    REQUIRE(!previewImport);
+    REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Import) == 0U);
 
     projectMemory.importResult.set(
         Domain::Result<Domain::ProjectMemoryImport>::success(
@@ -1355,21 +1800,8 @@ void testRuntimeDispatchAndSchemaPolicy()
         "request-project-memory-committed-import");
     auto committedImport = adapter->handle(
         committedImportCall, authority, context);
-    REQUIRE(committedImport);
-    const auto committedImportPayload = Json::parse(
-        committedImport.value().canonicalPayload);
-    REQUIRE(committedImportPayload.size() == 6U);
-    REQUIRE(committedImportPayload.at("ok") == true);
-    REQUIRE(committedImportPayload.at("project_id") == projectId.value());
-    REQUIRE(committedImportPayload.at("count") == 1U);
-    REQUIRE(committedImportPayload.at("results").at(0).at("record_id") ==
-            memoryRecordId.value());
-    REQUIRE(committedImportPayload.at("schema_version") ==
-            Domain::ProjectMemorySchemaVersion);
-    REQUIRE(committedImportPayload.at("capability_version") ==
-            Domain::ProjectMemoryCapabilityVersion);
-    REQUIRE(!committedImportPayload.contains("preview"));
-    REQUIRE(!committedImportPayload.contains("disposition"));
+    REQUIRE(!committedImport);
+    REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Import) == 0U);
 
     continuity.statusResult.set(
         Domain::Result<Domain::ContinuityStatus>::success(
@@ -2035,7 +2467,8 @@ void testRealRouterContinuityIntegration()
         blockedForgeStatus.value().canonicalPayload);
     const auto& blockedAutomatic = blockedPayload.at("auto_continuity");
     REQUIRE(blockedAutomatic.at("enabled") == true);
-    REQUIRE(blockedAutomatic.at("blocked") == true);
+    REQUIRE(blockedAutomatic.at("blocked") == false);
+    REQUIRE(blockedAutomatic.at("handoff_pending") == true);
     REQUIRE(blockedAutomatic.at("handoff_id") == handoffId.value());
     REQUIRE(blockedAutomatic.at("implicit_roots") ==
             Json::array({root.value()}));
@@ -2056,7 +2489,8 @@ void testRealRouterContinuityIntegration()
     REQUIRE(staleRecovery.error().code == Domain::ErrorCodes::Conflict);
     REQUIRE(clientWorkspaceContext.adoptCalls() == 0U);
     const auto afterStale = guard->snapshot(clientId);
-    REQUIRE(afterStale.blocked);
+    REQUIRE(!afterStale.blocked);
+    REQUIRE(afterStale.handoffPending);
     REQUIRE(afterStale.handoffId ==
             std::optional<std::string>{handoffId.value()});
     REQUIRE(afterStale.implicitRoots ==

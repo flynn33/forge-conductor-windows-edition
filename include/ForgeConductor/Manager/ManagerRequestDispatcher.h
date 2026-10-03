@@ -4,6 +4,9 @@
 #include "ForgeConductor/Contracts/IDiagnosticsServices.h"
 #include "ForgeConductor/Contracts/IManagerRuntime.h"
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
+#include "ForgeConductor/Contracts/ILegacyContinuityRepository.h"
+#include "ForgeConductor/Contracts/ILegacyContextContinuityService.h"
+#include "ForgeConductor/Contracts/IContinuityProjectionStore.h"
 #include "ForgeConductor/Contracts/IContinuityAutomation.h"
 #include "ForgeConductor/Contracts/IClientPresenceRepository.h"
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
@@ -44,6 +47,9 @@ struct ManagerTelemetrySources final {
     Contracts::IManagedRunStore* durableManagedRunStore{};
     Contracts::IHasher* evidenceHasher{};
     Contracts::IProjectPolicyService* projectPolicy{};
+    Contracts::ILegacyContinuityRepository* legacyPackets{};
+    Contracts::ILegacyContextContinuityService* legacyContinuity{};
+    Contracts::IContinuityProjectionStore* packetFiles{};
 };
 
 class ManagerRequestDispatcher final {

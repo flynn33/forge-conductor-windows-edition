@@ -46,6 +46,7 @@ struct ContinuityAutomationStatusSnapshot final {
     bool blocked{};
     std::optional<std::string> handoffId;
     std::vector<PathText> implicitRoots;
+    bool handoffPending{};
 
     bool operator==(const ContinuityAutomationStatusSnapshot&) const = default;
 };

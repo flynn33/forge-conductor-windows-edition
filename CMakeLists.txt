@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.4
+    VERSION 1.3.5
     LANGUAGES CXX RC
 )
 
@@ -334,6 +334,9 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsLMStudioCandidateSelector.cpp
     src/Infrastructure/Windows/WindowsLMStudioDeploymentService.cpp
     src/Infrastructure/Windows/WindowsLMStudioEnvironment.cpp
+    src/Infrastructure/Windows/WindowsLMStudioConversationReader.cpp
+    src/Infrastructure/Windows/WindowsLMStudioChatControl.cpp
+    src/Infrastructure/Windows/WindowsLMStudioChatContinuity.cpp
     src/Infrastructure/Windows/WindowsLMStudioHostActivator.cpp
     src/Infrastructure/Windows/WindowsLMStudioServeVerifier.cpp
     src/Infrastructure/Windows/WindowsManagerAuthentication.cpp
@@ -395,6 +398,7 @@ target_link_libraries(ForgeConductor.Infrastructure.Windows PRIVATE
     ntdll
     ole32
     oleaut32
+    uiautomationcore
     shell32
     taskschd
     version
@@ -2521,6 +2525,7 @@ if(BUILD_TESTING)
         tests/Infrastructure/LMStudioConfigurationCodecTests.cpp
         tests/Infrastructure/StorageWindowsTests.cpp
         tests/Infrastructure/WindowsLMStudioEnvironmentTests.cpp
+        tests/Infrastructure/WindowsLMStudioConversationReaderTests.cpp
         tests/Infrastructure/WindowsLMStudioHostActivatorTests.cpp
         tests/Infrastructure/WindowsLMStudioServeVerifierTests.cpp
         tests/Infrastructure/WindowsUnicodeCanonicalizerTests.cpp

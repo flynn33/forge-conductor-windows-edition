@@ -951,7 +951,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.4");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.5");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();
@@ -991,7 +991,7 @@ void validateStatus(
     REQUIRE(structuredStatus.at("workspace").at("project_root").is_string());
     REQUIRE(structuredStatus.at("workspace").at("project_id").is_string());
     REQUIRE(structuredStatus.at("workspace").at("binding_source") ==
-            "mcp_authorized_root");
+            "registered_project");
     REQUIRE(structuredStatus.at("home_kind") == "application_data");
     REQUIRE(structuredStatus.at("home_is_project") == false);
     REQUIRE(structuredStatus.at("instruction_packages").at("packages").is_array());

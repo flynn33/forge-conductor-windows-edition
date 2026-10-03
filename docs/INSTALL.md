@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.0 targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.5 targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -27,3 +27,7 @@ LM Studio and a loaded tool-capable model are external prerequisites for inferen
 After upgrading from 1.3.1 or earlier, finish or stop active MCP calls and use **Settings → LM Studio plugins → Install or repair all three plugins**. Repair updates Primary, Fallback, and CLU to the 180-second request deadline while preserving foreign MCP registrations and unknown fields. Then choose **Open LM Studio and connect plugins** and select the intended integration in the chat.
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
+
+## 1.3.5 release construction boundary
+
+The host's installed ForgeConductor.Windows_1.3.4.0 package was preserved during construction; 1.3.5 verification used a separate Debug home. The new release does not add a credential, login step, model-instruction file, or fourth plugin. Native Auto Continuity verification bounds are stated in [release notes](releases/1.3.5.md).

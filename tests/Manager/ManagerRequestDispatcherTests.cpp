@@ -602,7 +602,7 @@ public:
         if (allowDoctor) {
             const auto root = Domain::PathText::create("D:\\DoctorFixture").value();
             return Domain::Result<Domain::DoctorReport>::success(
-                Domain::DoctorReport{true, "1.3.4", root,
+                Domain::DoctorReport{true, "1.3.5", root,
                     {Domain::DoctorCheck{"manager_ipc", true, "connected", true}},
                     {}, true, root});
         }
@@ -761,7 +761,7 @@ private:
     Consumer consumer_;
 };
 
-void testTelemetrySnapshotUsesManagerOwnedRunValues()
+void testTelemetryCannotReadRemovedManagedRuns()
 {
     auto clock = std::make_shared<FakeClock>();
     auto controller = std::make_shared<FakeController>();
@@ -777,38 +777,25 @@ void testTelemetrySnapshotUsesManagerOwnedRunValues()
 
     const auto runId = Domain::SessionId::parse(uuidText(700U)).value();
     const auto response = dispatcher.dispatch(request(
-        *clock, 76U, Manager::ManagerTelemetryRequest{runId}));
+        *clock, 76U, Manager::ManagerTelemetryRequest{std::nullopt}));
     const auto* snapshot = responseValue<Domain::ManagerTelemetrySnapshot>(response);
     require(snapshot != nullptr, "manager telemetry result");
     require(snapshot->resources.cpuPercent.value == 33.5,
             "manager telemetry reuses native CPU sample");
     require(snapshot->resources.history.size() == 1U,
             "manager telemetry reuses bounded resource history");
-    require(snapshot->selectedRun.has_value(),
-            "manager telemetry includes selected run");
-    require(snapshot->selectedRun->record.runId == runId,
-            "manager telemetry preserves run identity");
-    require(snapshot->context.retainedTokens == 4'096U,
-            "manager telemetry preserves authoritative retained tokens");
-    require(snapshot->context.inputTokens == 101U &&
-                snapshot->context.outputTokens == 37U,
-            "manager telemetry preserves provider token counts");
-    require(snapshot->context.headroomTokens == 18'432U,
-            "manager computes context headroom once");
-    require(snapshot->context.authoritative,
-            "retained context is marked authoritative");
-    require(snapshot->provider.responseId ==
-                snapshot->selectedRun->record.providerResponseId,
-            "provider response identity comes from selected run");
-    require(snapshot->continuity.canonicalResponseId ==
-                snapshot->selectedRun->record.providerResponseId,
-            "continuity uses the canonical response identity");
+    require(!snapshot->selectedRun && !snapshot->context.retainedTokens &&
+        !snapshot->context.authoritative && !snapshot->provider.responseId &&
+        !snapshot->continuity.runId, "resource telemetry does not project a Managed Run or invent chat usage");
+    requireError(dispatcher.dispatch(request(*clock, 78U,
+        Manager::ManagerTelemetryRequest{runId})), Domain::ErrorCodes::InvalidRequest,
+        "removed run cannot be read through telemetry");
     require(!snapshot->storeHealthy.value &&
                 snapshot->storeHealthy.availability ==
                     Domain::TelemetryMetricAvailability::TemporarilyUnavailable,
             "missing optional store source stays explicitly unavailable");
-    require(telemetry.sampleCalls == 1U && managedRuns->statusCalls == 1U,
-            "telemetry and selected run are sampled once");
+    require(telemetry.sampleCalls == 2U && managedRuns->statusCalls == 0U,
+            "resource telemetry never invokes Managed Run");
 
     Manager::ManagerRequestDispatcher unavailable{controller, clock};
     requireError(
@@ -818,7 +805,7 @@ void testTelemetrySnapshotUsesManagerOwnedRunValues()
         "manager telemetry unavailable composition");
 }
 
-void testManagedRunDispatchAndIdentity()
+void testManagedRunEndpointsAreRemoved()
 {
     auto clock = std::make_shared<FakeClock>();
     auto controller = std::make_shared<FakeController>();
@@ -846,54 +833,12 @@ void testManagedRunDispatchAndIdentity()
         70U,
         Manager::ManagedRunStartRequest{
             runId, projectId, clientId, 12U, "Inspect this project."}));
-    const auto* startedRun = responseValue<Domain::ManagedRunSnapshot>(started);
-    require(startedRun != nullptr,
-        std::string{"managed run start result"} +
-        (responseError(started) ? ": " + responseError(started)->message : ""));
-    require(startedRun->record.runId == runId, "managed run start identity");
-    require(managedRuns->lastStart.has_value(), "managed start forwarding");
-    require(managedRuns->lastStart->projectId == projectId, "managed project forwarding");
-    require(managedRuns->lastStart->clientId == clientId, "managed client forwarding");
-    require(managedRuns->lastStart->authorityGeneration == 12U,
-            "managed authority generation forwarding");
-    require(managedRuns->lastStart->operationId == operationId(70U),
-            "managed operation derives from request id");
-    require(managedRuns->lastStart->correlationId == correlationId(70U),
-            "managed correlation forwarding");
-    require(managedRuns->lastContextOperation == operationId(70U),
-            "managed context operation forwarding");
-
-    const auto status = dispatcher.dispatch(request(
-        *clock, 71U, Manager::ManagedRunStatusRequest{runId}));
-    require(responseValue<Domain::ManagedRunSnapshot>(status) != nullptr,
-            "managed run status result");
-    const auto paused = dispatcher.dispatch(request(
-        *clock, 72U, Manager::ManagedRunPauseRequest{runId}));
-    const auto* pausedRun = responseValue<Domain::ManagedRunSnapshot>(paused);
-    require(pausedRun != nullptr && pausedRun->pauseRequested,
-            "managed run pause result");
-    const auto resumed = dispatcher.dispatch(request(
-        *clock, 73U, Manager::ManagedRunResumeRequest{runId}));
-    const auto* resumedRun = responseValue<Domain::ManagedRunSnapshot>(resumed);
-    require(resumedRun != nullptr &&
-            resumedRun->record.state == Domain::ManagedRunState::Running,
-            "managed run resume result");
-    const auto cancelled = dispatcher.dispatch(request(
-        *clock, 74U, Manager::ManagedRunCancelRequest{runId}));
-    const auto* cancelledRun = responseValue<Domain::ManagedRunSnapshot>(cancelled);
-    require(cancelledRun != nullptr && cancelledRun->cancellationRequested,
-            "managed run cancellation result");
-    require(managedRuns->startCalls == 1U && managedRuns->statusCalls == 1U &&
-            managedRuns->pauseCalls == 1U && managedRuns->resumeCalls == 1U &&
-            managedRuns->cancelCalls == 1U,
-            "managed run method routing");
-
-    Manager::ManagerRequestDispatcher unavailable{controller, clock};
-    requireError(
-        unavailable.dispatch(request(
-            *clock, 75U, Manager::ManagedRunStatusRequest{runId})),
-        Domain::ErrorCodes::InvalidRequest,
-        "managed run unavailable composition");
+    requireError(started, Domain::ErrorCodes::InvalidRequest, "removed run start rejected");
+    requireError(dispatcher.dispatch(request(*clock, 71U, Manager::ManagedRunStatusRequest{runId})), Domain::ErrorCodes::InvalidRequest, "removed run status rejected");
+    requireError(dispatcher.dispatch(request(*clock, 72U, Manager::ManagedRunPauseRequest{runId})), Domain::ErrorCodes::InvalidRequest, "removed run pause rejected");
+    requireError(dispatcher.dispatch(request(*clock, 73U, Manager::ManagedRunResumeRequest{runId})), Domain::ErrorCodes::InvalidRequest, "removed run resume rejected");
+    requireError(dispatcher.dispatch(request(*clock, 74U, Manager::ManagedRunCancelRequest{runId})), Domain::ErrorCodes::InvalidRequest, "removed run cancel rejected");
+    require(managedRuns->startCalls == 0U && managedRuns->statusCalls == 0U && managedRuns->pauseCalls == 0U && managedRuns->resumeCalls == 0U && managedRuns->cancelCalls == 0U, "removed endpoints never reach run service");
 }
 
 void testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable()
@@ -986,9 +931,8 @@ void testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable()
         Manager::ManagedRunStartRequest{
             runId, project, clientId, 0U, "Run with exact preference.",
             true, true}));
-    require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
-        managedRuns->lastStart && !managedRuns->lastStart->automaticContinuity,
-        "managed run receives Manager-owned provider A off preference");
+    requireError(started, Domain::ErrorCodes::InvalidRequest, "saved preference cannot restore removed run entry point");
+    require(managedRuns->startCalls == 0U, "preference does not create a run");
 
     controller->currentSettings.localModelName = "provider-b";
     const auto readB = restarted.dispatch(request(*clock, 764U,
@@ -1037,35 +981,12 @@ void testRunHistoryIsBoundToSelectedProject()
             Manager::ManagerOperationalArea::Runs,
             Manager::ManagerOperationalAction::Inspect,
             std::nullopt, {}, projectA}));
-    const auto* aHistory = responseValue<Manager::ManagerOperationalSnapshot>(aResponse);
-    require(aHistory != nullptr && aHistory->lines.size() == 2U,
-        "run history includes only selected project A");
-    require(aHistory->lines[0].find(aOpen.value()) != std::string::npos &&
-            aHistory->lines[1].find(aRecent.value()) != std::string::npos,
-        "project A run identities are preserved");
-    require(aHistory->lines[0].find(bRecent.value()) == std::string::npos &&
-            aHistory->lines[1].find(bRecent.value()) == std::string::npos,
-        "project B run identity never leaks into A");
-
-    const auto bResponse = dispatcher.dispatch(request(*clock, 92U,
-        Manager::ManagerOperationalRequest{
-            Manager::ManagerOperationalArea::Runs,
-            Manager::ManagerOperationalAction::Inspect,
-            std::nullopt, {}, projectB}));
-    const auto* bHistory = responseValue<Manager::ManagerOperationalSnapshot>(bResponse);
-    require(bHistory != nullptr && bHistory->lines.size() == 1U &&
-            bHistory->lines[0].find(bRecent.value()) != std::string::npos,
-        "project B history retains only its exact run");
-    require(operational.sessionCalls == 2U,
-        "one bounded session listing is read per authorized inspection");
-    requireError(dispatcher.dispatch(request(*clock, 93U,
-        Manager::ManagerOperationalRequest{
-            Manager::ManagerOperationalArea::Runs,
-            Manager::ManagerOperationalAction::Inspect,
-            std::nullopt, {}, std::nullopt})),
-        Domain::ErrorCodes::InvalidRequest, "unbound run history");
-    require(operational.sessionCalls == 2U,
-        "unbound inspection does not read sessions");
+    requireError(aResponse, Domain::ErrorCodes::InvalidRequest, "removed run history rejected");
+    requireError(dispatcher.dispatch(request(*clock, 92U,
+        Manager::ManagerOperationalRequest{Manager::ManagerOperationalArea::Runs,
+            Manager::ManagerOperationalAction::Inspect, std::nullopt, {}, projectB})),
+        Domain::ErrorCodes::InvalidRequest, "removed run history rejected for every project");
+    require(operational.sessionCalls == 0U, "removed readback never lists sessions");
     operational.allowStatus = true;
     managedRuns->stateByRun.emplace(aOpen.value(), Domain::ManagedRunState::Running);
     managedRuns->outputByRun.emplace(aRecent.value(), "OK from project A");
@@ -1082,18 +1003,14 @@ void testRunHistoryIsBoundToSelectedProject()
         for (const auto& line : runtime->lines) text += line + "\n";
         return text;
     }();
-    require(runtimeText.find("Job inventory: 2 recent selected-project runs · 1 active · 1 completed") !=
-            std::string::npos,
-        "runtime jobs use exact persisted run states");
-    require(runtimeText.find(aOpen.value()) != std::string::npos &&
-            runtimeText.find(aRecent.value()) != std::string::npos &&
-            runtimeText.find("Result · OK from project A") != std::string::npos,
-        "runtime inventory projects selected-project identities and outcomes");
-    require(runtimeText.find(bRecent.value()) == std::string::npos &&
-            runtimeText.find("private project B result") == std::string::npos,
-        "runtime inventory never projects another project's run or result");
-    require(operational.sessionCalls == 3U,
-        "runtime jobs read one bounded persisted session window");
+    require(runtimeText.find("Sessions are LM Studio chats") != std::string::npos,
+        "runtime inventory identifies the actual session host");
+    require(runtimeText.find(aOpen.value()) == std::string::npos &&
+        runtimeText.find(aRecent.value()) == std::string::npos &&
+        runtimeText.find(bRecent.value()) == std::string::npos,
+        "runtime inventory does not expose removed run readback");
+    require(operational.sessionCalls == 0U && managedRuns->statusCalls == 0U,
+        "runtime inventory never reads Managed Run results");
 }
 
 void testActivityAndDoctorProjectSimplifiedWorkflowState()
@@ -1226,35 +1143,8 @@ void testDurableEvidenceIsRedactedAndProjectBound()
             Manager::ManagerOperationalArea::Evidence,
             Manager::ManagerOperationalAction::Inspect,
             std::nullopt, {}, projectA}));
-    const auto* evidenceA = responseValue<Manager::ManagerOperationalSnapshot>(
-        responseA);
-    require(evidenceA && evidenceA->lines.size() == 1U,
-        "evidence returns one exact-project durable run");
-    const auto& row = evidenceA->lines.front();
-    require(row.find("\"run_id\":\"" + runA.value() + "\"") !=
-                std::string::npos &&
-            row.find("\"project_id\":\"" + projectA.value() + "\"") !=
-                std::string::npos &&
-            row.find("\"native_record_integrity\":\"verified\"") !=
-                std::string::npos &&
-            row.find("\"task_outcome_verification\":\"not_configured\"") !=
-                std::string::npos,
-        "evidence carries native provenance without claiming task success");
-    require(row.find("\"task_sha256\":\"" + std::string(64U, 'a') +
-                "\"") != std::string::npos &&
-            row.find("\"stored_output_sha256\":\"" +
-                std::string(64U, 'a') + "\"") != std::string::npos &&
-            row.find("private project A") == std::string::npos &&
-            row.find(runB.value()) == std::string::npos,
-        "redacted evidence omits mission and model text and foreign identity");
-    requireError(dispatcher.dispatch(request(*clock, 96U,
-        Manager::ManagerOperationalRequest{
-            Manager::ManagerOperationalArea::Evidence,
-            Manager::ManagerOperationalAction::Inspect,
-            std::nullopt, {}, std::nullopt})),
-        Domain::ErrorCodes::InvalidRequest, "evidence needs exact project");
-    require(operational.sessionCalls == 1U,
-        "unbound evidence never reads the session window");
+    requireError(responseA, Domain::ErrorCodes::InvalidRequest, "removed evidence readback rejected");
+    require(operational.sessionCalls == 0U, "removed evidence does not read sessions");
 }
 
 void testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt()
@@ -1296,61 +1186,14 @@ void testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt()
     Manager::ManagerRequestDispatcher dispatcher{
         controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
 
-    requireError(dispatcher.dispatch(request(*clock, 97U,
-        Manager::ManagerOperationalRequest{
-            Manager::ManagerOperationalArea::Evidence,
-            Manager::ManagerOperationalAction::VerifyTask,
-            runA, "Write-Output OK", projectB})),
-        Domain::ErrorCodes::Conflict, "foreign-project native check denied");
-    require(nativeTool.calls == 0U, "foreign run never reaches native router");
-    durable.records.at(runA.value()).evidenceIntegrity =
-        Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed;
-    requireError(dispatcher.dispatch(request(*clock, 98U,
-        Manager::ManagerOperationalRequest{
-            Manager::ManagerOperationalArea::Evidence,
-            Manager::ManagerOperationalAction::VerifyTask,
-            runA, "Write-Output OK", projectA})),
-        Domain::ErrorCodes::Conflict, "unsealed native check denied");
-    require(nativeTool.calls == 0U, "unsealed run never reaches native router");
-    durable.records.at(runA.value()).evidenceIntegrity =
-        Domain::ManagedRunEvidenceIntegrity::Verified;
-
-    const auto passed = dispatcher.dispatch(request(*clock, 99U,
-        Manager::ManagerOperationalRequest{
-            Manager::ManagerOperationalArea::Evidence,
-            Manager::ManagerOperationalAction::VerifyTask,
-            runA, "Write-Output OK", projectA}));
-    const auto* passedSnapshot = responseValue<Manager::ManagerOperationalSnapshot>(passed);
-    require(passedSnapshot && passedSnapshot->lines.size() == 1U &&
-        passedSnapshot->lines.front().find("native_check_passed") !=
-            std::string::npos,
-        "passing native check projected separately from model result");
-    require(nativeTool.calls == 1U && nativeTool.lastProject == projectA &&
-        nativeTool.lastCommand == "Write-Output OK",
-        "exact-project command routes through authorized native tool");
-    require(durable.records.at(runA.value()).nativeTaskChecks.size() == 1U &&
-        durable.records.at(runA.value()).nativeTaskChecks.front().passed,
-        "passing receipt stored in durable run");
-    require(passedSnapshot->lines.front().find("Write-Output OK") ==
-            std::string::npos &&
-        passedSnapshot->lines.front().find("native stdout") ==
-            std::string::npos &&
-        passedSnapshot->lines.front().find("private mission") ==
-            std::string::npos,
-        "evidence projection omits command, output and mission text");
-
-    nativeTool.exitCode = 1;
-    const auto failed = dispatcher.dispatch(request(*clock, 100U,
-        Manager::ManagerOperationalRequest{
-            Manager::ManagerOperationalArea::Evidence,
-            Manager::ManagerOperationalAction::VerifyTask,
-            runA, "exit 1", projectA}));
-    const auto* failedSnapshot = responseValue<Manager::ManagerOperationalSnapshot>(failed);
-    require(failedSnapshot && failedSnapshot->lines.front().find(
-        "native_check_failed") != std::string::npos &&
-        durable.records.at(runA.value()).nativeTaskChecks.size() == 2U &&
-        !durable.records.at(runA.value()).nativeTaskChecks.back().passed,
-        "failing check is durable and never upgraded by model completion");
+    for (const auto& project : {projectA, projectB}) {
+        requireError(dispatcher.dispatch(request(*clock, 97U,
+            Manager::ManagerOperationalRequest{Manager::ManagerOperationalArea::Evidence,
+                Manager::ManagerOperationalAction::VerifyTask, runA, "Write-Output OK", project})),
+            Domain::ErrorCodes::InvalidRequest, "removed native run verification rejected");
+    }
+    require(nativeTool.calls == 0U && durable.records.at(runA.value()).nativeTaskChecks.empty(),
+        "removed verification cannot invoke tools or persist receipts");
 }
 
 void testProjectWorkflowKeepsExactProjectIdentity()
@@ -1744,19 +1587,8 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
     const auto started = runDispatcher.dispatch(request(
         *clock, 829U, Manager::ManagedRunStartRequest{
             runId, project, clientId, 7U, "Complete the project work."}));
-    require(responseValue<Domain::ManagedRunSnapshot>(started) != nullptr &&
-        managedRuns->lastStart &&
-        managedRuns->lastStart->task.find("[ORDERED PROJECT INSTRUCTION PACKAGES]") !=
-            std::string::npos &&
-        managedRuns->lastStart->task.find(
-            "Follow the project contract.") != std::string::npos &&
-        managedRuns->lastStart->task.find("Complete the project work.") !=
-            std::string::npos,
-        "new managed run receives the ordered project instruction assignment");
-    require(memory.lastUpdateRequest() && memory.lastUpdateRequest()->body &&
-        nlohmann::json::parse(*memory.lastUpdateRequest()->body)
-            .at("cursor").at("entry").get<std::uint64_t>() == 2U,
-        "managed-run package attachment durably advances the execution cursor");
+    requireError(started, Domain::ErrorCodes::InvalidRequest, "package assignment cannot restore Managed Run");
+    require(managedRuns->startCalls == 0U, "package queue does not create a run");
 }
 
 void testLegacyInstructionManifestMigratesToStableQueue()
@@ -1888,39 +1720,14 @@ void testMaintenanceRequiresExactScopeAndCoordinatesStores()
     Manager::ManagerRequestDispatcher dispatcher{
         controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
 
-    requireError(
-        dispatcher.dispatch(request(
-            *clock, 84U,
-            Manager::ManagerMaintenanceRequest{
-                Manager::ManagerMaintenanceScope::ProjectAllData,
-                project, "wrong confirmation"})),
-        Domain::ErrorCodes::Unauthorized,
-        "combined reset rejects wrong confirmation");
-    require(memory.callCount(TestFakes::ProjectMemoryCall::ResetProjectMemory) == 0U,
-        "wrong confirmation leaves memory unchanged");
-    require(continuity.callCount(
-        TestFakes::ContinuityCall::ResetProjectContinuity) == 0U,
-        "wrong confirmation leaves continuity unchanged");
-
-    const auto completed = dispatcher.dispatch(request(
-        *clock, 85U,
-        Manager::ManagerMaintenanceRequest{
-            Manager::ManagerMaintenanceScope::ProjectAllData,
-            project, "RESET PROJECT DATA " + project.value()}));
-    const auto* snapshot = responseValue<Manager::ManagerMaintenanceSnapshot>(completed);
-    require(snapshot != nullptr && snapshot->verified,
-        "combined reset returns verified snapshot");
-    require(snapshot->affectedScope == project.value() &&
-            snapshot->projectsAffected == 1U,
-        "combined reset retains exact project scope");
-    require(snapshot->recordsRemoved == 7U && snapshot->linksRemoved == 9U &&
-            snapshot->eventsRemoved == 11U,
-        "combined reset aggregates both store reports");
-    require(memory.callCount(TestFakes::ProjectMemoryCall::ResetProjectMemory) == 1U,
-        "combined reset invokes memory once");
-    require(continuity.callCount(
-        TestFakes::ContinuityCall::ResetProjectContinuity) == 1U,
-        "combined reset invokes continuity once");
+    for (const auto& confirmation : {std::string{"wrong confirmation"}, "RESET PROJECT DATA " + project.value()}) {
+        requireError(dispatcher.dispatch(request(*clock, 84U,
+            Manager::ManagerMaintenanceRequest{Manager::ManagerMaintenanceScope::ProjectAllData,
+                project, confirmation})), Domain::ErrorCodes::InvalidRequest, "removed scope reset rejected");
+    }
+    require(memory.callCount(TestFakes::ProjectMemoryCall::ResetProjectMemory) == 0U &&
+        continuity.callCount(TestFakes::ContinuityCall::ResetProjectContinuity) == 0U,
+        "removed reset never changes stores");
 }
 
 void testPayloadMappingAndControllerFailures()
@@ -2242,7 +2049,7 @@ int main()
 {
     try {
         testPayloadMappingAndControllerFailures();
-        testManagedRunDispatchAndIdentity();
+        testManagedRunEndpointsAreRemoved();
         testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable();
         testRunHistoryIsBoundToSelectedProject();
         testActivityAndDoctorProjectSimplifiedWorkflowState();
@@ -2252,7 +2059,7 @@ int main()
         testInstructionPackagePreviewAndActivationStayProjectBound();
         testLegacyInstructionManifestMigratesToStableQueue();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
-        testTelemetrySnapshotUsesManagerOwnedRunValues();
+        testTelemetryCannotReadRemovedManagedRuns();
         testDuplicateCapacityAndCancellationBypass();
         testShutdownOrderingAndClosedAdmission();
         testShutdownFailureAndEnvelopeValidation();

@@ -1,29 +1,25 @@
 # Product status
 
-The 1.3.4 release retains the simplified Workspace, project-memory maintenance, constrained-host tool discovery, reliable outer MCP deadline, and explicit workspace-context disclosure from 1.3.3. It records the unauthenticated same-host LM Studio contract and adds explicit HTTP 401/403 guidance to model discovery, Responses transport, and automatic model preparation. See [the 1.3.4 release notes](releases/1.3.4.md).
+Version 1.3.5 removes Managed Run and wires Auto Continuity for native LM Studio chats. See [release notes](releases/1.3.5.md) for the observed native predecessor/successor and verification scope.
 
 | Area | Implemented behavior |
 |---|---|
-| Navigation | Four normal destinations: Workspace, Rig, Activity, and Settings. |
-| Workspace | Project/provider selection, persistent ordered package queue, CLU binding/coverage/findings, independent continuity toggle, readiness summary, and guarded Display All memory paging. |
-| Packages | Streamed hashing, deterministic universal inventory, explicit directory/reparse/failure records, bounded safe text derivation, paging/resume, retry, removal, revision identity, and ordered run attachment. |
-| Governance | Local/remote policy binding, immutable revision and coverage state, evidence evaluation, deduplicated findings, notifications, correction evidence, and redacted export. |
-| Continuity | Existing Manager-owned context continuity remains available and is skipped when the selected project/provider preference is off. It is not controlled through CLU tools. |
-| Execution | Manager-owned Responses runs, authorized native tool calls, pause/resume/stop, reattachment, and persisted provider binding. |
-| Telemetry | Native CPU, RAM, GPU, disk, volumes, processes, provider, store, continuity, and workflow observations. Unavailable observations remain explicit. |
-| Activity/Doctor | Bounded project-correlated package and CLU activity is projected with persisted identifiers. Settings Doctor checks project/package queue/cursor, CLU repository/notifications/export, continuity provider binding, memory, migration, and schema alignment. |
-| Data maintenance | Scrollable project-memory rows support visible per-row deletion and extended multi-selection deletion through `project_memory.forget`; continuity reset and exact-confirmation scope reset remain separate. |
-| Native host tools | Git and PowerShell 7 are discovered by exact executable path and receive a bounded explicit Windows tool environment even when the MCP launcher starts with a minimal `PATH`. |
-| LM Studio MCP | Primary, Fallback, and CLU registrations and synchronized bridges use an exact 180-second outer request deadline. Initialization and `forge_status` disclose the authorized project, ordered instruction-package folders, and active policy identity. Same-host model traffic uses unauthenticated loopback; HTTP 401/403 reports that Require Authentication must be disabled. Missing or stale values are repairable drift. Fallback remains separately selected; it is not an automatic call replay path. |
-| Persistence | Durable per-user state with legacy instruction-package migration and compatible governance-state migration. |
-| Packaging | Signed MSIX workflow with payload hashes, source provenance, certificate verification, and installer helper. |
+| Navigation | Workspace, Rig, Continuity, Activity, and Settings; no replacement run manager. |
+| Workspace | Authoritative project/provider selection, ordered package queue, immediate CLU policy-folder binding, Auto Continuity preference, memory browsing, and readiness. |
+| Packages | Universal inventory and streamed hashes; callable `instruction_package.read` returns the selected project queue row and paged content. |
+| Status | `get_forge_status` returns project ID/folder and binding source, ordered package paths, policy source/revision, tool names/count, and agent count. |
+| Governance | Bound repository reading, structured evidence evaluation, findings, model tool-result notifications, visible findings/correction history, and redacted export. |
+| Auto Continuity | Primary MCP worker observes native selected-chat usage, pauses at a completed tool boundary, requests a detailed model packet, creates a native successor chat, hands it over, and verifies packet retrieval and a following Forge call. |
+| Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
+| Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |
+| MCP | The same Primary, Fallback, and CLU integrations; exact 180-second deadline; no fourth plugin or new Forge credential. |
+| Agents | Ten specialist playbooks and baseline agent-session tools remain callable. |
+| Persistence/package | Existing per-user project/memory/policy stores and stable ForgeConductor.Windows MSIX identity. |
 
-Policy interpretation is intentionally honest: binary/opaque entries and access gaps remain visible instead of being omitted. CLU findings and policy coverage inform correction work but do not block unrelated execution or claim semantic proof beyond recorded evidence.
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
-LM Studio desktop chats and Manager-owned tasks remain separate. Existing desktop chats without a native task binding are not automatically enrolled in managed continuity.
+The native verification used an isolated Debug home, loaded `openai/gpt-oss-20b`, a 32,768-token capacity and 10,240-token total reserve. Native on-disk conversations independently contain the predecessor handoff call, successor handed message, all three integrations, packet retrieval, `agent_get`, and `get_forge_status`. Physical exhaustion, reattachment of an already-running agent, and interrupted-worker recovery were not exercised.
 
-Live supported-provider successor creation, restore, acknowledgement, and fencing have not been rerun for this 1.3.4 release. Enabled preferences are reported as `Preparing`; this status does not claim live continuity qualification or an `Active` lifecycle.
+The complete x64 Release backend and App builds exited 0. The final configured CTest matrix reported `100% tests passed out of 153` and `Total Test time (real) = 31.54 sec`, with exit code 0. All three static gates passed. These Release results are separate from the nine affected Debug suites used during native-chat development.
 
-The `v1.3.4` GitHub release is the latest published package.
-
-Ordinary data remains at `%LOCALAPPDATA%\Forge Conductor`. The historical `--alpha-root` option supports isolated validation. Historical reports describe their own artifacts and are not evidence for newer binaries.
+The installed `ForgeConductor.Windows_1.3.4.0` app was not replaced for release construction. Its existing profile was not used as a test server home. Historical reports describe their own artifacts and do not establish qualification for newer binaries.

@@ -69,11 +69,13 @@ constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "fs_move",
     "fs_read",
     "fs_write",
+    "get_forge_status",
     "git_add",
     "git_commit",
     "git_diff",
     "git_log",
     "git_status",
+    "instruction_package.read",
     "memory_delete",
     "memory_get",
     "memory_list",
@@ -81,10 +83,8 @@ constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "memory_set",
     "pdf_from_file",
     "pdf_write",
-    "project_memory.export",
     "project_memory.forget",
     "project_memory.get",
-    "project_memory.import",
     "project_memory.initialize",
     "project_memory.link",
     "project_memory.list_recent",
@@ -104,7 +104,7 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "681f607be69d470877bc4219557dd5db8db6b9b5234524f7c3470dc68fb3e1c7";
+    "adc1fc58d26acd92ed237aa07305f53696f4d50aa2a91f2a68ae90420efac84a";
 constexpr std::array<std::string_view, 5U> CluToolNames{
     "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
     "project_policy.read"};

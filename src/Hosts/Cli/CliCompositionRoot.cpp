@@ -76,18 +76,23 @@ private:
         const std::span<const std::string_view> arguments)
     {
         McpServeOptions options;
-        if (!arguments.empty()) {
-            if (arguments.size() != 2U || arguments.front() != "--home") {
-                std::cerr
-                    << "Usage: forge-conductor serve [--home PATH]\n";
+        for (std::size_t index{}; index < arguments.size(); index += 2U) {
+            if (index + 1U == arguments.size()) {
+                std::cerr << "Usage: forge-conductor serve [--home PATH] [--project-id UUID]\n";
                 return 2;
             }
-            auto home = Domain::PathText::create(arguments[1U]);
-            if (!home) {
-                throw std::runtime_error{
-                    home.error().code + ": " + home.error().message};
+            if (arguments[index] == "--home" && !options.explicitHome) {
+                auto home = Domain::PathText::create(arguments[index + 1U]);
+                if (!home) throw std::runtime_error{home.error().code + ": " + home.error().message};
+                options.explicitHome = std::move(home).value();
+            } else if (arguments[index] == "--project-id" && !options.projectId) {
+                auto project = Domain::ProjectId::parse(arguments[index + 1U]);
+                if (!project) throw std::runtime_error{project.error().code + ": " + project.error().message};
+                options.projectId = std::move(project).value();
+            } else {
+                std::cerr << "Unknown or repeated serve option: " << arguments[index] << '\n';
+                return 2;
             }
-            options.explicitHome = std::move(home).value();
         }
 
         McpServeCompositionRoot serveRoot{std::move(options)};
@@ -100,7 +105,7 @@ private:
             << "Forge Conductor for Windows\n"
             << "Usage: forge-conductor COMMAND\n"
             << "Commands:\n"
-            << "  serve [--home PATH]  Run one stdio MCP connection.\n"
+            << "  serve [--home PATH] [--project-id UUID]  Run one stdio MCP connection.\n"
             << "  mcp-serve             Alias for serve.\n"
             << "  mcp                   Alias for serve.\n"
             << "  version               Print the product version.\n"

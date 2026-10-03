@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "tools": [
     {
-      "description": "Alias of agent_get — full playbook body.",
+      "description": "Alias of agent_get \u2014 full playbook body.",
       "inputSchema": {
         "properties": {
           "agent_id": {
@@ -172,7 +172,7 @@
       "name": "clu.resolve"
     },
     {
-      "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",
+      "description": "Load latest (or id) handoff packet \u2014 call first in every new chat bootstrap.",
       "inputSchema": {
         "properties": {
           "handoff_id": {
@@ -787,7 +787,7 @@
             "type": "integer"
           },
           "limit": {
-            "description": "Alias for length — number of lines to return",
+            "description": "Alias for length \u2014 number of lines to return",
             "type": "integer"
           },
           "offset": {
@@ -823,6 +823,15 @@
         "type": "object"
       },
       "name": "fs_write"
+    },
+    {
+      "description": "Report the project folder, ordered instruction packages, development-policy folder, tool count, and agent count.",
+      "inputSchema": {
+        "additionalProperties": true,
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_forge_status"
     },
     {
       "description": "git add path or -A.",
@@ -868,6 +877,32 @@
         "type": "object"
       },
       "name": "git_status"
+    },
+    {
+      "description": "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "offset": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "queue_row_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "queue_row_id"
+        ],
+        "type": "object"
+      },
+      "name": "instruction_package.read"
     },
     {
       "description": "Delete a durable memory note by key.",
@@ -1021,25 +1056,6 @@
       "name": "pdf_write"
     },
     {
-      "description": "Create a checksummed project memory export artifact.",
-      "inputSchema": {
-        "additionalProperties": false,
-        "properties": {
-          "deadline_ms": {
-            "type": "integer"
-          },
-          "project_id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "project_id"
-        ],
-        "type": "object"
-      },
-      "name": "project_memory.export"
-    },
-    {
       "description": "Tombstone a record in one project.",
       "inputSchema": {
         "additionalProperties": false,
@@ -1092,38 +1108,6 @@
         "type": "object"
       },
       "name": "project_memory.get"
-    },
-    {
-      "description": "Preview or transactionally import a checksummed export.",
-      "inputSchema": {
-        "additionalProperties": false,
-        "properties": {
-          "artifact": {
-            "type": "string"
-          },
-          "deadline_ms": {
-            "type": "integer"
-          },
-          "expected_checksum": {
-            "type": "string"
-          },
-          "merge_policy": {
-            "type": "string"
-          },
-          "preview": {
-            "type": "boolean"
-          },
-          "project_id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "project_id",
-          "artifact"
-        ],
-        "type": "object"
-      },
-      "name": "project_memory.import"
     },
     {
       "description": "Create or open a durable project-scoped memory store.",
@@ -1439,8 +1423,13 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "path": { "type": "string" },
-          "offset": { "type": "integer", "minimum": 0 }
+          "path": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          }
         },
         "additionalProperties": false
       },
@@ -1544,6 +1533,7 @@
             "type": "string"
           },
           "decisions": {
+            "description": "For Auto Continuity, record all explicit user constraints as nonblank strings in this nonempty array.",
             "items": {
               "type": "string"
             },
@@ -1570,6 +1560,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "packet_json": {
+            "description": "JSON-string containing the complete model-authored packet object: goal, narrative, resume_seed, key_files array, next_actions array, and any other session_handoff fields. Arrays must be JSON arrays inside that object.",
+            "type": "string"
           },
           "project_slug": {
             "type": "string"

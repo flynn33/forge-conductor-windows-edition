@@ -294,17 +294,19 @@ void runMatrix(const Json& fixture)
         fixture.value("schema_version", 0U) == 1U,
         "Unexpected MCP contract fixture schema version");
     require(
-        fixture.value("expected_tool_count", 0U) == 53U,
-        "The fixture must require exactly 53 tools");
+        fixture.value("expected_tool_count", 0U) == 51U,
+        "The fixture must require exactly 51 tools");
     validateLineage(fixture);
     const auto& tools = fixture.at("tools");
     const auto& caseDefaults = fixture.at("case_defaults");
     require(tools.is_array(), "Fixture tools must be an array");
-    require(tools.size() == 53U, "Fixture must contain exactly 53 tool rows");
+    require(tools.size() == 51U, "Fixture must contain exactly 51 tool rows");
 
     Contract::McpToolContractFixture catalogFixture{
         Contract::DependencyMode::Happy};
     auto catalogNames = catalogFixture.catalogToolNames();
+    require(std::erase(catalogNames, "get_forge_status") == 1U, "Status alias registered once; adapter tests verify parity.");
+    require(std::erase(catalogNames, "instruction_package.read") == 1U, "Package reader registered once; adapter tests verify content and paging.");
     require(std::erase(catalogNames, "project_policy.read") == 1U,
         "The Windows policy retrieval extension must be registered once; its Manager integration is tested separately.");
     const std::set<std::string> cluGovernanceNames{
@@ -354,7 +356,7 @@ void runMatrix(const Json& fixture)
     require(
         fixtureNames == catalogNames,
         "Fixture names do not exactly match the real MCP catalog");
-    require(executedCases == 212U, "The matrix did not execute 212 cases");
+    require(executedCases == 204U, "The matrix did not execute 204 cases");
 }
 
 } // namespace
@@ -365,7 +367,7 @@ int main(const int argc, const char* const argv[])
         require(argc == 2, "Expected one fixture path argument");
         runMatrix(readFixture(argv[1]));
         std::cout << "MCP tool contract matrix passed " << assertions
-                  << " assertions across 53 tools and 212 cases.\n";
+                  << " assertions across 51 tools and 204 cases.\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';

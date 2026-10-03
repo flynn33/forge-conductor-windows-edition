@@ -355,6 +355,26 @@ private:
     return std::find(values.begin(), values.end(), access) != values.end();
 }
 
+void readsStoredProjectWithUnavailableFolder()
+{
+    ScopedTestTree tree;
+    RegistryFake registry;
+    CountingUuidGenerator uuids;
+    WindowsProjectWorkspaceAuthority authority{registry, uuids, serveClient(), false};
+    const auto missing = pathText(tree.first() / L"offline-project");
+    registry.seed(projectId(), {missing});
+    requireError(authority.authorityFor(projectId(), activeContext()),
+        Domain::ErrorCodes::RecordNotFound, "missing workspace unexpectedly allowed file access");
+    const auto stored = take(authority.storedProjectAuthorityFor(projectId(), activeContext()));
+    require(stored.projectId() == projectId() && stored.intent() == Domain::FileAccess::Read,
+        "stored metadata lost its selected project identity");
+    requireError(authority.authorize(stored,
+        Domain::PathAuthorizationRequest{missing, missing, Domain::FileAccess::Read, false}, activeContext()),
+        Domain::ErrorCodes::Unauthorized, "stored metadata token authorized a filesystem path");
+    requireError(authority.storedProjectAuthorityFor(projectId(2U), activeContext()),
+        Domain::ErrorCodes::ProjectNotFound, "unknown project obtained stored metadata access");
+}
+
 void discoversProjectsAndRefreshesAliases()
 {
     ScopedTestTree tree;
@@ -695,6 +715,7 @@ int main()
 {
     using namespace ForgeConductor::Tests;
     TestRegistry tests;
+    addTest(tests, "dynamic_authority.stored_project_unavailable_folder", readsStoredProjectWithUnavailableFolder);
     addTest(tests, "dynamic_authority.registry_refresh", discoversProjectsAndRefreshesAliases);
     addTest(tests, "dynamic_authority.concurrent_first_issue", publishesOneStableIdDuringConcurrentFirstIssuance);
     addTest(tests, "dynamic_authority.foreign_stale_removed", rejectsForeignStaleAndNoLongerRegisteredCapabilities);

@@ -9,6 +9,7 @@ namespace ForgeConductor::Hosts::Cli {
 
 struct McpServeOptions final {
     std::optional<Domain::PathText> explicitHome;
+    std::optional<Domain::ProjectId> projectId;
 };
 
 class McpServeCompositionRoot final {

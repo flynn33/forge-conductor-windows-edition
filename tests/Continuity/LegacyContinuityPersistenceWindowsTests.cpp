@@ -365,6 +365,28 @@ void repositoryCasMergeRestartAndReset()
         "SELECT COUNT(*) FROM memory_notes WHERE key='ordinary-note'") == 1);
 }
 
+void selectedPacketDeletionRepairsPointers()
+{
+    Support::ScopedTestDirectory directory{L"P11-SelectedPacketDeletion"};
+    RepositoryFixture fixture{directory.path()};
+    const auto operation = context("58585858-5858-4858-8858-585858585858", "delete-selected");
+    const auto first = take(fixture.first->compareExchange(
+        {packet("delete-first", "First packet", true), std::nullopt}, operation));
+    const auto second = take(fixture.first->compareExchange(
+        {packet("keep-second", "Second packet", true), std::nullopt}, operation));
+    take(fixture.first->erase(first.packet.id, operation));
+    REQUIRE(!take(fixture.first->get(first.packet.id, operation)));
+    REQUIRE(take(fixture.first->get(second.packet.id, operation)) == second);
+    auto pointers = take(fixture.first->repairPointers(operation));
+    REQUIRE(pointers.latestId == second.packet.id);
+    REQUIRE(pointers.resumeReadyId == second.packet.id);
+    take(fixture.first->erase(first.packet.id, operation));
+    take(fixture.first->erase(second.packet.id, operation));
+    pointers = take(fixture.first->repairPointers(operation));
+    REQUIRE(!pointers.latestId && !pointers.resumeReadyId);
+    REQUIRE(take(fixture.first->list(100U, operation)).empty());
+}
+
 struct MemoryStorage final {
     std::mutex mutex;
     std::map<std::string, std::vector<std::byte>> files;
@@ -603,6 +625,27 @@ void projectionOrderingRepairAndReset()
     REQUIRE(repaired.latestWritten);
     REQUIRE(repaired.currentTaskWritten);
 
+    const auto deletion = context("58585858-5858-4858-8858-585858585858", "projection-selected-delete");
+    take(projections->erase(newer.packet.id, deletion));
+    const auto afterDelete = take(projections->repair({older},
+        Domain::LegacyContinuityPointerRepairOutcome{older.packet.id, std::nullopt, 0U}, deletion));
+    REQUIRE(afterDelete.latestWritten);
+    {
+        std::lock_guard lock{storage->mutex};
+        REQUIRE(!storage->files.contains("C:\\forge\\memory\\handoffs\\" + newer.packet.id.value() + ".json"));
+        const auto& bytes = storage->files.at("C:\\forge\\memory\\handoffs\\LATEST");
+        REQUIRE(std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size()) == older.packet.id.value());
+    }
+    take(projections->erase(older.packet.id, deletion));
+    static_cast<void>(take(projections->repair({}, {}, deletion)));
+    {
+        std::lock_guard lock{storage->mutex};
+        REQUIRE(!storage->files.contains("C:\\forge\\memory\\handoffs\\LATEST"));
+        REQUIRE(!storage->files.contains("C:\\forge\\memory\\current-task.md"));
+    }
+    static_cast<void>(take(projections->repair(repairRecords,
+        Domain::LegacyContinuityPointerRepairOutcome{newer.packet.id, newer.packet.id, 0U}, deletion)));
+
     const auto removed = take(projections->reset(
         resetConfirmation(),
         context("56565656-5656-4656-8656-565656565656", "projection-reset")));
@@ -628,6 +671,7 @@ int main()
     const std::vector<std::pair<std::string_view, TestFunction>> tests{
         {"legacy_continuity.repository_cas_merge_restart_reset",
          repositoryCasMergeRestartAndReset},
+        {"legacy_continuity.selected_packet_delete", selectedPacketDeletionRepairsPointers},
         {"legacy_continuity.projection_ordering_repair_reset",
          projectionOrderingRepairAndReset}};
     std::size_t passed{};

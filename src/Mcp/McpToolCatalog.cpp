@@ -66,11 +66,13 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"fs_move", "Move/rename a path.", "FilesystemToolPack", Write, true, false},
         {"fs_read", "Read a UTF-8 text file. Optional 1-based line window: offset (start line) + length/limit (line count). Response includes total_lines, start_line, end_line, has_more, next_offset. Do not re-call with the same offset when content was returned.", "FilesystemToolPack", Read, true, false},
         {"fs_write", "Write a UTF-8 text file.", "FilesystemToolPack", Write, true, false},
+        {"get_forge_status", "Report the project folder, ordered instruction packages, development-policy folder, tool count, and agent count.", "AgentToolPack", Read, false, false},
         {"git_add", "git add path or -A.", "GitToolPack", Write, true, false},
         {"git_commit", "git commit -m message.", "GitToolPack", Write, true, false},
         {"git_diff", "git diff (optional staged).", "GitToolPack", Read, true, false},
         {"git_log", "git log --oneline.", "GitToolPack", Read, true, false},
         {"git_status", "git status --porcelain.", "GitToolPack", Read, true, false},
+        {"instruction_package.read", "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.", "InstructionPackageToolPack", Read, true, false},
         {"memory_delete", "Delete a durable memory note by key.", "MemoryToolPack", Write, false, false},
         {"memory_get", "Read a durable memory note by key.", "MemoryToolPack", Read, false, false},
         {"memory_list", "List durable memory notes (optional prefix/tag; hides internal agent and continuity keys by default).", "MemoryToolPack", Read, false, false},
@@ -78,10 +80,8 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"memory_set", "Store a durable key/value note in Forge local memory (survives chat sessions).", "MemoryToolPack", Write, false, false},
         {"pdf_from_file", "Convert a local markdown/text file to PDF.", "DocsToolPack", Write, true, false},
         {"pdf_write", "Write a PDF from markdown-ish text (stdlib, no pandoc).", "DocsToolPack", Write, true, false},
-        {"project_memory.export", "Create a checksummed project memory export artifact.", "ProjectMemoryToolPack", Write, true, false},
         {"project_memory.forget", "Tombstone a record in one project.", "ProjectMemoryToolPack", Write, true, false},
         {"project_memory.get", "Fetch project memory records by stable ID.", "ProjectMemoryToolPack", Read, true, false},
-        {"project_memory.import", "Preview or transactionally import a checksummed export.", "ProjectMemoryToolPack", Write, true, false},
         {"project_memory.initialize", "Create or open a durable project-scoped memory store.", "ProjectMemoryToolPack", Write, false, false},
         {"project_memory.link", "Create an idempotent typed link between records.", "ProjectMemoryToolPack", Write, true, false},
         {"project_memory.list_recent", "List recent project records with bounded pagination.", "ProjectMemoryToolPack", Read, true, false},
@@ -148,6 +148,14 @@ using Property = std::pair<std::string_view, Json>;
 
 [[nodiscard]] Json legacySchema(const std::string_view name)
 {
+    if (name == "instruction_package.read") {
+        return objectSchema({
+            {"queue_row_id", primitive("string")},
+            {"path", primitive("string")},
+            {"cursor", primitive("string")},
+            {"offset", Json{{"type", "integer"}, {"minimum", 0}}}},
+            {"queue_row_id"}, AdditionalProperties::Denied);
+    }
     if (name == "project_policy.read") {
         return Json{{"type", "object"}, {"properties", {{"path", {{"type", "string"}}},
             {"offset", {{"type", "integer"}, {"minimum", 0}}}}}, {"additionalProperties", false}};
@@ -170,7 +178,7 @@ using Property = std::pair<std::string_view, Json>;
         return objectSchema({{"task", string}}, {"task"});
     }
     if (name == "session_checkpoint" || name == "session_handoff") {
-        return objectSchema(
+        auto schema = objectSchema(
             {{"goal", string},
              {"status", string},
              {"project_slug", string},
@@ -185,6 +193,14 @@ using Property = std::pair<std::string_view, Json>;
              {"handoff_id", Json{{"type", "string"}, {"description", "Update an existing packet"}}},
              {"resume_seed", string}},
             {});
+        if (name == "session_handoff") {
+            schema["properties"]["decisions"]["description"] =
+                "For Auto Continuity, record all explicit user constraints as nonblank strings in this nonempty array.";
+            schema["properties"]["packet_json"] = Json{
+                {"type", "string"},
+                {"description", "JSON-string containing the complete model-authored packet object: goal, narrative, resume_seed, key_files array, next_actions array, and any other session_handoff fields. Arrays must be JSON arrays inside that object."}};
+        }
+        return schema;
     }
     if (name == "context_get") {
         return objectSchema(

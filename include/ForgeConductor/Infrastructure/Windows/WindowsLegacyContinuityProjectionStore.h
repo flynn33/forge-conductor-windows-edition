@@ -48,6 +48,8 @@ public:
         const Domain::DestructiveConfirmation& confirmation,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<void> erase(const Domain::LegacyHandoffId& handoffId,
+        const Domain::OperationContext& context) noexcept override;
     void close() noexcept override;
 
 private:

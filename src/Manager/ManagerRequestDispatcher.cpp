@@ -695,18 +695,8 @@ private:
 
         std::optional<Domain::ManagedRunSnapshot> selectedRun;
         if (request.runId) {
-            if (!managedRuns_) {
-                return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
-                    error(
-                        Domain::ErrorCodes::InvalidRequest,
-                        "Managed runs are unavailable in this Manager composition."));
-            }
-            auto run = managedRuns_->status(*request.runId, context);
-            if (!run) {
-                return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(
-                    std::move(run).error());
-            }
-            selectedRun = std::move(run).value();
+            return Domain::Result<Domain::ManagerTelemetrySnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest, "Managed Run telemetry has been removed. Sessions are LM Studio chats."));
         }
 
         std::optional<Domain::RuntimeDiagnosticSnapshot> runtimeDiagnostics;
@@ -2676,6 +2666,77 @@ private:
         const ManagerOperationalRequest& request,
         const Domain::OperationContext& context)
     {
+        if (request.area == ManagerOperationalArea::ProjectRecords) {
+            if (!request.projectId || (request.action != ManagerOperationalAction::EditRecord &&
+                request.action != ManagerOperationalAction::DeleteRecord)) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest, "Select a project record to edit or delete."));
+            }
+            auto arguments = nlohmann::json::parse(request.summary, nullptr, false);
+            if (!arguments.is_object() || (arguments.contains("project_id") &&
+                arguments.at("project_id") != request.projectId->value())) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest, "The record action must match the selected project."));
+            }
+            arguments["project_id"] = request.projectId->value();
+            const auto tool = request.action == ManagerOperationalAction::DeleteRecord
+                ? "project_memory.forget" : "project_memory.update";
+            auto result = invokeTool(managerRequest,
+                {*request.projectId, tool, arguments.dump()}, context);
+            if (!result) return Domain::Result<ManagerOperationalSnapshot>::failure(result.error());
+            if (!result.value().ok) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                result.value().error.value_or(error(Domain::ErrorCodes::InternalFailure, "Record action failed.")));
+            return Domain::Result<ManagerOperationalSnapshot>::success({request.area,
+                "Selected record updated.", {result.value().canonicalPayload}});
+        }
+        if (request.action == ManagerOperationalAction::EditRecord || request.action == ManagerOperationalAction::DeleteRecord)
+            return Domain::Result<ManagerOperationalSnapshot>::failure(error(
+                Domain::ErrorCodes::InvalidRequest, "Record actions require the saved-records view."));
+        if (request.area == ManagerOperationalArea::Continuity) {
+            auto* packets = telemetrySources_.legacyPackets;
+            auto* service = telemetrySources_.legacyContinuity;
+            auto* files = telemetrySources_.packetFiles;
+            if (!packets || !service || !files) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                error(Domain::ErrorCodes::HostCapabilityUnavailable, "Continuity packet storage is unavailable."));
+            if (request.action == ManagerOperationalAction::DeletePacket) {
+                auto id = Domain::LegacyHandoffId::parse(request.summary);
+                if (!id) return Domain::Result<ManagerOperationalSnapshot>::failure(id.error());
+                auto removed = packets->erase(id.value(), context);
+                if (!removed) return Domain::Result<ManagerOperationalSnapshot>::failure(removed.error());
+                auto cleaned = files->erase(id.value(), context);
+                if (!cleaned) return Domain::Result<ManagerOperationalSnapshot>::failure(cleaned.error());
+                auto repaired = service->repairProjections(context);
+                if (!repaired) return Domain::Result<ManagerOperationalSnapshot>::failure(repaired.error());
+            } else if (request.action == ManagerOperationalAction::ClearPackets) {
+                auto cleared = service->reset({"reset_legacy_continuity", "legacy-context-continuity",
+                    "RESET LEGACY CONTINUITY"}, context);
+                if (!cleared) return Domain::Result<ManagerOperationalSnapshot>::failure(cleared.error());
+                if (!cleared.value().verified) return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    error(Domain::ErrorCodes::InternalFailure, "Packet records were cleared, but packet file cleanup needs retry."));
+            } else if (request.action != ManagerOperationalAction::Inspect) {
+                return Domain::Result<ManagerOperationalSnapshot>::failure(
+                    error(Domain::ErrorCodes::InvalidRequest, "Unsupported continuity packet action."));
+            }
+            auto records = packets->list(100U, context);
+            if (!records) return Domain::Result<ManagerOperationalSnapshot>::failure(records.error());
+            ManagerOperationalSnapshot result{ManagerOperationalArea::Continuity,
+                "Latest " + std::to_string(records.value().size()) + " saved LM Studio chat packets (up to 100).", {}};
+            for (const auto& record : records.value()) {
+                const auto& packet = record.packet;
+                result.lines.push_back(nlohmann::json{{"id", packet.id.value()},
+                    {"goal", packet.goal}, {"status", packet.status},
+                    {"project_folder", packet.workingDirectory.value_or("")},
+                    {"narrative", packet.narrative}, {"next_actions", packet.nextActions},
+                    {"decisions", packet.decisions}, {"blockers", packet.blockers}}.dump());
+            }
+            return Domain::Result<ManagerOperationalSnapshot>::success(std::move(result));
+        }
+        if (request.area == ManagerOperationalArea::Runs || request.area == ManagerOperationalArea::Evidence)
+            return Domain::Result<ManagerOperationalSnapshot>::failure(error(Domain::ErrorCodes::InvalidRequest,
+                "Managed Run readback has been removed. Sessions are LM Studio chats."));
+        if (request.action == ManagerOperationalAction::DeletePacket || request.action == ManagerOperationalAction::ClearPackets)
+            return Domain::Result<ManagerOperationalSnapshot>::failure(error(Domain::ErrorCodes::InvalidRequest,
+                "Packet actions require the Continuity view."));
         if (telemetrySources_.operational == nullptr) {
             return Domain::Result<ManagerOperationalSnapshot>::failure(error(
                 Domain::ErrorCodes::InvalidRequest,
@@ -3237,66 +3298,7 @@ private:
                 std::move(settings).error());
             lines.push_back(std::string{"Effective shell policy: "} +
                 (settings.value().shellEnabled ? "enabled" : "disabled"));
-            if (!request.projectId || !managedRuns_) {
-                lines.push_back("Job inventory: select an authorized project to inspect persisted managed runs");
-            } else {
-                auto sessions = service.sessions(context);
-                if (!sessions) return Domain::Result<ManagerOperationalSnapshot>::failure(
-                    std::move(sessions).error());
-                std::set<std::string> seen;
-                std::vector<std::string> jobs;
-                std::size_t active{};
-                std::size_t completed{};
-                std::size_t failed{};
-                std::size_t stopped{};
-                const auto append = [&](const Domain::AgentSession& session)
-                    -> Domain::Result<void> {
-                    if (session.agentId.value() != "forge-managed-run" ||
-                        !seen.insert(session.id.value()).second) {
-                        return Domain::Result<void>::success();
-                    }
-                    auto run = managedRuns_->status(session.id, context);
-                    if (!run) return Domain::Result<void>::failure(std::move(run).error());
-                    const auto& record = run.value().record;
-                    if (record.projectId != *request.projectId)
-                        return Domain::Result<void>::success();
-                    const char* state = "unknown";
-                    switch (record.state) {
-                    case Domain::ManagedRunState::Running: state = "running"; ++active; break;
-                    case Domain::ManagedRunState::Paused: state = "paused"; ++active; break;
-                    case Domain::ManagedRunState::Cancelling: state = "stopping"; ++active; break;
-                    case Domain::ManagedRunState::Completed: state = "completed"; ++completed; break;
-                    case Domain::ManagedRunState::Failed: state = "failed"; ++failed; break;
-                    case Domain::ManagedRunState::Cancelled: state = "stopped"; ++stopped; break;
-                    }
-                    const auto outcome = record.lastError
-                        ? "Error · " + record.lastError->message
-                        : record.outputText && !record.outputText->empty()
-                            ? "Result · " + *record.outputText
-                            : "Result · not recorded yet";
-                    jobs.push_back("Job " + record.runId.value() + " · " + state +
-                        "\nMission · " + Domain::truncateAgentSummaryUtf8(record.task, 240U) +
-                        "\n" + Domain::truncateAgentSummaryUtf8(outcome, 800U));
-                    return Domain::Result<void>::success();
-                };
-                for (const auto& session : sessions.value().open) {
-                    auto appended = append(session);
-                    if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
-                        std::move(appended).error());
-                }
-                for (const auto& session : sessions.value().recent) {
-                    auto appended = append(session);
-                    if (!appended) return Domain::Result<ManagerOperationalSnapshot>::failure(
-                        std::move(appended).error());
-                }
-                lines.push_back("Job inventory: " + std::to_string(jobs.size()) +
-                    " recent selected-project runs · " + std::to_string(active) +
-                    " active · " + std::to_string(completed) + " completed · " +
-                    std::to_string(failed) + " failed · " +
-                    std::to_string(stopped) + " stopped");
-                lines.insert(lines.end(), std::make_move_iterator(jobs.begin()),
-                    std::make_move_iterator(jobs.end()));
-            }
+            lines.push_back("Sessions are LM Studio chats. Visible chat control is unavailable.");
         }
         if (request.area == ManagerOperationalArea::Manager) {
             auto manager = controller_->status(context);
@@ -3607,16 +3609,16 @@ private:
                     return controllerResponse(request, toolsSnapshot());
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerToolInvokeRequest>) {
-                    return controllerResponse(
-                        request, invokeTool(request, payload, context));
+                    return responseWithError(request, error(Domain::ErrorCodes::InvalidRequest,
+                        "Desktop tool invocation has been removed. Call Forge tools from LM Studio."));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerOperationalRequest>) {
                     return controllerResponse(
                         request, operationalSnapshot(request, payload, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerMaintenanceRequest>) {
-                    return controllerResponse(
-                        request, resetData(payload, context));
+                    return responseWithError(request, error(Domain::ErrorCodes::InvalidRequest,
+                        "Scope resets have been removed. Select data records to delete."));
                 } else if constexpr (
                     std::is_same_v<Payload, Domain::ManagerControlRequest>) {
                     return controllerResponse(
@@ -3631,106 +3633,13 @@ private:
                         request,
                         std::move(outcome));
                 } else if constexpr (
-                    std::is_same_v<Payload, ManagedRunStartRequest>) {
-                    if (!managedRuns_) {
-                        return responseWithError(
-                            request,
-                            error(
-                                Domain::ErrorCodes::InvalidRequest,
-                                "Managed runs are unavailable in this Manager composition."));
-                    }
-                    auto preference = automaticContinuityPreference(
-                        payload.projectId, std::nullopt, context);
-                    if (!preference) {
-                        return responseWithError(
-                            request, std::move(preference).error());
-                    }
-                    auto task = managedRunTaskWithInstructions(
-                        payload.projectId, payload.task,
-                        payload.allowTools, context);
-                    if (!task) {
-                        return responseWithError(
-                            request, std::move(task).error());
-                    }
-                    if (telemetrySources_.projectPolicy) {
-                        auto policy = telemetrySources_.projectPolicy->execute(
-                            {payload.projectId, Contracts::ProjectPolicyAction::Inspect}, context);
-                        if (!policy) return responseWithError(request, policy.error());
-                        const auto state = nlohmann::json::parse(policy.value());
-                        if (state.value("active", false)) {
-                            const auto guidance = std::string{"\n\nCLU GOVERNANCE CONTEXT\nBound source: "} +
-                                state.value("source", "") + "\nSnapshot: " + state.value("revision", "") +
-                                "\nUse project_policy.read to inspect the exact policy revision and source coverage. "
-                                "CLU findings are non-blocking governance guidance: correct reported violations and retain evidence. "
-                                "Open findings: " + std::to_string(state.value("open_findings", 0U)) +
-                                "; coverage gaps: " + std::to_string(state.value("coverage_gap_count", 0U)) + ".\n";
-                            if (task.value().size() + guidance.size() > Domain::MaximumManagedRunTaskBytes)
-                                return responseWithError(request, error(Domain::ErrorCodes::PayloadTooLarge, "Task and policy guidance exceed the run input limit."));
-                            task.value() += guidance;
-                        }
-                    }
-                    return controllerResponse(
-                        request,
-                        managedRuns_->start(
-                            Domain::ManagedRunStartRequest{
-                                payload.runId,
-                                payload.projectId,
-                                payload.clientId,
-                                context.operationId,
-                                context.correlationId,
-                                payload.authorityGeneration,
-                                std::move(task).value(),
-                                payload.allowTools,
-                                preference.value().enabled},
-                            context));
-                } else if constexpr (
-                    std::is_same_v<Payload, ManagedRunStatusRequest>) {
-                    if (!managedRuns_) {
-                        return responseWithError(
-                            request,
-                            error(
-                                Domain::ErrorCodes::InvalidRequest,
-                                "Managed runs are unavailable in this Manager composition."));
-                    }
-                    return controllerResponse(
-                        request,
-                        managedRuns_->status(payload.runId, context));
-                } else if constexpr (
-                    std::is_same_v<Payload, ManagedRunCancelRequest>) {
-                    if (!managedRuns_) {
-                        return responseWithError(
-                            request,
-                            error(
-                                Domain::ErrorCodes::InvalidRequest,
-                                "Managed runs are unavailable in this Manager composition."));
-                    }
-                    return controllerResponse(
-                        request,
-                        managedRuns_->cancel(payload.runId, context));
-                } else if constexpr (
-                    std::is_same_v<Payload, ManagedRunPauseRequest>) {
-                    if (!managedRuns_) {
-                        return responseWithError(
-                            request,
-                            error(
-                                Domain::ErrorCodes::InvalidRequest,
-                                "Managed runs are unavailable in this Manager composition."));
-                    }
-                    return controllerResponse(
-                        request,
-                        managedRuns_->pause(payload.runId, context));
-                } else if constexpr (
+                    std::is_same_v<Payload, ManagedRunStartRequest> ||
+                    std::is_same_v<Payload, ManagedRunStatusRequest> ||
+                    std::is_same_v<Payload, ManagedRunCancelRequest> ||
+                    std::is_same_v<Payload, ManagedRunPauseRequest> ||
                     std::is_same_v<Payload, ManagedRunResumeRequest>) {
-                    if (!managedRuns_) {
-                        return responseWithError(
-                            request,
-                            error(
-                                Domain::ErrorCodes::InvalidRequest,
-                                "Managed runs are unavailable in this Manager composition."));
-                    }
-                    return controllerResponse(
-                        request,
-                        managedRuns_->resume(payload.runId, context));
+                    return responseWithError(request, error(Domain::ErrorCodes::InvalidRequest,
+                        "Managed Run has been removed. Sessions are LM Studio chats."));
                 } else {
                     return responseWithError(
                         request,

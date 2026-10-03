@@ -165,6 +165,27 @@ WindowsProjectWorkspaceAuthority::cachedAuthorityId(
 }
 
 Domain::Result<Contracts::WorkspaceAuthority>
+WindowsProjectWorkspaceAuthority::storedProjectAuthorityFor(
+    const Domain::ProjectId& projectId,
+    const Domain::OperationContext& context) noexcept
+{
+    try {
+        auto descriptor = currentDescriptor(projectId, context);
+        if (!descriptor) return Domain::Result<Contracts::WorkspaceAuthority>::failure(descriptor.error());
+        auto id = uuidGenerator_.next();
+        if (!id) return Domain::Result<Contracts::WorkspaceAuthority>::failure(id.error());
+        // Stored-record reads do not open the workspace. This token is not entered
+        // in the filesystem authority cache and cannot authorize a path.
+        return issueAuthority(Domain::AuthorityId{std::move(id).value()}, projectId,
+            serveClientId_, descriptor.value().aliases, Domain::FileAccess::Read,
+            {Domain::FileAccess::Read}, {}, false, InitialGeneration);
+    } catch (...) {
+        return internalFailure<Contracts::WorkspaceAuthority>(
+            "The stored project binding could not be read.");
+    }
+}
+
+Domain::Result<Contracts::WorkspaceAuthority>
 WindowsProjectWorkspaceAuthority::authorityFor(
     const Domain::ProjectId& projectId,
     const Domain::OperationContext& context) noexcept

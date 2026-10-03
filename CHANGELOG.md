@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.5 - LM Studio chat Auto Continuity
+
+- Remove Managed Run/readback and its callable product routes, Export selected project, Import verify first, the Actions frame/Invoke Tool, Advanced Canonical Catalog, Scope Test, Reset Scope, Apply and Verify, and the old Data Maintenance scheme. Sessions remain LM Studio chats; baseline agent-session tools are not a replacement run manager.
+- Restore Load effective settings, Save and read back, Revert pending edits, Test LM Studio, and Restart Manager. Keep Settings data actions as selectable records and buttons; add a Continuity packet list with delete-selection and clear actions.
+- Report the authoritative project ID/folder and binding source, ordered instruction-package paths, development-policy folder, tool names/count, and agent count through `get_forge_status`. Add callable selected-package retrieval through `instruction_package.read`.
+- Bind a selected development-policy repository immediately from the CLU folder picker. Rename controls to their actions; reinforce bound policies with the model and return findings through tool-result notifications and the findings UI/Activity.
+- Add native selected-conversation usage monitoring and a completed-tool-boundary pause. Ask the loaded model for a detailed packet, publish it for project-scoped connector pickup, create the next visible LM Studio chat through product Windows UI Automation, hand over the packet, and verify a following Forge tool call.
+- Keep install/repair as one action for the existing Primary, Fallback, and CLU integrations. No fourth plugin, Forge-held credential, login step, or model-instruction file is added.
+- Pass the full 153-entry x64 Release CTest matrix, Release backend/App builds, and three static gates. Keep the nine affected Debug suites and isolated native-chat verification labeled separately. Correct the process test's temporary directory placement without stopping the installed Manager or weakening its assertion.
+
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
+
 ## 1.3.4 — LM Studio unauthenticated-loopback diagnostics
 
 - Record the supported same-host contract: LM Studio must allow unauthenticated loopback requests. Enabling **Require Authentication** (`json.tokenMode=required`) can leave the LM Studio UI showing connected while Work Space model discovery and the Responses contract probe fail.

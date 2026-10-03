@@ -1,83 +1,59 @@
 # User guide
 
-Launch Forge Conductor from Start. Normal operation has four destinations: **Workspace**, **Rig**, **Activity**, and **Settings**.
+Launch Forge Conductor from Start. The destinations are **Workspace**, **Rig**, **Continuity**, **Activity**, and **Settings**. Work happens in LM Studio chats.
 
 ## Prepare a workspace
 
-1. Open **Workspace**, register or select the project folder, and select its saved provider profile.
-2. Add zero or more instruction-package folders. Each selected folder becomes a project-scoped queue row. Use **Move up** and **Move down** to define the order supplied to new work.
-3. Optionally bind a local or remote development-policy source under **CLU governance**, then inspect its immutable revision and coverage.
-4. Set **Automatic continuity** independently for this project/provider pair.
-5. Review readiness. A missing optional policy or disabled continuity does not block ordinary work.
+1. Register or select the project folder in Workspace and choose its provider profile.
+2. Add instruction-package folders. Move queue rows up or down to define execution order.
+3. Under CLU governance, choose **Choose policy folder...**. Selecting a repository folder binds it immediately; there is no second Bind Source action.
+4. Set **Auto Continuity** for the selected project/provider and review readiness.
+5. Use the loaded model in LM Studio with the existing Forge integrations.
 
-Forge Conductor remembers the selected project/provider preference and queue. Closing the window does not cancel Manager-owned work.
+The Manager persists project access, packages, policy bindings, memory, preferences, and telemetry. The primary MCP process owns the native chat rollover worker. Closing Forge's window does not cancel LM Studio chat work.
 
-## Browse project memory
+## Instruction packages and status
 
-Select a project on **Workspace**. Enter text and choose **Search** for a bounded result, or choose **Display All** to load every active record. Display All follows Manager cursors in 100-record pages and stops with an explicit error if the record set changes, a cursor repeats, or the reported count is inconsistent. Select a visible row to inspect or edit that exact record.
+A package is a folder. Intake inventories entries and streams hashes without extension, encoding, file-count, file-size, aggregate-size, depth, or name-based admission filters. Files, directories, reparse points, and read failures remain explicit. Safe derived text is bounded and content pages retain revision identity.
 
-## Instruction-package folders
+The model can call `get_forge_status` to obtain `workspace.project_id`, `workspace.project_root`, binding-source fields, `instruction_packages.packages` in execution order, the development-policy source/revision, tool names/count, and agent count. `home` is application data, not the project folder. An empty continuity path does not erase the registered workspace binding.
 
-A package is a folder, not a special manifest format. Intake walks the complete directory tree and does not reject a package because of file extension, encoding, NUL bytes, path depth, file count, individual size, aggregate size, or filename. Content is hashed incrementally rather than loaded wholesale.
+Call `instruction_package.read` with the selected `queue_row_id` from status. Read all cursor pages; an incomplete text entry is continued with its `path` and `next_offset`. The response includes the selected package, returned entries and content, completion markers, and `next_cursor`. Opaque or inaccessible entries retain coverage information. Packages from another project are not substituted.
 
-The queue records:
+## CLU policy repository
 
-- files and directories in deterministic order;
-- reparse points without silently following them;
-- metadata and SHA-256 content identities;
-- inaccessible or changed entries as explicit failures;
-- bounded derived UTF-8 text when safe, otherwise an opaque-content classification.
+CLU evaluates development-policy evidence. It does not create chats or control continuity. The folder picker selects a repository, not one policy file, and binds it on selection.
 
-Open a package to page through its inventory or bounded content. Cursors are tied to the package revision so a changed revision cannot be resumed accidentally. Retry a failed row after correcting its source. Removing a queued row affects future work; active execution retains the revision it already received.
+The remaining controls are **Reload policies from folder**, **Inspect status**, **Inspect findings**, **Export CLU log**, **Policy documents**, **Read document**, **Next part**, and **Selected policy document**. Reload intentionally adopts changed folder content. The model receives the bound source and the instruction to read and follow it through `project_policy.read`.
 
-New managed work receives the ordered package identities and available bounded text. Nothing is silently described as “ignored” or “unsupported”; entries that cannot be interpreted as text remain recorded and retrievable by identity.
+After a non-CLU tool operation, the adapter evaluates structured evidence and adds pending findings to the returned `clu_governance_notifications`. The loaded model therefore receives correction guidance. **Inspect findings** displays the findings and open count; Activity retains correlated evidence and correction history. Missing policy is an inactive state; findings remain nonblocking governance evidence.
 
-## CLU governance
+The CLU role exposes `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read`.
 
-CLU governs development-policy compliance only. It never starts, stops, or reports continuity.
+## LM Studio integrations
 
-Bind a policy source from the Workspace governance card. The binding records its source identity, immutable revision, entry inventory, interpretation state, and coverage gaps. Use the document reader to inspect bounded pages. Refresh deliberately when the source changes.
+**Install or repair all three plugins** is one action for `forge-conductor`, `forge-conductor-fallback`, and `forge-conductor-clu`. Foreign integrations and unknown configuration fields are preserved. Each Forge registration uses the exact 180-second outer request deadline; Forge `shell_exec` remains capped at 120 seconds.
 
-During development, CLU can:
+Primary owns automatic chat rollover. Fallback is an independent general-catalog integration, not automatic replay of an ambiguous timed-out mutation. CLU supplies governance tools and receives project packet context through shared initialization; recover packets through Primary or Fallback. No continuity plugin or new Forge credential is required. Same-host model traffic retains the existing unauthenticated loopback contract.
 
-- evaluate structured evidence against the bound policy;
-- create deduplicated findings and correction requests;
-- expose pending notification receipts;
-- accept correction evidence and resolve findings;
-- export a redacted governance history.
+## Auto Continuity and packets
 
-Governance is nonblocking by design. No bound policy produces an inactive state rather than preventing work. A finding informs the operator and requests correction; it does not impersonate the independent runtime-continuity system.
+The Workspace/dashboard **Auto Continuity** toggle is persisted for the selected project/provider. Settings exposes effective capacity, next-response reserve, handoff reserve, and safety margin.
 
-The dedicated `clu` MCP role exposes `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read`.
+The primary worker reads the selected native LM Studio conversation's actual generation usage and loaded capacity. At context reserve pressure it stops generation at a completed tool boundary without cutting off an active Forge tool. It requests a detailed model-written packet containing goal, verified work, decisions and constraints, files, blockers, agent sessions, and ordered next actions. `session_handoff` saves that packet and publishes project-scoped pickup.
 
-## LM Studio MCP roles
+The product opens **New chat** through Windows UI Automation, retains the same three integrations and loaded model, sends the packet, and checks the exact successor conversation ID and persisted handed message. The successor calls `context_get` and then another Forge tool. Packet storage or an MCP connection ID alone is not credited as native chat rollover.
 
-Forge installs three independent LM Studio integrations: **Primary**, **Fallback**, and **CLU**. Each registration uses an exact 180-second LM Studio request timeout. Forge `shell_exec` requests remain capped at 120 seconds, leaving time for Forge to return the result before LM Studio closes the request.
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
-When a role connects, Forge's MCP initialization instructions identify the exact registered project folder, the ordered instruction-package folders, and the active development-policy source and revision. `forge_status` returns the same facts as structured `workspace`, `instruction_packages`, and `development_policy` fields. The `home` field remains Forge's application-data directory and is not the project folder. An empty handoff `paths` object or empty continuity `implicit_roots` list describes that continuity record only; it does not override the authoritative workspace binding reported by `forge_status`.
+The **Continuity** view shows saved packets and selected packet detail. Use **Refresh packets**, **Delete selected packet**, or **Clear all packets**. These actions remove saved records, not policy folders or project source files.
 
-The local LM Studio model endpoint is an unauthenticated same-host loopback contract. Keep LM Studio **Require Authentication** disabled. If it is enabled, LM Studio can show connected while Work Space model discovery, the Responses contract probe, or automatic model preparation reports an authentication failure. Forge does not require a local LM Studio token or provide bearer-auth setup controls.
+## Memory and Settings
 
-Use `project_policy.read` to inspect the bounded policy document after locating its source through the initialization instructions or `forge_status`.
+Workspace **Search** reads a bounded page. **Display All** follows Manager cursors in 100-record pages and rejects inconsistent counts, repeated cursors, or changed record sets. Select a record to inspect or edit it.
 
-Fallback is a separately selected integration and health role. A timeout does not automatically replay the call through Fallback or switch the chat back to Primary. Before retrying a timed-out command that can change files, processes, or external state, inspect the relevant state because the original call may have completed after the client stopped waiting.
+Settings retains **Load effective settings**, **Save and read back**, **Revert pending edits**, **Test LM Studio**, and **Restart Manager**. Under **Saved project records**, select one or more records and press **Delete selected**, or use a row's **Delete record**. **Refresh records** reloads authoritative state. Source folders are not deleted. The old scope-reset scheme and Apply and Verify are removed.
 
-If a tool reports `MCP error -32001 Request timed out` near 60 seconds, finish or stop active calls, open **Settings → LM Studio plugins**, choose **Install or repair all three plugins**, then choose **Open LM Studio and connect plugins**. Select the intended Forge integration in the chat before retrying. Repair all three roles together; do not hand-edit only one registration. LM Studio reloads MCP configuration during repair, so an in-flight call can disconnect.
+Managed Run, its readback, Export selected project, Import verify first, the Actions frame and Invoke Tool, Advanced Canonical Catalog, Scope Test, and Reset Scope are removed. `agent_run_start`, `agent_run_status`, and `agent_run_complete` remain baseline specialist-session tools.
 
-## Automatic continuity
-
-The **Automatic continuity** toggle is saved per selected project/provider profile. When enabled, a Manager-owned run may use the existing context-capacity continuity path. When disabled, the run skips automatic continuity observations and remains otherwise unchanged.
-
-LM Studio desktop chats and Forge-managed runs are separate modes. Connecting MCP does not retroactively enroll a desktop chat in Manager-owned continuity.
-
-## Rig, Activity, and Settings
-
-- **Rig** shows live resource, provider, storage, process, context, continuity, and workflow health. Missing observations are displayed as unavailable, never as zero.
-- **Activity** presents operational outcomes and is the normal place to correlate work with CLU findings, corrections, notifications, and exported evidence.
-- **Settings** contains persistent runtime controls, explicitly scoped maintenance actions, and Doctor. With a project selected, Doctor checks package queue/cursor integrity, CLU repository/notification/export state, project memory, continuity provider binding, migrations, and schema alignment.
-
-Under **Settings → Data maintenance**, the selected project's memory appears in a scrollable list. Use **Delete record** on a row, or select multiple rows with the normal Windows Ctrl/Shift selection gestures and choose **Delete selected**. One destructive confirmation is shown, each selected memory key is sent through `project_memory.forget`, and the list refreshes afterward. **Reset project continuity** is a separate wipe action. The older exact-confirmation reset remains separate for project memory, project continuity, combined project data, or all registered project data.
-
-An enabled automatic-continuity preference can read `Preparing`. That means the Manager has the project/provider preference but release 1.3.4 has not established a live supported-provider successor lifecycle. Only real provider create/restore/acknowledge/fence evidence can justify `Active`.
-
-Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`. For disposable validation only, launch `ForgeConductorApp.exe --alpha-root <absolute-empty-folder>`.
+Rig shows unavailable or stale observations explicitly. Activity displays operational and governance outcomes. Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`; disposable validation uses a separate home.

@@ -1584,7 +1584,8 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             clientPresenceRepository_.get(),
             auditRepository_.get(),
             managedRunStore_.get(),
-            hasher_.get(), projectPolicy_.get()});
+            hasher_.get(), projectPolicy_.get(), legacyContinuityRepository_.get(),
+            legacyContinuity_.get(), legacyProjectionStore_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(

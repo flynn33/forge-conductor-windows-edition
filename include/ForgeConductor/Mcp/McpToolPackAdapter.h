@@ -19,6 +19,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <functional>
 #include <span>
 #include <string>
 
@@ -60,6 +61,10 @@ struct McpToolPackDependencies final {
     std::string runtimeName;
     std::uint32_t processId{};
     Contracts::IProjectPolicyService* projectPolicy{};
+    std::string startupBindingSource{"unspecified"};
+    std::function<std::string()> visibleChatContinuityStatus;
+    std::function<void(std::string_view, bool, std::string_view)> visibleChatToolResult;
+    std::function<void(const Domain::ProjectId&, const Domain::PathText&)> visibleChatWorkspaceBinding;
 };
 
 // Parses source-compatible tool arguments into transport-neutral Domain

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "expected_tool_count": 53,
+  "expected_tool_count": 51,
   "lineage": {
     "canonical_macos": {
       "tool_count": 53,
@@ -231,7 +231,7 @@
       "name": "forge_status",
       "macos_behavior": "Aggregates runtime identity, agents, tools, memory, presence, and continuity status.",
       "cases": {
-        "valid": {"arguments": {}, "expect": {"payload_contains": {"version": "0.9.0", "runtime": "windows-cpp", "home": "D:/workspace"}, "effects_exact": ["agent_catalog.all", "application_paths.data_root", "continuity_automation.snapshot", "forge_status.snapshot", "legacy_continuity.status_summary", "legacy_memory.list", "project_memory.list_recent", "project_registry.descriptor"]}},
+        "valid": {"arguments": {}, "expect": {"payload_contains": {"version": "0.9.0", "runtime": "windows-cpp", "home": "D:/workspace"}, "effects_exact": ["agent_catalog.all", "application_paths.data_root", "continuity_automation.snapshot", "forge_status.snapshot", "legacy_continuity.status_summary", "legacy_memory.get", "legacy_memory.list", "project_memory.list_recent", "project_registry.descriptor"]}},
         "invalid": {},
         "dependency_error": {"expect": {"effects_exact": ["project_registry.descriptor"]}},
         "boundary": {}
@@ -438,16 +438,6 @@
       }
     },
     {
-      "name": "project_memory.export",
-      "macos_behavior": "Publishes one checksummed project-memory export artifact under write authority.",
-      "cases": {
-        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001"}, "expect": {"payload_contains": {"record_count": 1, "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, "effects_exact": ["project_memory.export"]}},
-        "invalid": {},
-        "dependency_error": {"expect": {"effects_exact": ["project_memory.export"]}},
-        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "deadline_ms": 60000}}
-      }
-    },
-    {
       "name": "project_memory.forget",
       "macos_behavior": "Tombstones one stable project-memory record id.",
       "cases": {
@@ -465,16 +455,6 @@
         "invalid": {},
         "dependency_error": {"expect": {"effects_exact": ["project_memory.get"]}},
         "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "id": "60000000-0000-4000-8000-000000000006"}}
-      }
-    },
-    {
-      "name": "project_memory.import",
-      "macos_behavior": "Previews by default and commits only when preview=false; merge is explicit.",
-      "cases": {
-        "valid": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "artifact": "D:/workspace/project-memory-export.json", "preview": true}, "expect": {"payload_contains": {"disposition": "preview", "preview": true}, "effects_exact": ["project_memory.import"]}},
-        "invalid": {},
-        "dependency_error": {"expect": {"effects_exact": ["project_memory.import"]}},
-        "boundary": {"arguments": {"project_id": "10000000-0000-4000-8000-000000000001", "artifact": "D:/workspace/project-memory-export.json", "preview": false, "merge_policy": "merge"}, "expect_from": "", "expect": {"payload_contains": {"ok": true, "project_id": "10000000-0000-4000-8000-000000000001", "count": 1, "results": [{"record_id": "60000000-0000-4000-8000-000000000006"}], "schema_version": 1, "capability_version": 1}, "payload_absent": ["disposition", "preview"], "effects_exact": ["project_memory.import"]}}
       }
     },
     {
@@ -581,7 +561,7 @@
       "name": "session_handoff",
       "macos_behavior": "Finalizes a legacy handoff packet and returns its resume seed.",
       "cases": {
-        "valid": {"arguments": {"goal": "Ship the matrix", "status": "handoff_ready"}, "expect": {"payload_contains": {"action": "handoff", "handoff_required": true}, "effects_exact": ["legacy_continuity.handoff"]}},
+        "valid": {"arguments": {"goal": "Ship the matrix", "status": "handoff_ready"}, "expect": {"payload_contains": {"action": "handoff", "handoff_required": true}, "effects_exact": ["legacy_continuity.handoff", "legacy_memory.set"]}},
         "invalid": {},
         "dependency_error": {"expect": {"effects_exact": ["legacy_continuity.handoff"]}},
         "boundary": {"arguments": {}}

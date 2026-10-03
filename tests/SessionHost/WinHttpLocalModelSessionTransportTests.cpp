@@ -1406,11 +1406,7 @@ void automaticSetupUsesRealManagerAndPersistsProject()
         {"POST", "/v1/responses", 200U, reply("setup-check-1")},
         {"GET", "/api/v1/models", 200U, inventory},
         {"GET", "/v1/models", 200U, models},
-        {"POST", "/v1/responses", 200U, reply("setup-check-2")},
-        {"GET", "/v1/models", 200U, models},
-        {"POST", "/v1/responses", 200U,
-            R"({"id":"first-task-tool","status":"completed","output":[{"type":"function_call","name":"fs_write","call_id":"setup-first-write","arguments":"{\"path\":\"setup-proof.txt\",\"content\":\"Project setup completed real native work.\"}"}],"usage":{"input_tokens":20,"output_tokens":3}})"},
-        {"POST", "/v1/responses", 200U, reply("first-task")}}};
+        {"POST", "/v1/responses", 200U, reply("setup-check-2")}}};
     std::array<wchar_t, 32768> executable{};
     REQUIRE(GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size())) > 0);
     const auto root = std::filesystem::path{executable.data()}.parent_path().parent_path().parent_path().parent_path().parent_path() /
@@ -1488,28 +1484,10 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     REQUIRE(freshSettings.settings.localModelName == prepared.model);
     auto run = connection.startManagedRun(prepared.projectId,
         "forge-conductor-manager", 0U, "Write setup-proof.txt in this project.", true, {});
-    if (!run.loaded) throw std::runtime_error{"First task failed: " + run.message};
-    REQUIRE(run.snapshot.has_value());
-    const auto runId = run.snapshot->record.runId.value();
-    const auto deadline = std::chrono::steady_clock::now() + 10s;
-    while (run.snapshot->record.state == Domain::ManagedRunState::Running && std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::sleep_for(20ms);
-        run = connection.controlManagedRun(runId, App::ManagedRunAction::Status, {});
-        REQUIRE(run.loaded && run.snapshot);
-    }
-    if (run.snapshot->record.state != Domain::ManagedRunState::Completed) {
-        server.requireHealthy();
-        throw std::runtime_error{"First task did not complete: " + run.message +
-            (run.snapshot->record.lastError ? " " + run.snapshot->record.lastError->message : "")};
-    }
-    REQUIRE(run.snapshot->record.state == Domain::ManagedRunState::Completed);
-    REQUIRE(server.waitUntilHandled(9U, 5s));
-    std::ifstream proof{project / L"setup-proof.txt", std::ios::binary};
-    const std::string written{std::istreambuf_iterator<char>{proof}, std::istreambuf_iterator<char>{}};
-    REQUIRE(written == "Project setup completed real native work.");
-    const auto completion = Json::parse(server.requests().at(8).body);
-    REQUIRE(completion.at("previous_response_id") == "first-task-tool");
-    REQUIRE(completion.at("input").at(0).at("call_id") == "setup-first-write");
+    REQUIRE(!run.loaded && !run.snapshot);
+    REQUIRE(run.message.find("Managed Run has been removed") != std::string::npos);
+    REQUIRE(!std::filesystem::exists(project / L"setup-proof.txt"));
+    REQUIRE(server.waitUntilHandled(6U, 5s));
     namespace C = ForgeConductor::Contracts;
     const auto policyFolder = root / L"policy";
     std::filesystem::create_directories(policyFolder);
@@ -1522,14 +1500,28 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     const auto revision = Json::parse(binding.canonicalJson).at("revision").get<std::string>();
     const auto governed = connection.invokeTool(prepared.projectId, "fs_write",
         R"({"path":"governed.txt","content":"governance is non-blocking"})", {});
-    REQUIRE(governed.loaded && governed.snapshot && governed.snapshot->ok);
-    REQUIRE(std::filesystem::exists(project / L"governed.txt"));
-    const auto index = connection.invokeTool(prepared.projectId, "project_policy.read", "{}", {});
-    REQUIRE(index.loaded && index.snapshot && index.snapshot->ok);
-    const auto document = connection.invokeTool(prepared.projectId, "project_policy.read", R"({"path":"README.md"})", {});
-    REQUIRE(document.loaded && document.snapshot && document.snapshot->ok);
-    REQUIRE(Json::parse(document.snapshot->canonicalPayload).at("content") ==
+    REQUIRE(!governed.loaded && !governed.snapshot);
+    REQUIRE(!std::filesystem::exists(project / L"governed.txt"));
+    const auto note = connection.rememberProjectMemory(prepared.projectId,
+        "record-action-probe", "selected-row edit and delete", "probe content", {}, {});
+    REQUIRE(note.loaded && note.snapshot && note.snapshot->writtenRecordId);
+    const auto noteId = note.snapshot->writtenRecordId->value();
+    const auto edited = connection.projectRecord(prepared.projectId, false,
+        Json{{"id", noteId}, {"expected_version", 1}, {"title", "record-action-edited"}}.dump(), {});
+    REQUIRE(edited.loaded && edited.snapshot && edited.snapshot->ok);
+    REQUIRE(edited.snapshot->canonicalPayload.find("record-action-edited") != std::string::npos);
+    const auto deleted = connection.projectRecord(prepared.projectId, true,
+        Json{{"id", noteId}}.dump(), {});
+    REQUIRE(deleted.loaded && deleted.snapshot && deleted.snapshot->ok);
+    const auto remaining = connection.projectMemory(prepared.projectId, "record-action-edited", {});
+    REQUIRE(remaining.loaded && remaining.snapshot && remaining.snapshot->records.empty());
+    const auto document = take(client->projectPolicy({projectId,
+        C::ProjectPolicyAction::ReadDocument, "README.md", revision}, context()));
+    REQUIRE(Json::parse(document.canonicalJson).at("content") ==
         "FORBID_TOOL fs_write\nDevelopment policy guidance.");
+    const auto evaluated = take(client->projectPolicy({projectId,
+        C::ProjectPolicyAction::Evaluate, {}, revision,
+        R"({"tool_name":"fs_write","phase":"pre_execution","arguments":{}})"}, context()));
     const auto findings = take(client->projectPolicy({projectId,
         C::ProjectPolicyAction::ListFindings, {}, revision}, context()));
     REQUIRE(!Json::parse(findings.canonicalJson).at("findings").empty());
@@ -1538,7 +1530,7 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     REQUIRE(persistedPolicy.loaded);
     REQUIRE(Json::parse(persistedPolicy.canonicalJson).at("active").get<bool>());
     server.requireHealthy();
-    std::cout << "PASS automatic_setup.real_manager_project_retry_and_first_task " << root.string() << '\n';
+    std::cout << "PASS automatic_setup.real_manager_project_retry_and_removed_run " << root.string() << '\n';
 }
 
 void automaticModelPreparationCancelsPendingLoad()

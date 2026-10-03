@@ -45,6 +45,32 @@ constexpr std::size_t MaximumStatusInstructionPackages = 100U;
 constexpr std::size_t MaximumBootstrapInstructionPackages = 16U;
 constexpr std::int64_t DefaultReadWindowLines = 200;
 
+[[nodiscard]] bool hasLeadingFillerMarker(const std::string_view text)
+{
+    std::size_t start{};
+    for (std::size_t end = 0U; end <= text.size(); ++end) {
+        const bool boundary = end == text.size() || text[end] == '\n' || text[end] == '\r' ||
+            ((text[end] == '.' || text[end] == '!' || text[end] == '?') &&
+                (end + 1U == text.size() || std::isspace(static_cast<unsigned char>(text[end + 1U])) != 0));
+        if (!boundary) {
+            continue;
+        }
+        auto sentence = text.substr(start, end - start);
+        const auto first = sentence.find_first_not_of(" \t\r\n\f\v");
+        if (first != std::string_view::npos) {
+            sentence.remove_prefix(first);
+            for (const auto marker : {std::string_view{"lorem ipsum"}, std::string_view{"placeholder"}}) {
+                if (sentence.starts_with(marker) && (sentence.size() == marker.size() ||
+                    std::isalnum(static_cast<unsigned char>(sentence[marker.size()])) == 0)) {
+                    return true;
+                }
+            }
+        }
+        start = end + 1U;
+    }
+    return false;
+}
+
 template <typename T>
 [[nodiscard]] Domain::Result<T> failure(
     const std::string_view code,
@@ -1694,6 +1720,7 @@ public:
                         packageRows.push_back(PackageRow{
                             saved.value("order", std::uint64_t{}),
                             Json{
+                                {"queue_row_id", saved.at("queue_row_id")},
                                 {"name", saved.value(
                                     "package_name", hit.record.title)},
                                 {"path", saved.at("package_path")},
@@ -1707,10 +1734,35 @@ public:
                         ++invalidPackageRows;
                     }
                 }
+                auto orderPage = dependencies_.projectMemory.listRecent(
+                    Domain::ListRecentProjectMemoryRequest{
+                        projectId, {"instruction_package_queue_order"}, std::nullopt,
+                        1U, std::nullopt, true, 64U * 1024U}, projectMemoryContext);
+                if (!orderPage) return propagate<Json>(std::move(orderPage));
+                if (!orderPage.value().records.empty() &&
+                    orderPage.value().records.front().record.body) {
+                    const auto order = Json::parse(*orderPage.value().records.front().record.body);
+                    if (order.at("schema") != "forge-instruction-package-order-v1" ||
+                        order.at("project_id") != projectId.value()) {
+                        return failure<Json>(Domain::ErrorCodes::IntegrityFailure,
+                            "The instruction package order is invalid.");
+                    }
+                    std::uint64_t position{};
+                    for (const auto& id : order.at("rows")) {
+                        position += 1024U;
+                        for (auto& row : packageRows) {
+                            if (row.value.at("queue_row_id") == id) {
+                                row.order = position;
+                                row.value["order"] = position;
+                            }
+                        }
+                    }
+                }
                 std::ranges::sort(
                     packageRows,
                     [](const PackageRow& left, const PackageRow& right) {
-                        return left.order < right.order;
+                        return left.order != right.order ? left.order < right.order :
+                            left.value.at("queue_row_id") < right.value.at("queue_row_id");
                     });
             } else {
                 packageReadError = Json{
@@ -1776,13 +1828,15 @@ public:
                      {"project_id", descriptor.value().id.value()},
                      {"display_name", descriptor.value().displayName},
                      {"project_root", projectRoot},
-                     {"binding_source", "mcp_authorized_root"},
+                     {"binding_source", "registered_project"},
+                     {"startup_binding_source", dependencies_.startupBindingSource},
                      {"continuity_packet_independent", true},
                      {"authorized_roots", std::move(roots)}}},
                 {"instruction_packages",
                  Json{
                      {"available", packageReadAvailable},
                      {"read_in_order", true},
+                     {"read_tool", "instruction_package.read"},
                      {"instruction",
                       "Read and follow these folders in the listed order before project work."},
                      {"count", packageValues.size()},
@@ -1796,6 +1850,33 @@ public:
                 Domain::ErrorCodes::InternalFailure,
                 "The MCP workspace context could not be projected.");
         }
+    }
+
+    [[nodiscard]] Domain::Result<Domain::LegacyContinuityGetOutcome> projectHandoff(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context)
+    {
+        auto pointer = dependencies_.legacyMemory.get(
+            {"continuity/project/" + projectId.value()}, context);
+        if (!pointer) {
+            return propagate<Domain::LegacyContinuityGetOutcome>(std::move(pointer));
+        }
+        if (!pointer.value().note) {
+            return Domain::Result<Domain::LegacyContinuityGetOutcome>::success({});
+        }
+        auto id = parseOpaque<Domain::LegacyHandoffId>(
+            pointer.value().note->body, "project handoff id");
+        if (!id) {
+            return propagate<Domain::LegacyContinuityGetOutcome>(std::move(id));
+        }
+        auto packet = dependencies_.legacyContinuity.get(
+            {std::move(id).value(), true}, context);
+        if (packet && packet.value().record &&
+            (!packet.value().record->packet.resumeReady ||
+             packet.value().record->packet.source != Domain::LegacyHandoffSource::Model)) {
+            packet.value().record.reset();
+        }
+        return packet;
     }
 
     [[nodiscard]] Domain::Result<std::string> bootstrapInstructions(
@@ -1817,7 +1898,7 @@ public:
                 "Project folder: " + workspace.at("project_root").get<std::string>() +
                 "\nProject ID: " + workspace.at("project_id").get<std::string>() +
                 "\nRead and follow the instruction package folders in the listed order "
-                "before project work.\nInstruction package folders (ordered):";
+                "before project work. Call instruction_package.read with each queue_row_id from get_forge_status.\nInstruction package folders (ordered):";
             const auto& rows = packages.at("packages");
             if (rows.empty()) {
                 instructions += " none configured";
@@ -1850,6 +1931,30 @@ public:
             instructions +=
                 "\nCall forge_status for this complete structured context. The Forge home "
                 "path is application data only, not the project folder.";
+            auto handoff = projectHandoff(projectId, context);
+            if (!handoff) {
+                return propagate<std::string>(std::move(handoff));
+            }
+            if (handoff.value().record) {
+                const auto& packet = handoff.value().record->packet;
+                instructions +=
+                    "\nContinuity packet for this project: " + packet.id.value() +
+                    "\nBefore continuing, call context_get through forge-conductor or "
+                    "forge-conductor-fallback with handoff_id=\"" + packet.id.value() +
+                    "\" to acknowledge recovery. The CLU connector receives this packet "
+                    "as policy context; recover the session through the primary or fallback "
+                    "Forge connector. Resume its next_actions, retain its constraints, "
+                    "and verify its claims. "
+                    "Forge tools and agent-session tools remain available.\n";
+                const auto encoded = legacyPacketJson(packet).dump();
+                // Keep room for the connection identifier appended by McpServer.
+                if (instructions.size() + encoded.size() < 30U * 1024U) {
+                    instructions += "Continuity packet body:\n" + encoded;
+                } else {
+                    instructions += "The full packet exceeds the initialize budget; "
+                        "context_get returns it without truncation. Read it before work.";
+                }
+            }
             return Domain::Result<std::string>::success(std::move(instructions));
         } catch (...) {
             return failure<std::string>(
@@ -1928,22 +2033,6 @@ public:
                     Domain::ErrorCodes::InternalFailure,
                     "The MCP tool adapter produced a non-object payload.");
             }
-            if (dependencies_.projectPolicy &&
-                !authorizedCall.toolName().starts_with("clu.")) {
-                auto guidance = dependencies_.projectPolicy->execute(
-                    {authority.projectId(),
-                     Contracts::ProjectPolicyAction::ListFindings, {}, {},
-                     Json{{"acknowledge_notifications", true}}.dump()},
-                    operationContext.value());
-                if (guidance) {
-                    auto value = Json::parse(guidance.value(), nullptr, false);
-                    if (value.is_object() && value.contains("notifications") &&
-                        !value.at("notifications").empty()) {
-                        payload.value()["clu_governance_notifications"] =
-                            value.at("notifications");
-                    }
-                }
-            }
             if (authorizedCall.toolName() == "context_get" &&
                 payload.value().value("found", false)) {
                 const auto handoffId = payload.value().find("handoff_id");
@@ -1989,11 +2078,49 @@ public:
                     {authority.projectId(), Contracts::ProjectPolicyAction::Evaluate,
                      {}, {}, evidence.dump()}, operationContext.value()));
             }
+            if (dependencies_.projectPolicy &&
+                !authorizedCall.toolName().starts_with("clu.")) {
+                auto guidance = dependencies_.projectPolicy->execute(
+                    {authority.projectId(),
+                     Contracts::ProjectPolicyAction::ListFindings, {}, {},
+                     Json{{"acknowledge_notifications", true}}.dump()},
+                    operationContext.value());
+                if (guidance) {
+                    auto value = Json::parse(guidance.value(), nullptr, false);
+                    if (value.is_object() && value.contains("notifications") &&
+                        !value.at("notifications").empty()) {
+                        payload.value()["clu_governance_notifications"] =
+                            value.at("notifications");
+                    }
+                }
+            }
             auto encoded = codec.canonicalize(payload.value().dump());
             if (!encoded) {
                 return propagate<Domain::ToolCallOutcome>(std::move(encoded));
             }
             const bool ok = payload.value().value("ok", true);
+            if (dependencies_.visibleChatWorkspaceBinding) {
+                try {
+                    auto workspace = dependencies_.clientWorkspaceContext.snapshot(
+                        authorizedCall.clientId(), operationContext.value());
+                    if (workspace && workspace.value()) {
+                        dependencies_.visibleChatWorkspaceBinding(
+                            workspace.value()->projectId, workspace.value()->authorityRoot);
+                    } else if (!authority.trustedRoots().empty()) {
+                        dependencies_.visibleChatWorkspaceBinding(
+                            authority.projectId(), authority.trustedRoots().front());
+                    }
+                } catch (...) {
+                    // Optional native workspace observation cannot change a completed tool.
+                }
+            }
+            if (dependencies_.visibleChatToolResult) {
+                try {
+                    dependencies_.visibleChatToolResult(authorizedCall.toolName(), ok, encoded.value());
+                } catch (...) {
+                    // Optional chat observation cannot turn a completed tool into a failure.
+                }
+            }
             const bool continuityTool =
                 selected->tool.pack == "ContinuityToolPack" ||
                 selected->tool.pack == "ContinuityLifecycleToolPack";
@@ -2082,6 +2209,62 @@ private:
         std::optional<Domain::ContextRecoveryReceipt>& contextRecovery)
     {
         const auto& name = call.toolName();
+        if (name == "instruction_package.read") {
+            auto workspace = workspaceContext(authority.projectId(), std::nullopt, context);
+            if (!workspace) return propagate<Json>(std::move(workspace));
+            const auto rowId = arguments.at("queue_row_id").get<std::string>();
+            const auto& packages = workspace.value().at("instruction_packages").at("packages");
+            const auto selected = std::find_if(packages.begin(), packages.end(),
+                [&](const auto& row) { return row.at("queue_row_id") == rowId; });
+            if (selected == packages.end()) return failure<Json>(Domain::ErrorCodes::RecordNotFound,
+                "The selected instruction package is not in this project's queue.");
+            const auto path = arguments.value("path", std::string{});
+            const auto offset = arguments.value("offset", std::size_t{});
+            std::optional<std::string> cursor;
+            if (arguments.contains("cursor")) cursor = arguments.at("cursor").get<std::string>();
+            const Domain::OperationContext readContext{context.operationId,
+                (std::min)(context.deadline, dependencies_.clock.monotonicNow() + std::chrono::seconds{30}),
+                context.cancellation, context.correlationId};
+            Json entries = Json::array();
+            do {
+                auto page = dependencies_.projectMemory.search(
+                    Domain::SearchProjectMemoryRequest{authority.projectId(), rowId,
+                        {"instruction_package_entry"}, {}, std::nullopt,
+                        1U, cursor, true, 256U * 1024U}, readContext);
+                if (!page) return propagate<Json>(std::move(page));
+                cursor = page.value().nextCursor;
+                for (const auto& hit : page.value().records) {
+                    if (!hit.record.body) continue;
+                    auto entry = Json::parse(*hit.record.body);
+                    if (entry.at("queue_row_id") != rowId ||
+                        entry.at("revision") != selected->at("revision")) continue;
+                    if (!path.empty() && entry.at("relative_path") != path) continue;
+                    entry["content"] = nullptr;
+                    entry["complete"] = false;
+                    if (entry.contains("derived_text") && entry.at("derived_text").is_string()) {
+                        const auto text = entry.at("derived_text").get<std::string>();
+                        if (offset > text.size() || (offset < text.size() &&
+                            (static_cast<unsigned char>(text[offset]) & 0xc0U) == 0x80U))
+                            return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                                "The package offset must be a UTF-8 character boundary within the entry.");
+                        auto end = (std::min)(text.size(), offset + 16U * 1024U);
+                        while (end < text.size() &&
+                            (static_cast<unsigned char>(text[end]) & 0xc0U) == 0x80U) --end;
+                        entry["content"] = text.substr(offset, end - offset);
+                        entry["offset"] = offset;
+                        entry["next_offset"] = end;
+                        entry["complete"] = end == text.size();
+                    }
+                    entry.erase("derived_text");
+                    entries.push_back(std::move(entry));
+                }
+            } while (entries.empty() && cursor);
+            if (!path.empty() && entries.empty()) return failure<Json>(Domain::ErrorCodes::RecordNotFound,
+                "The selected package entry was not found.");
+            return Domain::Result<Json>::success(Json{{"package", *selected},
+                {"entries", std::move(entries)}, {"next_cursor", cursor ? Json(*cursor) : Json(nullptr)},
+                {"instruction", "Read all pages and entries. For an incomplete text entry, call with its path and next_offset. Entries without text retain explicit coverage details."}});
+        }
         if (name == "project_policy.read") {
             if (!dependencies_.projectPolicy) return failure<Json>(Domain::ErrorCodes::InvalidRequest, "Policy retrieval is unavailable in this composition.");
             auto inspected = dependencies_.projectPolicy->execute({authority.projectId(), Contracts::ProjectPolicyAction::Inspect}, context);
@@ -2098,7 +2281,7 @@ private:
         if (name.starts_with("clu.")) {
             return cluGovernance(name, authority, arguments, context);
         }
-        if (name == "forge_status" || name.starts_with("agent_")) {
+        if (name == "get_forge_status" || name == "forge_status" || name.starts_with("agent_")) {
             return agents(
                 name, call, authority, arguments, context, observation);
         }
@@ -2207,7 +2390,7 @@ private:
         const Domain::OperationContext& context,
         ToolContinuityObservationBuilder& observation)
     {
-        if (name == "forge_status") {
+        if (name == "get_forge_status" || name == "forge_status") {
             const auto roots = authority.trustedRoots();
             const std::optional<Domain::PathText> preferredRoot = roots.empty()
                 ? std::nullopt
@@ -2288,9 +2471,30 @@ private:
             for (const auto& root : automatic.implicitRoots) {
                 implicitRoots.push_back(root.value());
             }
+            auto resume = projectHandoff(authority.projectId(), context);
+            if (!resume) {
+                return propagate<Json>(std::move(resume));
+            }
+            auto visibleChat = Json::object();
+            if (dependencies_.visibleChatContinuityStatus) {
+                try {
+                    const auto observed = Json::parse(dependencies_.visibleChatContinuityStatus(), nullptr, false);
+                    if (observed.is_object() &&
+                        (!observed.contains("available") || observed["available"].is_boolean()) &&
+                        (!observed.contains("enabled") || observed["enabled"].is_boolean())) visibleChat = observed;
+                    else visibleChat["error"] = "The optional visible-chat observation was malformed.";
+                } catch (...) {
+                    visibleChat["error"] = "The optional visible-chat observation failed.";
+                }
+            }
             Json automaticStatus{
-                {"enabled", automatic.enabled},
+                {"packet_transport", "mcp_initialize_and_context_get"},
+                {"project_handoff", resume.value().record
+                    ? legacyPacketJson(resume.value().record->packet) : Json(nullptr)},
+                {"enabled", visibleChat.value("enabled", automatic.enabled)},
                 {"blocked", automatic.blocked},
+                {"handoff_pending", automatic.handoffPending},
+                {"visible_chat_handoff_available", visibleChat.value("available", false)},
                 {"handoff_id",
                  automatic.handoffId
                      ? Json(*automatic.handoffId)
@@ -2304,6 +2508,8 @@ private:
                 {"home_kind", "application_data"},
                 {"home_is_project", false},
                 {"client_id", call.clientId().value()},
+                {"agent_count", agents.size()},
+                {"tool_count", tools.size()},
                 {"agents", std::move(agents)},
                 {"tools", std::move(tools)},
                 {"memory_note_count", memoryCount},
@@ -2312,6 +2518,7 @@ private:
                 {"open_session_ids", std::move(openIds)},
                 {"continuity", std::move(continuityStatus)},
                 {"auto_continuity", std::move(automaticStatus)},
+                {"visible_chat_continuity", visibleChat},
                 {"workspace", std::move(projectContext.value().at("workspace"))},
                 {"instruction_packages",
                  std::move(projectContext.value().at("instruction_packages"))},
@@ -4698,6 +4905,107 @@ private:
         }
     }
 
+    [[nodiscard]] bool automaticHandoffRequested() const noexcept
+    {
+        if (!dependencies_.visibleChatContinuityStatus) {
+            return false;
+        }
+        try {
+            const auto status = Json::parse(
+                dependencies_.visibleChatContinuityStatus(), nullptr, false);
+            const auto* state = member(status, "state");
+            if (state == nullptr || !state->is_string()) {
+                return false;
+            }
+            const auto& value = state->get_ref<const std::string&>();
+            return value == "requesting_model_packet" ||
+                value == "waiting_for_model_packet" ||
+                value == "repairing_model_packet";
+        } catch (...) {
+            return false;
+        }
+    }
+
+    [[nodiscard]] Domain::Result<void> validateAutomaticHandoff(
+        const Json& arguments) const
+    {
+        std::vector<std::string> incomplete;
+        const auto* goal = member(arguments, "goal");
+        if (goal == nullptr || !goal->is_string() ||
+            goal->get_ref<const std::string&>().find_first_not_of(" \t\r\n\f\v") ==
+                std::string::npos) {
+            incomplete.emplace_back("goal (nonempty string)");
+        }
+        for (const auto key : {"narrative", "resume_seed"}) {
+            const auto* value = member(arguments, key);
+            if (value == nullptr || !value->is_string() ||
+                value->get_ref<const std::string&>().size() < 256U) {
+                incomplete.emplace_back(std::string{key} +
+                    " (detailed string of at least 256 characters)");
+            }
+            if (value != nullptr && value->is_string()) {
+                auto text = value->get<std::string>();
+                std::transform(text.begin(), text.end(), text.begin(),
+                    [](const unsigned char character) {
+                        return static_cast<char>(std::tolower(character));
+                    });
+                const auto first = text.find_first_not_of(" \t\r\n\f\v");
+                if (first == std::string::npos ||
+                    std::all_of(text.begin(), text.end(), [character = text[first]](const unsigned char codeUnit) {
+                        return std::isspace(codeUnit) != 0 || codeUnit == static_cast<unsigned char>(character);
+                    })) {
+                    incomplete.emplace_back(std::string{key} +
+                        " (actual detailed task state, not repeated-single-character padding)");
+                }
+                if (hasLeadingFillerMarker(text)) {
+                    incomplete.emplace_back(std::string{key} +
+                        " (task-specific prose without filler)");
+                }
+            }
+        }
+        for (const auto key : {"key_files", "next_actions", "decisions"}) {
+            const auto* value = member(arguments, key);
+            if (value == nullptr || !value->is_array() || value->empty() ||
+                !std::all_of(value->begin(), value->end(), [](const Json& item) {
+                    return item.is_string() &&
+                        item.get_ref<const std::string&>().find_first_not_of(" \t\r\n\f\v") !=
+                            std::string::npos;
+                })) {
+                incomplete.emplace_back(std::string{key} +
+                    (std::string_view{key} == "decisions"
+                        ? " (nonempty array of nonblank strings recording all explicit user constraints)"
+                        : " (nonempty array of actual path or ordered action strings)"));
+            } else if (std::string_view{key} == "next_actions") {
+                for (const auto& item : *value) {
+                    auto action = item.get<std::string>();
+                    const auto first = action.find_first_not_of(" \t\r\n\f\v");
+                    const auto last = action.find_last_not_of(" \t\r\n\f\v");
+                    action = action.substr(first, last - first + 1U);
+                    std::transform(action.begin(), action.end(), action.begin(),
+                        [](const unsigned char character) {
+                            return static_cast<char>(std::tolower(character));
+                        });
+                    if (action == "continue" || action == "resume" || action == "next") {
+                        incomplete.emplace_back("next_actions (replace continue/resume/next with concrete ordered actions)");
+                        break;
+                    }
+                }
+            }
+        }
+        if (incomplete.empty()) {
+            return Domain::Result<void>::success();
+        }
+        std::string message = "Auto Continuity session_handoff requires these complete packet fields: ";
+        for (std::size_t index = 0U; index < incomplete.size(); ++index) {
+            if (index != 0U) {
+                message += "; ";
+            }
+            message += incomplete[index];
+        }
+        message += ". No packet was saved. Resend session_handoff with these fields directly, or in the complete JSON object serialized into the accepted packet_json string; both forms are parsed against the same schema. Collections must be JSON arrays, not prose inside narrative or resume_seed. Do not invent handoff_id; omit it when creating a new packet.";
+        return failure<void>(Domain::ErrorCodes::InvalidRequest, std::move(message));
+    }
+
     [[nodiscard]] Domain::Result<Json> legacyContinuity(
         const std::string_view name,
         const Contracts::AuthorizedToolCall& call,
@@ -4707,14 +5015,47 @@ private:
         std::optional<Domain::ContextRecoveryReceipt>& contextRecovery)
     {
         if (name == "session_checkpoint" || name == "session_handoff") {
-            auto patch = legacyPatch(arguments);
+            Json writeArguments = arguments;
+            if (name == "session_handoff" && arguments.contains("packet_json")) {
+                const auto& encoded = arguments.at("packet_json");
+                if (!encoded.is_string()) {
+                    return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                        "packet_json must be a JSON-string containing a session_handoff argument object.");
+                }
+                const auto packet = Json::parse(
+                    encoded.get_ref<const std::string&>(), nullptr, false);
+                if (!packet.is_object() || packet.contains("packet_json")) {
+                    return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                        "packet_json must encode one JSON object of direct session_handoff fields; nested packet_json is not supported.");
+                }
+                writeArguments.erase("packet_json");
+                for (auto field = packet.begin(); field != packet.end(); ++field) {
+                    const auto outer = writeArguments.find(field.key());
+                    if (outer != writeArguments.end() && *outer != field.value()) {
+                        return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                            "packet_json conflicts with the outer session_handoff field: " + field.key() + ". No packet was saved.");
+                    }
+                    writeArguments[field.key()] = field.value();
+                }
+                auto valid = validateArgumentsAgainstSchema(writeArguments, *descriptor(name));
+                if (!valid) {
+                    return propagate<Json>(std::move(valid));
+                }
+            }
+            if (name == "session_handoff" && automaticHandoffRequested()) {
+                auto complete = validateAutomaticHandoff(writeArguments);
+                if (!complete) {
+                    return propagate<Json>(std::move(complete));
+                }
+            }
+            auto patch = legacyPatch(writeArguments);
             if (!patch) {
                 return propagate<Json>(std::move(patch));
             }
             std::optional<Domain::LegacyHandoffId> handoffId;
-            auto encodedId = legacyString(arguments, "handoff_id");
+            auto encodedId = legacyString(writeArguments, "handoff_id");
             if (!encodedId) {
-                encodedId = legacyString(arguments, "id");
+                encodedId = legacyString(writeArguments, "id");
             }
             if (encodedId && !encodedId->empty()) {
                 auto parsed = parseOpaque<Domain::LegacyHandoffId>(
@@ -4723,6 +5064,9 @@ private:
                     return propagate<Json>(std::move(parsed));
                 }
                 handoffId.emplace(std::move(parsed).value());
+            }
+            if (!patch.value().workingDirectory && !authority.trustedRoots().empty()) {
+                patch.value().workingDirectory = authority.trustedRoots().front().value();
             }
             Domain::LegacyContinuityWriteRequest request{
                 std::move(handoffId), std::move(patch).value()};
@@ -4740,9 +5084,28 @@ private:
             if (!result) {
                 return propagate<Json>(std::move(result));
             }
-            return Domain::Result<Json>::success(legacyPersistJson(
-                result.value(),
-                name == "session_checkpoint" ? "checkpoint" : "handoff"));
+            auto response = legacyPersistJson(result.value(),
+                name == "session_checkpoint" ? "checkpoint" : "handoff");
+            if (name == "session_handoff") {
+                auto published = dependencies_.legacyMemory.set(
+                    {"continuity/project/" + authority.projectId().value(),
+                     result.value().record.packet.id.value(), {}}, context);
+                if (!published) {
+                    return failure<Json>(Domain::ErrorCodes::StoreError,
+                        "Packet " + result.value().record.packet.id.value() +
+                        " was saved, but publishing it for successor connections failed: " +
+                        published.error().message);
+                }
+            }
+            if (name == "session_handoff") {
+                response["successor_pickup"] = "mcp_initialize_and_context_get";
+                response["predecessor_session_id"] = call.clientId().value();
+                response["session_kind"] = "mcp_connection";
+                response["message"] = "Packet published for this project. The next Forge "
+                    "connection receives it in initialize.instructions; an already connected "
+                    "chat retrieves it with context_get. This does not create a visible chat.";
+            }
+            return Domain::Result<Json>::success(std::move(response));
         }
         if (name == "context_get") {
             auto encodedId = legacyString(arguments, "handoff_id");
@@ -4785,7 +5148,7 @@ private:
             const auto automation =
                 dependencies_.continuityAutomationStatus.snapshot(
                     call.clientId());
-            if (automation.blocked &&
+            if (automation.handoffPending &&
                 (!automation.handoffId ||
                  *automation.handoffId !=
                      result.value().record->packet.id.value())) {
@@ -4836,9 +5199,12 @@ private:
                 result.value().record->packet.id,
                 std::move(recoveredWorkingDirectory),
                 std::move(recoveredKeyFiles)});
-            return Domain::Result<Json>::success(legacyGetJson(
-                *result.value().record,
-                adoption.value()));
+            auto response = legacyGetJson(*result.value().record, adoption.value());
+            response["successor_session_id"] = call.clientId().value();
+            response["session_kind"] = "mcp_connection";
+            response["predecessor_session_id"] = result.value().record->packet.clientId
+                ? Json(result.value().record->packet.clientId->value()) : Json(nullptr);
+            return Domain::Result<Json>::success(std::move(response));
         }
         if (name == "context_list") {
             auto result = dependencies_.legacyContinuity.list(

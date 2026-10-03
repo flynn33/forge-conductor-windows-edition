@@ -1355,12 +1355,18 @@ void validateSettingsUpdateOutcome(
                 case ManagerOperationalArea::Manager: params["area"] = "manager"; break;
                 case ManagerOperationalArea::Runs: params["area"] = "runs"; break;
                 case ManagerOperationalArea::Evidence: params["area"] = "evidence"; break;
+                case ManagerOperationalArea::Continuity: params["area"] = "continuity"; break;
+                case ManagerOperationalArea::ProjectRecords: params["area"] = "project_records"; break;
                 }
                 switch (payload.action) {
                 case ManagerOperationalAction::Inspect: params["action"] = "inspect"; break;
                 case ManagerOperationalAction::PruneSessions: params["action"] = "prune_sessions"; break;
                 case ManagerOperationalAction::CloseSession: params["action"] = "close_session"; break;
                 case ManagerOperationalAction::VerifyTask: params["action"] = "verify_task"; break;
+                case ManagerOperationalAction::DeletePacket: params["action"] = "delete_packet"; break;
+                case ManagerOperationalAction::ClearPackets: params["action"] = "clear_packets"; break;
+                case ManagerOperationalAction::EditRecord: params["action"] = "edit_record"; break;
+                case ManagerOperationalAction::DeleteRecord: params["action"] = "delete_record"; break;
                 }
                 params["session_id"] = payload.sessionId
                     ? Json(payload.sessionId->value()) : Json(nullptr);
@@ -1612,6 +1618,8 @@ void validateSettingsUpdateOutcome(
         else if (areaText == "manager") area = ManagerOperationalArea::Manager;
         else if (areaText == "runs") area = ManagerOperationalArea::Runs;
         else if (areaText == "evidence") area = ManagerOperationalArea::Evidence;
+    else if (areaText == "continuity") area = ManagerOperationalArea::Continuity;
+    else if (areaText == "project_records") area = ManagerOperationalArea::ProjectRecords;
         else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
         const auto& actionText = stringMember(params, "action");
         ManagerOperationalAction action;
@@ -1619,6 +1627,10 @@ void validateSettingsUpdateOutcome(
         else if (actionText == "prune_sessions") action = ManagerOperationalAction::PruneSessions;
         else if (actionText == "close_session") action = ManagerOperationalAction::CloseSession;
         else if (actionText == "verify_task") action = ManagerOperationalAction::VerifyTask;
+        else if (actionText == "delete_packet") action = ManagerOperationalAction::DeletePacket;
+        else if (actionText == "clear_packets") action = ManagerOperationalAction::ClearPackets;
+        else if (actionText == "edit_record") action = ManagerOperationalAction::EditRecord;
+        else if (actionText == "delete_record") action = ManagerOperationalAction::DeleteRecord;
         else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational action is unknown.");
         payload = ManagerOperationalRequest{
             area,
@@ -3369,6 +3381,8 @@ parseInstructionPackageQueueSnapshot(const Json& value)
     case ManagerOperationalArea::Manager: return "manager";
     case ManagerOperationalArea::Runs: return "runs";
     case ManagerOperationalArea::Evidence: return "evidence";
+    case ManagerOperationalArea::Continuity: return "continuity";
+    case ManagerOperationalArea::ProjectRecords: return "project_records";
     }
     return "manager";
 }
@@ -3392,6 +3406,8 @@ parseInstructionPackageQueueSnapshot(const Json& value)
     else if (areaText == "manager") area = ManagerOperationalArea::Manager;
     else if (areaText == "runs") area = ManagerOperationalArea::Runs;
     else if (areaText == "evidence") area = ManagerOperationalArea::Evidence;
+    else if (areaText == "continuity") area = ManagerOperationalArea::Continuity;
+    else if (areaText == "project_records") area = ManagerOperationalArea::ProjectRecords;
     else reject(Domain::ErrorCodes::InvalidRequest, "Manager operational area is unknown.");
     return ManagerOperationalSnapshot{
         area,

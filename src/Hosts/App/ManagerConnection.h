@@ -39,10 +39,18 @@ struct ManagedRunView final {
     std::optional<Domain::ManagedRunSnapshot> snapshot;
 };
 
+struct NativeChatContextView final {
+    std::string value{"Unavailable"};
+    std::string state{"Waiting for the selected LM Studio chat"};
+    std::optional<double> gaugePercent;
+    std::string conversationId;
+};
+
 struct TelemetryView final {
     bool loaded{};
     std::string message;
     std::optional<Domain::ManagerTelemetrySnapshot> snapshot;
+    NativeChatContextView nativeChatContext;
 };
 
 struct ProjectsView final {
@@ -210,6 +218,22 @@ public:
         std::string summary,
         std::optional<std::string> projectId,
         std::stop_token cancellation) noexcept = 0;
+    ToolOutcomeView projectRecord(std::string projectId, bool remove,
+        std::string arguments, std::stop_token cancellation) noexcept
+    {
+        try {
+            const auto id = Domain::ProjectId::parse(projectId);
+            if (!id) return {false, id.error().message, std::nullopt};
+            const auto result = operational(Manager::ManagerOperationalArea::ProjectRecords,
+                remove ? Manager::ManagerOperationalAction::DeleteRecord : Manager::ManagerOperationalAction::EditRecord,
+                {}, std::move(arguments), projectId, cancellation);
+            if (!result.loaded || !result.snapshot || result.snapshot->lines.size() != 1U)
+                return {false, result.message, std::nullopt};
+            return {true, result.message, Manager::ManagerToolOutcomeSnapshot{id.value(),
+                remove ? "project_memory.forget" : "project_memory.update", true,
+                result.snapshot->lines.front(), std::nullopt, {}}};
+        } catch (...) { return {false, "The selected record action failed.", std::nullopt}; }
+    }
     virtual MaintenanceView resetData(
         Manager::ManagerMaintenanceScope scope,
         std::optional<std::string> projectId,

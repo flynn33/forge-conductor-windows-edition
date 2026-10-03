@@ -28,6 +28,12 @@ public:
         const Domain::DestructiveConfirmation& confirmation,
         const Domain::OperationContext& context) noexcept = 0;
 
+    [[nodiscard]] virtual Domain::Result<void> erase(
+        const Domain::LegacyHandoffId&, const Domain::OperationContext&) noexcept
+    {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable, "Packet file deletion is unavailable."));
+    }
     virtual void close() noexcept = 0;
 };
 

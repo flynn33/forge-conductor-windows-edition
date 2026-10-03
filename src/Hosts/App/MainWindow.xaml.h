@@ -43,28 +43,20 @@ struct MainWindow : MainWindowT<MainWindow> {
     void SettingsRevertClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsRestartClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void MaintenanceResetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void MaintenanceRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void MaintenanceRowDeleteClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void MaintenanceDeleteSelectedClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void MaintenanceSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
-    void MaintenanceContinuityResetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenWorkspaceClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenActivityClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OpenSettingsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupFolderClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ContinuityPacketsClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ContinuityPacketSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void PolicyClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupRetryClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SetupCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void HelpSearchChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-    void RunStatusClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void RunHistoryRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void RunHistoryAttachClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void RunPauseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void RunResumeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void RunCancelClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void RunIdTextChanged(Windows::Foundation::IInspectable const&,
-        Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
     void ProjectRegisterClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectBrowseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -91,12 +83,6 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProjectUpdateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectForgetClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectEditCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void ProjectArchiveExportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void ProjectArchiveBrowseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void ProjectArchivePathChanged(Windows::Foundation::IInspectable const&,
-        Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-    void ProjectArchivePreviewClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void ProjectArchiveImportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void ProjectSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void AutomaticContinuityToggled(Windows::Foundation::IInspectable const&,
@@ -104,15 +90,9 @@ struct MainWindow : MainWindowT<MainWindow> {
     void LmStudioInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void LmStudioRepairClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void LmStudioActivateClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void ToolsRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void ToolInvokeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void ToolFilterChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::TextChangedEventArgs const&);
-    void ToolPackFilterChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
-    void ToolSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void OperationalRefreshClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OperationalExportClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OperationalPruneClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-    void RuntimeJobInspectClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OperationalCloseClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void OperationalSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void OperationalCardSelectionChanged(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
@@ -133,20 +113,15 @@ private:
         ProviderModels, ProviderContract, SetupPrepare,
         PolicyBind, PolicyRefresh, PolicyInspect, PolicyRead, PolicyNext,
         PolicyFindings, PolicyExport,
-        SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, MaintenanceReset,
-        RunStatus, RunPause, RunResume, RunCancel,
-        ProjectList, ProjectRegister, ProjectLoad, ProjectDisplayAll,
+        SettingsLoad, SettingsSave, SettingsTest, SettingsRestart, ProjectList, ProjectRegister, ProjectLoad, ProjectDisplayAll,
         ProjectRemember, ProjectUpdate, ProjectForget,
         ContinuityRead, ContinuitySave,
-        ProjectArchiveExport, ProjectArchivePreview, ProjectArchiveImport,
         InstructionPackagePreview, InstructionPackageActivate,
-        LmStudioInspect, LmStudioRepair, LmStudioActivate, ToolsList, ToolInvoke,
-        OperationalInspect, OperationalPrune, OperationalClose, RunHistory, EvidenceLoad, EvidenceVerify
+        LmStudioInspect, LmStudioRepair, LmStudioActivate, OperationalInspect, OperationalPrune, OperationalClose, EvidenceLoad, EvidenceVerify
     };
     winrt::fire_and_forget RunAction(Action action);
     void ApplySetupProgress(const ::ForgeConductor::Application::ProjectSetupSnapshot& snapshot);
     void ApplyPolicyView(const ::ForgeConductor::Hosts::App::ProjectPolicyView& view, bool document);
-    std::unordered_map<std::string, Microsoft::UI::Xaml::Controls::TextBlock> runHistoryLabels_;
     std::string policyProject_;
     std::string policyRevision_;
     std::string policySummaryJson_;
@@ -162,7 +137,6 @@ private:
     void ApplySettingsForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
     void ApplyTelemetryPresentation(
         const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot);
-    void ApplyRunReadback(const ::ForgeConductor::Domain::ManagedRunSnapshot& snapshot);
     void ApplyDisconnectedTelemetry(std::string_view reason);
     void ApplyProjectList(
         const ::ForgeConductor::Manager::ManagerProjectsSnapshot& snapshot);
@@ -173,29 +147,19 @@ private:
         const ::ForgeConductor::Manager::ManagerProjectMemoryRecord& record);
     void RenderMaintenanceRecords(
         const ::ForgeConductor::Manager::ManagerProjectWorkspaceSnapshot& snapshot);
+    bool continuityPacketsBusy_{};
+    std::vector<std::string> continuityPacketRows_;
+    winrt::fire_and_forget RefreshContinuityPackets(std::string action = "refresh", std::string selected = {});
     winrt::fire_and_forget RefreshMaintenanceRecords(std::string completionMessage = {});
     winrt::fire_and_forget ConfirmMaintenanceDelete(std::vector<std::string> keys);
     winrt::fire_and_forget DeleteMaintenanceRecords(std::vector<std::string> keys);
-    winrt::fire_and_forget ConfirmContinuityReset();
-    winrt::fire_and_forget ResetContinuity();
     void ApplyLmStudio(const ::ForgeConductor::Manager::ManagerLmStudioSnapshot& snapshot);
     void ApplyLmStudioIdentities();
-    void ApplyTools(const ::ForgeConductor::Manager::ManagerToolsSnapshot& snapshot);
-    void FilterTools();
-    void BuildToolForm(const ::ForgeConductor::Manager::ManagerToolDescriptor& tool);
-    std::optional<std::string> ToolCanonicalArguments();
-    void RenderToolOutcome(
-        const ::ForgeConductor::Manager::ManagerToolOutcomeSnapshot& snapshot,
-        std::string_view message);
     void ApplyOperational(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
-    void ApplyRunHistory(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
     void ApplyEvidence(const ::ForgeConductor::Manager::ManagerOperationalSnapshot& snapshot);
     void SelectEvidenceRun(std::string_view runId);
     void SelectOperationalRecord(std::size_t index);
-    void UpdateRunControlProjectLabel();
-    void ClearSelectedRun();
     void ClearSelectedProject();
-    void ClearArchivePreview();
     void ClearInstructionPackagePreview();
     winrt::fire_and_forget RunInstructionQueueAction(
         ::ForgeConductor::Manager::ManagerInstructionPackageQueueAction action,
@@ -211,6 +175,7 @@ private:
     std::optional<::ForgeConductor::Domain::ManagerSettings> providerSettings_;
     std::optional<::ForgeConductor::Domain::ManagerTelemetrySnapshot>
         telemetrySnapshot_;
+    ::ForgeConductor::Hosts::App::NativeChatContextView nativeChatContext_;
     std::optional<::ForgeConductor::Manager::ManagerLmStudioSnapshot>
         lmStudioSnapshot_;
     std::string activityTimelineKey_;
@@ -219,26 +184,14 @@ private:
         visibleMemoryRecords_;
     std::optional<::ForgeConductor::Manager::ManagerProjectMemoryRecord> selectedMemoryRecord_;
     std::string selectedMemoryProjectId_;
-    std::vector<::ForgeConductor::Manager::ManagerToolDescriptor> tools_;
     std::vector<::ForgeConductor::Manager::ManagerInstructionPackageQueueRowSnapshot>
         instructionQueueRows_;
     std::optional<std::string> draggedInstructionQueueRowId_;
-    struct ToolField final {
-        std::string name;
-        std::string type;
-        bool required{};
-        Microsoft::UI::Xaml::Controls::TextBox text{nullptr};
-        Microsoft::UI::Xaml::Controls::ComboBox choice{nullptr};
-        Microsoft::UI::Xaml::Controls::ToggleSwitch toggle{nullptr};
-    };
-    std::vector<ToolField> toolFields_;
-    bool toolFormSupported_{};
     std::vector<std::string> loadedModels_;
     bool providerDiscoveryAttempted_{};
     bool providerDiscoverySucceeded_{};
     bool rebuildingProviderModels_{};
     std::string providerDiscoveredEndpoint_;
-    std::vector<std::size_t> visibleTools_;
     std::vector<std::string> operationalLines_;
     std::vector<std::size_t> visibleOperationalIndices_;
     std::optional<::ForgeConductor::Manager::ManagerOperationalSnapshot> operationalSnapshot_;
@@ -247,20 +200,12 @@ private:
     std::string selectedEvidenceProjectId_;
     std::optional<::ForgeConductor::Manager::ManagerOperationalSnapshot> pendingFeedSnapshot_;
     bool feedDisplayPaused_{};
-    bool rebuildingTools_{};
     std::string selectedProjectId_;
-    std::string archivePreviewProjectId_;
-    std::string archivePreviewPath_;
-    std::string archivePreviewChecksum_;
     std::string instructionPreviewProjectId_;
     std::string instructionPreviewPath_;
     std::string instructionPreviewRevision_;
-    std::string verifiedRunId_;
-    std::string verifiedRunProjectId_;
     std::wstring selectedPageValueName_{L"SelectedPage"};
     std::wstring selectedProjectValueName_{L"SelectedProjectId"};
-    std::wstring selectedRunValueName_{L"SelectedRunId"};
-    std::wstring selectedRunProjectValueName_{L"SelectedRunProjectId"};
     std::wstring selectedEvidenceRunValueName_{L"SelectedEvidenceRunId"};
     std::wstring selectedEvidenceProjectValueName_{L"SelectedEvidenceProjectId"};
     std::stop_source cancellation_;

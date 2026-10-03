@@ -24,7 +24,17 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 - Simulated lifecycle tests use disposable roots and copied fixtures. Tests and packaging must never mutate the operator's live `%LOCALAPPDATA%\Forge Conductor` store.
 - Provider-dependent productive inference is reported separately when LM Studio and a loaded model are available; provider absence must produce an actionable disconnected state rather than fabricated success.
 
-## Current 1.0 baseline
+## 1.3.5 native-chat verification
+
+The complete x64 Release backend and App builds exited 0. The final configured CTest matrix reported `100% tests passed out of 153` and `Total Test time (real) = 31.54 sec`, with exit code 0. All three static gates passed. These Release results are separate from the nine affected Debug suites used during native-chat development.
+
+The first full Release run passed 152/153: `process.packaged-localappdata-working-directory` in test 108 encountered Windows sharing error 32 because its temporary fixture was inside the installed Manager's shared LocalAppData directory. The test fixture was moved to a unique sibling directory while retaining the packaged working-directory assertion. The focused executable passed 25/25 process cases, then the full Release matrix passed 153/153 with the installed App and Manager still running. No production behavior or test assertion was weakened to release that lock.
+
+The native-chat check used isolated Debug binaries and is separate from the configured Release suite. The native predecessor/successor files contain packet handoff, all three integrations, packet retrieval, and following Forge calls. See [release notes](releases/1.3.5.md) for exact IDs.
+
+Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
+
+## Historical 1.0 baseline
 
 The September 13, 2026 release audit completed the full x64 Release product build and passed all 150 configured CTest entries. Static native-stack, no-Python, and attribution gates passed, as did the production package-persistence contract. A release distribution is regenerated from the final commit so its embedded commit, tree, executable hashes, and signature can be independently checked.
 

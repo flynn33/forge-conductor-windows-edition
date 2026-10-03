@@ -556,7 +556,8 @@ private:
                 transport,
                 jsonRpcResult(
                     externalId,
-                    initializeResult(role, negotiated, instructions_)),
+                    initializeResult(role, negotiated, instructions_ +
+                        "\nMCP connector session id: " + clientId.value())),
                 transportContext);
             return;
         }

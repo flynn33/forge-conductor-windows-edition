@@ -4,6 +4,7 @@
 #include "DeterministicResult.h"
 
 #include <array>
+#include <map>
 #include <cstddef>
 #include <optional>
 #include <vector>
@@ -40,6 +41,7 @@ public:
     DeterministicResult<Domain::ProjectMemoryRecord> updateResult;
     DeterministicResult<Domain::ForgetOutcome> forgetResult;
     DeterministicResult<Domain::MemoryPage> listRecentResult;
+    std::map<std::string, DeterministicResult<Domain::MemoryPage>> listRecentByKind;
     DeterministicResult<Domain::LinkOutcome> linkResult;
     DeterministicResult<Domain::ProjectMemoryExport> exportResult;
     DeterministicResult<Domain::ProjectMemoryImport> importResult;
@@ -162,6 +164,11 @@ public:
     {
         try {
             listRecentRequests_.push_back(request);
+            if (request.kinds.size() == 1U) {
+                const auto found = listRecentByKind.find(request.kinds.front());
+                if (found != listRecentByKind.end()) return complete(
+                    ProjectMemoryCall::ListRecent, &request.projectId, context, found->second);
+            }
             return complete(
                 ProjectMemoryCall::ListRecent,
                 &request.projectId,
