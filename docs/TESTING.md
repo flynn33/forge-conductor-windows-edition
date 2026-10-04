@@ -30,7 +30,7 @@ The full x64 Release CTest matrix passed 153/153 in 32.36 seconds with exit code
 
 An in-process observer measured actual WinUI XAML with an injected isolated ManagerConnection: 16 telemetry polls at the existing 500 ms cadence, sampled every 20 ms. The baseline Rig position moved 130.667 logical units with 25 transitions. The fixed source had zero transitions, with injected CPU values still changing from 30.0% through 34.0%. This is controlled-data native layout evidence, not visual inspection of the installed App.
 
-Installed local 1.3.6 candidate identity, running App/Manager, and matching App/Manager/CLI candidate-payload hashes were verified before the final documentation commit; publication is rebuilt from its final release commit. Native-control initialization failed with MODULE_NOT_FOUND for kernel.js; installed-window visual acceptance is not claimed. See [1.3.6 release notes](releases/1.3.6.md).
+Installed original 1.3.6 package identity, running App/Manager, and matching App/Manager/CLI payload hashes were verified. Publication preserves this exact signed artifact from source commit `9912541debc92c1117cceab0f6322c4e62728ee4`; later documentation commits do not change product source, and the differently hashed later rebuild is not published. Native-control initialization failed with MODULE_NOT_FOUND for kernel.js; installed-window visual acceptance is not claimed. See [1.3.6 release notes](releases/1.3.6.md).
 
 ## Historical 1.3.5 native-chat verification
 

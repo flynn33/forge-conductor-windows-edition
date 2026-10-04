@@ -34,4 +34,4 @@ The host's installed ForgeConductor.Windows_1.3.4.0 package was preserved during
 
 ## 1.3.6 installed verification
 
-The authorized local repair candidate installed `ForgeConductor.Windows_1.3.6.0_x64__wj2yg5ac9gadp`. App and Manager were running from that package; installed App, Manager, and CLI hashes matched that candidate payload. Final publication is rebuilt from the final release commit. Native-control initialization failed with MODULE_NOT_FOUND for kernel.js, so installed-window visual inspection is not claimed. See [1.3.6 release notes](releases/1.3.6.md).
+The authorized local repair installed the original signed `ForgeConductor.Windows_1.3.6.0_x64__wj2yg5ac9gadp` package. App and Manager were running from it; installed App, Manager, and CLI hashes matched its payload. Publication preserves that exact immutable package from source commit `9912541debc92c1117cceab0f6322c4e62728ee4`; later documentation commits do not change product source or replace the package bytes. Native-control initialization failed with MODULE_NOT_FOUND for kernel.js, so installed-window visual inspection is not claimed. See [1.3.6 release notes](releases/1.3.6.md).
