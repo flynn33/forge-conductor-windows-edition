@@ -179,7 +179,7 @@
      </Expander>
          </StackPanel>
 
-     <TextBlock x:Name="ManagerState" Text="Connecting to Manager" AutomationProperties.LiveSetting="Polite"/>
+     <TextBlock x:Name="ManagerState" Visibility="Collapsed" Text="Connecting to Manager" AutomationProperties.LiveSetting="Polite"/>
     <StackPanel x:Name="RigPanel" Spacing="10">
       <Border Style="{ThemeResource ForgeHeroCardStyle}" MinHeight="118">
        <Grid ColumnSpacing="18">

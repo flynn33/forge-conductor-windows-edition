@@ -602,7 +602,7 @@ public:
         if (allowDoctor) {
             const auto root = Domain::PathText::create("D:\\DoctorFixture").value();
             return Domain::Result<Domain::DoctorReport>::success(
-                Domain::DoctorReport{true, "1.3.5", root,
+                Domain::DoctorReport{true, "1.3.6", root,
                     {Domain::DoctorCheck{"manager_ipc", true, "connected", true}},
                     {}, true, root});
         }

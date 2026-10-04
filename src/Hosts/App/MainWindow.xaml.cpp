@@ -3943,7 +3943,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             ProviderContractCancelButton().IsEnabled(true);
             ProviderContractState().Text(L"Waiting for a disposable model-only response…");
         }
-    } else {
+    } else if (action != Action::Refresh) {
         ManagerState().Text(L"Connecting…");
     }
 

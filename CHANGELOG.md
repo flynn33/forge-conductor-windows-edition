@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.6 - Stable telemetry refresh layout
+
+- Restore the hidden diagnostic status after the Actions-frame removal and keep background telemetry polls from replacing it with command-progress text. Periodic polling no longer adds and removes a multiline row in the shared page layout. Live telemetry cadence and the existing product controls are retained.
+
 ## 1.3.5 - LM Studio chat Auto Continuity
 
 - Remove Managed Run/readback and its callable product routes, Export selected project, Import verify first, the Actions frame/Invoke Tool, Advanced Canonical Catalog, Scope Test, Reset Scope, Apply and Verify, and the old Data Maintenance scheme. Sessions remain LM Studio chats; baseline agent-session tools are not a replacement run manager.

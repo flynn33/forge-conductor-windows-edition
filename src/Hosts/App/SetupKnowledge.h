@@ -32,7 +32,7 @@ inline constexpr std::array SetupKnowledge{
     HelpArticle{L"Read Rig telemetry", L"Rig shows resource, provider, storage, process, context, continuity, and workflow observations. Missing, stale, or disconnected data is not a zero measurement."},
     HelpArticle{L"Use Activity evidence", L"Activity correlates operational outcomes with project/run identity and governance findings. A model response, process completion, native check, and policy evaluation are distinct evidence types."},
     HelpArticle{L"Settings and saved records", L"Settings retains Load effective settings, Save and read back, Revert pending edits, Test LM Studio, and Restart Manager. Select saved project records and use Delete record or Delete selected. Continuity separately lists packets with delete-selection and clear buttons."},
-    HelpArticle{L"Report a problem", L"Record version 1.3.5, project identity, provider profile, package revision or policy revision when relevant, action, expected result, actual result, error text, and time. Remove credentials and private content before sharing diagnostics."},
+    HelpArticle{L"Report a problem", L"Record version 1.3.6, project identity, provider profile, package revision or policy revision when relevant, action, expected result, actual result, error text, and time. Remove credentials and private content before sharing diagnostics."},
 };
 
 } // namespace ForgeConductor::Hosts::App
