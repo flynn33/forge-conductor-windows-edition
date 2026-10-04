@@ -1,6 +1,6 @@
 # Product status
 
-Version 1.3.5 removes Managed Run and wires Auto Continuity for native LM Studio chats. See [release notes](releases/1.3.5.md) for the observed native predecessor/successor and verification scope.
+Version 1.3.6 repairs telemetry-refresh layout movement with two behavioral lines: collapse the diagnostic ManagerState row and keep Action::Refresh out of generic connecting-progress text. It retains the 1.3.5 native-chat/product behavior below. See [1.3.6 release notes](releases/1.3.6.md) for the measured layout repair and [1.3.5 release notes](releases/1.3.5.md) for native predecessor/successor evidence.
 
 | Area | Implemented behavior |
 |---|---|
@@ -10,6 +10,7 @@ Version 1.3.5 removes Managed Run and wires Auto Continuity for native LM Studio
 | Status | `get_forge_status` returns project ID/folder and binding source, ordered package paths, policy source/revision, tool names/count, and agent count. |
 | Governance | Bound repository reading, structured evidence evaluation, findings, model tool-result notifications, visible findings/correction history, and redacted export. |
 | Auto Continuity | Primary MCP worker observes native selected-chat usage, pauses at a completed tool boundary, requests a detailed model packet, creates a native successor chat, hands it over, and verifies packet retrieval and a following Forge call. |
+| Telemetry layout | Real WinUI observer with injected Manager measured zero Rig position transitions across 16 polls; injected CPU values kept updating. |
 | Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
 | Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |
 | MCP | The same Primary, Fallback, and CLU integrations; exact 180-second deadline; no fourth plugin or new Forge credential. |
@@ -20,6 +21,6 @@ Auto Continuity was verified with a reserve-triggered pause, not physical contex
 
 The native verification used an isolated Debug home, loaded `openai/gpt-oss-20b`, a 32,768-token capacity and 10,240-token total reserve. Native on-disk conversations independently contain the predecessor handoff call, successor handed message, all three integrations, packet retrieval, `agent_get`, and `get_forge_status`. Physical exhaustion, reattachment of an already-running agent, and interrupted-worker recovery were not exercised.
 
-The complete x64 Release backend and App builds exited 0. The final configured CTest matrix reported `100% tests passed out of 153` and `Total Test time (real) = 31.54 sec`, with exit code 0. All three static gates passed. These Release results are separate from the nine affected Debug suites used during native-chat development.
+Version 1.3.6 Release backend, App, and package builds exited 0. Its final configured CTest matrix reported `100% tests passed out of 153` and `Total Test time (real) = 32.36 sec`, exit code 0; all three static gates passed. The earlier 1.3.5 native-chat evidence and nine affected Debug suites are separate historical checks.
 
-The installed `ForgeConductor.Windows_1.3.4.0` app was not replaced for release construction. Its existing profile was not used as a test server home. Historical reports describe their own artifacts and do not establish qualification for newer binaries.
+The installed 1.3.4 app was preserved during 1.3.5 construction. The later authorized local 1.3.6 repair candidate was verified as `ForgeConductor.Windows_1.3.6.0_x64__wj2yg5ac9gadp`, with App and Manager running and App/Manager/CLI hashes matching that candidate payload. Final publication is rebuilt from its final release commit. No installed-window visual inspection is claimed: native-control initialization failed with MODULE_NOT_FOUND for kernel.js. Historical reports describe their own artifacts and do not establish qualification for newer binaries.

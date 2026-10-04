@@ -1,10 +1,11 @@
 # Windows capability map
 
-This map describes version 1.3.5. Historical delivery records retain their original scope.
+This map describes version 1.3.6. Historical delivery records retain their original scope.
 
 | Capability | Implementation and bounds |
 |---|---|
 | Native shell | WinUI 3 Workspace, Rig, Continuity, Activity, and Settings; existing visual design retained. |
+| Telemetry layout | Collapsed diagnostic status and refresh-progress exclusion prevent the measured periodic Rig movement; updates continue. |
 | Project context | Authoritative project ID/root, ordered instruction packages, development-policy identity, tool names/count, and agent count in `get_forge_status`. |
 | Package reading | `instruction_package.read` selects a project queue row and returns paged entries/content with revision identity. |
 | CLU | Immediate policy-repository folder binding, policy readback, evidence evaluation, findings, model notifications, correction receipts, and visible history. |

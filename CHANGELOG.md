@@ -3,6 +3,9 @@
 ## 1.3.6 - Stable telemetry refresh layout
 
 - Restore the hidden diagnostic status after the Actions-frame removal and keep background telemetry polls from replacing it with command-progress text. Periodic polling no longer adds and removes a multiline row in the shared page layout. Live telemetry cadence and the existing product controls are retained.
+- Verify actual WinUI geometry with an injected isolated Manager: the baseline moved 130.667 logical units with 25 transitions; the fix showed zero transitions across 16 polls while injected CPU values continued changing from 30.0% to 34.0%.
+- Pass the full 153-entry x64 Release CTest matrix in 32.36 seconds, App/backend/package builds, and all three static gates. Verify installed 1.3.6 App/Manager/CLI hashes against the package; no installed-window visual inspection is claimed because native-control initialization failed with MODULE_NOT_FOUND for kernel.js.
+- Retain the 1.3.5 continuity bounds: reserve-triggered pause, not physical exhaustion; native rollover verified while the primary MCP worker stayed alive; interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 ## 1.3.5 - LM Studio chat Auto Continuity
 

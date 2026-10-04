@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-The **1.3.5 release** removes Managed Run and adds Auto Continuity for visible LM Studio chats through the existing three integrations. It restores callable instruction-package reading, reports the bound project and ordered packages, and binds a selected CLU policy repository directly from the folder picker. See the [release notes](docs/releases/1.3.5.md).
+The **1.3.6 release** fixes view movement during telemetry refresh by keeping the diagnostic status row collapsed and excluding background polls from command-progress text. It retains the 1.3.5 native LM Studio chat Auto Continuity, callable instruction-package reading, authoritative project disclosure, and direct CLU policy-folder binding. See the [release notes](docs/releases/1.3.6.md).
 
 ## Product surfaces
 
@@ -22,7 +22,7 @@ Auto Continuity observes the selected LM Studio conversation's actual generation
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
-Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`. Disposable verification uses a separate home and does not replace the installed 1.3.4 app. The historical `--alpha-root <absolute-path>` option remains available for isolated profiles.
+Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`; disposable verification uses a separate home. The historical `--alpha-root <absolute-path>` option remains available for isolated profiles.
 
 ## Build and verify
 
@@ -35,7 +35,7 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Release verification passed the complete 153-entry x64 CTest matrix, backend/App builds, and all three static gates. The isolated native-chat evidence and its bounds are documented separately.
+Version 1.3.6 passed the complete 153-entry x64 CTest matrix in 32.36 seconds, backend/App/package builds, and all three static gates. Actual WinUI geometry stayed stable across 16 injected telemetry polls while CPU values continued updating. The isolated native-chat evidence and its bounds are documented separately.
 
 Create the engineering distribution from committed release inputs with `./scripts/package.ps1 -DevelopmentSigning`. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), [Architecture](docs/ARCHITECTURE.md), and [Roadmap](docs/ROADMAP.md).
 

@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.3.5 targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.6 targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -31,3 +31,7 @@ For upgrades, install a higher package version with the same stable identity and
 ## 1.3.5 release construction boundary
 
 The host's installed ForgeConductor.Windows_1.3.4.0 package was preserved during construction; 1.3.5 verification used a separate Debug home. The new release does not add a credential, login step, model-instruction file, or fourth plugin. Native Auto Continuity verification bounds are stated in [release notes](releases/1.3.5.md).
+
+## 1.3.6 installed verification
+
+The authorized local repair candidate installed `ForgeConductor.Windows_1.3.6.0_x64__wj2yg5ac9gadp`. App and Manager were running from that package; installed App, Manager, and CLI hashes matched that candidate payload. Final publication is rebuilt from the final release commit. Native-control initialization failed with MODULE_NOT_FOUND for kernel.js, so installed-window visual inspection is not claimed. See [1.3.6 release notes](releases/1.3.6.md).

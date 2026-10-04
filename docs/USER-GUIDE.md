@@ -56,4 +56,4 @@ Settings retains **Load effective settings**, **Save and read back**, **Revert p
 
 Managed Run, its readback, Export selected project, Import verify first, the Actions frame and Invoke Tool, Advanced Canonical Catalog, Scope Test, and Reset Scope are removed. `agent_run_start`, `agent_run_status`, and `agent_run_complete` remain baseline specialist-session tools.
 
-Rig shows unavailable or stale observations explicitly. Activity displays operational and governance outcomes. Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`; disposable validation uses a separate home.
+Version 1.3.6 keeps Rig layout stable during background telemetry refresh without disabling updates. Rig shows unavailable or stale observations explicitly. Activity displays operational and governance outcomes. Ordinary data lives at `%LOCALAPPDATA%\Forge Conductor`; disposable validation uses a separate home.
