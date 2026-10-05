@@ -30,7 +30,14 @@ function Test-Candidate {
     $metadataPath = Join-Path $CandidatePath 'distribution.json'
     $metadata = Get-Content -Raw -LiteralPath $metadataPath | ConvertFrom-Json -Depth 20
     Assert-Equal $metadata.package_identity 'ForgeConductor.Windows' 'Unexpected package identity.'
-    Assert-Equal $metadata.package_version "$ExpectedVersion.0" 'Unexpected package version.'
+    $packageVersion = [string]$metadata.package_version
+    if ($packageVersion -cnotmatch ('^' + [regex]::Escape($ExpectedVersion) + '\.(0|[1-9][0-9]{0,4})$') -or
+        ([version]$packageVersion).Major -gt 65535 -or
+        ([version]$packageVersion).Minor -gt 65535 -or
+        ([version]$packageVersion).Build -gt 65535 -or
+        ([version]$packageVersion).Revision -gt 65535) {
+        throw 'Unexpected package version or invalid MSIX revision.'
+    }
     Assert-Equal $metadata.architecture 'x64' 'Unexpected package architecture.'
 
     $packagePath = Join-Path $CandidatePath $metadata.package
@@ -54,6 +61,7 @@ function Test-Candidate {
     [ordered]@{
         path = $CandidatePath
         version = $ExpectedVersion
+        package_version = $packageVersion
         package_sha256 = $packageHash
         payload_manifest_sha256 = $manifestHash
         payload_file_count = @($manifest.files).Count
@@ -233,8 +241,8 @@ $previousProduct = [string](Get-Content -Raw -LiteralPath (Join-Path $previousPa
 $currentProduct = [string](Get-Content -Raw -LiteralPath (Join-Path $currentPath 'distribution.json') | ConvertFrom-Json).product_version
 $previousValidation = Test-Candidate $previousPath $previousProduct
 $currentValidation = Test-Candidate $currentPath $currentProduct
-$previousVersion = [version]$previousValidation.version
-$currentVersion = [version]$currentValidation.version
+$previousVersion = [version]$previousValidation.package_version
+$currentVersion = [version]$currentValidation.package_version
 if ($currentVersion -le $previousVersion) { throw 'The current candidate is not newer than the retained candidate.' }
 
 $previousExecutable = Install-Payload $previousPath $installRoot $runRoot

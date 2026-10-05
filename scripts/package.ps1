@@ -40,10 +40,14 @@ if ($cmake -notmatch '(?s)project\(\s*ForgeConductorWindows\s+VERSION\s+(\d+\.\d
     throw 'Product version missing from CMake.'
 }
 $productVersion = $Matches[1]
-$version = $productVersion + '.0'
+$version = (Get-Content -LiteralPath (Join-Path $root 'BUILD') -Raw).Trim()
 if ((Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim() -cne $productVersion -or
-    (Get-Content -LiteralPath (Join-Path $root 'BUILD') -Raw).Trim() -cne $version) {
-    throw 'VERSION and BUILD must match the CMake product and package versions.'
+    $version -cnotmatch ('^' + [regex]::Escape($productVersion) + '\.(0|[1-9][0-9]{0,4})$') -or
+    ([version]$version).Major -gt 65535 -or
+    ([version]$version).Minor -gt 65535 -or
+    ([version]$version).Build -gt 65535 -or
+    ([version]$version).Revision -gt 65535) {
+    throw 'VERSION must match CMake; BUILD must append a canonical MSIX revision from 0 through 65535.'
 }
 foreach ($manifestInput in @('packaging/app.manifest','src/Hosts/App/app.manifest')) {
     [xml]$applicationManifest = Get-Content -LiteralPath (Join-Path $root $manifestInput) -Raw
