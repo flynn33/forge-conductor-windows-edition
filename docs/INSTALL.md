@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.3.11 targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.12 targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -25,6 +25,8 @@ Launch **Forge Conductor** from Start after installation. Ordinary use stores du
 LM Studio and a loaded tool-capable model are external prerequisites for inference features. The GUI, Manager, CLI, MCP server, local tools, project management, memory, settings, and telemetry are packaged together and do not require a development checkout.
 
 After upgrading, select the intended registered project in Workspace, finish or stop active MCP calls and use **Settings → LM Studio plugins → Install or repair all three plugins**. Repair updates Primary, Fallback, and CLU to the selected project, current binary, shared data home, and 180-second request deadline while preserving foreign MCP registrations and unknown fields. Start a new model bootstrap or reconnect the integrations to receive current initialization instructions. Then choose **Open LM Studio and connect plugins** and select the intended integration in the chat.
+
+Before upgrading or restarting the owning Manager, wait for tracked work to finish or request cancellation and confirm terminal status. Manager-backed jobs survive an MCP reconnect while their Manager remains running; reconnect and verify retained jobs with process_list/process_adopt. Standalone work remains connector-owned and stops on its owner shutdown. Receipts do not convert an interrupted unknown exit status into success.
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
 

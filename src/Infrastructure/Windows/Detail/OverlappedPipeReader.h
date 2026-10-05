@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeConductor/Domain/Result.h"
+#include "ForgeConductor/Domain/ProcessModels.h"
 #include "UniqueHandle.h"
 
 #include <Windows.h>
@@ -108,7 +109,9 @@ class OverlappedPipeReader final : public std::enable_shared_from_this<Overlappe
 public:
     [[nodiscard]] static Domain::Result<PipeEndpoints> create(IoCompletionPort& completionPort,
                                                               const std::wstring& pipeName,
-                                                              std::size_t maximumCaptureBytes);
+                                                              std::size_t maximumCaptureBytes,
+                                                              std::shared_ptr<Domain::IProcessOutputObserver> observer = {},
+                                                              bool stderrStream = false);
 
     ~OverlappedPipeReader() = default;
     OverlappedPipeReader(const OverlappedPipeReader&) = delete;
@@ -133,7 +136,9 @@ private:
     };
 
     OverlappedPipeReader(IoCompletionPort& completionPort, UniqueHandle readHandle,
-                         std::size_t maximumCaptureBytes) noexcept;
+                         std::size_t maximumCaptureBytes,
+                         std::shared_ptr<Domain::IProcessOutputObserver> observer,
+                         bool stderrStream) noexcept;
 
     [[nodiscard]] Domain::Result<void> issueReadLocked(std::unique_lock<std::mutex>& lock);
     void onCompletion(DWORD bytesTransferred, DWORD error) noexcept;
@@ -144,6 +149,8 @@ private:
     IoCompletionPort& completionPort_;
     UniqueHandle readHandle_;
     const std::size_t maximumCaptureBytes_;
+    const std::shared_ptr<Domain::IProcessOutputObserver> observer_;
+    const bool stderrStream_;
     mutable std::mutex mutex_;
     std::condition_variable idleCondition_;
     OVERLAPPED overlapped_{};

@@ -798,6 +798,19 @@ public:
         }
     }
 
+    [[nodiscard]] Domain::Result<std::string> inspect(
+        const Domain::LocalModelConfig& configured,
+        const Domain::OperationContext& context) noexcept
+    {
+        try {
+            auto inventory = perform(L"GET", "/api/v1/models", {}, context);
+            if (!inventory) return Domain::Result<std::string>::failure(std::move(inventory).error());
+            return LMStudioResponsesTransport::projectModelInventory(inventory.value().body, configured);
+        } catch (...) {
+            return failure<std::string>(Domain::ErrorCodes::InternalFailure, "LM Studio model inspection failed safely.");
+        }
+    }
+
     void shutdown() noexcept
     {
         try {
@@ -1107,7 +1120,7 @@ private:
             if (available == 0U) {
                 break;
             }
-            if (responseBody.size() > MaximumHttpBodyBytes - available) {
+            if (available > MaximumHttpBodyBytes || responseBody.size() > MaximumHttpBodyBytes - available) {
                 return failure<HttpResponse>(
                     Domain::ErrorCodes::PayloadTooLarge,
                     "The LM Studio response exceeds its bound.");
@@ -1202,6 +1215,74 @@ LMStudioResponsesTransport::complete(
     const Domain::OperationContext& context) noexcept
 {
     return implementation_->complete(request, context);
+}
+
+Domain::Result<std::string> LMStudioResponsesTransport::inspect(
+    const Domain::LocalModelConfig& configured, const Domain::OperationContext& context) noexcept
+{
+    return implementation_->inspect(configured, context);
+}
+
+Domain::Result<std::string> LMStudioResponsesTransport::projectModelInventory(
+    const std::string_view inventory, const Domain::LocalModelConfig& configured) noexcept
+{
+    try {
+        if (inventory.size() > MaximumHttpBodyBytes) return failure<std::string>(
+            Domain::ErrorCodes::PayloadTooLarge, "LM Studio model inventory exceeds 2 MiB.");
+        const auto value = Json::parse(inventory);
+        if (!value.is_object() || !value.contains("models") || !value.at("models").is_array())
+            return failure<std::string>(Domain::ErrorCodes::MalformedMessage, "LM Studio returned no model inventory.");
+        const auto unknown = [](const char* reason) { return Json{{"known", false}, {"value", nullptr}, {"reason", reason}}; };
+        Json loaded = Json::array();
+        Json matching = Json::array();
+        std::size_t downloaded{};
+        for (const auto& model : value.at("models")) {
+            if (!model.is_object() || model.value("type", std::string{}) != "llm") continue;
+            ++downloaded;
+            if (!model.contains("loaded_instances") || !model.at("loaded_instances").is_array()) continue;
+            for (const auto& instance : model.at("loaded_instances")) {
+                if (!instance.is_object() || !instance.contains("id") || !instance.at("id").is_string()) continue;
+                Json entry{{"instance_id", instance.at("id")}, {"model_key", model.value("key", std::string{})},
+                    {"model_file", unknown("GET /api/v1/models does not report the exact model file.")},
+                    {"model_revision", unknown("The provider inventory does not report an immutable source revision.")},
+                    {"runtime_version", unknown("The provider inventory does not identify the active inference engine version.")}};
+                for (const char* field : {"publisher", "display_name", "architecture", "quantization", "size_bytes",
+                    "params_string", "max_context_length", "format", "capabilities", "selected_variant"})
+                    if (model.contains(field)) entry[field] = model.at(field);
+                if (instance.contains("config") && instance.at("config").is_object()) {
+                    entry["load_config"] = instance.at("config");
+                    entry["context_length"] = instance.at("config").value("context_length", Json(nullptr));
+                } else { entry["load_config"] = nullptr; entry["context_length"] = nullptr; }
+                const bool matches = configured.model &&
+                    (entry.at("instance_id") == *configured.model || entry.at("model_key") == *configured.model);
+                entry["matches_configured_model"] = matches;
+                if (matches) matching.push_back(entry.at("instance_id"));
+                loaded.push_back(std::move(entry));
+            }
+        }
+        Json result{{"ok", true}, {"provider", "lmstudio"}, {"source", "GET /api/v1/models"},
+            {"endpoint", {{"host", configured.host}, {"port", configured.port}, {"secure", configured.secure},
+                {"path", "/api/v1/models"}}},
+            {"downloaded_llm_count", downloaded}, {"loaded_instance_count", loaded.size()},
+            {"loaded_models", std::move(loaded)}, {"configured_model", configured.model ? Json(*configured.model) : Json(nullptr)},
+            {"configured_model_matches", std::move(matching)},
+            {"configured_context", {{"effective_capacity", configured.effectiveContextCapacity},
+                {"next_response_reserve", configured.nextResponseReserve}, {"handoff_reserve", configured.handoffReserve},
+                {"estimation_safety_margin", configured.estimationSafetyMargin}, {"source", "saved Forge configuration"}}},
+            {"provider_version", unknown("The model inventory does not report the LM Studio application version.")},
+            {"observed_at_unix_ms", std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count()}};
+        result["configured_model_loaded"] = !result.at("configured_model_matches").empty();
+        auto projected = result.dump();
+        if (projected.size() > 192U * 1024U) return failure<std::string>(
+            Domain::ErrorCodes::PayloadTooLarge,
+            "The loaded-model inventory exceeds the 192 KiB inspection result bound; reduce loaded instances or provider metadata before retrying.");
+        return Domain::Result<std::string>::success(std::move(projected));
+    } catch (const nlohmann::json::exception&) {
+        return failure<std::string>(Domain::ErrorCodes::MalformedMessage, "LM Studio returned malformed model inventory metadata.");
+    } catch (...) {
+        return failure<std::string>(Domain::ErrorCodes::InternalFailure, "LM Studio model inventory could not be projected.");
+    }
 }
 
 void LMStudioResponsesTransport::cancel(

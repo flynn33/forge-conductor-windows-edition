@@ -708,6 +708,42 @@ void enforcesContextAndProjectBound()
         "the process-lifetime project authority bound was exceeded");
 }
 
+void bindsOnlyExactConfiguredExistingRoots()
+{
+    ScopedTestTree tree;
+    CountingUuidGenerator uuids;
+    RegistryFake registry;
+    registry.seed(projectId(), {pathText(tree.first())});
+    registry.seed(projectId(2U), {pathText(tree.second())});
+    WindowsProjectWorkspaceAuthority authority{registry, uuids, serveClient(), false,
+        {pathText(tree.outside()), pathText(tree.first() / L"child")}};
+    auto before = take(authority.authorityFor(projectId(), activeContext()));
+    require(take(authority.configuredRootAllowlist(activeContext())).size() == 2U,
+        "The owner allowlist was not exposed accurately.");
+    requireError(authority.bindConfiguredRoot(before, pathText(tree.base()), activeContext()),
+        Domain::ErrorCodes::Unauthorized, "An arbitrary unconfigured root was accepted.");
+    requireError(authority.bindConfiguredRoot(before, pathText(tree.outside() / L"missing"), activeContext()),
+        Domain::ErrorCodes::Unauthorized, "A missing/subdirectory root was accepted.");
+    auto bound = take(authority.bindConfiguredRoot(before, pathText(tree.outside()), activeContext()));
+    require(bound.trustedRoots().size() == 2U && before.trustedRoots().size() == 1U,
+        "Binding did not preserve the original immutable capability.");
+    require(static_cast<bool>(authority.authorize(bound, {pathText(tree.outside() / L"evidence.txt"),
+        std::nullopt, Domain::FileAccess::Create, true}, activeContext())),
+        "The configured evidence root did not permit an authorized output.");
+    auto other = take(authority.authorityFor(projectId(2U), activeContext()));
+    require(other.trustedRoots().size() == 1U, "A root binding leaked to another project.");
+    auto repeated = take(authority.bindConfiguredRoot(bound, pathText(tree.outside()), activeContext()));
+    require(repeated.trustedRoots().size() == 2U, "An idempotent root bind added a duplicate.");
+    require(!authority.bindConfiguredRoot(bound, pathText(tree.first() / L"child"), activeContext()),
+        "An overlapping configured root corrupted the authority policy.");
+    require(take(authority.authorityFor(projectId(), activeContext())).trustedRoots().size() == 2U,
+        "Failed overlapping-root binding changed the working authority.");
+    auto narrowed = take(authority.narrow(bound, bound.trustedRoots(), {Domain::FileAccess::Write},
+        false, bound.generation() + 1U, activeContext()));
+    requireError(authority.bindConfiguredRoot(narrowed, pathText(tree.outside()), activeContext()),
+        Domain::ErrorCodes::Unauthorized, "A narrowed capability regained its removed permissions by binding a root.");
+}
+
 } // namespace
 } // namespace ForgeConductor::Tests
 
@@ -715,6 +751,7 @@ int main()
 {
     using namespace ForgeConductor::Tests;
     TestRegistry tests;
+    addTest(tests, "dynamic_authority.configured_roots", bindsOnlyExactConfiguredExistingRoots);
     addTest(tests, "dynamic_authority.stored_project_unavailable_folder", readsStoredProjectWithUnavailableFolder);
     addTest(tests, "dynamic_authority.registry_refresh", discoversProjectsAndRefreshesAliases);
     addTest(tests, "dynamic_authority.concurrent_first_issue", publishesOneStableIdDuringConcurrentFirstIssuance);

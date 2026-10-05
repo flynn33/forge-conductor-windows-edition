@@ -21,7 +21,8 @@ public:
         Contracts::IProjectRegistryRepository& projectRegistry,
         Contracts::IUuidGenerator& uuidGenerator,
         Domain::ClientId serveClientId,
-        bool shellEnabled) noexcept;
+        bool shellEnabled,
+        std::vector<Domain::PathText> configuredRoots = {}) noexcept;
 
     WindowsProjectWorkspaceAuthority(const WindowsProjectWorkspaceAuthority&) = delete;
     WindowsProjectWorkspaceAuthority& operator=(
@@ -50,6 +51,12 @@ public:
         const Domain::PathAuthorizationRequest& request,
         const Domain::OperationContext& context) noexcept override;
 
+    [[nodiscard]] Domain::Result<std::vector<Domain::PathText>> configuredRootAllowlist(
+        const Domain::OperationContext& context) noexcept override;
+    [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> bindConfiguredRoot(
+        const Contracts::WorkspaceAuthority& authority, const Domain::PathText& root,
+        const Domain::OperationContext& context) noexcept override;
+
 private:
     [[nodiscard]] Domain::Result<Domain::ProjectMemoryDescriptor> currentDescriptor(
         const Domain::ProjectId& projectId,
@@ -62,6 +69,8 @@ private:
     Contracts::IUuidGenerator& uuidGenerator_;
     const Domain::ClientId serveClientId_;
     const bool shellEnabled_;
+    const std::vector<Domain::PathText> configuredRoots_;
+    std::map<Domain::ProjectId, std::vector<Domain::PathText>> boundRoots_;
     std::mutex authorityIdsMutex_;
     std::map<Domain::ProjectId, Domain::AuthorityId> authorityIds_;
 };

@@ -8,6 +8,7 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <stop_token>
@@ -241,7 +242,7 @@ private:
 
 class Transport final : public Contracts::IManagedResponsesTransport {
 public:
-    enum class Mode { Success, Offline, Block, ToolLoop, ExtendedToolLoop };
+    enum class Mode { Success, Offline, Block, ToolLoop, ExtendedToolLoop, ReadOnlyAttack };
 
     [[nodiscard]] Domain::Result<Domain::ManagedProviderTurnResult> complete(
         const Domain::ManagedProviderTurnRequest& request,
@@ -257,6 +258,8 @@ public:
         }
         if (mode == Mode::Block) {
             std::unique_lock lock{mutex_};
+            firstToolResponseEntered_ = true;
+            cv_.notify_all();
             cv_.wait(lock, context.cancellation, [this] { return released_; });
             return Domain::Result<Domain::ManagedProviderTurnResult>::failure(
                 Domain::makeError(
@@ -269,6 +272,22 @@ public:
                     Domain::ErrorCodes::TransportClosed,
                     "The controlled provider is offline.",
                     true));
+        }
+        if (mode == Mode::ReadOnlyAttack) {
+            if (calls == 1U) {
+                sawToolDescriptor = request.tools.size() == 1U &&
+                    request.tools.front().tool.name == "fixture_read" &&
+                    request.tools.front().tool.effect == Domain::ToolEffect::Read;
+                sawFreshContext = !request.previousResponseId && request.toolOutputs.empty();
+                return Domain::Result<Domain::ManagedProviderTurnResult>::success({
+                    parsed(Domain::ProviderSessionId::parse("reviewer-response-1")), {},
+                    20U, 2U, 22U, {{"reviewer-write-attempt", "fixture_write", "{}"}}});
+            }
+            sawDeniedWrite = request.toolOutputs.size() == 1U &&
+                request.toolOutputs.front().canonicalOutput.find("unauthorized") != std::string::npos;
+            return Domain::Result<Domain::ManagedProviderTurnResult>::success({
+                parsed(Domain::ProviderSessionId::parse("reviewer-response-2")),
+                "Read-only review finished; attempted write was denied.", 23U, 4U, 27U, {}});
         }
         if (mode == Mode::ToolLoop) {
             if (calls == 1U) {
@@ -363,8 +382,10 @@ public:
             ++cancels;
         }
         cv_.notify_all();
+        if (onCancel) onCancel();
     }
 
+    std::function<void()> onCancel;
     Mode mode{Mode::Success};
     std::size_t calls{};
     std::size_t cancels{};
@@ -375,6 +396,8 @@ public:
     bool sawToolDescriptor{};
     bool sawToolOutput{};
     bool sawSuccessorPrompt{};
+    bool sawFreshContext{};
+    bool sawDeniedWrite{};
 
     void holdFirstToolResponse() noexcept
     {
@@ -407,7 +430,7 @@ private:
 
 class ToolCatalog final : public Contracts::IToolCatalog {
 public:
-    ToolCatalog()
+    explicit ToolCatalog(const bool includeWrite = false)
     {
         tools_.push_back(Domain::McpToolDescriptor{
             Domain::ToolDescriptor{
@@ -419,6 +442,12 @@ public:
                 true,
                 false},
             "{\"additionalProperties\":false,\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"],\"type\":\"object\"}"});
+        if (includeWrite) {
+            auto write = tools_.front();
+            write.tool.name = "fixture_write";
+            write.tool.effect = Domain::ToolEffect::Write;
+            tools_.push_back(std::move(write));
+        }
     }
 
     [[nodiscard]] std::span<const Domain::McpToolDescriptor> tools()
@@ -859,6 +888,16 @@ int main()
             "cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa",
             "managed-run-test"));
     assert(blockedStarted);
+    transport.waitForFirstToolResponse();
+    // Allow the worker to publish terminal cancellation while the provider
+    // cancellation callback is still in flight. Status must remain callable,
+    // and the final returned snapshot must copy the published terminal record.
+    transport.onCancel = [&] {
+        const auto published = waitForTerminal(service, blocked.runId);
+        assert(published.record.state == Domain::ManagedRunState::Cancelled);
+        assert(published.record.lastError);
+        assert(published.record.lastError->code == Domain::ErrorCodes::Cancelled);
+    };
     auto cancellation = service.cancel(
         blocked.runId,
         context(
@@ -866,6 +905,9 @@ int main()
             "managed-run-cancel"));
     assert(cancellation);
     assert(cancellation.value().cancellationRequested);
+    assert(cancellation.value().record.state == Domain::ManagedRunState::Cancelled);
+    assert(cancellation.value().record.lastError);
+    transport.onCancel = {};
     auto cancelled = waitForTerminal(service, blocked.runId);
     assert(cancelled.record.state == Domain::ManagedRunState::Cancelled);
     assert(transport.cancels >= 1U);
@@ -1113,5 +1155,43 @@ int main()
     assert(pauseCompleted.record.state == Domain::ManagedRunState::Completed);
     assert(pauseRouter.calls == 1U);
     pauseService.shutdown();
+
+    Store reviewerStore;
+    Transport reviewerTransport;
+    reviewerTransport.mode = Transport::Mode::ReadOnlyAttack;
+    ToolCatalog reviewerCatalog{true};
+    ToolRouter reviewerRouter;
+    auto review = request("abababab-abab-4bab-8bab-abababababab",
+        "acacacac-acac-4cac-8cac-acacacacacac", "Independent opening message");
+    review.readOnlyTools = true;
+    review.automaticContinuity = false;
+    WorkspaceAuthority reviewerAuthority{review.projectId, review.clientId};
+    Application::ManagedRunService reviewerService{reviewerTransport, reviewerStore, clock,
+        {&reviewerCatalog, &reviewerRouter, &reviewerAuthority}};
+    assert(reviewerService.start(review, context("acacacac-acac-4cac-8cac-acacacacacac", "reviewer-test")));
+    const auto reviewed = waitForTerminal(reviewerService, review.runId);
+    assert(reviewed.record.state == Domain::ManagedRunState::Completed);
+    assert(reviewed.record.readOnlyTools);
+    assert(reviewerTransport.sawFreshContext);
+    assert(reviewerTransport.sawToolDescriptor);
+    assert(reviewerTransport.sawDeniedWrite);
+    assert(reviewerRouter.calls == 0U);
+    // Idempotency cannot turn an existing reviewer into a write-capable run.
+    auto changedReview = review;
+    changedReview.readOnlyTools = false;
+    auto reviewerConflict = reviewerService.start(changedReview,
+        context("adadadad-adad-4dad-8dad-adadadadadad", "reviewer-conflict"));
+    assert(!reviewerConflict && reviewerConflict.error().code == Domain::ErrorCodes::Conflict);
+    reviewerService.shutdown();
+    AdmissionRepository reviewerRepository;
+    Application::AgentRepositoryManagedRunStore reviewerDurableStore{reviewerRepository,
+        parsed(Domain::AgentId::parse("forge-managed-run")), hasher};
+    assert(reviewerDurableStore.save(reviewed.record,
+        context("aeaeaeae-aeae-4eae-8eae-aeaeaeaeaeae", "reviewer-persist")));
+    auto restoredReview = reviewerDurableStore.load(review.runId,
+        context("afafafaf-afaf-4faf-8faf-afafafafafaf", "reviewer-load"));
+    assert(restoredReview && restoredReview.value());
+    assert(restoredReview.value()->readOnlyTools);
+    assert(restoredReview.value()->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified);
     return 0;
 }

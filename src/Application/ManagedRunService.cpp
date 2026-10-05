@@ -4,6 +4,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <condition_variable>
 #include <map>
 #include <limits>
@@ -138,7 +139,8 @@ public:
                     persisted.value()->task == request.task &&
                     persisted.value()->authorityGeneration ==
                         request.authorityGeneration &&
-                    persisted.value()->allowTools == request.allowTools) {
+                    persisted.value()->allowTools == request.allowTools &&
+                    persisted.value()->readOnlyTools == request.readOnlyTools) {
                     return Domain::Result<Domain::ManagedRunSnapshot>::success(
                         snapshot(*persisted.value(), false));
                 }
@@ -166,6 +168,7 @@ public:
                 now,
                 now,
                 request.allowTools};
+            record.readOnlyTools = request.readOnlyTools;
             if (auto saved = store_.save(record, context); !saved) {
                 return Domain::Result<Domain::ManagedRunSnapshot>::failure(
                     std::move(saved).error());
@@ -272,6 +275,10 @@ public:
             if (tools_.router) {
                 tools_.router->cancel(active->request.operationId);
             }
+            // Provider cancellation remains outside the service lock. The
+            // worker publishes this record under the same mutex, so copying
+            // its strings/optionals must also hold it.
+            const std::lock_guard lock{mutex_};
             return Domain::Result<Domain::ManagedRunSnapshot>::success(
                 snapshot(active->record, true));
         } catch (...) {
@@ -421,7 +428,8 @@ private:
             left.operationId == right.operationId &&
             left.authorityGeneration == right.authorityGeneration &&
             left.task == right.task &&
-            left.allowTools == right.allowTools;
+            left.allowTools == right.allowTools &&
+            left.readOnlyTools == right.readOnlyTools;
     }
 
     void publishActive(const Domain::ManagedRunRecord& record) noexcept
@@ -700,7 +708,12 @@ private:
                 if (request.allowTools) {
                     authority.emplace(std::move(resolved).value());
                     const auto available = tools_.catalog->tools();
-                    descriptors.assign(available.begin(), available.end());
+                    for (const auto& descriptor : available) {
+                        if (!request.readOnlyTools ||
+                            descriptor.tool.effect == Domain::ToolEffect::Read) {
+                            descriptors.push_back(descriptor);
+                        }
+                    }
                 }
             }
         }
@@ -763,7 +776,10 @@ private:
             }
             if (value.functionCalls.empty()) {
                 if (value.outputText.size() > Domain::MaximumManagedRunOutputBytes) {
-                    value.outputText.resize(Domain::MaximumManagedRunOutputBytes);
+                    auto end = Domain::MaximumManagedRunOutputBytes;
+                    while (end > 0U && (static_cast<unsigned char>(value.outputText[end]) & 0xc0U) == 0x80U) --end;
+                    value.outputText.resize(end);
+                    record.outputTruncated = true;
                 }
                 record.outputText = std::move(value.outputText);
                 record.pendingFunctionCalls.clear();
@@ -804,8 +820,19 @@ private:
                         "managed-run-v1"},
                     call.name,
                     call.canonicalArguments};
-                auto invoked = tools_.router->invoke(
-                    toolRequest, *authority, providerContext);
+                // Enforce independently of advertisement: a provider can emit
+                // an unadvertised write tool, including through resumed state.
+                const bool permitted = !request.readOnlyTools ||
+                    std::any_of(descriptors.begin(), descriptors.end(),
+                        [&](const auto& descriptor) {
+                            return descriptor.tool.name == call.name &&
+                                descriptor.tool.effect == Domain::ToolEffect::Read;
+                        });
+                auto invoked = permitted
+                    ? tools_.router->invoke(toolRequest, *authority, providerContext)
+                    : Domain::Result<Domain::ToolCallOutcome>::failure(failure(
+                        Domain::ErrorCodes::Unauthorized,
+                        "The independent reviewer may invoke only read-only tools."));
                 if (invoked) {
                     toolOutputs.push_back(
                         {call.callId, std::move(invoked).value().canonicalPayload});

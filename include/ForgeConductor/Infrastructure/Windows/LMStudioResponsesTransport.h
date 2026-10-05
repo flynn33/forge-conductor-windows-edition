@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/IManagedRunServices.h"
+#include "ForgeConductor/Domain/ConfigurationModels.h"
 #include "ForgeConductor/Contracts/INativeSessionHostServices.h"
 
 #include <chrono>
@@ -8,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace ForgeConductor::Infrastructure::Windows {
 
@@ -57,6 +59,12 @@ public:
     [[nodiscard]] Domain::Result<Domain::ManagedProviderTurnResult> complete(
         const Domain::ManagedProviderTurnRequest& request,
         const Domain::OperationContext& context) noexcept override;
+
+    [[nodiscard]] Domain::Result<std::string> inspect(
+        const Domain::LocalModelConfig& configured,
+        const Domain::OperationContext& context) noexcept;
+    [[nodiscard]] static Domain::Result<std::string> projectModelInventory(
+        std::string_view inventory, const Domain::LocalModelConfig& configured) noexcept;
 
     void cancel(
         const Domain::OperationId& operationId,

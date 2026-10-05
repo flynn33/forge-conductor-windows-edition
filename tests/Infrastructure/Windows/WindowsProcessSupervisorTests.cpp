@@ -794,11 +794,29 @@ void testDescendantRetainedStdinDoesNotHang(const FixtureContext& fixture)
                  "early child exit with incomplete stdin was not reported as transport_closed");
 }
 
+class CountingProcessOutputObserver final : public Domain::IProcessOutputObserver {
+public:
+    void onStarted(const std::uint32_t processId, const std::uint64_t creationTime) noexcept override
+    {
+        pid.store(processId); created.store(creationTime); started.store(true);
+    }
+    void onOutput(const std::string_view bytes, const bool stderrStream) noexcept override
+    {
+        if (!started.load()) outputBeforeStart.store(true);
+        (stderrStream ? stderrBytes : stdoutBytes).fetch_add(bytes.size());
+    }
+    std::atomic<std::uint32_t> pid{};
+    std::atomic<std::uint64_t> created{}, stdoutBytes{}, stderrBytes{};
+    std::atomic_bool started{}, outputBeforeStart{};
+};
+
 void testOutputCapsAndConcurrentDrain(const FixtureContext& fixture)
 {
     ProcessSupervisorHarness harness;
     auto& supervisor = harness.supervisor();
     auto request = fixture.request({"--emit", "1048576", "1048576"});
+    auto observer = std::make_shared<CountingProcessOutputObserver>();
+    request.outputObserver = observer;
     request.maximumStdoutBytes = 257U;
     request.maximumStderrBytes = 129U;
     request.timeout = 10s;
@@ -808,6 +826,11 @@ void testOutputCapsAndConcurrentDrain(const FixtureContext& fixture)
             "stdout did not retain its independent exact cap");
     require(result.stderrUtf8.size() == 129U && result.stderrTruncated,
             "stderr did not retain its independent exact cap");
+    require(observer->pid.load() != 0U && observer->pid.load() != ::GetCurrentProcessId() &&
+                observer->created.load() != 0U && !observer->outputBeforeStart.load(),
+            "output observer did not receive the actual child identity before its output");
+    require(observer->stdoutBytes.load() == 1'048'576U && observer->stderrBytes.load() == 1'048'576U,
+            "output observer lost bytes after the result capture cap was reached");
 }
 
 void testTimeoutAndNonzeroExit(const FixtureContext& fixture)

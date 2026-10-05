@@ -29,6 +29,25 @@
         "qualification": "Windows host extension",
         "behavior": "The canonical memory-only handoff is prepared first, then the injected native host capability may create, acknowledge, and seal a successor session.",
         "covered_by": ["continuity.request_rollover/valid", "continuity.request_rollover/boundary"]
+      },
+      "tiered_workflow_tools": {
+        "qualification": "Windows host extensions; not part of the canonical macOS tool matrix",
+        "names": [
+          "evidence_digest", "evidence_log_read", "github_read",
+          "process_adopt", "process_kill", "process_launch", "process_list",
+          "process_poll", "process_read_log", "process_status", "process_wait",
+          "provider_status", "reviewer_cancel", "reviewer_start", "reviewer_status",
+          "verification_env_create", "verification_env_status", "workspace_authority_bind"
+        ],
+        "covered_by": [
+          "tests/Mcp/McpToolPackAdapterTests.cpp",
+          "tests/NativeTools/WindowsGitShellIntegrationTests.cpp",
+          "tests/NativeTools/WindowsEvidenceServiceTests.cpp",
+          "tests/Infrastructure/WindowsHostInspectionTests.cpp",
+          "tests/Infrastructure/WindowsProjectWorkspaceAuthorityTests.cpp",
+          "tests/Infrastructure/WindowsReviewerRunStoreTests.cpp",
+          "tests/Application/ManagedRunServiceTests.cpp"
+        ]
       }
     }
   },

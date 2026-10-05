@@ -25,6 +25,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <thread>
 #include <vector>
 
 namespace ForgeConductor::Mcp {
@@ -1411,6 +1412,78 @@ void optionalTimestamp(
         {"cwd", workingDirectory}};
 }
 
+[[nodiscard]] Json shellJobJson(const Domain::ShellJobSnapshot& job, const bool includeOutput = true)
+{
+    const auto state = [&] {
+        switch (job.state) {
+        case Domain::ShellJobState::Running: return "running";
+        case Domain::ShellJobState::Completed: return "completed";
+        case Domain::ShellJobState::Failed: return "failed";
+        case Domain::ShellJobState::Cancelled: return "cancelled";
+        case Domain::ShellJobState::TimedOut: return "timed_out";
+        }
+        return "failed";
+    }();
+    Json value{{"ok", true}, {"job_id", job.jobId}, {"state", state},
+        {"command", job.command}, {"cwd", job.cwd}, {"timeout_sec", job.timeoutSeconds},
+        {"elapsed_ms", job.elapsed.count()}, {"done", job.state != Domain::ShellJobState::Running},
+        {"poll_after_sec", job.state == Domain::ShellJobState::Running ? 5 : 0}};
+    value["pid"] = job.processId ? Json(job.processId) : Json(nullptr);
+    value["process_creation_time"] = job.processCreationTime ? Json(job.processCreationTime) : Json(nullptr);
+    value["launch_pending"] = job.state == Domain::ShellJobState::Running && job.processId == 0U;
+    value["alive"] = job.processAlive ? Json(*job.processAlive) : Json(nullptr);
+    value["exit_code"] = job.result ? Json(job.result->exitCode) : Json(nullptr);
+    value["stdout_path"] = job.stdoutPath;
+    value["stderr_path"] = job.stderrPath;
+    value["receipt_path"] = job.receiptPath;
+    value["log_sha256"] = job.logHash.empty() ? Json(nullptr) : Json(job.logHash);
+    value["log_truncated"] = job.logTruncated;
+    if (includeOutput) {
+        value["args"] = job.arguments;
+    } else {
+        constexpr std::size_t MaximumSummaryCommandBytes = 256U;
+        auto end = (std::min)(job.command.size(), MaximumSummaryCommandBytes);
+        while (end < job.command.size() &&
+               (static_cast<unsigned char>(job.command[end]) & 0xc0U) == 0x80U) {
+            --end;
+        }
+        value["command"] = job.command.substr(0U, end);
+        value["command_truncated"] = end < job.command.size();
+    }
+    value["memory_attached"] = job.memoryAttached;
+    value["memory_attach_error"] = job.memoryAttachError
+        ? Json{{"code", job.memoryAttachError->code}, {"message", job.memoryAttachError->message}} : Json(nullptr);
+    value["result"] = job.result ? processJson(*job.result, job.cwd) : Json(nullptr);
+    if (job.result && includeOutput) {
+        const auto projectOutput = [&](const char* field, const char* truncatedField,
+            const std::size_t maximumBytes) {
+            auto& output = value["result"][field].get_ref<std::string&>();
+            const auto capturedBytes = output.size();
+            auto end = (std::min)(capturedBytes, maximumBytes);
+            while (end < capturedBytes &&
+                (static_cast<unsigned char>(output[end]) & 0xc0U) == 0x80U) --end;
+            const bool responseTruncated = end < capturedBytes;
+            const bool captureTruncated = value["result"][truncatedField].get<bool>();
+            value["result"][std::string{field} + "_captured_bytes"] = capturedBytes;
+            value["result"][std::string{field} + "_response_truncated"] = responseTruncated;
+            value["result"][std::string{field} + "_capture_truncated"] = captureTruncated;
+            value["result"][truncatedField] = captureTruncated || responseTruncated;
+            output.resize(end);
+        };
+        // Durable logs retain their independent byte limit. Keep status previews
+        // below the complete MCP envelope limit even with JSON control escaping.
+        projectOutput("stdout", "stdout_truncated", 16U * 1024U);
+        projectOutput("stderr", "stderr_truncated", 4U * 1024U);
+    }
+    if (job.result && !includeOutput) {
+        value["result"].erase("stdout");
+        value["result"].erase("stderr");
+    }
+    value["error"] = job.error ? Json{{"code", job.error->code},
+        {"message", job.error->message}, {"retryable", job.error->retryable}} : Json(nullptr);
+    return value;
+}
+
 [[nodiscard]] std::optional<Domain::Error> processReceiptError(
     const Json& payload)
 {
@@ -2217,6 +2290,24 @@ public:
             instructions +=
                 "\nCall forge_status for this complete structured context. The Forge home "
                 "path is application data only, not the project folder.";
+            instructions +=
+                "\nShell execution: shell_exec runs foreground PowerShell for at most 120 seconds; "
+                "its descendants are terminated when the shell exits or times out. "
+                "Normal Windows user/profile variables are included when available; Python defaults to UTF-8. "
+                "Arbitrary host secrets are not inherited.";
+            if (dependencies_.shell.supportsJobs()) {
+                instructions +=
+                    "\nFor long builds/tests use shell_job_start(command, cwd, timeout_sec), then poll "
+                    "shell_job_status(job_id) on this same connector every 5 seconds or longer until done=true. "
+                    "Running is not failure; final result.ok, exit_code and timeout/cancellation flags determine success. "
+                    "Jobs default to 1800 seconds, maximum 3600, with two active jobs and sixteen retained results. "
+                    "process_launch(command,args,cwd,env) uses exact argv and returns a stable job_id, PID and named logs; "
+                    "process_wait/poll/read_log/list/kill/adopt support reconnects when the persistent Manager is available. "
+                    "Read durable output with process_read_log, and inspect memory_attached after completion. "
+                    "Use shell_job_list to recover IDs and shell_job_cancel to stop one. "
+                    "Keep the command in the foreground. Do not replace this with detached Start-Process or Task Scheduler. "
+                    "Manager-owned jobs survive MCP reconnect; stopping their owning Manager cancels them. Without a matching Manager, status reports connector_process lifetime and reconnect cancels running jobs.";
+            }
             auto handoff = projectHandoff(projectId, context);
             if (!handoff) {
                 return propagate<std::string>(std::move(handoff));
@@ -2535,6 +2626,92 @@ private:
         std::optional<std::size_t>& fileReadByteStart)
     {
         const auto& name = call.toolName();
+
+        if (name == "provider_status" || name == "process_status") {
+            const auto& inspect = name == "provider_status"
+                ? dependencies_.providerInspection : dependencies_.systemInspection;
+            if (!inspect) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "The requested host inspection is unavailable in this composition.");
+            auto inspected = inspect(context);
+            if (!inspected) return propagate<Json>(std::move(inspected));
+            return Domain::Result<Json>::success(Json::parse(inspected.value()));
+        }
+        if (name == "github_read") {
+            if (!dependencies_.githubRead) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "GitHub read access is unavailable in this composition.");
+            Contracts::GitHubReadRequest request{arguments.at("repository").get<std::string>(),
+                arguments.at("operation").get<std::string>()};
+            if (arguments.contains("id")) request.id = arguments.at("id").get<std::uint64_t>();
+            if (arguments.contains("ref")) request.ref = arguments.at("ref").get<std::string>();
+            request.page = arguments.value("page", 1U);
+            request.perPage = arguments.value("per_page", 30U);
+            auto read = dependencies_.githubRead->read(request, context);
+            if (!read) return propagate<Json>(std::move(read));
+            return Domain::Result<Json>::success(Json::parse(read.value()));
+        }
+        if (name == "workspace_authority_bind") {
+            auto root = Domain::PathText::create(arguments.at("root").get<std::string>());
+            if (!root) return propagate<Json>(std::move(root));
+            bool managerBound{};
+            if (dependencies_.durableToolBroker) {
+                auto brokered = dependencies_.durableToolBroker(name, arguments.dump(), authority.projectId(), context);
+                if (!brokered) return propagate<Json>(std::move(brokered));
+                const auto confirmation = Json::parse(brokered.value().begin(), brokered.value().end(),
+                    nullptr, false, false);
+                if (!confirmation.is_object() || !confirmation.contains("ok") ||
+                    !confirmation.at("ok").is_boolean() || !confirmation.at("ok").get<bool>())
+                    return failure<Json>(Domain::ErrorCodes::IntegrityFailure,
+                        "The persistent Manager did not confirm workspace root binding.");
+                managerBound = true;
+            }
+            auto bound = dependencies_.workspaceAuthority.bindConfiguredRoot(authority, root.value(), context);
+            if (!bound) {
+                auto error = std::move(bound).error();
+                if (managerBound) error.message =
+                    "The persistent Manager bound owner-configured root " + Json(root.value().value()).dump() +
+                    " (manager_bound=true; local_bound=false), but local MCP authority binding failed: " +
+                    error.message + ". Reconnect the MCP connector and reread the saved root allowlist "
+                    "before retrying local binding. Manager binding remains active.";
+                return Domain::Result<Json>::failure(std::move(error));
+            }
+            Json roots = Json::array();
+            for (const auto& item : bound.value().trustedRoots()) roots.push_back(item.value());
+            return Domain::Result<Json>::success(Json{{"ok", true}, {"project_id", authority.projectId().value()},
+                {"active_roots", std::move(roots)}, {"root", root.value().value()},
+                {"authority_generation", bound.value().generation()}});
+        }
+        if (name == "evidence_digest" || name == "evidence_log_read") {
+            if (!dependencies_.evidence) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Evidence capture is unavailable in this composition.");
+            if (name == "evidence_log_read") {
+                auto log = dependencies_.evidence->readLog(authority, arguments.value("offset", std::size_t{}),
+                    arguments.value("limit", std::size_t{4}), arguments.value("verify", true), context);
+                if (!log) return propagate<Json>(std::move(log));
+                return Domain::Result<Json>::success(Json::parse(log.value()));
+            }
+            std::vector<Domain::PathText> paths;
+            for (const auto& item : arguments.at("paths")) {
+                auto path = Domain::PathText::create(item.get<std::string>());
+                if (!path) return propagate<Json>(std::move(path));
+                paths.push_back(std::move(path).value());
+            }
+            auto captured = dependencies_.evidence->digest(paths, authority, context);
+            if (!captured) return propagate<Json>(std::move(captured));
+            return Domain::Result<Json>::success(Json::parse(captured.value()));
+        }
+        if (name.starts_with("process_") || name.starts_with("reviewer_") ||
+            name.starts_with("verification_env_") || name.starts_with("shell_job_")) {
+            if (dependencies_.durableToolBroker) {
+                auto brokered = dependencies_.durableToolBroker(name, arguments.dump(), authority.projectId(), context);
+                if (!brokered) return propagate<Json>(std::move(brokered));
+                auto result = Json::parse(brokered.value());
+                result["broker"] = "persistent_manager";
+                return Domain::Result<Json>::success(std::move(result));
+            }
+            if (name.starts_with("process_")) return process(name, authority, arguments, context, observation);
+            if (name.starts_with("reviewer_")) return reviewer(name, authority, arguments, context, observation);
+            if (name.starts_with("verification_env_")) return verificationEnvironment(name, authority, arguments, context, observation);
+        }
         if (name == "instruction_package.read") {
             auto workspace = workspaceContext(authority.projectId(), std::nullopt, context);
             if (!workspace) return propagate<Json>(std::move(workspace));
@@ -2644,8 +2821,8 @@ private:
         if (name == "search_text") {
             return search(authority, arguments, context, observation);
         }
-        if (name == "shell_exec") {
-            return shell(authority, arguments, context, observation);
+        if (name == "shell_exec" || name.starts_with("shell_job_")) {
+            return shell(name, authority, arguments, context, observation);
         }
         if (name.starts_with("project_memory.")) {
             return projectMemory(
@@ -2820,7 +2997,20 @@ private:
                     visibleChat["error"] = "The optional visible-chat observation failed.";
                 }
             }
+            Json configuredRoots = Json::array();
+            auto configured = dependencies_.workspaceAuthority.configuredRootAllowlist(context);
+            if (!configured) return propagate<Json>(std::move(configured));
+            for (const auto& root : configured.value()) configuredRoots.push_back(root.value());
+            Json activeRoots = Json::array();
+            for (const auto& root : authority.trustedRoots()) activeRoots.push_back(root.value());
+            const auto packetId = resume.value().record
+                ? std::optional<std::string>{resume.value().record->packet.id.value()} : std::nullopt;
             Json automaticStatus{
+                {"resume_packet_ready", packetId.has_value()},
+                {"resume_packet_id", packetId ? Json(*packetId) : Json(nullptr)},
+                {"readback_confirmed", packetId && automatic.readbackHandoffId == packetId},
+                {"readback_handoff_id", automatic.readbackHandoffId ? Json(*automatic.readbackHandoffId) : Json(nullptr)},
+                {"readback_scope", "this_mcp_client_confirmed_context_get"},
                 {"packet_transport", "mcp_initialize_and_context_get"},
                 {"project_handoff", resume.value().record
                     ? legacyPacketJson(resume.value().record->packet) : Json(nullptr)},
@@ -2843,6 +3033,19 @@ private:
                 {"client_id", call.clientId().value()},
                 {"agent_count", agents.size()},
                 {"tool_count", tools.size()},
+                {"shell_execution", Json{{"enabled", authority.shellEnabled()},
+                    {"synchronous_timeout_sec_max", 120},
+                    {"synchronous_default_timeout_sec", dependencies_.shellDefaultTimeout.count()},
+                    {"detached_processes_survive", false},
+                    {"jobs_available", dependencies_.shell.supportsJobs()},
+                    {"job_timeout_sec_max", 3600}, {"job_default_timeout_sec", 1800},
+                    {"maximum_active_jobs", 2}, {"maximum_retained_jobs", 16}, {"maximum_persisted_jobs_per_project", 32},
+                    {"maximum_log_bytes_per_stream", 16U * 1024U * 1024U}, {"log_read_page_bytes", 32U * 1024U},
+                    {"job_lifetime", dependencies_.durableToolBroker || dependencies_.reviewerRuns ? "manager_process" : "connector_process"},
+                    {"job_output", "durable_named_stream_logs_and_bounded_final_capture"},
+                    {"durable_across_mcp_reconnect", static_cast<bool>(dependencies_.durableToolBroker || dependencies_.reviewerRuns)},
+                    {"environment_policy", "allowlisted_system_and_user_profile_with_explicit_overrides"},
+                    {"python_utf8_default", true}}},
                 {"agents", std::move(agents)},
                 {"tools", std::move(tools)},
                 {"memory_note_count", memoryCount},
@@ -2852,6 +3055,16 @@ private:
                 {"continuity", std::move(continuityStatus)},
                 {"auto_continuity", std::move(automaticStatus)},
                 {"visible_chat_continuity", visibleChat},
+                {"reviewer_execution", Json{{"manager_required", true},
+                    {"read_only_tools_enforced", true}, {"executor_history_included", false},
+                    {"maximum_persisted_reviews", 16}, {"maximum_output_bytes", Domain::MaximumManagedRunOutputBytes},
+                    {"retention_policy", "preserve_receipts_refuse_when_full_owner_archives_explicitly"}}},
+                {"context_telemetry", visibleChat.contains("context_telemetry")
+                    ? visibleChat.at("context_telemetry") : Json{{"tokens_used", nullptr},
+                        {"reason", "No completed provider generation observation is available."}}},
+                {"workspace_authority", Json{{"configured_additional_roots", std::move(configuredRoots)},
+                    {"active_roots", std::move(activeRoots)}, {"bind_tool", "workspace_authority_bind"},
+                    {"file_write_limit_bytes", 2U * 1024U * 1024U}}},
                 {"workspace", std::move(projectContext.value().at("workspace"))},
                 {"instruction_packages",
                  std::move(projectContext.value().at("instruction_packages"))},
@@ -3830,12 +4043,245 @@ private:
             {"count", matches.value().size()}});
     }
 
+
+    [[nodiscard]] Domain::Result<Json> process(
+        const std::string_view name, const Contracts::WorkspaceAuthority& authority,
+        const Json& arguments, const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
+    {
+        if (name == "process_launch") {
+            auto executable = Domain::PathText::create(arguments.at("command").get<std::string>());
+            if (!executable) return propagate<Json>(std::move(executable));
+            auto cwd = authorizePath(dependencies_.workspaceAuthority, authority,
+                arguments.value("cwd", defaultRoot(authority)), Domain::FileAccess::Execute,
+                false, context, &observation, ContinuityPathRole::WorkingDirectory);
+            if (!cwd) return propagate<Json>(std::move(cwd));
+            auto timeout = arguments.value("timeout_sec", 1800.0);
+            if (!std::isfinite(timeout) || timeout <= 0 || timeout > 3600)
+                return failure<Json>(Domain::ErrorCodes::InvalidRequest, "Job timeout must be within 0...3600 seconds.");
+            Domain::ProcessRequest request{executable.value(), {}, cwd.value().canonicalPath(), {}, false,
+                std::chrono::milliseconds{static_cast<std::int64_t>(std::ceil(timeout * 1000))},
+                MaximumShellOutputBytes, MaximumShellErrorBytes};
+            if (arguments.contains("args")) request.arguments = arguments.at("args").get<std::vector<std::string>>();
+            if (arguments.contains("env")) for (const auto& item : arguments.at("env").items())
+                request.environment.push_back({item.key(), item.value().get<std::string>()});
+            auto job = dependencies_.shell.startProcess(request, authority, context);
+            if (!job) return propagate<Json>(std::move(job));
+            auto result = shellJobJson(job.value());
+            result["lifetime"] = dependencies_.reviewerRuns ? "manager_process" : "connector_process";
+            result["durable_across_mcp_reconnect"] = static_cast<bool>(dependencies_.reviewerRuns);
+            return Domain::Result<Json>::success(std::move(result));
+        }
+        if (name == "process_list") {
+            auto jobs = dependencies_.shell.listJobs(authority, context);
+            if (!jobs) return propagate<Json>(std::move(jobs));
+            Json values = Json::array();
+            for (const auto& job : jobs.value()) values.push_back(shellJobJson(job, false));
+            return Domain::Result<Json>::success(Json{{"ok", true}, {"jobs", std::move(values)}});
+        }
+        const auto id = arguments.at("job_id").get<std::string>();
+        if (name == "process_read_log") {
+            if (arguments.contains("offset") && arguments.contains("tail_lines"))
+                return failure<Json>(Domain::ErrorCodes::InvalidRequest, "Select offset or tail_lines, not both.");
+            std::optional<std::uint64_t> offset;
+            if (arguments.contains("offset")) offset = arguments.at("offset").get<std::uint64_t>();
+            auto page = dependencies_.shell.readJobLog(id, arguments.value("stream", "stdout") == "stderr",
+                offset, arguments.value("tail_lines", std::size_t{100}), authority, context);
+            if (!page) return propagate<Json>(std::move(page));
+            return Domain::Result<Json>::success(Json{{"ok", true}, {"job_id", id}, {"text", page.value().text},
+                {"path", page.value().path}, {"offset", page.value().offset},
+                {"next_offset", page.value().nextOffset}, {"bytes", page.value().totalBytes},
+                {"has_more", page.value().hasMore}, {"text_lossy", page.value().textLossy}});
+        }
+        auto job = name == "process_kill" ? dependencies_.shell.cancelJob(id, authority, context)
+            : name == "process_adopt" ? dependencies_.shell.adoptJob(id, authority, context)
+            : dependencies_.shell.getJob(id, authority, context);
+        if (!job) return propagate<Json>(std::move(job));
+        if (name == "process_wait") {
+            const auto requested = arguments.value("timeout_sec", 30U);
+            const auto deadline = (std::min)(context.deadline,
+                dependencies_.clock.monotonicNow() + std::chrono::seconds{(std::min)(requested, 30U)});
+            while (job.value().state == Domain::ShellJobState::Running &&
+                dependencies_.clock.monotonicNow() < deadline && !context.isCancellationRequested()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{100});
+                job = dependencies_.shell.getJob(id, authority, context);
+                if (!job) return propagate<Json>(std::move(job));
+            }
+            if (context.isCancellationRequested()) return failure<Json>(Domain::ErrorCodes::Cancelled, "The wait was cancelled; the job remains owned by its broker.");
+        }
+        auto result = shellJobJson(job.value());
+        result["adopted"] = name == "process_adopt";
+        return Domain::Result<Json>::success(std::move(result));
+    }
+
+    [[nodiscard]] Domain::Result<Json> reviewer(
+        const std::string_view name, const Contracts::WorkspaceAuthority& authority,
+        const Json& arguments, const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
+    {
+        auto* service = dependencies_.reviewerRuns ? dependencies_.reviewerRuns() : nullptr;
+        if (!service) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+            "Independent review requires the authenticated persistent Manager; start Forge Manager and reconnect.");
+        auto result = [&]() -> Domain::Result<Domain::ManagedRunSnapshot> {
+            if (name == "reviewer_start") {
+                auto openingPath = authorizePath(dependencies_.workspaceAuthority, authority,
+                    arguments.at("opening_message_path").get<std::string>(), Domain::FileAccess::Read,
+                    false, context, &observation, ContinuityPathRole::Path);
+                if (!openingPath) return propagate<Domain::ManagedRunSnapshot>(std::move(openingPath));
+                auto opening = dependencies_.fileSystem.readFile(openingPath.value(), 64U * 1024U, context);
+                if (!opening) return propagate<Domain::ManagedRunSnapshot>(std::move(opening));
+                const std::string text{reinterpret_cast<const char*>(opening.value().data()), opening.value().size()};
+                if (text.empty() || text.size() > 64U * 1024U)
+                    return failure<Domain::ManagedRunSnapshot>(Domain::ErrorCodes::LimitExceeded,
+                        "Reviewer opening message must be nonempty and at most 64 KiB.");
+                auto uuid = dependencies_.uuidGenerator.next();
+                if (!uuid) return propagate<Domain::ManagedRunSnapshot>(std::move(uuid));
+                Domain::ManagedRunStartRequest request{Domain::SessionId{uuid.value()}, authority.projectId(),
+                    authority.callerId(), context.operationId, context.correlationId, authority.generation(),
+                    "Independent read-only reviewer. Use only read tools; report findings and unresolved gates honestly. "
+                    "You have no executor conversation history. Authorization reference: " + arguments.at("authorization").get<std::string>() +
+                    "\nOpening message source: " + openingPath.value().canonicalPath().value() + "\n" + text +
+                    "\nReview task: " + arguments.value("task", std::string{}), true, false, true};
+                return service->start(request, context);
+            }
+            auto id = Domain::SessionId::parse(arguments.at("run_id").get<std::string>());
+            if (!id) return propagate<Domain::ManagedRunSnapshot>(std::move(id));
+            auto existing = service->status(id.value(), context);
+            if (!existing) return existing;
+            if (existing.value().record.projectId != authority.projectId() || !existing.value().record.readOnlyTools)
+                return failure<Domain::ManagedRunSnapshot>(Domain::ErrorCodes::ProjectScopeMismatch,
+                    "The requested run is not a read-only reviewer owned by this project.");
+            return name == "reviewer_cancel" ? service->cancel(id.value(), context) : std::move(existing);
+        }();
+        if (!result) return propagate<Json>(std::move(result));
+        const auto& record = result.value().record;
+        constexpr std::size_t maximumPageBytes = 32U * 1024U;
+        const std::string_view output = record.outputText ? std::string_view{*record.outputText} : std::string_view{};
+        const auto offset = name == "reviewer_status" ? arguments.value("output_offset", std::size_t{}) : 0U;
+        const auto maximumBytes = name == "reviewer_status" ? arguments.value("max_output_bytes", maximumPageBytes) : maximumPageBytes;
+        if (offset > output.size() || !isUtf8Boundary(output, offset))
+            return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                "output_offset must identify a UTF-8 character boundary within the retained reviewer output.");
+        const auto end = boundedUtf8End(output, offset, maximumBytes);
+        const bool hasMore = end < output.size();
+        Json error = nullptr;
+        if (record.lastError) {
+            const auto& message = record.lastError->message;
+            const auto messageEnd = boundedUtf8End(message, 0U, 4U * 1024U);
+            error = Json{{"code", record.lastError->code}, {"message", message.substr(0U, messageEnd)},
+                {"message_total_bytes", message.size()}, {"message_truncated", messageEnd < message.size()}};
+        }
+        const auto state = record.state == Domain::ManagedRunState::Completed ? "completed"
+            : record.state == Domain::ManagedRunState::Failed ? "failed"
+            : record.state == Domain::ManagedRunState::Cancelled ? "cancelled"
+            : record.state == Domain::ManagedRunState::Paused ? "paused"
+            : record.state == Domain::ManagedRunState::Cancelling ? "cancelling" : "running";
+        return Domain::Result<Json>::success(Json{{"ok", true}, {"run_id", record.runId.value()},
+            {"project_id", record.projectId.value()}, {"state", state}, {"read_only", record.readOnlyTools},
+            {"fresh_provider_context", true}, {"executor_history_included", false}, {"manager_owned", true},
+            {"authorization_source", "project_scoped_tool_invocation_and_authenticated_same_user_manager"},
+            {"authorization_reference_is_human_proof", false},
+            {"provider_response_id", record.providerResponseId ? Json(record.providerResponseId->value()) : Json(nullptr)},
+            {"input_tokens", record.inputTokens}, {"output_tokens", record.outputTokens},
+            {"output", record.outputText ? Json(output.substr(offset, end - offset)) : Json(nullptr)},
+            {"output_offset", offset}, {"output_bytes_returned", end - offset},
+            {"output_total_bytes", output.size()}, {"output_has_more", hasMore},
+            {"next_output_offset", hasMore ? Json(end) : Json(nullptr)},
+            {"output_page_truncated", offset != 0U || hasMore},
+            {"output_truncated", record.outputTruncated},
+            {"gate_approved", false},
+            {"error", std::move(error)},
+            {"review_disposition", "Inspect the actual reviewer output and resolve findings; this tool does not approve a policy gate."}});
+    }
+
+    [[nodiscard]] Domain::Result<Json> verificationEnvironment(
+        const std::string_view name, const Contracts::WorkspaceAuthority& authority,
+        const Json& arguments, const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
+    {
+        auto path = arguments.at("path").get<std::string>();
+        while (path.size() > 3 && (path.back() == '/' || path.back() == '\\')) path.pop_back();
+        if (name == "verification_env_status") {
+            auto readable = authorizePath(dependencies_.workspaceAuthority, authority,
+                path + "/verification-env.json", Domain::FileAccess::Read, false, context,
+                &observation, ContinuityPathRole::Path);
+            if (!readable) return propagate<Json>(std::move(readable));
+            auto bytes = dependencies_.fileSystem.readFile(readable.value(), 64U * 1024U, context);
+            if (!bytes) return propagate<Json>(std::move(bytes));
+            auto manifest = Json::parse(std::string{reinterpret_cast<const char*>(bytes.value().data()), bytes.value().size()});
+            if (!manifest.is_object() || !manifest.value("ready", false))
+                return failure<Json>(Domain::ErrorCodes::IntegrityFailure, "The verification environment has no successful manifest.");
+            return Domain::Result<Json>::success(Json{{"ok", true}, {"path", path}, {"manifest", std::move(manifest)},
+                {"manifest_path", readable.value().canonicalPath().value()}, {"provenance", "durable_creation_manifest"}});
+        }
+        auto destination = authorizePath(dependencies_.workspaceAuthority, authority, path,
+            Domain::FileAccess::Create, false, context, &observation, ContinuityPathRole::Path);
+        if (!destination) return propagate<Json>(std::move(destination));
+        // Dependency writes belong to an explicitly bound evidence root, away
+        // from the main source tree. The venv itself remains a normal user venv.
+        if (destination.value().authorityRoot().value() == defaultRoot(authority))
+            return failure<Json>(Domain::ErrorCodes::Unauthorized,
+                "Create verification dependencies below an owner-configured additional root, outside the source tree.");
+        auto executable = Domain::PathText::create(arguments.at("python_path").get<std::string>());
+        if (!executable) return propagate<Json>(std::move(executable));
+        std::vector<std::string> requirements = arguments.value("requirements",
+            std::vector<std::string>{"jsonschema==4.25.1", "PyYAML==6.0.3"});
+        if (requirements.empty() || requirements.size() > 2 ||
+            std::any_of(requirements.begin(), requirements.end(), [](const auto& value) {
+                return value != "jsonschema==4.25.1" && value != "PyYAML==6.0.3";
+            })) return failure<Json>(Domain::ErrorCodes::InvalidRequest, "Only the qualified exact jsonschema and PyYAML pins are supported.");
+        const std::string script = R"PY(import sys, pathlib, venv, subprocess, json, datetime
+p=pathlib.Path(sys.argv[1]); req=json.loads(sys.argv[2])
+if p.exists(): raise RuntimeError('Destination already exists; refusing to alter it')
+venv.EnvBuilder(with_pip=True).create(p)
+py=p/'Scripts'/'python.exe'
+subprocess.run([str(py),'-I','-m','pip','install','--disable-pip-version-check','--no-input','--only-binary=:all:',*req],check=True)
+probe=subprocess.run([str(py),'-I','-c',"import sys,json,importlib.metadata as m; print(json.dumps({'python_version':sys.version,'executable':sys.executable,'distributions':{d.metadata['Name']:d.version for d in m.distributions()}}))"],check=True,capture_output=True,text=True,encoding='utf-8')
+facts=json.loads(probe.stdout)
+versions={k.lower():v for k,v in facts['distributions'].items()}
+for pin in req:
+ name,ver=pin.split('==')
+ if versions.get(name.lower())!=ver: raise RuntimeError('Installed pin mismatch: '+pin)
+facts.update({'ready':True,'requirements':req,'created_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'isolation':'dedicated_venv','source_scope':'dependency writes outside primary project root'})
+with (p/'verification-env.json').open('x',encoding='utf-8') as f: json.dump(facts,f,indent=2)
+print(json.dumps(facts))
+)PY";
+        Domain::ProcessRequest request{executable.value(), {"-I", "-c", script, destination.value().canonicalPath().value(), Json(requirements).dump()},
+            destination.value().authorityRoot(), {}, false, std::chrono::seconds{1800}, MaximumShellOutputBytes, MaximumShellErrorBytes};
+        auto job = dependencies_.shell.startProcess(request, authority, context);
+        if (!job) return propagate<Json>(std::move(job));
+        auto result = shellJobJson(job.value());
+        result["environment_path"] = destination.value().canonicalPath().value();
+        result["manifest_path"] = path + "/verification-env.json";
+        result["next_action"] = "Wait for this job and require successful exit; then call verification_env_status and evidence_digest on its manifest.";
+        return Domain::Result<Json>::success(std::move(result));
+    }
+
     [[nodiscard]] Domain::Result<Json> shell(
+        const std::string_view name,
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
         const Domain::OperationContext& context,
         ToolContinuityObservationBuilder& observation)
     {
+        if (name == "shell_job_list") {
+            auto jobs = dependencies_.shell.listJobs(authority, context);
+            if (!jobs) return propagate<Json>(std::move(jobs));
+            Json values = Json::array();
+            for (const auto& job : jobs.value()) values.push_back(shellJobJson(job, false));
+            return Domain::Result<Json>::success(Json{{"ok", true}, {"jobs", std::move(values)},
+                {"lifetime", dependencies_.reviewerRuns ? "manager_process" : "connector_process"},
+                {"pid", dependencies_.processId}});
+        }
+        if (name == "shell_job_status" || name == "shell_job_cancel") {
+            const auto id = strictString(arguments, "job_id").value_or("");
+            auto job = name == "shell_job_cancel"
+                ? dependencies_.shell.cancelJob(id, authority, context)
+                : dependencies_.shell.getJob(id, authority, context);
+            if (!job) return propagate<Json>(std::move(job));
+            auto value = shellJobJson(job.value());
+            return Domain::Result<Json>::success(std::move(value));
+        }
         const auto command = legacyString(arguments, "command").value_or("");
         if (command.empty()) {
             return failure<Json>(
@@ -3856,14 +4302,15 @@ private:
         if (!cwd) {
             return propagate<Json>(std::move(cwd));
         }
+        const bool trackedJob = name == "shell_job_start";
         auto timeoutSeconds = strictNumber(arguments, "timeout_sec").value_or(
-            static_cast<double>(dependencies_.shellDefaultTimeout.count()));
+            trackedJob ? 1800.0 : static_cast<double>(dependencies_.shellDefaultTimeout.count()));
         if (!std::isfinite(timeoutSeconds) || timeoutSeconds <= 0.0) {
             return failure<Json>(
                 "invalid_timeout",
                 "timeout_sec must be finite and positive");
         }
-        timeoutSeconds = (std::min)(timeoutSeconds, 120.0);
+        timeoutSeconds = (std::min)(timeoutSeconds, trackedJob ? 3600.0 : 120.0);
         const auto timeout = std::chrono::milliseconds{
             static_cast<std::int64_t>(std::ceil(timeoutSeconds * 1000.0))};
         Domain::ProcessRequest request{
@@ -3875,6 +4322,14 @@ private:
             timeout,
             MaximumShellOutputBytes,
             MaximumShellErrorBytes};
+        if (trackedJob) {
+            auto job = dependencies_.shell.startJob(request, authority, context);
+            if (!job) return propagate<Json>(std::move(job));
+            auto value = shellJobJson(job.value());
+            value["lifetime"] = dependencies_.reviewerRuns ? "manager_process" : "connector_process";
+            value["next_action"] = "Poll shell_job_status or process_wait until done=true; inspect result.ok and exit_code. Manager-owned jobs survive MCP reconnect; shutting down their owning process cancels them.";
+            return Domain::Result<Json>::success(std::move(value));
+        }
         auto result = dependencies_.shell.execute(request, authority, context);
         if (!result) {
             return propagate<Json>(std::move(result));
@@ -3882,6 +4337,11 @@ private:
         auto payload = processJson(
             result.value(), cwd.value().canonicalPath().value());
         payload["command"] = command;
+        payload["timeout_sec"] = timeoutSeconds;
+        payload["process_tree_lifetime"] = "until_command_exit_or_timeout";
+        if (result.value().timedOut) {
+            payload["next_action"] = "For longer commands use shell_job_start and poll shell_job_status. Keep the command in the foreground; detached descendants are terminated when their parent shell exits.";
+        }
         return Domain::Result<Json>::success(std::move(payload));
     }
 

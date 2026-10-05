@@ -7,7 +7,9 @@ Result<void> validateProcessRequest(
     const ProcessRequest& request,
     const ResourceBudgets& budgets)
 {
-    const auto maximumTimeout = std::chrono::seconds{budgets.shellTimeoutSecondsMaximum};
+    const auto maximumTimeout = request.managedJob
+        ? std::chrono::seconds{3'600}
+        : std::chrono::seconds{budgets.shellTimeoutSecondsMaximum};
     if (request.timeout <= std::chrono::milliseconds::zero() ||
         request.timeout > maximumTimeout) {
         return Result<void>::failure(makeError(

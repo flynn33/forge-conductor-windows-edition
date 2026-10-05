@@ -1822,6 +1822,8 @@ void validateSettingsUpdateOutcome(
     Json value = Json::object();
     value["authority_generation"] = record.authorityGeneration;
     value["allow_tools"] = record.allowTools;
+    value["read_only_tools"] = record.readOnlyTools;
+    value["output_truncated"] = record.outputTruncated;
     value["cancellation_requested"] = snapshot.cancellationRequested;
     value["client_id"] = record.clientId.value();
     value["created_at_utc_ms"] = epochMilliseconds(record.createdAt);
@@ -1863,6 +1865,22 @@ void validateSettingsUpdateOutcome(
 [[nodiscard]] Domain::ManagedRunSnapshot parseManagedRunSnapshot(
     const Json& value)
 {
+    if (value.contains("output_truncated")) {
+        const bool truncated = booleanMember(value, "output_truncated");
+        auto compatible = value;
+        compatible.erase("output_truncated");
+        auto result = parseManagedRunSnapshot(compatible);
+        result.record.outputTruncated = truncated;
+        return result;
+    }
+    if (value.contains("read_only_tools")) {
+        const bool readOnly = booleanMember(value, "read_only_tools");
+        auto compatible = value;
+        compatible.erase("read_only_tools");
+        auto result = parseManagedRunSnapshot(compatible);
+        result.record.readOnlyTools = readOnly;
+        return result;
+    }
     if (value.contains("allow_tools")) {
         requireExactFields(
             value,

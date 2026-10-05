@@ -1,4 +1,10 @@
 #include "McpServeCompositionRoot.h"
+#include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsCurrentUserIdentity.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerAuthentication.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
+
 
 #include "ForgeConductor/Application/AgentCatalog.h"
 #include "ForgeConductor/Application/AgentSessionService.h"
@@ -14,6 +20,8 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioChatContinuity.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsGitHubReadService.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsSystemInspection.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsApplicationPaths.h"
@@ -41,6 +49,8 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsPathGlobService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsPdfService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsEvidenceService.h"
+#include <nlohmann/json.hpp>
 #include "ForgeConductor/NativeTools/Windows/WindowsTextSearchService.h"
 #include "ForgeConductor/Persistence/Windows/PersistenceWindows.h"
 #include "ForgeConductor/SessionHost/ForgeNativeSessionHostAdapter.h"
@@ -473,6 +483,35 @@ void ensureDirectory(const Domain::PathText& directory)
         context));
 }
 
+// Never cross profile boundaries or route to an older broker. A unavailable
+// Manager leaves connector-owned jobs explicitly marked non-durable.
+[[nodiscard]] std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient>
+connectDurableManager(const Domain::PathText& home, const Domain::OperationContext& parent,
+    const std::shared_ptr<InfrastructureWindows::SystemClock>& clock) noexcept
+{
+    try {
+        const Domain::OperationContext context{parent.operationId,
+            (std::min)(parent.deadline, clock->monotonicNow() + std::chrono::seconds{2}),
+            parent.cancellation, parent.correlationId};
+        auto identity = InfrastructureWindows::WindowsCurrentUserIdentity::load();
+        if (!identity) return {};
+        auto names = InfrastructureWindows::WindowsManagerInstanceLease::namesFor(identity.value());
+        if (!names) return {};
+        InfrastructureWindows::DpapiSecureStorage secure{std::wstring{InfrastructureWindows::DpapiSecureStorage::DefaultRegistrySubkey}};
+        InfrastructureWindows::WindowsManagerAuthenticationTokenGenerator generator;
+        InfrastructureWindows::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
+        auto nonce = tokens.load(context);
+        if (!nonce || !nonce.value()) return {};
+        auto client = InfrastructureWindows::WindowsManagerNamedPipeClient::create(
+            clock, std::wstring{names.value().pipeName()}, *nonce.value());
+        if (!client) return {};
+        auto status = client.value()->status(context);
+        if (!status || !status.value().isManager || status.value().version != ProductVersion ||
+            std::filesystem::path(status.value().home.value()) != std::filesystem::path(home.value())) return {};
+        return std::move(client).value();
+    } catch (...) { return {}; }
+}
+
 } // namespace
 
 class McpServeCompositionRoot::Impl final {
@@ -700,7 +739,7 @@ private:
         workspaceAuthority_ = std::make_unique<
             InfrastructureWindows::WindowsProjectWorkspaceAuthority>(
             *projectRegistry_, *uuidGenerator_, clientId_,
-            configuration_.shell.enabled);
+            configuration_.shell.enabled, configuration_.allowedRoots);
 
         const auto gitExecutable = discoverGitExecutable();
         const auto powerShellExecutable = discoverPowerShellExecutable();
@@ -740,7 +779,7 @@ private:
         git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
             gitExecutable, processSupervisor_);
         shell_ = std::make_unique<NativeToolsWindows::WindowsShellService>(
-            powerShellExecutable, processSupervisor_);
+            powerShellExecutable, processSupervisor_, childPath(dataRoot, "jobs"));
 
         projectArtifactStore_ = std::make_shared<
             PersistenceWindows::WindowsProjectMemoryArtifactStore>(
@@ -758,6 +797,36 @@ private:
             *projectRegistry_, *projectRepositoryCache_, *redactor_,
             projectMemoryLimits_);
 
+        shell_->setJobCompletionSink([this](const Domain::ProjectId& project,
+            const Domain::ShellJobSnapshot& job) {
+            Domain::ProjectMemoryWrite write;
+            write.kind = "process_job_result";
+            write.title = "Process job " + job.jobId;
+            write.summary = "Durable process outcome; receipt=" + job.receiptPath;
+            const nlohmann::json body{{"job_id", job.jobId}, {"receipt_path", job.receiptPath},
+                {"stdout_path", job.stdoutPath}, {"stderr_path", job.stderrPath},
+                {"log_sha256", job.logHash}, {"log_truncated", job.logTruncated},
+                {"exit_code", job.result ? nlohmann::json(job.result->exitCode) : nlohmann::json(nullptr)},
+                {"timed_out", job.result && job.result->timedOut},
+                {"cancelled", job.result && job.result->cancelled}};
+            write.body = body.dump();
+            write.tags = {"process", "durable-job", "evidence"};
+            write.sourceKind = "forge_process_job";
+            write.sourceReference = job.receiptPath;
+            const auto operation = makeContext(*uuidGenerator_, *clock_, std::chrono::seconds{30}, "process-job-memory");
+            auto saved = projectMemory_->remember({project, std::move(write)}, operation);
+            if (!saved) throw std::runtime_error{saved.error().message};
+        });
+        evidence_ = std::make_unique<NativeToolsWindows::WindowsEvidenceService>(
+            *workspaceAuthority_, *atomicFileStore_, *hasher_, *clock_, *uuidGenerator_,
+            [this, dataScope, dataRoot, memoryRoot](const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+                const auto path = childPath(memoryRoot, "evidence-" + project.value() + ".json");
+                return Domain::Result<Contracts::EvidenceStoragePaths>::success({
+                    authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Read, operation),
+                    authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Write, operation),
+                    authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Create, operation)});
+            }, dataRoot);
+        managerBroker_ = connectDurableManager(dataRoot, startupContext, clock_);
         agentCatalog_ = take(Application::AgentCatalog::create(
             clock_, std::span<const Application::AgentDefinitionDocument>{},
             startupContext));
@@ -864,8 +933,9 @@ private:
                     configuration_.localModel, *legacyMemory_, *legacyContinuity_, *projectMemory_, *clock_, *uuidGenerator_, *configurationStore_, explicitProject.has_value());
             }
         }
-        toolPack_ = take(Mcp::McpToolPackAdapter::create(
-            Mcp::McpToolPackDependencies{
+        githubRead_ = std::make_unique<InfrastructureWindows::WindowsGitHubReadService>(
+            InfrastructureWindows::WindowsGitHubReadService::configuredEnvironmentToken());
+        auto toolDependencies = Mcp::McpToolPackDependencies{
                 *toolCatalog_,
                 *applicationPaths_,
                 *agentCatalog_,
@@ -904,7 +974,43 @@ private:
                 },
                 [this](const Domain::ProjectId& project, const Domain::PathText& root) {
                     if (visibleChatContinuity_) visibleChatContinuity_->bindWorkspace(project, root);
-                }}));
+                }};
+        toolDependencies.evidence = evidence_.get();
+        if (managerBroker_) toolDependencies.durableToolBroker = [this](
+            const std::string_view name, const std::string_view arguments,
+            const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+            auto result = managerBroker_->invokeTool(
+                {project, std::string{name}, std::string{arguments}}, operation);
+            if (!result) return Domain::Result<std::string>::failure(result.error());
+            if (!result.value().ok && result.value().error)
+                return Domain::Result<std::string>::failure(*result.value().error);
+            return Domain::Result<std::string>::success(result.value().canonicalPayload);
+        };
+        toolDependencies.providerInspection = [this](const Domain::OperationContext& operation) {
+            auto current = configurationStore_->reload(operation);
+            if (!current) return Domain::Result<std::string>::failure(current.error());
+            InfrastructureWindows::LMStudioResponsesTransportConfiguration configuration;
+            configuration.loopbackHost = current.value().localModel.host;
+            configuration.port = current.value().localModel.port;
+            configuration.secure = current.value().localModel.secure;
+            configuration.model = current.value().localModel.model;
+            configuration.connectTimeout = std::chrono::seconds{5};
+            configuration.sendTimeout = std::chrono::seconds{5};
+            configuration.receiveTimeout = std::chrono::seconds{5};
+            InfrastructureWindows::LMStudioResponsesTransport inspection{std::move(configuration)};
+            auto inspected = inspection.inspect(current.value().localModel, operation);
+            if (!inspected) return inspected;
+            auto payload = nlohmann::json::parse(inspected.value());
+            auto desktopVersion = InfrastructureWindows::WindowsSystemInspection::lmStudioDesktopVersion(operation);
+            if (!desktopVersion) return Domain::Result<std::string>::failure(desktopVersion.error());
+            payload["lm_studio_desktop_version"] = nlohmann::json::parse(desktopVersion.value());
+            return Domain::Result<std::string>::success(payload.dump());
+        };
+        toolDependencies.systemInspection = [](const Domain::OperationContext& operation) {
+            return InfrastructureWindows::WindowsSystemInspection::inspect(operation);
+        };
+        toolDependencies.githubRead = githubRead_.get();
+        toolPack_ = take(Mcp::McpToolPackAdapter::create(std::move(toolDependencies)));
         toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_, projectPolicy_.get());
         const std::array<Contracts::IToolHandler*, 1U> handlers{toolPack_.get()};
         toolRouter_ = take(Mcp::McpToolRouter::create(
@@ -975,6 +1081,7 @@ private:
         }
         toolRouter_.reset();
         toolPack_.reset();
+        githubRead_.reset();
         executionContextResolver_.reset();
         toolAuthorizer_.reset();
         if (invocationGuard_) {
@@ -1026,6 +1133,7 @@ private:
         }
         legacyMemory_.reset();
 
+        if (shell_) shell_->shutdown();
         if (projectMemory_) {
             projectMemory_->shutdown();
         }
@@ -1160,6 +1268,9 @@ private:
     std::unique_ptr<NativeToolsWindows::WindowsPdfService> pdf_;
     std::unique_ptr<NativeToolsWindows::WindowsGitService> git_;
     std::unique_ptr<NativeToolsWindows::WindowsShellService> shell_;
+    std::unique_ptr<NativeToolsWindows::WindowsEvidenceService> evidence_;
+    std::unique_ptr<InfrastructureWindows::WindowsGitHubReadService> githubRead_;
+    std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient> managerBroker_;
 
     std::shared_ptr<PersistenceWindows::WindowsProjectMemoryArtifactStore>
         projectArtifactStore_;

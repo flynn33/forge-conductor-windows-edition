@@ -95,6 +95,16 @@ template <typename T>
         "fs_delete",
         "fs_move",
         "shell_exec",
+        "shell_job_start",
+        "shell_job_cancel",
+        "process_launch",
+        "process_kill",
+        "process_adopt",
+        "reviewer_start",
+        "reviewer_cancel",
+        "verification_env_create",
+        "workspace_authority_bind",
+        "evidence_digest",
         "git_status",
         "git_diff",
         "git_log",
@@ -438,12 +448,17 @@ public:
             }
 
             const bool continuityTool = isContinuityTool(request.toolName);
+            const bool pollingTool = request.toolName == "shell_job_status" ||
+                request.toolName == "shell_job_list" ||
+                request.toolName == "process_poll" || request.toolName == "process_wait" ||
+                request.toolName == "process_read_log" || request.toolName == "process_list" ||
+                request.toolName == "reviewer_status";
             const bool progressTool = isProgressTool(request.toolName);
             const bool legacyContinuityPolicy =
                 usesLegacyContinuityPolicy(request);
 
             std::string fingerprint;
-            if (legacyContinuityPolicy && !continuityTool) {
+            if (legacyContinuityPolicy && !continuityTool && !pollingTool) {
                 const auto characters = std::span{
                     request.canonicalArguments.data(),
                     request.canonicalArguments.size()};
@@ -466,7 +481,7 @@ public:
                         "The MCP invocation guard is shutting down.");
                 }
                 const auto clientKey = request.metadata.clientId.value();
-                if (legacyContinuityPolicy && !continuityTool) {
+                if (legacyContinuityPolicy && !continuityTool && !pollingTool) {
                     makeRoom(loopStates_, MaximumTrackedLoopClients, clientKey);
                     auto& loop = loopStates_[clientKey];
                     if (loop.fingerprint == fingerprint) {
@@ -808,6 +823,7 @@ public:
             result.blocked = false;
             result.handoffPending = found->second.blocked;
             result.handoffId = found->second.handoffId;
+            result.readbackHandoffId = found->second.readbackHandoffId;
             result.implicitRoots = found->second.implicitRoots;
         } catch (...) {
             result.blocked = false;
@@ -850,6 +866,7 @@ private:
         std::vector<std::string> recentPaths;
         std::optional<std::string> workingDirectory;
         std::optional<Domain::LegacyHandoffId> recoveredHandoffId;
+        std::optional<std::string> readbackHandoffId;
         std::vector<Domain::PathText> implicitRoots;
         bool blocked{};
         std::optional<std::string> handoffId;
@@ -1286,6 +1303,7 @@ private:
         }
         const bool cleared = state->blocked;
         state->recoveredHandoffId = recovery.handoffId;
+        state->readbackHandoffId = recovery.handoffId.value();
         if (recovery.workingDirectory) {
             state->workingDirectory = recovery.workingDirectory->value();
         }

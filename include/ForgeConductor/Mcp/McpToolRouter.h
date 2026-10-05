@@ -14,7 +14,7 @@ namespace ForgeConductor::Mcp {
 // loop policy, cancellation, and privacy-safe audit boundaries for tool calls.
 class McpToolRouter final : public Contracts::IToolRouter {
 public:
-    static constexpr std::size_t MaximumRegisteredTools = 64U;
+    static constexpr std::size_t MaximumRegisteredTools = 128U;
     static constexpr std::size_t MaximumActiveOperations = 64U;
     static constexpr std::size_t MaximumToolNameBytes = 128U;
     static constexpr std::size_t MaximumProtocolVersionBytes = 64U;

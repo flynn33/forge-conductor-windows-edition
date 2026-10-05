@@ -171,12 +171,12 @@ using StringList = std::initializer_list<std::string_view>;
         });
 }
 
-constexpr std::array<std::string_view, 53U> CanonicalTools{
+constexpr std::array<std::string_view, 75U> CanonicalTools{
     "forge_status", "agent_list", "agent_get", "agent_context", "agent_recommend",
     "agent_run_start", "agent_run_status", "agent_run_complete", "fs_read",
     "fs_write", "fs_edit", "fs_list", "fs_glob", "fs_mkdir", "fs_delete",
     "fs_move", "git_status", "git_diff", "git_log", "git_add", "git_commit",
-    "search_text", "pdf_write", "pdf_from_file", "shell_exec", "memory_set",
+    "search_text", "pdf_write", "pdf_from_file", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "memory_set",
     "memory_get", "memory_list", "memory_delete", "memory_search",
     "session_checkpoint", "session_handoff", "context_get", "context_list",
     "project_memory.initialize", "project_memory.remember",
@@ -185,7 +185,8 @@ constexpr std::array<std::string_view, 53U> CanonicalTools{
     "project_memory.link", "project_memory.export", "project_memory.import",
     "project_memory.status", "continuity.checkpoint", "continuity.prepare_handoff",
     "continuity.get_pending_handoff", "continuity.acknowledge_handoff",
-    "continuity.resume", "continuity.status", "continuity.request_rollover"};
+    "continuity.resume", "continuity.status", "continuity.request_rollover",
+    "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status", "process_launch", "process_adopt", "process_kill", "evidence_digest", "reviewer_start", "reviewer_cancel", "verification_env_create", "workspace_authority_bind"};
 
 [[nodiscard]] bool isCanonicalTool(const std::string_view tool) noexcept
 {
@@ -568,6 +569,41 @@ public:
     return output;
 }
 
+constexpr std::string_view WorkflowGuidance = R"FORGE(
+Use only tools permitted for this specialist and the task's existing authority.
+Read `provider_status` and `process_status` for actual loaded-model and host facts;
+missing facts remain unknown. Use `github_read` for supported read-only repository
+routes and report credential, permission, or network failures exactly.
+
+For full builds or verification that must survive an MCP reconnect, use
+`process_launch` with the authorized executable, exact argv, cwd, and environment.
+Keep the returned `job_id`; inspect `process_poll`, `process_list`, and paged
+`process_read_log`, or use `process_wait` for waits of at most 30 seconds. Poll no
+faster than every five seconds. After reconnecting, `process_adopt` verifies an
+existing Forge job receipt; it cannot adopt an arbitrary PID. `process_kill`
+requests cancellation, so verify a terminal state before reporting termination.
+A running job or a successful status request is not a successful command. Report
+actual exit status and missing, truncated, cancelled, or interrupted evidence.
+Use `shell_job_start` for longer foreground shell work on the same connector;
+without a persistent Manager its work remains connector-owned. Preserve the original full validation command
+and required report contract instead of substituting a shortened test result.
+
+For an external evidence directory, inspect the configured and active roots in
+`get_forge_status`. `workspace_authority_bind` can bind only an existing exact
+owner-configured root. A model request cannot approve a new filesystem root.
+Capture authorized files with `evidence_digest` and inspect `evidence_log_read`;
+retain the returned head digest independently. Its unkeyed SHA-256 chain detects
+alteration against a retained head and is not an identity signature.
+
+When the task permits a separate verification environment, use
+`verification_env_create` in an authorized external directory and check
+`verification_env_status` for the exact Python, jsonschema 4.25.1, and PyYAML 6.0.3
+versions after the creation job succeeds. For independently authorized review,
+use `reviewer_start` with its opening-message file, then `reviewer_status` or
+`reviewer_cancel`. A reviewer failure or executor self-review is not an approved
+independent review gate. Preserve task-specific authorization and completion
+requirements; do not claim a result that these tools did not return.)FORGE";
+
 [[nodiscard]] Domain::AgentSpec fallback(
     const std::string_view id,
     const std::string_view displayName,
@@ -594,7 +630,7 @@ public:
         strings(outputSchema),
         strings(handoff),
         strings(qualityBar),
-        std::string{body},
+        std::string{body} + "\n\n" + trim(WorkflowGuidance),
         "builtin"};
 }
 
@@ -605,7 +641,7 @@ public:
     values.push_back(fallback(
         "debug", "Debug",
         "Diagnose failures from logs, stack traces, and failing tests with evidence.",
-        {"fs_read", "fs_list", "fs_glob", "search_text", "shell_exec", "git_status", "git_diff", "git_log"},
+        {"fs_read", "fs_list", "fs_glob", "search_text", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "git_status", "git_diff", "git_log", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status", "process_launch", "process_adopt", "process_kill", "evidence_digest", "reviewer_start", "reviewer_cancel", "verification_env_create", "workspace_authority_bind"},
         {"git_push"},
         {"Failing tests or crashes", "Unexpected behavior needing root-cause evidence"},
         {"Capture the exact error and exit code", "Trace the failing path with fs_read and search_text", "Form a hypothesis before large edits", "Call agent_run_complete with the full report"},
@@ -616,7 +652,7 @@ public:
         "# Debug agent\n\nDiagnose the smallest reproducible failure, cite concrete paths and command results,\nand separate observations from hypotheses. Always call `agent_run_complete` with\n`symptom`, `repro`, `root_cause`, `fix`, and `verify` before stopping."));
     values.push_back(fallback(
         "docs", "Docs", "Write accurate Markdown documentation and native PDF manuals.",
-        {"fs_read", "fs_write", "fs_edit", "fs_list", "fs_glob", "fs_mkdir", "search_text", "git_status", "git_diff", "git_log", "shell_exec", "pdf_write", "pdf_from_file"},
+        {"fs_read", "fs_write", "fs_edit", "fs_list", "fs_glob", "fs_mkdir", "search_text", "git_status", "git_diff", "git_log", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "pdf_write", "pdf_from_file", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status", "process_launch", "process_adopt", "process_kill", "evidence_digest", "reviewer_start", "reviewer_cancel", "verification_env_create", "workspace_authority_bind"},
         {"git_push", "git_commit"},
         {"README or API documentation", "Runbooks and operator manuals", "Native PDF guides"},
         {"Discover the existing documentation layout", "Read the implementation being documented", "Draft Markdown with bounded file tools", "Use pdf_from_file or pdf_write for PDF requests", "Verify every output path", "Call agent_run_complete"},
@@ -627,7 +663,7 @@ public:
     values.push_back(fallback(
         "explore", "Explore",
         "Map a codebase and report structure, entry points, build commands, risks, and the next specialist.",
-        {"fs_list", "fs_read", "fs_glob", "search_text", "git_status", "git_log", "git_diff", "shell_exec"},
+        {"fs_list", "fs_read", "fs_glob", "search_text", "git_status", "git_log", "git_diff", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status"},
         {"fs_write", "fs_edit", "fs_delete", "fs_move", "git_commit", "git_push", "git_add"},
         {"Unfamiliar repository or module", "Structure mapping before planning or implementation"},
         {"List the repository root", "Locate CMake presets solutions projects and declared manifests", "Inspect repository status and recent history", "Read primary entry points", "Call agent_run_complete"},
@@ -638,7 +674,7 @@ public:
         "# Explore agent\n\nProduce a read-only, tool-verified map of the selected workspace. Do not invent\npaths or commands. Always call `agent_run_complete` with all output fields and a\nclear recommendation for the next specialist."));
     values.push_back(fallback(
         "implement", "Implement", "Implement features and bug fixes with focused, verified code changes.",
-        {"fs_read", "fs_write", "fs_edit", "fs_list", "fs_glob", "fs_mkdir", "search_text", "shell_exec", "git_status", "git_diff", "git_add", "git_commit", "session_checkpoint", "session_handoff", "context_get", "memory_set", "memory_get", "memory_search"},
+        {"fs_read", "fs_write", "fs_edit", "fs_list", "fs_glob", "fs_mkdir", "search_text", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "git_status", "git_diff", "git_add", "git_commit", "session_checkpoint", "session_handoff", "context_get", "memory_set", "memory_get", "memory_search", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status", "process_launch", "process_adopt", "process_kill", "evidence_digest", "reviewer_start", "reviewer_cancel", "verification_env_create", "workspace_authority_bind"},
         {"git_push"},
         {"Feature implementation or bug fix with known scope", "Apply an approved change plan"},
         {"Recover context and checkpoint the goal", "Read surrounding code and tests", "Make the smallest correct edit", "Run the relevant bounded verification", "Inspect the final diff", "Call agent_run_complete"},
@@ -649,7 +685,7 @@ public:
         "# Implement agent\n\nApply the smallest correct change within the authorized workspace and preserve\nunrelated work. Use durable checkpoints during meaningful progress. Always call\n`agent_run_complete` with changed paths, verification, and residual risks."));
     values.push_back(fallback(
         "plan", "Plan", "Design ordered implementation plans with files, risks, and verification.",
-        {"fs_read", "fs_list", "fs_glob", "search_text", "git_status", "git_log", "shell_exec"},
+        {"fs_read", "fs_list", "fs_glob", "search_text", "git_status", "git_log", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status"},
         {"fs_write", "fs_edit", "fs_delete", "git_commit", "git_push", "git_add"},
         {"Architecture or multi-file feature design", "Ordered implementation planning"},
         {"Map relevant modules", "Read key interfaces", "Identify ownership boundaries", "Produce ordered steps and verification", "Call agent_run_complete"},
@@ -660,7 +696,7 @@ public:
     values.push_back(fallback(
         "precommit-audit", "Pre-commit Audit",
         "Gate a commit or change review on a structured OK_TO_COMMIT decision.",
-        {"git_status", "git_diff", "git_log", "fs_read", "fs_glob", "search_text", "shell_exec"},
+        {"git_status", "git_diff", "git_log", "fs_read", "fs_glob", "search_text", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status"},
         {"git_commit", "git_push", "gh_pr_create"},
         {"Before every requested commit", "Before opening or updating a change review"},
         {"Inspect repository status", "Review staged and unstaged changes", "Scan for credentials and debug leftovers", "Call agent_run_complete with OK_TO_COMMIT"},
@@ -671,7 +707,7 @@ public:
     values.push_back(fallback(
         "research", "Research",
         "Gather facts from authoritative project sources and report evidence-backed findings.",
-        {"fs_read", "fs_list", "fs_glob", "search_text", "git_log", "git_status", "shell_exec"},
+        {"fs_read", "fs_list", "fs_glob", "search_text", "git_log", "git_status", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status"},
         {"fs_write", "fs_edit", "fs_delete", "git_commit", "git_push"},
         {"Factual question about system behavior", "Need citations from local authoritative sources"},
         {"Locate the relevant modules", "Read authoritative sources", "Separate facts from inferences", "Call agent_run_complete with citations"},
@@ -682,7 +718,7 @@ public:
         "# Research agent\n\nPrefer authoritative project evidence over assumptions. Cite paths and commands,\nseparate facts from inference, and preserve unresolved uncertainty. Always call\n`agent_run_complete` with findings, citations, and the recommended next agent."));
     values.push_back(fallback(
         "review", "Review", "Review changes for correctness, security, tests, and maintainability.",
-        {"git_status", "git_diff", "git_log", "fs_read", "search_text", "shell_exec"},
+        {"git_status", "git_diff", "git_log", "fs_read", "search_text", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status"},
         {"git_commit", "git_push", "fs_write", "fs_edit", "fs_delete"},
         {"After implementation and before integration", "Critique of a proposed diff"},
         {"Inspect status and the complete diff", "Read high-risk surrounding code", "Check verification and security impact", "Call agent_run_complete with a verdict"},
@@ -694,7 +730,7 @@ public:
     values.push_back(fallback(
         "security", "Security",
         "Threat-model changes and identify credentials, injection, and unsafe patterns.",
-        {"git_status", "git_diff", "fs_read", "fs_glob", "search_text", "shell_exec"},
+        {"git_status", "git_diff", "fs_read", "fs_glob", "search_text", "shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status"},
         {"git_commit", "git_push", "fs_write", "fs_edit", "fs_delete"},
         {"Authentication credentials network shell database or privilege changes", "Pre-release security review"},
         {"Inspect the diff for new attack surface", "Search for credential and injection patterns", "Trace concrete trust boundaries", "Call agent_run_complete with ranked findings"},
@@ -705,7 +741,7 @@ public:
         "# Security agent\n\nAnalyze the selected change through explicit trust boundaries and realistic\nattack paths. Redact sensitive values and rank supported findings by severity.\nAlways call `agent_run_complete` with remediation and residual risk."));
     values.push_back(fallback(
         "test", "Test", "Discover, run, and report verification while identifying coverage gaps.",
-        {"shell_exec", "fs_read", "fs_list", "fs_glob", "search_text", "git_status"},
+        {"shell_exec", "shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel", "fs_read", "fs_list", "fs_glob", "search_text", "git_status", "provider_status", "process_status", "github_read", "process_list", "process_poll", "process_wait", "process_read_log", "evidence_log_read", "reviewer_status", "verification_env_status", "process_launch", "process_adopt", "process_kill", "evidence_digest", "reviewer_start", "reviewer_cancel", "verification_env_create", "workspace_authority_bind"},
         {"git_push", "git_commit"},
         {"Need evidence that a change passes or fails", "Improve or document verification"},
         {"Discover CMake CTest MSBuild or native test entry points", "Run the smallest relevant suite with a deadline", "Capture exact output and exit status", "Call agent_run_complete"},

@@ -1102,7 +1102,7 @@ public:
         auto jobCompletion = std::move(jobCompletionResult).value();
 
         auto stdoutPipeResult = OverlappedPipeReader::create(
-            *completionPort_, pipeNames_.make(L"stdout"), request.maximumStdoutBytes);
+            *completionPort_, pipeNames_.make(L"stdout"), request.maximumStdoutBytes, request.outputObserver, false);
         if (!stdoutPipeResult) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(stdoutPipeResult).error());
@@ -1110,7 +1110,7 @@ public:
         auto stdoutPipe = std::move(stdoutPipeResult).value();
 
         auto stderrPipeResult = OverlappedPipeReader::create(
-            *completionPort_, pipeNames_.make(L"stderr"), request.maximumStderrBytes);
+            *completionPort_, pipeNames_.make(L"stderr"), request.maximumStderrBytes, request.outputObserver, true);
         if (!stderrPipeResult) {
             stdoutPipe.childWriter.reset();
             stdoutPipe.reader->cancelAndWait();
@@ -1251,6 +1251,13 @@ public:
             return Domain::Result<Domain::ProcessResult>::failure(std::move(assigned).error());
         }
         state->setJob(operationJob);
+        if (request.outputObserver) {
+            FILETIME creation{}, exit{}, kernel{}, user{};
+            const bool measured = ::GetProcessTimes(process.get(), &creation, &exit, &kernel, &user) != FALSE;
+            const std::uint64_t creationTime = measured
+                ? (static_cast<std::uint64_t>(creation.dwHighDateTime) << 32U) | creation.dwLowDateTime : 0U;
+            request.outputObserver->onStarted(processInformation.dwProcessId, creationTime);
+        }
 
         if (std::chrono::steady_clock::now() >= effectiveDeadline) {
             state->requestTermination(deadlineReason);

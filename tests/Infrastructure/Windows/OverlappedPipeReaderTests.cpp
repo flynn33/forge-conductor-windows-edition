@@ -20,7 +20,7 @@ public:
            const std::size_t maximumCaptureBytes)
     {
         return std::shared_ptr<OverlappedPipeReader>{
-            new OverlappedPipeReader{completionPort, std::move(readHandle), maximumCaptureBytes}};
+            new OverlappedPipeReader{completionPort, std::move(readHandle), maximumCaptureBytes, {}, false}};
     }
 };
 

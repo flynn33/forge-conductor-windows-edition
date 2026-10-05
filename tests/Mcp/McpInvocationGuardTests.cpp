@@ -469,6 +469,23 @@ private:
         operation);
 }
 
+void shellJobPollingDoesNotTriggerIdenticalCallHandoff()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(continuity, hasher, clock));
+    const auto caller = client("shell-poll-client");
+    for (std::uint64_t index = 1U; index <= 20U; ++index) {
+        const auto call = request(caller, "shell_job_status", R"({"job_id":"running-job"})", index);
+        const auto result = take(execute(*guard, call, context(call, index)));
+        REQUIRE(result.receipt.ok);
+        REQUIRE(!payload(result).contains("handoff_required"));
+        REQUIRE(!guard->snapshot(caller).blocked);
+    }
+    REQUIRE(continuity.automaticCalls() == 0U);
+}
+
 void identicalCallsSoftHandoffHardBlockAndResume()
 {
     LegacyContinuityFake continuity;
@@ -1142,6 +1159,7 @@ int main()
         static_assert(std::is_base_of_v<
                       Contracts::IContinuityAutomationStatusSource,
                       Mcp::McpInvocationGuard>);
+        shellJobPollingDoesNotTriggerIdenticalCallHandoff();
         identicalCallsSoftHandoffHardBlockAndResume();
         repeatedCallsRetainAuthorizedWorkspaceAndObservedFiles();
         recoveredPacketScopesSuccessorAutomaticAndBudgetPersistence();

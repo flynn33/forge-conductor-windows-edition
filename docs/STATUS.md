@@ -1,6 +1,12 @@
 # Product status
 
-Version 1.3.11 repairs the real Windows authority path for forward and mixed separator tool requests, retaining the 1.3.10 complete native result delivery and 1.3.9 bootstrap/continuity repairs. Release scope and publication provenance are recorded in [1.3.11 release notes](releases/1.3.11.md). [1.3.10 notes](releases/1.3.10.md) preserve the native path rejection that motivated this correction; older reports retain their artifact provenance and limits.
+Version 1.3.12 expands Primary/Fallback to 80 tools for owned long-running processes, live output and reconnect adoption, host/provider/GitHub inspection, authorized external evidence roots, binary evidence capture, pinned verification dependencies, and separate read-only reviewer runs. Release scope and current verification are in [1.3.12 release notes](releases/1.3.12.md) and the [workflow investigation](validation/LM-STUDIO-SHELL-JOBS-1.3.12.md). Earlier records retain their original artifact provenance and limits.
+
+<!-- qualification-1.3.12 -->
+
+Version 1.3.12 native Release qualification passed 156/156 CTest checks and all three static gates. Signed installation and installed integration/process/reviewer readbacks remain pending. The release notes distinguish earlier source-probe evidence from the final payload; these checks do not execute the user's original project gate.
+
+<!-- /qualification-1.3.12 -->
 
 The installed 1.3.11 Release suite passed 153/153; signed installation, all three role bindings, 31 disposable feature calls and final loaded-Qwen native acceptance passed. Native readback verifies all 270 policy entries, exact pinned package/policy text and the complete six-fragment large shell result. Detailed evidence and unexercised rollover/GUI limits are in [installed qualification](validation/LM-STUDIO-REPAIR-1.3.11.md). The public package is rebuilt from the Jim Daley release commit; its clean source/staging provenance and publication checks are attached to the GitHub release. Publication does not reinstall the host or rerun the earlier native GUI conversation. Historical records below retain their own binaries and limitations.
 
@@ -16,6 +22,9 @@ The installed 1.3.11 Release suite passed 153/153; signed installation, all thre
 | Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
 | Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |
 | MCP | The same Primary, Fallback, and CLU integrations; exact 180-second deadline; no fourth plugin or new Forge credential. |
+| Shell/process jobs | Primary/Fallback lifecycle, live named logs, bounded waits and verified adoption; maximum 3,600 seconds, two active jobs, sixteen results in memory and thirty-two durable jobs per project. Manager-backed work survives MCP reconnect; owner shutdown terminates active work. |
+| Review/evidence | Separate read-only reviewer contexts and full SHA-256-verified receipts; sixteen-record admission cap and 256 KiB report cap. Exact verification pins, authorized external roots and a durable capture chain preserve observed evidence. |
+| Context/readback | Latest-provider-generation telemetry retains sample provenance/unknowns; status distinguishes current packet retrieval through `context_get` from packet storage and job memory attachment. |
 | Agents | Ten specialist playbooks and baseline agent-session tools remain callable. |
 | Persistence/package | Existing per-user project/memory/policy stores and stable ForgeConductor.Windows MSIX identity. |
 

@@ -57,6 +57,8 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"continuity.request_rollover", "Prepare rollover; reports memory-only readiness unless a host adapter confirms creation.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.resume", "Seal an acknowledged rollover and atomically select the successor.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.status", "Report durable continuity state, retry metadata, and active session.", "ContinuityLifecycleToolPack", Read, true, false},
+        {"evidence_digest", "Hash authorized binary evidence and append a durable SHA256 capture chain; returns byte lengths and capture/head identities. This is an integrity record, not an identity signature.", "EvidenceToolPack", Write, true, false},
+        {"evidence_log_read", "Read and verify the project evidence capture chain with bounded record paging. Retain head_digest independently to detect replacement of the complete chain.", "EvidenceToolPack", Read, true, false},
         {"forge_status", "Runtime and project context: project folder, ordered instruction-package folders, development-policy source, home, agents, sessions, and tools.", "AgentToolPack", Read, false, false},
         {"fs_delete", "Delete a file or directory.", "FilesystemToolPack", Write, true, false},
         {"fs_edit", "Replace occurrences of old with new in a file.", "FilesystemToolPack", Write, true, false},
@@ -72,6 +74,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"git_diff", "git diff (optional staged).", "GitToolPack", Read, true, false},
         {"git_log", "git log --oneline.", "GitToolPack", Read, true, false},
         {"git_status", "git status --porcelain.", "GitToolPack", Read, true, false},
+        {"github_read", "Read GitHub repository runs, artifacts, refs and pull requests via fixed HTTPS GET routes. Uses configured credentials when available; reports permission and network failures explicitly.", "GitHubReadToolPack", Read, true, false},
         {"instruction_package.read", "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.", "InstructionPackageToolPack", Read, true, false},
         {"memory_delete", "Delete a durable memory note by key.", "MemoryToolPack", Write, false, false},
         {"memory_get", "Read a durable memory note by key.", "MemoryToolPack", Read, false, false},
@@ -80,6 +83,14 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"memory_set", "Store a durable key/value note in Forge local memory (survives chat sessions).", "MemoryToolPack", Write, false, false},
         {"pdf_from_file", "Convert a local markdown/text file to PDF.", "DocsToolPack", Write, true, false},
         {"pdf_write", "Write a PDF from markdown-ish text (stdlib, no pandoc).", "DocsToolPack", Write, true, false},
+        {"process_adopt", "Adopt a Forge-owned durable job receipt by job_id after reconnecting. Verifies receipt/log integrity and process identity; cannot adopt an arbitrary PID.", "ProcessToolPack", Write, true, false},
+        {"process_kill", "Cancel one Forge-owned process tree by job_id; poll until final termination is confirmed.", "ProcessToolPack", Write, true, false},
+        {"process_launch", "Launch an authorized executable with exact argv, cwd and environment. Returns stable job_id, actual PID and named stdout/stderr logs. A matching Manager owns the job across MCP reconnects; otherwise status reports connector-owned lifetime.", "ProcessToolPack", Write, true, true},
+        {"process_list", "List this project's active and retained durable jobs. Interrupted broker jobs report unknown exit status rather than invented success.", "ProcessToolPack", Read, true, false},
+        {"process_poll", "Read a durable job's alive/done state, actual PID, elapsed time, exit status and log/receipt paths. Poll no faster than every five seconds.", "ProcessToolPack", Read, true, false},
+        {"process_read_log", "Read live or final stdout/stderr by job_id with tail_lines or byte offset and bounded paging; returns next_offset and truncation state.", "ProcessToolPack", Read, true, false},
+        {"process_status", "Read a bounded native Windows process and service snapshot as the current user, without elevation.", "HostInspectionToolPack", Read, false, false},
+        {"process_wait", "Wait up to 30 seconds for a durable job to finish. Timeout returns done=false and leaves the job running; repeat or poll for longer runs.", "ProcessToolPack", Read, true, false},
         {"project_memory.forget", "Tombstone a record in one project.", "ProjectMemoryToolPack", Write, true, false},
         {"project_memory.get", "Fetch project memory records by stable ID.", "ProjectMemoryToolPack", Read, true, false},
         {"project_memory.initialize", "Create or open a durable project-scoped memory store.", "ProjectMemoryToolPack", Write, false, false},
@@ -91,10 +102,21 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"project_memory.status", "Report project memory health, sizes, capabilities, and limits.", "ProjectMemoryToolPack", Read, true, false},
         {"project_memory.update", "Update a record with optimistic version checking.", "ProjectMemoryToolPack", Write, true, false},
         {"project_policy.read", "Read the adopted policy index or an exact pinned document. Follow next_cursor for every index page; supply path and next_offset as offset for every document part. This tool cannot adopt policy or approve reviews.", "ProjectPolicyToolPack", Read, true, false},
+        {"provider_status", "Inspect actually loaded LM Studio models and configured context/reserves. Missing file, revision or version facts remain null with provenance and reasons.", "HostInspectionToolPack", Read, false, false},
+        {"reviewer_cancel", "Cancel one independently started read-only reviewer run for this project.", "ReviewerToolPack", Write, true, false},
+        {"reviewer_start", "Start a fresh Manager-owned reviewer provider session with an authorized opening-message file and no executor conversation history. Requires explicit review authorization; read-only tools are enforced.", "ReviewerToolPack", Write, true, false},
+        {"reviewer_status", "Read the separate reviewer run's actual state, provider response, token usage and bounded UTF-8 output page; follow next_output_offset for more. A running or failed review is not an approved gate.", "ReviewerToolPack", Read, true, false},
         {"search_text", "Recursive text search (grep).", "SearchToolPack", Read, true, false},
         {"session_checkpoint", "Soft-save context + open agent sessions for continuity (continue working).", "ContinuityToolPack", Write, false, false},
         {"session_handoff", "Finalize context/agent handoff for a new chat; returns resume_seed. Prefer before context is full.", "ContinuityToolPack", Write, false, false},
-        {"shell_exec", "Run an opt-in bounded PowerShell command with timeout.", "ShellToolPack", Write, true, true},
+        {"shell_exec", "Run an opt-in PowerShell command for at most 120 seconds. Its process tree is terminated when the command exits or times out. Use shell_job_start for longer foreground builds/tests.", "ShellToolPack", Write, true, true},
+        {"shell_job_cancel", "Request cancellation of one tracked shell job and its process tree; poll shell_job_status until terminal state confirms termination.", "ShellToolPack", Write, true, false},
+        {"shell_job_list", "Discover this project's running and retained jobs and durable receipts. Returns summaries; read named logs with process_read_log.", "ShellToolPack", Read, true, false},
+        {"shell_job_start", "Start a Manager-owned PowerShell job with up to 3600 seconds lifetime, named logs and durable receipt. Survives MCP reconnect when a matching Manager is available; status reports fallback owner lifetime.", "ShellToolPack", Write, true, true},
+        {"shell_job_status", "Poll a tracked shell job by job_id, including after Manager-backed MCP reconnect. Running is not failure. Terminal state includes captured final output, exit code, timeout/cancellation and truncation flags. Poll at most every 5 seconds.", "ShellToolPack", Read, true, false},
+        {"verification_env_create", "Materialize a pinned Python venv in an authorized external directory as a durable job, recording exact installed versions and a manifest. Does not edit product source or grant elevation.", "VerificationToolPack", Write, true, true},
+        {"verification_env_status", "Read the pinned verification venv manifest from an authorized directory; reports exact runtime and distributions only after successful creation.", "VerificationToolPack", Read, true, false},
+        {"workspace_authority_bind", "Bind an existing additional root already present in the owner-configured allowlist to this project. Tool arguments cannot add new grants; forge_status reports configured and active roots.", "FilesystemToolPack", Write, true, false},
     }};
 
 using Property = std::pair<std::string_view, Json>;
@@ -247,6 +269,73 @@ using Property = std::pair<std::string_view, Json>;
             {{"path", string}, {"dest", string}, {"src", string},
              {"source", string}, {"destination", string}},
             {"path", "dest"}, AdditionalProperties::Allowed);
+    }
+
+    if (name == "provider_status" || name == "process_status" || name == "process_list")
+        return objectSchema({}, {}, AdditionalProperties::Denied);
+    if (name == "workspace_authority_bind")
+        return objectSchema({{"root", string}}, {"root"}, AdditionalProperties::Denied);
+    if (name == "evidence_digest")
+        return objectSchema({{"paths", arrayOf(string, 64)}}, {"paths"}, AdditionalProperties::Denied);
+    if (name == "evidence_log_read")
+        return objectSchema({{"offset", Json{{"type", "integer"}, {"minimum", 0}}},
+            {"limit", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 16}}},
+            {"verify", primitive("boolean")}}, {}, AdditionalProperties::Denied);
+    if (name == "github_read")
+        return objectSchema({{"repository", string}, {"operation", Json{{"type", "string"},
+            {"enum", {"runs", "run", "artifacts", "artifact", "refs", "pull_requests", "pull_request", "pull_request_files"}}}},
+            {"id", Json{{"type", "integer"}, {"minimum", 1}}}, {"ref", string},
+            {"page", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 1000}}},
+            {"per_page", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 100}}}},
+            {"repository", "operation"}, AdditionalProperties::Denied);
+    const auto jobId = Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 128}};
+    if (name == "process_poll" || name == "process_kill" || name == "process_adopt")
+        return objectSchema({{"job_id", jobId}}, {"job_id"}, AdditionalProperties::Denied);
+    if (name == "process_wait")
+        return objectSchema({{"job_id", jobId}, {"timeout_sec", Json{{"type", "integer"}, {"minimum", 0}, {"maximum", 30}}}},
+            {"job_id"}, AdditionalProperties::Denied);
+    if (name == "process_read_log")
+        return objectSchema({{"job_id", jobId}, {"stream", Json{{"type", "string"}, {"enum", {"stdout", "stderr"}}}},
+            {"tail_lines", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 1000}}},
+            {"offset", Json{{"type", "integer"}, {"minimum", 0}}}}, {"job_id"}, AdditionalProperties::Denied);
+    if (name == "process_launch")
+        return objectSchema({{"command", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 4096}}},
+            {"args", arrayOf(Json{{"type", "string"}, {"maxLength", 4096}}, 256)}, {"cwd", string},
+            {"env", Json{{"type", "object"}, {"maxProperties", 128},
+                {"additionalProperties", Json{{"type", "string"}, {"maxLength", 4096}}}}},
+            {"timeout_sec", Json{{"type", "number"}, {"exclusiveMinimum", 0}, {"maximum", 3600}}}},
+            {"command"}, AdditionalProperties::Denied);
+    if (name == "reviewer_start")
+        return objectSchema({{"opening_message_path", string}, {"task", Json{{"type", "string"}, {"maxLength", 32768}}},
+            {"authorization", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 1024}}}},
+            {"opening_message_path", "authorization"}, AdditionalProperties::Denied);
+    if (name == "reviewer_status")
+        return objectSchema({{"run_id", jobId},
+            {"output_offset", Json{{"type", "integer"}, {"minimum", 0}, {"maximum", 262144}}},
+            {"max_output_bytes", Json{{"type", "integer"}, {"minimum", 4}, {"maximum", 32768}}}},
+            {"run_id"}, AdditionalProperties::Denied);
+    if (name == "reviewer_cancel")
+        return objectSchema({{"run_id", jobId}}, {"run_id"}, AdditionalProperties::Denied);
+    if (name == "verification_env_create")
+        return objectSchema({{"path", string}, {"python_path", string},
+            {"requirements", arrayOf(Json{{"type", "string"},
+                {"enum", {"jsonschema==4.25.1", "PyYAML==6.0.3"}}}, 2)}},
+            {"path", "python_path"}, AdditionalProperties::Denied);
+    if (name == "verification_env_status")
+        return objectSchema({{"path", string}}, {"path"}, AdditionalProperties::Denied);
+    if (name == "shell_job_start") {
+        return objectSchema(
+            {{"command", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 4096}}},
+             {"cwd", string},
+             {"timeout_sec", Json{{"type", "number"}, {"exclusiveMinimum", 0}, {"maximum", 3600}}}},
+            {"command"}, AdditionalProperties::Denied);
+    }
+    if (name == "shell_job_status" || name == "shell_job_cancel") {
+        return objectSchema({{"job_id", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 128}}}},
+            {"job_id"}, AdditionalProperties::Denied);
+    }
+    if (name == "shell_job_list") {
+        return objectSchema({}, {}, AdditionalProperties::Denied);
     }
     if (name == "shell_exec") {
         return objectSchema(

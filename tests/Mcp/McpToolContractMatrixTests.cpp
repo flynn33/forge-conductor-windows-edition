@@ -389,6 +389,23 @@ void runMatrix(const Json& fixture)
     require(
         observedCluNames == cluGovernanceNames,
         "The real MCP catalog must contain the exact four CLU governance tools");
+    for (const auto name : {"shell_job_start", "shell_job_status", "shell_job_list", "shell_job_cancel"}) {
+        require(std::erase(catalogNames, name) == 1U,
+            "The tracked shell job extension must be registered exactly once; adapter and native job tests exercise its contracts.");
+    }
+    const std::vector<std::string> workflowExtensions{
+        "evidence_digest", "evidence_log_read", "github_read",
+        "process_adopt", "process_kill", "process_launch", "process_list",
+        "process_poll", "process_read_log", "process_status", "process_wait",
+        "provider_status", "reviewer_cancel", "reviewer_start", "reviewer_status",
+        "verification_env_create", "verification_env_status", "workspace_authority_bind"};
+    require(fixture.at("lineage").at("windows_host_extensions")
+            .at("tiered_workflow_tools").at("names") == workflowExtensions,
+        "The fixture must record the exact independently tested Windows workflow extensions.");
+    for (const auto& name : workflowExtensions) {
+        require(std::erase(catalogNames, name) == 1U,
+            "Workflow extension must be registered once: " + name);
+    }
     std::sort(catalogNames.begin(), catalogNames.end());
 
     std::vector<std::string> fixtureNames;

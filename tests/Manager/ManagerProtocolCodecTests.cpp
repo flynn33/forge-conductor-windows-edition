@@ -578,12 +578,19 @@ void testEveryRequestMethodRoundTripsDeterministically()
 
 void testManagedRunResultRoundTrips()
 {
+    auto expected = sampleManagedRun();
+    expected.record.readOnlyTools = true;
+    expected.record.outputTruncated = true;
     const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
-        response(Manager::ManagerResult{sampleManagedRun()})));
+        response(Manager::ManagerResult{expected})));
     const auto root = Json::parse(payloadText(frame));
     REQUIRE(root.at("result").at("type") == "managed_run");
-    REQUIRE(root.at("result").at("value").size() == 19U);
+    REQUIRE(root.at("result").at("value").size() == 21U);
     REQUIRE(root.at("result").at("value").at("allow_tools") == false);
+    REQUIRE(root.at("result").at("value").at("read_only_tools").is_boolean());
+    REQUIRE(root.at("result").at("value").at("read_only_tools") == true);
+    REQUIRE(root.at("result").at("value").at("output_truncated").is_boolean());
+    REQUIRE(root.at("result").at("value").at("output_truncated") == true);
     const auto decoded = take(
         Manager::ManagerProtocolCodec::decodeResponse(frame));
     const auto& actual = std::get<Domain::ManagedRunSnapshot>(
@@ -596,10 +603,34 @@ void testManagedRunResultRoundTrips()
     REQUIRE(actual.record.retainedContextTokens == 4096U);
     REQUIRE(actual.record.outputText == "The managed result.");
     REQUIRE(!actual.record.allowTools);
+    REQUIRE(actual.record.readOnlyTools);
+    REQUIRE(actual.record.outputTruncated);
     REQUIRE(actual.managerOwned);
     REQUIRE(!actual.cancellationRequested);
     REQUIRE(!actual.pauseRequested);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+
+    // Both fields are optional for receipts produced by older Managers. Each
+    // must default independently without weakening the strict boolean contract.
+    for (const auto retained : {0U, 1U, 2U, 3U}) {
+        auto legacy = root;
+        auto& value = legacy.at("result").at("value");
+        if ((retained & 1U) == 0U) value.erase("read_only_tools");
+        if ((retained & 2U) == 0U) value.erase("output_truncated");
+        const auto legacyDecoded = take(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(legacy)));
+        const auto& restored = std::get<Domain::ManagedRunSnapshot>(
+            std::get<Manager::ManagerResult>(legacyDecoded.body)).record;
+        REQUIRE(restored.readOnlyTools == ((retained & 1U) != 0U));
+        REQUIRE(restored.outputTruncated == ((retained & 2U) != 0U));
+        REQUIRE(restored.outputText == expected.record.outputText);
+    }
+    for (const auto* field : {"read_only_tools", "output_truncated"}) {
+        for (const auto& invalid : {Json("true"), Json(1), Json(nullptr)}) {
+            auto malformed = root;
+            malformed.at("result").at("value")[field] = invalid;
+            REQUIRE(!Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(malformed)));
+        }
+    }
 }
 
 void testManagerTelemetryRoundTripsWithoutLosingAvailability()

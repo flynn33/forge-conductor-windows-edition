@@ -1007,6 +1007,12 @@ void processToolTelemetryAndManagerBounds()
     REQUIRE(Domain::validateProcessRequest(process, budgets));
     process.timeout = std::chrono::seconds{121};
     REQUIRE(!Domain::validateProcessRequest(process, budgets));
+    process.managedJob = true;
+    process.timeout = std::chrono::seconds{3'600};
+    REQUIRE(Domain::validateProcessRequest(process, budgets));
+    process.timeout = std::chrono::seconds{3'601};
+    REQUIRE(!Domain::validateProcessRequest(process, budgets));
+    process.managedJob = false;
     process.timeout = std::chrono::seconds{1};
     process.maximumStdoutBytes = budgets.toolStdoutBytesMaximum + 1;
     REQUIRE(!Domain::validateProcessRequest(process, budgets));

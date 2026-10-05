@@ -5,10 +5,14 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 #include "Fakes/DeterministicWorkspaceAuthority.h"
 #include "Infrastructure/Windows/Detail/WindowsPathResolver.h"
+#include "Infrastructure/Windows/Detail/UniqueHandle.h"
+#include "NativeTools/Windows/ShellJobStorage.h"
 
 #include <Windows.h>
 
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -17,6 +21,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -183,6 +188,170 @@ private:
     return result;
 }
 
+[[nodiscard]] Domain::ShellJobSnapshot admissionSnapshot(const std::uint32_t index,
+    const Domain::PathText& root)
+{
+    return Domain::ShellJobSnapshot{context(index).operationId.value(), Domain::ShellJobState::Running,
+        "persisted admission fixture", root.value(), 30U, std::nullopt, std::nullopt, 0ms};
+}
+
+int admissionChild(const char* const argv[])
+{
+    using Storage = NativeTools::Detail::ShellJobStorage;
+    const auto root = take(Domain::PathText::create(argv[2]));
+    const auto project = parse<Domain::ProjectId>(argv[3]);
+    const auto widen = [](const std::string_view text) { return std::wstring{text.begin(), text.end()}; };
+    InfrastructureDetail::UniqueHandle start{::OpenEventW(SYNCHRONIZE, FALSE, widen(argv[5]).c_str())};
+    InfrastructureDetail::UniqueHandle release{::OpenEventW(SYNCHRONIZE, FALSE, widen(argv[6]).c_str())};
+    require(start && release && ::WaitForSingleObject(start.get(), 10'000U) == WAIT_OBJECT_0,
+        "admission child did not receive its start gate");
+    auto snapshot = admissionSnapshot(100U, root);
+    snapshot.jobId = argv[4];
+    auto created = Storage::create(root, project, snapshot, context(101U));
+    {
+        std::ofstream output{std::filesystem::path{argv[7]}, std::ios::binary};
+        output << (created ? "admitted" : created.error().code);
+        output.close();
+        require(output.good(), "admission child outcome could not be written");
+    }
+    require(::WaitForSingleObject(release.get(), 10'000U) == WAIT_OBJECT_0,
+        "admission child did not receive its release gate");
+    return EXIT_SUCCESS;
+}
+
+class AdmissionChildOwner final {
+public:
+    AdmissionChildOwner(const std::wstring& arguments, const HANDLE release) : release_{release}
+    {
+        std::vector<wchar_t> executable(32U * 1024U);
+        const auto length = ::GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
+        require(length > 0U && length < executable.size(), "admission fixture executable cannot be located");
+        std::wstring command = L"\"" + std::wstring{executable.data(), length} + L"\" " + arguments;
+        STARTUPINFOW startup{}; startup.cb = static_cast<DWORD>(sizeof(startup));
+        PROCESS_INFORMATION process{};
+        require(::CreateProcessW(executable.data(), command.data(), nullptr, nullptr, FALSE,
+            CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process) != FALSE,
+            "admission fixture child cannot be started");
+        process_.reset(process.hProcess);
+        InfrastructureDetail::UniqueHandle thread{process.hThread};
+        static_cast<void>(thread);
+    }
+    ~AdmissionChildOwner() noexcept
+    {
+        static_cast<void>(::SetEvent(release_));
+        static_cast<void>(::WaitForSingleObject(process_.get(), 5'000U));
+    }
+    void join()
+    {
+        require(::WaitForSingleObject(process_.get(), 5'000U) == WAIT_OBJECT_0,
+            "admission fixture child did not finish");
+        DWORD exitCode{};
+        require(::GetExitCodeProcess(process_.get(), &exitCode) != FALSE && exitCode == EXIT_SUCCESS,
+            "admission fixture child reported failure");
+    }
+private:
+    InfrastructureDetail::UniqueHandle process_;
+    HANDLE release_{};
+};
+
+void exercisePersistedJobAdmission(const Domain::PathText& powerShellExecutable,
+    const std::shared_ptr<Contracts::IProcessSupervisor>& supervisor)
+{
+    using Storage = NativeTools::Detail::ShellJobStorage;
+    TemporaryWorkspace workspace;
+    const auto root = pathText(workspace.path());
+    const auto project = parse<Domain::ProjectId>("51515151-5151-4151-8151-515151515151");
+    const auto folder = workspace.path() / project.value();
+    std::vector<std::shared_ptr<Storage>> seeded;
+    for (std::uint32_t index{1U}; index < Storage::MaximumPersistedJobs; ++index)
+        seeded.push_back(take(Storage::create(root, project, admissionSnapshot(index, root), context(90U))));
+    const auto malformedPath = folder / (admissionSnapshot(31U, root).jobId + ".json");
+    { std::ofstream output{malformedPath, std::ios::binary | std::ios::app}; output << "tampered"; }
+    const auto malformedBytes = std::filesystem::file_size(malformedPath);
+
+    const auto prefix = L"Local\\ForgeConductor.JobAdmission.Test." + workspace.path().filename().wstring();
+    const auto startName = prefix + L".start";
+    const auto releaseName = prefix + L".release";
+    InfrastructureDetail::UniqueHandle start{::CreateEventW(nullptr, TRUE, FALSE, startName.c_str())};
+    InfrastructureDetail::UniqueHandle release{::CreateEventW(nullptr, TRUE, FALSE, releaseName.c_str())};
+    require(start && release, "admission fixture gates could not be created");
+    const auto firstPath = workspace.path() / L"first.outcome";
+    const auto secondPath = workspace.path() / L"second.outcome";
+    const auto firstId = context(70U).operationId.value();
+    const auto secondId = context(71U).operationId.value();
+    const auto arguments = [&](const std::string& id, const std::filesystem::path& output) {
+        return L"--job-admission-child \"" + workspace.path().wstring() + L"\" " +
+            std::wstring{project.value().begin(), project.value().end()} + L" " +
+            std::wstring{id.begin(), id.end()} + L" " + startName + L" " + releaseName +
+            L" \"" + output.wstring() + L"\"";
+    };
+    AdmissionChildOwner first{arguments(firstId, firstPath), release.get()};
+    AdmissionChildOwner second{arguments(secondId, secondPath), release.get()};
+    require(::SetEvent(start.get()) != FALSE, "admission fixture start gate failed");
+    const auto readOutcome = [](const std::filesystem::path& path) {
+        std::ifstream input{path, std::ios::binary}; std::string text; input >> text; return text;
+    };
+    std::string firstOutcome, secondOutcome;
+    const auto deadline = std::chrono::steady_clock::now() + 8s;
+    while (std::chrono::steady_clock::now() < deadline) {
+        firstOutcome = readOutcome(firstPath); secondOutcome = readOutcome(secondPath);
+        if (!firstOutcome.empty() && !secondOutcome.empty()) break;
+        std::this_thread::sleep_for(10ms);
+    }
+    require((firstOutcome == "admitted" && secondOutcome == Domain::ErrorCodes::RateLimited) ||
+            (secondOutcome == "admitted" && firstOutcome == Domain::ErrorCodes::RateLimited),
+        "concurrent job owners did not admit exactly one final slot and reject the other with rate_limited");
+    const auto receiptCount = [&] {
+        std::size_t count{};
+        for (const auto& entry : std::filesystem::directory_iterator{folder})
+            if (entry.path().extension() == L".json") ++count;
+        return count;
+    };
+    require(receiptCount() == Storage::MaximumPersistedJobs,
+        "cross-process admission exceeded the 32 receipt limit");
+    require(std::filesystem::file_size(malformedPath) == malformedBytes,
+        "admission removed or rewrote an unverified receipt instead of preserving its occupied slot");
+    const auto rejectedId = firstOutcome == "admitted" ? secondId : firstId;
+    require(!std::filesystem::exists(folder / (rejectedId + ".json")) &&
+            !std::filesystem::exists(folder / (rejectedId + ".stdout.log")),
+        "rejected persisted admission created process evidence artifacts");
+
+    const auto authority = makeAuthority(parse<Domain::AuthorityId>("52525252-5252-4252-8252-525252525252"),
+        project, parse<Domain::ClientId>("job-admission-client"), {root}, context(92U));
+    NativeTools::WindowsShellService service{powerShellExecutable, supervisor, root};
+    Domain::ProcessRequest request{powerShellExecutable};
+    request.arguments = {"Write-Output 'must-not-run'"}; request.workingDirectory = root; request.timeout = 5s;
+    const auto full = service.startJob(request, authority, context(93U));
+    require(!full && full.error().code == Domain::ErrorCodes::RateLimited && full.error().retryable,
+        "shell service did not preserve the cross-owner admission limit error");
+    require(receiptCount() == Storage::MaximumPersistedJobs,
+        "failed shell-service admission mutated durable receipt count");
+    service.shutdown();
+
+    require(::SetEvent(release.get()) != FALSE, "admission fixture release gate failed");
+    first.join(); second.join();
+    auto recovered = take(Storage::create(root, project, admissionSnapshot(72U, root), context(94U)));
+    require(receiptCount() == Storage::MaximumPersistedJobs,
+        "an ended owner did not free a slot through verified retention");
+    auto completed = admissionSnapshot(1U, root); completed.state = Domain::ShellJobState::Completed;
+    seeded.front()->persist(completed);
+    auto replacement = take(Storage::create(root, project, admissionSnapshot(73U, root), context(95U)));
+    require(!std::filesystem::exists(folder / (completed.jobId + ".json")),
+        "completed receipt was not evicted to admit its replacement");
+    bool resurrectionRejected{};
+    try { seeded.front()->persist(completed); }
+    catch (const std::exception&) { resurrectionRejected = true; }
+    require(resurrectionRejected && receiptCount() == Storage::MaximumPersistedJobs &&
+            !std::filesystem::exists(folder / (completed.jobId + ".json")),
+        "a late terminal publication resurrected an evicted receipt beyond the project limit");
+    auto expired = context(96U); expired.deadline = std::chrono::steady_clock::now() - 1ms;
+    const auto timedOut = Storage::create(root, project, admissionSnapshot(74U, root), expired);
+    require(!timedOut && timedOut.error().code == Domain::ErrorCodes::DeadlineExceeded &&
+            receiptCount() == Storage::MaximumPersistedJobs,
+        "expired persisted admission did not preserve deadline failure without writes");
+    static_cast<void>(recovered); static_cast<void>(replacement);
+}
+
 void exerciseGitAndShell(
     const std::filesystem::path& gitPath,
     const std::filesystem::path& powerShellPath)
@@ -205,6 +374,7 @@ void exerciseGitAndShell(
         clock, budgets);
     auto supervisor = std::make_shared<Infrastructure::WindowsProcessSupervisor>(
         budgets, diagnostics);
+    exercisePersistedJobAdmission(powerShellExecutable, supervisor);
 
     const auto clientId =
         parse<Domain::ClientId>("p13-native-tool-integration-client");
@@ -332,6 +502,232 @@ void exerciseGitAndShell(
     require(bounded.stdoutTruncated && bounded.stdoutUtf8.size() == 32U,
             "PowerShell adapter did not enforce its stdout cap");
 
+    const auto waitForJob = [&](const std::string_view jobId) {
+        const auto jobDeadline = std::chrono::steady_clock::now() + 10s;
+        do {
+            auto snapshot = take(shell.getJob(jobId, shellAuthority, context(30U)));
+            if (snapshot.state != Domain::ShellJobState::Running) return snapshot;
+            std::this_thread::sleep_for(10ms);
+        } while (std::chrono::steady_clock::now() < jobDeadline);
+        throw std::runtime_error{"Real tracked PowerShell job did not complete"};
+    };
+    shellRequest.arguments = {"Start-Sleep -Milliseconds 200; Write-Output 'tracked-job-ok'"};
+    shellRequest.timeout = 10s;
+    shellRequest.maximumStdoutBytes = 1'024U;
+    const Domain::OperationContext admissionContext{context(31U).operationId,
+        std::chrono::steady_clock::now() + 100ms, {}, context(31U).correlationId};
+    const auto asynchronous = take(shell.startJob(shellRequest, shellAuthority, admissionContext));
+    const auto asynchronousResult = waitForJob(asynchronous.jobId);
+    require(asynchronousResult.state == Domain::ShellJobState::Completed &&
+        asynchronousResult.result && asynchronousResult.result->exitCode == 0 &&
+        asynchronousResult.result->stdoutUtf8.find("tracked-job-ok") != std::string::npos,
+        "Real tracked job did not survive its admission-call deadline and return final output");
+    shellRequest.arguments = {"Start-Sleep -Seconds 30"};
+    shellRequest.timeout = 100ms;
+    const auto timedJob = take(shell.startJob(shellRequest, shellAuthority, context(32U)));
+    const auto timedJobResult = waitForJob(timedJob.jobId);
+    require(timedJobResult.state == Domain::ShellJobState::TimedOut && timedJobResult.result &&
+        timedJobResult.result->timedOut && timedJobResult.result->terminationConfirmed,
+        "Real tracked job timeout did not retain confirmed process-tree termination");
+    shellRequest.timeout = 60s;
+    const auto cancelledJob = take(shell.startJob(shellRequest, shellAuthority, context(33U)));
+    static_cast<void>(take(shell.cancelJob(cancelledJob.jobId, shellAuthority, context(34U))));
+    const auto cancelledJobResult = waitForJob(cancelledJob.jobId);
+    require(cancelledJobResult.state == Domain::ShellJobState::Cancelled,
+        "Real tracked PowerShell job did not terminate after explicit cancellation");
+
+    const auto jobRoot = pathText(workspace.path() / L"jobs");
+    NativeTools::WindowsShellService durable{powerShellExecutable, supervisor, jobRoot};
+    std::atomic<unsigned> completionCalls{};
+    durable.setJobCompletionSink([&](const Domain::ProjectId& project, const Domain::ShellJobSnapshot& snapshot) {
+        require(project == shellProject && snapshot.result && !snapshot.logHash.empty(),
+            "completion callback did not receive final project-scoped process evidence");
+        completionCalls.fetch_add(1U);
+    });
+    const auto waitForDurable = [&](NativeTools::WindowsShellService& service, const std::string_view id) {
+        const auto deadline = std::chrono::steady_clock::now() + 15s;
+        do {
+            auto snapshot = take(service.getJob(id, shellAuthority, context(40U)));
+            if (snapshot.state != Domain::ShellJobState::Running) return snapshot;
+            std::this_thread::sleep_for(10ms);
+        } while (std::chrono::steady_clock::now() < deadline);
+        throw std::runtime_error{"Durable process job did not complete"};
+    };
+    Domain::ProcessRequest direct{powerShellExecutable};
+    direct.arguments = {"-NoProfile", "-NonInteractive", "-Command",
+        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); Write-Output 'live-log'; "
+        "Start-Sleep -Milliseconds 800; Write-Output ('z' * 100000); Write-Output $env:FORGE_JOB_VALUE; "
+        "[Console]::Error.WriteLine('stderr-proof')"};
+    direct.workingDirectory = workspacePath;
+    direct.environment = {{"FORGE_JOB_VALUE", "explicit-env-proof"}};
+    direct.timeout = 10s;
+    direct.maximumStdoutBytes = 1'024U; direct.maximumStderrBytes = 1'024U;
+    const auto directJob = take(durable.startProcess(direct, shellAuthority, context(41U)));
+    require(directJob.processId != 0U && directJob.processId != ::GetCurrentProcessId() &&
+                directJob.processCreationTime != 0U && !directJob.stdoutPath.empty() && !directJob.stderrPath.empty(),
+            "durable launch did not return the actual child identity and evidence paths");
+    bool readLive{};
+    const auto liveDeadline = std::chrono::steady_clock::now() + 5s;
+    while (std::chrono::steady_clock::now() < liveDeadline) {
+        const auto durableStatus = take(durable.getJob(directJob.jobId, shellAuthority, context(42U)));
+        const auto page = take(durable.readJobLog(directJob.jobId, false, 0U, 0U, shellAuthority, context(43U)));
+        if (durableStatus.state == Domain::ShellJobState::Running && durableStatus.processAlive == true &&
+            page.text.find("live-log") != std::string::npos) {
+            readLive = true; break;
+        }
+        if (durableStatus.state != Domain::ShellJobState::Running) break;
+        std::this_thread::sleep_for(10ms);
+    }
+    require(readLive, "durable stdout was not readable while the process was running");
+    const auto durableResult = waitForDurable(durable, directJob.jobId);
+    require(durableResult.state == Domain::ShellJobState::Completed && durableResult.result &&
+                durableResult.result->stdoutTruncated && durableResult.result->stdoutUtf8.size() == 1'024U &&
+                durableResult.memoryAttached && !durableResult.memoryAttachError &&
+                !durableResult.logHash.empty() && durableResult.arguments == direct.arguments,
+            "durable job lost bounded result output, argv, receipt hash, or memory attachment");
+    const auto firstPage = take(durable.readJobLog(directJob.jobId, false, 0U, 0U, shellAuthority, context(44U)));
+    require(firstPage.text.size() == 32U * 1024U && firstPage.hasMore && firstPage.totalBytes > 100'000U &&
+                firstPage.nextOffset == firstPage.text.size() && !firstPage.textLossy,
+            "durable logs did not retain output beyond the bounded result capture or page it correctly");
+    const auto lastLines = take(durable.readJobLog(directJob.jobId, false, std::nullopt, 1U, shellAuthority, context(45U)));
+    require(lastLines.text.find("explicit-env-proof") != std::string::npos,
+            "direct process launch did not preserve explicit environment variables");
+    const auto stderrPage = take(durable.readJobLog(directJob.jobId, true, std::nullopt, 100U, shellAuthority, context(46U)));
+    require(stderrPage.text.find("stderr-proof") != std::string::npos,
+            "durable stderr log omitted process output");
+    std::mutex completionMutex;
+    std::condition_variable completionCondition;
+    bool completionEntered{}, completionReleased{};
+    std::atomic<unsigned> blockedCompletionCalls{};
+    durable.setJobCompletionSink([&](const Domain::ProjectId&, const Domain::ShellJobSnapshot&) {
+        std::unique_lock lock{completionMutex};
+        completionEntered = true;
+        blockedCompletionCalls.fetch_add(1U);
+        completionCondition.notify_all();
+        completionCondition.wait(lock, [&] { return completionReleased; });
+    });
+    const auto releaseCompletion = [&] {
+        { std::scoped_lock lock{completionMutex}; completionReleased = true; }
+        completionCondition.notify_all();
+    };
+    direct.arguments = {"-NoProfile", "-NonInteractive", "-Command", "Write-Output 'completion-blocked'"};
+    Domain::ShellJobSnapshot blockedCompletion;
+    std::string blockedJobId;
+    try {
+        blockedJobId = take(durable.startProcess(direct, shellAuthority, context(62U))).jobId;
+        {
+            std::unique_lock lock{completionMutex};
+            require(completionCondition.wait_for(lock, 10s, [&] { return completionEntered; }),
+                "Process completion sink did not enter its bounded fixture wait");
+        }
+        blockedCompletion = take(durable.getJob(blockedJobId, shellAuthority, context(63U)));
+    } catch (...) {
+        releaseCompletion();
+        throw;
+    }
+    releaseCompletion();
+    const auto releasedCompletion = waitForDurable(durable, blockedJobId);
+    require(blockedCompletion.state == Domain::ShellJobState::Running && blockedCompletion.processAlive == false &&
+                releasedCompletion.state == Domain::ShellJobState::Completed && releasedCompletion.processAlive == false &&
+                blockedCompletionCalls.load() == 1U,
+            "Job finalization state incorrectly claimed an exited child PID was still alive");
+    durable.setJobCompletionSink([&](const Domain::ProjectId&, const Domain::ShellJobSnapshot&) {
+        completionCalls.fetch_add(1U); throw std::runtime_error{"memory fixture unavailable"};
+    });
+    direct.arguments = {"-NoProfile", "-NonInteractive", "-Command", "Write-Output 'attachment-failure'"};
+    const auto attachmentJob = take(durable.startProcess(direct, shellAuthority, context(47U)));
+    const auto attachmentResult = waitForDurable(durable, attachmentJob.jobId);
+    require(attachmentResult.state == Domain::ShellJobState::Completed && attachmentResult.result &&
+                attachmentResult.result->exitCode == 0 && !attachmentResult.memoryAttached &&
+                attachmentResult.memoryAttachError && completionCalls.load() == 2U,
+            "memory attachment failure discarded the process outcome or was not recorded exactly once");
+    direct.arguments = {"-NoProfile", "-NonInteractive", "-Command",
+        "[Console]::Out.Write(([string][char]1) * 80000); [Console]::Error.Write(([string][char]1) * 20000)"};
+    direct.maximumStdoutBytes = 80'000U; direct.maximumStderrBytes = 20'000U;
+    const auto escapedJob = take(durable.startProcess(direct, shellAuthority, context(55U)));
+    const auto escapedResult = waitForDurable(durable, escapedJob.jobId);
+    require(escapedResult.state == Domain::ShellJobState::Completed && escapedResult.result &&
+                escapedResult.result->stdoutUtf8.size() == 80'000U && escapedResult.result->stderrUtf8.size() == 20'000U &&
+                std::filesystem::file_size(std::filesystem::path{std::u8string{
+                    reinterpret_cast<const char8_t*>(escapedResult.receiptPath.data()), escapedResult.receiptPath.size()}}) > 512U * 1024U,
+            "The maximum escaped stdout/stderr capture could not be recovered from its bounded receipt");
+    direct.arguments = {"-NoProfile", "-NonInteractive", "-Command",
+        "$bytes=[byte[]](0,65,66,67,255); [Console]::OpenStandardOutput().Write($bytes,0,5); "
+        "[Console]::OpenStandardError().Write($bytes,0,5)"};
+    const auto binaryJob = take(durable.startProcess(direct, shellAuthority, context(56U)));
+    const auto binaryResult = waitForDurable(durable, binaryJob.jobId);
+    require(binaryResult.state == Domain::ShellJobState::Completed && binaryResult.result &&
+                binaryResult.result->exitCode == 0 && !binaryResult.logHash.empty(),
+            "Binary stdout/stderr did not produce a verified final receipt");
+    for (const bool stderrStream : {false, true}) {
+        const auto binaryPage = take(durable.readJobLog(binaryJob.jobId, stderrStream, 0U, 0U,
+            shellAuthority, context(57U)));
+        require(binaryPage.text == "?ABC?" && binaryPage.textLossy && binaryPage.offset == 0U &&
+                    binaryPage.nextOffset == 5U && binaryPage.totalBytes == 5U && !binaryPage.hasMore,
+                "Binary log text was not NUL-free with honest loss/byte-offset metadata");
+        const auto binaryPath = std::filesystem::path{std::u8string{
+            reinterpret_cast<const char8_t*>(binaryPage.path.data()), binaryPage.path.size()}};
+        std::ifstream rawInput{binaryPath, std::ios::binary};
+        std::string raw(5U, '\0');
+        rawInput.read(raw.data(), static_cast<std::streamsize>(raw.size()));
+        require(rawInput.gcount() == 5 && raw.front() == '\0' &&
+                    static_cast<unsigned char>(raw.back()) == 255U,
+                "Text-safe log projection modified the raw durable evidence bytes");
+    }
+    direct.arguments = {"-NoProfile", "-NonInteractive", "-Command",
+        "$bytes=[byte[]]::new(40000); $bytes[0]=65; $bytes[39999]=66; "
+        "for($i=1;$i -lt 39999;$i++){$bytes[$i]=128}; "
+        "[Console]::OpenStandardOutput().Write($bytes,0,40000); "
+        "$bytes[0]=128; $bytes[39999]=128; [Console]::OpenStandardError().Write($bytes,0,40000)"};
+    const auto continuationJob = take(durable.startProcess(direct, shellAuthority, context(58U)));
+    const auto continuationResult = waitForDurable(durable, continuationJob.jobId);
+    require(continuationResult.state == Domain::ShellJobState::Completed && continuationResult.result &&
+                continuationResult.result->exitCode == 0,
+            "Malformed UTF-8 log fixture did not complete");
+    const auto continuationPage = take(durable.readJobLog(continuationJob.jobId, false, 0U, 0U,
+        shellAuthority, context(59U)));
+    require(continuationPage.text.size() == 32U * 1024U && continuationPage.text.front() == 'A' &&
+                continuationPage.nextOffset == 32U * 1024U && continuationPage.hasMore && continuationPage.textLossy,
+            "A long invalid UTF-8 continuation run stalled its log byte cursor");
+    const auto continuationTail = take(durable.readJobLog(continuationJob.jobId, false,
+        continuationPage.nextOffset, 0U, shellAuthority, context(60U)));
+    require(continuationTail.text == "B" && continuationTail.nextOffset == 40'000U &&
+                !continuationTail.hasMore && continuationTail.textLossy,
+            "Skipped continuation bytes did not advance with honest loss metadata");
+    const auto onlyContinuation = take(durable.readJobLog(continuationJob.jobId, true, 0U, 0U,
+        shellAuthority, context(61U)));
+    require(onlyContinuation.text.empty() && onlyContinuation.offset == 40'000U &&
+                onlyContinuation.nextOffset == 40'000U && !onlyContinuation.hasMore && onlyContinuation.textLossy,
+            "An all-continuation log did not finish with honest loss metadata");
+    direct.arguments = {"-NoProfile", "-NonInteractive", "-Command", "Start-Sleep -Seconds 30"};
+    const auto liveOwned = take(durable.startProcess(direct, shellAuthority, context(48U)));
+    NativeTools::WindowsShellService otherHost{powerShellExecutable, supervisor, jobRoot};
+    const auto foreignAdoption = otherHost.adoptJob(liveOwned.jobId, shellAuthority, context(49U));
+    require(!foreignAdoption && foreignAdoption.error().code == Domain::ErrorCodes::OwnershipConflict,
+            "receipt adoption accepted a live process without its owning job host");
+    static_cast<void>(take(durable.cancelJob(liveOwned.jobId, shellAuthority, context(50U))));
+    static_cast<void>(waitForDurable(durable, liveOwned.jobId));
+    durable.shutdown();
+    const auto restored = take(otherHost.adoptJob(directJob.jobId, shellAuthority, context(51U)));
+    require(restored.state == Domain::ShellJobState::Completed && restored.result && restored.memoryAttached &&
+                restored.logHash == durableResult.logHash && restored.processId == directJob.processId,
+            "completed process evidence did not survive replacement of its shell service");
+    const auto restoredList = take(otherHost.listJobs(shellAuthority, context(52U)));
+    require(restoredList.size() == 7U, "durable process list did not restore completed receipts");
+    const auto tamperPath = std::filesystem::path{std::u8string{
+        reinterpret_cast<const char8_t*>(restored.stdoutPath.data()), restored.stdoutPath.size()}};
+    { std::ofstream output{tamperPath, std::ios::binary | std::ios::app}; output << "tampered"; }
+    const auto tampered = otherHost.getJob(directJob.jobId, shellAuthority, context(53U));
+    require(!tampered && tampered.error().code == Domain::ErrorCodes::IntegrityFailure,
+            "restored process evidence did not detect log tampering");
+    const auto receiptPath = std::filesystem::path{std::u8string{
+        reinterpret_cast<const char8_t*>(attachmentResult.receiptPath.data()), attachmentResult.receiptPath.size()}};
+    { std::ofstream output{receiptPath, std::ios::binary | std::ios::app}; output << "tampered"; }
+    const auto tamperedReceipt = otherHost.getJob(attachmentJob.jobId, shellAuthority, context(54U));
+    require(!tamperedReceipt && tamperedReceipt.error().code == Domain::ErrorCodes::IntegrityFailure,
+            "restored process evidence did not detect receipt tampering");
+    otherHost.shutdown();
+
     shell.shutdown();
 
     const auto readyFile = workspace.path() / L"active-shell.ready";
@@ -379,6 +775,8 @@ void exerciseGitAndShell(
 int main(const int argc, const char* const argv[])
 {
     try {
+        if (argc == 8 && std::string_view{argv[1]} == "--job-admission-child")
+            return admissionChild(argv);
         require(argc == 3,
                 "expected absolute Git and PowerShell executable paths");
         exerciseGitAndShell(

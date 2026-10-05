@@ -47,6 +47,7 @@ struct ContinuityAutomationStatusSnapshot final {
     std::optional<std::string> handoffId;
     std::vector<PathText> implicitRoots;
     bool handoffPending{};
+    std::optional<std::string> readbackHandoffId;
 
     bool operator==(const ContinuityAutomationStatusSnapshot&) const = default;
 };

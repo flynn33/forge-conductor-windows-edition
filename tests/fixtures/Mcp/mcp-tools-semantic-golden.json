@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "tools": [
     {
-      "description": "Alias of agent_get \u2014 full playbook body.",
+      "description": "Alias of agent_get — full playbook body.",
       "inputSchema": {
         "properties": {
           "agent_id": {
@@ -172,7 +172,7 @@
       "name": "clu.resolve"
     },
     {
-      "description": "Load latest (or id) handoff packet \u2014 call first in every new chat bootstrap.",
+      "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",
       "inputSchema": {
         "properties": {
           "handoff_id": {
@@ -696,6 +696,49 @@
       "name": "continuity.status"
     },
     {
+      "description": "Hash authorized binary evidence and append a durable SHA256 capture chain; returns byte lengths and capture/head identities. This is an integrity record, not an identity signature.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "evidence_digest"
+    },
+    {
+      "description": "Read and verify the project evidence capture chain with bounded record paging. Retain head_digest independently to detect replacement of the complete chain.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "maximum": 16,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "verify": {
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "evidence_log_read"
+    },
+    {
       "description": "Runtime and project context: project folder, ordered instruction-package folders, development-policy source, home, agents, sessions, and tools.",
       "inputSchema": {
         "additionalProperties": true,
@@ -830,7 +873,7 @@
             "type": "integer"
           },
           "limit": {
-            "description": "Alias for length \u2014 number of lines to return",
+            "description": "Alias for length — number of lines to return",
             "type": "integer"
           },
           "offset": {
@@ -920,6 +963,53 @@
         "type": "object"
       },
       "name": "git_status"
+    },
+    {
+      "description": "Read GitHub repository runs, artifacts, refs and pull requests via fixed HTTPS GET routes. Uses configured credentials when available; reports permission and network failures explicitly.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "operation": {
+            "enum": [
+              "runs",
+              "run",
+              "artifacts",
+              "artifact",
+              "refs",
+              "pull_requests",
+              "pull_request",
+              "pull_request_files"
+            ],
+            "type": "string"
+          },
+          "page": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "per_page": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "operation"
+        ],
+        "type": "object"
+      },
+      "name": "github_read"
     },
     {
       "description": "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.",
@@ -1097,6 +1187,179 @@
         "type": "object"
       },
       "name": "pdf_write"
+    },
+    {
+      "description": "Adopt a Forge-owned durable job receipt by job_id after reconnecting. Verifies receipt/log integrity and process identity; cannot adopt an arbitrary PID.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "process_adopt"
+    },
+    {
+      "description": "Cancel one Forge-owned process tree by job_id; poll until final termination is confirmed.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "process_kill"
+    },
+    {
+      "description": "Launch an authorized executable with exact argv, cwd and environment. Returns stable job_id, actual PID and named stdout/stderr logs. A matching Manager owns the job across MCP reconnects; otherwise status reports connector-owned lifetime.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "items": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxItems": 256,
+            "type": "array"
+          },
+          "command": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "env": {
+            "additionalProperties": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "maxProperties": 128,
+            "type": "object"
+          },
+          "timeout_sec": {
+            "exclusiveMinimum": 0,
+            "maximum": 3600,
+            "type": "number"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      },
+      "name": "process_launch"
+    },
+    {
+      "description": "List this project's active and retained durable jobs. Interrupted broker jobs report unknown exit status rather than invented success.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "process_list"
+    },
+    {
+      "description": "Read a durable job's alive/done state, actual PID, elapsed time, exit status and log/receipt paths. Poll no faster than every five seconds.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "process_poll"
+    },
+    {
+      "description": "Read live or final stdout/stderr by job_id with tail_lines or byte offset and bounded paging; returns next_offset and truncation state.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "offset": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "stream": {
+            "enum": [
+              "stdout",
+              "stderr"
+            ],
+            "type": "string"
+          },
+          "tail_lines": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "process_read_log"
+    },
+    {
+      "description": "Read a bounded native Windows process and service snapshot as the current user, without elevation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "process_status"
+    },
+    {
+      "description": "Wait up to 30 seconds for a durable job to finish. Timeout returns done=false and leaves the job running; repeat or poll for longer runs.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 30,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "process_wait"
     },
     {
       "description": "Tombstone a record in one project.",
@@ -1464,22 +1727,104 @@
     {
       "description": "Read the adopted policy index or an exact pinned document. Follow next_cursor for every index page; supply path and next_offset as offset for every document part. This tool cannot adopt policy or approve reviews.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "path": {
+          "cursor": {
             "type": "string"
           },
           "offset": {
-            "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "type": "integer"
           },
-          "cursor": {
+          "path": {
             "type": "string"
           }
         },
-        "additionalProperties": false
+        "type": "object"
       },
       "name": "project_policy.read"
+    },
+    {
+      "description": "Inspect actually loaded LM Studio models and configured context/reserves. Missing file, revision or version facts remain null with provenance and reasons.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "provider_status"
+    },
+    {
+      "description": "Cancel one independently started read-only reviewer run for this project.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "type": "object"
+      },
+      "name": "reviewer_cancel"
+    },
+    {
+      "description": "Start a fresh Manager-owned reviewer provider session with an authorized opening-message file and no executor conversation history. Requires explicit review authorization; read-only tools are enforced.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "opening_message_path": {
+            "type": "string"
+          },
+          "task": {
+            "maxLength": 32768,
+            "type": "string"
+          }
+        },
+        "required": [
+          "opening_message_path",
+          "authorization"
+        ],
+        "type": "object"
+      },
+      "name": "reviewer_start"
+    },
+    {
+      "description": "Read the separate reviewer run's actual state, provider response, token usage and bounded UTF-8 output page; follow next_output_offset for more. A running or failed review is not an approved gate.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "max_output_bytes": {
+            "maximum": 32768,
+            "minimum": 4,
+            "type": "integer"
+          },
+          "output_offset": {
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "type": "object"
+      },
+      "name": "reviewer_status"
     },
     {
       "description": "Recursive text search (grep).",
@@ -1631,7 +1976,7 @@
       "name": "session_handoff"
     },
     {
-      "description": "Run an opt-in bounded PowerShell command with timeout.",
+      "description": "Run an opt-in PowerShell command for at most 120 seconds. Its process tree is terminated when the command exits or times out. Use shell_job_start for longer foreground builds/tests.",
       "inputSchema": {
         "properties": {
           "command": {
@@ -1652,6 +1997,141 @@
         "type": "object"
       },
       "name": "shell_exec"
+    },
+    {
+      "description": "Request cancellation of one tracked shell job and its process tree; poll shell_job_status until terminal state confirms termination.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "shell_job_cancel"
+    },
+    {
+      "description": "Discover this project's running and retained jobs and durable receipts. Returns summaries; read named logs with process_read_log.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "shell_job_list"
+    },
+    {
+      "description": "Start a Manager-owned PowerShell job with up to 3600 seconds lifetime, named logs and durable receipt. Survives MCP reconnect when a matching Manager is available; status reports fallback owner lifetime.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "timeout_sec": {
+            "exclusiveMinimum": 0,
+            "maximum": 3600,
+            "type": "number"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      },
+      "name": "shell_job_start"
+    },
+    {
+      "description": "Poll a tracked shell job by job_id, including after Manager-backed MCP reconnect. Running is not failure. Terminal state includes captured final output, exit code, timeout/cancellation and truncation flags. Poll at most every 5 seconds.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "shell_job_status"
+    },
+    {
+      "description": "Materialize a pinned Python venv in an authorized external directory as a durable job, recording exact installed versions and a manifest. Does not edit product source or grant elevation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "python_path": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "enum": [
+                "jsonschema==4.25.1",
+                "PyYAML==6.0.3"
+              ],
+              "type": "string"
+            },
+            "maxItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "python_path"
+        ],
+        "type": "object"
+      },
+      "name": "verification_env_create"
+    },
+    {
+      "description": "Read the pinned verification venv manifest from an authorized directory; reports exact runtime and distributions only after successful creation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "verification_env_status"
+    },
+    {
+      "description": "Bind an existing additional root already present in the owner-configured allowlist to this project. Tool arguments cannot add new grants; forge_status reports configured and active roots.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "root": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "root"
+        ],
+        "type": "object"
+      },
+      "name": "workspace_authority_bind"
     }
   ]
 }

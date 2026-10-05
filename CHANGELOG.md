@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.12 - Observable process work and verification evidence
+
+- Expand Primary/Fallback to 80 tools: durable Manager-backed process launch/poll/wait/list/kill/adopt, live stdout/stderr paging, native host and loaded-provider inspection, fixed read-only GitHub routes, configured authority binding, evidence capture/readback, pinned verification venvs, and separate read-only reviewer sessions.
+- Retain the four tracked shell convenience calls and synchronous `shell_exec` capped at 120 seconds. Bound owned jobs to 3,600 seconds, two active jobs, and sixteen retained records per shell-service instance; retain explicit shutdown/interruption states.
+- Add exact existing owner-configured external root binding with strict Windows path checks and rejection of narrowed-capability widening. Existing 2 MiB `fs_write` works under active authorized roots.
+- Stream binary SHA-256 and byte counts into an atomically persisted capture chain with cross-process serialization, full-chain verification, bounded paging, and refusal to overwrite altered logs. Document the independently retained head required by an unkeyed chain.
+- Materialize exact supported verification pins outside the source root; record observed runtime/distribution versions only after successful creation. Start independently authorized reviewer work with a fresh provider context and enforced read tools.
+- Supply explicit account/profile environment and Python UTF-8 defaults; update all ten specialist resources and matching embedded fallbacks with the supported process/evidence workflow.
+- Advance product/package identity to 1.3.12 / 1.3.12.0. Retain the selected workspace, ordinary profile, stable publisher, original chat, and foreign LM Studio registrations during deployment.
+- Keep original failure evidence, implementation scope, and pending verification separate. Current test/package/native-model results are recorded after execution.
+
 ## 1.3.11 - Workspace bootstrap and complete native tool delivery
 
 Public repair release following 1.3.6. The 1.3.7 through 1.3.10 sections below record intermediate local development builds; they were not published GitHub releases.

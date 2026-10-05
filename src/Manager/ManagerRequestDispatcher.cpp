@@ -2540,7 +2540,7 @@ private:
                 "The native tool catalog is unavailable in this Manager composition."));
         }
         const auto catalog = telemetrySources_.tools->tools();
-        if (catalog.size() > 64U) {
+        if (catalog.size() > 128U) {
             return Domain::Result<ManagerToolsSnapshot>::failure(error(
                 Domain::ErrorCodes::LimitExceeded,
                 "The native tool catalog exceeds the Manager projection bound."));
@@ -3552,6 +3552,27 @@ private:
                     return controllerResponse(request, toolsSnapshot());
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerToolInvokeRequest>) {
+                    // This current-user authenticated pipe is the durable job
+                    // broker. General desktop tool execution remains disabled.
+                    const bool brokered = payload.toolName == "workspace_authority_bind"
+                        || payload.toolName == "shell_job_start"
+                        || payload.toolName == "shell_job_status"
+                        || payload.toolName == "shell_job_list"
+                        || payload.toolName == "shell_job_cancel"
+                        || payload.toolName == "process_adopt"
+                        || payload.toolName == "process_kill"
+                        || payload.toolName == "process_launch"
+                        || payload.toolName == "process_list"
+                        || payload.toolName == "process_poll"
+                        || payload.toolName == "process_read_log"
+                        || payload.toolName == "process_wait"
+                        || payload.toolName == "reviewer_cancel"
+                        || payload.toolName == "reviewer_start"
+                        || payload.toolName == "reviewer_status"
+                        || payload.toolName == "verification_env_create"
+                        || payload.toolName == "verification_env_status";
+                    if (brokered) return controllerResponse(request,
+                        invokeTool(request, payload, context));
                     return responseWithError(request, error(Domain::ErrorCodes::InvalidRequest,
                         "Desktop tool invocation has been removed. Call Forge tools from LM Studio."));
                 } else if constexpr (

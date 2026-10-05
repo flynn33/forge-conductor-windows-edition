@@ -408,15 +408,20 @@ void IoCompletionPort::shutdown() noexcept
 
 OverlappedPipeReader::OverlappedPipeReader(IoCompletionPort& completionPort,
                                            UniqueHandle readHandle,
-                                           const std::size_t maximumCaptureBytes) noexcept
+                                           const std::size_t maximumCaptureBytes,
+                                           std::shared_ptr<Domain::IProcessOutputObserver> observer,
+                                           const bool stderrStream) noexcept
     : completionPort_{completionPort}, readHandle_{std::move(readHandle)},
-      maximumCaptureBytes_{maximumCaptureBytes}
+      maximumCaptureBytes_{maximumCaptureBytes}, observer_{std::move(observer)},
+      stderrStream_{stderrStream}
 {
 }
 
 Domain::Result<PipeEndpoints> OverlappedPipeReader::create(IoCompletionPort& completionPort,
                                                            const std::wstring& pipeName,
-                                                           const std::size_t maximumCaptureBytes)
+                                                           const std::size_t maximumCaptureBytes,
+                                                           std::shared_ptr<Domain::IProcessOutputObserver> observer,
+                                                           const bool stderrStream)
 {
     UniqueHandle readerHandle{::CreateNamedPipeW(
         pipeName.c_str(),
@@ -440,7 +445,8 @@ Domain::Result<PipeEndpoints> OverlappedPipeReader::create(IoCompletionPort& com
     }
 
     auto reader = std::shared_ptr<OverlappedPipeReader>{
-        new OverlappedPipeReader{completionPort, std::move(readerHandle), maximumCaptureBytes}};
+        new OverlappedPipeReader{completionPort, std::move(readerHandle), maximumCaptureBytes,
+            std::move(observer), stderrStream}};
     return Domain::Result<PipeEndpoints>::success(
         PipeEndpoints{std::move(reader), std::move(writer).value()});
 }
@@ -523,6 +529,8 @@ void OverlappedPipeReader::onCompletion(const DWORD bytesTransferred, const DWOR
         std::unique_lock lock{mutex_};
         pending_ = false;
         if (bytesTransferred > 0U) {
+            if (observer_) observer_->onOutput(
+                std::string_view{buffer_.data(), bytesTransferred}, stderrStream_);
             const auto remaining = maximumCaptureBytes_ > captured_.size()
                                        ? maximumCaptureBytes_ - captured_.size()
                                        : 0U;

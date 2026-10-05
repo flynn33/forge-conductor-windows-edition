@@ -1,6 +1,9 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/IAgentServices.h"
+#include "ForgeConductor/Contracts/IEvidenceService.h"
+#include "ForgeConductor/Contracts/IGitHubReadService.h"
+#include "ForgeConductor/Contracts/IManagedRunServices.h"
 #include "ForgeConductor/Contracts/IContinuityAutomation.h"
 #include "ForgeConductor/Contracts/IContinuityCoordinator.h"
 #include "ForgeConductor/Contracts/IContinuityDocumentCodec.h"
@@ -66,6 +69,15 @@ struct McpToolPackDependencies final {
     std::function<std::string()> visibleChatContinuityStatus;
     std::function<void(std::string_view, bool, std::string_view)> visibleChatToolResult;
     std::function<void(const Domain::ProjectId&, const Domain::PathText&)> visibleChatWorkspaceBinding;
+    std::function<Domain::Result<std::string>(const Domain::OperationContext&)> providerInspection;
+    std::function<Domain::Result<std::string>(const Domain::OperationContext&)> systemInspection;
+    Contracts::IGitHubReadService* githubRead{};
+    Contracts::IEvidenceService* evidence{};
+    // CLI forwards only these explicitly brokered tools to the authenticated,
+    // same-profile Manager. Manager composition leaves this callback empty.
+    std::function<Domain::Result<std::string>(std::string_view, std::string_view,
+        const Domain::ProjectId&, const Domain::OperationContext&)> durableToolBroker;
+    std::function<Contracts::IManagedRunService*()> reviewerRuns;
 };
 
 // Parses source-compatible tool arguments into transport-neutral Domain

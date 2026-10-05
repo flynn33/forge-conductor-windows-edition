@@ -1,6 +1,8 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 
 #include "NativeToolValidation.h"
+#include "ShellJobStorage.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 
 #include "ForgeConductor/Domain/Utf8.h"
 
@@ -13,6 +15,8 @@
 #include <climits>
 #include <chrono>
 #include <mutex>
+#include <thread>
+#include <filesystem>
 #include <optional>
 #include <stop_token>
 #include <string>
@@ -274,6 +278,26 @@ void appendPathList(
     return std::move(*utf8);
 }
 
+[[nodiscard]] std::optional<std::string> shellHostEnvironmentValue(
+    const wchar_t* const name)
+{
+    const DWORD required = ::GetEnvironmentVariableW(name, nullptr, 0U);
+    if (required == 0U || required > Domain::MaximumProcessEnvironmentValueBytes + 1U) {
+        return std::nullopt;
+    }
+    std::wstring value(required, L'\0');
+    const DWORD written = ::GetEnvironmentVariableW(name, value.data(), required);
+    if (written == 0U || written >= required) {
+        return std::nullopt;
+    }
+    value.resize(written);
+    auto utf8 = wideToUtf8(value);
+    if (!utf8 || utf8->size() > Domain::MaximumProcessEnvironmentValueBytes) {
+        return std::nullopt;
+    }
+    return utf8;
+}
+
 void ensureShellToolchainEnvironment(
     std::vector<Domain::EnvironmentVariable>& environment)
 {
@@ -294,6 +318,24 @@ void ensureShellToolchainEnvironment(
         if (comspec && !comspec->empty() && comspec->size() <= MaximumShellPathBytes) {
             environment.push_back(Domain::EnvironmentVariable{"COMSPEC", *comspec});
         }
+    }
+    constexpr std::pair<std::string_view, const wchar_t*> profileVariables[]{
+        {"USERNAME", L"USERNAME"}, {"USERDOMAIN", L"USERDOMAIN"},
+        {"USERPROFILE", L"USERPROFILE"}, {"APPDATA", L"APPDATA"},
+        {"LOCALAPPDATA", L"LOCALAPPDATA"}, {"HOMEDRIVE", L"HOMEDRIVE"},
+        {"HOMEPATH", L"HOMEPATH"}};
+    for (const auto& [name, wideName] : profileVariables) {
+        if (!hasEnvironmentName(environment, name)) {
+            if (auto value = shellHostEnvironmentValue(wideName)) {
+                environment.push_back({std::string{name}, std::move(*value)});
+            }
+        }
+    }
+    if (!hasEnvironmentName(environment, "PYTHONUTF8")) {
+        environment.push_back({"PYTHONUTF8", "1"});
+    }
+    if (!hasEnvironmentName(environment, "PYTHONIOENCODING")) {
+        environment.push_back({"PYTHONIOENCODING", "utf-8"});
     }
 }
 
@@ -371,6 +413,32 @@ void enforceOutputBounds(
 
 class WindowsShellService::Impl final {
 public:
+    struct Job final {
+        Domain::ProjectId projectId;
+        Domain::OperationId operationId;
+        Domain::ShellJobSnapshot snapshot;
+        Domain::MonotonicTimePoint startedAt;
+        std::stop_source cancellation;
+        std::jthread worker;
+        std::shared_ptr<Detail::ShellJobStorage> storage;
+    };
+
+    [[nodiscard]] Domain::ShellJobSnapshot snapshotOf(const Job& job) const
+    {
+        auto result = job.snapshot;
+        if (job.storage) {
+            result.processId = job.storage->processId();
+            result.processCreationTime = job.storage->creationTime();
+        }
+        result.processAlive = Detail::ShellJobStorage::observeProcessAlive(
+            result.processId, result.processCreationTime);
+        if (result.state == Domain::ShellJobState::Running) {
+            result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - job.startedAt);
+        }
+        return result;
+    }
+
     struct ActiveOperation final {
         Domain::OperationId operationId;
         std::shared_ptr<std::stop_source> cancellation;
@@ -379,9 +447,10 @@ public:
 
     Impl(
         Domain::PathText powerShellExecutable,
-        std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor)
+        std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor,
+        std::optional<Domain::PathText> storageRoot)
         : powerShellExecutable{std::move(powerShellExecutable)},
-          processSupervisor{std::move(processSupervisor)}
+          processSupervisor{std::move(processSupervisor)}, jobRoot{std::move(storageRoot)}
     {
     }
 
@@ -478,6 +547,8 @@ public:
 
     void shutdown() noexcept
     {
+        std::scoped_lock shutdownLock{shutdownMutex};
+        std::vector<std::shared_ptr<Job>> trackedJobs;
         std::vector<ActiveOperation> operations;
         try {
             {
@@ -490,6 +561,10 @@ public:
                     operation.cancellationRequested = true;
                 }
                 operations = activeOperations;
+                trackedJobs = jobs;
+            }
+            for (const auto& job : trackedJobs) {
+                job->cancellation.request_stop();
             }
             for (const auto& operation : operations) {
                 operation.cancellation->request_stop();
@@ -499,6 +574,11 @@ public:
                     processSupervisor->cancel(operation.operationId);
                 }
             }
+            for (const auto& job : trackedJobs) {
+                if (job->worker.joinable()) {
+                    job->worker.join();
+                }
+            }
         } catch (...) {
         }
     }
@@ -506,16 +586,21 @@ public:
     const Domain::PathText powerShellExecutable;
     const std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor;
     std::mutex stateMutex;
+    std::mutex shutdownMutex;
+    const std::optional<Domain::PathText> jobRoot;
+    JobCompletionSink completionSink;
+    std::vector<std::shared_ptr<Job>> jobs;
     std::vector<ActiveOperation> activeOperations;
     bool shutdownRequested{};
 };
 
 WindowsShellService::WindowsShellService(
     Domain::PathText powerShellExecutable,
-    std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor)
+    std::shared_ptr<Contracts::IProcessSupervisor> processSupervisor,
+    std::optional<Domain::PathText> jobRoot)
     : implementation_{std::make_shared<Impl>(
           std::move(powerShellExecutable),
-          std::move(processSupervisor))}
+          std::move(processSupervisor), std::move(jobRoot))}
 {
 }
 
@@ -533,6 +618,22 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
     const Domain::OperationContext& context) noexcept
 {
     const auto implementation = implementation_;
+    return executeInternal(implementation, request, authority, context, false);
+}
+
+Domain::Result<Domain::ProcessResult> WindowsShellService::executeInternal(
+    const std::shared_ptr<Impl>& implementation,
+    const Domain::ProcessRequest& request,
+    const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context,
+    const bool managedJob,
+    const bool directProcess) noexcept
+{
+    if (request.managedJob != managedJob) {
+        return Domain::Result<Domain::ProcessResult>::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "Managed process execution requires a tracked shell job."));
+    }
     if (!implementation) {
         return Domain::Result<Domain::ProcessResult>::failure(
             Domain::makeError(
@@ -568,13 +669,17 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
                     "The shell service requires a process supervisor owner."));
         }
         auto executable = Detail::executableParent(
-            implementation->powerShellExecutable, "PowerShell");
+            directProcess ? request.executable : implementation->powerShellExecutable, "Process");
         if (!executable) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(executable).error());
         }
-        auto envelope = validateCommandEnvelope(
+        auto envelope = directProcess ? Domain::Result<void>::success() : validateCommandEnvelope(
             request, implementation->powerShellExecutable);
+        if (directProcess && !request.workingDirectory) {
+            return Domain::Result<Domain::ProcessResult>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest, "A process launch requires an authorized working directory."));
+        }
         if (!envelope) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(envelope).error());
@@ -586,32 +691,36 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
                 std::move(workingDirectory).error());
         }
         auto privateAuthority = Detail::derivePrivateExecutionAuthority(
-            authority, implementation->powerShellExecutable, "PowerShell");
+            authority, directProcess ? request.executable : implementation->powerShellExecutable, "Process");
         if (!privateAuthority) {
             return Domain::Result<Domain::ProcessResult>::failure(
                 std::move(privateAuthority).error());
         }
 
         Domain::ProcessRequest normalized{
-            implementation->powerShellExecutable};
+            directProcess ? request.executable : implementation->powerShellExecutable};
         std::string encodedCommand{Utf8OutputPrefix};
-        encodedCommand.append(request.arguments.front());
+        encodedCommand.append(directProcess ? std::string{} : request.arguments.front());
         normalized.arguments = {
             "-NoLogo",
             "-NoProfile",
             "-NonInteractive",
             "-Command",
             std::move(encodedCommand)};
+        if (directProcess) normalized.arguments = request.arguments;
+        normalized.outputObserver = request.outputObserver;
         normalized.workingDirectory = request.workingDirectory;
         normalized.environment = request.environment;
         ensureShellToolchainEnvironment(normalized.environment);
         // Windows PowerShell cannot initialize from an entirely empty environment
         // (it fails with 0x8009001D in packaged desktop processes). The supervisor
         // inherits only its fixed safe allowlist: SystemRoot, WINDIR, TEMP, and TMP.
-        // PATH, PATHEXT, and COMSPEC are explicit entries from
-        // ensureShellToolchainEnvironment, not inherited process secrets.
+        // Toolchain paths, allowlisted user/profile values, and Python UTF-8
+        // defaults are supplied explicitly; arbitrary host secrets are omitted.
         normalized.inheritEnvironment = true;
-        normalized.timeout = (std::min)(request.timeout, MaximumTimeout);
+        normalized.managedJob = managedJob;
+        normalized.timeout = (std::min)(request.timeout,
+            managedJob ? MaximumJobTimeout : MaximumTimeout);
         normalized.maximumStdoutBytes =
             (std::min)(request.maximumStdoutBytes, MaximumOutputBytes);
         normalized.maximumStderrBytes =
@@ -664,6 +773,373 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::execute(
                 Domain::ErrorCodes::InternalFailure,
                 "The PowerShell request could not be executed."));
     }
+}
+
+void WindowsShellService::setJobCompletionSink(JobCompletionSink sink)
+{
+    const auto implementation = implementation_;
+    if (!implementation) return;
+    std::scoped_lock lock{implementation->stateMutex};
+    implementation->completionSink = std::move(sink);
+}
+
+Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startJob(
+    const Domain::ProcessRequest& request, const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    return startOwnedJob(request, authority, context, false);
+}
+
+Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startProcess(
+    const Domain::ProcessRequest& request, const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    try {
+        const auto toPath = [](const std::string_view text) {
+            return std::filesystem::path{std::u8string{
+                reinterpret_cast<const char8_t*>(text.data()), text.size()}};
+        };
+        auto resolved = request;
+        auto executable = toPath(request.executable.value());
+        if (!executable.is_absolute()) {
+            if (executable.has_parent_path()) {
+                if (!request.workingDirectory) return Domain::Result<Domain::ShellJobSnapshot>::failure(
+                    Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Process cwd is required."));
+                executable = std::filesystem::absolute(toPath(request.workingDirectory->value()) / executable);
+            } else {
+                auto path = shellSearchPath();
+                for (const auto& variable : request.environment) {
+                    if (asciiNameEquals(variable.name, "PATH")) path = variable.value;
+                }
+                std::wstring found(32'768U, L'\0');
+                const auto search = toPath(path).wstring();
+                const auto count = ::SearchPathW(search.c_str(), executable.c_str(), L".exe",
+                    static_cast<DWORD>(found.size()), found.data(), nullptr);
+                if (count == 0U || count >= found.size()) return Domain::Result<Domain::ShellJobSnapshot>::failure(
+                    Domain::makeError(Domain::ErrorCodes::ProcessLaunchFailed,
+                        "The process executable could not be resolved through the effective PATH."));
+                found.resize(count); executable = std::filesystem::path{found};
+            }
+        }
+        const auto encoded = executable.generic_u8string();
+        auto parsed = Domain::PathText::create(std::string{
+            reinterpret_cast<const char*>(encoded.data()), encoded.size()});
+        if (!parsed) return Domain::Result<Domain::ShellJobSnapshot>::failure(std::move(parsed).error());
+        resolved.executable = std::move(parsed).value();
+        return startOwnedJob(resolved, authority, context, true);
+    } catch (...) {
+        return Domain::Result<Domain::ShellJobSnapshot>::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest, "The direct process request could not be resolved."));
+    }
+}
+
+Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startOwnedJob(
+    const Domain::ProcessRequest& request,
+    const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context,
+    const bool directProcess) noexcept
+{
+    using Outcome = Domain::Result<Domain::ShellJobSnapshot>;
+    const auto implementation = implementation_;
+    try {
+        auto active = Detail::checkContext(context, "Shell job admission");
+        if (!active) return Outcome::failure(std::move(active).error());
+        if (!implementation || !implementation->processSupervisor) {
+            return Outcome::failure(Domain::makeError(Domain::ErrorCodes::Cancelled,
+                "The shell service is unavailable."));
+        }
+        if (!authority.shellEnabled()) {
+            return Outcome::failure(Domain::makeError(Domain::ErrorCodes::ShellDisabled,
+                "PowerShell execution is disabled by workspace authority."));
+        }
+        if (!Detail::containsAccess(authority.grants(), Domain::FileAccess::Execute) ||
+            Detail::containsAccess(authority.denials(), Domain::FileAccess::Execute)) {
+            return Outcome::failure(Domain::makeError(Domain::ErrorCodes::Unauthorized,
+                "Workspace authority does not grant PowerShell execution."));
+        }
+        if (request.managedJob || request.timeout > MaximumJobTimeout) {
+            return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                "Tracked shell job timeout must be within 1 through 3600 seconds."));
+        }
+        if (!request.workingDirectory) return Outcome::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest, "A tracked process requires an authorized working directory."));
+        auto envelope = directProcess ? Domain::Result<void>::success()
+            : validateCommandEnvelope(request, implementation->powerShellExecutable);
+        if (!envelope) return Outcome::failure(std::move(envelope).error());
+        if (directProcess) {
+            auto validationRequest = request;
+            validationRequest.managedJob = true;
+            auto valid = Domain::validateProcessRequest(validationRequest,
+                Domain::budgetsForProfile(Domain::ResourceProfile::Constrained8GiB));
+            if (!valid) return Outcome::failure(std::move(valid).error());
+        }
+        auto cwd = Detail::validateWorkingDirectory(*request.workingDirectory, authority);
+        if (!cwd) return Outcome::failure(std::move(cwd).error());
+        auto executable = Detail::executableParent(
+            directProcess ? request.executable : implementation->powerShellExecutable, "Process");
+        if (!executable) return Outcome::failure(std::move(executable).error());
+        Infrastructure::Windows::WindowsUuidGenerator generator;
+        auto generated = generator.next();
+        if (!generated) return Outcome::failure(std::move(generated).error());
+        Domain::OperationId operation{std::move(generated).value()};
+        const auto now = std::chrono::steady_clock::now();
+        Domain::ShellJobSnapshot initial{operation.value(), Domain::ShellJobState::Running,
+            directProcess ? request.executable.value() : request.arguments.front(), request.workingDirectory->value(),
+            static_cast<std::uint32_t>((request.timeout.count() + 999) / 1000),
+            std::nullopt, std::nullopt, std::chrono::milliseconds::zero()};
+        if (directProcess) initial.arguments = request.arguments;
+        auto job = std::make_shared<Impl::Job>(Impl::Job{
+            authority.projectId(), operation, initial, now, {}, {}, {}});
+        std::shared_ptr<Impl::Job> retired;
+        {
+            std::scoped_lock lock{implementation->stateMutex};
+            if (implementation->shutdownRequested) {
+                return Outcome::failure(Domain::makeError(Domain::ErrorCodes::Cancelled,
+                    "The shell service is shutting down."));
+            }
+            const auto activeJobs = std::count_if(implementation->jobs.begin(), implementation->jobs.end(),
+                [](const auto& entry) { return entry->snapshot.state == Domain::ShellJobState::Running; });
+            if (activeJobs >= static_cast<std::ptrdiff_t>(MaximumActiveJobs)) {
+                return Outcome::failure(Domain::makeError(Domain::ErrorCodes::RateLimited,
+                    "The two active shell jobs limit has been reached. Poll or cancel an existing job.", true));
+            }
+            if (implementation->jobRoot) {
+                auto storage = Detail::ShellJobStorage::create(*implementation->jobRoot, authority.projectId(), initial, context);
+                if (!storage) return Outcome::failure(std::move(storage).error());
+                job->storage = std::move(storage).value();
+                job->storage->persist(initial);
+                job->snapshot = initial;
+            }
+            if (implementation->jobs.size() >= MaximumRetainedJobs) {
+                const auto oldest = std::find_if(implementation->jobs.begin(), implementation->jobs.end(),
+                    [](const auto& entry) { return entry->snapshot.state != Domain::ShellJobState::Running; });
+                retired = *oldest;
+                implementation->jobs.erase(oldest);
+            }
+            implementation->jobs.push_back(job);
+            auto managedRequest = request;
+            managedRequest.managedJob = true;
+            if (job->storage) managedRequest.outputObserver = job->storage;
+            try {
+                job->worker = std::jthread{[implementation, job, managedRequest, authority, directProcess,
+                    correlationId = context.correlationId]() noexcept {
+                    try {
+                        const Domain::OperationContext jobContext{job->operationId,
+                            job->startedAt + managedRequest.timeout + std::chrono::seconds{10},
+                            job->cancellation.get_token(), correlationId};
+                        auto outcome = executeInternal(implementation, managedRequest, authority, jobContext, true, directProcess);
+                        Domain::ShellJobSnapshot snapshot;
+                        JobCompletionSink sink;
+                        {
+                            std::scoped_lock completionLock{implementation->stateMutex};
+                            snapshot = job->snapshot;
+                            sink = implementation->completionSink;
+                        }
+                        snapshot.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - job->startedAt);
+                        if (!outcome) {
+                            snapshot.error = std::move(outcome).error();
+                            snapshot.state = snapshot.error->code == Domain::ErrorCodes::Cancelled
+                                ? Domain::ShellJobState::Cancelled
+                                : snapshot.error->code == Domain::ErrorCodes::DeadlineExceeded
+                                    ? Domain::ShellJobState::TimedOut : Domain::ShellJobState::Failed;
+                        } else {
+                            snapshot.result = std::move(outcome).value();
+                            const auto& result = *snapshot.result;
+                            snapshot.state = result.cancelled ? Domain::ShellJobState::Cancelled
+                                : result.timedOut ? Domain::ShellJobState::TimedOut
+                                : result.exitCode == 0 && result.terminationConfirmed
+                                    ? Domain::ShellJobState::Completed : Domain::ShellJobState::Failed;
+                        }
+                        const auto persist = [&] {
+                            if (!job->storage) return;
+                            try {
+                                if (snapshot.result) job->storage->captureFallback(*snapshot.result);
+                                job->storage->persist(snapshot);
+                            } catch (...) {
+                                snapshot.error = Domain::makeError(Domain::ErrorCodes::StorageFull,
+                                    "The final process receipt could not be published.");
+                                snapshot.logHash.clear();
+                            }
+                        };
+                        persist();
+                        if (sink) {
+                            try {
+                                sink(job->projectId, snapshot);
+                                snapshot.memoryAttached = true;
+                            } catch (const std::exception& failure) {
+                                snapshot.memoryAttachError = Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                                    std::string{"The final process evidence could not be attached to project memory: "} + failure.what());
+                            } catch (...) {
+                                snapshot.memoryAttachError = Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                                    "The final process evidence could not be attached to project memory.");
+                            }
+                            persist();
+                        }
+                        {
+                            std::scoped_lock completionLock{implementation->stateMutex};
+                            job->snapshot = std::move(snapshot);
+                        }
+                    } catch (...) {
+                        try {
+                            std::scoped_lock failureLock{implementation->stateMutex};
+                            job->snapshot.state = Domain::ShellJobState::Failed;
+                            job->snapshot.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - job->startedAt);
+                            job->snapshot.error = Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                                "The tracked shell job worker failed.");
+                        } catch (...) {
+                        }
+                    }
+                }};
+            } catch (...) {
+                if (job->storage) {
+                    try {
+                        auto failed = job->snapshot;
+                        failed.state = Domain::ShellJobState::Failed;
+                        failed.error = Domain::makeError(Domain::ErrorCodes::InternalFailure,
+                            "The process job worker could not be created.");
+                        job->storage->persist(failed);
+                    } catch (...) {}
+                }
+                implementation->jobs.pop_back();
+                throw;
+            }
+        }
+        if (retired && retired->worker.joinable()) retired->worker.join();
+        if (job->storage) {
+            job->storage->waitForStarted(std::chrono::seconds{5});
+            std::scoped_lock lock{implementation->stateMutex};
+            return Outcome::success(implementation->snapshotOf(*job));
+        }
+        return Outcome::success(std::move(initial));
+    } catch (...) {
+        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure,
+            "The tracked shell job could not be started."));
+    }
+}
+
+Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::getJob(
+    const std::string_view jobId, const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    using Outcome = Domain::Result<Domain::ShellJobSnapshot>;
+    try {
+        auto active = Detail::checkContext(context, "Shell job status");
+        if (!active) return Outcome::failure(std::move(active).error());
+        const auto implementation = implementation_;
+        std::optional<Domain::ShellJobSnapshot> local;
+        if (implementation) {
+            std::scoped_lock lock{implementation->stateMutex};
+            for (const auto& job : implementation->jobs) {
+                if (job->snapshot.jobId == jobId) {
+                    if (job->projectId != authority.projectId()) {
+                        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::Unauthorized,
+                            "The shell job belongs to another project."));
+                    }
+                    local = implementation->snapshotOf(*job);
+                    break;
+                }
+            }
+        }
+        if (local && (local->state == Domain::ShellJobState::Running || !implementation->jobRoot ||
+                (local->error && local->logHash.empty()))) {
+            return Outcome::success(std::move(*local));
+        }
+        if (implementation && implementation->jobRoot) {
+            return Detail::ShellJobStorage::load(*implementation->jobRoot, authority.projectId(), jobId);
+        }
+        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::RecordNotFound,
+            "The shell job is unknown or its retained result has expired."));
+    } catch (...) {
+        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure,
+            "The tracked shell job status could not be read."));
+    }
+}
+
+Domain::Result<std::vector<Domain::ShellJobSnapshot>> WindowsShellService::listJobs(
+    const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    using Outcome = Domain::Result<std::vector<Domain::ShellJobSnapshot>>;
+    try {
+        auto active = Detail::checkContext(context, "Shell job list");
+        if (!active) return Outcome::failure(std::move(active).error());
+        std::vector<Domain::ShellJobSnapshot> results;
+        const auto implementation = implementation_;
+        if (implementation) {
+            std::scoped_lock lock{implementation->stateMutex};
+            for (const auto& job : implementation->jobs) {
+                if (job->projectId == authority.projectId()) {
+                    results.push_back(implementation->snapshotOf(*job));
+                }
+            }
+        }
+        if (implementation && implementation->jobRoot) {
+            auto persisted = Detail::ShellJobStorage::list(*implementation->jobRoot, authority.projectId());
+            if (!persisted) return Outcome::failure(std::move(persisted).error());
+            for (auto& snapshot : persisted.value()) {
+                if (std::none_of(results.begin(), results.end(), [&](const auto& entry) { return entry.jobId == snapshot.jobId; })) {
+                    results.push_back(std::move(snapshot));
+                }
+            }
+        }
+        return Outcome::success(std::move(results));
+    } catch (...) {
+        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure,
+            "The tracked shell jobs could not be listed."));
+    }
+}
+
+Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::cancelJob(
+    const std::string_view jobId, const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    using Outcome = Domain::Result<Domain::ShellJobSnapshot>;
+    try {
+        auto active = Detail::checkContext(context, "Shell job cancellation");
+        if (!active) return Outcome::failure(std::move(active).error());
+        std::shared_ptr<Impl::Job> selected;
+        const auto implementation = implementation_;
+        if (implementation) {
+            std::scoped_lock lock{implementation->stateMutex};
+            for (const auto& job : implementation->jobs) {
+                if (job->snapshot.jobId == jobId) {
+                    if (job->projectId != authority.projectId()) {
+                        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::Unauthorized,
+                            "The shell job belongs to another project."));
+                    }
+                    if (job->snapshot.state == Domain::ShellJobState::Running) selected = job;
+                    break;
+                }
+            }
+        }
+        if (selected) {
+            selected->cancellation.request_stop();
+            implementation->cancel(selected->operationId);
+        }
+        return getJob(jobId, authority, context);
+    } catch (...) {
+        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure,
+            "The tracked shell job could not be cancelled."));
+    }
+}
+
+Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::adoptJob(
+    const std::string_view id, const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    return getJob(id, authority, context);
+}
+
+Domain::Result<Domain::ShellJobLogPage> WindowsShellService::readJobLog(
+    const std::string_view id, const bool stderrStream, const std::optional<std::uint64_t> offset,
+    const std::size_t tailLines, const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    auto snapshot = getJob(id, authority, context);
+    if (!snapshot) return Domain::Result<Domain::ShellJobLogPage>::failure(std::move(snapshot).error());
+    return Detail::ShellJobStorage::read(snapshot.value(), stderrStream, offset, tailLines);
 }
 
 void WindowsShellService::cancel(

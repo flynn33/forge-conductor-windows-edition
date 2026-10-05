@@ -4,6 +4,11 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsGitService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
@@ -281,6 +286,70 @@ private:
     bool runReleased_{};
     std::size_t cancelCalls_{};
     std::size_t launches_{};
+};
+
+class JobProcessSupervisor final : public Contracts::IProcessSupervisor {
+public:
+    enum class Mode { Complete, Nonzero, Timeout, Error, Block };
+    explicit JobProcessSupervisor(const Mode mode) : mode_{mode} {}
+
+    Domain::Result<Domain::ProcessResult> run(
+        const Domain::ProcessRequest& request, const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext& operationContext) noexcept override
+    {
+        std::unique_lock lock{mutex_};
+        requests_.push_back(request);
+        operationIds_.push_back(operationContext.operationId);
+        deadlines_.push_back(operationContext.deadline);
+        started_.notify_all();
+        if (mode_ == Mode::Block) {
+            released_.wait(lock, operationContext.cancellation, [this] { return release_; });
+        }
+        if (mode_ == Mode::Error) {
+            return Domain::Result<Domain::ProcessResult>::failure(Domain::makeError(
+                Domain::ErrorCodes::ProcessLaunchFailed, "job launch failed"));
+        }
+        Domain::ProcessResult result;
+        result.stdoutUtf8 = std::string(90'000U, 'o');
+        result.stderrUtf8 = "job stderr";
+        result.cancelled = operationContext.cancellation.stop_requested();
+        result.timedOut = mode_ == Mode::Timeout;
+        result.exitCode = mode_ == Mode::Nonzero ? 17 : 0;
+        return Domain::Result<Domain::ProcessResult>::success(std::move(result));
+    }
+    void cancel(const Domain::OperationId&) noexcept override {}
+    void cancelAll() noexcept override {}
+    void shutdown() noexcept override {}
+
+    bool waitUntilStarted(const std::size_t count)
+    {
+        std::unique_lock lock{mutex_};
+        return started_.wait_for(lock, 3s, [this, count] { return requests_.size() >= count; });
+    }
+    Domain::ProcessRequest lastRequest()
+    {
+        std::scoped_lock lock{mutex_};
+        return requests_.back();
+    }
+    Domain::MonotonicTimePoint lastDeadline()
+    {
+        std::scoped_lock lock{mutex_};
+        return deadlines_.back();
+    }
+    Domain::OperationId lastOperation()
+    {
+        std::scoped_lock lock{mutex_};
+        return operationIds_.back();
+    }
+private:
+    const Mode mode_;
+    std::mutex mutex_;
+    std::condition_variable started_;
+    std::condition_variable_any released_;
+    std::vector<Domain::ProcessRequest> requests_;
+    std::vector<Domain::OperationId> operationIds_;
+    std::vector<Domain::MonotonicTimePoint> deadlines_;
+    bool release_{};
 };
 
 struct AuthorityFixture final {
@@ -756,7 +825,12 @@ void shellUsesFixedPowerShellAndClampedBudgets()
             normalized.timeout == 30s &&
             normalized.maximumStdoutBytes == 80'000U &&
             normalized.maximumStderrBytes == 20'000U &&
-            normalized.environment.size() == 4U &&
+            normalized.environment.size() >= 6U &&
+            normalized.environment.size() <= 13U &&
+            environmentValue(normalized.environment, "PYTHONUTF8") != nullptr &&
+            *environmentValue(normalized.environment, "PYTHONUTF8") == "1" &&
+            environmentValue(normalized.environment, "PYTHONIOENCODING") != nullptr &&
+            *environmentValue(normalized.environment, "PYTHONIOENCODING") == "utf-8" &&
             forgeTest != nullptr && *forgeTest == "one" &&
             path != nullptr && containsAscii(*path, "system32") &&
             containsAscii(*path, "powershell\\7") &&
@@ -801,6 +875,98 @@ void shellUsesFixedPowerShellAndClampedBudgets()
             safelyTruncated.stdoutUtf8.empty() &&
             Domain::isValidUtf8(safelyTruncated.stdoutUtf8),
         "Shell split a UTF-8 scalar while enforcing its decoded output cap");
+}
+
+class ShellEnvironmentVariableScope final {
+public:
+    ShellEnvironmentVariableScope(const wchar_t* const name, const wchar_t* const value)
+        : name_{name}
+    {
+        const DWORD required = ::GetEnvironmentVariableW(name, nullptr, 0U);
+        if (required != 0U) {
+            std::wstring saved(required, L'\0');
+            const DWORD written = ::GetEnvironmentVariableW(name, saved.data(), required);
+            require(written < required, "Could not save shell environment fixture");
+            saved.resize(written);
+            original_ = std::move(saved);
+        }
+        require(::SetEnvironmentVariableW(name, value) != FALSE,
+            "Could not set shell environment fixture");
+    }
+    ~ShellEnvironmentVariableScope()
+    {
+        static_cast<void>(::SetEnvironmentVariableW(name_.c_str(),
+            original_ ? original_->c_str() : nullptr));
+    }
+    ShellEnvironmentVariableScope(const ShellEnvironmentVariableScope&) = delete;
+    ShellEnvironmentVariableScope& operator=(const ShellEnvironmentVariableScope&) = delete;
+
+private:
+    std::wstring name_;
+    std::optional<std::wstring> original_;
+};
+
+void shellProfileEnvironmentIsBoundedAndExplicit()
+{
+    const ShellEnvironmentVariableScope username{L"USERNAME", L"forge-shell-user"};
+    const ShellEnvironmentVariableScope userdomain{L"USERDOMAIN", L"forge-shell-domain"};
+    const ShellEnvironmentVariableScope userprofile{L"USERPROFILE", L"C:\\forge-shell-profile"};
+    const ShellEnvironmentVariableScope appdata{L"APPDATA", L"C:\\forge-shell-profile\\Roaming"};
+    const ShellEnvironmentVariableScope localappdata{L"LOCALAPPDATA", L"C:\\forge-shell-profile\\Local"};
+    const ShellEnvironmentVariableScope homedrive{L"HOMEDRIVE", L"C:"};
+    const ShellEnvironmentVariableScope homepath{L"HOMEPATH", L"\\forge-shell-profile"};
+    const ShellEnvironmentVariableScope secret{L"FORGE_SHELL_TEST_SECRET_TOKEN", L"canary-only"};
+    const ShellEnvironmentVariableScope pythonUtf8{L"PYTHONUTF8", L"0"};
+    const ShellEnvironmentVariableScope pythonEncoding{L"PYTHONIOENCODING", L"cp1252"};
+    AuthorityFixture fixture;
+    auto supervisor = std::make_shared<ScriptedProcessSupervisor>();
+    WindowsShellService shell{fixture.powerShellExecutable, supervisor};
+    const auto find = [](const Domain::ProcessRequest& request,
+                         const std::string_view name) -> const std::string* {
+        for (const auto& variable : request.environment) {
+            if (variable.name == name) return &variable.value;
+        }
+        return nullptr;
+    };
+    static_cast<void>(take(shell.execute(shellRequest(fixture, "Get-Location"), fixture.authority, context(140U))));
+    const auto& normalized = supervisor->requests().back();
+    for (const auto& [name, expected] : std::vector<std::pair<std::string, std::string>>{
+             {"USERNAME", "forge-shell-user"}, {"USERDOMAIN", "forge-shell-domain"},
+             {"USERPROFILE", "C:\\forge-shell-profile"},
+             {"APPDATA", "C:\\forge-shell-profile\\Roaming"},
+             {"LOCALAPPDATA", "C:\\forge-shell-profile\\Local"},
+             {"HOMEDRIVE", "C:"}, {"HOMEPATH", "\\forge-shell-profile"},
+             {"PYTHONUTF8", "1"}, {"PYTHONIOENCODING", "utf-8"}}) {
+        const auto* value = find(normalized, name);
+        require(value != nullptr && *value == expected,
+            "Shell omitted or changed safe environment default: " + name);
+    }
+    require(find(normalized, "FORGE_SHELL_TEST_SECRET_TOKEN") == nullptr,
+        "Shell copied a non-allowlisted host environment value");
+
+    auto explicitRequest = shellRequest(fixture, "Get-Location");
+    explicitRequest.environment = {{"username", "explicit-user"},
+        {"pythonutf8", "0"}, {"pythonioencoding", "ascii"}};
+    static_cast<void>(take(shell.execute(explicitRequest, fixture.authority, context(141U))));
+    const auto& explicitNormalized = supervisor->requests().back();
+    require(find(explicitNormalized, "username") != nullptr &&
+            *find(explicitNormalized, "username") == "explicit-user" &&
+            find(explicitNormalized, "USERNAME") == nullptr &&
+            find(explicitNormalized, "pythonutf8") != nullptr &&
+            *find(explicitNormalized, "pythonutf8") == "0" &&
+            find(explicitNormalized, "PYTHONUTF8") == nullptr &&
+            find(explicitNormalized, "pythonioencoding") != nullptr &&
+            *find(explicitNormalized, "pythonioencoding") == "ascii" &&
+            find(explicitNormalized, "PYTHONIOENCODING") == nullptr,
+        "Shell changed explicit environment overrides or duplicated their names");
+
+    const std::wstring oversized(Domain::MaximumProcessEnvironmentValueBytes + 1U, L'x');
+    const ShellEnvironmentVariableScope oversizedDomain{L"USERDOMAIN", oversized.c_str()};
+    const ShellEnvironmentVariableScope missingHome{L"HOMEPATH", nullptr};
+    static_cast<void>(take(shell.execute(shellRequest(fixture, "Get-Location"), fixture.authority, context(142U))));
+    require(find(supervisor->requests().back(), "USERDOMAIN") == nullptr &&
+            find(supervisor->requests().back(), "HOMEPATH") == nullptr,
+        "Shell imported an oversized value or fabricated a missing profile value");
 }
 
 void shellPolicyAuthorityCancellationAndShutdownFailClosed()
@@ -1036,6 +1202,129 @@ void shellShutdownCancelsBeforeSupervisorAdmission()
         "Shell admission race reached launch after destruction");
 }
 
+[[nodiscard]] Domain::ShellJobSnapshot awaitJob(
+    WindowsShellService& shell, const std::string_view id,
+    const Contracts::WorkspaceAuthority& authority)
+{
+    const auto deadline = std::chrono::steady_clock::now() + 3s;
+    do {
+        auto snapshot = take(shell.getJob(id, authority, context(900U)));
+        if (snapshot.state != Domain::ShellJobState::Running) return snapshot;
+        std::this_thread::sleep_for(2ms);
+    } while (std::chrono::steady_clock::now() < deadline);
+    throw std::runtime_error{"Tracked job did not complete within the test deadline"};
+}
+
+void shellJobsOwnLifetimeAndBoundAdmission()
+{
+    AuthorityFixture fixture;
+    auto supervisor = std::make_shared<JobProcessSupervisor>(JobProcessSupervisor::Mode::Block);
+    WindowsShellService shell{fixture.powerShellExecutable, supervisor};
+    require(shell.supportsJobs(), "Windows shell did not advertise tracked job support");
+    auto request = shellRequest(fixture, "Write-Output job");
+    request.timeout = 600s;
+    std::stop_source callerCancellation;
+    const Domain::OperationContext callContext{operationId(800U),
+        std::chrono::steady_clock::now() + 100ms, callerCancellation.get_token(),
+        parse<Domain::CorrelationId>("job-admission-call")};
+    const auto first = take(shell.startJob(request, fixture.authority, callContext));
+    require(supervisor->waitUntilStarted(1U), "Tracked job did not reach supervisor");
+    callerCancellation.request_stop();
+    require(first.jobId != callContext.operationId.value() &&
+        first.state == Domain::ShellJobState::Running && !first.result,
+        "Job did not return its independent identity and initial running state");
+    require(supervisor->lastOperation().value() == first.jobId &&
+        supervisor->lastDeadline() > callContext.deadline + 500s &&
+        supervisor->lastRequest().timeout == 600s && supervisor->lastRequest().managedJob,
+        "Tracked job reused the admission call deadline or synchronous timeout limit");
+    std::this_thread::sleep_for(120ms);
+    require(take(shell.getJob(first.jobId, fixture.authority, context(801U))).state ==
+        Domain::ShellJobState::Running,
+        "Admission cancellation/deadline cancelled the independently tracked job");
+
+    const auto second = take(shell.startJob(request, fixture.authority, context(802U)));
+    require(first.jobId != second.jobId && supervisor->waitUntilStarted(2U),
+        "Tracked jobs did not receive distinct independent operation IDs");
+    requireError(shell.startJob(request, fixture.authority, context(803U)),
+        Domain::ErrorCodes::RateLimited, "Shell admitted more than two active jobs");
+    const auto otherProject = parse<Domain::ProjectId>("20000000-0000-4000-8000-000000000099");
+    const auto otherAuthority = take(fixture.issuer.authorityFor(otherProject, context(804U)));
+    requireError(shell.getJob(first.jobId, otherAuthority, context(805U)),
+        Domain::ErrorCodes::Unauthorized, "Another project read a shell job");
+    requireError(shell.cancelJob(first.jobId, otherAuthority, context(806U)),
+        Domain::ErrorCodes::Unauthorized, "Another project cancelled a shell job");
+    require(take(shell.listJobs(otherAuthority, context(807U))).empty(),
+        "Shell job list leaked another project's jobs");
+    require(take(shell.listJobs(fixture.authority, context(808U))).size() == 2U,
+        "Project could not rediscover its tracked jobs");
+    static_cast<void>(take(shell.cancelJob(first.jobId, fixture.authority, context(809U))));
+    const auto cancelled = awaitJob(shell, first.jobId, fixture.authority);
+    require(cancelled.state == Domain::ShellJobState::Cancelled && cancelled.result &&
+        cancelled.result->cancelled, "Explicit job cancellation was not retained");
+    require(take(shell.cancelJob(first.jobId, fixture.authority, context(810U))).state ==
+        Domain::ShellJobState::Cancelled, "Completed cancellation was not idempotent");
+    shell.shutdown();
+    require(take(shell.getJob(second.jobId, fixture.authority, context(811U))).state ==
+        Domain::ShellJobState::Cancelled, "Shutdown did not cancel and join tracked jobs");
+    requireError(shell.startJob(request, fixture.authority, context(812U)),
+        Domain::ErrorCodes::Cancelled, "Shell accepted a job after shutdown");
+}
+
+void shellJobOutcomesAndRetentionRemainBounded()
+{
+    AuthorityFixture fixture;
+    auto request = shellRequest(fixture, "Write-Output job");
+    request.timeout = 600s;
+    for (const auto mode : {JobProcessSupervisor::Mode::Complete,
+        JobProcessSupervisor::Mode::Nonzero, JobProcessSupervisor::Mode::Timeout,
+        JobProcessSupervisor::Mode::Error}) {
+        auto supervisor = std::make_shared<JobProcessSupervisor>(mode);
+        WindowsShellService shell{fixture.powerShellExecutable, supervisor};
+        const auto started = take(shell.startJob(request, fixture.authority, context(820U)));
+        const auto completed = awaitJob(shell, started.jobId, fixture.authority);
+        const auto repeated = take(shell.getJob(started.jobId, fixture.authority, context(821U)));
+        require(repeated.state == completed.state && repeated.elapsed == completed.elapsed,
+            "Shell job status consumed or changed completed evidence");
+        if (mode == JobProcessSupervisor::Mode::Error) {
+            require(completed.state == Domain::ShellJobState::Failed && completed.error &&
+                completed.error->code == Domain::ErrorCodes::ProcessLaunchFailed && !completed.result,
+                "Typed supervisor failure was discarded");
+        } else {
+            const auto expected = mode == JobProcessSupervisor::Mode::Complete
+                ? Domain::ShellJobState::Completed : mode == JobProcessSupervisor::Mode::Timeout
+                    ? Domain::ShellJobState::TimedOut : Domain::ShellJobState::Failed;
+            require(completed.state == expected && completed.result &&
+                completed.result->stdoutUtf8.size() == WindowsShellService::MaximumOutputBytes &&
+                completed.result->stdoutTruncated && repeated.result &&
+                repeated.result->stdoutUtf8 == completed.result->stdoutUtf8,
+                "Tracked job outcome or bounded final output was not retained");
+        }
+    }
+
+    auto supervisor = std::make_shared<JobProcessSupervisor>(JobProcessSupervisor::Mode::Complete);
+    WindowsShellService shell{fixture.powerShellExecutable, supervisor};
+    std::string oldest;
+    for (std::uint32_t index = 0U; index < 18U; ++index) {
+        const auto started = take(shell.startJob(request, fixture.authority, context(830U + index)));
+        if (index == 0U) oldest = started.jobId;
+        static_cast<void>(awaitJob(shell, started.jobId, fixture.authority));
+    }
+    require(take(shell.listJobs(fixture.authority, context(850U))).size() ==
+        WindowsShellService::MaximumRetainedJobs, "Completed shell results exceeded retention limit");
+    requireError(shell.getJob(oldest, fixture.authority, context(851U)),
+        Domain::ErrorCodes::RecordNotFound, "Oldest completed job was not evicted");
+    request.timeout = 3'601s;
+    requireError(shell.startJob(request, fixture.authority, context(852U)),
+        Domain::ErrorCodes::InvalidRequest, "Shell accepted a job beyond one hour");
+    request.timeout = 0ms;
+    requireError(shell.startJob(request, fixture.authority, context(853U)),
+        Domain::ErrorCodes::InvalidRequest, "Shell accepted a nonpositive job timeout");
+    request.timeout = 600s;
+    request.managedJob = true;
+    requireError(shell.execute(request, fixture.authority, context(854U)),
+        Domain::ErrorCodes::InvalidRequest, "Ordinary shell execution bypassed tracking with managed flag");
+}
+
 } // namespace
 
 int main()
@@ -1054,13 +1343,19 @@ int main()
         std::cout << "PASS native_tools.git_process_outcomes\n";
         shellUsesFixedPowerShellAndClampedBudgets();
         std::cout << "PASS native_tools.shell_fixed_powershell\n";
+        shellProfileEnvironmentIsBoundedAndExplicit();
+        std::cout << "PASS native_tools.shell_profile_environment\n";
         shellPolicyAuthorityCancellationAndShutdownFailClosed();
         std::cout << "PASS native_tools.shell_policy_shutdown\n";
         servicesRebindPrivateExecutionScopePerProject();
         std::cout << "PASS native_tools.per_project_execution_scope\n";
         shellShutdownCancelsBeforeSupervisorAdmission();
         std::cout << "PASS native_tools.shell_admission_shutdown_race\n";
-        std::cout << "SUMMARY passed=7 failed=0\n";
+        shellJobsOwnLifetimeAndBoundAdmission();
+        std::cout << "PASS native_tools.shell_job_lifetime_admission\n";
+        shellJobOutcomesAndRetentionRemainBounded();
+        std::cout << "PASS native_tools.shell_job_outcomes_retention\n";
+        std::cout << "SUMMARY passed=10 failed=0\n";
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
         std::cerr << "FAIL " << error.what() << '\n';

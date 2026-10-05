@@ -39,7 +39,7 @@ constexpr std::size_t MaximumInitializeInstructionsBytes = 32U * 1024U;
 constexpr auto VerificationTimeout = 15s;
 constexpr std::size_t VerificationStdoutBytesMaximum = 80'000U;
 constexpr std::size_t VerificationStderrBytesMaximum = 20'000U;
-constexpr std::array<std::string_view, 58U> CanonicalToolNames{
+constexpr std::array<std::string_view, 80U> CanonicalToolNames{
     "agent_context",
     "agent_get",
     "agent_list",
@@ -60,6 +60,8 @@ constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "continuity.request_rollover",
     "continuity.resume",
     "continuity.status",
+    "evidence_digest",
+    "evidence_log_read",
     "forge_status",
     "fs_delete",
     "fs_edit",
@@ -75,6 +77,7 @@ constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "git_diff",
     "git_log",
     "git_status",
+    "github_read",
     "instruction_package.read",
     "memory_delete",
     "memory_get",
@@ -83,6 +86,14 @@ constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "memory_set",
     "pdf_from_file",
     "pdf_write",
+    "process_adopt",
+    "process_kill",
+    "process_launch",
+    "process_list",
+    "process_poll",
+    "process_read_log",
+    "process_status",
+    "process_wait",
     "project_memory.forget",
     "project_memory.get",
     "project_memory.initialize",
@@ -94,17 +105,28 @@ constexpr std::array<std::string_view, 58U> CanonicalToolNames{
     "project_memory.status",
     "project_memory.update",
     "project_policy.read",
+    "provider_status",
+    "reviewer_cancel",
+    "reviewer_start",
+    "reviewer_status",
     "search_text",
     "session_checkpoint",
     "session_handoff",
-    "shell_exec"};
+    "shell_exec",
+    "shell_job_cancel",
+    "shell_job_list",
+    "shell_job_start",
+    "shell_job_status",
+    "verification_env_create",
+    "verification_env_status",
+    "workspace_authority_bind"};
 constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // SHA-256 of the canonical compact `tools` array reviewed in
 // tests/fixtures/Mcp/mcp-tools-semantic-golden.json. Production deliberately
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "8f040e6802b1bd9d729c446ba60987eadb37e7e203b183ba8fd9d6a232e07b04";
+    "cc0cabadf2b9da2ec14036d91c89015492511959164aba6c36a7d2c272f0324b";
 constexpr std::array<std::string_view, 5U> CluToolNames{
     "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
     "project_policy.read"};

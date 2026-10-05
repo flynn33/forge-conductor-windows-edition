@@ -654,7 +654,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
         const auto response = parse(session.output.front());
         REQUIRE(response.at("result").at("instructions").get<std::string>().find(
                     "Project folder: D:\\workspace") != std::string::npos);
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.11");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.12");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"
@@ -733,7 +733,7 @@ void testMethodsNotificationsAndExactList(Contracts::IToolCatalog& catalog)
     const auto listed = parse(session.output[1]).at("result").at("tools");
     REQUIRE(listed.size() == Mcp::McpToolCatalog::ExpectedToolCount);
     REQUIRE(listed.front().at("name") == "agent_context");
-    REQUIRE(listed.back().at("name") == "shell_exec");
+    REQUIRE(listed.back().at("name") == "workspace_authority_bind");
     REQUIRE(parse(session.output[2]).at("result").at("resources").empty());
     REQUIRE(parse(session.output[3]).at("result").at("prompts").empty());
     REQUIRE(parse(session.output[4]).at("error").at("code") == -32601);

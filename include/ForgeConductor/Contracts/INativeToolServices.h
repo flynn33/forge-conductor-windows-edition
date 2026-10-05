@@ -64,6 +64,68 @@ class IShellService {
 public:
     virtual ~IShellService() = default;
 
+    [[nodiscard]] virtual bool supportsJobs() const noexcept { return false; }
+
+    [[nodiscard]] virtual Domain::Result<Domain::ShellJobSnapshot> startJob(
+        const Domain::ProcessRequest&,
+        const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept
+    {
+        return unavailableJob();
+    }
+
+    [[nodiscard]] virtual Domain::Result<Domain::ShellJobSnapshot> startProcess(
+        const Domain::ProcessRequest&, const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept { return unavailableJob(); }
+
+    [[nodiscard]] virtual Domain::Result<Domain::ShellJobSnapshot> adoptJob(
+        std::string_view, const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept { return unavailableJob(); }
+
+    [[nodiscard]] virtual Domain::Result<Domain::ShellJobLogPage> readJobLog(
+        std::string_view, bool, std::optional<std::uint64_t>, std::size_t,
+        const WorkspaceAuthority&, const Domain::OperationContext&) noexcept
+    {
+        return Domain::Result<Domain::ShellJobLogPage>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable,
+            "Tracked process log reading is unavailable from this shell service."));
+    }
+
+    [[nodiscard]] virtual Domain::Result<Domain::ShellJobSnapshot> getJob(
+        std::string_view,
+        const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept
+    {
+        return unavailableJob();
+    }
+
+    [[nodiscard]] virtual Domain::Result<std::vector<Domain::ShellJobSnapshot>> listJobs(
+        const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept
+    {
+        return Domain::Result<std::vector<Domain::ShellJobSnapshot>>::failure(
+            Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Tracked shell jobs are unavailable from this shell service."));
+    }
+
+    [[nodiscard]] virtual Domain::Result<Domain::ShellJobSnapshot> cancelJob(
+        std::string_view,
+        const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept
+    {
+        return unavailableJob();
+    }
+
+private:
+    [[nodiscard]] static Domain::Result<Domain::ShellJobSnapshot> unavailableJob() noexcept
+    {
+        return Domain::Result<Domain::ShellJobSnapshot>::failure(
+            Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Tracked shell jobs are unavailable from this shell service."));
+    }
+
+public:
+
     [[nodiscard]] virtual Domain::Result<Domain::ProcessResult> execute(
         const Domain::ProcessRequest& request,
         const WorkspaceAuthority& authority,

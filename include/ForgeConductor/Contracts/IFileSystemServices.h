@@ -55,6 +55,18 @@ public:
         const Domain::PathAuthorizationRequest& request,
         const Domain::OperationContext& context) noexcept = 0;
 
+    [[nodiscard]] virtual Domain::Result<std::vector<Domain::PathText>> configuredRootAllowlist(
+        const Domain::OperationContext&) noexcept
+    { return Domain::Result<std::vector<Domain::PathText>>::success({}); }
+
+    // Activates an existing owner-configured root; it never modifies that allowlist.
+    [[nodiscard]] virtual Domain::Result<WorkspaceAuthority> bindConfiguredRoot(
+        const WorkspaceAuthority&, const Domain::PathText&,
+        const Domain::OperationContext&) noexcept
+    { return Domain::Result<WorkspaceAuthority>::failure(Domain::makeError(
+        Domain::ErrorCodes::HostCapabilityUnavailable,
+        "This host does not support binding configured workspace roots.")); }
+
 protected:
     [[nodiscard]] static Domain::Result<WorkspaceAuthority> issueAuthority(
         Domain::AuthorityId authorityId,

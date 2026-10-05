@@ -36,6 +36,47 @@ public:
     }
 
     DeterministicResult<Domain::ProcessResult> executeResult;
+    DeterministicResult<Domain::ShellJobSnapshot> startJobResult;
+    DeterministicResult<Domain::ShellJobSnapshot> getJobResult;
+    DeterministicResult<Domain::ShellJobSnapshot> cancelJobResult;
+    DeterministicResult<std::vector<Domain::ShellJobSnapshot>> listJobsResult;
+    std::optional<Domain::ProcessRequest> lastJobRequest;
+    std::string lastJobId;
+    std::size_t jobStartCalls{};
+    bool jobsEnabled{true};
+
+    [[nodiscard]] bool supportsJobs() const noexcept override { return jobsEnabled; }
+    [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> startJob(
+        const Domain::ProcessRequest& request,
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++jobStartCalls;
+        lastJobRequest = request;
+        return startJobResult.get();
+    }
+    [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> getJob(
+        const std::string_view id,
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        lastJobId = id;
+        return getJobResult.get();
+    }
+    [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> cancelJob(
+        const std::string_view id,
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        lastJobId = id;
+        return cancelJobResult.get();
+    }
+    [[nodiscard]] Domain::Result<std::vector<Domain::ShellJobSnapshot>> listJobs(
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        return listJobsResult.get();
+    }
 
     [[nodiscard]] Domain::Result<Domain::ProcessResult> execute(
         const Domain::ProcessRequest& request,

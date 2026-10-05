@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.11
+    VERSION 1.3.12
     LANGUAGES CXX RC
 )
 
@@ -349,12 +349,15 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsNativeSessionLedger.cpp
     src/Infrastructure/Windows/WindowsProcessSupervisor.cpp
     src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp
+    src/Infrastructure/Windows/WindowsReviewerRunStore.cpp
     src/Infrastructure/Windows/WindowsRuntimeDiagnostics.cpp
     src/Infrastructure/Windows/WindowsUnicodeCanonicalizer.cpp
     src/Infrastructure/Windows/WindowsUuidGenerator.cpp
     src/Infrastructure/Windows/WindowsWorkspaceAuthority.cpp
     src/Infrastructure/Windows/WinHttpLocalModelSessionTransport.cpp
     src/Infrastructure/Windows/LMStudioResponsesTransport.cpp
+    src/Infrastructure/Windows/WindowsGitHubReadService.cpp
+    src/Infrastructure/Windows/WindowsSystemInspection.cpp
     src/Infrastructure/Windows/WindowsModelPreparation.cpp
     src/Infrastructure/Windows/WindowsPolicySourceReader.cpp
     src/Infrastructure/Windows/SettingsBoundResponsesTransport.cpp
@@ -481,10 +484,12 @@ target_link_libraries(ForgeConductor.Manager.Composition.Windows PUBLIC
 set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/NativeFileOperations.cpp
     src/NativeTools/Windows/WindowsFileSystem.cpp
+    src/NativeTools/Windows/WindowsEvidenceService.cpp
     src/NativeTools/Windows/WindowsGitService.cpp
     src/NativeTools/Windows/WindowsPathGlobService.cpp
     src/NativeTools/Windows/WindowsPdfService.cpp
     src/NativeTools/Windows/WindowsShellService.cpp
+    src/NativeTools/Windows/ShellJobStorage.cpp
     src/NativeTools/Windows/WindowsTextSearchService.cpp
 )
 add_library(ForgeConductor.NativeTools.Windows STATIC
@@ -493,6 +498,7 @@ forge_add_layer(ForgeConductor.NativeTools.Windows ForgeConductor::NativeTools.W
     ForgeConductor::Contracts
     ForgeConductor::Infrastructure.Windows)
 forge_configure_native_target(ForgeConductor.NativeTools.Windows)
+target_link_libraries(ForgeConductor.NativeTools.Windows PRIVATE nlohmann_json::nlohmann_json)
 target_include_directories(ForgeConductor.NativeTools.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -2581,6 +2587,18 @@ if(BUILD_TESTING)
         TIMEOUT 120
     )
 
+    add_executable(ForgeConductor.Infrastructure.HostInspectionTests
+        tests/Infrastructure/WindowsHostInspectionTests.cpp)
+    forge_configure_native_target(ForgeConductor.Infrastructure.HostInspectionTests)
+    target_include_directories(ForgeConductor.Infrastructure.HostInspectionTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests/Infrastructure")
+    target_link_libraries(ForgeConductor.Infrastructure.HostInspectionTests PRIVATE
+        ForgeConductor::Infrastructure.Windows nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.Infrastructure.HostInspectionTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.HostInspectionTests>)
+    set_tests_properties(ForgeConductor.Infrastructure.HostInspectionTests PROPERTIES
+        LABELS "T-UNIT;T-SEC;T-LMS" TIMEOUT 60)
+
     add_executable(ForgeConductor.Infrastructure.ShutdownTests
         tests/Infrastructure/ShutdownWindowsTests.cpp)
     forge_configure_native_target(ForgeConductor.Infrastructure.ShutdownTests)
@@ -3352,6 +3370,25 @@ if(BUILD_TESTING)
         LABELS "T-UNIT;T-DB;T-MEM;T-SEC;G09"
         TIMEOUT 180
     )
+
+    add_executable(ForgeConductor.Infrastructure.ReviewerRunStoreTests
+        tests/Infrastructure/WindowsReviewerRunStoreTests.cpp)
+    forge_configure_native_target(ForgeConductor.Infrastructure.ReviewerRunStoreTests)
+    target_include_directories(ForgeConductor.Infrastructure.ReviewerRunStoreTests PRIVATE src tests/Infrastructure)
+    target_link_libraries(ForgeConductor.Infrastructure.ReviewerRunStoreTests PRIVATE
+        ForgeConductor::Infrastructure.Windows nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.Infrastructure.ReviewerRunStoreTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.ReviewerRunStoreTests>)
+    set_tests_properties(ForgeConductor.Infrastructure.ReviewerRunStoreTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-SEC;G06" TIMEOUT 180)
+
+    add_executable(ForgeConductor.NativeTools.EvidenceTests
+        tests/NativeTools/WindowsEvidenceServiceTests.cpp)
+    target_include_directories(ForgeConductor.NativeTools.EvidenceTests PRIVATE src tests)
+    target_link_libraries(ForgeConductor.NativeTools.EvidenceTests PRIVATE ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json)
+    forge_configure_native_target(ForgeConductor.NativeTools.EvidenceTests)
+    add_test(NAME ForgeConductor.NativeTools.EvidenceTests COMMAND ForgeConductor.NativeTools.EvidenceTests)
+    set_tests_properties(ForgeConductor.NativeTools.EvidenceTests PROPERTIES LABELS "T-UNIT;T-INTEGRATION;T-SEC;G13" TIMEOUT 180)
 
     add_executable(ForgeConductor.NativeTools.FileSystemSearchTests
         tests/NativeTools/WindowsFileSystemSearchTests.cpp)

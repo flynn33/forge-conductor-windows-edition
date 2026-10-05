@@ -36,6 +36,8 @@
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsGitHubReadService.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsSystemInspection.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
 #include "ForgeConductor/Application/ProjectPolicyService.h"
@@ -64,6 +66,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsReviewerRunStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUnicodeCanonicalizer.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
@@ -79,6 +82,8 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsPathGlobService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsPdfService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsEvidenceService.h"
+#include <nlohmann/json.hpp>
 #include "ForgeConductor/NativeTools/Windows/WindowsTextSearchService.h"
 #include "ForgeConductor/Persistence/Windows/WindowsAgentSessionRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsAuditRepository.h"
@@ -659,6 +664,8 @@ private:
     std::unique_ptr<NativeToolsWindows::WindowsPdfService> pdf_;
     std::unique_ptr<NativeToolsWindows::WindowsGitService> git_;
     std::unique_ptr<NativeToolsWindows::WindowsShellService> shell_;
+    std::unique_ptr<NativeToolsWindows::WindowsEvidenceService> evidence_;
+    std::unique_ptr<InfrastructureWindows::WindowsGitHubReadService> githubRead_;
     std::shared_ptr<PersistenceWindows::WindowsProjectMemoryArtifactStore>
         projectArtifactStore_;
     std::shared_ptr<
@@ -687,6 +694,8 @@ private:
     std::unique_ptr<Application::AgentRepositoryManagedRunStore>
         managedRunStore_;
     std::shared_ptr<Application::ManagedRunService> managedRuns_;
+    std::unique_ptr<InfrastructureWindows::WindowsReviewerRunStore> reviewerRunStore_;
+    std::shared_ptr<Application::ManagedRunService> reviewerRuns_;
     std::unique_ptr<NativeSessionHost::ForgeNativeSessionHostAdapter>
         nativeSessionAdapter_;
     std::unique_ptr<Application::ContinuityCoordinator> continuity_;
@@ -907,6 +916,12 @@ void ManagerCompositionRoot::Impl::initializeFoundation(
     dataScope_.emplace(take(dataAuthority_->authorityFor(
         dataProjectId, context)));
 
+    // Use the app-owned startup directory routine: this fixed private child
+    // does not require deleting children from the data root. Prepare it before
+    // diagnostics and persistence retain their directory anchors.
+    requireSuccess(processEnvironmentProbe_.ensureRegularDirectory(
+        childPath(process.memoryRoot(), "reviewer-runs"), context));
+
     diagnosticSink_ = std::make_shared<
         InfrastructureWindows::WindowsDiagnosticSink>(
         InfrastructureWindows::WindowsDiagnosticSinkOptions{
@@ -1019,7 +1034,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     projectWorkspaceAuthority_ = std::make_unique<
         InfrastructureWindows::WindowsProjectWorkspaceAuthority>(
         *projectRegistry_, *uuidGenerator_, *managerClientId_,
-        initialConfiguration_->shell.enabled);
+        initialConfiguration_->shell.enabled, initialConfiguration_->allowedRoots);
 
     fileSystem_ =
         std::make_shared<NativeToolsWindows::WindowsFileSystem>(
@@ -1033,7 +1048,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
         discoverGitExecutable(), processSupervisor_);
     shell_ = std::make_unique<NativeToolsWindows::WindowsShellService>(
-        discoverPowerShellExecutable(), processSupervisor_);
+        discoverPowerShellExecutable(), processSupervisor_, childPath(process.dataRoot(), "jobs"));
     projectArtifactStore_ = std::make_shared<
         PersistenceWindows::WindowsProjectMemoryArtifactStore>(
         applicationPaths_, uuidGenerator_);
@@ -1051,6 +1066,35 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *projectRegistry_, *projectRepositoryCache_, *redactor_,
         projectMemoryLimits);
 
+    shell_->setJobCompletionSink([this](const Domain::ProjectId& project,
+        const Domain::ShellJobSnapshot& job) {
+        Domain::ProjectMemoryWrite write;
+        write.kind = "process_job_result";
+        write.title = "Process job " + job.jobId;
+        write.summary = "Durable process outcome; receipt=" + job.receiptPath;
+        const nlohmann::json body{{"job_id", job.jobId}, {"receipt_path", job.receiptPath},
+            {"stdout_path", job.stdoutPath}, {"stderr_path", job.stderrPath},
+            {"log_sha256", job.logHash}, {"log_truncated", job.logTruncated},
+            {"exit_code", job.result ? nlohmann::json(job.result->exitCode) : nlohmann::json(nullptr)},
+            {"timed_out", job.result && job.result->timedOut},
+            {"cancelled", job.result && job.result->cancelled}};
+        write.body = body.dump();
+        write.tags = {"process", "durable-job", "evidence"};
+        write.sourceKind = "forge_process_job";
+        write.sourceReference = job.receiptPath;
+        const auto operation = makeContext(*uuidGenerator_, *clock_, std::chrono::seconds{30}, "process-job-memory");
+        auto saved = projectMemory_->remember({project, std::move(write)}, operation);
+        if (!saved) throw std::runtime_error{saved.error().message};
+    });
+    evidence_ = std::make_unique<NativeToolsWindows::WindowsEvidenceService>(
+        *projectWorkspaceAuthority_, *atomicFileStore_, *hasher_, *clock_, *uuidGenerator_,
+        [this, root = process.dataRoot(), memory = process.memoryRoot()](const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+            const auto path = childPath(memory, "evidence-" + project.value() + ".json");
+            return Domain::Result<Contracts::EvidenceStoragePaths>::success({
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Read, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Write, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Create, operation)});
+        }, process.dataRoot());
     agentCatalog_ = take(Application::AgentCatalog::create(
         clock_, std::span<const Application::AgentDefinitionDocument>{},
         context));
@@ -1151,6 +1195,19 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *agentSessionRepository_,
         take(Domain::AgentId::parse("forge-managed-run")),
         *hasher_);
+    const auto reviewerDirectory = childPath(process.memoryRoot(), "reviewer-runs");
+    reviewerRunStore_ = std::make_unique<InfrastructureWindows::WindowsReviewerRunStore>(
+        *atomicFileStore_, *hasher_, *clock_,
+        authorizePath(*dataAuthority_, *dataScope_, reviewerDirectory, process.dataRoot(),
+            Domain::FileAccess::Read, context),
+        [this, root = process.dataRoot(), reviewerDirectory](const Domain::SessionId& run,
+            const Domain::OperationContext& operation) {
+            const auto path = childPath(reviewerDirectory, run.value() + ".json");
+            return Domain::Result<InfrastructureWindows::ReviewerRunStoragePaths>::success({
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Read, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Write, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Create, operation)});
+        });
     nativeSessionAdapter_ = std::make_unique<
         NativeSessionHost::ForgeNativeSessionHostAdapter>(
         take(Domain::AdapterId::parse(
@@ -1180,8 +1237,9 @@ void ManagerCompositionRoot::Impl::initializePersistence(
                 authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Write, operation),
                 authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Create, operation)});
         }, process.dataRoot().value());
-    toolPack_ = take(Mcp::McpToolPackAdapter::create(
-        Mcp::McpToolPackDependencies{
+    githubRead_ = std::make_unique<InfrastructureWindows::WindowsGitHubReadService>(
+        InfrastructureWindows::WindowsGitHubReadService::configuredEnvironmentToken());
+    auto toolDependencies = Mcp::McpToolPackDependencies{
             *toolCatalog_,
             *applicationPaths_,
             *agentCatalog_,
@@ -1212,7 +1270,34 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             discoverPowerShellExecutable(),
             std::string{ProductVersion},
             std::string{RuntimeName},
-            static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()}));
+            static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()};
+    toolDependencies.evidence = evidence_.get();
+    toolDependencies.reviewerRuns = [this]() -> Contracts::IManagedRunService* { return reviewerRuns_.get(); };
+    toolDependencies.providerInspection = [this](const Domain::OperationContext& operation) {
+        auto current = configurationStore_->reload(operation);
+        if (!current) return Domain::Result<std::string>::failure(current.error());
+        InfrastructureWindows::LMStudioResponsesTransportConfiguration configuration;
+        configuration.loopbackHost = current.value().localModel.host;
+        configuration.port = current.value().localModel.port;
+        configuration.secure = current.value().localModel.secure;
+        configuration.model = current.value().localModel.model;
+        configuration.connectTimeout = std::chrono::seconds{5};
+        configuration.sendTimeout = std::chrono::seconds{5};
+        configuration.receiveTimeout = std::chrono::seconds{5};
+        InfrastructureWindows::LMStudioResponsesTransport inspection{std::move(configuration)};
+        auto inspected = inspection.inspect(current.value().localModel, operation);
+        if (!inspected) return inspected;
+        auto payload = nlohmann::json::parse(inspected.value());
+        auto desktopVersion = InfrastructureWindows::WindowsSystemInspection::lmStudioDesktopVersion(operation);
+        if (!desktopVersion) return Domain::Result<std::string>::failure(desktopVersion.error());
+        payload["lm_studio_desktop_version"] = nlohmann::json::parse(desktopVersion.value());
+        return Domain::Result<std::string>::success(payload.dump());
+    };
+    toolDependencies.systemInspection = [](const Domain::OperationContext& operation) {
+        return InfrastructureWindows::WindowsSystemInspection::inspect(operation);
+    };
+    toolDependencies.githubRead = githubRead_.get();
+    toolPack_ = take(Mcp::McpToolPackAdapter::create(std::move(toolDependencies)));
     toolAuthorizer_ = std::make_unique<Mcp::McpToolAuthorizer>(*clock_, projectPolicy_.get());
     // Host maintenance has separate Manager-issued capabilities, not a user
     // project scope. Keep the project gate on the run/MCP router exclusively.
@@ -1241,6 +1326,10 @@ void ManagerCompositionRoot::Impl::initializePersistence(
                 initialConfiguration_->localModel.estimationSafetyMargin,
             initialConfiguration_->localModel.model,
             std::optional<std::string>{"lm-studio"}});
+    reviewerRuns_ = std::make_shared<Application::ManagedRunService>(
+        *nativeSessionTransport_, *reviewerRunStore_, *clock_,
+        Application::ManagedRunToolDependencies{
+            toolCatalog_.get(), toolRouter_.get(), projectWorkspaceAuthority_.get()});
 }
 
 void ManagerCompositionRoot::Impl::initializeUnavailableLmStudio(
@@ -1780,6 +1869,9 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         if (continuityAutomation_) {
             continuityAutomation_->shutdown();
         }
+        if (reviewerRuns_) {
+            reviewerRuns_->shutdown();
+        }
         if (managedRuns_) {
             managedRuns_->shutdown();
         }
@@ -1804,6 +1896,7 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         if (legacyMemory_) {
             legacyMemory_->shutdown();
         }
+        if (shell_) shell_->shutdown();
         if (projectMemory_) {
             projectMemory_->shutdown();
         }

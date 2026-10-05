@@ -94,6 +94,8 @@ struct ManagedRunRecord final {
     ManagedRunEvidenceIntegrity evidenceIntegrity{
         ManagedRunEvidenceIntegrity::NotTerminal};
     std::vector<ManagedNativeTaskCheck> nativeTaskChecks;
+    bool readOnlyTools{};
+    bool outputTruncated{};
 };
 
 struct ManagedRunStartRequest final {
@@ -106,6 +108,7 @@ struct ManagedRunStartRequest final {
     std::string task;
     bool allowTools{true};
     bool automaticContinuity{true};
+    bool readOnlyTools{};
 };
 
 struct ManagedRunSnapshot final {

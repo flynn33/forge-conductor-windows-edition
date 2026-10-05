@@ -1,4 +1,5 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioEnvironment.h"
+#include "ForgeConductor/Mcp/McpToolCatalog.h"
 
 #include "Detail/BoundedSerialExecutor.h"
 #include "Detail/OperationContextGuard.h"
@@ -458,7 +459,7 @@ private:
             if (!role.protocolVersion ||
                 *role.protocolVersion != SupportedMcpProtocolVersion ||
                 role.toolCount !=
-                    (role.role == Domain::LMStudioConnectorRole::Clu ? 5U : 58U)) {
+                    (role.role == Domain::LMStudioConnectorRole::Clu ? 5U : Mcp::McpToolCatalog::ExpectedToolCount)) {
                 return false;
             }
         } else if (role.protocolVersion || role.toolCount != 0U) {

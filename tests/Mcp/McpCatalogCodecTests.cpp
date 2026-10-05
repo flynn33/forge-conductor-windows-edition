@@ -63,25 +63,87 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 58U> ExpectedNames{
-        "agent_context", "agent_get", "agent_list", "agent_recommend",
-        "agent_run_complete", "agent_run_start", "agent_run_status",
-        "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
-        "context_get", "context_list", "continuity.acknowledge_handoff",
-        "continuity.checkpoint", "continuity.get_pending_handoff",
-        "continuity.prepare_handoff", "continuity.request_rollover",
-        "continuity.resume", "continuity.status", "forge_status", "fs_delete",
-        "fs_edit", "fs_glob", "fs_list", "fs_mkdir", "fs_move", "fs_read",
-        "fs_write", "get_forge_status", "git_add", "git_commit", "git_diff", "git_log",
-        "git_status", "instruction_package.read", "memory_delete", "memory_get", "memory_list",
-        "memory_search", "memory_set", "pdf_from_file", "pdf_write",
-        "project_memory.forget", "project_memory.get",
+    constexpr std::array<std::string_view, 80U> ExpectedNames{
+        "agent_context",
+        "agent_get",
+        "agent_list",
+        "agent_recommend",
+        "agent_run_complete",
+        "agent_run_start",
+        "agent_run_status",
+        "clu.evaluate",
+        "clu.export_log",
+        "clu.findings",
+        "clu.resolve",
+        "context_get",
+        "context_list",
+        "continuity.acknowledge_handoff",
+        "continuity.checkpoint",
+        "continuity.get_pending_handoff",
+        "continuity.prepare_handoff",
+        "continuity.request_rollover",
+        "continuity.resume",
+        "continuity.status",
+        "evidence_digest",
+        "evidence_log_read",
+        "forge_status",
+        "fs_delete",
+        "fs_edit",
+        "fs_glob",
+        "fs_list",
+        "fs_mkdir",
+        "fs_move",
+        "fs_read",
+        "fs_write",
+        "get_forge_status",
+        "git_add",
+        "git_commit",
+        "git_diff",
+        "git_log",
+        "git_status",
+        "github_read",
+        "instruction_package.read",
+        "memory_delete",
+        "memory_get",
+        "memory_list",
+        "memory_search",
+        "memory_set",
+        "pdf_from_file",
+        "pdf_write",
+        "process_adopt",
+        "process_kill",
+        "process_launch",
+        "process_list",
+        "process_poll",
+        "process_read_log",
+        "process_status",
+        "process_wait",
+        "project_memory.forget",
+        "project_memory.get",
         "project_memory.initialize",
-        "project_memory.link", "project_memory.list_recent",
-        "project_memory.remember", "project_memory.remember_batch",
-        "project_memory.search", "project_memory.status",
-        "project_memory.update", "project_policy.read", "search_text", "session_checkpoint",
-        "session_handoff", "shell_exec"};
+        "project_memory.link",
+        "project_memory.list_recent",
+        "project_memory.remember",
+        "project_memory.remember_batch",
+        "project_memory.search",
+        "project_memory.status",
+        "project_memory.update",
+        "project_policy.read",
+        "provider_status",
+        "reviewer_cancel",
+        "reviewer_start",
+        "reviewer_status",
+        "search_text",
+        "session_checkpoint",
+        "session_handoff",
+        "shell_exec",
+        "shell_job_cancel",
+        "shell_job_list",
+        "shell_job_start",
+        "shell_job_status",
+        "verification_env_create",
+        "verification_env_status",
+        "workspace_authority_bind"};
 
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
@@ -111,8 +173,8 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 28U);
-    REQUIRE(writeEffects == 30U);
+    REQUIRE(readEffects == 40U);
+    REQUIRE(writeEffects == 40U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "agent_run_start").tool.requiresProject);
     REQUIRE(descriptor(tools, "agent_run_status").tool.requiresProject);
@@ -213,6 +275,14 @@ void testSourceSchemasAndWindowsDelta()
     const auto shell = schema(tools, "shell_exec");
     REQUIRE(shell.at("properties").at("timeout_sec").at("exclusiveMinimum") == 0);
     REQUIRE(shell.at("properties").at("timeout_sec").at("maximum") == 120);
+    const auto jobStart = schema(tools, "shell_job_start");
+    REQUIRE(jobStart.at("additionalProperties") == false);
+    REQUIRE(jobStart.at("required") == Json::array({"command"}));
+    REQUIRE(jobStart.at("properties").at("timeout_sec").at("maximum") == 3600);
+    REQUIRE(schema(tools, "shell_job_status").at("required") == Json::array({"job_id"}));
+    REQUIRE(schema(tools, "shell_job_cancel") == schema(tools, "shell_job_status"));
+    REQUIRE(descriptor(tools, "shell_job_start").tool.requiresShell);
+    REQUIRE(!descriptor(tools, "shell_job_status").tool.requiresShell);
 }
 
 void testDescriptorValidation()

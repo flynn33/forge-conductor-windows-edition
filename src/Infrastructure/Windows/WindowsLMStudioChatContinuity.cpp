@@ -301,6 +301,31 @@ private:
         if(!observed.value()) return;
         auto chat=*observed.value();
         if(!applyPendingWorkspace(chat,operation)) return;
+        {
+            std::lock_guard lock{mutex_};
+            const bool measured = hasForgeIntegrations(chat) && chat.contextCapacity > 0U && !chat.generationEvidence.empty();
+            const auto reserved = static_cast<std::uint64_t>(config_.nextResponseReserve) + config_.handoffReserve + config_.estimationSafetyMargin;
+            const auto remaining = chat.usedTokens >= chat.contextCapacity ? 0U : chat.contextCapacity - chat.usedTokens;
+            Json reference = nullptr;
+            if (measured) {
+                const auto evidence = Json::parse(chat.generationEvidence, nullptr, false);
+                if (!evidence.is_discarded() && evidence.is_object()) {
+                    reference = Json::object();
+                    for (const char* field : {"message_index", "selected_version", "step_index"})
+                        if (evidence.contains(field)) reference[field] = evidence.at(field);
+                }
+            }
+            status_["context_telemetry"] = Json{{"available", measured},
+                {"source", "selected native LM Studio generation provider statistics"},
+                {"measurement_scope", "latest_provider_generation"}, {"conversation_id", chat.conversationId}, {"generation_reference", std::move(reference)},
+                {"tokens_used", measured ? Json(chat.usedTokens) : Json(nullptr)},
+                {"context_capacity", measured ? Json(chat.contextCapacity) : Json(nullptr)},
+                {"reason", measured ? Json(nullptr) : Json("No completed provider usage/context observation is available for this selected Forge chat.")},
+                {"sampling_note", "Tokens added after the latest observed provider generation are not measured."},
+                {"reserved_tokens", reserved}, {"headroom_tokens", measured ? Json(remaining > reserved ? remaining - reserved : 0U) : Json(nullptr)},
+                {"overflow", chat.overflow}, {"tools_active", chat.toolsActive},
+                {"observed_at_unix_ms", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()}};
+        }
         const bool isEnabled=enabled(operation);
         { std::lock_guard lock{mutex_};status_["enabled"]=isEnabled; }
         if(!isEnabled) return;

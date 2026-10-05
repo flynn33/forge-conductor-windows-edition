@@ -509,6 +509,34 @@ private:
     bool closed_{};
 };
 
+class StaticReviewerRuns final : public Contracts::IManagedRunService {
+public:
+    explicit StaticReviewerRuns(Domain::ManagedRunRecord initial) : record{std::move(initial)} {}
+    Domain::ManagedRunRecord record;
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> start(
+        const Domain::ManagedRunStartRequest&, const Domain::OperationContext&) noexcept override
+    { return snapshot(); }
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> status(
+        const Domain::SessionId&, const Domain::OperationContext&) noexcept override
+    { return snapshot(); }
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> cancel(
+        const Domain::SessionId&, const Domain::OperationContext&) noexcept override
+    { record.state = Domain::ManagedRunState::Cancelling; return snapshot(); }
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> pause(
+        const Domain::SessionId&, const Domain::OperationContext&) noexcept override
+    { return unavailable<Domain::ManagedRunSnapshot>("Unused reviewer pause"); }
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> resume(
+        const Domain::SessionId&, const Domain::OperationContext&) noexcept override
+    { return unavailable<Domain::ManagedRunSnapshot>("Unused reviewer resume"); }
+    void shutdown() noexcept override {}
+private:
+    [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> snapshot() noexcept
+    {
+        try { return Domain::Result<Domain::ManagedRunSnapshot>::success({record, true, false, false}); }
+        catch (...) { return unavailable<Domain::ManagedRunSnapshot>("Reviewer snapshot failed"); }
+    }
+};
+
 void testHandlerContract()
 {
     static_assert(std::is_final_v<Mcp::McpToolPackAdapter>);
@@ -532,7 +560,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 58U);
+    REQUIRE(tools.size() == 80U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 9U},
@@ -540,14 +568,16 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         {"ContinuityLifecycleToolPack", 7U},
         {"ContinuityToolPack", 4U},
         {"DocsToolPack", 2U},
-        {"FilesystemToolPack", 8U},
+        {"FilesystemToolPack", 9U},
         {"GitToolPack", 5U},
         {"MemoryToolPack", 5U},
         {"ProjectMemoryToolPack", 10U},
         {"InstructionPackageToolPack", 1U},
         {"ProjectPolicyToolPack", 1U},
         {"SearchToolPack", 1U},
-        {"ShellToolPack", 1U}};
+        {"ShellToolPack", 5U},
+        {"EvidenceToolPack", 2U}, {"GitHubReadToolPack", 1U}, {"ProcessToolPack", 7U},
+        {"HostInspectionToolPack", 2U}, {"ReviewerToolPack", 3U}, {"VerificationToolPack", 2U}};
     std::map<std::string_view, std::size_t> actualPackCounts;
     for (const auto& descriptor : tools) {
         ++actualPackCounts[descriptor.tool.pack];
@@ -562,7 +592,15 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
             descriptor.tool.pack == "ProjectPolicyToolPack" ||
             descriptor.tool.pack == "ProjectMemoryToolPack" ||
             descriptor.tool.pack == "ContinuityLifecycleToolPack" ||
-            descriptor.tool.pack == "CluGovernanceToolPack";
+            descriptor.tool.pack == "CluGovernanceToolPack" ||
+            descriptor.tool.name.starts_with("shell_job_") ||
+            descriptor.tool.name == "workspace_authority_bind" ||
+            descriptor.tool.pack == "EvidenceToolPack" ||
+            descriptor.tool.pack == "GitHubReadToolPack" ||
+            descriptor.tool.pack == "ProcessToolPack" ||
+            descriptor.tool.pack == "HostInspectionToolPack" ||
+            descriptor.tool.pack == "ReviewerToolPack" ||
+            descriptor.tool.pack == "VerificationToolPack";
         REQUIRE(schema.value("additionalProperties", true) != closedPack);
     }
     REQUIRE(actualPackCounts == expectedPackCounts);
@@ -740,8 +778,13 @@ void testRuntimeDispatchAndSchemaPolicy()
     std::size_t toolObservationCalls{};
     std::size_t statusObservationCalls{};
     std::string visibleStatusPayload{"{}"};
-    auto adapter = take(Mcp::McpToolPackAdapter::create(
-        Mcp::McpToolPackDependencies{
+    StaticReviewerRuns reviewerRuns{Domain::ManagedRunRecord{
+        firstOpenSession, projectId, clientId, "Independent review", 11U,
+        Domain::ManagedRunState::Completed, std::nullopt, 20U, 30U,
+        std::nullopt, std::string(Domain::MaximumManagedRunOutputBytes, '\x01'),
+        std::nullopt, {}, Domain::UtcTimePoint{}, Domain::UtcTimePoint{}}};
+    reviewerRuns.record.readOnlyTools = true;
+    auto adapterDependencies = Mcp::McpToolPackDependencies{
             *catalog,
             applicationPaths,
             agentCatalog,
@@ -793,8 +836,11 @@ void testRuntimeDispatchAndSchemaPolicy()
                     throw std::runtime_error{"Optional chat workspace observation failed"};
                 }
                 observedWorkspace = std::make_pair(project, selectedRoot);
-            }}));
-    REQUIRE(adapter->tools().size() == 58U);
+            }};
+    adapterDependencies.reviewerRuns = [&]() -> Contracts::IManagedRunService* { return &reviewerRuns; };
+    auto brokeredBindingDependencies = adapterDependencies;
+    auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
+    REQUIRE(adapter->tools().size() == 80U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
@@ -837,6 +883,156 @@ void testRuntimeDispatchAndSchemaPolicy()
             authority);
     };
 
+    {
+        std::size_t bindBrokerCalls{};
+        Json bindBrokerPayload{{"ok", true}};
+        std::optional<Domain::Error> bindBrokerError;
+        brokeredBindingDependencies.durableToolBroker = [&](const std::string_view name,
+            const std::string_view arguments, const Domain::ProjectId& project,
+            const Domain::OperationContext&) -> Domain::Result<std::string> {
+            ++bindBrokerCalls;
+            REQUIRE(name == "workspace_authority_bind");
+            REQUIRE(project == projectId);
+            REQUIRE(Json::parse(arguments).at("root") == secondaryRoot.value());
+            if (bindBrokerError) return Domain::Result<std::string>::failure(*bindBrokerError);
+            return Domain::Result<std::string>::success(bindBrokerPayload.dump());
+        };
+        auto brokeredBindingAdapter = take(Mcp::McpToolPackAdapter::create(
+            std::move(brokeredBindingDependencies)));
+        const auto bindCall = authorize("workspace_authority_bind", Domain::ToolEffect::Write,
+            Json{{"root", secondaryRoot.value()}}.dump(), "brokered-bind-local-denied");
+        const auto partial = brokeredBindingAdapter->handle(bindCall, authority, context);
+        REQUIRE(!partial);
+        REQUIRE(bindBrokerCalls == 1U);
+        REQUIRE(partial.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
+        REQUIRE(partial.error().message.find(secondaryRoot.value()) != std::string::npos);
+        REQUIRE(partial.error().message.find("manager_bound=true; local_bound=false") != std::string::npos);
+        REQUIRE(partial.error().message.find(
+            "This host does not support binding configured workspace roots.") != std::string::npos);
+        REQUIRE(partial.error().message.find("Reconnect the MCP connector") != std::string::npos);
+        REQUIRE(partial.error().message.find("Manager binding remains active") != std::string::npos);
+        REQUIRE(!partial.error().retryable);
+        REQUIRE(!partial.error().evidenceId);
+
+        const auto malformed = brokeredBindingAdapter->handle(
+            authorize("workspace_authority_bind", Domain::ToolEffect::Write,
+                Json{{"root", std::string(1U, '\0')}}.dump(), "bind-malformed-path"),
+            authority, context);
+        REQUIRE(!malformed);
+        REQUIRE(malformed.error().code == Domain::ErrorCodes::MalformedMessage);
+        REQUIRE(malformed.error().message.find("embedded NUL") != std::string::npos);
+        REQUIRE(bindBrokerCalls == 1U);
+        const auto emptyRoot = brokeredBindingAdapter->handle(
+            authorize("workspace_authority_bind", Domain::ToolEffect::Write,
+                Json{{"root", ""}}.dump(), "bind-empty-path"), authority, context);
+        REQUIRE(!emptyRoot);
+        REQUIRE(emptyRoot.error().code == Domain::ErrorCodes::InvalidRequest);
+        REQUIRE(bindBrokerCalls == 1U);
+
+        bindBrokerPayload = Json{{"ok", "true"}};
+        const auto unconfirmed = brokeredBindingAdapter->handle(bindCall, authority, context);
+        REQUIRE(!unconfirmed);
+        REQUIRE(unconfirmed.error().code == Domain::ErrorCodes::IntegrityFailure);
+        REQUIRE(unconfirmed.error().message.find("manager_bound=true") == std::string::npos);
+        REQUIRE(bindBrokerCalls == 2U);
+
+        bindBrokerError = Domain::makeError(Domain::ErrorCodes::Unauthorized,
+            "The owner did not configure this root.", false, "manager-denial-evidence");
+        const auto managerDenied = brokeredBindingAdapter->handle(bindCall, authority, context);
+        REQUIRE(!managerDenied);
+        REQUIRE(managerDenied.error() == *bindBrokerError);
+        REQUIRE(bindBrokerCalls == 3U);
+
+        const auto localOnly = adapter->handle(bindCall, authority, context);
+        REQUIRE(!localOnly);
+        REQUIRE(localOnly.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
+        REQUIRE(localOnly.error().message ==
+            "This host does not support binding configured workspace roots.");
+    }
+
+    // A full valid control-character report expands sixfold in JSON. Every
+    // status page must fit the MCP receipt and the Manager string envelope.
+    REQUIRE(Json(*reviewerRuns.record.outputText).dump().size() > 1'048'576U);
+    const auto review = [&](Json arguments) {
+        arguments["run_id"] = firstOpenSession.value();
+        auto call = authorize("reviewer_status", Domain::ToolEffect::Read,
+            arguments.dump(), "review-output-page");
+        return adapter->handle(call, authority, context);
+    };
+    std::string reconstructed;
+    std::size_t outputOffset{};
+    do {
+        auto outcome = take(review(Json{{"output_offset", outputOffset}}));
+        REQUIRE(outcome.canonicalPayload.size() < 256U * 1024U);
+        REQUIRE((Json{{"canonical_payload", outcome.canonicalPayload}}.dump().size() < 512U * 1024U));
+        const auto page = Json::parse(outcome.canonicalPayload);
+        REQUIRE(page.at("output_offset") == outputOffset);
+        REQUIRE(page.at("output_bytes_returned") == 32U * 1024U);
+        REQUIRE(page.at("output_total_bytes") == Domain::MaximumManagedRunOutputBytes);
+        REQUIRE(page.at("output_page_truncated").is_boolean());
+        REQUIRE(page.at("output_truncated") == false);
+        REQUIRE(page.at("read_only") == true);
+        REQUIRE(page.at("authorization_reference_is_human_proof") == false);
+        REQUIRE(page.at("gate_approved") == false);
+        reconstructed += page.at("output").get<std::string>();
+        if (!page.at("output_has_more").get<bool>()) {
+            REQUIRE(page.at("next_output_offset").is_null());
+            break;
+        }
+        outputOffset = page.at("next_output_offset").get<std::size_t>();
+    } while (outputOffset < Domain::MaximumManagedRunOutputBytes);
+    REQUIRE(reconstructed == *reviewerRuns.record.outputText);
+    REQUIRE(reviewerRuns.record.outputText->size() == Domain::MaximumManagedRunOutputBytes);
+
+    reviewerRuns.record.outputText = std::string("AA\xe2\x82\xac") + "B";
+    const auto splitPage = Json::parse(take(review(Json{{"max_output_bytes", 4}})).canonicalPayload);
+    REQUIRE(splitPage.at("output") == "AA");
+    REQUIRE(splitPage.at("next_output_offset") == 2);
+    const auto splitLast = Json::parse(take(review(Json{{"output_offset", 2}, {"max_output_bytes", 4}})).canonicalPayload);
+    REQUIRE(splitLast.at("output") == std::string("\xe2\x82\xac") + "B");
+    REQUIRE(splitLast.at("output_has_more") == false);
+    reviewerRuns.record.outputText = std::string("A\xe2\x82\xac") + "B";
+    reviewerRuns.record.outputTruncated = true;
+    const auto utf8Page = Json::parse(take(review(Json{{"max_output_bytes", 4}})).canonicalPayload);
+    REQUIRE(utf8Page.at("output") == std::string("A\xe2\x82\xac"));
+    REQUIRE(utf8Page.at("next_output_offset") == 4);
+    REQUIRE(utf8Page.at("output_truncated") == true);
+    const auto utf8Last = Json::parse(take(review(Json{{"output_offset", 4}})).canonicalPayload);
+    REQUIRE(utf8Last.at("output") == "B");
+    REQUIRE(utf8Last.at("output_has_more") == false);
+    REQUIRE(utf8Last.at("output_page_truncated") == true);
+    auto invalidReview = review(Json{{"output_offset", 2}});
+    REQUIRE(!invalidReview);
+    REQUIRE(invalidReview.error().code == Domain::ErrorCodes::InvalidRequest);
+    invalidReview = review(Json{{"output_offset", 6}});
+    REQUIRE(!invalidReview);
+    invalidReview = review(Json{{"max_output_bytes", 32769}});
+    REQUIRE(!invalidReview);
+    invalidReview = review(Json{{"max_output_bytes", 0}});
+    REQUIRE(!invalidReview);
+    invalidReview = review(Json{{"output_offset", -1}});
+    REQUIRE(!invalidReview);
+    const auto emptyLast = Json::parse(take(review(Json{{"output_offset", 5}})).canonicalPayload);
+    REQUIRE(emptyLast.at("output") == "");
+    REQUIRE(emptyLast.at("next_output_offset").is_null());
+    auto cancelReview = authorize("reviewer_cancel", Domain::ToolEffect::Write,
+        Json{{"run_id", firstOpenSession.value()}}.dump(), "review-cancel");
+    REQUIRE(Json::parse(take(adapter->handle(cancelReview, authority, context)).canonicalPayload).at("state") == "cancelling");
+    reviewerRuns.record.lastError = Domain::makeError(Domain::ErrorCodes::InternalFailure,
+        std::string(256U * 1024U, '\x01'));
+    const auto errorOutcome = take(review(Json::object()));
+    const auto errorPage = Json::parse(errorOutcome.canonicalPayload).at("error");
+    REQUIRE(errorPage.at("message").get<std::string>().size() == 4U * 1024U);
+    REQUIRE(errorPage.at("message_total_bytes") == 256U * 1024U);
+    REQUIRE(errorPage.at("message_truncated") == true);
+    REQUIRE(errorOutcome.canonicalPayload.size() < 256U * 1024U);
+    REQUIRE(reviewerRuns.record.lastError->message.size() == 256U * 1024U);
+    reviewerRuns.record.lastError.reset();
+    reviewerRuns.record.outputText.reset();
+    const auto noOutput = Json::parse(take(review(Json::object())).canonicalPayload);
+    REQUIRE(noOutput.at("output").is_null());
+    REQUIRE(noOutput.at("output_total_bytes") == 0);
+
     auto cluFindingsCall = authorize(
         "clu.findings",
         Domain::ToolEffect::Read,
@@ -865,6 +1061,10 @@ void testRuntimeDispatchAndSchemaPolicy()
     const auto forgeStatusPayload = Json::parse(
         forgeStatusResult.value().canonicalPayload);
     REQUIRE(forgeStatusPayload.at("ok") == true);
+    REQUIRE(forgeStatusPayload.at("shell_execution").at("synchronous_timeout_sec_max") == 120);
+    REQUIRE(forgeStatusPayload.at("shell_execution").at("jobs_available") == true);
+    REQUIRE(forgeStatusPayload.at("shell_execution").at("detached_processes_survive") == false);
+    REQUIRE(forgeStatusPayload.at("shell_execution").at("job_timeout_sec_max") == 3600);
     REQUIRE(forgeStatusPayload.at("home") == root.value());
     REQUIRE(forgeStatusPayload.at("presence_count") == 3U);
     REQUIRE(forgeStatusPayload.at("open_sessions") == 2U);
@@ -963,6 +1163,9 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(bootstrap.find("Project folder: D:/workspace") !=
             std::string::npos);
     REQUIRE(bootstrap.find("D:/instructions/runtime") != std::string::npos);
+    REQUIRE(bootstrap.find("shell_job_start") != std::string::npos);
+    REQUIRE(bootstrap.find("descendants are terminated") != std::string::npos);
+    REQUIRE(bootstrap.find("Running is not failure") != std::string::npos);
     REQUIRE(bootstrap.find("Read and follow the instruction package folders") !=
             std::string::npos);
     REQUIRE(bootstrap.find("Development policy source: A:/development-policy") !=
@@ -1092,6 +1295,9 @@ void testRuntimeDispatchAndSchemaPolicy()
              {"note",
               "Forge checkpoints lifecycle changes and requests handoff only from measured context pressure."}}}}));
     REQUIRE((forgeStatusPayload.at("auto_continuity") == Json{
+        {"resume_packet_ready", false}, {"resume_packet_id", nullptr},
+        {"readback_confirmed", false}, {"readback_handoff_id", nullptr},
+        {"readback_scope", "this_mcp_client_confirmed_context_get"},
         {"packet_transport", "mcp_initialize_and_context_get"},
         {"project_handoff", nullptr},
         {"enabled", true},
@@ -2352,6 +2558,118 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(Json::parse(gitFailure.value().canonicalPayload).at("stdout") ==
             "partial status");
 
+    Domain::ShellJobSnapshot trackedJob{"job-runtime-test", Domain::ShellJobState::Running,
+        "Write-Output long-test", root.value(), 1800U, std::nullopt, std::nullopt, 10ms};
+    shell.startJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    auto startJobCall = authorizeFor("shell_job_start", Domain::ToolEffect::Write,
+        R"({"command":"Write-Output long-test","cwd":"D:/workspace"})", "start-shell-job", shellAuthority);
+    auto jobStart = take(adapter->handle(startJobCall, shellAuthority, context));
+    auto jobPayload = Json::parse(jobStart.canonicalPayload);
+    REQUIRE(jobStart.receipt.ok);
+    REQUIRE(jobPayload.at("job_id") == trackedJob.jobId);
+    REQUIRE(jobPayload.at("state") == "running");
+    REQUIRE(jobPayload.at("done") == false);
+    REQUIRE(jobPayload.at("result").is_null());
+    REQUIRE(jobPayload.at("alive").is_null());
+    REQUIRE(shell.lastJobRequest->timeout == 1800s);
+    REQUIRE(!shell.lastJobRequest->managedJob);
+    const auto starts = shell.jobStartCalls;
+    for (const auto& invalid : {R"({"command":"test","timeout_sec":3601})",
+                                R"({"command":"test","timeout_sec":0})",
+                                R"({"command":"test","extra":"value"})"}) {
+        auto invalidCall = authorizeFor("shell_job_start", Domain::ToolEffect::Write, invalid,
+            "invalid-shell-job", shellAuthority);
+        REQUIRE(!adapter->handle(invalidCall, shellAuthority, context));
+    }
+    REQUIRE(shell.jobStartCalls == starts);
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    auto pollJobCall = authorize("shell_job_status", Domain::ToolEffect::Read,
+        R"({"job_id":"job-runtime-test"})", "poll-shell-job");
+    auto pollJob = take(adapter->handle(pollJobCall, authority, context));
+    REQUIRE(pollJob.receipt.ok);
+    REQUIRE(Json::parse(pollJob.canonicalPayload).at("poll_after_sec") == 5);
+    REQUIRE(shell.lastJobId == trackedJob.jobId);
+    trackedJob.processId = 42U;
+    trackedJob.processCreationTime = 123U;
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    pollJob = take(adapter->handle(pollJobCall, authority, context));
+    REQUIRE(Json::parse(pollJob.canonicalPayload).at("alive").is_null());
+    trackedJob.processAlive = false;
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    pollJob = take(adapter->handle(pollJobCall, authority, context));
+    jobPayload = Json::parse(pollJob.canonicalPayload);
+    REQUIRE(jobPayload.at("alive") == false);
+    REQUIRE(jobPayload.at("done") == false);
+    trackedJob.state = Domain::ShellJobState::Failed;
+    trackedJob.processAlive = false;
+    trackedJob.result = Domain::ProcessResult{7, "captured final output", "test failure"};
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    pollJob = take(adapter->handle(pollJobCall, authority, context));
+    jobPayload = Json::parse(pollJob.canonicalPayload);
+    REQUIRE(pollJob.receipt.ok); // The status read succeeded; the command failed.
+    REQUIRE(jobPayload.at("done") == true);
+    REQUIRE(jobPayload.at("alive") == false);
+    REQUIRE(jobPayload.at("result").at("ok") == false);
+    REQUIRE(jobPayload.at("result").at("exit_code") == 7);
+    REQUIRE(jobPayload.at("result").at("stdout") == "captured final output");
+    trackedJob.result->stdoutUtf8 = std::string(80'000U, '\x01');
+    trackedJob.result->stderrUtf8 = std::string(20'000U, '\x01');
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    auto escapedStatus = take(adapter->handle(pollJobCall, authority, context));
+    REQUIRE(escapedStatus.canonicalPayload.size() < 128U * 1024U);
+    const auto escapedOutput = Json::parse(escapedStatus.canonicalPayload).at("result");
+    REQUIRE(escapedOutput.at("stdout") == std::string(16U * 1024U, '\x01'));
+    REQUIRE(escapedOutput.at("stderr") == std::string(4U * 1024U, '\x01'));
+    REQUIRE(escapedOutput.at("stdout_captured_bytes") == 80'000U);
+    REQUIRE(escapedOutput.at("stderr_captured_bytes") == 20'000U);
+    REQUIRE(escapedOutput.at("stdout_response_truncated") == true);
+    REQUIRE(escapedOutput.at("stderr_response_truncated") == true);
+    REQUIRE(escapedOutput.at("stdout_capture_truncated") == false);
+    REQUIRE(escapedOutput.at("stderr_capture_truncated") == false);
+    REQUIRE(escapedOutput.at("stdout_truncated") == true);
+    trackedJob.result->stdoutUtf8 = std::string(16U * 1024U - 1U, 'x') + "\xe2\x82\xac";
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    auto utf8Preview = Json::parse(take(adapter->handle(pollJobCall, authority, context)).canonicalPayload);
+    REQUIRE(utf8Preview.at("result").at("stdout") == std::string(16U * 1024U - 1U, 'x'));
+    trackedJob.result->stdoutUtf8 = std::string(80'000U, '\x01');
+    shell.listJobsResult.set(Domain::Result<std::vector<Domain::ShellJobSnapshot>>::success({trackedJob}));
+    auto listJobCall = authorize("shell_job_list", Domain::ToolEffect::Read, "{}", "list-shell-job");
+    auto listedJob = Json::parse(take(adapter->handle(listJobCall, authority, context)).canonicalPayload);
+    REQUIRE(listedJob.at("jobs").size() == 1U);
+    REQUIRE(listedJob.at("lifetime") == "manager_process");
+    REQUIRE(listedJob.at("pid") == 42U);
+    REQUIRE(!listedJob.at("jobs").at(0).at("result").contains("stdout"));
+    REQUIRE(!listedJob.at("jobs").at(0).contains("args"));
+    trackedJob.command = std::string(255U, 'c') + "\xe2\x82\xac" + std::string(3'838U, '\x01');
+    trackedJob.arguments.assign(4U, std::string(3'500U, '\x01'));
+    shell.listJobsResult.set(Domain::Result<std::vector<Domain::ShellJobSnapshot>>::success(
+        std::vector<Domain::ShellJobSnapshot>(32U, trackedJob)));
+    auto boundedList = take(adapter->handle(listJobCall, authority, context));
+    REQUIRE(boundedList.canonicalPayload.size() < 128U * 1024U);
+    auto boundedJobs = Json::parse(boundedList.canonicalPayload).at("jobs");
+    REQUIRE(boundedJobs.size() == 32U);
+    for (const auto& summary : boundedJobs) {
+        REQUIRE(!summary.contains("args"));
+        REQUIRE(summary.at("command_truncated") == true);
+        REQUIRE(summary.at("command") == std::string(255U, 'c'));
+        REQUIRE(!summary.at("result").contains("stdout"));
+    }
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    auto detailedJob = Json::parse(take(adapter->handle(pollJobCall, authority, context)).canonicalPayload);
+    REQUIRE(detailedJob.at("args") == trackedJob.arguments);
+    REQUIRE(detailedJob.at("command") == trackedJob.command);
+    trackedJob.state = Domain::ShellJobState::Cancelled;
+    shell.cancelJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    auto cancelJobCall = authorize("shell_job_cancel", Domain::ToolEffect::Write,
+        R"({"job_id":"job-runtime-test"})", "cancel-shell-job");
+    auto cancelledJob = take(adapter->handle(cancelJobCall, authority, context));
+    REQUIRE(Json::parse(cancelledJob.canonicalPayload).at("state") == "cancelled");
+    shell.getJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::failure(
+        Domain::makeError(Domain::ErrorCodes::RecordNotFound, "Unknown job")));
+    auto missingJob = adapter->handle(pollJobCall, authority, context);
+    REQUIRE(!missingJob);
+    REQUIRE(missingJob.error().code == Domain::ErrorCodes::RecordNotFound);
+
     const auto verifyShellFailure = [&] (
         Domain::ProcessResult process,
         const std::string_view expectedCode,
@@ -2658,6 +2976,7 @@ void testRealRouterContinuityIntegration()
     REQUIRE(legacyContinuity.lastBudgetReason()->starts_with(
         "identical_call_loop"));
 
+    static_cast<void>(take(legacyMemory.set({"continuity/project/" + projectId.value(), handoffId.value(), {}}, authorityContext)));
     auto blockedForgeStatus = invoke("forge_status", "{}");
     REQUIRE(blockedForgeStatus);
     const auto blockedPayload = Json::parse(
@@ -2666,6 +2985,11 @@ void testRealRouterContinuityIntegration()
     REQUIRE(blockedAutomatic.at("enabled") == true);
     REQUIRE(blockedAutomatic.at("blocked") == false);
     REQUIRE(blockedAutomatic.at("handoff_pending") == true);
+    REQUIRE(blockedAutomatic.at("resume_packet_ready") == false);
+    REQUIRE(blockedAutomatic.at("resume_packet_id").is_null());
+    REQUIRE(blockedAutomatic.at("readback_confirmed") == false);
+    REQUIRE(blockedAutomatic.at("readback_handoff_id").is_null());
+    REQUIRE(blockedAutomatic.at("readback_scope") == "this_mcp_client_confirmed_context_get");
     REQUIRE(blockedAutomatic.at("handoff_id") == handoffId.value());
     REQUIRE(blockedAutomatic.at("implicit_roots") ==
             Json::array({root.value()}));
@@ -2700,6 +3024,7 @@ void testRealRouterContinuityIntegration()
         Json{{"handoff_id", handoffId.value()}, {"resume_ready", true}}.dump());
     REQUIRE(recovered);
     REQUIRE(recovered.value().receipt.ok);
+    REQUIRE(guard->snapshot(clientId).readbackHandoffId == std::optional<std::string>{handoffId.value()});
     REQUIRE(recovered.value().contextRecovery.has_value());
     REQUIRE(recovered.value().contextRecovery->handoffId == handoffId);
     REQUIRE(recovered.value().contextRecovery->workingDirectory ==
@@ -2719,6 +3044,11 @@ void testRealRouterContinuityIntegration()
         resumedForgeStatus.value().canonicalPayload);
     const auto& resumedAutomatic = resumedPayload.at("auto_continuity");
     REQUIRE(resumedAutomatic.at("blocked") == false);
+    REQUIRE(resumedAutomatic.at("resume_packet_ready") == false);
+    REQUIRE(resumedAutomatic.at("resume_packet_id").is_null());
+    REQUIRE(resumedAutomatic.at("readback_confirmed") == false);
+    REQUIRE(resumedAutomatic.at("readback_handoff_id") == handoffId.value());
+    REQUIRE(resumedAutomatic.at("readback_scope") == "this_mcp_client_confirmed_context_get");
     REQUIRE(resumedAutomatic.at("handoff_id") == handoffId.value());
     REQUIRE(resumedAutomatic.at("implicit_roots") == Json::array(
         {root.value(),
@@ -2733,6 +3063,30 @@ void testRealRouterContinuityIntegration()
              std::vector<Domain::PathText>{
                  root, recoveredWorkingDirectory, recoveredKeyFileRoot}));
     REQUIRE(audit.eventCount() == 7U);
+
+    auto modelRecord = recoveredRecord;
+    const auto modelHandoffId = parse<Domain::LegacyHandoffId>("model-ready-current-packet");
+    modelRecord.packet.id = modelHandoffId;
+    modelRecord.packet.source = Domain::LegacyHandoffSource::Model;
+    legacyContinuity.setGetOutcome({modelRecord, true});
+    static_cast<void>(take(legacyMemory.set(
+        {"continuity/project/" + projectId.value(), modelHandoffId.value(), {}}, authorityContext)));
+    const auto readyStatus = Json::parse(take(invoke("get_forge_status", "{}")).canonicalPayload);
+    const auto& readyAutomatic = readyStatus.at("auto_continuity");
+    REQUIRE(readyAutomatic.at("resume_packet_ready") == true);
+    REQUIRE(readyAutomatic.at("resume_packet_id") == modelHandoffId.value());
+    REQUIRE(readyAutomatic.at("readback_confirmed") == false);
+    REQUIRE(readyAutomatic.at("readback_handoff_id") == handoffId.value());
+    const auto modelReadback = take(invoke("context_get",
+        Json{{"handoff_id", modelHandoffId.value()}, {"resume_ready", true}}.dump()));
+    REQUIRE(modelReadback.receipt.ok);
+    REQUIRE(Json::parse(modelReadback.canonicalPayload).at("found") == true);
+    const auto confirmedStatus = Json::parse(take(invoke("get_forge_status", "{}")).canonicalPayload);
+    const auto& confirmedAutomatic = confirmedStatus.at("auto_continuity");
+    REQUIRE(confirmedAutomatic.at("resume_packet_ready") == true);
+    REQUIRE(confirmedAutomatic.at("resume_packet_id") == modelHandoffId.value());
+    REQUIRE(confirmedAutomatic.at("readback_confirmed") == true);
+    REQUIRE(confirmedAutomatic.at("readback_handoff_id") == modelHandoffId.value());
 }
 
 } // namespace

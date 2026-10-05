@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <memory>
+#include <string_view>
 #include <string>
 #include <vector>
 
@@ -34,6 +36,13 @@ struct EnvironmentVariable final {
     std::string value;
 };
 
+class IProcessOutputObserver {
+public:
+    virtual ~IProcessOutputObserver() = default;
+    virtual void onStarted(std::uint32_t processId, std::uint64_t creationTime) noexcept = 0;
+    virtual void onOutput(std::string_view bytes, bool stderrStream) noexcept = 0;
+};
+
 struct ProcessRequest final {
     PathText executable;
     std::vector<std::string> arguments;
@@ -44,6 +53,9 @@ struct ProcessRequest final {
     std::size_t maximumStdoutBytes{80'000};
     std::size_t maximumStderrBytes{20'000};
     std::string stdinUtf8;
+    // Set only by the tracked shell-job owner, never by ordinary shell execution.
+    bool managedJob{false};
+    std::shared_ptr<IProcessOutputObserver> outputObserver;
 };
 
 struct ProcessResult final {
