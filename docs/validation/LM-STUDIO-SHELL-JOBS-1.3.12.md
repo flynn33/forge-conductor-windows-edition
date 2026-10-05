@@ -30,4 +30,25 @@ A disposable catalog capture read the complete catalog and verified 80 general t
 
 Earlier 1.3.12 source candidates supplied additional live regression evidence: a 46-request shell check completed its 125-second command in 125.543 seconds and exercised profile/UTF-8 defaults, nonzero exit, timeout, cancellation, and discovery. A later 39-request process check exercised exact argv/environment, live and paged logs, cancellation, completed receipt recovery, honest unknown-exit recovery after intentional connector loss, real memory attachment, authorized external text exceeding 64 KiB, binary hashes, and evidence-chain recovery. Its dedicated venv observed Python 3.12.10, `jsonschema==4.25.1`, and `PyYAML==6.0.3`. Four separate diagnostic requests observed provider/native-process facts and a read-only GitHub artifact response with HTTP 200. These earlier probes used CLI SHA-256 `01d21049de51c19a2e83c052588105502d747b8204433be9604b6707e9d4b382` for process/diagnostics and `05d832577eb4529fbaa7691f8a2206438e12ee252e964b371ccbe0b962b8dd36` for shell work; they are separate from qualification of the final installed payload.
 
-Signed packaging, installed payload hashes, all-three-role repair/reconnection, and installed Manager/reviewer/provider qualification remain pending. The user's original full validation task and its independent verdict have not been executed by this tooling repair.
+The signed development MSIX **1.3.12.1** was installed from source commit `91322cde3310d9ace59bde73c437a07fb300ee81`. App, Manager, CLI, and SessionHost installed hashes match verified staging; the original selected conversation was preserved at installation readback. Native repair verified all three installed registrations, and activation observed LM Studio acknowledge their exact shared revision while preserving foreign configuration/plugins. The activation result reported zero active hosted roles: this production path deliberately leaves roles lazy until selected by a chat. Configuration synchronization does not claim three active native chat connections.
+
+The isolated payload lifecycle check verified the 1.3.12.0 to 1.3.12.1 revision upgrade, both signed candidates and all payload hashes, retained settings/workspace/legacy and project memory, project isolation, and simulated uninstall/reinstall without changing foreign MCP configuration. The actual package-version guards passed eighteen acceptance/rejection cases each, including range limits and trailing LF/CRLF metadata.
+
+Installed executable SHA-256 readback:
+
+| Executable | SHA-256 |
+|---|---|
+| `ForgeConductor.Manager.exe` | `7ba809f3f678c4347247816d7bb1fbb48d7d1b49b5dd38ad6eedc2c87de9e3a0` |
+| `ForgeConductor.SessionHost.exe` | `f07d4889f8d16f25c216b9f91c71808921b5759e14f8b00df20e050e761b7adb` |
+| `ForgeConductorApp.exe` | `272af1776c5fb93447cce93e3f523e5f4067c2b2f626b96dfbf2b7ce462cee1e` |
+| `forge-conductor.exe` | `6f166bf2b91b413636ae8997ccf4a0c3ed8e784f16835d924a2fd6c3c829ac8f` |
+
+The installed Manager-owned job completed after 125.055 seconds with exit 0. Its actual child PID/creation identity survived MCP disconnect/reconnect and verified adoption. Named log/receipt hashes and a real persisted project-memory record were read back. The same route executed read-only `git ls-remote` successfully.
+
+Git qualification used the installed single-link `C:/Program Files/Git/bin/git.exe`. An earlier probe selected the hard-linked `cmd/git.exe` alias and was correctly rejected by the retained executable authority policy; its failed evidence is preserved separately. The native Git discovery route already selects the supported single-link entry point.
+
+The installed reviewer accepted a 2,247-byte opening, started a fresh read-only provider context without executor history, returned a unique local fixture marker absent from its opening, and retained the same completed provider-response identity through three MCP connections. Its report was not truncated. This is a tooling regression review; it does not approve the user's project gate.
+
+Installed provider/host inspection observed `qwen/qwen3.8-27b` loaded and LM Studio desktop ProductVersion `0.4.25.0`. Exact model file/revision and inference-engine/server-API versions remain unknown where the provider does not report them. Context telemetry retains its latest-generation sampling boundary or explicit unavailable state.
+
+The user's original full validation task, required reports, and independent project-review verdict were not executed or credited by these disposable tooling checks. Earlier 1.3.11 qualification retains its own artifact provenance.

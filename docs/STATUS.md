@@ -4,7 +4,7 @@ Version 1.3.12 expands Primary/Fallback to 80 tools for owned long-running proce
 
 <!-- qualification-1.3.12 -->
 
-Version 1.3.12 native Release qualification passed 156/156 CTest checks and all three static gates. Signed installation and installed integration/process/reviewer readbacks remain pending. The release notes distinguish earlier source-probe evidence from the final payload; these checks do not execute the user's original project gate.
+Version 1.3.12 native Release qualification passed 156/156 CTest checks and all three static gates. The signed 1.3.12.1 installation, matching payload hashes, three native integration roles, Manager-owned 125-second reconnect/adoption, separate read-only reviewer, and provider/host readbacks passed. The release notes distinguish earlier source-probe evidence from the final payload; these checks do not execute the user's original project gate.
 
 <!-- /qualification-1.3.12 -->
 
