@@ -31,7 +31,7 @@ function Test-Candidate {
     $metadata = Get-Content -Raw -LiteralPath $metadataPath | ConvertFrom-Json -Depth 20
     Assert-Equal $metadata.package_identity 'ForgeConductor.Windows' 'Unexpected package identity.'
     $packageVersion = [string]$metadata.package_version
-    if ($packageVersion -cnotmatch ('^' + [regex]::Escape($ExpectedVersion) + '\.(0|[1-9][0-9]{0,4})$') -or
+    if ($packageVersion -cnotmatch ('\A' + [regex]::Escape($ExpectedVersion) + '\.(0|[1-9][0-9]{0,4})\z') -or
         ([version]$packageVersion).Major -gt 65535 -or
         ([version]$packageVersion).Minor -gt 65535 -or
         ([version]$packageVersion).Build -gt 65535 -or

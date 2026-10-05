@@ -42,7 +42,7 @@ if ($cmake -notmatch '(?s)project\(\s*ForgeConductorWindows\s+VERSION\s+(\d+\.\d
 $productVersion = $Matches[1]
 $version = (Get-Content -LiteralPath (Join-Path $root 'BUILD') -Raw).Trim()
 if ((Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim() -cne $productVersion -or
-    $version -cnotmatch ('^' + [regex]::Escape($productVersion) + '\.(0|[1-9][0-9]{0,4})$') -or
+    $version -cnotmatch ('\A' + [regex]::Escape($productVersion) + '\.(0|[1-9][0-9]{0,4})\z') -or
     ([version]$version).Major -gt 65535 -or
     ([version]$version).Minor -gt 65535 -or
     ([version]$version).Build -gt 65535 -or
