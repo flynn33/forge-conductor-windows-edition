@@ -979,8 +979,12 @@ private:
         if (managerBroker_) toolDependencies.durableToolBroker = [this](
             const std::string_view name, const std::string_view arguments,
             const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+            const Domain::OperationContext brokerOperation{operation.operationId,
+                (std::min)(operation.deadline, clock_->monotonicNow() +
+                    ForgeConductor::Manager::ManagerTransportLimits::DefaultMaximumRequestLifetime),
+                operation.cancellation, operation.correlationId};
             auto result = managerBroker_->invokeTool(
-                {project, std::string{name}, std::string{arguments}}, operation);
+                {project, std::string{name}, std::string{arguments}}, brokerOperation);
             if (!result) return Domain::Result<std::string>::failure(result.error());
             if (!result.value().ok && result.value().error)
                 return Domain::Result<std::string>::failure(*result.value().error);
