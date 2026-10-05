@@ -26,7 +26,7 @@ function Invoke-GitScalar {
 $sourceCommit = Invoke-GitScalar @('rev-parse','HEAD')
 $sourceTree = Invoke-GitScalar @('rev-parse','HEAD^{tree}')
 $releaseInputs = @(
-    'CMakeLists.txt','CMakePresets.json','vcpkg.json','vcpkg-configuration.json',
+    'CMakeLists.txt','CMakePresets.json','VERSION','BUILD','vcpkg.json','vcpkg-configuration.json',
     'include','src','packaging','scripts/build.ps1','scripts/alpha/Build-App.ps1',
     'scripts/alpha/Install-Engineering.ps1','scripts/package.ps1','THIRD-PARTY-NOTICES.md')
 $releaseDirty = @(& git -C $root status --porcelain=v1 --untracked-files=all -- @releaseInputs)
@@ -41,6 +41,16 @@ if ($cmake -notmatch '(?s)project\(\s*ForgeConductorWindows\s+VERSION\s+(\d+\.\d
 }
 $productVersion = $Matches[1]
 $version = $productVersion + '.0'
+if ((Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim() -cne $productVersion -or
+    (Get-Content -LiteralPath (Join-Path $root 'BUILD') -Raw).Trim() -cne $version) {
+    throw 'VERSION and BUILD must match the CMake product and package versions.'
+}
+foreach ($manifestInput in @('packaging/app.manifest','src/Hosts/App/app.manifest')) {
+    [xml]$applicationManifest = Get-Content -LiteralPath (Join-Path $root $manifestInput) -Raw
+    if ([string]$applicationManifest.assembly.assemblyIdentity.version -cne $version) {
+        throw "The application manifest version does not match the package version: $manifestInput"
+    }
+}
 $productIdentity = Get-Content -LiteralPath (
     Join-Path $root 'include/ForgeConductor/Domain/ProductIdentity.h') -Raw
 if ($productIdentity -notmatch ('ProductVersion\{"' + [regex]::Escape($productVersion) + '"\}')) {

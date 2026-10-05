@@ -54,7 +54,9 @@ public:
     budgetHandoff(
         const Domain::ClientId& clientId,
         std::string_view reason,
-        const Domain::OperationContext& context) noexcept override;
+        const Domain::OperationContext& context,
+        const Domain::LegacyContinuityPatch& inferred = {},
+        std::optional<Domain::LegacyHandoffId> handoffId = std::nullopt) noexcept override;
 
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityGetOutcome> get(
         const Domain::LegacyContinuityGetRequest& request,

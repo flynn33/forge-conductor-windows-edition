@@ -5,8 +5,8 @@ Launch Forge Conductor from Start. The destinations are **Workspace**, **Rig**, 
 ## Prepare a workspace
 
 1. Register or select the project folder in Workspace and choose its provider profile.
-2. Add instruction-package folders. Move queue rows up or down to define execution order.
-3. Under CLU governance, choose **Choose policy folder...**. Selecting a repository folder binds it immediately; there is no second Bind Source action.
+2. Add instruction-package folders. Move queue rows up or down, or drag them, to define execution order. Remove any row whenever it is no longer needed, including an active row.
+3. Under CLU governance, choose **Choose policy folder...** for a repository or **Choose policy file...** for one document. With a project selected, the chosen source binds immediately. You can browse before selecting a project; select a project and choose its policy again to activate governance.
 4. Set **Auto Continuity** for the selected project/provider and review readiness.
 5. Use the loaded model in LM Studio with the existing Forge integrations.
 
@@ -16,15 +16,17 @@ The Manager persists project access, packages, policy bindings, memory, preferen
 
 A package is a folder. Intake inventories entries and streams hashes without extension, encoding, file-count, file-size, aggregate-size, depth, or name-based admission filters. Files, directories, reparse points, and read failures remain explicit. Safe derived text is bounded and content pages retain revision identity.
 
+Queue removal and reordering take effect immediately and persist across refresh and restart. Removing a package deletes its queue binding; its source folder remains available and can be added again with the same revision. A model that has already read a package retains that text in its existing chat history.
+
 The model can call `get_forge_status` to obtain `workspace.project_id`, `workspace.project_root`, binding-source fields, `instruction_packages.packages` in execution order, the development-policy source/revision, tool names/count, and agent count. `home` is application data, not the project folder. An empty continuity path does not erase the registered workspace binding.
 
 Call `instruction_package.read` with the selected `queue_row_id` from status. Read all cursor pages; an incomplete text entry is continued with its `path` and `next_offset`. The response includes the selected package, returned entries and content, completion markers, and `next_cursor`. Opaque or inaccessible entries retain coverage information. Packages from another project are not substituted.
 
 ## CLU policy repository
 
-CLU evaluates development-policy evidence. It does not create chats or control continuity. The folder picker selects a repository, not one policy file, and binds it on selection.
+CLU evaluates development-policy evidence. It does not create chats or control continuity. Use the folder picker for a repository or the file picker for a single policy document. A file source imports only that file, leaving sibling files outside its coverage. With a project selected, either source binds on selection.
 
-The remaining controls are **Reload policies from folder**, **Inspect status**, **Inspect findings**, **Export CLU log**, **Policy documents**, **Read document**, **Next part**, and **Selected policy document**. Reload intentionally adopts changed folder content. The model receives the bound source and the instruction to read and follow it through `project_policy.read`.
+The remaining controls are **Reload policies from source**, **Inspect status**, **Inspect findings**, **Export CLU log**, **Policy documents**, **Read document**, **Next part**, and **Selected policy document**. Reload intentionally adopts changed content from the bound folder or file. The model receives the bound source and the instruction to read and follow it through `project_policy.read`.
 
 After a non-CLU tool operation, the adapter evaluates structured evidence and adds pending findings to the returned `clu_governance_notifications`. The loaded model therefore receives correction guidance. **Inspect findings** displays the findings and open count; Activity retains correlated evidence and correction history. Missing policy is an inactive state; findings remain nonblocking governance evidence.
 

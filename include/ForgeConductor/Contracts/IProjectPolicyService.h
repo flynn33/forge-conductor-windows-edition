@@ -45,7 +45,7 @@ enum class ProjectPolicyAction {
 struct ProjectPolicyRequest final {
     Domain::ProjectId projectId;
     ProjectPolicyAction action{ProjectPolicyAction::Inspect};
-    // Bind: local folder or remote repository URL. ReadDocument: exact path in
+    // Bind: local folder, file, or remote repository URL. ReadDocument: exact path in
     // the bound immutable revision. Other actions leave source empty.
     std::string source;
     std::string expectedRevision;

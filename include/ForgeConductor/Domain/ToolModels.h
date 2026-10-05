@@ -122,6 +122,7 @@ struct ToolCallOutcome final {
     std::string canonicalPayload;
     std::optional<ContextRecoveryReceipt> contextRecovery;
     std::optional<ToolContinuityObservation> continuityObservation;
+    std::optional<LegacyHandoffId> contextPersistence;
 };
 
 // A missing immediate outcome admits the invocation. A present outcome is a

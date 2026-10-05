@@ -1,4 +1,5 @@
 #include "ManagerConnection.h"
+#include "ProjectSetupWorkspace.h"
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
@@ -9,6 +10,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include "ForgeConductor/Manager/ManagerProcessExitCodes.h"
 #include "ForgeConductor/Domain/Utf8.h"
 #include <windows.h>
@@ -745,7 +747,8 @@ InstructionPackageQueueView ManagerConnection::instructionPackageQueue(
 
 LmStudioView ManagerConnection::lmStudio(
     const LmStudioAction action,
-    const std::stop_token cancellation) noexcept
+    const std::stop_token cancellation,
+    const std::string projectId) noexcept
 {
     try {
         if (!profileError_.empty()) return {false, profileError_, std::nullopt};
@@ -756,12 +759,18 @@ LmStudioView ManagerConnection::lmStudio(
         auto created = connectManager(alphaProfile_, context, clock);
         if (!created) return {false, created.error().message, std::nullopt};
         auto client = std::move(created).value();
+        std::optional<Domain::ProjectId> selectedProject;
+        if (!projectId.empty()) {
+            auto parsed = Domain::ProjectId::parse(projectId);
+            if (!parsed) { client->shutdown(); return {false, parsed.error().message, std::nullopt}; }
+            selectedProject = std::move(parsed).value();
+        }
         Domain::Result<Manager::ManagerLmStudioSnapshot> result =
             action == LmStudioAction::Repair
-                ? client->repairLmStudio(context)
+                ? client->repairLmStudio(context, selectedProject)
                 : action == LmStudioAction::Activate
-                    ? client->activateLmStudio(context)
-                    : client->lmStudioStatus(context);
+                    ? client->activateLmStudio(context, selectedProject)
+                    : client->lmStudioStatus(context, selectedProject);
         client->shutdown();
         if (!result) return {false, result.error().message, std::nullopt};
         auto snapshot = std::move(result).value();
@@ -1357,7 +1366,8 @@ Application::ProjectSetupSnapshot ManagerConnection::prepareProject(
     return coordinator.prepare(std::move(folder), cancellation, observer, installPlugins);
 }
 
-Application::SetupOperationResult ManagerConnection::ensurePlugins(std::stop_token cancellation)
+Application::SetupOperationResult ManagerConnection::ensurePlugins(
+    Application::ProjectSetupSnapshot& setup, std::stop_token cancellation)
 {
     const auto complete = [](const LmStudioView& view) {
         return view.loaded && view.snapshot && view.snapshot->lmStudioPresent &&
@@ -1365,18 +1375,18 @@ Application::SetupOperationResult ManagerConnection::ensurePlugins(std::stop_tok
             view.snapshot->continuityPluginInstalled && view.snapshot->mcpConfigurationRegistered &&
             view.snapshot->binaryExecutable && view.snapshot->deploymentId.has_value();
     };
-    auto inspected = lmStudio(LmStudioAction::Inspect, cancellation);
+    auto inspected = lmStudio(LmStudioAction::Inspect, cancellation, setup.projectId);
     if (cancellation.stop_requested()) return {false, "Plugin setup cancelled. Retry to inspect the saved installation."};
     if (!complete(inspected)) {
-        const auto repaired = lmStudio(LmStudioAction::Repair, cancellation);
+        const auto repaired = lmStudio(LmStudioAction::Repair, cancellation, setup.projectId);
         if (!repaired.loaded) return {false, "Could not install LM Studio plugins: " + repaired.message +
             " Open LM Studio plugins for details, then retry setup."};
         if (cancellation.stop_requested()) return {false, "Plugin setup cancelled. Retry to verify the installation."};
-        inspected = lmStudio(LmStudioAction::Inspect, cancellation);
+        inspected = lmStudio(LmStudioAction::Inspect, cancellation, setup.projectId);
     }
     if (!complete(inspected)) return {false, "Plugin installation is not fully verified: " + inspected.message +
         " Open LM Studio plugins and retry installation."};
-    const auto activated = lmStudio(LmStudioAction::Activate, cancellation);
+    const auto activated = lmStudio(LmStudioAction::Activate, cancellation, setup.projectId);
     if (!complete(activated) || !activated.snapshot->connectionCheckPerformed)
         return {false, "Plugins are installed, but LM Studio has not confirmed them: " + activated.message +
             " Retry preparation after LM Studio finishes opening."};
@@ -1403,7 +1413,38 @@ Application::SetupOperationResult ManagerConnection::ensureManager(std::stop_tok
 Application::SetupOperationResult ManagerConnection::ensureProject(
     Application::ProjectSetupSnapshot& setup, std::stop_token cancellation)
 {
-    const auto project = initializeProject(setup.folder, {}, cancellation);
+    auto folder = Domain::PathText::create(setup.folder);
+    if (!folder) return {false, folder.error().message};
+    const auto registered = projects(cancellation);
+    if (!registered.loaded || !registered.snapshot) return {false, registered.message};
+    const auto selected = registeredProjectForSetupFolder(
+        folder.value(), registered.snapshot->projects);
+    if (!selected) return {false, selected.error().message};
+    ProjectWorkspaceView project;
+    if (selected.value()) {
+        const auto& existing = *selected.value();
+        W::WindowsUuidGenerator ids;
+        auto id = ids.next();
+        if (!id) return {false, id.error().message};
+        auto clock = std::make_shared<W::SystemClock>();
+        auto context = operationContext(clock, cancellation);
+        W::WindowsWorkspaceAuthority workspaceAuthority{{
+            W::WindowsWorkspaceAuthorityPolicy{
+                Domain::AuthorityId{id.value()}, existing.project.id,
+                Domain::ClientId::parse("desktop-project-prepare").value(),
+                {existing.alias}, Domain::FileAccess::Read,
+                {Domain::FileAccess::Read}, {}, false, 1U}}};
+        auto canonical = authorizeRegisteredSetupFolder(
+            existing, folder.value(), workspaceAuthority, context);
+        if (!canonical) return {false, canonical.error().message};
+        project = projectMemory(existing.project.id.value(), {}, cancellation);
+        if (!project.loaded || !project.snapshot) return {false, project.message};
+        if (project.snapshot->project.id != existing.project.id)
+            return {false, "Project preparation returned a different registered project."};
+        setup.folder = canonical.value().value();
+    } else {
+        project = initializeProject(setup.folder, {}, cancellation);
+    }
     if (!project.loaded || !project.snapshot) return {false, project.message};
     if (!project.snapshot->integrityOk)
         return {false, "Project storage needs repair. Open Diagnostics before starting work."};

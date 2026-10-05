@@ -38,6 +38,7 @@ public:
     DeterministicResult<Domain::MemoryBatchOutcome> rememberBatchResult;
     DeterministicResult<Domain::MemoryPage> searchResult;
     DeterministicResult<Domain::MemoryRecords> getResult;
+    std::map<std::string, DeterministicResult<Domain::MemoryRecords>> getById;
     DeterministicResult<Domain::ProjectMemoryRecord> updateResult;
     DeterministicResult<Domain::ForgetOutcome> forgetResult;
     DeterministicResult<Domain::MemoryPage> listRecentResult;
@@ -122,6 +123,11 @@ public:
         const Domain::GetProjectMemoryRequest& request,
         const Domain::OperationContext& context) noexcept override
     {
+        if (request.ids.size() == 1U) {
+            const auto found = getById.find(request.ids.front().value());
+            if (found != getById.end()) return complete(
+                ProjectMemoryCall::Get, &request.projectId, context, found->second);
+        }
         return complete(
             ProjectMemoryCall::Get,
             &request.projectId,

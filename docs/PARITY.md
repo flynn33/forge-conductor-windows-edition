@@ -1,6 +1,6 @@
 # Windows capability map
 
-This map describes version 1.3.6. Historical delivery records retain their original scope.
+This map describes version 1.3.11. Historical delivery records retain their original scope.
 
 | Capability | Implementation and bounds |
 |---|---|

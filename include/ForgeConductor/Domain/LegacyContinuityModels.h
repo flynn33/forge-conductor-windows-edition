@@ -137,6 +137,7 @@ struct LegacyContinuityAutomaticRequest final {
     LegacyContinuityPatch inferred;
     std::string reason;
     bool finalize{};
+    std::optional<LegacyHandoffId> handoffId;
 };
 
 struct LegacyContinuityGetRequest final {

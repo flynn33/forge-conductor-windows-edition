@@ -1206,6 +1206,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             *forgeStatusRepository_,
             *clock_,
             *uuidGenerator_,
+            *hasher_,
             projectMemoryLimits,
             initialConfiguration_->shell.defaultTimeout,
             discoverPowerShellExecutable(),

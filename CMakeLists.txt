@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.6
+    VERSION 1.3.11
     LANGUAGES CXX RC
 )
 
@@ -154,6 +154,7 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/DashboardTelemetrySource.cpp
     src/Application/LegacyContextContinuityService.cpp
     src/Application/LegacyMemoryService.cpp
+    src/Application/LegacyInstructionPackageMigration.cpp
     src/Application/ManagerController.cpp
     src/Application/ManagedRunService.cpp
     src/Application/ProjectMemoryRepositoryCache.cpp
@@ -179,6 +180,7 @@ forge_configure_standard_target(ForgeConductor.Manager.Protocol)
 target_include_directories(ForgeConductor.Manager.Protocol PUBLIC
     "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(ForgeConductor.Manager.Protocol PRIVATE
+    ForgeConductor::Application
     nlohmann_json::nlohmann_json
     bcrypt)
 
@@ -793,8 +795,13 @@ if(BUILD_TESTING)
     add_executable(ForgeConductor.Manager.RequestDispatcherTests
         tests/Manager/ManagerRequestDispatcherTests.cpp)
     forge_configure_standard_target(ForgeConductor.Manager.RequestDispatcherTests)
+    target_include_directories(ForgeConductor.Manager.RequestDispatcherTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
     target_link_libraries(ForgeConductor.Manager.RequestDispatcherTests PRIVATE
+        ForgeConductor::Application
         ForgeConductor::Manager.Protocol
+        ForgeConductor::Persistence.Windows
         nlohmann_json::nlohmann_json)
     add_test(
         NAME ForgeConductor.Manager.RequestDispatcherTests
@@ -832,8 +839,11 @@ if(BUILD_TESTING)
 
     add_executable(ForgeConductor.App.ProjectSetupCoordinatorTests
         tests/App/ProjectSetupCoordinatorTests.cpp)
-    forge_configure_standard_target(ForgeConductor.App.ProjectSetupCoordinatorTests)
-    target_include_directories(ForgeConductor.App.ProjectSetupCoordinatorTests PRIVATE include)
+    forge_configure_native_target(ForgeConductor.App.ProjectSetupCoordinatorTests)
+    target_include_directories(ForgeConductor.App.ProjectSetupCoordinatorTests PRIVATE
+        include ${CMAKE_CURRENT_SOURCE_DIR}/src/Hosts/App)
+    target_link_libraries(ForgeConductor.App.ProjectSetupCoordinatorTests PRIVATE
+        ForgeConductor::Infrastructure.Windows)
     add_test(NAME ForgeConductor.App.ProjectSetupCoordinatorTests
         COMMAND $<TARGET_FILE:ForgeConductor.App.ProjectSetupCoordinatorTests>)
     set_tests_properties(ForgeConductor.App.ProjectSetupCoordinatorTests PROPERTIES

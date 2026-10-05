@@ -1029,6 +1029,58 @@ void seedForeignState(Fixture& fixture)
         adjacentWrapperSentinel(fixture).value(), "foreign-neighbor");
 }
 
+void testSelectedProjectBindingIsDeployedPreservedAndInspected()
+{
+    Fixture fixture;
+    seedForeignState(fixture);
+    auto selected = fixture.request();
+    selected.projectId = fixture.projectId;
+    selected.projectRoot = path("D:\\Projects\\Chosen workspace");
+    auto capability = authorizedCall(fixture.authority, fixture.context(), Domain::ToolEffect::Write);
+    static_cast<void>(take(fixture.service.deploy(
+        selected, fixture.authority, capability, fixture.context())));
+    auto config = Json::parse(fixture.storage.fileText(fixture.configurationPath.value()).value());
+    const auto expectedArgs = Json::array({"serve", "--project-id", fixture.projectId.value()});
+    for (const auto* id : {LMStudioPrimaryServerId, LMStudioFallbackServerId, LMStudioCluServerId}) {
+        const auto& registration = config.at("mcpServers").at(id);
+        require(registration.at("args") == expectedArgs &&
+            registration.at("cwd") == selected.projectRoot->value(),
+            "Selected project arguments and canonical workspace must reach every registration");
+        const auto bridge = Json::parse(fixture.storage.fileText(
+            fixture.lmStudioRoot.value() + "\\extensions\\plugins\\mcp\\" + id + "\\mcp-bridge-config.json").value());
+        require(bridge.at("args") == expectedArgs &&
+            bridge.at("cwd") == selected.projectRoot->value(),
+            "The bridge plugin must launch the same selected project as mcp.json");
+    }
+    require(config.at("foreignRoot").at("keep").get<bool>(),
+        "Project binding must preserve foreign registration content");
+    auto status = take(fixture.service.status(selected, fixture.authority, fixture.context()));
+    require(status.mcpConfigurationRegistered && status.primaryPluginInstalled &&
+        status.fallbackPluginInstalled && status.continuityPluginInstalled,
+        "Deployment readback must verify the selected project and every bridge");
+    auto other = selected;
+    other.projectId = parse<Domain::ProjectId>("98000000-0000-4000-8000-000000000099");
+    status = take(fixture.service.status(other, fixture.authority, fixture.context()));
+    require(!status.mcpConfigurationRegistered && status.detail.find("selected project") != std::string::npos,
+        "Readiness must disclose a different selected project binding");
+    static_cast<void>(take(fixture.deploy(fixture.context())));
+    config = Json::parse(fixture.storage.fileText(fixture.configurationPath.value()).value());
+    for (const auto* id : {LMStudioPrimaryServerId, LMStudioFallbackServerId, LMStudioCluServerId}) {
+        require(config.at("mcpServers").at(id).at("args") == expectedArgs &&
+            config.at("mcpServers").at(id).at("cwd") == selected.projectRoot->value(),
+            "A projectless repair must preserve an existing explicit project binding");
+    }
+    status = take(fixture.service.status(selected, fixture.authority, fixture.context()));
+    require(status.mcpConfigurationRegistered && status.primaryPluginInstalled,
+        "Projectless repair must preserve bridge and registration agreement");
+    const auto beforePartial = fixture.storage.fileText(fixture.configurationPath.value());
+    auto partial = selected;
+    partial.projectRoot.reset();
+    require(!fixture.service.deploy(partial, fixture.authority, capability, fixture.context()) &&
+        fixture.storage.fileText(fixture.configurationPath.value()) == beforePartial,
+        "An incomplete binding must fail before deployment changes any bytes");
+}
+
 void testTransactionalDeployPreservesForeignAndOrdersFallbackFirst()
 {
     Fixture fixture;
@@ -1715,6 +1767,8 @@ void testActivationBindingAndShutdownDrainExactOperation()
 
 void registerLMStudioDeploymentServiceTests(TestRegistry& tests)
 {
+    addTest(tests, "lmstudio.deploy.selected-project-binding",
+            testSelectedProjectBindingIsDeployedPreservedAndInspected);
     addTest(tests, "lmstudio.deploy.transaction-and-fallback-order",
             testTransactionalDeployPreservesForeignAndOrdersFallbackFirst);
     addTest(tests, "lmstudio.deploy.configuration-file-object-transaction",

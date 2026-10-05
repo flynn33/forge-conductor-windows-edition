@@ -34,7 +34,9 @@ public:
     budgetHandoff(
         const Domain::ClientId& clientId,
         std::string_view reason,
-        const Domain::OperationContext& context) noexcept = 0;
+        const Domain::OperationContext& context,
+        const Domain::LegacyContinuityPatch& inferred = {},
+        std::optional<Domain::LegacyHandoffId> handoffId = std::nullopt) noexcept = 0;
 
     [[nodiscard]] virtual Domain::Result<Domain::LegacyContinuityGetOutcome> get(
         const Domain::LegacyContinuityGetRequest& request,

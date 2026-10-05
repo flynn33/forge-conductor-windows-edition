@@ -882,10 +882,40 @@ private:
     REQUIRE(result.at("isError") == false);
     REQUIRE(result.at("structuredContent").is_object());
     REQUIRE(result.at("content").is_array());
-    REQUIRE(result.at("content").size() == 1U);
-    REQUIRE(result.at("content").front().at("type") == "text");
-    const auto serialized = result.at("content").front().at("text").get<std::string>();
+    const auto& content = result.at("content");
+    REQUIRE(!content.empty());
+    std::string serialized;
+    std::size_t totalBytes{};
+    for (std::size_t index{}; index < content.size(); ++index) {
+        REQUIRE(content.at(index).at("type") == "text");
+        const auto text = content.at(index).at("text").get<std::string>();
+        REQUIRE(text.size() <= 32U * 1024U);
+        const auto value = Json::parse(text);
+        if (content.size() == 1U) {
+            serialized = text;
+            break;
+        }
+        REQUIRE(value.is_object());
+        REQUIRE(value.size() == 7U);
+        REQUIRE(value.at("kind") == "forge_tool_result_fragment");
+        REQUIRE(value.at("version") == 1U);
+        REQUIRE(value.at("index") == index);
+        REQUIRE(value.at("count") == content.size());
+        REQUIRE(value.at("total_bytes").is_number_unsigned());
+        const auto expectedBytes = value.at("total_bytes").get<std::size_t>();
+        REQUIRE(expectedBytes > 32U * 1024U);
+        REQUIRE(index == 0U || expectedBytes == totalBytes);
+        totalBytes = expectedBytes;
+        REQUIRE(value.at("part").is_string());
+        const auto part = value.at("part").get<std::string>();
+        REQUIRE(!part.empty());
+        REQUIRE(part.size() <= 12U * 1024U);
+        REQUIRE(value.at("instruction") == "Concatenate part from every fragment in index order, then parse the complete JSON tool result. Do not repeat the tool call.");
+        serialized += part;
+    }
+    REQUIRE(content.size() == 1U || serialized.size() == totalBytes);
     REQUIRE(Json::parse(serialized) == result.at("structuredContent"));
+    REQUIRE(serialized == result.at("structuredContent").dump());
     return result.at("structuredContent");
 }
 
@@ -936,6 +966,7 @@ void validateToolArray(
 struct RoleObservation final {
     std::string serverName;
     Json tools;
+    std::string instructions;
 };
 
 [[nodiscard]] RoleObservation observeRole(
@@ -951,7 +982,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.6");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.11");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();
@@ -970,7 +1001,8 @@ struct RoleObservation final {
     validateToolArray(tools, expectedToolCount);
     return RoleObservation{
         initializeResult.at("serverInfo").at("name").get<std::string>(),
-        tools};
+        tools,
+        instructions};
 }
 
 void validateStatus(
@@ -1165,6 +1197,821 @@ void validateRegistry(
     REQUIRE(observedAliases == expectedAliases);
 }
 
+void runPopulatedWorkspaceRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root)
+{
+    const auto home = root / L"home";
+    const auto workspace = root / L"workspace";
+    const auto packageSource = root / L"unavailable-legacy-source";
+    const auto policySource = root / L"policy-source";
+    std::filesystem::create_directories(home);
+    std::filesystem::create_directories(workspace);
+    std::filesystem::create_directories(policySource);
+    const std::string packageContent =
+        "Follow the stored project instructions.\n" + std::string(17U * 1024U, 'x') +
+        "\nThe final instruction survives content paging.";
+    constexpr std::string_view policyContent{
+        "Read the current code before changing behavior.\n"};
+    const std::string revision(64U, 'd');
+    const auto handshake = handshakeStream();
+    std::string projectId;
+    {
+        McpProcessSession writer{
+            executable, home, workspace, L"primary", L"populated-state-writer"};
+        writer.send(handshake);
+        static_cast<void>(observeRole(writer));
+        writer.send(statusRequest(3));
+        const auto status = successfulToolPayload(writer.awaitFrames(3U), 3);
+        projectId = status.at("workspace").at("project_id").get<std::string>();
+        writer.send(toolRequest(4, "project_memory.remember", Json{
+            {"project_id", projectId}, {"kind", "project_instruction"},
+            {"title", "START-HERE.md"}, {"summary", "Pinned legacy instruction text"},
+            {"body", packageContent}, {"source_kind", "manager_instruction_package"}}));
+        const auto file = successfulToolPayload(writer.awaitFrames(4U), 4);
+        const auto manifest = Json{
+            {"schema", "forge-instruction-package-v1"},
+            {"package_name", "Persisted legacy instructions"},
+            {"package_path", utf8Path(packageSource)}, {"revision", revision},
+            {"files", Json::array({{{"path", "START-HERE.md"},
+                {"record_id", file.at("record_id")}}})}};
+        writer.send(toolRequest(5, "project_memory.remember", Json{
+            {"project_id", projectId}, {"kind", "instruction_package"},
+            {"title", "Persisted legacy instructions"},
+            {"summary", "Legacy package saved before a queue existed"},
+            {"body", manifest.dump()}, {"source_kind", "manager_instruction_package"}}));
+        REQUIRE(successfulToolPayload(writer.awaitFrames(5U), 5).at("ok") == true);
+        writer.finish(5U);
+    }
+    REQUIRE(!std::filesystem::exists(packageSource));
+
+    // This is the durable schema produced by ProjectPolicyService::bind. The
+    // separate serve processes must resolve the same project and profile.
+    const auto policy = Json{{"schema", 2}, {"project", projectId},
+        {"binding", {{"source", utf8Path(policySource)}, {"commit", nullptr},
+            {"revision", revision}, {"entry_count", 1U}, {"coverage_gap_count", 0U},
+            {"bound_at_utc_ms", 1'700'000'000'000LL}}},
+        {"entries", Json::array({{{"path", "POLICY.md"}, {"kind", "file"},
+            {"byte_length", policyContent.size()}, {"content_hash", nullptr},
+            {"content", policyContent}, {"interpretation", "interpreted"},
+            {"coverage_detail", nullptr}}})},
+        {"rules", Json::array()}, {"findings", Json::array()},
+        {"notifications", Json::array()}, {"history", Json::array()}};
+    {
+        std::ofstream output{home / L"memory" /
+            std::filesystem::path{"project-policy-" + projectId + ".json"},
+            std::ios::binary | std::ios::trunc};
+        REQUIRE(output.is_open());
+        output << policy.dump();
+        output.close();
+        REQUIRE(!output.fail());
+    }
+
+    std::string queueRowId;
+    for (const auto role : {std::wstring_view{L"primary"}, std::wstring_view{L"fallback"}}) {
+        McpProcessSession reader{
+            executable, home, workspace, role, L"populated-state-reader"};
+        reader.send(handshake);
+        const auto observed = observeRole(reader);
+        REQUIRE(observed.instructions.find(utf8Path(packageSource)) != std::string::npos);
+        REQUIRE(observed.instructions.find(utf8Path(policySource)) != std::string::npos);
+        reader.send(statusRequest(3));
+        const auto status = successfulToolPayload(reader.awaitFrames(3U), 3);
+        REQUIRE(status.at("workspace").at("project_id") == projectId);
+        const auto& packages = status.at("instruction_packages");
+        REQUIRE(packages.at("available") == true);
+        REQUIRE(packages.at("count") == 1U);
+        REQUIRE(packages.at("packages").at(0).at("path") == utf8Path(packageSource));
+        const auto currentRowId = packages.at("packages").at(0)
+            .at("queue_row_id").get<std::string>();
+        REQUIRE(queueRowId.empty() || queueRowId == currentRowId);
+        queueRowId = currentRowId;
+        REQUIRE(status.at("development_policy").at("active") == true);
+        REQUIRE(status.at("development_policy").at("source") == utf8Path(policySource));
+        REQUIRE(status.at("development_policy").at("revision") == revision);
+
+        reader.send(toolRequest(4, "instruction_package.read",
+            Json{{"queue_row_id", queueRowId}}));
+        const auto firstPage = successfulToolPayload(reader.awaitFrames(4U), 4);
+        REQUIRE(firstPage.at("package").at("revision") == revision);
+        REQUIRE(firstPage.at("entries").size() == 1U);
+        const auto& firstEntry = firstPage.at("entries").at(0);
+        REQUIRE(firstEntry.at("relative_path") == "START-HERE.md");
+        REQUIRE(firstEntry.at("complete") == false);
+        reader.send(toolRequest(5, "instruction_package.read", Json{
+            {"queue_row_id", queueRowId}, {"path", "START-HERE.md"},
+            {"offset", firstEntry.at("next_offset")}}));
+        const auto secondPage = successfulToolPayload(reader.awaitFrames(5U), 5);
+        REQUIRE(secondPage.at("entries").size() == 1U);
+        const auto& secondEntry = secondPage.at("entries").at(0);
+        REQUIRE(secondEntry.at("complete") == true);
+        REQUIRE(firstEntry.at("content").get<std::string>() +
+            secondEntry.at("content").get<std::string>() == packageContent);
+        reader.send(toolRequest(6, "project_policy.read", Json::object()));
+        const auto index = successfulToolPayload(reader.awaitFrames(6U), 6);
+        REQUIRE(index.at("active") == true);
+        REQUIRE(index.at("coverage").size() == 1U);
+        reader.send(toolRequest(7, "project_policy.read", Json{{"path", "POLICY.md"}}));
+        const auto document = successfulToolPayload(reader.awaitFrames(7U), 7);
+        REQUIRE(document.at("content").get<std::string>() == policyContent);
+        REQUIRE(document.at("complete") == true);
+        reader.finish(7U);
+    }
+
+    McpProcessSession clu{
+        executable, home, workspace, L"clu", L"populated-state-clu"};
+    clu.send(handshake);
+    const auto cluObserved = observeRole(clu, 5U);
+    REQUIRE(cluObserved.instructions.find(utf8Path(packageSource)) != std::string::npos);
+    REQUIRE(cluObserved.instructions.find(utf8Path(policySource)) != std::string::npos);
+    clu.send(toolRequest(3, "project_policy.read", Json{{"path", "POLICY.md"}}));
+    REQUIRE(successfulToolPayload(clu.awaitFrames(3U), 3)
+        .at("content").get<std::string>() == policyContent);
+    clu.finish(3U);
+
+    {
+        McpProcessSession deletion{
+            executable, home, workspace, L"primary", L"populated-state-deletion"};
+        deletion.send(handshake);
+        static_cast<void>(observeRole(deletion));
+        deletion.send(toolRequest(3, "project_memory.list_recent", Json{
+            {"project_id", projectId}, {"kinds", Json::array({"instruction_package_queue"})},
+            {"include_body", true}}));
+        const auto queue = successfulToolPayload(deletion.awaitFrames(3U), 3);
+        REQUIRE(queue.at("records").size() == 1U);
+        deletion.send(toolRequest(4, "project_memory.remember", Json{
+            {"project_id", projectId}, {"kind", "instruction_package_queue_order"},
+            {"title", "Explicitly empty queue"}, {"summary", "Operator removed the last package"},
+            {"body", Json{{"schema", "forge-instruction-package-order-v1"},
+                {"project_id", projectId}, {"rows", Json::array()}}.dump()}}));
+        REQUIRE(successfulToolPayload(deletion.awaitFrames(4U), 4).at("ok") == true);
+        deletion.send(toolRequest(5, "project_memory.forget", Json{
+            {"project_id", projectId}, {"id", queue.at("records").at(0).at("id")}}));
+        REQUIRE(successfulToolPayload(deletion.awaitFrames(5U), 5).at("ok") == true);
+        deletion.finish(5U);
+    }
+    {
+        McpProcessSession empty{
+            executable, home, workspace, L"primary", L"populated-state-empty"};
+        empty.send(handshake);
+        const auto observed = observeRole(empty);
+        REQUIRE(observed.instructions.find(utf8Path(packageSource)) == std::string::npos);
+        REQUIRE(observed.instructions.find(utf8Path(policySource)) != std::string::npos);
+        empty.send(statusRequest(3));
+        const auto status = successfulToolPayload(empty.awaitFrames(3U), 3);
+        REQUIRE(status.at("instruction_packages").at("count") == 0U);
+        REQUIRE(status.at("development_policy").at("active") == true);
+        empty.send(toolRequest(4, "project_memory.list_recent", Json{
+            {"project_id", projectId}, {"kinds", Json::array({"instruction_package"})}}));
+        REQUIRE(successfulToolPayload(empty.awaitFrames(4U), 4).at("records").size() == 1U);
+        empty.finish(4U);
+    }
+
+    const auto otherWorkspace = root / L"other-workspace";
+    std::filesystem::create_directories(otherWorkspace);
+    McpProcessSession unrelated{
+        executable, home, otherWorkspace, L"primary", L"populated-state-unrelated"};
+    unrelated.send(handshake);
+    const auto unrelatedObserved = observeRole(unrelated);
+    REQUIRE(unrelatedObserved.instructions.find(utf8Path(packageSource)) == std::string::npos);
+    REQUIRE(unrelatedObserved.instructions.find(utf8Path(policySource)) == std::string::npos);
+    unrelated.send(statusRequest(3));
+    const auto otherStatus = successfulToolPayload(unrelated.awaitFrames(3U), 3);
+    REQUIRE(otherStatus.at("workspace").at("project_id") != projectId);
+    REQUIRE(otherStatus.at("instruction_packages").at("count") == 0U);
+    REQUIRE(otherStatus.at("development_policy").at("active") == false);
+    unrelated.finish(3U);
+}
+
+void runPolicyPagingRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root)
+{
+    constexpr std::size_t SerializedPageLimit = 32U * 1024U;
+    const auto home = root / L"home";
+    const auto workspace = root / L"workspace";
+    const auto otherWorkspace = root / L"other-workspace";
+    const auto packageSource = root / L"saved-package-source";
+    const auto policySource = root / L"policy-source";
+    std::filesystem::create_directories(home);
+    std::filesystem::create_directories(workspace);
+    std::filesystem::create_directories(otherWorkspace);
+    std::filesystem::create_directories(policySource);
+    const auto handshake = handshakeStream();
+    const std::string revision(64U, 'e');
+    const std::string unit = std::string{"\x01\"\\\n"} +
+        "\xE6\xB8\xAC\xE8\xA9\xA6\xF0\x9F\xA7\xAA";
+    std::string documentContent;
+    std::string packageContent;
+    for (std::size_t index{}; index < 4096U; ++index) documentContent += unit;
+    for (std::size_t index{}; index < 2300U; ++index) packageContent += unit;
+    documentContent += "the complete policy ending";
+    packageContent += "the complete package ending";
+    std::string projectId;
+    std::string queueRowId;
+    {
+        McpProcessSession writer{
+            executable, home, workspace, L"fallback", L"policy-paging-writer"};
+        writer.send(handshake);
+        static_cast<void>(observeRole(writer));
+        writer.send(statusRequest(3));
+        projectId = successfulToolPayload(writer.awaitFrames(3U), 3)
+            .at("workspace").at("project_id").get<std::string>();
+        writer.send(toolRequest(4, "project_memory.remember", Json{
+            {"project_id", projectId}, {"kind", "project_instruction"},
+            {"title", "ESCAPED.md"}, {"summary", "Pinned escaped Unicode text"},
+            {"body", packageContent}, {"source_kind", "manager_instruction_package"}}));
+        const auto file = successfulToolPayload(writer.awaitFrames(4U), 4);
+        const auto manifest = Json{{"schema", "forge-instruction-package-v1"},
+            {"package_name", "Escaped instruction package"},
+            {"package_path", utf8Path(packageSource)}, {"revision", revision},
+            {"files", Json::array({{{"path", "ESCAPED.md"},
+                {"record_id", file.at("record_id")}}})}};
+        writer.send(toolRequest(5, "project_memory.remember", Json{
+            {"project_id", projectId}, {"kind", "instruction_package"},
+            {"title", "Escaped instruction package"}, {"summary", "Native envelope regression"},
+            {"body", manifest.dump()}, {"source_kind", "manager_instruction_package"}}));
+        REQUIRE(successfulToolPayload(writer.awaitFrames(5U), 5).at("ok") == true);
+        writer.send(statusRequest(6));
+        const auto savedPackageStatus = successfulToolPayload(writer.awaitFrames(6U), 6);
+        queueRowId = savedPackageStatus.at("instruction_packages").at("packages").at(0)
+            .at("queue_row_id").get<std::string>();
+        writer.finish(6U);
+    }
+    Json entries = Json::array();
+    Json expectedCoverage = Json::array();
+    for (std::size_t index{}; index < 270U; ++index) {
+        const auto path = index == 0U ? std::string{"ESCAPED-POLICY.md"} :
+            "policy/" + std::to_string(index) + "-" + std::string(160U, 'p') + ".md";
+        const auto byteLength = index == 0U ? documentContent.size() : 0U;
+        auto coverage = Json{{"path", path}, {"kind", "file"},
+            {"byte_length", byteLength}, {"content_hash", nullptr},
+            {"interpretation", "interpreted"}, {"coverage_detail", nullptr}};
+        expectedCoverage.push_back(coverage);
+        coverage["content"] = index == 0U ? documentContent : std::string{};
+        entries.push_back(std::move(coverage));
+    }
+    Json findings = Json::array();
+    Json expectedGuidance = Json::array();
+    std::string guidanceContent;
+    for (std::size_t index{}; index < 35U; ++index) guidanceContent += unit;
+    for (std::size_t index{}; index < 120U; ++index) {
+        const auto findingId = "fixture-finding-" + std::to_string(index);
+        const auto ruleId = "fixture-rule-" + std::to_string(index);
+        findings.push_back({{"finding_id", findingId}, {"rule_id", ruleId},
+            {"state", "open"}, {"severity", "warning"}, {"evidence", guidanceContent},
+            {"requested_correction", "Read the complete retained guidance."}});
+        expectedGuidance.push_back({{"finding_id", findingId}, {"rule_id", ruleId},
+            {"evidence", guidanceContent},
+            {"required_correction", "Read the complete retained guidance."}});
+    }
+    auto policy = Json{{"schema", 2}, {"project", projectId},
+        {"binding", {{"source", utf8Path(policySource)}, {"commit", nullptr},
+            {"revision", revision}, {"entry_count", entries.size()},
+            {"coverage_gap_count", 0U}, {"bound_at_utc_ms", 1'700'000'000'000LL}}},
+        {"entries", entries}, {"rules", Json::array()}, {"findings", findings},
+        {"notifications", Json::array({{{"notification_id", "fixture-pending-notification"},
+            {"finding_id", "fixture-finding-0"}, {"state", "pending"},
+            {"rule_id", "fixture-rule-0"}, {"evidence", guidanceContent},
+            {"required_correction", "Retain this pending notification."},
+            {"created_at_utc_ms", 1'700'000'000'000LL}}})},
+        {"history", Json::array()}};
+    const auto policyPath = home / L"memory" /
+        std::filesystem::path{"project-policy-" + projectId + ".json"};
+    const auto savePolicy = [&] {
+        std::ofstream output{policyPath, std::ios::binary | std::ios::trunc};
+        REQUIRE(output.is_open());
+        output << policy.dump();
+        output.close();
+        REQUIRE(!output.fail());
+    };
+    savePolicy();
+    const auto reject = [](const std::vector<Json>& frames, const std::int64_t id,
+                           const std::string_view code) {
+        const auto& result = responseFor(frames, id).at("result");
+        if (result.at("isError") != true) {
+            throw std::runtime_error{"Policy paging rejection id=" + std::to_string(id) +
+                " expected=" + std::string{code} + " actual=" + result.dump().substr(0U, 2048U)};
+        }
+        REQUIRE(result.at("isError") == true);
+        REQUIRE(result.at("structuredContent").at("code") == std::string{code});
+    };
+    Json receivedCoverage = Json::array();
+    Json receivedGuidance = Json::array();
+    const auto retainPage = [&](const Json& page) {
+        REQUIRE(page.dump().size() <= SerializedPageLimit);
+        REQUIRE(page.at("clu_governance_notifications_deferred") == true);
+        REQUIRE(page.at("clu_governance_notifications_read_tool") == "clu.findings");
+        REQUIRE(page.at("active") == true);
+        REQUIRE(page.at("entry_count") == 270U);
+        REQUIRE(page.at("open_findings") == 120U);
+        REQUIRE(page.at("coverage_offset") == receivedCoverage.size());
+        REQUIRE(page.at("guidance_offset") == receivedGuidance.size());
+        for (const auto& entry : page.at("coverage")) receivedCoverage.push_back(entry);
+        for (const auto& guidance : page.at("agent_guidance")) receivedGuidance.push_back(guidance);
+        REQUIRE(page.at("complete").get<bool>() == page.at("next_cursor").is_null());
+    };
+    std::string firstCursor;
+    {
+        McpProcessSession predecessor{
+            executable, home, workspace, L"fallback", L"policy-paging-predecessor"};
+        predecessor.send(handshake);
+        static_cast<void>(observeRole(predecessor));
+        predecessor.send(toolRequest(3, "project_policy.read", Json::object()));
+        const auto first = successfulToolPayload(predecessor.awaitFrames(3U), 3);
+        retainPage(first);
+        REQUIRE(first.at("complete") == false);
+        REQUIRE(!first.at("coverage").empty());
+        REQUIRE(first.at("coverage").size() < expectedCoverage.size());
+        firstCursor = first.at("next_cursor").get<std::string>();
+        predecessor.finish(3U);
+    }
+    {
+        McpProcessSession successor{
+            executable, home, workspace, L"fallback", L"policy-paging-successor"};
+        successor.send(handshake);
+        static_cast<void>(observeRole(successor));
+        std::int64_t id = 2;
+        std::string cursor = firstCursor;
+        bool complete{};
+        std::size_t pages = 1U;
+        while (!complete) {
+            REQUIRE(pages < 24U);
+            successor.send(toolRequest(++id, "project_policy.read", Json{{"cursor", cursor}}));
+            const auto page = successfulToolPayload(successor.awaitFrames(static_cast<std::size_t>(id)), id);
+            retainPage(page);
+            complete = page.at("complete").get<bool>();
+            if (!complete) {
+                const auto next = page.at("next_cursor").get<std::string>();
+                REQUIRE(next != cursor);
+                cursor = next;
+            }
+            ++pages;
+        }
+        REQUIRE(pages > 2U);
+        REQUIRE(receivedCoverage == expectedCoverage);
+        REQUIRE(receivedGuidance == expectedGuidance);
+
+        std::string reconstructed;
+        std::size_t documentPages{};
+        while (reconstructed.size() < documentContent.size()) {
+            REQUIRE(documentPages < 16U);
+            successor.send(toolRequest(++id, "project_policy.read", Json{
+                {"path", "ESCAPED-POLICY.md"}, {"offset", reconstructed.size()}}));
+            const auto page = successfulToolPayload(successor.awaitFrames(static_cast<std::size_t>(id)), id);
+            REQUIRE(page.dump().size() <= SerializedPageLimit);
+            REQUIRE(page.at("clu_governance_notifications_deferred") == true);
+            REQUIRE(page.at("clu_governance_notifications_read_tool") == "clu.findings");
+            const auto content = page.at("content").get<std::string>();
+            REQUIRE(!content.empty());
+            reconstructed += content;
+            REQUIRE(page.at("next_offset") == reconstructed.size());
+            REQUIRE(page.at("complete").get<bool>() == (reconstructed.size() == documentContent.size()));
+            ++documentPages;
+        }
+        REQUIRE(documentPages > 1U);
+        REQUIRE(reconstructed == documentContent);
+
+        const auto& rowId = queueRowId;
+        std::string reconstructedPackage;
+        std::size_t packagePages{};
+        while (reconstructedPackage.size() < packageContent.size()) {
+            REQUIRE(packagePages < 16U);
+            successor.send(toolRequest(++id, "instruction_package.read", Json{
+                {"queue_row_id", rowId}, {"path", "ESCAPED.md"},
+                {"offset", reconstructedPackage.size()}}));
+            const auto page = successfulToolPayload(successor.awaitFrames(static_cast<std::size_t>(id)), id);
+            REQUIRE(page.dump().size() <= SerializedPageLimit);
+            REQUIRE(page.at("clu_governance_notifications_deferred") == true);
+            REQUIRE(page.at("clu_governance_notifications_read_tool") == "clu.findings");
+            REQUIRE(page.at("entries").size() == 1U);
+            const auto& entry = page.at("entries").at(0);
+            const auto content = entry.at("content").get<std::string>();
+            REQUIRE(!content.empty());
+            reconstructedPackage += content;
+            REQUIRE(entry.at("next_offset") == reconstructedPackage.size());
+            REQUIRE(entry.at("complete").get<bool>() == (reconstructedPackage.size() == packageContent.size()));
+            ++packagePages;
+        }
+        REQUIRE(packagePages > 1U);
+        REQUIRE(reconstructedPackage == packageContent);
+
+        const std::string escapedLineUnit = std::string{"\x01\"\\\x02"} +
+            "\xE6\xB8\xAC\xE8\xA9\xA6\xF0\x9F\xA7\xAA";
+        std::string largeEscapedLine;
+        for (std::size_t index{}; index < 4096U; ++index) largeEscapedLine += escapedLineUnit;
+        largeEscapedLine += "\nshort line\nfinal line";
+        const std::string largeAsciiLine = std::string(96U * 1024U, 'a') +
+            "\nshort line\nfinal line";
+        std::string shortLines;
+        for (std::size_t index{}; index < 500U; ++index) {
+            shortLines += std::to_string(index) + ":";
+            for (std::size_t column{}; column < 12U; ++column) shortLines += escapedLineUnit;
+            shortLines += '\n';
+        }
+        const auto readFileCompletely = [&](const std::string& name,
+                                            const std::string& source,
+                                            const bool expectBytePaging) {
+            {
+                std::ofstream file{workspace / name, std::ios::binary};
+                REQUIRE(file.is_open());
+                file << source;
+                file.close();
+                REQUIRE(!file.fail());
+            }
+            std::string reconstructedFile;
+            Json arguments{{"path", name}};
+            const auto totalLines = static_cast<std::size_t>(
+                std::count(source.begin(), source.end(), '\n')) + 1U;
+            std::size_t filePages{};
+            bool sawBytePage{};
+            bool sawLinePage{};
+            bool hasMore = true;
+            while (hasMore) {
+                REQUIRE(filePages < 32U);
+                const auto sourceStart = reconstructedFile.size();
+                successor.send(toolRequest(++id, "fs_read", arguments));
+                const auto page = successfulToolPayload(successor.awaitFrames(static_cast<std::size_t>(id)), id);
+                REQUIRE(page.dump().size() <= SerializedPageLimit);
+                REQUIRE(page.at("clu_governance_notifications_deferred") == true);
+                REQUIRE(page.at("clu_governance_notifications_read_tool") == "clu.findings");
+                REQUIRE(page.at("size") == source.size());
+                REQUIRE(page.at("total_lines") == totalLines);
+                const auto content = page.at("content").get<std::string>();
+                REQUIRE(!content.empty());
+                REQUIRE(source.compare(sourceStart, content.size(), content) == 0);
+                const auto expectedStartLine = static_cast<std::size_t>(std::count(
+                    source.begin(), source.begin() + static_cast<std::ptrdiff_t>(sourceStart), '\n')) + 1U;
+                REQUIRE(page.at("start_line") == expectedStartLine);
+                reconstructedFile += content;
+                hasMore = page.at("has_more").get<bool>();
+                if (!page.at("byte_offset").is_null()) {
+                    sawBytePage = true;
+                    REQUIRE(page.at("byte_offset") == sourceStart);
+                    const auto pageNewlines = static_cast<std::size_t>(
+                        std::count(content.begin(), content.end(), '\n'));
+                    const auto expectedEndLine = expectedStartLine + pageNewlines -
+                        (content.ends_with('\n') ? 1U : 0U);
+                    REQUIRE(page.at("end_line") == expectedEndLine);
+                    REQUIRE(page.at("line_count") == expectedEndLine - expectedStartLine + 1U);
+                    REQUIRE(page.at("next_offset").is_null());
+                    if (hasMore) {
+                        REQUIRE(page.at("next_byte_offset") == reconstructedFile.size());
+                        arguments = Json{{"path", name}, {"byte_offset", page.at("next_byte_offset")}};
+                    } else {
+                        REQUIRE(page.at("next_byte_offset").is_null());
+                    }
+                } else {
+                    sawLinePage = true;
+                    REQUIRE(page.at("next_byte_offset").is_null());
+                    const auto lineCount = static_cast<std::size_t>(
+                        std::count(content.begin(), content.end(), '\n')) + 1U;
+                    REQUIRE(page.at("line_count") == lineCount);
+                    REQUIRE(page.at("end_line") == expectedStartLine + lineCount - 1U);
+                    if (hasMore) {
+                        REQUIRE(page.at("next_offset") == expectedStartLine + lineCount);
+                        REQUIRE(source.at(reconstructedFile.size()) == '\n');
+                        reconstructedFile += '\n';
+                        arguments = Json{{"path", name}, {"offset", page.at("next_offset")},
+                            {"length", totalLines}};
+                    }
+                }
+                ++filePages;
+            }
+            REQUIRE(filePages > 1U);
+            REQUIRE(reconstructedFile == source);
+            REQUIRE(sawBytePage == expectBytePaging);
+            if (!expectBytePaging) REQUIRE(sawLinePage);
+        };
+        readFileCompletely("large-ascii-line.txt", largeAsciiLine, true);
+        readFileCompletely("large-escaped-unicode-line.txt", largeEscapedLine, true);
+        readFileCompletely("bounded-whole-lines.txt", shortLines, false);
+
+        const auto nearEndPath = workspace / "near-limit-eof.txt";
+        std::size_t nearEndBytes = SerializedPageLimit;
+        Json beforeProjection{{"ok", true}, {"path", utf8Path(nearEndPath)},
+            {"content", std::string(nearEndBytes, 'a')}, {"size", nearEndBytes},
+            {"total_lines", 1U}, {"start_line", 1U}, {"end_line", 1U}, {"line_count", 1U},
+            {"has_more", false}, {"next_offset", nullptr}, {"byte_offset", nullptr},
+            {"next_byte_offset", nullptr},
+            {"note", "Complete file contents (1 lines). Do not re-read this path unless the file changes."},
+            {"clu_governance_notifications_deferred", true},
+            {"clu_governance_notifications_read_tool", "clu.findings"}};
+        while (beforeProjection.dump().size() > SerializedPageLimit + 1U) {
+            REQUIRE(nearEndBytes > 0U);
+            --nearEndBytes;
+            beforeProjection["content"] = std::string(nearEndBytes, 'a');
+            beforeProjection["size"] = nearEndBytes;
+        }
+        REQUIRE(beforeProjection.dump().size() == SerializedPageLimit + 1U);
+        const std::string nearEndContent(nearEndBytes, 'a');
+        {
+            std::ofstream file{nearEndPath, std::ios::binary};
+            REQUIRE(file.is_open());
+            file << nearEndContent;
+            file.close();
+            REQUIRE(!file.fail());
+        }
+        successor.send(toolRequest(++id, "fs_read", Json{{"path", "near-limit-eof.txt"}}));
+        const auto nearEnd = successfulToolPayload(successor.awaitFrames(static_cast<std::size_t>(id)), id);
+        REQUIRE(nearEnd.dump().size() <= SerializedPageLimit);
+        REQUIRE(nearEnd.at("content").get<std::string>() == nearEndContent);
+        REQUIRE(nearEnd.at("has_more") == false);
+        REQUIRE(nearEnd.at("next_offset").is_null());
+        REQUIRE(nearEnd.at("next_byte_offset").is_null());
+        REQUIRE(nearEnd.at("total_lines") == 1U);
+        REQUIRE(nearEnd.at("end_line") == 1U);
+        REQUIRE(nearEnd.at("line_count") == 1U);
+
+        const auto rejectedRequest = [&](const Json& arguments, const std::string_view code) {
+            successor.send(toolRequest(++id, "project_policy.read", arguments));
+            reject(successor.awaitFrames(static_cast<std::size_t>(id)), id, code);
+        };
+        rejectedRequest(Json{{"cursor", "not a cursor"}}, "invalid_request");
+        rejectedRequest(Json{{"cursor", firstCursor}, {"path", "ESCAPED-POLICY.md"}}, "invalid_request");
+        auto invalidOffset = Json::parse(firstCursor);
+        invalidOffset["coverage_offset"] = expectedCoverage.size() + 1U;
+        rejectedRequest(Json{{"cursor", invalidOffset.dump()}}, "invalid_request");
+        const auto continuationByte = documentContent.find("\xE6\xB8\xAC") + 1U;
+        rejectedRequest(Json{{"path", "ESCAPED-POLICY.md"}, {"offset", continuationByte}}, "invalid_request");
+        auto endCursor = Json::parse(firstCursor);
+        endCursor["coverage_offset"] = expectedCoverage.size();
+        endCursor["guidance_offset"] = expectedGuidance.size();
+        successor.send(toolRequest(++id, "project_policy.read", Json{{"cursor", endCursor.dump()}}));
+        const auto end = successfulToolPayload(successor.awaitFrames(static_cast<std::size_t>(id)), id);
+        REQUIRE(end.at("complete") == true);
+        REQUIRE(end.at("coverage").empty());
+        REQUIRE(end.at("agent_guidance").empty());
+        REQUIRE(end.at("next_cursor").is_null());
+        successor.finish(static_cast<std::size_t>(id));
+    }
+    {
+        McpProcessSession unrelated{
+            executable, home, otherWorkspace, L"fallback", L"policy-paging-unrelated"};
+        unrelated.send(handshake);
+        static_cast<void>(observeRole(unrelated));
+        unrelated.send(toolRequest(3, "project_policy.read", Json{{"cursor", firstCursor}}));
+        reject(unrelated.awaitFrames(3U), 3, "project_scope_mismatch");
+        unrelated.finish(3U);
+    }
+    {
+        std::ifstream saved{policyPath, std::ios::binary};
+        REQUIRE(saved.is_open());
+        const auto durable = Json::parse(saved);
+        REQUIRE(durable.at("notifications").size() == 1U);
+        REQUIRE(durable.at("notifications").at(0).at("state") == "pending");
+        REQUIRE(!durable.at("notifications").at(0).contains("delivered_at_utc_ms"));
+    }
+    policy["binding"]["revision"] = std::string(64U, 'f');
+    savePolicy();
+    {
+        McpProcessSession stale{
+            executable, home, workspace, L"fallback", L"policy-paging-stale"};
+        stale.send(handshake);
+        static_cast<void>(observeRole(stale));
+        stale.send(toolRequest(3, "project_policy.read", Json{{"cursor", firstCursor}}));
+        reject(stale.awaitFrames(3U), 3, "conflict");
+        stale.finish(3U);
+    }
+    policy["binding"]["revision"] = revision;
+    policy["entries"][1]["path"] = "same-revision-changed-inventory.md";
+    savePolicy();
+    {
+        McpProcessSession changed{
+            executable, home, workspace, L"fallback", L"policy-paging-changed-index"};
+        changed.send(handshake);
+        static_cast<void>(observeRole(changed));
+        changed.send(toolRequest(3, "project_policy.read", Json{{"cursor", firstCursor}}));
+        reject(changed.awaitFrames(3U), 3, "conflict");
+        changed.finish(3U);
+    }
+    policy["entries"][1] = entries.at(1);
+    policy["findings"][0]["requested_correction"] = "Changed guidance with the same policy revision.";
+    savePolicy();
+    {
+        McpProcessSession changedGuidance{
+            executable, home, workspace, L"fallback", L"policy-paging-changed-guidance"};
+        changedGuidance.send(handshake);
+        static_cast<void>(observeRole(changedGuidance));
+        changedGuidance.send(toolRequest(3, "project_policy.read", Json{{"cursor", firstCursor}}));
+        reject(changedGuidance.awaitFrames(3U), 3, "conflict");
+        changedGuidance.finish(3U);
+    }
+    policy["entries"][0]["path"] = std::string(40U * 1024U, 'p');
+    savePolicy();
+    {
+        McpProcessSession oversized{
+            executable, home, workspace, L"fallback", L"policy-paging-oversized-entry"};
+        oversized.send(handshake);
+        static_cast<void>(observeRole(oversized));
+        oversized.send(toolRequest(3, "project_policy.read", Json::object()));
+        reject(oversized.awaitFrames(3U), 3, "payload_too_large");
+        oversized.finish(3U);
+    }
+    policy["entries"] = Json::array();
+    policy["findings"] = Json::array();
+    policy["binding"]["entry_count"] = 0U;
+    savePolicy();
+    {
+        McpProcessSession empty{
+            executable, home, workspace, L"fallback", L"policy-paging-empty"};
+        empty.send(handshake);
+        static_cast<void>(observeRole(empty));
+        empty.send(toolRequest(3, "project_policy.read", Json::object()));
+        const auto index = successfulToolPayload(empty.awaitFrames(3U), 3);
+        REQUIRE(index.at("complete") == true);
+        REQUIRE(index.at("coverage").empty());
+        REQUIRE(index.at("agent_guidance").empty());
+        REQUIRE(index.at("next_cursor").is_null());
+        REQUIRE(index.at("entry_count") == 0U);
+        REQUIRE(index.dump().size() <= SerializedPageLimit);
+        empty.finish(3U);
+    }
+}
+
+void runFragmentedToolResultRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root)
+{
+    const auto home = root / L"home";
+    const auto workspace = root / L"workspace";
+    const auto outside = root / L"outside";
+    std::filesystem::create_directories(home);
+    std::filesystem::create_directories(workspace);
+    std::filesystem::create_directories(outside);
+    const auto slashVariants = [](std::string native) {
+        auto forward = native;
+        std::replace(forward.begin(), forward.end(), '\\', '/');
+        auto mixed = forward;
+        bool alternate{};
+        for (auto& character : mixed) {
+            if (character == '/') {
+                alternate = !alternate;
+                if (alternate) character = '\\';
+            }
+        }
+        return std::vector<std::string>{std::move(native), std::move(forward), std::move(mixed)};
+    };
+    const auto cwdVariants = slashVariants(utf8Path(workspace));
+    const auto readPath = workspace / L"slash-read.txt";
+    const std::string readText = "Exact content through separator variants.\n";
+    {
+        std::ofstream file{readPath, std::ios::binary};
+        REQUIRE(file.is_open());
+        file << readText;
+        REQUIRE(file.good());
+    }
+    McpProcessSession reader{
+        executable, home, workspace, L"fallback", L"fragmented-tool-result"};
+    reader.send(handshakeStream());
+    static_cast<void>(observeRole(reader));
+    std::int64_t id = 3;
+    for (const auto& cwd : cwdVariants) {
+        reader.send(toolRequest(id, "shell_exec", Json{
+            {"command", "Write-Output ('Z' * 60000)"}, {"timeout_sec", 15U}, {"cwd", cwd}}));
+        const auto frames = reader.awaitFrames(static_cast<std::size_t>(id));
+        const auto result = successfulToolPayload(frames, id);
+        if (!result.value("ok", false)) {
+            throw std::runtime_error{"Explicit shell cwd rejected: " + cwd + " => " + result.dump()};
+        }
+        REQUIRE(responseFor(frames, id).at("result").at("content").size() > 1U);
+        REQUIRE(result.at("ok") == true);
+        REQUIRE(result.at("exit_code") == 0);
+        REQUIRE(result.at("stdout_truncated") == false);
+        REQUIRE(normalizedPathKey(result.at("cwd").get<std::string>()) ==
+                normalizedPathKey(utf8Path(workspace)));
+        const auto output = result.at("stdout").get<std::string>();
+        REQUIRE(output == std::string(60000U, 'Z') + "\r\n" ||
+                output == std::string(60000U, 'Z') + "\n");
+        REQUIRE(result.dump().size() > 50000U);
+        ++id;
+    }
+    for (const auto& path : slashVariants(utf8Path(readPath))) {
+        reader.send(toolRequest(id, "fs_read", Json{{"path", path}}));
+        const auto result = successfulToolPayload(
+            reader.awaitFrames(static_cast<std::size_t>(id)), id);
+        REQUIRE(result.at("content") == readText);
+        REQUIRE(result.at("has_more") == false);
+        REQUIRE(normalizedPathKey(result.at("path").get<std::string>()) ==
+                normalizedPathKey(utf8Path(readPath)));
+        ++id;
+    }
+    const std::vector<std::pair<std::string, std::string>> unsafe{
+        {slashVariants(utf8Path(outside)).at(1), "path_outside_authority"},
+        {"//?/" + cwdVariants.at(1), "path_outside_authority"},
+        {cwdVariants.at(1) + "/./", "invalid_request"}};
+    for (const auto& [cwd, code] : unsafe) {
+        reader.send(toolRequest(id, "shell_exec", Json{
+            {"command", "Write-Output 'UNSAFE-CWD-EXECUTED'"}, {"cwd", cwd}}));
+        const auto frames = reader.awaitFrames(static_cast<std::size_t>(id));
+        const auto& rejected = responseFor(frames, id).at("result").at("structuredContent");
+        REQUIRE(rejected.at("ok") == false);
+        REQUIRE(rejected.at("code") == code);
+        REQUIRE(rejected.value("stdout", std::string{}).find("UNSAFE-CWD-EXECUTED") == std::string::npos);
+        ++id;
+    }
+    reader.finish(static_cast<std::size_t>(id - 1));
+}
+
+void runAgentLifecycleRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root)
+{
+    const auto home = root / L"home";
+    const auto workspace = root / L"workspace";
+    const auto otherWorkspace = root / L"other-workspace";
+    std::filesystem::create_directories(home);
+    std::filesystem::create_directories(workspace);
+    std::filesystem::create_directories(otherWorkspace);
+    const auto handshake = handshakeStream();
+    std::string sessionId;
+    std::string projectId;
+    std::string originalClientId;
+    {
+        McpProcessSession owner{
+            executable, home, workspace, L"fallback", L"agent-lifecycle-owner"};
+        owner.send(handshake);
+        static_cast<void>(observeRole(owner));
+        owner.send(statusRequest(3));
+        const auto initial = successfulToolPayload(owner.awaitFrames(3U), 3);
+        projectId = initial.at("workspace").at("project_id").get<std::string>();
+        originalClientId = initial.at("client_id").get<std::string>();
+        owner.send(toolRequest(4, "agent_run_start", Json{
+            {"agent_id", "debug"}, {"goal", "Verify durable agent lifecycle"},
+            {"cwd", utf8Path(workspace)}}));
+        const auto started = successfulToolPayload(owner.awaitFrames(4U), 4);
+        sessionId = started.at("session_id").get<std::string>();
+        REQUIRE(canonicalUuid(sessionId));
+        REQUIRE(started.at("session").at("client_id") == originalClientId);
+        REQUIRE(started.at("session").at("status") == "open");
+        owner.send(toolRequest(5, "agent_run_status", Json{{"session_id", sessionId}}));
+        const auto open = successfulToolPayload(owner.awaitFrames(5U), 5);
+        REQUIRE(open.at("session").at("id") == sessionId);
+        REQUIRE(open.at("must_complete") == true);
+        REQUIRE(open.at("reattached") == false);
+        REQUIRE(open.at("active_binding").at("session_id") == sessionId);
+
+        {
+            McpProcessSession unrelated{
+                executable, home, otherWorkspace, L"fallback", L"agent-lifecycle-unrelated"};
+            unrelated.send(handshake);
+            static_cast<void>(observeRole(unrelated));
+            unrelated.send(statusRequest(3));
+            const auto other = successfulToolPayload(unrelated.awaitFrames(3U), 3);
+            REQUIRE(other.at("workspace").at("project_id") != projectId);
+            unrelated.send(toolRequest(4, "agent_run_status", Json{{"session_id", sessionId}}));
+            const auto frames = unrelated.awaitFrames(4U);
+            const auto& rejected = responseFor(frames, 4).at("result");
+            REQUIRE(rejected.at("isError") == true);
+            REQUIRE(rejected.at("structuredContent").at("code") == "unauthorized");
+            REQUIRE(rejected.at("structuredContent").at("message").get<std::string>()
+                .find("durable run project") != std::string::npos);
+            unrelated.finish(4U);
+        }
+        owner.send(toolRequest(6, "agent_run_status", Json{{"session_id", sessionId}}));
+        const auto retained = successfulToolPayload(owner.awaitFrames(6U), 6);
+        REQUIRE(retained.at("session").at("client_id") == originalClientId);
+        REQUIRE(retained.at("must_complete") == true);
+        owner.finish(6U);
+    }
+    {
+        McpProcessSession successor{
+            executable, home, workspace, L"fallback", L"agent-lifecycle-successor"};
+        successor.send(handshake);
+        static_cast<void>(observeRole(successor));
+        successor.send(statusRequest(3));
+        const auto initial = successfulToolPayload(successor.awaitFrames(3U), 3);
+        REQUIRE(initial.at("workspace").at("project_id") == projectId);
+        const auto clientId = initial.at("client_id").get<std::string>();
+        REQUIRE(clientId != originalClientId);
+        successor.send(toolRequest(4, "agent_run_status", Json{{"session_id", sessionId}}));
+        const auto reattached = successfulToolPayload(successor.awaitFrames(4U), 4);
+        REQUIRE(reattached.at("session").at("id") == sessionId);
+        REQUIRE(reattached.at("session").at("client_id") == clientId);
+        REQUIRE(reattached.at("reattached") == true);
+        REQUIRE(reattached.at("must_complete") == true);
+        REQUIRE(reattached.at("active_binding").at("session_id") == sessionId);
+        successor.send(toolRequest(5, "agent_run_complete", Json{
+            {"session_id", sessionId}, {"report", {
+                {"symptom", "Status previously rejected a just-started run"},
+                {"repro", "Actual MCP start, status, restart, reattach, completion"},
+                {"root_cause", "Lifecycle capabilities omitted resolved project scope"},
+                {"fix", "Start and status require registered project scope"},
+                {"verify", "Cross-project status rejected; same-project lifecycle succeeds"}}}}));
+        const auto completed = successfulToolPayload(successor.awaitFrames(5U), 5);
+        REQUIRE(completed.at("schema_complete") == true);
+        REQUIRE(completed.at("missing_schema_keys").empty());
+        REQUIRE(completed.at("session").at("status") == "closed");
+        successor.send(toolRequest(6, "agent_run_status", Json{{"session_id", sessionId}}));
+        const auto closed = successfulToolPayload(successor.awaitFrames(6U), 6);
+        REQUIRE(closed.at("session").at("id") == sessionId);
+        REQUIRE(closed.at("session").at("status") == "closed");
+        REQUIRE(closed.at("must_complete") == false);
+        REQUIRE(closed.at("active_binding").is_null());
+        successor.finish(6U);
+    }
+}
+
 void run(
     const std::filesystem::path& executable,
     const std::filesystem::path& goldenPath)
@@ -1291,9 +2138,27 @@ void run(
     REQUIRE(checkpoint.at("action") == "checkpoint");
     REQUIRE(checkpoint.at("handoff_id").is_string());
 
+    // An explicit project on the checkpoint scopes that call only. Default
+    // recovery must retain A instead of adopting the globally latest B packet.
     verifier.send(toolRequest(6, "context_get", Json::object()));
-    const auto recovered = successfulToolPayload(
+    const auto defaultRecovery = successfulToolPayload(
         verifier.awaitFrames(6U), 6);
+    REQUIRE(defaultRecovery.at("ok") == true);
+    REQUIRE(defaultRecovery.at("found") == false);
+    verifier.send(statusRequest(7));
+    const auto unchangedWorkspace = successfulToolPayload(
+        verifier.awaitFrames(7U), 7);
+    REQUIRE(unchangedWorkspace.at("workspace").at("project_id") != projectId);
+    REQUIRE(normalizedPathKey(unchangedWorkspace.at("workspace")
+                .at("project_root").get<std::string>()) ==
+            normalizedPathKey(utf8Path(std::filesystem::canonical(workspace))));
+
+    // Explicit recovery still refreshes live registry-backed authority and
+    // adopts the registered project that was added after server launch.
+    verifier.send(toolRequest(8, "context_get",
+        Json{{"handoff_id", checkpoint.at("handoff_id")}}));
+    const auto recovered = successfulToolPayload(
+        verifier.awaitFrames(8U), 8);
     REQUIRE(recovered.at("ok") == true);
     REQUIRE(recovered.at("found") == true);
     REQUIRE(recovered.at("workspace_project_id") == projectId);
@@ -1304,11 +2169,11 @@ void run(
     constexpr std::string_view dynamicFileName{"dynamic-project-proof.txt"};
     constexpr std::string_view dynamicContent{"project B resolved in-process"};
     verifier.send(toolRequest(
-        7,
+        9,
         "fs_write",
         Json{{"path", std::string{dynamicFileName}},
              {"content", std::string{dynamicContent}}}));
-    const auto written = successfulToolPayload(verifier.awaitFrames(7U), 7);
+    const auto written = successfulToolPayload(verifier.awaitFrames(9U), 9);
     REQUIRE(written.at("ok") == true);
     REQUIRE(written.at("bytes_written") == dynamicContent.size());
     const auto dynamicFile = workspaceB / std::string{dynamicFileName};
@@ -1321,7 +2186,7 @@ void run(
     std::string dynamicBytes{
         std::istreambuf_iterator<char>{dynamicInput}, std::istreambuf_iterator<char>{}};
     REQUIRE(dynamicBytes == dynamicContent);
-    verifier.finish(7U);
+    verifier.finish(9U);
 
     // The deployment preflight intentionally supplies a present-but-empty
     // deployment ID so the child cannot inherit an ambient installed revision.
@@ -1363,6 +2228,10 @@ void run(
     REQUIRE(std::filesystem::is_regular_file(isolatedHome / L"store.sqlite"));
 
     validateRegistry(home, {workspace, workspaceB});
+    runPopulatedWorkspaceRegression(executable, sharedRoot / L"populated-state");
+    runAgentLifecycleRegression(executable, sharedRoot / L"agent-lifecycle");
+    runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
+    runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
 }
 
 } // namespace

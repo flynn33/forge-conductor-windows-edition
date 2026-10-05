@@ -254,6 +254,133 @@ void testEveryMergePublishesFreshRevisionBytes()
             "The new shared revision was not applied to both Forge roles.");
 }
 
+void testSelectedProjectBindingAndRepair()
+{
+    const auto binary = path("C:\\Forge\\forge-conductor.exe");
+    const auto home = path("C:\\Forge\\home");
+    const auto project = parse<Domain::ProjectId>("10000000-0000-4000-8000-000000000001");
+    const auto projectRoot = path("D:\\Projects\\Selected workspace");
+    const auto deployment = revision("selected-project-revision");
+    const auto original = merged(revision("old-selected-project-revision"));
+    const auto encoded = take(LMStudioConfigurationCodec::mergeForgeServers(
+        original, binary, home, deployment, project, projectRoot));
+    const auto document = take(LMStudioConfigurationCodec::parse(encoded));
+    const auto json = Json::parse(document.sourceUtf8());
+    for (const auto* const id : {
+             LMStudioPrimaryServerId, LMStudioFallbackServerId, LMStudioCluServerId}) {
+        const auto& entry = json.at("mcpServers").at(id);
+        require(entry.at("args") == Json::array({"serve", "--project-id", project.value()}),
+            "A selected-project role omitted its explicit registered project ID.");
+        require(entry.at("cwd").get<std::string>() == projectRoot.value(),
+            "A selected-project role omitted its canonical project working directory.");
+    }
+    require(json.at("mcpServers").at("keep-me").at("foreign") == 17,
+        "Project binding changed an unrelated MCP server.");
+    require(json.at("mcpServers").at(LMStudioPrimaryServerId)
+            .at("env").at("FOREIGN_ENV") == "keep",
+        "Project binding removed an unrelated environment variable.");
+    require(take(LMStudioConfigurationCodec::inspect(
+        document, binary, home, project, projectRoot)).registered,
+        "Selected-project registrations were not recognized.");
+    require(take(LMStudioConfigurationCodec::inspect(document, binary, home)).registered,
+        "Generic inspection rejected valid explicit project registrations.");
+
+    const auto nextProject = parse<Domain::ProjectId>("20000000-0000-4000-8000-000000000002");
+    const auto nextRoot = path("D:\\Projects\\Next workspace");
+    const auto repaired = take(LMStudioConfigurationCodec::parse(take(
+        LMStudioConfigurationCodec::mergeForgeServers(document, binary, home,
+            revision("next-project-revision"), nextProject, nextRoot))));
+    require(take(LMStudioConfigurationCodec::inspect(
+        repaired, binary, home, nextProject, nextRoot)).registered,
+        "Repair did not replace all three prior project bindings.");
+    require(!take(LMStudioConfigurationCodec::inspect(
+        repaired, binary, home, project, projectRoot)).registered,
+        "Inspection credited the old project after selected-project repair.");
+}
+
+void testSelectedProjectBindingDriftFailsClosed()
+{
+    const auto binary = path("C:\\Forge\\forge-conductor.exe");
+    const auto home = path("C:\\Forge\\home");
+    const auto project = parse<Domain::ProjectId>("10000000-0000-4000-8000-000000000001");
+    const auto projectRoot = path("D:\\Projects\\Selected workspace");
+    const auto good = take(LMStudioConfigurationCodec::parse(take(
+        LMStudioConfigurationCodec::mergeForgeServers(LMStudioConfigurationCodec::empty(),
+            binary, home, revision("selected-project-revision"), project, projectRoot))));
+    for (const auto* const id : {
+             LMStudioPrimaryServerId, LMStudioFallbackServerId, LMStudioCluServerId}) {
+        const auto inspectMutated = [&](const auto& mutation) {
+            auto json = Json::parse(good.sourceUtf8());
+            mutation(json["mcpServers"][id]);
+            return take(LMStudioConfigurationCodec::inspect(take(
+                LMStudioConfigurationCodec::parse(bytes(json.dump()))),
+                binary, home, project, projectRoot));
+        };
+        const auto wrongProject = inspectMutated([](Json& entry) {
+            entry["args"][2] = "20000000-0000-4000-8000-000000000002";
+        });
+        require(!wrongProject.registered && wrongProject.detail.find("project binding") != std::string::npos,
+            "A role bound to another project was not reported as project drift.");
+        require(!inspectMutated([](Json& entry) { entry["args"] = Json::array({"serve"}); }).registered,
+            "A missing explicit selected-project argument was accepted.");
+        require(!inspectMutated([](Json& entry) { entry["args"][2] = "invalid-project"; }).registered,
+            "An invalid project UUID was accepted.");
+        require(!inspectMutated([](Json& entry) { entry["args"][1] = "--home"; }).registered,
+            "A different CLI option was accepted as project binding.");
+        require(!inspectMutated([](Json& entry) { entry["args"].push_back("extra"); }).registered,
+            "Extra arguments were accepted on a bound registration.");
+        const auto wrongRoot = inspectMutated([](Json& entry) { entry["cwd"] = "D:\\Other workspace"; });
+        require(!wrongRoot.registered && wrongRoot.detail.find("working directory") != std::string::npos,
+            "A wrong selected working directory was not reported as drift.");
+        require(!inspectMutated([](Json& entry) { entry.erase("cwd"); }).registered,
+            "A missing selected working directory was accepted.");
+        require(!inspectMutated([](Json& entry) { entry["cwd"] = 4; }).registered,
+            "A non-string selected working directory was accepted.");
+    }
+    requireError(LMStudioConfigurationCodec::inspect(good, binary, home, project),
+        Domain::ErrorCodes::InvalidRequest, "Inspection accepted a project ID without a root.");
+    requireError(LMStudioConfigurationCodec::inspect(good, binary, home, std::nullopt, projectRoot),
+        Domain::ErrorCodes::InvalidRequest, "Inspection accepted a project root without an ID.");
+    requireError(LMStudioConfigurationCodec::mergeForgeServers(good, binary, home,
+        revision("partial-project-revision"), project),
+        Domain::ErrorCodes::InvalidRequest, "Merge accepted a project ID without a root.");
+    requireError(LMStudioConfigurationCodec::mergeForgeServers(good, binary, home,
+        revision("partial-project-revision"), std::nullopt, projectRoot),
+        Domain::ErrorCodes::InvalidRequest, "Merge accepted a project root without an ID.");
+}
+
+void testUnselectedRepairPreservesExplicitProjectBinding()
+{
+    const auto binary = path("C:\\Forge\\forge-conductor.exe");
+    const auto home = path("C:\\Forge\\home");
+    const auto project = parse<Domain::ProjectId>("10000000-0000-4000-8000-000000000001");
+    const auto projectRoot = path("D:\\Projects\\Selected workspace");
+    const auto selected = take(LMStudioConfigurationCodec::parse(take(
+        LMStudioConfigurationCodec::mergeForgeServers(merged(revision("legacy-revision")),
+            binary, home, revision("selected-project-revision"), project, projectRoot))));
+    const auto repaired = take(LMStudioConfigurationCodec::parse(take(
+        LMStudioConfigurationCodec::mergeForgeServers(selected, binary, home,
+            revision("unselected-repair-revision")))));
+    require(take(LMStudioConfigurationCodec::inspect(
+        repaired, binary, home, project, projectRoot)).registered,
+        "Repair without a selection silently removed the existing project binding.");
+
+    auto malformed = Json::parse(selected.sourceUtf8());
+    malformed["mcpServers"][LMStudioPrimaryServerId]["args"][2] = "invalid-project";
+    const auto fixed = take(LMStudioConfigurationCodec::parse(take(
+        LMStudioConfigurationCodec::mergeForgeServers(take(
+            LMStudioConfigurationCodec::parse(bytes(malformed.dump()))), binary, home,
+            revision("malformed-binding-repair")))));
+    const auto fixedJson = Json::parse(fixed.sourceUtf8());
+    require(fixedJson.at("mcpServers").at(LMStudioPrimaryServerId).at("args") == Json::array({"serve"}),
+        "Unselected repair preserved malformed explicit project arguments.");
+    require(fixedJson.at("mcpServers").at(LMStudioPrimaryServerId)
+            .at("cwd").get<std::string>() == projectRoot.value(),
+        "Unselected repair removed the existing working directory.");
+    require(take(LMStudioConfigurationCodec::inspect(fixed, binary, home)).registered,
+        "Unselected repair did not produce supported legacy or explicit role arguments.");
+}
+
 } // namespace
 
 void registerLMStudioConfigurationCodecTests(TestRegistry& tests)
@@ -266,6 +393,12 @@ void registerLMStudioConfigurationCodecTests(TestRegistry& tests)
             testDriftMatrixFailsClosed);
     addTest(tests, "lmstudio.codec.fresh-revision",
             testEveryMergePublishesFreshRevisionBytes);
+    addTest(tests, "lmstudio.codec.selected-project-binding",
+            testSelectedProjectBindingAndRepair);
+    addTest(tests, "lmstudio.codec.selected-project-drift",
+            testSelectedProjectBindingDriftFailsClosed);
+    addTest(tests, "lmstudio.codec.preserve-project-without-selection",
+            testUnselectedRepairPreservesExplicitProjectBinding);
 }
 
 } // namespace ForgeConductor::Tests

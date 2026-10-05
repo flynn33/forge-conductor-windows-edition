@@ -315,7 +315,8 @@ private:
     const std::string_view role,
     const Domain::DeploymentId& deploymentId,
     std::optional<std::string>& sharedCommand,
-    std::optional<std::string>& sharedHome)
+    std::optional<std::string>& sharedHome,
+    std::optional<std::string>& sharedBinding)
 {
     const auto entry = servers.find(serverName);
     if (entry == servers.end() || !entry->is_object()) {
@@ -326,13 +327,23 @@ private:
     const auto timeout = entry->find("timeout");
     const auto environment = entry->find("env");
     if (!command || command->empty() || args == entry->end() || !args->is_array() ||
-        args->size() != 1U || !(*args)[0].is_string() ||
+        (args->size() != 1U && args->size() != 3U) || !(*args)[0].is_string() ||
         (*args)[0].get<std::string>() != "serve" ||
         timeout == entry->end() || !timeout->is_number_integer() ||
         *timeout != LMStudioMcpRequestTimeoutMilliseconds ||
         environment == entry->end() || !environment->is_object()) {
         return false;
     }
+    if (args->size() == 3U) {
+        const auto cwd = jsonString(*entry, "cwd");
+        if (!(*args)[1].is_string() || (*args)[1] != "--project-id" ||
+            !(*args)[2].is_string() ||
+            !Domain::ProjectId::parse((*args)[2].get<std::string>()) ||
+            !cwd || cwd->empty()) return false;
+    }
+    const auto binding = Json{{"args", *args}, {"cwd", entry->value("cwd", Json(nullptr))}}.dump();
+    if (sharedBinding && *sharedBinding != binding) return false;
+    sharedBinding = binding;
     const auto configuredRole = jsonString(*environment, "FORGE_MCP_ROLE");
     const auto configuredRevision = jsonString(*environment, "FORGE_DEPLOYMENT_ID");
     const auto forgeHome = jsonString(*environment, "FORGE_CONDUCTOR_HOME");
@@ -356,6 +367,7 @@ struct ForgeConfigurationState final {
     std::string command;
     std::string forgeHome;
     Domain::DeploymentId deploymentId;
+    std::string projectBinding;
 
     bool operator==(const ForgeConfigurationState&) const = default;
 };
@@ -382,19 +394,20 @@ struct ForgeConfigurationState final {
         }
         std::optional<std::string> sharedCommand;
         std::optional<std::string> sharedHome;
+        std::optional<std::string> sharedBinding;
         if (!synchronizedRole(*servers, LMStudioFallbackServerId, "fallback",
-                              deploymentId, sharedCommand, sharedHome) ||
+                              deploymentId, sharedCommand, sharedHome, sharedBinding) ||
             !synchronizedRole(*servers, LMStudioCluServerId, "clu",
-                              deploymentId, sharedCommand, sharedHome) ||
+                              deploymentId, sharedCommand, sharedHome, sharedBinding) ||
             !synchronizedRole(*servers, LMStudioPrimaryServerId, "primary",
-                              deploymentId, sharedCommand, sharedHome) ||
+                              deploymentId, sharedCommand, sharedHome, sharedBinding) ||
             !sharedCommand || !sharedHome) {
             return std::nullopt;
         }
         return ForgeConfigurationState{
             std::move(sharedCommand).value(),
             std::move(sharedHome).value(),
-            deploymentId};
+            deploymentId, std::move(sharedBinding).value()};
     } catch (...) {
         return std::nullopt;
     }

@@ -1,4 +1,5 @@
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
+#include "ForgeConductor/Domain/Utf8.h"
 #include "ForgeConductor/Mcp/McpJsonCodec.h"
 #include "ForgeConductor/Mcp/McpProtocol.h"
 #include "ForgeConductor/Mcp/McpServer.h"
@@ -230,6 +231,15 @@ private:
     std::size_t calls_{};
 };
 
+std::string escapedToolText()
+{
+    const std::string unit = std::string{"\x01\"\\\n"} +
+        "\xe6\xb8\xac\xe8\xa9\xa6\xf0\x9f\xa7\xaa";
+    std::string text;
+    for (std::size_t index{}; index < 6000U; ++index) text += unit;
+    return text + "exact final tool-output marker";
+}
+
 class RouterFake final : public Contracts::IToolRouter {
 public:
     enum class Mode {
@@ -240,6 +250,11 @@ public:
         OversizedPayload,
         DeepPayload,
         OversizedEnvelope,
+        LargeSuccess,
+        LargeError,
+        NearWireLimit,
+        NearWireLimitRejected,
+        OversizedError,
     };
 
     explicit RouterFake(std::deque<Mode> modes = {})
@@ -272,6 +287,11 @@ public:
                     });
                 }
             }
+            if (mode == Mode::LargeError || mode == Mode::OversizedError) {
+                return Domain::Result<Domain::ToolCallOutcome>::failure(
+                    Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+                        mode == Mode::LargeError ? escapedToolText() : std::string(600'000U, 'x')));
+            }
             if (mode == Mode::Failure) {
                 return Domain::Result<Domain::ToolCallOutcome>::failure(
                     Domain::makeError(
@@ -285,7 +305,12 @@ public:
                         "The scripted router observed cancellation."));
             }
             std::string payload{R"({"value":7,"ok":true})"};
-            if (mode == Mode::MalformedPayload) {
+            if (mode == Mode::LargeSuccess) {
+                payload = Json{{"ok", true}, {"stdout", escapedToolText()}}.dump();
+            } else if (mode == Mode::NearWireLimit || mode == Mode::NearWireLimitRejected) {
+                payload = Json{{"ok", true}, {"value", std::string(
+                    mode == Mode::NearWireLimit ? 510'000U : 520'000U, 'x')}}.dump();
+            } else if (mode == Mode::MalformedPayload) {
                 payload = "{";
             } else if (mode == Mode::OversizedPayload) {
                 payload.assign(
@@ -629,7 +654,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
         const auto response = parse(session.output.front());
         REQUIRE(response.at("result").at("instructions").get<std::string>().find(
                     "Project folder: D:\\workspace") != std::string::npos);
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.6");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.11");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"
@@ -917,6 +942,85 @@ void testRouterPayloadBoundsAndRecovery(Contracts::IToolCatalog& catalog)
                 std::string{Domain::ErrorCodes::InternalFailure});
     }
     REQUIRE(responseFor(5).at("result").is_object());
+}
+
+void requireFragmentParity(const Json& result)
+{
+    const auto& blocks = result.at("content");
+    REQUIRE(blocks.is_array() && blocks.size() > 1U);
+    const auto expected = result.at("structuredContent").dump();
+    std::string assembled;
+    for (std::size_t index{}; index < blocks.size(); ++index) {
+        REQUIRE(blocks.at(index).at("type") == "text");
+        const auto body = blocks.at(index).at("text").get<std::string>();
+        REQUIRE(body.size() <= 32U * 1024U);
+        // The installed LM Studio bridge's per-block cap leaves these intact.
+        REQUIRE(body.substr(0U, 50'000U) == body);
+        const auto fragment = Json::parse(body);
+        REQUIRE(fragment.size() == 7U);
+        REQUIRE(fragment.at("kind") == "forge_tool_result_fragment");
+        REQUIRE(fragment.at("version") == 1U);
+        REQUIRE(fragment.at("index") == index);
+        REQUIRE(fragment.at("count") == blocks.size());
+        REQUIRE(fragment.at("total_bytes") == expected.size());
+        REQUIRE(fragment.at("instruction") ==
+            "Concatenate part from every fragment in index order, then parse the complete JSON tool result. Do not repeat the tool call.");
+        const auto part = fragment.at("part").get<std::string>();
+        REQUIRE(!part.empty() && part.size() <= 12U * 1024U);
+        REQUIRE(Domain::isValidUtf8(part));
+        assembled += part;
+    }
+    REQUIRE(assembled == expected);
+    REQUIRE(Json::parse(assembled) == result.at("structuredContent"));
+}
+
+void testLargeToolTextFragments(Contracts::IToolCatalog& catalog)
+{
+    for (const auto mode : {RouterFake::Mode::LargeSuccess, RouterFake::Mode::LargeError,
+                           RouterFake::Mode::NearWireLimit, RouterFake::Mode::NearWireLimitRejected,
+                           RouterFake::Mode::OversizedError}) {
+        RouterFake router{{mode}};
+        ResolverFake resolver;
+        SequenceUuidGenerator uuids;
+        auto session = serve(catalog, router, resolver, uuids, Domain::McpRole::Primary,
+            {Inbound::json(request(1, "tools/call", Json{{"arguments", Json::object()},
+                {"name", "agent_list"}})), Inbound::json(request(2, "ping"))}, 2U);
+        REQUIRE(session.result.hasValue());
+        REQUIRE(router.calls() == 1U);
+        REQUIRE(session.output.size() == 2U);
+        Json response;
+        bool ping{};
+        for (const auto& encoded : session.output) {
+            REQUIRE(encoded.size() <= Mcp::McpJsonCodec::MaximumDocumentBytes);
+            const auto value = Json::parse(encoded);
+            if (value.at("id") == 1) response = value.at("result");
+            if (value.at("id") == 2) { REQUIRE(value.at("result").is_object()); ping = true; }
+        }
+        REQUIRE(ping && response.is_object());
+        if (mode == RouterFake::Mode::NearWireLimitRejected || mode == RouterFake::Mode::OversizedError) {
+            REQUIRE(response.at("isError") == true);
+            REQUIRE(response.at("structuredContent").at("code") == std::string{Domain::ErrorCodes::InternalFailure});
+            REQUIRE(response.at("content").size() == 1U);
+            REQUIRE(Json::parse(response.at("content").at(0).at("text").get<std::string>()) == response.at("structuredContent"));
+        } else {
+            requireFragmentParity(response);
+            if (mode == RouterFake::Mode::LargeError) {
+                REQUIRE(response.at("isError") == true);
+                REQUIRE(response.at("structuredContent").at("ok") == false);
+                REQUIRE(response.at("structuredContent").at("code") == std::string{Domain::ErrorCodes::InvalidRequest});
+                REQUIRE(response.at("structuredContent").at("message") == escapedToolText());
+            } else {
+                REQUIRE(response.at("isError") == false);
+                REQUIRE(response.at("structuredContent").at("ok") == true);
+                if (mode == RouterFake::Mode::LargeSuccess)
+                    REQUIRE(response.at("structuredContent").at("stdout") == escapedToolText());
+                else {
+                    REQUIRE(response.at("structuredContent").at("value").get<std::string>().size() == 510'000U);
+                    REQUIRE(response.dump().size() > 1000U * 1024U);
+                }
+            }
+        }
+    }
 }
 
 void testBoundedIdentifiersAndNames(Contracts::IToolCatalog& catalog)
@@ -1227,6 +1331,7 @@ int main()
         testMalformedAndTransportRecovery(*catalog);
         testToolSuccessFailureAndAuthority(*catalog);
         testRouterPayloadBoundsAndRecovery(*catalog);
+        testLargeToolTextFragments(*catalog);
         testBoundedIdentifiersAndNames(*catalog);
         testPreCancellationAndActiveCancellation(*catalog);
         testQueueBoundAndCleanEofDrain(*catalog);

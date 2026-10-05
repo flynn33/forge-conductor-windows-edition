@@ -75,6 +75,8 @@ struct LMStudioPluginStatus final {
 struct LMStudioDeploymentRequest final {
     std::optional<PathText> preferredBinary;
     bool preserveForeignEntries{true};
+    std::optional<ProjectId> projectId;
+    std::optional<PathText> projectRoot;
 };
 
 struct LMStudioInstallResult final {

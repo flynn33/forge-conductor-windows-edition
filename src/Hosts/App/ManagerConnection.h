@@ -204,7 +204,8 @@ public:
     }
     virtual LmStudioView lmStudio(
         LmStudioAction action,
-        std::stop_token cancellation) noexcept = 0;
+        std::stop_token cancellation,
+        std::string projectId = {}) noexcept = 0;
     virtual ToolsView tools(std::stop_token cancellation) noexcept = 0;
     virtual ToolOutcomeView invokeTool(
         std::string projectId,
@@ -320,7 +321,8 @@ public:
         std::stop_token cancellation) noexcept override;
     LmStudioView lmStudio(
         LmStudioAction action,
-        std::stop_token cancellation) noexcept override;
+        std::stop_token cancellation,
+        std::string projectId = {}) noexcept override;
     ToolsView tools(std::stop_token cancellation) noexcept override;
     ToolOutcomeView invokeTool(
         std::string projectId,
@@ -341,7 +343,7 @@ public:
         std::stop_token cancellation) noexcept override;
 private:
     Application::SetupOperationResult ensureManager(std::stop_token) override;
-    Application::SetupOperationResult ensurePlugins(std::stop_token) override;
+    Application::SetupOperationResult ensurePlugins(Application::ProjectSetupSnapshot&, std::stop_token) override;
     Application::SetupOperationResult ensureProject(Application::ProjectSetupSnapshot&, std::stop_token) override;
     Application::SetupOperationResult ensureProvider(Application::ProjectSetupSnapshot&, std::stop_token) override;
     Application::SetupOperationResult verifyProvider(Application::ProjectSetupSnapshot&, std::stop_token) override;

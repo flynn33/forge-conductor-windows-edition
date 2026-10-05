@@ -1069,12 +1069,13 @@ Domain::Result<Manager::ManagerProjectPolicySnapshot> WindowsManagerNamedPipeCli
 
 Domain::Result<Manager::ManagerLmStudioSnapshot>
 WindowsManagerNamedPipeClient::lmStudioStatus(
-    const Domain::OperationContext& context) noexcept
+    const Domain::OperationContext& context,
+    std::optional<Domain::ProjectId> projectId) noexcept
 {
     const auto implementation = implementation_;
     return implementation
         ? implementation->typedWorkflow<Manager::ManagerLmStudioSnapshot>(
-              Manager::ManagerLmStudioStatusRequest{}, context)
+              Manager::ManagerLmStudioStatusRequest{std::move(projectId)}, context)
         : failure<Manager::ManagerLmStudioSnapshot>(clientError(
               Domain::ErrorCodes::TransportClosed,
               "The manager client transport is unavailable."));
@@ -1082,12 +1083,13 @@ WindowsManagerNamedPipeClient::lmStudioStatus(
 
 Domain::Result<Manager::ManagerLmStudioSnapshot>
 WindowsManagerNamedPipeClient::repairLmStudio(
-    const Domain::OperationContext& context) noexcept
+    const Domain::OperationContext& context,
+    std::optional<Domain::ProjectId> projectId) noexcept
 {
     const auto implementation = implementation_;
     return implementation
         ? implementation->typedWorkflow<Manager::ManagerLmStudioSnapshot>(
-              Manager::ManagerLmStudioRepairRequest{}, context)
+              Manager::ManagerLmStudioRepairRequest{std::move(projectId)}, context)
         : failure<Manager::ManagerLmStudioSnapshot>(clientError(
               Domain::ErrorCodes::TransportClosed,
               "The manager client transport is unavailable."));
@@ -1095,12 +1097,13 @@ WindowsManagerNamedPipeClient::repairLmStudio(
 
 Domain::Result<Manager::ManagerLmStudioSnapshot>
 WindowsManagerNamedPipeClient::activateLmStudio(
-    const Domain::OperationContext& context) noexcept
+    const Domain::OperationContext& context,
+    std::optional<Domain::ProjectId> projectId) noexcept
 {
     const auto implementation = implementation_;
     return implementation
         ? implementation->typedWorkflow<Manager::ManagerLmStudioSnapshot>(
-              Manager::ManagerLmStudioActivateRequest{}, context)
+              Manager::ManagerLmStudioActivateRequest{std::move(projectId)}, context)
         : failure<Manager::ManagerLmStudioSnapshot>(clientError(
               Domain::ErrorCodes::TransportClosed,
               "The manager client transport is unavailable."));

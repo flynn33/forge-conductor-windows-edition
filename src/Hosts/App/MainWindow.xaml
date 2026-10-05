@@ -150,11 +150,14 @@
      </StackPanel></Border>
      <Expander x:Name="PolicyPanel" Header="CLU governance (optional)" HorizontalAlignment="Stretch">
       <StackPanel Spacing="10">
-       <TextBlock Text="Choose a local policy repository folder. CLU activates automatically, reports every interpretation gap, and sends non-blocking correction guidance to the coding agent." TextWrapping="Wrap"/>
-       <TextBox x:Name="PolicySource" Header="Development-policy folder" IsReadOnly="True" PlaceholderText="Choose a policy repository folder" AutomationProperties.Name="Development policy source"/>
+       <TextBlock Text="Choose a local policy repository folder or a single policy file. With a project selected, CLU activates automatically, reports every interpretation gap, and sends non-blocking correction guidance to the coding agent." TextWrapping="Wrap"/>
+       <TextBox x:Name="PolicySource" Header="Development-policy source" IsReadOnly="True" PlaceholderText="Choose a policy folder or file" AutomationProperties.Name="Development policy source"/>
        <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="Choose policy folder…" Tag="browse" Click="PolicyClicked"/>
-        <Button Content="Reload policies from folder" Tag="refresh" Click="PolicyClicked"/>
+        <Button Content="Choose policy file…" Tag="browse-file" Click="PolicyClicked"/>
+        <Button Content="Reload policies from source" Tag="refresh" Click="PolicyClicked"/>
+       </StackPanel>
+       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="Inspect status" Tag="inspect" Click="PolicyClicked"/>
         <Button Content="Inspect findings" Tag="findings" Click="PolicyClicked"/>
         <Button Content="Export CLU log" Tag="export" Click="PolicyClicked"/>

@@ -408,6 +408,34 @@ void testRunningHostHotSynchronizesWithoutRestart()
             "A running host was unnecessarily launched or restarted.");
 }
 
+void testExplicitProjectBindingSynchronizesAndDetectsProjectDrift()
+{
+    Fixture fixture;
+    fixture.platformView->running = true;
+    auto selected = Json::parse(synchronizedState("project-bound-revision"));
+    for (auto& server : selected.at("mcpServers")) {
+        server["args"] = Json::array({"serve", "--project-id",
+            "98000000-0000-4000-8000-000000000001"});
+        server["cwd"] = "D:/Projects/Selected";
+    }
+    fixture.files.seed(LiveConfigurationPath, selected.dump());
+    fixture.files.seed(SynchronizedPath, selected.dump());
+    const auto matched = take(fixture.activator.activate(
+        environment(), request("project-bound-revision"), fixture.authority,
+        fixture.context()));
+    require(matched.configurationSynchronized && !matched.restarted,
+        "Explicit project registrations must use native hot synchronization");
+    for (auto& server : selected.at("mcpServers")) {
+        server["args"][2] = "98000000-0000-4000-8000-000000000099";
+        server["cwd"] = "D:/Projects/Different";
+    }
+    fixture.files.seed(SynchronizedPath, selected.dump());
+    require(!fixture.activator.activate(
+        environment(), request("project-bound-revision"), fixture.authority,
+        fixture.context()),
+        "A host synchronized to a different project must fail even when deployment identity is unchanged");
+}
+
 void testWrongRevisionFailsWithoutUnsupportedRestart()
 {
     Fixture fixture;
@@ -618,6 +646,8 @@ void registerWindowsLMStudioHostActivatorTests(TestRegistry& tests)
             testStoppedHostLaunchesAndAcceptsLazySynchronization);
     addTest(tests, "lmstudio.host.hot-sync-no-restart",
             testRunningHostHotSynchronizesWithoutRestart);
+    addTest(tests, "lmstudio.host.selected-project-synchronization",
+            testExplicitProjectBindingSynchronizesAndDetectsProjectDrift);
     addTest(tests, "lmstudio.host.stale-revision-no-unsupported-restart",
             testWrongRevisionFailsWithoutUnsupportedRestart);
     addTest(tests, "lmstudio.host.stale-timeout-no-unsupported-restart",

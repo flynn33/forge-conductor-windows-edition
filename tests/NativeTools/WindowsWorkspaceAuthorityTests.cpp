@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <winioctl.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -281,6 +282,78 @@ void issuesCanonicalAuthorityAndPaths()
         "authorize accepted a base path that was not an exact trusted root");
 }
 
+[[nodiscard]] Domain::PathText forwardPath(const Domain::PathText& canonical)
+{
+    auto encoded = canonical.value();
+    std::replace(encoded.begin(), encoded.end(), '\\', '/');
+    return take(Domain::PathText::create(encoded));
+}
+
+void acceptsCanonicalSeparatorVariants()
+{
+    Fixture fixture;
+    auto permitted = policy({fixture.root, fixture.secondRoot});
+    permitted.grants.push_back(Domain::FileAccess::Execute);
+    permitted.denials.clear();
+    permitted.shellEnabled = true;
+    Infrastructure::WindowsWorkspaceAuthority resolver{{std::move(permitted)}};
+    const auto authority = take(resolver.authorityFor(projectId(), context()));
+    const auto target = pathText(fixture.tree.root() / L"nested");
+    auto mixed = target.value();
+    std::size_t separator{};
+    for (auto& character : mixed) {
+        if (character == '\\' && ++separator % 2U != 0U) character = '/';
+    }
+    require(mixed.find('/') != std::string::npos && mixed.find('\\') != std::string::npos,
+            "mixed-separator fixture did not contain both separator forms");
+    for (const auto access : {Domain::FileAccess::Read, Domain::FileAccess::Write,
+                              Domain::FileAccess::Execute}) {
+        for (const auto& supplied : {forwardPath(target), take(Domain::PathText::create(mixed))}) {
+            const auto authorized = take(resolver.authorize(authority,
+                Domain::PathAuthorizationRequest{supplied, std::nullopt, access, false}, context()));
+            require(authorized.canonicalPath() == target && authorized.authorityRoot() == fixture.root &&
+                        authorized.access() == access,
+                    "separator variants did not preserve the canonical path and authority");
+        }
+        const auto root = take(resolver.authorize(authority,
+            Domain::PathAuthorizationRequest{forwardPath(fixture.root), fixture.root, access, false}, context()));
+        require(root.canonicalPath() == fixture.root && root.authorityRoot() == fixture.root,
+                "forward-slash working-directory root did not retain its exact capability");
+    }
+    const auto deniedAuthority = take(fixture.authority.authorityFor(projectId(), context()));
+    requireError(fixture.authority.authorize(deniedAuthority,
+        Domain::PathAuthorizationRequest{forwardPath(target), std::nullopt, Domain::FileAccess::Execute, false}, context()),
+        Domain::ErrorCodes::Unauthorized, "separator normalization bypassed denied Execute access");
+    Infrastructure::WindowsWorkspaceAuthority strictRoots{{policy({forwardPath(fixture.root)})}};
+    requireError(strictRoots.authorityFor(projectId(), context()), Domain::ErrorCodes::InvalidRequest,
+        "user-request normalization changed canonical configured-root requirements");
+}
+
+void rejectsUnsafeSeparatorVariants()
+{
+    Fixture fixture;
+    const auto authority = take(fixture.authority.authorityFor(projectId(), context()));
+    const auto root = forwardPath(fixture.root).value();
+    const auto rejects = [&](const std::string& supplied, const std::string_view code) {
+        requireError(fixture.authority.authorize(authority,
+            Domain::PathAuthorizationRequest{take(Domain::PathText::create(supplied)), std::nullopt,
+                Domain::FileAccess::Read, false}, context()), code,
+            "separator normalization admitted an unsafe or outside path");
+    };
+    rejects(forwardPath(pathText(fixture.tree.outside())).value(), Domain::ErrorCodes::PathOutsideAuthority);
+    rejects(forwardPath(pathText(fixture.tree.prefixPeer())).value(), Domain::ErrorCodes::PathOutsideAuthority);
+    for (const auto* suffix : {"/../outside", "/./nested", "/nested/", "/nested//child", "/CON", "/file:stream"})
+        rejects(root + suffix, Domain::ErrorCodes::InvalidRequest);
+    rejects("//server/share/file", Domain::ErrorCodes::PathOutsideAuthority);
+    rejects("//?/C:/file", Domain::ErrorCodes::PathOutsideAuthority);
+    rejects("//./C:/file", Domain::ErrorCodes::PathOutsideAuthority);
+    rejects("\\\\?/C:/file", Domain::ErrorCodes::PathOutsideAuthority);
+    rejects("C:relative/file", Domain::ErrorCodes::InvalidRequest);
+    requireError(fixture.authority.authorize(authority,
+        Domain::PathAuthorizationRequest{forwardPath(fixture.root), fixture.root, Domain::FileAccess::Delete, true}, context()),
+        Domain::ErrorCodes::Unauthorized, "separator normalization bypassed authority-root protection");
+}
+
 void rejectsMissingProjectAndMismatchedCapabilities()
 {
     Fixture fixture;
@@ -540,6 +613,12 @@ void rejectsReparseEscapesCaseSensitiveAndOverlappingRoots()
             context()),
         Domain::ErrorCodes::PathOutsideAuthority,
         "authorize followed a junction outside the trusted root");
+    requireError(
+        fixture.authority.authorize(authority,
+            Domain::PathAuthorizationRequest{forwardPath(pathText(junction / L"escaped.txt")), fixture.root,
+                Domain::FileAccess::Read, false}, context()),
+        Domain::ErrorCodes::PathOutsideAuthority,
+        "separator normalization followed a junction outside the trusted root");
     require(::RemoveDirectoryW(junction.c_str()) != FALSE,
             "junction fixture could not be removed safely");
 
@@ -608,6 +687,10 @@ int main()
     try {
         issuesCanonicalAuthorityAndPaths();
         std::cout << "PASS workspace_authority.canonical_success\n";
+        acceptsCanonicalSeparatorVariants();
+        std::cout << "PASS workspace_authority.separator_equivalence\n";
+        rejectsUnsafeSeparatorVariants();
+        std::cout << "PASS workspace_authority.separator_security\n";
         rejectsMissingProjectAndMismatchedCapabilities();
         std::cout << "PASS workspace_authority.identity_scope_generation\n";
         narrowsOnlyWithinTheConfiguredBaseline();
@@ -620,7 +703,7 @@ int main()
         std::cout << "PASS workspace_authority.reparse_case_overlap\n";
         honorsCancellationAndDeadlineOnEveryCall();
         std::cout << "PASS workspace_authority.context\n";
-        std::cout << "SUMMARY passed=7 failed=0 assertions="
+        std::cout << "SUMMARY passed=9 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

@@ -158,13 +158,17 @@ public:
     budgetHandoff(
         const Domain::ClientId& clientId,
         const std::string_view reason,
-        const Domain::OperationContext&) noexcept override
+        const Domain::OperationContext&,
+        const Domain::LegacyContinuityPatch& inferred,
+        std::optional<Domain::LegacyHandoffId> handoffId) noexcept override
     {
         try {
             budgetCalls_.fetch_add(1U, std::memory_order_relaxed);
             {
                 std::lock_guard lock{mutex_};
                 budgetReasons_.emplace_back(reason);
+                budgetPatches_.push_back(inferred);
+                budgetSeeds_.push_back(std::move(handoffId));
             }
             if (failBudget) {
                 return failed<Domain::LegacyContinuityPersistOutcome>();
@@ -216,6 +220,16 @@ public:
     [[nodiscard]] std::size_t automaticCalls() const noexcept
     {
         return automaticCalls_.load(std::memory_order_relaxed);
+    }
+
+    [[nodiscard]] const std::vector<std::optional<Domain::LegacyHandoffId>>& budgetSeeds() const noexcept
+    {
+        return budgetSeeds_;
+    }
+
+    [[nodiscard]] const std::vector<Domain::LegacyContinuityPatch>& budgetPatches() const noexcept
+    {
+        return budgetPatches_;
     }
 
     [[nodiscard]] const std::vector<std::string>& budgetReasons() const noexcept
@@ -320,6 +334,8 @@ private:
     mutable std::mutex mutex_;
     std::condition_variable changed_;
     std::vector<std::string> budgetReasons_;
+    std::vector<Domain::LegacyContinuityPatch> budgetPatches_;
+    std::vector<std::optional<Domain::LegacyHandoffId>> budgetSeeds_;
     std::vector<Domain::LegacyContinuityAutomaticRequest> automaticRequests_;
     bool blockAutomatic_{};
     std::size_t automaticEnteredCount_{};
@@ -593,6 +609,88 @@ void identicalCallsSoftHandoffHardBlockAndResume()
     REQUIRE(guard->pendingCallCount() == 0U);
 }
 
+void repeatedCallsRetainAuthorizedWorkspaceAndObservedFiles()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(continuity, hasher, clock));
+    const auto caller = client("workspace-budget-client");
+    auto observation = observedPath("D:/workspace/src/main.cpp");
+    observation.baseDirectory = take(Domain::PathText::create("D:/workspace"));
+    for (std::uint64_t index = 1U; index <= 8U; ++index) {
+        auto call = request(caller, "fs_edit", R"json({"path":"src/main.cpp","old":"a","new":"b"})json", index);
+        REQUIRE(take(execute(*guard, call, context(call, index), std::nullopt, observation)).receipt.ok);
+    }
+    const auto ninth = request(caller, "fs_edit", R"json({"path":"src/main.cpp","old":"a","new":"b"})json", 9U);
+    REQUIRE(take(guard->beforeInvoke(ninth, descriptor(ninth), context(ninth, 9U))).immediateOutcome);
+    REQUIRE(continuity.budgetPatches().size() == 2U);
+    for (const auto& patch : continuity.budgetPatches()) {
+        REQUIRE(patch.workingDirectory == std::optional<std::string>{"D:/workspace"});
+        REQUIRE(patch.keyFiles == std::optional<std::vector<std::string>>{{"D:/workspace/src/main.cpp"}});
+        REQUIRE(!patch.goal);
+        REQUIRE(patch.narrative->find("fs_edit") != std::string::npos);
+    }
+}
+
+void recoveredPacketScopesSuccessorAutomaticAndBudgetPersistence()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(continuity, hasher, clock));
+    const auto caller = client("scoped-successor-client");
+    const auto recoveredId = id<Domain::LegacyHandoffId>("recovered-model-packet");
+    auto recovery = request(caller, "context_get", R"json({"handoff_id":"recovered-model-packet"})json", 1U);
+    REQUIRE(take(execute(*guard, recovery, context(recovery, 1U),
+        Domain::ContextRecoveryReceipt{caller, recoveredId,
+            take(Domain::PathText::create("D:/workspace")),
+            {take(Domain::PathText::create("D:/workspace/main.cpp"))}})).receipt.ok);
+    auto lifecycle = request(caller, "agent_run_start", R"json({"agent_id":"review"})json", 2U);
+    REQUIRE(take(execute(*guard, lifecycle, context(lifecycle, 2U))).receipt.ok);
+    REQUIRE(continuity.automaticRequests().back().handoffId == recoveredId);
+    for (std::uint64_t index = 3U; index <= 6U; ++index) {
+        auto call = request(caller, "fs_edit", R"json({"path":"main.cpp","old":"a","new":"b"})json", index);
+        REQUIRE(take(execute(*guard, call, context(call, index))).receipt.ok);
+    }
+    REQUIRE(continuity.budgetSeeds().back() == recoveredId);
+}
+
+void successfulModelWritesRefreshRecoverySeedAndFailedWritesPreserveIt()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(continuity, hasher, clock));
+    const auto caller = client("refresh-successor-client");
+    auto currentId = id<Domain::LegacyHandoffId>("initial-recovered-packet");
+    auto recovery = request(caller, "context_get", "{}", 1U);
+    REQUIRE(take(execute(*guard, recovery, context(recovery, 1U),
+        Domain::ContextRecoveryReceipt{caller, currentId})).receipt.ok);
+    std::uint64_t sequence = 2U;
+    for (const auto tool : {"session_checkpoint", "session_handoff"}) {
+        const auto write = request(caller, tool, "{}", sequence++);
+        const auto writeContext = context(write, sequence);
+        REQUIRE(!take(guard->beforeInvoke(write, descriptor(write), writeContext)).immediateOutcome);
+        const auto newId = id<Domain::LegacyHandoffId>(std::string{"new-"} + tool);
+        auto written = successOutcome(write);
+        written.contextPersistence = newId;
+        REQUIRE(take(guard->afterInvoke(write, descriptor(write),
+            Domain::Result<Domain::ToolCallOutcome>::success(std::move(written)), writeContext)).receipt.ok);
+        currentId = newId;
+
+        const auto failedWrite = request(caller, tool, "{}", sequence++);
+        const auto failedContext = context(failedWrite, sequence);
+        REQUIRE(!take(guard->beforeInvoke(failedWrite, descriptor(failedWrite), failedContext)).immediateOutcome);
+        REQUIRE(!guard->afterInvoke(failedWrite, descriptor(failedWrite),
+            Domain::Result<Domain::ToolCallOutcome>::failure(
+                Domain::makeError(Domain::ErrorCodes::StoreError, "Failed model continuity write")), failedContext));
+        const auto lifecycle = request(caller, "agent_run_start", "{}", sequence++);
+        REQUIRE(take(execute(*guard, lifecycle, context(lifecycle, sequence))).receipt.ok);
+        REQUIRE(continuity.automaticRequests().back().handoffId == currentId);
+    }
+}
+
 void ordinaryProgressNeverCreatesCountOrTimeHandoffs()
 {
     LegacyContinuityFake continuity;
@@ -667,9 +765,26 @@ void managedRunProtocolUsesContextOnlyContinuity()
         REQUIRE(!payload(result).contains("auto_continuity"));
     }
 
+    std::uint64_t sequence = 13U;
+    for (const auto tool : {"session_checkpoint", "session_handoff"}) {
+        const auto call = request(caller, tool, "{}", sequence++, "managed-run-v1");
+        const auto callContext = context(call, sequence);
+        REQUIRE(!take(guard->beforeInvoke(call, descriptor(call), callContext)).immediateOutcome);
+        const auto persistedId = id<Domain::LegacyHandoffId>(std::string{"managed-"} + tool);
+        auto outcome = successOutcome(call);
+        outcome.contextPersistence = persistedId;
+        const auto result = take(guard->afterInvoke(call, descriptor(call),
+            Domain::Result<Domain::ToolCallOutcome>::success(std::move(outcome)), callContext));
+        REQUIRE(result.receipt.ok);
+        REQUIRE(result.contextPersistence == persistedId);
+    }
+    const auto lifecycle = request(caller, "agent_run_start", "{}", sequence, "managed-run-v1");
+    REQUIRE(take(execute(*guard, lifecycle, context(lifecycle, sequence))).receipt.ok);
     REQUIRE(continuity.budgetCalls() == 0U);
     REQUIRE(continuity.automaticCalls() == 0U);
     REQUIRE(!guard->snapshot(caller).blocked);
+    REQUIRE(!guard->snapshot(caller).handoffId);
+    REQUIRE(guard->snapshot(caller).implicitRoots.empty());
 }
 
 void failuresCancellationBoundsAndShutdownAreSafe()
@@ -1028,6 +1143,9 @@ int main()
                       Contracts::IContinuityAutomationStatusSource,
                       Mcp::McpInvocationGuard>);
         identicalCallsSoftHandoffHardBlockAndResume();
+        repeatedCallsRetainAuthorizedWorkspaceAndObservedFiles();
+        recoveredPacketScopesSuccessorAutomaticAndBudgetPersistence();
+        successfulModelWritesRefreshRecoverySeedAndFailedWritesPreserveIt();
         ordinaryProgressNeverCreatesCountOrTimeHandoffs();
         managedRunProtocolUsesContextOnlyContinuity();
         failuresCancellationBoundsAndShutdownAreSafe();

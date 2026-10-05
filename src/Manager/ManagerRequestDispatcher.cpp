@@ -1,5 +1,6 @@
 #include "ForgeConductor/Manager/ManagerRequestDispatcher.h"
 
+#include "ForgeConductor/Application/LegacyInstructionPackageMigration.h"
 #include "ForgeConductor/Manager/ManagerDeadlineMapper.h"
 #include "ForgeConductor/Dashboard/DashboardSessionCloseRequest.h"
 #include "ForgeConductor/Domain/Utf8.h"
@@ -1416,7 +1417,9 @@ private:
                 }
             }
 
+            std::unique_lock queueLock{instructionPackageMutex_};
             std::optional<std::string> pageCursor;
+            std::optional<std::uint64_t> existingOrder;
             do {
                 auto queuePage = telemetrySources_.projectMemory->listRecent(
                     Domain::ListRecentProjectMemoryRequest{
@@ -1433,61 +1436,83 @@ private:
                         const auto row = nlohmann::json::parse(*hit.record.body);
                         queueOrder = (std::max)(
                             queueOrder, row.value("order", std::uint64_t{}));
+                        if (row.value("schema", std::string{}) == "forge-instruction-package-queue-v2" &&
+                            row.value("project_id", std::string{}) == request.projectId.value() &&
+                            row.value("queue_row_id", std::string{}) == queueRowId) {
+                            manifestRecordId = hit.record.id;
+                            existingOrder = row.value("order", std::uint64_t{});
+                        }
                     } catch (...) {
                     }
                 }
                 pageCursor = queuePage.value().nextCursor;
             } while (pageCursor);
-            queueOrder = queueOrder >
+            if (manifestRecordId) {
+                auto current = packageQueueRows(request.projectId, context);
+                if (!current) {
+                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                        std::move(current).error());
+                }
+                for (const auto& row : current.value()) {
+                    if (row.snapshot.queueRowId == queueRowId) {
+                        existingOrder = row.snapshot.order;
+                        break;
+                    }
+                }
+            }
+            queueOrder = existingOrder.value_or(queueOrder >
                     (std::numeric_limits<std::uint64_t>::max)() - 1024U
                 ? queueOrder
-                : queueOrder + 1024U;
-            nlohmann::json manifest{
-                {"schema", "forge-instruction-package-queue-v2"},
-                {"project_id", request.projectId.value()},
-                {"queue_row_id", queueRowId},
-                {"package_id", packageId},
-                {"package_name", scanned.name},
-                {"package_path", scanned.path.value()},
-                {"revision", scanned.revision.value()},
-                {"order", queueOrder},
-                {"state", "ready"},
-                {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}},
-                {"entry_count", scanned.files.size()},
-                {"content_bytes", scanned.contentBytes},
-                {"coverage_gap_count", scanned.coverageGapCount},
-                {"attempts", 1U},
-                {"correlation_id", context.correlationId.value()},
-                {"last_error", nullptr}};
-            Domain::ProjectMemoryWrite manifestWrite;
-            manifestWrite.kind = "instruction_package_queue";
-            manifestWrite.title = scanned.name;
-            manifestWrite.summary = std::to_string(scanned.files.size()) +
-                " entries · " + std::to_string(scanned.contentBytes) +
-                " bytes · " + std::to_string(scanned.coverageGapCount) +
-                " coverage gaps · SHA-256 " + scanned.revision.value();
-            manifestWrite.body = manifest.dump();
-            manifestWrite.tags = {"instruction-package-queue", revisionTag};
-            manifestWrite.importance = 1.0;
-            manifestWrite.confidence = 1.0;
-            manifestWrite.sourceKind = "manager_instruction_package";
-            manifestWrite.sourceReference = scanned.path.value();
-            auto manifestKey = Domain::IdempotencyKey::create(
-                "instruction-queue:" + queueRowId);
-            if (!manifestKey) {
-                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
-                    std::move(manifestKey).error());
+                : queueOrder + 1024U);
+            if (!manifestRecordId) {
+                nlohmann::json manifest{
+                    {"schema", "forge-instruction-package-queue-v2"},
+                    {"activation_operation_id", context.operationId.value()},
+                    {"project_id", request.projectId.value()},
+                    {"queue_row_id", queueRowId},
+                    {"package_id", packageId},
+                    {"package_name", scanned.name},
+                    {"package_path", scanned.path.value()},
+                    {"revision", scanned.revision.value()},
+                    {"order", queueOrder},
+                    {"state", "ready"},
+                    {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}},
+                    {"entry_count", scanned.files.size()},
+                    {"content_bytes", scanned.contentBytes},
+                    {"coverage_gap_count", scanned.coverageGapCount},
+                    {"attempts", 1U},
+                    {"correlation_id", context.correlationId.value()},
+                    {"last_error", nullptr}};
+                Domain::ProjectMemoryWrite manifestWrite;
+                manifestWrite.kind = "instruction_package_queue";
+                manifestWrite.title = scanned.name;
+                manifestWrite.summary = std::to_string(scanned.files.size()) +
+                    " entries · " + std::to_string(scanned.contentBytes) +
+                    " bytes · " + std::to_string(scanned.coverageGapCount) +
+                    " coverage gaps · SHA-256 " + scanned.revision.value();
+                manifestWrite.body = manifest.dump();
+                manifestWrite.tags = {"instruction-package-queue", revisionTag};
+                manifestWrite.importance = 1.0;
+                manifestWrite.confidence = 1.0;
+                manifestWrite.sourceKind = "manager_instruction_package";
+                manifestWrite.sourceReference = scanned.path.value();
+                auto manifestKey = Domain::IdempotencyKey::create(
+                    "instruction-queue:" + queueRowId + ":" + context.operationId.value());
+                if (!manifestKey) {
+                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                        std::move(manifestKey).error());
+                }
+                manifestWrite.idempotencyKey = std::move(manifestKey).value();
+                auto manifestOutcome = telemetrySources_.projectMemory->remember(
+                    Domain::RememberProjectMemoryRequest{
+                        request.projectId, std::move(manifestWrite)},
+                    context);
+                if (!manifestOutcome) {
+                    return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
+                        std::move(manifestOutcome).error());
+                }
+                manifestRecordId = manifestOutcome.value().recordId;
             }
-            manifestWrite.idempotencyKey = std::move(manifestKey).value();
-            auto manifestOutcome = telemetrySources_.projectMemory->remember(
-                Domain::RememberProjectMemoryRequest{
-                    request.projectId, std::move(manifestWrite)},
-                context);
-            if (!manifestOutcome) {
-                return Domain::Result<ManagerInstructionPackageSnapshot>::failure(
-                    std::move(manifestOutcome).error());
-            }
-            manifestRecordId = manifestOutcome.value().recordId;
         }
         return Domain::Result<ManagerInstructionPackageSnapshot>::success(
             ManagerInstructionPackageSnapshot{
@@ -1582,187 +1607,7 @@ private:
             cursor = page.value().nextCursor;
         } while (cursor);
 
-        if (rows.empty()) {
-            auto legacyPage = telemetrySources_.projectMemory->listRecent(
-                Domain::ListRecentProjectMemoryRequest{
-                    projectId, {"instruction_package"}, std::nullopt,
-                    100U, std::nullopt, true, 256U * 1024U}, context);
-            if (!legacyPage) {
-                return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                    std::move(legacyPage).error());
-            }
-            for (const auto& legacyHit : legacyPage.value().records) {
-                if (!legacyHit.record.body) continue;
-                try {
-                    const auto legacy = nlohmann::json::parse(*legacyHit.record.body);
-                    if (legacy.value("schema", std::string{}) !=
-                        "forge-instruction-package-v1") continue;
-                    const auto revisionText = legacy.at("revision").get<std::string>();
-                    auto revision = Domain::Sha256Digest::parse(revisionText);
-                    auto path = Domain::PathText::create(
-                        legacy.at("package_path").get<std::string>());
-                    if (!revision || !path || !legacy.at("files").is_array()) continue;
-                    auto packageIdentity = telemetrySources_.evidenceHasher->sha256(
-                        byteView(std::string{"package-root\n"} + projectId.value() +
-                            "\n" + path.value().value()));
-                    if (!packageIdentity) {
-                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                            std::move(packageIdentity).error());
-                    }
-                    const auto packageId = packageIdentity.value().value();
-                    auto rowIdentity = telemetrySources_.evidenceHasher->sha256(
-                        byteView(std::string{"package-row\n"} + projectId.value() +
-                            "\n" + packageId + "\n" + revisionText));
-                    if (!rowIdentity) {
-                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                            std::move(rowIdentity).error());
-                    }
-                    const auto rowId = "queue-" +
-                        rowIdentity.value().value().substr(0U, 32U);
-                    std::vector<Domain::MemoryRecordId> legacyIds;
-                    for (const auto& file : legacy.at("files")) {
-                        auto id = Domain::MemoryRecordId::parse(
-                            file.at("record_id").get<std::string>());
-                        if (!id) continue;
-                        legacyIds.push_back(std::move(id).value());
-                    }
-                    auto legacyRecords = telemetrySources_.projectMemory->get(
-                        Domain::GetProjectMemoryRequest{
-                            projectId, std::move(legacyIds), true,
-                            256U * 1024U}, context);
-                    if (!legacyRecords) {
-                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                            std::move(legacyRecords).error());
-                    }
-                    std::map<std::string, const Domain::ProjectMemoryRecord*> byId;
-                    for (const auto& record : legacyRecords.value().records) {
-                        byId.emplace(record.id.value(), &record);
-                    }
-                    std::vector<Domain::ProjectMemoryWrite> entryWrites;
-                    std::uint64_t contentBytes{};
-                    std::size_t fileIndex{};
-                    for (const auto& file : legacy.at("files")) {
-                        const auto recordId = file.at("record_id").get<std::string>();
-                        const auto found = byId.find(recordId);
-                        const auto body = found != byId.end() && found->second->body
-                            ? *found->second->body : std::string{};
-                        auto contentHash = telemetrySources_.evidenceHasher->sha256(
-                            byteView(body));
-                        if (!contentHash) {
-                            return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                                std::move(contentHash).error());
-                        }
-                        const auto relative = file.at("path").get<std::string>();
-                        nlohmann::json entry{{"schema", "forge-instruction-package-entry-v2"},
-                            {"package_id", packageId}, {"queue_row_id", rowId},
-                            {"revision", revisionText}, {"relative_path", relative},
-                            {"kind", "file"}, {"byte_length", body.size()},
-                            {"content_hash", contentHash.value().value()},
-                            {"interpretation", "interpreted"},
-                            {"coverage_detail", "Migrated from the active single-manifest format."},
-                            {"derived_text", body},
-                            {"legacy_record_id", recordId}};
-                        auto key = Domain::IdempotencyKey::create(
-                            "instruction-entry:" + revisionText + ":" +
-                            std::to_string(fileIndex++));
-                        if (!key) {
-                            return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                                std::move(key).error());
-                        }
-                        Domain::ProjectMemoryWrite write;
-                        write.kind = "instruction_package_entry";
-                        write.title = relative;
-                        write.summary = packageId + " · migrated · " +
-                            std::to_string(body.size()) + " bytes";
-                        write.body = entry.dump();
-                        write.tags = {"instruction-package-entry", "migrated-v1"};
-                        write.importance = 1.0;
-                        write.confidence = found == byId.end() ? 0.0 : 1.0;
-                        write.sourceKind = "manager_instruction_package_migration";
-                        write.sourceReference = recordId;
-                        write.idempotencyKey = std::move(key).value();
-                        entryWrites.push_back(std::move(write));
-                        contentBytes += body.size();
-                    }
-                    if (!entryWrites.empty()) {
-                        auto written = telemetrySources_.projectMemory->rememberBatch(
-                            Domain::RememberProjectMemoryBatchRequest{
-                                projectId, std::move(entryWrites)}, context);
-                        if (!written) {
-                            return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                                std::move(written).error());
-                        }
-                    }
-                    nlohmann::json migrated{{"schema", "forge-instruction-package-queue-v2"},
-                        {"project_id", projectId.value()}, {"queue_row_id", rowId},
-                        {"package_id", packageId},
-                        {"package_name", legacy.value("package_name", std::string{"Migrated instructions"})},
-                        {"package_path", path.value().value()}, {"revision", revisionText},
-                        {"order", 1024U}, {"state", "active"},
-                        {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}},
-                        {"entry_count", legacy.at("files").size()},
-                        {"content_bytes", contentBytes}, {"coverage_gap_count", 0U},
-                        {"attempts", 1U},
-                        {"last_error", "Execution cursor was uncertain during migration and was reset to the first entry."},
-                        {"migrated_from_record_id", legacyHit.record.id.value()}};
-                    auto key = Domain::IdempotencyKey::create("instruction-queue:" + rowId);
-                    if (!key) {
-                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                            std::move(key).error());
-                    }
-                    Domain::ProjectMemoryWrite write;
-                    write.kind = "instruction_package_queue";
-                    write.title = legacy.value("package_name", std::string{"Migrated instructions"});
-                    write.summary = "Migrated active instruction manifest · " + revisionText;
-                    write.body = migrated.dump();
-                    write.tags = {"instruction-package-queue", "migrated-v1"};
-                    write.importance = 1.0;
-                    write.confidence = 1.0;
-                    write.sourceKind = "manager_instruction_package_migration";
-                    write.sourceReference = legacyHit.record.id.value();
-                    write.idempotencyKey = std::move(key).value();
-                    auto saved = telemetrySources_.projectMemory->remember(
-                        Domain::RememberProjectMemoryRequest{projectId, std::move(write)},
-                        context);
-                    if (!saved) {
-                        return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
-                            std::move(saved).error());
-                    }
-                    const auto now = clock_->utcNow();
-                    auto migratedRecord = Domain::ProjectMemoryRecord{
-                        saved.value().recordId, projectId,
-                        saved.value().recordVersion,
-                        "instruction_package_queue",
-                        legacy.value("package_name",
-                            std::string{"Migrated instructions"}),
-                        "Migrated active instruction manifest · " + revisionText,
-                        migrated.dump(),
-                        {"instruction-package-queue", "migrated-v1"},
-                        1.0, 1.0,
-                        "manager_instruction_package_migration",
-                        legacyHit.record.id.value(), std::nullopt,
-                        now, now, now, std::nullopt,
-                        saved.value().contentHash, false,
-                        saved.value().schemaVersion};
-                    std::vector<StoredPackageQueueRow> migratedRows;
-                    migratedRows.push_back(StoredPackageQueueRow{
-                        std::move(migratedRecord),
-                        ManagerInstructionPackageQueueRowSnapshot{
-                            rowId, packageId,
-                            legacy.value("package_name",
-                                std::string{"Migrated instructions"}),
-                            path.value(), revision.value(), 1024U, "active",
-                            legacy.at("files").size(), contentBytes, 0U, 0U,
-                            0U,
-                            "Execution cursor was uncertain during migration and was reset to the first entry."}});
-                    return Domain::Result<std::vector<StoredPackageQueueRow>>::success(
-                        std::move(migratedRows));
-                } catch (...) {
-                    continue;
-                }
-            }
-        }
-
+        bool hasSavedOrder{};
         auto orderPage = telemetrySources_.projectMemory->listRecent(
             Domain::ListRecentProjectMemoryRequest{
                 projectId, {"instruction_package_queue_order"}, std::nullopt,
@@ -1781,6 +1626,7 @@ private:
                     "forge-instruction-package-order-v1" &&
                     order.value("project_id", std::string{}) == projectId.value() &&
                     order.at("rows").is_array()) {
+                    hasSavedOrder = true;
                     std::map<std::string, std::uint64_t> positions;
                     std::uint64_t position{};
                     for (const auto& id : order.at("rows")) {
@@ -1802,6 +1648,38 @@ private:
                         "The persisted instruction package order failed validation."));
             }
         }
+        if (rows.empty() && !hasSavedOrder) {
+            auto migrated = Application::migrateLegacyInstructionPackage(
+                *telemetrySources_.projectMemory, *telemetrySources_.evidenceHasher,
+                *clock_, projectId, context);
+            if (!migrated) {
+                return Domain::Result<std::vector<StoredPackageQueueRow>>::failure(
+                    std::move(migrated).error());
+            }
+            if (migrated.value()) {
+                auto record = std::move(*migrated.value());
+                const auto value = nlohmann::json::parse(*record.body);
+                auto path = Domain::PathText::create(value.at("package_path").get<std::string>());
+                auto revision = Domain::Sha256Digest::parse(value.at("revision").get<std::string>());
+                rows.push_back(StoredPackageQueueRow{std::move(record),
+                    ManagerInstructionPackageQueueRowSnapshot{
+                        value.at("queue_row_id").get<std::string>(),
+                        value.at("package_id").get<std::string>(),
+                        value.at("package_name").get<std::string>(),
+                        std::move(path).value(), std::move(revision).value(),
+                        value.at("order").get<std::uint64_t>(),
+                        value.at("state").get<std::string>(),
+                        value.at("entry_count").get<std::uint64_t>(),
+                        value.at("content_bytes").get<std::uint64_t>(),
+                        value.at("coverage_gap_count").get<std::uint64_t>(),
+                        value.at("cursor").value("entry", std::uint64_t{}),
+                        value.at("cursor").value("byte_offset", std::uint64_t{}),
+                        value.contains("last_error") && !value.at("last_error").is_null()
+                            ? std::optional<std::string>{value.at("last_error").get<std::string>()}
+                            : std::nullopt}});
+            }
+        }
+
         std::stable_sort(rows.begin(), rows.end(), [](const auto& left, const auto& right) {
             if (left.snapshot.order != right.snapshot.order) {
                 return left.snapshot.order < right.snapshot.order;
@@ -1819,6 +1697,7 @@ private:
     {
         nlohmann::json document{
             {"schema", "forge-instruction-package-order-v1"},
+            {"ordering_operation_id", context.operationId.value()},
             {"project_id", projectId.value()},
             {"rows", nlohmann::json::array()}};
         std::string identityMaterial;
@@ -1830,8 +1709,24 @@ private:
             byteView(identityMaterial));
         if (!digest) return Domain::Result<void>::failure(std::move(digest).error());
         auto key = Domain::IdempotencyKey::create(
-            "instruction-order:" + digest.value().value());
+            "instruction-order:" + digest.value().value() + ":" + context.operationId.value());
         if (!key) return Domain::Result<void>::failure(std::move(key).error());
+        auto existing = telemetrySources_.projectMemory->listRecent(
+            Domain::ListRecentProjectMemoryRequest{
+                projectId, {"instruction_package_queue_order"}, std::nullopt,
+                1U, std::nullopt, true, 64U * 1024U}, context);
+        if (!existing) return Domain::Result<void>::failure(std::move(existing).error());
+        if (!existing.value().records.empty() &&
+            existing.value().records.front().record.kind == "instruction_package_queue_order") {
+            const auto& record = existing.value().records.front().record;
+            auto updated = telemetrySources_.projectMemory->update(
+                Domain::UpdateProjectMemoryRequest{
+                    projectId, record.id, record.version, std::nullopt,
+                    std::optional<std::string>{std::to_string(rows.size()) + " ordered package rows"},
+                    std::optional<std::string>{document.dump()}, std::nullopt}, context);
+            if (!updated) return Domain::Result<void>::failure(std::move(updated).error());
+            return Domain::Result<void>::success();
+        }
         Domain::ProjectMemoryWrite write;
         write.kind = "instruction_package_queue_order";
         write.title = "Instruction package execution order";
@@ -1854,6 +1749,7 @@ private:
         const ManagerInstructionPackageQueueRequest& request,
         const Domain::OperationContext& context)
     {
+        std::unique_lock queueLock{instructionPackageMutex_};
         if (telemetrySources_.projectMemory == nullptr ||
             telemetrySources_.projects == nullptr ||
             telemetrySources_.evidenceHasher == nullptr) {
@@ -1920,10 +1816,10 @@ private:
                     error(Domain::ErrorCodes::InvalidRequest,
                         "Removing a package requires an existing queue row."));
             }
-            if (selected->snapshot.state == "active") {
+            auto marked = persistPackageOrder(request.projectId, rows, context);
+            if (!marked) {
                 return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
-                    error(Domain::ErrorCodes::Conflict,
-                        "An active package can be removed after the current safe operation boundary."));
+                    std::move(marked).error());
             }
             auto removed = telemetrySources_.projectMemory->forget(
                 Domain::ForgetProjectMemoryRequest{
@@ -1934,6 +1830,9 @@ private:
                     std::move(removed).error());
             }
             rows.erase(selected);
+            for (std::size_t index{}; index < rows.size(); ++index) {
+                rows[index].snapshot.order = (index + 1U) * 1024U;
+            }
             auto persisted = persistPackageOrder(request.projectId, rows, context);
             if (!persisted) {
                 return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
@@ -1945,6 +1844,7 @@ private:
                     error(Domain::ErrorCodes::InvalidRequest,
                         "Retry requires an existing queue row."));
             }
+            queueLock.unlock();
             auto rescanned = scanInstructionPackage(
                 ManagerInstructionPackageRequest{
                     request.projectId, selected->snapshot.packagePath,
@@ -1959,6 +1859,21 @@ private:
                         "The package changed; add the new revision as a queue row."));
             }
             try {
+                queueLock.lock();
+                auto refreshed = packageQueueRows(request.projectId, context);
+                if (!refreshed) {
+                    return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                        std::move(refreshed).error());
+                }
+                rows = std::move(refreshed).value();
+                selected = std::find_if(rows.begin(), rows.end(), [&](const auto& row) {
+                    return row.snapshot.queueRowId == *request.queueRowId;
+                });
+                if (selected == rows.end()) {
+                    return Domain::Result<ManagerInstructionPackageQueueSnapshot>::failure(
+                        error(Domain::ErrorCodes::RecordNotFound,
+                            "The selected instruction package queue row was removed during retry."));
+                }
                 auto document = nlohmann::json::parse(*selected->record.body);
                 document["state"] = "ready";
                 document["attempts"] = document.value("attempts", 0U) + 1U;
@@ -1990,6 +1905,7 @@ private:
             }
         }
 
+        queueLock.unlock();
         ManagerInstructionPackageQueueSnapshot result{request.projectId};
         if (request.action == ManagerInstructionPackageQueueAction::Entries) {
             if (selected == rows.end()) {
@@ -2325,6 +2241,7 @@ private:
         const ManagerRequest& managerRequest,
         const bool repair,
         const bool activate,
+        const std::optional<Domain::ProjectId>& selectedProject,
         const Domain::OperationContext& context)
     {
         const auto& sources = telemetrySources_;
@@ -2357,8 +2274,34 @@ private:
                 "LM Studio workflows are unavailable in this Manager composition."));
         }
 
-        const Domain::LMStudioDeploymentRequest deploymentRequest{
+        Domain::LMStudioDeploymentRequest deploymentRequest{
             sources.preferredForgeBinary, true};
+        if (selectedProject) {
+            if (!sources.projects || !sources.projectWorkspaceAuthority) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "Registered project access is required to bind LM Studio integrations."));
+            }
+            auto descriptor = sources.projects->descriptor(*selectedProject, context);
+            if (!descriptor) return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                std::move(descriptor).error());
+            if (descriptor.value().aliases.empty()) {
+                return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The selected project has no registered workspace folder."));
+            }
+            auto projectAuthority = sources.projectWorkspaceAuthority->authorityFor(*selectedProject, context);
+            if (!projectAuthority) return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                std::move(projectAuthority).error());
+            auto workspace = sources.projectWorkspaceAuthority->authorize(
+                projectAuthority.value(), Domain::PathAuthorizationRequest{
+                    descriptor.value().aliases.front(), std::nullopt,
+                    Domain::FileAccess::Read, false}, context);
+            if (!workspace) return Domain::Result<ManagerLmStudioSnapshot>::failure(
+                std::move(workspace).error());
+            deploymentRequest.projectId = selectedProject;
+            deploymentRequest.projectRoot = workspace.value().canonicalPath();
+        }
         auto inspected = sources.lmStudioDeployment->status(
             deploymentRequest, *sources.lmStudioReadAuthority, context);
         if (!inspected) {
@@ -2414,7 +2357,7 @@ private:
         bool fallbackReady{};
         bool continuityReady{};
         if (activate) {
-            if (!inspected.value().deploymentId) {
+            if (!inspected.value().mcpConfigurationRegistered || !inspected.value().deploymentId) {
                 return Domain::Result<ManagerLmStudioSnapshot>::failure(error(
                     Domain::ErrorCodes::Conflict,
                     "LM Studio must have a complete Forge Conductor deployment before connector activation."));
@@ -3595,15 +3538,15 @@ private:
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                     return controllerResponse(
-                        request, lmStudioWorkflow(request, false, false, context));
+                        request, lmStudioWorkflow(request, false, false, payload.projectId, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerLmStudioRepairRequest>) {
                     return controllerResponse(
-                        request, lmStudioWorkflow(request, true, false, context));
+                        request, lmStudioWorkflow(request, true, false, payload.projectId, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerLmStudioActivateRequest>) {
                     return controllerResponse(
-                        request, lmStudioWorkflow(request, false, true, context));
+                        request, lmStudioWorkflow(request, false, true, payload.projectId, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerToolsRequest>) {
                     return controllerResponse(request, toolsSnapshot());
@@ -3687,6 +3630,7 @@ private:
     std::shared_ptr<Contracts::IManagedRunService> managedRuns_;
     ManagerTelemetrySources telemetrySources_;
     std::mutex evidenceCheckMutex_;
+    std::mutex instructionPackageMutex_;
 
     mutable std::mutex stateMutex_;
     std::condition_variable stateChanged_;

@@ -117,13 +117,16 @@ public:
         const Domain::OperationContext& context) noexcept;
 
     [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> lmStudioStatus(
-        const Domain::OperationContext& context) noexcept;
+        const Domain::OperationContext& context,
+        std::optional<Domain::ProjectId> projectId = {}) noexcept;
 
     [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> repairLmStudio(
-        const Domain::OperationContext& context) noexcept;
+        const Domain::OperationContext& context,
+        std::optional<Domain::ProjectId> projectId = {}) noexcept;
 
     [[nodiscard]] Domain::Result<Manager::ManagerLmStudioSnapshot> activateLmStudio(
-        const Domain::OperationContext& context) noexcept;
+        const Domain::OperationContext& context,
+        std::optional<Domain::ProjectId> projectId = {}) noexcept;
 
     [[nodiscard]] Domain::Result<Manager::ManagerToolsSnapshot> tools(
         const Domain::OperationContext& context) noexcept;

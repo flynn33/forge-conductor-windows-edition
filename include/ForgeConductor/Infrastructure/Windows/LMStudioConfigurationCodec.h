@@ -69,13 +69,17 @@ public:
     [[nodiscard]] static Domain::Result<LMStudioConfigurationInspection> inspect(
         const LMStudioConfigurationDocument& document,
         const Domain::PathText& expectedBinary,
-        const Domain::PathText& expectedForgeHome) noexcept;
+        const Domain::PathText& expectedForgeHome,
+        std::optional<Domain::ProjectId> expectedProjectId = std::nullopt,
+        std::optional<Domain::PathText> expectedProjectRoot = std::nullopt) noexcept;
 
     [[nodiscard]] static Domain::Result<std::vector<std::byte>> mergeForgeServers(
         const LMStudioConfigurationDocument& document,
         const Domain::PathText& binary,
         const Domain::PathText& forgeHome,
-        const Domain::DeploymentId& deploymentId) noexcept;
+        const Domain::DeploymentId& deploymentId,
+        std::optional<Domain::ProjectId> expectedProjectId = std::nullopt,
+        std::optional<Domain::PathText> expectedProjectRoot = std::nullopt) noexcept;
 };
 
 } // namespace ForgeConductor::Infrastructure::Windows

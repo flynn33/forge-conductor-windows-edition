@@ -42,8 +42,8 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"agent_list", "List specialist agent playbooks.", "AgentToolPack", Read, false, false},
         {"agent_recommend", "Recommend a specialist agent for a task description.", "AgentToolPack", Read, false, false},
         {"agent_run_complete", "Close a session with a report matching output_schema.", "AgentToolPack", Write, false, false},
-        {"agent_run_start", "Start a durable specialist session (supersedes prior open sessions).", "AgentToolPack", Write, false, false},
-        {"agent_run_status", "Status of an agent session; reminds host to complete open runs.", "AgentToolPack", Write, false, false},
+        {"agent_run_start", "Start a durable specialist session (supersedes prior open sessions).", "AgentToolPack", Write, true, false},
+        {"agent_run_status", "Status of an agent session; reminds host to complete open runs.", "AgentToolPack", Write, true, false},
         {"clu.evaluate", "Evaluate development evidence against the exact bound policy revision and return any CLU finding.", "CluGovernanceToolPack", Write, true, false},
         {"clu.export_log", "Export the redacted project-bound CLU governance log without full private policy content.", "CluGovernanceToolPack", Read, true, false},
         {"clu.findings", "List CLU findings, correction requests, notification receipts, and policy coverage state.", "CluGovernanceToolPack", Read, true, false},
@@ -90,7 +90,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"project_memory.search", "Search one project with deterministic bounded pagination.", "ProjectMemoryToolPack", Read, true, false},
         {"project_memory.status", "Report project memory health, sizes, capabilities, and limits.", "ProjectMemoryToolPack", Read, true, false},
         {"project_memory.update", "Update a record with optimistic version checking.", "ProjectMemoryToolPack", Write, true, false},
-        {"project_policy.read", "Read the adopted policy index or an exact pinned document. Supply path and next offset to retrieve every part; this tool cannot adopt policy or approve reviews.", "ProjectPolicyToolPack", Read, true, false},
+        {"project_policy.read", "Read the adopted policy index or an exact pinned document. Follow next_cursor for every index page; supply path and next_offset as offset for every document part. This tool cannot adopt policy or approve reviews.", "ProjectPolicyToolPack", Read, true, false},
         {"search_text", "Recursive text search (grep).", "SearchToolPack", Read, true, false},
         {"session_checkpoint", "Soft-save context + open agent sessions for continuity (continue working).", "ContinuityToolPack", Write, false, false},
         {"session_handoff", "Finalize context/agent handoff for a new chat; returns resume_seed. Prefer before context is full.", "ContinuityToolPack", Write, false, false},
@@ -158,7 +158,8 @@ using Property = std::pair<std::string_view, Json>;
     }
     if (name == "project_policy.read") {
         return Json{{"type", "object"}, {"properties", {{"path", {{"type", "string"}}},
-            {"offset", {{"type", "integer"}, {"minimum", 0}}}}}, {"additionalProperties", false}};
+            {"offset", {{"type", "integer"}, {"minimum", 0}}},
+            {"cursor", {{"type", "string"}}}}}, {"additionalProperties", false}};
     }
     const auto string = primitive("string");
     if (name == "agent_run_start") {
@@ -231,6 +232,21 @@ using Property = std::pair<std::string_view, Json>;
     }
     if (name == "fs_write") {
         return objectSchema({{"path", string}, {"content", string}}, {"path", "content"});
+    }
+    if (name == "fs_edit") {
+        return objectSchema(
+            {{"path", string}, {"old", string}, {"new", string}},
+            {"path", "old", "new"}, AdditionalProperties::Allowed);
+    }
+    if (name == "fs_glob") {
+        return objectSchema({{"path", string}, {"pattern", string}}, {},
+            AdditionalProperties::Allowed);
+    }
+    if (name == "fs_move") {
+        return objectSchema(
+            {{"path", string}, {"dest", string}, {"src", string},
+             {"source", string}, {"destination", string}},
+            {"path", "dest"}, AdditionalProperties::Allowed);
     }
     if (name == "shell_exec") {
         return objectSchema(

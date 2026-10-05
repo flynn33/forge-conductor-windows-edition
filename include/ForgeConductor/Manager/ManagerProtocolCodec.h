@@ -97,14 +97,17 @@ struct ManagerInstructionPackageQueueRequest final {
 };
 
 struct ManagerLmStudioStatusRequest final {
+    std::optional<Domain::ProjectId> projectId;
     bool operator==(const ManagerLmStudioStatusRequest&) const = default;
 };
 
 struct ManagerLmStudioRepairRequest final {
+    std::optional<Domain::ProjectId> projectId;
     bool operator==(const ManagerLmStudioRepairRequest&) const = default;
 };
 
 struct ManagerLmStudioActivateRequest final {
+    std::optional<Domain::ProjectId> projectId;
     bool operator==(const ManagerLmStudioActivateRequest&) const = default;
 };
 

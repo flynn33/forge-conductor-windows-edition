@@ -54,6 +54,7 @@ struct McpToolPackDependencies final {
     Contracts::IForgeStatusRepository& forgeStatus;
     Contracts::IClock& clock;
     Contracts::IUuidGenerator& uuidGenerator;
+    Contracts::IHasher& hasher;
     Domain::ProjectMemoryLimits projectMemoryLimits;
     std::chrono::seconds shellDefaultTimeout;
     Domain::PathText shellExecutable;

@@ -195,6 +195,68 @@ void verifyError(
         label + " retryability mismatch");
 }
 
+void verifyBoundedFilePage(
+    const Contract::InvocationResult& actual,
+    const std::size_t offset,
+    const std::string& label)
+{
+    constexpr std::size_t SourceBytes = 120U * 1024U;
+    constexpr std::size_t SerializedPageBytes = 32U * 1024U;
+    const auto& payload = actual.payload;
+    require(payload.dump().size() <= SerializedPageBytes,
+        label + " exceeds the serialized native read limit");
+    require(payload.at("byte_offset") == offset,
+        label + " changed the requested byte offset");
+    require(payload.at("size") == SourceBytes &&
+            payload.at("total_lines") == 1U &&
+            payload.at("start_line") == 1U &&
+            payload.at("end_line") == 1U &&
+            payload.at("line_count") == 1U,
+        label + " lost the exact source size or one-line metadata");
+    const auto content = payload.at("content").get<std::string>();
+    require(!content.empty() && content.size() <= SourceBytes - offset,
+        label + " did not make bounded forward progress");
+    require(content == std::string(content.size(), 'x'),
+        label + " changed the seeded file bytes");
+    const auto end = offset + content.size();
+    require(payload.at("has_more") == (end < SourceBytes),
+        label + " reported an incorrect EOF boundary");
+    require(payload.at("next_offset").is_null(),
+        label + " mixed line offsets into byte pagination");
+    if (end < SourceBytes) {
+        require(payload.at("next_byte_offset") == end,
+            label + " continuation skipped or repeated source bytes");
+    } else {
+        require(payload.at("next_byte_offset").is_null(),
+            label + " retained a continuation after EOF");
+    }
+}
+
+void verifyBoundedFileReassembly(
+    const Contract::InvocationResult& first,
+    const std::string& label)
+{
+    constexpr std::size_t SourceBytes = 120U * 1024U;
+    verifyBoundedFilePage(first, 0U, label);
+    std::string assembled = first.payload.at("content").get<std::string>();
+    auto page = first;
+    while (page.payload.at("has_more").get<bool>()) {
+        const auto offset = page.payload.at("next_byte_offset").get<std::size_t>();
+        require(offset == assembled.size(),
+            label + " continuation did not follow the returned content");
+        Contract::McpToolContractFixture continuation{Contract::DependencyMode::Happy};
+        page = continuation.invoke("fs_read", Json{
+            {"path", "D:/workspace/large-line.txt"}, {"byte_offset", offset}});
+        verifyOutcome(page, Json::object(), label + "/continuation");
+        verifyEffects(page, Json{{"effects_exact", {"file_system.read_file"}}},
+            label + "/continuation");
+        verifyBoundedFilePage(page, offset, label + "/continuation");
+        assembled += page.payload.at("content").get<std::string>();
+    }
+    require(assembled == std::string(SourceBytes, 'x'),
+        label + " did not reconstruct every seeded byte exactly once");
+}
+
 void runCase(
     const std::string& toolName,
     const std::string& category,
@@ -218,6 +280,11 @@ void runCase(
         fail(label + " has unknown expectation kind " + kind);
     }
     verifyEffects(actual, expectation, label);
+    if (toolName == "fs_read" && category == "valid") {
+        verifyBoundedFileReassembly(actual, label);
+    } else if (toolName == "fs_read" && category == "boundary") {
+        verifyBoundedFilePage(actual, 98304U, label);
+    }
 }
 
 [[nodiscard]] Json resolveCase(

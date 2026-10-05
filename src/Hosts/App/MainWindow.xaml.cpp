@@ -813,8 +813,9 @@ void MainWindow::PolicyClicked(Windows::Foundation::IInspectable const& sender,
 {
     const auto button = sender.as<Microsoft::UI::Xaml::Controls::Button>();
     const auto tag = unbox_value<hstring>(button.Tag());
-    if (tag == L"browse") {
-        if (selectedProjectId_.empty()) { PolicyState().Text(L"Choose a project first."); return; }
+    if (tag == L"browse" || tag == L"browse-file") {
+        const bool chooseFolder = tag == L"browse";
+        const auto projectId = selectedProjectId_;
         try {
             HWND hwnd{};
             winrt::check_hresult(this->m_inner.as<::IWindowNative>()->get_WindowHandle(&hwnd));
@@ -823,8 +824,11 @@ void MainWindow::PolicyClicked(Windows::Foundation::IInspectable const& sender,
                 CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.put())));
             DWORD options{};
             winrt::check_hresult(dialog->GetOptions(&options));
-            winrt::check_hresult(dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM));
-            winrt::check_hresult(dialog->SetTitle(L"Choose development-policy repository folder"));
+            winrt::check_hresult(dialog->SetOptions(options | FOS_FORCEFILESYSTEM |
+                (chooseFolder ? FOS_PICKFOLDERS : FOS_FILEMUSTEXIST)));
+            winrt::check_hresult(dialog->SetTitle(chooseFolder
+                ? L"Choose development-policy repository folder"
+                : L"Choose development-policy file"));
             const auto shown = dialog->Show(hwnd);
             if (shown == HRESULT_FROM_WIN32(ERROR_CANCELLED)) return;
             winrt::check_hresult(shown);
@@ -834,9 +838,15 @@ void MainWindow::PolicyClicked(Windows::Foundation::IInspectable const& sender,
             winrt::check_hresult(folder->GetDisplayName(SIGDN_FILESYSPATH, &path));
             PolicySource().Text(path);
             ::CoTaskMemFree(path);
-            RunAction(Action::PolicyBind);
+            if (projectId.empty()) {
+                PolicyState().Text(L"Policy selected. Prepare or select a project, then choose its policy again to activate CLU governance.");
+            } else if (selectedProjectId_ != projectId) {
+                PolicyState().Text(L"The project selection changed. Choose its policy again to bind it.");
+            } else {
+                RunAction(Action::PolicyBind);
+            }
         } catch (const winrt::hresult_error& error) {
-            PolicyState().Text(L"The policy folder picker failed: " + error.message());
+            PolicyState().Text(L"The Windows policy picker failed: " + error.message());
         }
     }
     else if (tag == L"refresh") RunAction(Action::PolicyRefresh);
@@ -1599,6 +1609,7 @@ void MainWindow::ProjectSelectionChanged(
 
     RunAction(Action::ProjectLoad);
     RunAction(Action::ContinuityRead);
+    RunAction(Action::LmStudioInspect);
 }
 
 void MainWindow::NavigationChanged(
@@ -3684,6 +3695,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
         !selectedProjectId_.empty()
             ? std::optional<std::string>{selectedProjectId_} : std::nullopt;
     const std::string requestedEvidenceProject = selectedProjectId_;
+    const std::string requestedLmStudioProject = selectedProjectId_;
     const std::string requestedEvidenceRun = selectedEvidenceRunId_;
     std::string requestedEvidenceCommand;
     if (continuityPreferenceAction && requestedContinuityProject.empty()) {
@@ -4131,7 +4143,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             using LmAction = ::ForgeConductor::Hosts::App::LmStudioAction;
             const auto lmAction = action == Action::LmStudioRepair ? LmAction::Repair :
                 action == Action::LmStudioActivate ? LmAction::Activate : LmAction::Inspect;
-            lmStudioView = connection_->lmStudio(lmAction, cancellation_.get_token());
+            lmStudioView = connection_->lmStudio(lmAction, cancellation_.get_token(), requestedLmStudioProject);
             message = lmStudioView.message;
             break;
         }

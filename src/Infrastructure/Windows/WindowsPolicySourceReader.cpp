@@ -323,7 +323,12 @@ Domain::Result<Contracts::PolicySourceBundle> WindowsPolicySourceReader::read(
             }
             check(context);
             const auto root = std::filesystem::canonical(nativePath(source));
-            bundle = enumerateFolder(root, pathText(root), {}, context);
+            if (std::filesystem::is_regular_file(root)) {
+                bundle = {pathText(root), {},
+                    {inspectFile(root, pathText(root.filename()), context)}};
+            } else {
+                bundle = enumerateFolder(root, pathText(root), {}, context);
+            }
         }
         return Domain::Result<Contracts::PolicySourceBundle>::success(std::move(bundle));
     } catch (const std::exception& failure) {

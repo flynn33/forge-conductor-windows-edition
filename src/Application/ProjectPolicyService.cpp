@@ -488,8 +488,10 @@ public:
                 const auto window = request.detailsJson.empty()
                     ? Json::object() : Json::parse(request.detailsJson);
                 const auto offset = window.value("offset", std::size_t{});
-                if (offset > content.size()) {
-                    throw std::runtime_error{"Policy document offset is outside the derived text."};
+                if (offset > content.size() ||
+                    (offset < content.size() &&
+                     (static_cast<unsigned char>(content[offset]) & 0xc0U) == 0x80U)) {
+                    throw std::runtime_error{"Policy document offset must be a UTF-8 character boundary within the derived text."};
                 }
                 auto end = (std::min)(content.size(), offset + 32U * 1024U);
                 while (end < content.size() &&

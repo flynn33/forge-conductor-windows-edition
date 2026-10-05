@@ -40,7 +40,7 @@ public:
     virtual ~IProjectSetupOperations() = default;
     virtual SetupOperationResult ensureManager(std::stop_token) = 0;
     virtual SetupOperationResult ensureProject(ProjectSetupSnapshot&, std::stop_token) = 0;
-    virtual SetupOperationResult ensurePlugins(std::stop_token) = 0;
+    virtual SetupOperationResult ensurePlugins(ProjectSetupSnapshot&, std::stop_token) = 0;
     virtual SetupOperationResult ensureProvider(ProjectSetupSnapshot&, std::stop_token) = 0;
     virtual SetupOperationResult verifyProvider(ProjectSetupSnapshot&, std::stop_token) = 0;
 };
@@ -79,7 +79,7 @@ public:
                 case SetupStage::Project:
                     operation = operations_.ensureProject(result, cancellation); break;
                 case SetupStage::Plugins:
-                    operation = operations_.ensurePlugins(cancellation); break;
+                    operation = operations_.ensurePlugins(result, cancellation); break;
                 case SetupStage::Provider:
                     operation = operations_.ensureProvider(result, cancellation); break;
                 case SetupStage::Verification:

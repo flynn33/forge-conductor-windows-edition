@@ -1,4 +1,5 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioConversationReader.h"
+#include "ForgeConductor/Domain/Utf8.h"
 
 #include <Windows.h>
 #include <nlohmann/json.hpp>
@@ -209,6 +210,56 @@ bool activeTool(const std::string_view type)
 
 // The installed native schema stores tool results as content strings and keeps
 // the associated request's plugin identity on the preceding request part.
+std::vector<std::string> nativeTextBodies(const Json& blocks)
+{
+    std::vector<std::string> bodies;
+    bool fragmented{};
+    if (!blocks.is_array()) return bodies;
+    for (const auto& block : blocks) {
+        if (!block.is_object() || block.value("type", std::string{}) != "text" ||
+            !block.contains("text") || !block.at("text").is_string()) continue;
+        bodies.push_back(block.at("text").get<std::string>());
+        const auto value = Json::parse(bodies.back(), nullptr, false);
+        if (value.is_object() && value.contains("kind") &&
+            value.at("kind") == "forge_tool_result_fragment") fragmented = true;
+    }
+    if (!fragmented) return bodies;
+    // Preserve the raw per-call content separately. Invalid fragment sets never
+    // become semantic tool results that could acknowledge native continuity.
+    if (bodies.size() < 2U || bodies.size() > 128U || bodies.size() != blocks.size()) return {};
+    constexpr std::size_t MaximumPayloadBytes = 1024U * 1024U;
+    std::string assembled;
+    std::uint64_t total{};
+    for (std::size_t index{}; index < bodies.size(); ++index) {
+        if (bodies[index].size() > 32U * 1024U) return {};
+        const auto value = Json::parse(bodies[index], nullptr, false);
+        if (!value.is_object() || value.dump() != bodies[index] || value.size() != 7U ||
+            !value.contains("kind") || value.at("kind") != "forge_tool_result_fragment" ||
+            !value.contains("version") || !value.contains("index") ||
+            !value.contains("count") || !value.contains("total_bytes") ||
+            !value.contains("part") || !value.at("part").is_string() ||
+            !value.contains("instruction") || value.at("instruction") !=
+                "Concatenate part from every fragment in index order, then parse the complete JSON tool result. Do not repeat the tool call.") return {};
+        const auto version = tokenNumber(value.at("version"));
+        const auto ordinal = tokenNumber(value.at("index"));
+        const auto count = tokenNumber(value.at("count"));
+        const auto bytes = tokenNumber(value.at("total_bytes"));
+        if (!version || *version != 1U || !ordinal || *ordinal != index ||
+            !count || *count != bodies.size() || !bytes || *bytes == 0U ||
+            *bytes > MaximumPayloadBytes) return {};
+        if (index == 0U) { total = *bytes; assembled.reserve(static_cast<std::size_t>(total)); }
+        if (*bytes != total) return {};
+        const auto& part = value.at("part").get_ref<const std::string&>();
+        if (part.empty() || part.size() > 12U * 1024U || !Domain::isValidUtf8(part) ||
+            part.size() > total - assembled.size()) return {};
+        assembled.append(part);
+    }
+    if (assembled.size() != total) return {};
+    const auto payload = Json::parse(assembled, nullptr, false);
+    if (!payload.is_object() || payload.dump() != assembled) return {};
+    return {std::move(assembled)};
+}
+
 void observeNativeContent(
     const Json& version, LMStudioConversationObservation& observation)
 {
@@ -261,15 +312,7 @@ void observeNativeContent(
                     request->second.pluginIdentifier,
                     resultRequestId.empty() ? request->second.requestId : resultRequestId, {}};
                 const auto blocks = Json::parse(result.content, nullptr, false);
-                if (blocks.is_array()) {
-                    for (const auto& block : blocks) {
-                        if (block.is_object() &&
-                            block.value("type", std::string{}) == "text" &&
-                            block.contains("text") && block["text"].is_string()) {
-                            result.textBodies.push_back(block["text"].get<std::string>());
-                        }
-                    }
-                }
+                result.textBodies = nativeTextBodies(blocks);
                 observation.nativeToolResults.push_back(std::move(result));
             }
         }

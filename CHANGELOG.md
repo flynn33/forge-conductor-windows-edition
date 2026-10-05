@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.3.11 - Workspace bootstrap and complete native tool delivery
+
+Public repair release following 1.3.6. The 1.3.7 through 1.3.10 sections below record intermediate local development builds; they were not published GitHub releases.
+
+- Carry the selected registered project ID and workspace through the App, Manager, deployment, and all three LM Studio roles. Report drift against that binding and preserve project-specific stores and foreign registrations.
+- Share bounded legacy instruction-package migration between Manager listing and MCP bootstrap. Retain queue order, explicit removal, pinned content, and visible missing-content coverage; include the direct queue editing and policy file/folder browsing improvements.
+- Advertise required filesystem-edit arguments and usable glob/move arguments. Match specialist start/status requirements to strict project ownership.
+- Scope implicit continuity lookup to the current project and retain authorized workspace/recent-file evidence in budget checkpoints, while preserving explicit historical packet retrieval.
+- Page complete policy inventories with exact snapshot cursors and bounded UTF-8 reads. Deliver other large results in complete ordered fragments through LM Studio's per-block limit, without replaying the operation.
+- Align VERSION, BUILD, current product documentation, and application/package identity to 1.3.11 / 1.3.11.0. Packaging rejects inconsistent version files and uses exact clean source/staging provenance.
+- Normalize supported forward and mixed separators at the Windows requested-path authorization boundary. Retain strict configured roots, access, scope, traversal, namespace and reparse protections.
+- Reproduce the real-process 1.3.10 path rejection and verify exact filesystem/shell results for all supported separator forms.
+- Record the accepted signed installation, 153-test Release suite, and native loaded-Qwen readback of complete policy, pinned instructions and an untruncated 64,038-byte shell output. The public release package is rebuilt and qualified separately; see the release and installed qualification records for exact provenance and limits.
+
+## 1.3.10 - Complete native MCP delivery
+
+- Page policy inventories using exact project/revision/snapshot cursors and bounded final serialized JSON; preserve global counts and accurate UTF-8 text continuation.
+- Return other large results as ordered bounded JSON text fragments, with complete strict native reconstruction and the existing whole-response limit.
+- Preserve strict catalog verification and pending governance notifications; verify complete adaptive file reassembly and exact side effects.
+- Record the separate forward-slash cwd rejection discovered by native acceptance; the 1.3.11 correction follows without obscuring that failure.
+
+## 1.3.9 - MCP project bootstrap and continuity recovery
+
+- Migrate saved legacy instruction packages through the same implementation in Manager and MCP bootstrap; retrieve pinned stored content even when its original folder is unavailable. Preserve explicit queue removal and report missing legacy files as coverage gaps.
+- Advertise the required filesystem-edit arguments and usable glob/move arguments to tool-capable models.
+- Keep automatic budget checkpoints bound to the observed authorized workspace and files, and scope default packet recovery to that workspace. Preserve explicit access to historical packets.
+- Bind LM Studio install/repair to the selected registered project and check project drift alongside binary, home, roles, and timeout.
+- Bind specialist start/status capabilities and durable sessions to the resolved project; retain strict cross-project reattachment rejection.
+- Update deployment verification to the exact repaired tool catalog fingerprint.
+- Add populated cross-process package/policy, specialist lifecycle, and native/model integration evidence.
+
+## 1.3.8 - Direct instruction queue editing
+
+- Allow immediate removal of any instruction-package queue row, including an active package.
+- Save the current queue order by updating its durable record so returning to a previous order remains effective after refresh and restart.
+- Keep an explicitly emptied queue empty instead of migrating its deleted legacy package again. Allow a removed package to be added again with the same revision, while reusing an already queued package.
+- Serialize Manager queue mutations and verify removal, repeated reordering, database reopen, re-addition, and the MCP status/bootstrap/read views.
+
+## 1.3.7 - CLU policy browsing
+
+- Open the Windows policy picker even when no project is selected. Keep activation scoped to a selected project and report how to activate a source chosen before project selection.
+- Add a single-file picker alongside the existing folder picker. File sources inventory only the selected file and support the existing revision, reading, refresh, and governance paths.
+- Check the project selection again after the modal picker returns so a source is not bound to a project that changed while browsing.
+
 ## 1.3.6 - Stable telemetry refresh layout
 
 - Restore the hidden diagnostic status after the Actions-frame removal and keep background telemetry polls from replacing it with command-progress text. Periodic polling no longer adds and removes a multiline row in the shared page layout. Live telemetry cadence and the existing product controls are retained.

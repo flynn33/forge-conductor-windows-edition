@@ -253,6 +253,9 @@ public:
     [[nodiscard]] std::size_t deployCalls() const noexcept { return deployCalls_; }
     [[nodiscard]] std::size_t activateCalls() const noexcept { return activateCalls_; }
 
+    [[nodiscard]] const std::optional<Domain::LMStudioDeploymentRequest>&
+    lastDeploymentRequest() const noexcept { return lastDeploymentRequest_; }
+
     [[nodiscard]] const std::optional<Contracts::WorkspaceAuthority>&
     lastAuthority() const noexcept
     {

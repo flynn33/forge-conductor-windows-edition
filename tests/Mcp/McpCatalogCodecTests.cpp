@@ -114,6 +114,8 @@ void testCanonicalCatalog()
     REQUIRE(readEffects == 28U);
     REQUIRE(writeEffects == 30U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
+    REQUIRE(descriptor(tools, "agent_run_start").tool.requiresProject);
+    REQUIRE(descriptor(tools, "agent_run_status").tool.requiresProject);
     REQUIRE(descriptor(tools, "instruction_package.read").tool.effect == Domain::ToolEffect::Read);
     REQUIRE(descriptor(tools, "fs_read").tool.description.find("next_offset") !=
         std::string::npos);
@@ -157,7 +159,17 @@ void testSourceSchemasAndWindowsDelta()
     REQUIRE(!status.contains("additionalProperties"));
 
     const auto fsEdit = schema(tools, "fs_edit");
-    REQUIRE(fsEdit == agentList);
+    REQUIRE(fsEdit.at("required") == Json::array({"path", "old", "new"}));
+    REQUIRE(fsEdit.at("properties").at("path").at("type") == "string");
+    REQUIRE(fsEdit.at("properties").at("old").at("type") == "string");
+    REQUIRE(fsEdit.at("properties").at("new").at("type") == "string");
+    REQUIRE(fsEdit.at("additionalProperties") == true);
+    const auto fsGlob = schema(tools, "fs_glob");
+    REQUIRE(fsGlob.at("required").empty());
+    REQUIRE(fsGlob.at("properties").at("pattern").at("type") == "string");
+    const auto fsMove = schema(tools, "fs_move");
+    REQUIRE(fsMove.at("required") == Json::array({"path", "dest"}));
+    REQUIRE(fsMove.at("properties").at("src").at("type") == "string");
     const auto fsRead = schema(tools, "fs_read");
     REQUIRE(fsRead.at("required") == Json::array({"path"}));
     REQUIRE(fsRead.at("properties").at("offset").at("description") ==

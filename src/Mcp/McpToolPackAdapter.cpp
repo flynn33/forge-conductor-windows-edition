@@ -1,5 +1,6 @@
 #include "ForgeConductor/Mcp/McpToolPackAdapter.h"
 
+#include "ForgeConductor/Application/LegacyInstructionPackageMigration.h"
 #include "ForgeConductor/Domain/Utf8.h"
 #include "ForgeConductor/Mcp/McpJsonCodec.h"
 #include "ForgeConductor/Mcp/McpToolCatalog.h"
@@ -41,6 +42,7 @@ constexpr std::size_t MaximumGitLogEntries = 200U;
 constexpr std::size_t MaximumShellOutputBytes = 80'000U;
 constexpr std::size_t MaximumShellErrorBytes = 20'000U;
 constexpr std::size_t MaximumMcpTextContentBytes = 96U * 1024U;
+constexpr std::size_t MaximumBoundedReadResponseBytes = 32U * 1024U;
 constexpr std::size_t MaximumStatusInstructionPackages = 100U;
 constexpr std::size_t MaximumBootstrapInstructionPackages = 16U;
 constexpr std::int64_t DefaultReadWindowLines = 200;
@@ -812,11 +814,18 @@ enum class ContinuityPathRole { Path, WorkingDirectory };
 
 class ToolContinuityObservationBuilder final {
 public:
+    void seedWorkspace(const Contracts::WorkspaceAuthority& authority)
+    {
+        if (!authority.trustedRoots().empty()) {
+            observation_.baseDirectory = authority.trustedRoots().front();
+        }
+    }
+
     void observe(
         const Contracts::AuthorizedPath& authorized,
         const ContinuityPathRole role)
     {
-        if (!observation_.baseDirectory) {
+        if (!observation_.path && !observation_.workingDirectory) {
             observation_.baseDirectory = authorized.authorityRoot();
         }
         if (role == ContinuityPathRole::WorkingDirectory) {
@@ -1450,6 +1459,266 @@ void optionalTimestamp(
     return end;
 }
 
+
+struct PolicyIndexWindow final {
+    std::string projectId;
+    std::string revision;
+    std::string digest;
+    std::size_t coverageOffset{};
+    std::size_t guidanceOffset{};
+};
+
+[[nodiscard]] Domain::Result<PolicyIndexWindow> policyIndexWindow(
+    const Json& index, const Json& arguments, const Domain::ProjectId& projectId,
+    Contracts::IHasher& hasher)
+{
+    const auto coverage = index.value("coverage", Json::array());
+    const auto guidance = index.value("agent_guidance", Json::array());
+    if (!coverage.is_array() || !guidance.is_array())
+        return failure<PolicyIndexWindow>(Domain::ErrorCodes::IntegrityFailure,
+            "The adopted policy index contains invalid coverage or guidance.");
+    auto inspected = index;
+    inspected.erase("clu_governance_notifications");
+    inspected.erase("clu_governance_notifications_deferred");
+    inspected.erase("clu_governance_notifications_read_tool");
+    const auto identity = Json{{"project_id", projectId.value()}, {"index", std::move(inspected)}}.dump();
+    auto digest = hasher.sha256(std::as_bytes(std::span{identity.data(), identity.size()}));
+    if (!digest) return propagate<PolicyIndexWindow>(std::move(digest));
+    PolicyIndexWindow window{projectId.value(), index.value("revision", std::string{}),
+        digest.value().value()};
+    if (!arguments.contains("cursor"))
+        return Domain::Result<PolicyIndexWindow>::success(std::move(window));
+    const auto cursorText = arguments.at("cursor").get<std::string>();
+    if (cursorText.empty() || cursorText.size() > 2U * 1024U)
+        return failure<PolicyIndexWindow>(Domain::ErrorCodes::InvalidRequest,
+            "The policy index cursor is empty or exceeds its byte limit.");
+    auto canonical = McpJsonCodec{}.canonicalize(cursorText);
+    if (!canonical) return failure<PolicyIndexWindow>(Domain::ErrorCodes::InvalidRequest,
+        "The policy index cursor is malformed.");
+    const auto cursor = Json::parse(canonical.value());
+    const auto integer = [&](const char* field) {
+        return cursor.contains(field) &&
+            (cursor.at(field).is_number_unsigned() ||
+             (cursor.at(field).is_number_integer() && cursor.at(field).get<std::int64_t>() >= 0));
+    };
+    if (!cursor.is_object() || cursor.size() != 6U || !integer("version") ||
+        cursor.at("version") != 1U || !integer("coverage_offset") || !integer("guidance_offset") ||
+        !cursor.contains("project_id") || !cursor.at("project_id").is_string() ||
+        !cursor.contains("revision") || !cursor.at("revision").is_string() ||
+        !cursor.contains("index_sha256") || !cursor.at("index_sha256").is_string())
+        return failure<PolicyIndexWindow>(Domain::ErrorCodes::InvalidRequest,
+            "The policy index cursor has invalid fields or offsets.");
+    if (cursor.at("project_id") != window.projectId)
+        return failure<PolicyIndexWindow>(Domain::ErrorCodes::ProjectScopeMismatch,
+            "The policy index cursor belongs to another project.");
+    if (cursor.at("revision") != window.revision || cursor.at("index_sha256") != window.digest)
+        return failure<PolicyIndexWindow>(Domain::ErrorCodes::Conflict,
+            "The adopted policy index changed. Restart the index read without a cursor.");
+    window.coverageOffset = cursor.at("coverage_offset").get<std::size_t>();
+    window.guidanceOffset = cursor.at("guidance_offset").get<std::size_t>();
+    if (window.coverageOffset > coverage.size() || window.guidanceOffset > guidance.size())
+        return failure<PolicyIndexWindow>(Domain::ErrorCodes::InvalidRequest,
+            "The policy index cursor is outside the coverage or guidance array.");
+    return Domain::Result<PolicyIndexWindow>::success(std::move(window));
+}
+
+[[nodiscard]] Domain::Result<Json> boundedPolicyIndex(
+    Json index, const Json& arguments, const Domain::ProjectId& projectId,
+    Contracts::IHasher& hasher)
+{
+    auto selected = policyIndexWindow(index, arguments, projectId, hasher);
+    if (!selected) return propagate<Json>(std::move(selected));
+    const auto& window = selected.value();
+    const auto coverage = index.value("coverage", Json::array());
+    const auto guidance = index.value("agent_guidance", Json::array());
+    index["coverage"] = Json::array();
+    index["agent_guidance"] = Json::array();
+    index["coverage_offset"] = window.coverageOffset;
+    index["guidance_offset"] = window.guidanceOffset;
+    index["index_sha256"] = window.digest;
+    index["instruction"] = "Read every index page by passing next_cursor as cursor until complete, then read required documents by path and next_offset.";
+    auto coverageEnd = window.coverageOffset;
+    auto guidanceEnd = window.guidanceOffset;
+    const auto updateCursor = [&] {
+        const bool complete = coverageEnd == coverage.size() && guidanceEnd == guidance.size();
+        index["complete"] = complete;
+        index["next_cursor"] = complete ? Json(nullptr) : Json(Json{
+            {"version", 1U}, {"project_id", window.projectId}, {"revision", window.revision},
+            {"index_sha256", window.digest}, {"coverage_offset", coverageEnd},
+            {"guidance_offset", guidanceEnd}}.dump());
+    };
+    updateCursor();
+    if (index.dump().size() > MaximumBoundedReadResponseBytes)
+        return failure<Json>(Domain::ErrorCodes::PayloadTooLarge,
+            "Policy index metadata exceeds the bounded reader limit.");
+    const auto append = [&](const char* field, const Json& source, std::size_t& end) {
+        while (end < source.size()) {
+            index[field].push_back(source.at(end));
+            ++end;
+            updateCursor();
+            if (index.dump().size() <= MaximumBoundedReadResponseBytes) continue;
+            auto alone = index;
+            alone["coverage"] = Json::array();
+            alone["agent_guidance"] = Json::array();
+            alone[field].push_back(source.at(end - 1U));
+            alone["coverage_offset"] = coverageEnd - (std::string_view{field} == "coverage" ? 1U : 0U);
+            alone["guidance_offset"] = guidanceEnd - (std::string_view{field} == "agent_guidance" ? 1U : 0U);
+            if (alone.dump().size() > MaximumBoundedReadResponseBytes)
+                return failure<void>(Domain::ErrorCodes::PayloadTooLarge,
+                    "A policy index item exceeds the bounded reader limit.");
+            index[field].erase(index[field].end() - 1);
+            --end;
+            updateCursor();
+            break;
+        }
+        return Domain::Result<void>::success();
+    };
+    auto appended = append("coverage", coverage, coverageEnd);
+    if (!appended) return propagate<Json>(std::move(appended));
+    appended = append("agent_guidance", guidance, guidanceEnd);
+    if (!appended) return propagate<Json>(std::move(appended));
+    if (!index.at("complete").get<bool>() &&
+        coverageEnd == window.coverageOffset && guidanceEnd == window.guidanceOffset)
+        return failure<Json>(Domain::ErrorCodes::PayloadTooLarge,
+            "A policy index item exceeds the bounded reader limit.");
+    return Domain::Result<Json>::success(std::move(index));
+}
+
+[[nodiscard]] Domain::Result<void> boundReadContent(
+    Json& payload, const Json& arguments, const bool package, const bool file = false)
+{
+    struct TextWindow final {
+        Json* entry;
+        std::string text;
+        std::size_t offset;
+        bool complete;
+    };
+    std::vector<TextWindow> windows;
+    const auto update = [&](TextWindow& window, const std::size_t end) {
+        auto& entry = *window.entry;
+        const auto selected = window.text.substr(0U, end);
+        entry["content"] = selected;
+        if (file) {
+            const auto startLine = entry.at("start_line").get<std::size_t>();
+            const auto newlines = static_cast<std::size_t>(std::count(selected.begin(), selected.end(), '\n'));
+            const auto endLine = selected.empty() ? startLine - 1U :
+                startLine + newlines - (selected.ends_with('\n') ? 1U : 0U);
+            const bool more = window.offset + end < entry.at("size").get<std::size_t>();
+            entry["end_line"] = endLine;
+            entry["line_count"] = selected.empty() ? 0U : endLine - startLine + 1U;
+            entry["has_more"] = more;
+            entry["next_offset"] = nullptr;
+            entry["next_byte_offset"] = more ? Json(window.offset + end) : Json(nullptr);
+            entry["note"] = more ? "Partial UTF-8 byte page. Continue with byte_offset=" +
+                std::to_string(window.offset + end) + ". Do not repeat the same byte_offset." :
+                "Reached end of file. Stop paginating this path.";
+        } else {
+            entry["next_offset"] = window.offset + end;
+            entry["complete"] = window.complete && end == window.text.size();
+        }
+    };
+    if (file) {
+        TextWindow current{&payload, payload.at("content").get<std::string>(),
+            payload.at("byte_offset").get<std::size_t>(), false};
+        update(current, current.text.size());
+    }
+    if (payload.dump().size() <= MaximumBoundedReadResponseBytes)
+        return Domain::Result<void>::success();
+    const auto select = [&](Json& entry) {
+        if (!entry.contains("content") || !entry.at("content").is_string()) return;
+        auto content = entry.at("content").get<std::string>();
+        if (content.empty()) return;
+        const auto offset = file ? entry.at("byte_offset").get<std::size_t>() :
+            entry.value("offset", arguments.value("offset", std::size_t{}));
+        windows.push_back({&entry, std::move(content), offset, entry.value("complete", false)});
+        update(windows.back(), 0U);
+    };
+    if (package) {
+        for (auto& entry : payload.at("entries")) select(entry);
+    } else {
+        select(payload);
+    }
+    if (payload.dump().size() > MaximumBoundedReadResponseBytes)
+        return failure<void>(Domain::ErrorCodes::PayloadTooLarge,
+            "Reader metadata exceeds the bounded response limit.");
+    for (auto& window : windows) {
+        if (!Domain::isValidUtf8(window.text))
+            return failure<void>(Domain::ErrorCodes::InvalidRequest,
+                "Reader text is not aligned to a UTF-8 character boundary.");
+        std::size_t low{};
+        auto high = window.text.size();
+        std::size_t kept{};
+        while (low <= high) {
+            const auto middle = low + (high - low) / 2U;
+            const auto end = boundedUtf8End(window.text, 0U, middle);
+            update(window, end);
+            if (payload.dump().size() <= MaximumBoundedReadResponseBytes) {
+                kept = end;
+                low = middle + 1U;
+            } else {
+                if (middle == 0U) break;
+                high = middle - 1U;
+            }
+        }
+        if (kept == 0U)
+            return failure<void>(Domain::ErrorCodes::PayloadTooLarge,
+                "Reader metadata leaves no room for a complete UTF-8 character.");
+        update(window, kept);
+    }
+    return Domain::Result<void>::success();
+}
+
+[[nodiscard]] Domain::Result<void> boundFileReadContent(
+    Json& payload, const Json& arguments, const std::optional<std::size_t> firstByteOffset)
+{
+    if (payload.dump().size() <= MaximumBoundedReadResponseBytes)
+        return Domain::Result<void>::success();
+    if (payload.at("byte_offset").is_null()) {
+        const auto original = payload.at("content").get<std::string>();
+        std::vector<std::size_t> lineEnds;
+        for (std::size_t index = 0U; index < original.size(); ++index)
+            if (original[index] == '\n') lineEnds.push_back(index);
+        lineEnds.push_back(original.size());
+        const auto startLine = payload.at("start_line").get<std::size_t>();
+        const auto originalHasMore = payload.at("has_more").get<bool>();
+        const auto update = [&](const std::size_t count) {
+            payload["content"] = count == 0U ? "" : original.substr(0U, lineEnds.at(count - 1U));
+            payload["end_line"] = startLine + count - 1U;
+            payload["line_count"] = count;
+            const bool more = count < lineEnds.size() || originalHasMore;
+            payload["has_more"] = more;
+            payload["next_offset"] = more ? Json(startLine + count) : Json(nullptr);
+            payload["note"] = more ? "Partial line page. Continue with offset=" +
+                std::to_string(startLine + count) + " (1-based) and a new length." :
+                "Reached end of file. Stop paginating this path.";
+        };
+        std::size_t low{};
+        auto high = lineEnds.size();
+        std::size_t kept{};
+        while (low <= high) {
+            const auto middle = low + (high - low) / 2U;
+            update(middle);
+            if (payload.dump().size() <= MaximumBoundedReadResponseBytes) {
+                kept = middle;
+                low = middle + 1U;
+            } else {
+                if (middle == 0U) break;
+                high = middle - 1U;
+            }
+        }
+        if (kept != 0U) {
+            update(kept);
+            return Domain::Result<void>::success();
+        }
+        if (!firstByteOffset)
+            return failure<void>(Domain::ErrorCodes::IntegrityFailure,
+                "The file reader has no source byte offset for its first line.");
+        payload["content"] = original.substr(0U, lineEnds.front());
+        payload["byte_offset"] = *firstByteOffset;
+    }
+    return boundReadContent(payload, arguments, false, true);
+}
+
 [[nodiscard]] Json pdfJson(const Domain::PdfWriteReceipt& receipt)
 {
     return Json{
@@ -1697,6 +1966,23 @@ public:
                     true,
                     256U * 1024U},
                 projectMemoryContext);
+            if (packages && packages.value().records.empty()) {
+                auto savedOrder = dependencies_.projectMemory.listRecent(
+                    Domain::ListRecentProjectMemoryRequest{
+                        projectId, {"instruction_package_queue_order"}, std::nullopt,
+                        1U, std::nullopt, true, 64U * 1024U}, projectMemoryContext);
+                if (!savedOrder) return propagate<Json>(std::move(savedOrder));
+                if (savedOrder.value().records.empty()) {
+                    auto migrated = Application::migrateLegacyInstructionPackage(
+                        dependencies_.projectMemory, dependencies_.hasher,
+                        dependencies_.clock, projectId, projectMemoryContext);
+                    if (!migrated) return propagate<Json>(std::move(migrated));
+                    if (migrated.value()) {
+                        packages.value().records.push_back(
+                            Domain::MemorySearchHit{std::move(*migrated.value()), 1.0});
+                    }
+                }
+            }
             if (packages) {
                 packageReadAvailable = true;
                 packagesTruncated = packages.value().truncated ||
@@ -2017,14 +2303,17 @@ public:
                     std::move(operationContext));
             }
             ToolContinuityObservationBuilder continuityObservation;
+            continuityObservation.seedWorkspace(authority);
             std::optional<Domain::ContextRecoveryReceipt> contextRecovery;
+            std::optional<std::size_t> fileReadByteStart;
             auto payload = dispatch(
                 authorizedCall,
                 authority,
                 arguments,
                 operationContext.value(),
                 continuityObservation,
-                contextRecovery);
+                contextRecovery,
+                fileReadByteStart);
             if (!payload) {
                 return propagate<Domain::ToolCallOutcome>(std::move(payload));
             }
@@ -2032,6 +2321,18 @@ public:
                 return failure<Domain::ToolCallOutcome>(
                     Domain::ErrorCodes::InternalFailure,
                     "The MCP tool adapter produced a non-object payload.");
+            }
+            std::optional<Domain::LegacyHandoffId> contextPersistence;
+            if ((authorizedCall.toolName() == "session_checkpoint" ||
+                 authorizedCall.toolName() == "session_handoff") &&
+                payload.value().value("ok", true)) {
+                const auto id = strictString(payload.value(), "handoff_id");
+                if (!id) return failure<Domain::ToolCallOutcome>(
+                    Domain::ErrorCodes::IntegrityFailure,
+                    "The persisted continuity payload has no handoff id.");
+                auto parsed = Domain::LegacyHandoffId::parse(*id);
+                if (!parsed) return propagate<Domain::ToolCallOutcome>(std::move(parsed));
+                contextPersistence.emplace(std::move(parsed).value());
             }
             if (authorizedCall.toolName() == "context_get" &&
                 payload.value().value("found", false)) {
@@ -2064,7 +2365,7 @@ public:
                 !authorizedCall.toolName().starts_with("clu.")) {
                 auto resultEvidence = payload.value().dump();
                 if (resultEvidence.size() > 32U * 1024U) {
-                    resultEvidence.resize(32U * 1024U);
+                    resultEvidence.resize(boundedUtf8End(resultEvidence, 0U, 32U * 1024U));
                 }
                 const Json evidence{{"phase", "post_operation"},
                     {"tool_name", authorizedCall.toolName()},
@@ -2078,7 +2379,14 @@ public:
                     {authority.projectId(), Contracts::ProjectPolicyAction::Evaluate,
                      {}, {}, evidence.dump()}, operationContext.value()));
             }
-            if (dependencies_.projectPolicy &&
+            const bool boundedRead = authorizedCall.toolName() == "project_policy.read" ||
+                authorizedCall.toolName() == "instruction_package.read" ||
+                authorizedCall.toolName() == "fs_read";
+            if (dependencies_.projectPolicy && boundedRead) {
+                payload.value()["clu_governance_notifications_deferred"] = true;
+                payload.value()["clu_governance_notifications_read_tool"] = "clu.findings";
+            }
+            if (dependencies_.projectPolicy && !boundedRead &&
                 !authorizedCall.toolName().starts_with("clu.")) {
                 auto guidance = dependencies_.projectPolicy->execute(
                     {authority.projectId(),
@@ -2093,6 +2401,22 @@ public:
                             value.at("notifications");
                     }
                 }
+            }
+            if (authorizedCall.toolName() == "project_policy.read" &&
+                !payload.value().contains("content")) {
+                auto bounded = boundedPolicyIndex(std::move(payload).value(), arguments,
+                    authority.projectId(), dependencies_.hasher);
+                if (!bounded) return propagate<Domain::ToolCallOutcome>(std::move(bounded));
+                payload = std::move(bounded);
+            } else if (authorizedCall.toolName() == "project_policy.read" ||
+                       authorizedCall.toolName() == "instruction_package.read") {
+                auto bounded = boundReadContent(payload.value(), arguments,
+                    authorizedCall.toolName() == "instruction_package.read");
+                if (!bounded) return propagate<Domain::ToolCallOutcome>(std::move(bounded));
+            }
+            if (authorizedCall.toolName() == "fs_read") {
+                auto bounded = boundFileReadContent(payload.value(), arguments, fileReadByteStart);
+                if (!bounded) return propagate<Domain::ToolCallOutcome>(std::move(bounded));
             }
             auto encoded = codec.canonicalize(payload.value().dump());
             if (!encoded) {
@@ -2143,7 +2467,8 @@ public:
                         elapsed},
                     std::move(encoded).value(),
                     std::move(contextRecovery),
-                    std::move(observation)});
+                    std::move(observation),
+                    std::move(contextPersistence)});
         } catch (...) {
             return failure<Domain::ToolCallOutcome>(
                 Domain::ErrorCodes::InternalFailure,
@@ -2206,7 +2531,8 @@ private:
         const Json& arguments,
         const Domain::OperationContext& context,
         ToolContinuityObservationBuilder& observation,
-        std::optional<Domain::ContextRecoveryReceipt>& contextRecovery)
+        std::optional<Domain::ContextRecoveryReceipt>& contextRecovery,
+        std::optional<std::size_t>& fileReadByteStart)
     {
         const auto& name = call.toolName();
         if (name == "instruction_package.read") {
@@ -2271,7 +2597,14 @@ private:
             if (!inspected) return propagate<Json>(std::move(inspected));
             auto index = Json::parse(inspected.value());
             const auto path = arguments.value("path", "");
-            if (path.empty() || !index.value("active", false)) return Domain::Result<Json>::success(std::move(index));
+            if (!path.empty() && arguments.contains("cursor"))
+                return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                    "Policy index cursors cannot be used with a document path.");
+            if (path.empty() || !index.value("active", false)) {
+                auto window = policyIndexWindow(index, arguments, authority.projectId(), dependencies_.hasher);
+                if (!window) return propagate<Json>(std::move(window));
+                return Domain::Result<Json>::success(std::move(index));
+            }
             const auto offset = arguments.value("offset", std::size_t{});
             auto document = dependencies_.projectPolicy->execute({authority.projectId(), Contracts::ProjectPolicyAction::ReadDocument,
                 path, index.at("revision").get<std::string>(), Json{{"offset", offset}}.dump()}, context);
@@ -2297,7 +2630,7 @@ private:
         }
         if (name.starts_with("fs_")) {
             return fileSystem(
-                name, authority, arguments, context, observation);
+                name, authority, arguments, context, observation, fileReadByteStart);
         }
         if (name.starts_with("git_")) {
             return git(name, authority, arguments, context, observation);
@@ -2785,7 +3118,8 @@ private:
         const Contracts::WorkspaceAuthority& authority,
         const Json& arguments,
         const Domain::OperationContext& context,
-        ToolContinuityObservationBuilder& observation)
+        ToolContinuityObservationBuilder& observation,
+        std::optional<std::size_t>& fileReadByteStart)
     {
         const auto suppliedPath = legacyString(arguments, "path");
         if (name != "fs_list" && name != "fs_glob" && name != "fs_move" &&
@@ -2993,6 +3327,9 @@ private:
                     std::to_string(lines.size()) +
                     ". Stop paginating this path.";
             }
+            fileReadByteStart = first < lines.size()
+                ? static_cast<std::size_t>(lines[first].data() - content.data()) : content.size();
+            const auto selectedLineCount = bytePage ? (selected.empty() ? 0U : 1U) : last - first;
             return Domain::Result<Json>::success(Json{
                 {"ok", true},
                 {"path", authorized.value().canonicalPath().value()},
@@ -3001,9 +3338,7 @@ private:
                 {"total_lines", lines.size()},
                 {"start_line", startLineSigned},
                 {"end_line", endLine},
-                {"line_count", bytePage
-                     ? (selected.empty() ? 0U : 1U)
-                     : last - first},
+                {"line_count", selectedLineCount},
                 {"has_more", hasMore},
                 {"next_offset", !bytePage && hasMore
                      ? Json(last + 1U)
@@ -5121,14 +5456,58 @@ private:
                 }
                 handoffId.emplace(std::move(parsed).value());
             }
-            auto result = dependencies_.legacyContinuity.get(
-                Domain::LegacyContinuityGetRequest{
-                    std::move(handoffId),
-                    strictBoolean(arguments, "resume_ready").value_or(false)},
-                context);
-            if (!result) {
-                return propagate<Json>(std::move(result));
+            const auto automation =
+                dependencies_.continuityAutomationStatus.snapshot(call.clientId());
+            const bool explicitIdRequested = handoffId.has_value();
+            if (!handoffId && automation.handoffId &&
+                (automation.handoffPending || automation.blocked)) {
+                auto parsed = parseOpaque<Domain::LegacyHandoffId>(
+                    *automation.handoffId, "active handoff id");
+                if (!parsed) return propagate<Json>(std::move(parsed));
+                handoffId.emplace(std::move(parsed).value());
             }
+            auto result = handoffId
+                ? dependencies_.legacyContinuity.get(
+                    {*handoffId, strictBoolean(arguments, "resume_ready").value_or(false)}, context)
+                : projectHandoff(authority.projectId(), context);
+            if (!result) return propagate<Json>(std::move(result));
+            if (!handoffId && !result.value().record) {
+                result = dependencies_.legacyContinuity.get(
+                    {std::nullopt, strictBoolean(arguments, "resume_ready").value_or(false)}, context);
+                if (!result) return propagate<Json>(std::move(result));
+                if (result.value().record) {
+                    // Old packets have no project id. Adopt one implicitly only
+                    // when an absolute packet path is authorized for this project.
+                    const auto& packet = result.value().record->packet;
+                    std::vector<std::string> candidates;
+                    if (packet.workingDirectory) candidates.push_back(*packet.workingDirectory);
+                    candidates.insert(candidates.end(), packet.keyFiles.begin(), packet.keyFiles.end());
+                    bool matchesProject{};
+                    for (const auto& candidate : candidates) {
+                        if (!isAbsoluteToolPath(candidate)) continue;
+                        auto parsed = pathText(candidate, "legacy continuity path");
+                        if (!parsed) continue;
+                        for (const auto& root : authority.trustedRoots()) {
+                            auto authorized = dependencies_.workspaceAuthority.authorize(
+                                authority, {parsed.value(), root, Domain::FileAccess::Read, false}, context);
+                            if (authorized) {
+                                matchesProject = true;
+                                break;
+                            }
+                            if (authorized.error().code != Domain::ErrorCodes::PathOutsideAuthority &&
+                                authorized.error().code != Domain::ErrorCodes::Unauthorized &&
+                                authorized.error().code != Domain::ErrorCodes::ProjectScopeMismatch &&
+                                authorized.error().code != Domain::ErrorCodes::InvalidRequest &&
+                                authorized.error().code != Domain::ErrorCodes::RecordNotFound) {
+                                return propagate<Json>(std::move(authorized));
+                            }
+                        }
+                        if (matchesProject) break;
+                    }
+                    if (!matchesProject) result.value().record.reset();
+                }
+            }
+            result.value().explicitIdRequested = explicitIdRequested;
             if (!result.value().record) {
                 return Domain::Result<Json>::success(Json{
                     {"ok", true},
@@ -5136,7 +5515,7 @@ private:
                     {"message",
                      result.value().explicitIdRequested
                          ? "No handoff packet found for the requested id."
-                         : "No handoff packet yet. Call session_checkpoint or session_handoff during work."},
+                         : "No handoff packet for this project. Call session_checkpoint or session_handoff during work; use context_list and an explicit handoff_id to inspect older packets."},
                     {"bootstrap",
                      Json::array({"forge_status", "session_checkpoint when you have a goal"})}});
             }
@@ -5145,9 +5524,6 @@ private:
                     Domain::ErrorCodes::IntegrityFailure,
                     "The recovered context caller does not match workspace authority.");
             }
-            const auto automation =
-                dependencies_.continuityAutomationStatus.snapshot(
-                    call.clientId());
             if (automation.handoffPending &&
                 (!automation.handoffId ||
                  *automation.handoffId !=

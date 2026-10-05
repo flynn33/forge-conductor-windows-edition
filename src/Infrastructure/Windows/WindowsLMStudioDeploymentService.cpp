@@ -422,22 +422,6 @@ struct PluginLayout final {
         {"name", serverId(role)}};
 }
 
-[[nodiscard]] Json bridgeFor(
-    const Domain::LMStudioConnectorRole role,
-    const Domain::PathText& binary,
-    const Domain::PathText& forgeHome,
-    const Domain::DeploymentId& deploymentId)
-{
-    return Json{
-        {"command", binary.value()},
-        {"args", Json::array({"serve"})},
-        {"timeout", LMStudioMcpRequestTimeoutMilliseconds},
-        {"env", Json{
-            {"FORGE_MCP_ROLE", roleText(role)},
-            {"FORGE_CONDUCTOR_HOME", forgeHome.value()},
-            {"FORGE_DEPLOYMENT_ID", deploymentId.value()}}}};
-}
-
 [[nodiscard]] Json installStateFor(
     const Domain::DeploymentId& deploymentId,
     const Domain::UtcTimePoint now)
@@ -474,7 +458,8 @@ struct PluginLayout final {
     const Domain::LMStudioConnectorRole role,
     const Domain::PathText& binary,
     const Domain::PathText& forgeHome,
-    const Domain::DeploymentId& deploymentId)
+    const Domain::DeploymentId& deploymentId,
+    const Json* expectedRegistration)
 {
     if (!stringEquals(bridge, "command", binary.value())) {
         return false;
@@ -482,11 +467,21 @@ struct PluginLayout final {
     const auto args = bridge.find("args");
     const auto timeout = bridge.find("timeout");
     const auto environment = bridge.find("env");
-    if (args == bridge.end() || !args->is_array() || args->size() != 1U ||
+    if (args == bridge.end() || !args->is_array() ||
+        (args->size() != 1U && args->size() != 3U) ||
         !(*args)[0].is_string() || (*args)[0].get<std::string>() != "serve" ||
         timeout == bridge.end() || !timeout->is_number_integer() ||
         *timeout != LMStudioMcpRequestTimeoutMilliseconds ||
         environment == bridge.end() || !environment->is_object()) {
+        return false;
+    }
+    if (args->size() == 3U &&
+        (!(*args)[1].is_string() || (*args)[1] != "--project-id" ||
+         !(*args)[2].is_string() ||
+         !Domain::ProjectId::parse((*args)[2].get<std::string>()))) return false;
+    if (expectedRegistration &&
+        (*args != expectedRegistration->at("args") ||
+         bridge.value("cwd", Json(nullptr)) != expectedRegistration->value("cwd", Json(nullptr)))) {
         return false;
     }
     return stringEquals(*environment, "FORGE_MCP_ROLE", roleText(role)) &&
@@ -886,7 +881,8 @@ public:
         const Domain::PathText& binary,
         const Domain::PathText& forgeHome,
         const Domain::DeploymentId& deploymentId,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        const Json* expectedRegistration = nullptr)
     {
         auto manifestPath = take(childPath(directory, "manifest.json"));
         auto bridgePath = take(childPath(directory, "mcp-bridge-config.json"));
@@ -904,7 +900,7 @@ public:
         auto bridge = parseJson(*bridgeBytes, "LM Studio mcp-bridge-config.json");
         auto state = parseJson(*stateBytes, "LM Studio install-state.json");
         return manifest && bridge && state && validManifest(manifest.value(), role) &&
-            validBridge(bridge.value(), role, binary, forgeHome, deploymentId) &&
+            validBridge(bridge.value(), role, binary, forgeHome, deploymentId, expectedRegistration) &&
             validInstallState(state.value(), deploymentId);
     }
 
@@ -916,7 +912,8 @@ public:
         const Domain::PathText& binary,
         const Domain::PathText& forgeHome,
         const Domain::DeploymentId& deploymentId,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        const Json& registration)
     {
         requireLive(context, "LM Studio plugin staging");
         createDirectory(authority, stageDirectory, base, context);
@@ -926,11 +923,11 @@ public:
         writeNewFile(authority, manifestPath, base,
                      jsonDocument(manifestFor(role)), context);
         writeNewFile(authority, bridgePath, base,
-                     jsonDocument(bridgeFor(role, binary, forgeHome, deploymentId)), context);
+                     jsonDocument(registration), context);
         writeNewFile(authority, statePath, base,
                      jsonDocument(installStateFor(deploymentId, clock.utcNow())), context);
         if (!pluginInstalled(authority, stageDirectory, base, role,
-                             binary, forgeHome, deploymentId, context)) {
+                             binary, forgeHome, deploymentId, context, &registration)) {
             throw DeploymentFailure{Domain::makeError(
                 Domain::ErrorCodes::IntegrityFailure,
                 std::string{"Staged LM Studio connector failed validation: "} + serverId(role) + ".")};
@@ -1117,6 +1114,11 @@ template <typename Implementation>
 {
     try {
         implementation.requireLive(context, "LM Studio deployment status");
+        if (request.projectId.has_value() != request.projectRoot.has_value()) {
+            return Domain::Result<Domain::LMStudioPluginStatus>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "Project binding requires both a registered project ID and its canonical folder."));
+        }
         const auto environment = inspectEnvironment(implementation, authority, context);
         if (!environment.configurationPath) {
             return Domain::Result<Domain::LMStudioPluginStatus>::failure(Domain::makeError(
@@ -1192,7 +1194,7 @@ template <typename Implementation>
                     "LM Studio mcp.json is malformed or has an invalid root; existing bytes were preserved."});
         }
         auto inspection = LMStudioConfigurationCodec::inspect(
-            document.value(), binary, forgeHome);
+            document.value(), binary, forgeHome, request.projectId, request.projectRoot);
         if (!inspection) {
             return Domain::Result<Domain::LMStudioPluginStatus>::failure(
                 std::move(inspection).error());
@@ -1201,19 +1203,23 @@ template <typename Implementation>
         bool primaryInstalled{};
         bool fallbackInstalled{};
         bool continuityInstalled{};
+        const auto registrations = Json::parse(document.value().sourceUtf8()).value("mcpServers", Json::object());
         if (inspection.value().deploymentId) {
             primaryInstalled = implementation.pluginInstalled(
                 authority, layout.primaryPlugin, layout.lmStudioRoot,
                 Domain::LMStudioConnectorRole::Primary, binary, forgeHome,
-                inspection.value().deploymentId.value(), context);
+                inspection.value().deploymentId.value(), context,
+                &registrations.at(serverId(Domain::LMStudioConnectorRole::Primary)));
             fallbackInstalled = implementation.pluginInstalled(
                 authority, layout.fallbackPlugin, layout.lmStudioRoot,
                 Domain::LMStudioConnectorRole::Fallback, binary, forgeHome,
-                inspection.value().deploymentId.value(), context);
+                inspection.value().deploymentId.value(), context,
+                &registrations.at(serverId(Domain::LMStudioConnectorRole::Fallback)));
             continuityInstalled = implementation.pluginInstalled(
                 authority, layout.continuityPlugin, layout.lmStudioRoot,
                 Domain::LMStudioConnectorRole::Clu, binary, forgeHome,
-                inspection.value().deploymentId.value(), context);
+                inspection.value().deploymentId.value(), context,
+                &registrations.at(serverId(Domain::LMStudioConnectorRole::Clu)));
         }
         std::string detail;
         if (!environment.lmStudioPresent) {
@@ -1493,6 +1499,11 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
             Domain::ErrorCodes::Unauthorized,
             "LM Studio deployment capability is not bound to this project, caller, authority generation, correlation, and Write effect."));
     }
+    if (request.projectId.has_value() != request.projectRoot.has_value()) {
+        return Domain::Result<Domain::LMStudioInstallResult>::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "Project binding requires both a registered project ID and its canonical folder."));
+    }
     if (!request.preserveForeignEntries) {
         return Domain::Result<Domain::LMStudioInstallResult>::failure(Domain::makeError(
             Domain::ErrorCodes::InvalidRequest,
@@ -1570,7 +1581,10 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
             *implementation, maintenance, configurationPath.value(),
             layout.value(), context);
         auto mergedConfiguration = take(LMStudioConfigurationCodec::mergeForgeServers(
-            configuration, binary, forgeHome, deploymentId));
+            configuration, binary, forgeHome, deploymentId, request.projectId, request.projectRoot));
+        const auto registrations = Json::parse(
+            reinterpret_cast<const char*>(mergedConfiguration.data()),
+            reinterpret_cast<const char*>(mergedConfiguration.data()) + mergedConfiguration.size()).at("mcpServers");
 
         auto transactionName = std::string{".forge-conductor-install-"} + deploymentId.value();
         transactionRoot = take(childPath(layout->pluginsRoot, transactionName));
@@ -1592,15 +1606,18 @@ Domain::Result<Domain::LMStudioInstallResult> WindowsLMStudioDeploymentService::
         implementation->stagePlugin(
             maintenance, stagedPrimary, layout->lmStudioRoot,
             Domain::LMStudioConnectorRole::Primary,
-            binary, forgeHome, deploymentId, context);
+            binary, forgeHome, deploymentId, context,
+            registrations.at(serverId(Domain::LMStudioConnectorRole::Primary)));
         implementation->stagePlugin(
             maintenance, stagedFallback, layout->lmStudioRoot,
             Domain::LMStudioConnectorRole::Fallback,
-            binary, forgeHome, deploymentId, context);
+            binary, forgeHome, deploymentId, context,
+            registrations.at(serverId(Domain::LMStudioConnectorRole::Fallback)));
         implementation->stagePlugin(
             maintenance, stagedClu, layout->lmStudioRoot,
             Domain::LMStudioConnectorRole::Clu,
-            binary, forgeHome, deploymentId, context);
+            binary, forgeHome, deploymentId, context,
+            registrations.at(serverId(Domain::LMStudioConnectorRole::Clu)));
         implementation->writeNewFile(
             maintenance, stagedConfiguration, layout->lmStudioRoot,
             mergedConfiguration, context);

@@ -1,8 +1,8 @@
 # Roadmap
 
-## Current release: 1.3.6
+## Current release: 1.3.11
 
-Version 1.3.6 fixes the periodic telemetry-refresh layout movement while retaining telemetry cadence. Actual WinUI geometry with an injected isolated Manager stayed stable across 16 polls. The existing native-chat Auto Continuity, package/policy/status improvements, app design, and three integrations remain. See [release notes](releases/1.3.6.md).
+Version 1.3.11 repairs selected-project deployment, legacy instruction-package bootstrap, filesystem tool contracts, project-scoped continuity lookup, complete native tool delivery, and Windows request-path authorization. It also includes the direct package-queue and policy-source browsing improvements developed since 1.3.6. The existing telemetry layout repair and three LM Studio integrations remain. See [release notes](releases/1.3.11.md).
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 

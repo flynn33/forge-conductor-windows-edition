@@ -22,7 +22,7 @@
     "windows_host_extensions": {
       "fs_read_byte_pagination": {
         "qualification": "Windows host extension",
-        "behavior": "An oversized UTF-8 line is bounded to 96 KiB and continued only with next_byte_offset; repeated offsets are not required.",
+        "behavior": "An oversized UTF-8 line uses byte pages whose full serialized JSON is bounded to 32 KiB; next_byte_offset advances by the exact returned UTF-8 byte count and reconstructs the source through EOF.",
         "covered_by": ["fs_read/valid", "fs_read/boundary"]
       },
       "continuity_request_rollover_host_capability": {
@@ -141,10 +141,10 @@
       "name": "context_get",
       "macos_behavior": "Loads and adopts the latest handoff into the calling client's workspace context.",
       "cases": {
-        "valid": {"arguments": {}, "expect": {"payload_contains": {"found": true, "workspace_adopted": "D:/workspace"}, "effects_exact": ["client_workspace.adopt", "continuity_automation.snapshot", "legacy_continuity.get"]}},
+        "valid": {"arguments": {}, "expect": {"payload_contains": {"found": true, "workspace_adopted": "D:/workspace"}, "effects_exact": ["client_workspace.adopt", "continuity_automation.snapshot", "legacy_continuity.get", "legacy_memory.get"]}},
         "invalid": {},
-        "dependency_error": {"expect": {"effects_exact": ["legacy_continuity.get"]}},
-        "boundary": {"arguments": {"handoff_id": "contract-handoff"}}
+        "dependency_error": {"expect": {"effects_exact": ["continuity_automation.snapshot", "legacy_memory.get"]}},
+        "boundary": {"arguments": {"handoff_id": "contract-handoff"}, "expect": {"effects_exact": ["client_workspace.adopt", "continuity_automation.snapshot", "legacy_continuity.get"]}}
       }
     },
     {
@@ -299,9 +299,9 @@
     },
     {
       "name": "fs_read",
-      "macos_behavior": "Reads UTF-8 text; the qualified Windows extension byte-pages an oversized line at 96 KiB.",
+      "macos_behavior": "Reads UTF-8 text; the qualified Windows extension byte-pages an oversized line within the 32 KiB serialized response limit.",
       "cases": {
-        "valid": {"arguments": {"path": "D:/workspace/large-line.txt"}, "expect": {"payload_contains": {"has_more": true, "byte_offset": 0, "next_byte_offset": 98304}, "effects_exact": ["file_system.read_file"]}},
+        "valid": {"arguments": {"path": "D:/workspace/large-line.txt"}, "expect": {"payload_contains": {"has_more": true, "byte_offset": 0}, "effects_exact": ["file_system.read_file"]}},
         "invalid": {},
         "dependency_error": {"expect": {"effects_exact": ["file_system.read_file"]}},
         "boundary": {"arguments": {"path": "D:/workspace/large-line.txt", "byte_offset": 98304}, "expect": {"payload_contains": {"byte_offset": 98304, "has_more": false, "next_byte_offset": null}}}

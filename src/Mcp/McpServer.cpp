@@ -14,6 +14,7 @@
 #include <mutex>
 #include <optional>
 #include <stop_token>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -82,41 +83,53 @@ constexpr std::string_view CluServerName = "forge-conductor-clu";
 
 [[nodiscard]] Json toolEnvelope(Json payload, const bool isError)
 {
+    constexpr std::size_t MaximumTextBlockBytes = 32U * 1024U;
+    constexpr std::size_t FragmentBytes = 12U * 1024U;
     const auto text = payload.dump();
-    return Json{
-        {"content", Json::array({Json{{"text", text}, {"type", "text"}}})},
-        {"isError", isError},
-        {"structuredContent", std::move(payload)}};
-}
-
-[[nodiscard]] std::size_t encodedJsonStringBytes(
-    const std::string_view value) noexcept
-{
-    std::size_t bytes{2U};
-    for (const unsigned char character : value) {
-        switch (character) {
-        case '"':
-        case '\\':
-        case '\b':
-        case '\f':
-        case '\n':
-        case '\r':
-        case '\t':
-            bytes += 2U;
-            break;
-        default:
-            bytes += character <= 0x1FU ? 6U : 1U;
-            break;
+    Json content = Json::array();
+    if (text.size() <= MaximumTextBlockBytes) {
+        content.push_back(Json{{"text", text}, {"type", "text"}});
+    } else {
+        // LM Studio's installed bridge truncates each text block at 50,000
+        // characters. Canonical JSON slices need at most twice their UTF-8
+        // bytes when escaped inside these independent JSON envelopes.
+        std::vector<std::string> parts;
+        for (std::size_t start{}; start < text.size();) {
+            auto end = (std::min)(text.size(), start + FragmentBytes);
+            while (end < text.size() &&
+                   (static_cast<unsigned char>(text[end]) & 0xc0U) == 0x80U) {
+                --end;
+            }
+            parts.push_back(text.substr(start, end - start));
+            start = end;
+        }
+        for (std::size_t index{}; index < parts.size(); ++index) {
+            const auto fragment = Json{
+                {"kind", "forge_tool_result_fragment"}, {"version", 1U},
+                {"index", index}, {"count", parts.size()},
+                {"total_bytes", text.size()}, {"part", std::move(parts[index])},
+                {"instruction", "Concatenate part from every fragment in index order, then parse the complete JSON tool result. Do not repeat the tool call."}}.dump();
+            if (fragment.size() > MaximumTextBlockBytes) {
+                throw std::runtime_error{"The MCP result fragment exceeded its text-block limit."};
+            }
+            content.push_back(Json{{"text", fragment}, {"type", "text"}});
         }
     }
-    return bytes;
+    return Json{{"content", std::move(content)}, {"isError", isError},
+        {"structuredContent", std::move(payload)}};
 }
 
 [[nodiscard]] Json domainFailureResponse(
     const Json& id,
     const Domain::Error& error)
 {
-    return jsonRpcResult(id, toolEnvelope(stableErrorPayload(error), true));
+    auto response = jsonRpcResult(id, toolEnvelope(stableErrorPayload(error), true));
+    if (response.dump().size() > McpJsonCodec::MaximumDocumentBytes) {
+        return jsonRpcResult(id, toolEnvelope(stableErrorPayload(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "The tool error exceeds the MCP response limit.")), true));
+    }
+    return response;
 }
 
 [[nodiscard]] std::optional<std::string> requestKey(const Json& value)
@@ -1075,28 +1088,6 @@ private:
         }
 
         const bool isError = !outcome.receipt.ok || outcome.receipt.error.has_value();
-        const auto emptyResponse = jsonRpcResult(
-            externalId,
-            toolEnvelope(Json::object(), isError)).dump();
-        constexpr std::size_t EmptyStructuredPayloadBytes = 2U;
-        constexpr std::size_t EmptyTextPayloadBytes = 4U;
-        constexpr std::size_t EmptyPayloadContributionBytes =
-            EmptyStructuredPayloadBytes + EmptyTextPayloadBytes;
-        const auto fixedEnvelopeBytes =
-            emptyResponse.size() - EmptyPayloadContributionBytes;
-        const auto encodedTextBytes =
-            encodedJsonStringBytes(canonical.value());
-        if (canonical.value().size() >
-                McpJsonCodec::MaximumDocumentBytes - fixedEnvelopeBytes ||
-            encodedTextBytes >
-                McpJsonCodec::MaximumDocumentBytes - fixedEnvelopeBytes -
-                    canonical.value().size()) {
-            return domainFailureResponse(
-                externalId,
-                internalError(
-                    "The tool result exceeds the MCP response limit."));
-        }
-
         auto payload = Json::parse(
             canonical.value().begin(),
             canonical.value().end(),
@@ -1109,9 +1100,13 @@ private:
                 internalError(
                     "The tool router returned an invalid canonical payload."));
         }
-        return jsonRpcResult(
-            externalId,
-            toolEnvelope(std::move(payload), isError));
+        auto response = jsonRpcResult(
+            externalId, toolEnvelope(std::move(payload), isError));
+        if (response.dump().size() > McpJsonCodec::MaximumDocumentBytes) {
+            return domainFailureResponse(externalId,
+                internalError("The tool result exceeds the MCP response limit."));
+        }
+        return response;
     }
 
     void sendResponse(

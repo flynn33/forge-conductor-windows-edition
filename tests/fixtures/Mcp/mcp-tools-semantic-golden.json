@@ -723,7 +723,22 @@
       "description": "Replace occurrences of old with new in a file.",
       "inputSchema": {
         "additionalProperties": true,
-        "properties": {},
+        "properties": {
+          "new": {
+            "type": "string"
+          },
+          "old": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "old",
+          "new"
+        ],
         "type": "object"
       },
       "name": "fs_edit"
@@ -732,7 +747,15 @@
       "description": "Find files by name pattern under a path.",
       "inputSchema": {
         "additionalProperties": true,
-        "properties": {},
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": [],
         "type": "object"
       },
       "name": "fs_glob"
@@ -769,7 +792,27 @@
       "description": "Move/rename a path.",
       "inputSchema": {
         "additionalProperties": true,
-        "properties": {},
+        "properties": {
+          "dest": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "src": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "dest"
+        ],
         "type": "object"
       },
       "name": "fs_move"
@@ -1419,7 +1462,7 @@
       "name": "project_memory.update"
     },
     {
-      "description": "Read the adopted policy index or an exact pinned document. Supply path and next offset to retrieve every part; this tool cannot adopt policy or approve reviews.",
+      "description": "Read the adopted policy index or an exact pinned document. Follow next_cursor for every index page; supply path and next_offset as offset for every document part. This tool cannot adopt policy or approve reviews.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1429,6 +1472,9 @@
           "offset": {
             "type": "integer",
             "minimum": 0
+          },
+          "cursor": {
+            "type": "string"
           }
         },
         "additionalProperties": false

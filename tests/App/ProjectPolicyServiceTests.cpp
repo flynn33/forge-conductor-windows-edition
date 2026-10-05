@@ -155,6 +155,54 @@ void policyAdoptionAndAuthorization()
     REQUIRE(!service.execute({project, C::ProjectPolicyAction::Evaluate, {}, {}, evidence.dump()}, context));
     REQUIRE(store.content == before);
     store.failWrites = false;
+    const auto selectedFile = folder / L"d\u00e9veloppement-\u653f\u7b56.md";
+    const std::string originalFilePolicy{"FORBID_TOOL shell_exec\nOnly the selected policy."};
+    { std::ofstream file{selectedFile}; file << originalFilePolicy; }
+    const auto selectedUtf8 = (folder / "." / selectedFile.filename()).generic_u8string();
+    const std::string fileSource{reinterpret_cast<const char*>(selectedUtf8.data()), selectedUtf8.size()};
+    const auto canonicalUtf8 = std::filesystem::canonical(selectedFile).generic_u8string();
+    const std::string canonicalFileSource{reinterpret_cast<const char*>(canonicalUtf8.data()), canonicalUtf8.size()};
+    const auto filenameUtf8 = selectedFile.filename().generic_u8string();
+    const std::string documentPath{reinterpret_cast<const char*>(filenameUtf8.data()), filenameUtf8.size()};
+    const auto fileBundle = take(reader.read(fileSource, context));
+    REQUIRE(fileBundle.source == canonicalFileSource);
+    REQUIRE(fileBundle.commit.empty());
+    REQUIRE(fileBundle.files.size() == 1U);
+    REQUIRE(fileBundle.files.front().path == documentPath);
+    REQUIRE(fileBundle.files.front().content == originalFilePolicy);
+    const auto fileBound = Json::parse(take(service.execute(
+        {project, C::ProjectPolicyAction::Bind, fileSource}, context)));
+    const auto fileRevision = fileBound.at("revision").get<std::string>();
+    REQUIRE(fileBound.at("source") == canonicalFileSource);
+    REQUIRE(fileBound.at("entry_count") == 1U);
+    REQUIRE(fileBound.at("coverage_gap_count") == 0U);
+    REQUIRE(fileBound.at("coverage").at(0).at("path") == documentPath);
+    REQUIRE(!service.execute({project, C::ProjectPolicyAction::ReadDocument, "README.md", fileRevision}, context));
+    const auto readFile = [&](const std::string& expectedRevision) {
+        return Json::parse(take(service.execute(
+            {project, C::ProjectPolicyAction::ReadDocument, documentPath, expectedRevision}, context)));
+    };
+    REQUIRE(readFile(fileRevision).at("content") == originalFilePolicy);
+    const std::string updatedFilePolicy{"FORBID_TOOL shell_exec\nUpdated selected policy."};
+    { std::ofstream file{selectedFile}; file << updatedFilePolicy; }
+    REQUIRE(readFile(fileRevision).at("content") == originalFilePolicy);
+    const auto fileRefreshed = Json::parse(take(service.execute(
+        {project, C::ProjectPolicyAction::Refresh}, context)));
+    const auto refreshedRevision = fileRefreshed.at("revision").get<std::string>();
+    REQUIRE(refreshedRevision != fileRevision);
+    REQUIRE(fileRefreshed.at("source") == canonicalFileSource);
+    REQUIRE(fileRefreshed.at("entry_count") == 1U);
+    REQUIRE(!service.execute({project, C::ProjectPolicyAction::ReadDocument, documentPath, fileRevision}, context));
+    REQUIRE(readFile(refreshedRevision).at("content") == updatedFilePolicy);
+    const auto beforeRejectedImport = store.content;
+    REQUIRE(!service.execute({project, C::ProjectPolicyAction::Bind, canonicalFileSource + ".missing"}, context));
+    REQUIRE(store.content == beforeRejectedImport);
+    REQUIRE(std::filesystem::remove(selectedFile));
+    REQUIRE(!service.execute({project, C::ProjectPolicyAction::Refresh}, context));
+    REQUIRE(store.content == beforeRejectedImport);
+    REQUIRE(readFile(refreshedRevision).at("content") == updatedFilePolicy);
+    std::cout << "Single-file policy import, Unicode path, pinned read, refresh, and rejected-import preservation passed.\n";
+
     auto corrupted = Json::parse(reinterpret_cast<const char*>(store.content.data()), reinterpret_cast<const char*>(store.content.data()) + store.content.size());
     corrupted["schema"] = 99;
     const auto encoded = corrupted.dump();

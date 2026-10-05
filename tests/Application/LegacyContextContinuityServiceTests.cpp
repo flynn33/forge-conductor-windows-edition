@@ -1136,6 +1136,80 @@ void resumeSeedsAutomationNarrativeAndImportedDocumentsRemainCompatible()
             std::string::npos);
 }
 
+void budgetHandoffFillsObservedWorkspaceWithoutReplacingModelContext()
+{
+    Fixture fixture;
+    const auto owner = clientId("budget-workspace-owner");
+    Domain::LegacyContinuityPatch inferred;
+    inferred.workingDirectory = "D:/workspace";
+    inferred.keyFiles = std::vector<std::string>{"D:/workspace/src/main.cpp"};
+    inferred.narrative = "Observed tools: fs_read, fs_edit.";
+    inferred.goal = "Must not invent an inferred task";
+    auto budget = take(fixture.service.budgetHandoff(
+        owner, "identical fs_edit", fixture.context("fresh-budget-workspace"), inferred));
+    REQUIRE(budget.record.packet.workingDirectory == inferred.workingDirectory);
+    REQUIRE(budget.record.packet.keyFiles == *inferred.keyFiles);
+    REQUIRE(budget.record.packet.goal == "Auto-checkpoint: identical fs_edit");
+    REQUIRE(budget.record.packet.narrative.find(*inferred.narrative) != std::string::npos);
+    REQUIRE(budget.record.packet.resumeReady);
+    REQUIRE(budget.record.packet.source == Domain::LegacyHandoffSource::Budget);
+
+    Domain::LegacyContinuityPatch model;
+    model.goal = "Fix the requested defect";
+    model.workingDirectory = "D:/workspace/subproject";
+    model.keyFiles = std::vector<std::string>{"D:/workspace/subproject/model.cpp"};
+    model.narrative = "Verified task evidence written by the model.";
+    static_cast<void>(take(fixture.service.checkpoint(
+        {budget.record.packet.id, model}, owner, Domain::LegacyHandoffSource::Model,
+        fixture.context("model-budget-context"))));
+    budget = take(fixture.service.budgetHandoff(
+        owner, "identical fs_edit again", fixture.context("existing-budget-workspace"), inferred));
+    REQUIRE(budget.record.packet.goal == *model.goal);
+    REQUIRE(budget.record.packet.workingDirectory == model.workingDirectory);
+    REQUIRE(budget.record.packet.keyFiles == *model.keyFiles);
+    REQUIRE(budget.record.packet.narrative.starts_with(*model.narrative));
+    REQUIRE(budget.record.packet.narrative.find(*inferred.narrative) == std::string::npos);
+}
+
+void automaticContinuityRequiresClientOrRecoveredPacketScope()
+{
+    Fixture fixture;
+    const auto predecessor = clientId("scope-predecessor");
+    const auto successor = clientId("scope-successor");
+    Domain::LegacyContinuityPatch model;
+    model.goal = "Finish project Alpha";
+    model.workingDirectory = "D:/alpha";
+    model.keyFiles = std::vector<std::string>{"D:/alpha/main.cpp"};
+    model.narrative = "Verified Alpha task context.";
+    const auto alpha = take(fixture.service.handoff(
+        {std::nullopt, model}, predecessor, Domain::LegacyHandoffSource::Model,
+        fixture.context("alpha-scope")));
+    Domain::LegacyContinuityPatch observed;
+    observed.workingDirectory = "D:/beta";
+    observed.keyFiles = std::vector<std::string>{"D:/beta/main.cpp"};
+    const auto beta = take(fixture.service.automaticPersist(
+        {observed, "lifecycle_checkpoint", false}, successor,
+        fixture.context("fresh-client-scope")));
+    REQUIRE(beta.record.packet.id != alpha.record.packet.id);
+    REQUIRE(beta.record.packet.goal != *model.goal);
+    REQUIRE(beta.record.packet.workingDirectory == observed.workingDirectory);
+    REQUIRE(beta.record.packet.keyFiles == *observed.keyFiles);
+    const auto recovered = take(fixture.service.automaticPersist(
+        {observed, "lifecycle_checkpoint", false, alpha.record.packet.id}, successor,
+        fixture.context("recovered-successor-scope")));
+    REQUIRE(recovered.record.packet.id == alpha.record.packet.id);
+    REQUIRE(recovered.record.packet.goal == *model.goal);
+    REQUIRE(recovered.record.packet.workingDirectory == model.workingDirectory);
+    REQUIRE(recovered.record.packet.keyFiles == *model.keyFiles);
+    REQUIRE(recovered.record.packet.narrative == *model.narrative);
+    const auto budget = take(fixture.service.budgetHandoff(
+        successor, "context pressure", fixture.context("recovered-budget-scope"),
+        observed, alpha.record.packet.id));
+    REQUIRE(budget.record.packet.id == alpha.record.packet.id);
+    REQUIRE(budget.record.packet.goal == *model.goal);
+    REQUIRE(budget.record.packet.workingDirectory == model.workingDirectory);
+}
+
 void repairAndScopedConvergentResetPreserveUnrelatedData()
 {
     Fixture fixture;
@@ -1353,6 +1427,10 @@ int main()
          compareExchangeMergesDisjointFieldsAndBoundsConflicts},
         {"resume_seeds_automation_narrative_and_imported_documents_remain_compatible",
          resumeSeedsAutomationNarrativeAndImportedDocumentsRemainCompatible},
+        {"budget_handoff_fills_observed_workspace_without_replacing_model_context",
+         budgetHandoffFillsObservedWorkspaceWithoutReplacingModelContext},
+        {"automatic_continuity_requires_client_or_recovered_packet_scope",
+         automaticContinuityRequiresClientOrRecoveredPacketScope},
         {"repair_and_scoped_convergent_reset_preserve_unrelated_data",
          repairAndScopedConvergentResetPreserveUnrelatedData},
         {"persistence_canonicalizes_sub_millisecond_timestamps_before_compare_exchange",

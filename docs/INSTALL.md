@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.3.6 targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.11 targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -24,9 +24,15 @@ Launch **Forge Conductor** from Start after installation. Ordinary use stores du
 
 LM Studio and a loaded tool-capable model are external prerequisites for inference features. The GUI, Manager, CLI, MCP server, local tools, project management, memory, settings, and telemetry are packaged together and do not require a development checkout.
 
-After upgrading from 1.3.1 or earlier, finish or stop active MCP calls and use **Settings → LM Studio plugins → Install or repair all three plugins**. Repair updates Primary, Fallback, and CLU to the 180-second request deadline while preserving foreign MCP registrations and unknown fields. Then choose **Open LM Studio and connect plugins** and select the intended integration in the chat.
+After upgrading, select the intended registered project in Workspace, finish or stop active MCP calls and use **Settings → LM Studio plugins → Install or repair all three plugins**. Repair updates Primary, Fallback, and CLU to the selected project, current binary, shared data home, and 180-second request deadline while preserving foreign MCP registrations and unknown fields. Start a new model bootstrap or reconnect the integrations to receive current initialization instructions. Then choose **Open LM Studio and connect plugins** and select the intended integration in the chat.
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
+
+## 1.3.11 publication and installed qualification
+
+Download the complete ZIP from the [1.3.11 release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.11), extract it, and run the preflight above. The ZIP includes the signed MSIX, public publisher certificate, installer, and immutable `distribution.json`. That manifest identifies the exact tagged source commit/tree and MSIX hash. Inside the MSIX, `release-provenance.json` records all four executable hashes, and `payload-manifest.json` records every packaged file hash. `bundle-sha256.txt` verifies the ZIP.
+
+The accepted host repair had already installed a development-signed 1.3.11.0 package and completed the [native qualification](validation/LM-STUDIO-REPAIR-1.3.11.md). The public package is rebuilt from the published source commit. Publication leaves that existing installation and LM Studio conversation unchanged; prior native-chat evidence remains tied to its original artifact. The installer rejects downgrades and calls Windows `Add-AppxPackage` for installation. Replacement of an existing 1.3.11.0 installation by this different same-version rebuild is not qualified here; preflight checks do not prove that replacement will occur.
 
 ## 1.3.5 release construction boundary
 

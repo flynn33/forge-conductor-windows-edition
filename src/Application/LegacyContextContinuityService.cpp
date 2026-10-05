@@ -374,7 +374,7 @@ public:
             }
             return persist(
                 PersistSpec{
-                    std::nullopt,
+                    request.handoffId,
                     request.inferred,
                     Domain::LegacyHandoffSource::Automatic,
                     PersistMode::Automatic,
@@ -391,7 +391,9 @@ public:
     budgetHandoff(
         const Domain::ClientId& clientId,
         const std::string_view reason,
-        const Domain::OperationContext& context) noexcept
+        const Domain::OperationContext& context,
+        const Domain::LegacyContinuityPatch& inferred,
+        const std::optional<Domain::LegacyHandoffId> handoffId) noexcept
     {
         return execute<Domain::LegacyContinuityPersistOutcome>(context, [&]() {
             auto valid = validateReason(reason);
@@ -400,10 +402,13 @@ public:
                     std::move(valid));
             }
             Domain::LegacyContinuityPatch patch;
+            patch.workingDirectory = inferred.workingDirectory;
+            patch.keyFiles = inferred.keyFiles;
+            patch.narrative = inferred.narrative;
             patch.status = "budget_pressure";
             return persist(
                 PersistSpec{
-                    std::nullopt,
+                    handoffId,
                     std::move(patch),
                     Domain::LegacyHandoffSource::Budget,
                     PersistMode::Budget,
@@ -833,16 +838,7 @@ private:
                 std::move(valid));
         }
 
-        if (spec.mode == PersistMode::Automatic && !loaded.value()) {
-            loaded = repository_.latest(std::nullopt, false, context);
-            if (!loaded) return loaded;
-            valid = validateLatestSelection(loaded.value(), std::nullopt, false);
-            if (!valid) {
-                return propagateFailure<
-                    std::optional<Domain::LegacyContinuityRecord>>(
-                    std::move(valid));
-            }
-        }
+
         if ((spec.mode == PersistMode::Checkpoint ||
              spec.mode == PersistMode::Handoff) &&
             loaded.value() && loaded.value()->packet.resumeReady) {
@@ -968,7 +964,7 @@ private:
                 packet.projectSlug = *patch.projectSlug;
             }
             if (patch.workingDirectory &&
-                (!spec.fillOnly || !packet.workingDirectory ||
+                ((!spec.fillOnly && spec.mode != PersistMode::Budget) || !packet.workingDirectory ||
                  packet.workingDirectory->empty())) {
                 packet.workingDirectory = *patch.workingDirectory;
             }
@@ -977,7 +973,7 @@ private:
                 packet.chatLabel = *patch.chatLabel;
             }
             if (patch.narrative &&
-                (!spec.fillOnly || packet.narrative.empty())) {
+                ((!spec.fillOnly && spec.mode != PersistMode::Budget) || packet.narrative.empty())) {
                 auto narrative = Domain::truncateLegacyNarrative(*patch.narrative);
                 if (!narrative) {
                     return propagateFailure<Domain::LegacyHandoffPacket>(
@@ -999,7 +995,7 @@ private:
                 packet.nextActions = *patch.nextActions;
             }
             if (patch.keyFiles &&
-                (!spec.fillOnly || packet.keyFiles.empty())) {
+                ((!spec.fillOnly && spec.mode != PersistMode::Budget) || packet.keyFiles.empty())) {
                 packet.keyFiles = *patch.keyFiles;
             }
             if (patch.decisions &&
@@ -1336,9 +1332,11 @@ Domain::Result<Domain::LegacyContinuityPersistOutcome>
 LegacyContextContinuityService::budgetHandoff(
     const Domain::ClientId& clientId,
     const std::string_view reason,
-    const Domain::OperationContext& context) noexcept
+    const Domain::OperationContext& context,
+    const Domain::LegacyContinuityPatch& inferred,
+    const std::optional<Domain::LegacyHandoffId> handoffId) noexcept
 {
-    return implementation_->budgetHandoff(clientId, reason, context);
+    return implementation_->budgetHandoff(clientId, reason, context, inferred, handoffId);
 }
 
 Domain::Result<Domain::LegacyContinuityGetOutcome>

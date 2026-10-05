@@ -1,6 +1,8 @@
 # Product status
 
-Version 1.3.6 repairs telemetry-refresh layout movement with two behavioral lines: collapse the diagnostic ManagerState row and keep Action::Refresh out of generic connecting-progress text. It retains the 1.3.5 native-chat/product behavior below. See [1.3.6 release notes](releases/1.3.6.md) for the measured layout repair and [1.3.5 release notes](releases/1.3.5.md) for native predecessor/successor evidence.
+Version 1.3.11 repairs the real Windows authority path for forward and mixed separator tool requests, retaining the 1.3.10 complete native result delivery and 1.3.9 bootstrap/continuity repairs. Release scope and publication provenance are recorded in [1.3.11 release notes](releases/1.3.11.md). [1.3.10 notes](releases/1.3.10.md) preserve the native path rejection that motivated this correction; older reports retain their artifact provenance and limits.
+
+The installed 1.3.11 Release suite passed 153/153; signed installation, all three role bindings, 31 disposable feature calls and final loaded-Qwen native acceptance passed. Native readback verifies all 270 policy entries, exact pinned package/policy text and the complete six-fragment large shell result. Detailed evidence and unexercised rollover/GUI limits are in [installed qualification](validation/LM-STUDIO-REPAIR-1.3.11.md). The public package is rebuilt from the Jim Daley release commit; its clean source/staging provenance and publication checks are attached to the GitHub release. Publication does not reinstall the host or rerun the earlier native GUI conversation. Historical records below retain their own binaries and limitations.
 
 | Area | Implemented behavior |
 |---|---|

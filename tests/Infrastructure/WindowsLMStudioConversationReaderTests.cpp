@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -218,6 +219,124 @@ void nativeDeliveryAndMatchedToolEvidence()
         "matched native tool result evidence lost its exact binding or body");
 }
 
+Json nativeFragmentBlocks(const std::string& canonical)
+{
+    std::vector<std::string> parts;
+    for (std::size_t start{}; start < canonical.size();) {
+        auto end = (std::min)(canonical.size(), start + 12U * 1024U);
+        while (end < canonical.size() &&
+            (static_cast<unsigned char>(canonical[end]) & 0xc0U) == 0x80U) --end;
+        parts.push_back(canonical.substr(start, end - start));
+        start = end;
+    }
+    Json blocks = Json::array();
+    for (std::size_t index{}; index < parts.size(); ++index) {
+        const auto body = Json{{"kind", "forge_tool_result_fragment"}, {"version", 1U},
+            {"index", index}, {"count", parts.size()}, {"total_bytes", canonical.size()},
+            {"part", parts.at(index)},
+            {"instruction", "Concatenate part from every fragment in index order, then parse the complete JSON tool result. Do not repeat the tool call."}}.dump();
+        require(body.size() <= 32U * 1024U, "native fixture fragment exceeded bridge-safe limit");
+        blocks.push_back(Json{{"type", "text"}, {"text", body}});
+    }
+    require(blocks.size() > 1U, "native fixture did not exercise fragmentation");
+    return blocks;
+}
+
+void fragmentedNativeContinuityResults()
+{
+    ConversationFixture fixture;
+    std::string longText;
+    const std::string unit = std::string{"\x01\"\\\n"} + "\xe6\xb8\xac\xf0\x9f\xa7\xaa";
+    for (std::size_t index{}; index < 6000U; ++index) longText += unit;
+    const std::vector<std::pair<std::string, Json>> cases{
+        {"session_handoff", Json{{"ok", true}, {"handoff_id", "large-native-packet"},
+            {"resume_seed", longText}, {"packet", {{"goal", "Retain the original task"}, {"narrative", longText}}}}},
+        {"context_get", Json{{"ok", true}, {"found", true}, {"handoff_id", "large-native-packet"}, {"narrative", longText}}},
+        {"agent_get", Json{{"ok", false}, {"code", "invalid_request"}, {"message", longText}}}};
+    Json steps = Json::array();
+    std::uint64_t callId{};
+    std::vector<std::string> raw;
+    for (const auto& [name, payload] : cases) {
+        ++callId;
+        raw.push_back(nativeFragmentBlocks(payload.dump()).dump());
+        const auto requestId = "fragmented-request-" + std::to_string(callId);
+        steps.push_back(Json{{"type", "contentBlock"}, {"content", Json::array({
+            Json{{"type", "toolCallRequest"}, {"callId", callId}, {"name", name},
+                {"toolCallRequestId", requestId}, {"pluginIdentifier", "mcp/forge-conductor"}},
+            Json{{"type", "toolCallResult"}, {"callId", callId},
+                {"toolCallRequestId", requestId}, {"content", raw.back()}}})}});
+    }
+    steps.push_back(generation(18000U, 262144U));
+    fixture.save(conversation(Json::array({message(Json::array({version(steps)}))})));
+    TestContext context;
+    const auto observed = take(WindowsLMStudioConversationReader::read(fixture.path(), context.active()));
+    require(observed && observed->nativeToolResults.size() == cases.size(), "fragmented native calls lost identity");
+    for (std::size_t index{}; index < cases.size(); ++index) {
+        const auto& result = observed->nativeToolResults.at(index);
+        require(result.name == cases.at(index).first && result.content == raw.at(index) &&
+            result.requestId == "fragmented-request-" + std::to_string(index + 1U) &&
+            result.pluginIdentifier == "mcp/forge-conductor", "fragment reassembly changed raw boundary evidence");
+        require(result.textBodies == std::vector<std::string>{cases.at(index).second.dump()},
+            "native continuity did not receive one exact complete semantic result");
+        require(Json::parse(result.textBodies.front()) == cases.at(index).second,
+            "native result lost escaped Unicode or error data");
+    }
+    const auto recovered = Json::parse(observed->nativeToolResults.at(1).textBodies.front());
+    require(recovered.at("ok") == true && recovered.at("found") == true &&
+        recovered.at("handoff_id") == "large-native-packet", "successor acknowledgement fields were not recovered");
+    const auto rejected = Json::parse(observed->nativeToolResults.at(2).textBodies.front());
+    require(rejected.at("ok") == false && rejected.at("code") == "invalid_request",
+        "native error fragments were fabricated as success");
+}
+
+void malformedNativeFragmentSetsCannotAcknowledgeContinuity()
+{
+    ConversationFixture fixture;
+    const auto payload = Json{{"ok", true}, {"found", true}, {"handoff_id", "large-native-packet"},
+        {"narrative", std::string(70U * 1024U, 'x')}}.dump();
+    const auto valid = nativeFragmentBlocks(payload);
+    std::vector<Json> invalid;
+    auto missing = valid; missing.erase(missing.end() - 1); invalid.push_back(missing);
+    auto duplicate = valid; duplicate.push_back(valid.back()); invalid.push_back(duplicate);
+    auto reordered = valid; std::swap(reordered[0], reordered[1]); invalid.push_back(reordered);
+    auto mixed = valid; mixed.push_back(Json{{"type", "text"}, {"text", R"({"ok":true,"found":true,"handoff_id":"fabricated"})"}}); invalid.push_back(mixed);
+    auto image = valid; image.push_back(Json{{"type", "image"}}); invalid.push_back(image);
+    auto malformed = valid; malformed[0]["text"] = "{"; invalid.push_back(malformed);
+    auto duplicateKey = valid;
+    auto duplicateBody = duplicateKey[0]["text"].get<std::string>();
+    duplicateBody.insert(1U, "\"index\":0,");
+    duplicateKey[0]["text"] = duplicateBody; invalid.push_back(duplicateKey);
+    const auto altered = [&](const char* field, const Json& value) {
+        auto blocks = valid;
+        auto fragment = Json::parse(blocks[0]["text"].get<std::string>());
+        fragment[field] = value; blocks[0]["text"] = fragment.dump(); invalid.push_back(std::move(blocks));
+    };
+    altered("version", 2U);
+    altered("index", valid.size());
+    altered("index", "0");
+    altered("count", valid.size() + 1U);
+    altered("total_bytes", payload.size() + 1U);
+    altered("total_bytes", 1024U * 1024U + 1U);
+    altered("part", "");
+    altered("part", "not JSON");
+    altered("kind", "wrong_fragment_kind");
+    for (const auto& blocks : invalid) {
+        const auto raw = blocks.dump();
+        fixture.save(conversation(Json::array({message(Json::array({version(Json::array({
+            Json{{"type", "contentBlock"}, {"content", Json::array({
+                Json{{"type", "toolCallRequest"}, {"callId", 1U}, {"name", "context_get"},
+                    {"toolCallRequestId", "malformed-native"}, {"pluginIdentifier", "mcp/forge-conductor"}},
+                Json{{"type", "toolCallResult"}, {"callId", 1U},
+                    {"toolCallRequestId", "malformed-native"}, {"content", raw}}})}}}))}))})));
+        TestContext context;
+        const auto observed = take(WindowsLMStudioConversationReader::read(fixture.path(), context.active()));
+        require(observed && observed->nativeToolResults.size() == 1U &&
+            observed->nativeToolResults.front().content == raw, "invalid fragments lost raw native evidence");
+        require(observed->nativeToolResults.front().textBodies.empty(),
+            "invalid or incomplete fragments fabricated semantic recovery evidence");
+    }
+}
+
 void chronologicalSelectedNativeToolEvidence()
 {
     ConversationFixture fixture;
@@ -330,6 +449,10 @@ void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests)
         missingSelectionAndCancellation);
     addTest(tests, "LMStudioConversationReader.native_delivery_and_result_evidence",
         nativeDeliveryAndMatchedToolEvidence);
+    addTest(tests, "LMStudioConversationReader.fragmented_native_continuity",
+        fragmentedNativeContinuityResults);
+    addTest(tests, "LMStudioConversationReader.invalid_fragment_sets",
+        malformedNativeFragmentSetsCannotAcknowledgeContinuity);
     addTest(tests, "LMStudioConversationReader.chronological_selected_native_tools",
         chronologicalSelectedNativeToolEvidence);
     addTest(tests, "LMStudioConversationReader.equal_statistics_distinct_generations",

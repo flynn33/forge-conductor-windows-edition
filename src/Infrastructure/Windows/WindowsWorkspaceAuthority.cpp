@@ -194,8 +194,10 @@ template <typename T>
     const Domain::PathText& requestedPath) noexcept
 {
     try {
+        auto nativeRequestedPath = requestedPath.value();
+        std::replace(nativeRequestedPath.begin(), nativeRequestedPath.end(), '/', '\\');
         auto resolved =
-            Detail::WindowsPathResolver::resolveAppOwnedRoot(requestedPath.value());
+            Detail::WindowsPathResolver::resolveAppOwnedRoot(nativeRequestedPath);
         if (!resolved) {
             return resolved;
         }

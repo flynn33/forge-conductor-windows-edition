@@ -194,7 +194,9 @@ void enforceBounds(const Json& value, const std::size_t depth, std::size_t& node
     const Json& servers,
     const Domain::LMStudioConnectorRole role,
     const Domain::PathText& expectedBinary,
-    const Domain::PathText& expectedForgeHome)
+    const Domain::PathText& expectedForgeHome,
+    const std::optional<Domain::ProjectId>& expectedProjectId,
+    const std::optional<Domain::PathText>& expectedProjectRoot)
 {
     LMStudioRoleConfigurationStatus status;
     status.role = role;
@@ -215,10 +217,38 @@ void enforceBounds(const Json& value, const std::size_t depth, std::size_t& node
         return status;
     }
     const auto args = entry->find("args");
-    if (args == entry->end() || !args->is_array() || args->size() != 1U ||
+    if (args == entry->end() || !args->is_array() ||
+        (args->size() != 1U && args->size() != 3U) ||
         !(*args)[0].is_string() || (*args)[0].get<std::string>() != "serve") {
-        status.detail = std::string{serverId(role)} + " args must be exactly [\"serve\"]";
+        status.detail = std::string{serverId(role)} +
+            " args must be [\"serve\"] or [\"serve\",\"--project-id\",\"<project UUID>\"]";
         return status;
+    }
+    std::optional<Domain::ProjectId> configuredProject;
+    if (args->size() == 3U) {
+        if (!(*args)[1].is_string() || (*args)[1] != "--project-id" ||
+            !(*args)[2].is_string()) {
+            status.detail = std::string{serverId(role)} + " has invalid project binding arguments";
+            return status;
+        }
+        auto parsed = Domain::ProjectId::parse((*args)[2].get<std::string>());
+        if (!parsed) {
+            status.detail = std::string{serverId(role)} + " has an invalid project UUID";
+            return status;
+        }
+        configuredProject = std::move(parsed).value();
+    }
+    if (expectedProjectId && configuredProject != expectedProjectId) {
+        status.detail = std::string{serverId(role)} + " project binding does not match the selected project";
+        return status;
+    }
+    if (expectedProjectRoot) {
+        const auto cwd = stringMember(*entry, "cwd");
+        if (!cwd || *cwd != expectedProjectRoot->value()) {
+            status.detail = std::string{serverId(role)} +
+                " working directory does not match the selected project folder";
+            return status;
+        }
     }
     const auto timeout = entry->find("timeout");
     if (timeout == entry->end() || !timeout->is_number_integer() ||
@@ -272,14 +302,29 @@ void mergeRole(
     const Domain::LMStudioConnectorRole role,
     const Domain::PathText& binary,
     const Domain::PathText& forgeHome,
-    const Domain::DeploymentId& deploymentId)
+    const Domain::DeploymentId& deploymentId,
+    const std::optional<Domain::ProjectId>& expectedProjectId,
+    const std::optional<Domain::PathText>& expectedProjectRoot)
 {
     auto& entry = servers[serverId(role)];
     if (!entry.is_object()) {
         entry = Json::object();
     }
     entry["command"] = binary.value();
-    entry["args"] = Json::array({"serve"});
+    if (expectedProjectId && expectedProjectRoot) {
+        entry["args"] = Json::array({"serve", "--project-id", expectedProjectId->value()});
+        entry["cwd"] = expectedProjectRoot->value();
+    } else {
+        const auto existingArgs = entry.find("args");
+        bool boundArguments{};
+        if (existingArgs != entry.end() && existingArgs->is_array() &&
+            existingArgs->size() == 3U && (*existingArgs)[0] == "serve" &&
+            (*existingArgs)[1] == "--project-id" && (*existingArgs)[2].is_string()) {
+            boundArguments = static_cast<bool>(Domain::ProjectId::parse(
+                (*existingArgs)[2].get<std::string>()));
+        }
+        if (!boundArguments) entry["args"] = Json::array({"serve"});
+    }
     entry["timeout"] = LMStudioMcpRequestTimeoutMilliseconds;
     auto& environment = entry["env"];
     if (!environment.is_object()) {
@@ -389,9 +434,16 @@ Domain::Result<LMStudioConfigurationDocument> LMStudioConfigurationCodec::parse(
 Domain::Result<LMStudioConfigurationInspection> LMStudioConfigurationCodec::inspect(
     const LMStudioConfigurationDocument& document,
     const Domain::PathText& expectedBinary,
-    const Domain::PathText& expectedForgeHome) noexcept
+    const Domain::PathText& expectedForgeHome,
+    const std::optional<Domain::ProjectId> expectedProjectId,
+    const std::optional<Domain::PathText> expectedProjectRoot) noexcept
 {
     try {
+        if (expectedProjectId.has_value() != expectedProjectRoot.has_value()) {
+            return Domain::Result<LMStudioConfigurationInspection>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "A selected LM Studio project requires both its project ID and folder."));
+        }
         const auto root = decode(document.sourceUtf8());
         const auto serversMember = root.find("mcpServers");
         const Json emptyServers = Json::object();
@@ -400,11 +452,14 @@ Domain::Result<LMStudioConfigurationInspection> LMStudioConfigurationCodec::insp
         LMStudioConfigurationInspection inspection;
         inspection.roles.reserve(3U);
         inspection.roles.push_back(inspectRole(
-            servers, Domain::LMStudioConnectorRole::Primary, expectedBinary, expectedForgeHome));
+            servers, Domain::LMStudioConnectorRole::Primary, expectedBinary, expectedForgeHome,
+            expectedProjectId, expectedProjectRoot));
         inspection.roles.push_back(inspectRole(
-            servers, Domain::LMStudioConnectorRole::Fallback, expectedBinary, expectedForgeHome));
+            servers, Domain::LMStudioConnectorRole::Fallback, expectedBinary, expectedForgeHome,
+            expectedProjectId, expectedProjectRoot));
         inspection.roles.push_back(inspectRole(
-            servers, Domain::LMStudioConnectorRole::Clu, expectedBinary, expectedForgeHome));
+            servers, Domain::LMStudioConnectorRole::Clu, expectedBinary, expectedForgeHome,
+            expectedProjectId, expectedProjectRoot));
 
         const auto& primary = inspection.roles[0];
         const auto& fallback = inspection.roles[1];
@@ -442,9 +497,16 @@ Domain::Result<std::vector<std::byte>> LMStudioConfigurationCodec::mergeForgeSer
     const LMStudioConfigurationDocument& document,
     const Domain::PathText& binary,
     const Domain::PathText& forgeHome,
-    const Domain::DeploymentId& deploymentId) noexcept
+    const Domain::DeploymentId& deploymentId,
+    const std::optional<Domain::ProjectId> expectedProjectId,
+    const std::optional<Domain::PathText> expectedProjectRoot) noexcept
 {
     try {
+        if (expectedProjectId.has_value() != expectedProjectRoot.has_value()) {
+            return Domain::Result<std::vector<std::byte>>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest,
+                "A selected LM Studio project requires both its project ID and folder."));
+        }
         if (deploymentId.value().empty()) {
             return Domain::Result<std::vector<std::byte>>::failure(Domain::makeError(
                 Domain::ErrorCodes::InvalidRequest,
@@ -462,11 +524,11 @@ Domain::Result<std::vector<std::byte>> LMStudioConfigurationCodec::mergeForgeSer
         }
         removeLegacyForgeLaunchers(servers, forgeHome);
         mergeRole(servers, Domain::LMStudioConnectorRole::Fallback,
-                  binary, forgeHome, deploymentId);
+                  binary, forgeHome, deploymentId, expectedProjectId, expectedProjectRoot);
         mergeRole(servers, Domain::LMStudioConnectorRole::Clu,
-                  binary, forgeHome, deploymentId);
+                  binary, forgeHome, deploymentId, expectedProjectId, expectedProjectRoot);
         mergeRole(servers, Domain::LMStudioConnectorRole::Primary,
-                  binary, forgeHome, deploymentId);
+                  binary, forgeHome, deploymentId, expectedProjectId, expectedProjectRoot);
         auto encoded = root.dump(2, ' ', false, Json::error_handler_t::strict);
         encoded.push_back('\n');
         if (encoded.size() > MaximumDocumentBytes) {
@@ -481,7 +543,8 @@ Domain::Result<std::vector<std::byte>> LMStudioConfigurationCodec::mergeForgeSer
             return Domain::Result<std::vector<std::byte>>::failure(
                 std::move(reparsed).error());
         }
-        auto inspected = inspect(reparsed.value(), binary, forgeHome);
+        auto inspected = inspect(reparsed.value(), binary, forgeHome,
+            expectedProjectId, expectedProjectRoot);
         if (!inspected || !inspected.value().registered ||
             !inspected.value().deploymentId ||
             inspected.value().deploymentId.value() != deploymentId) {

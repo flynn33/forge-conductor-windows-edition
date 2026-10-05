@@ -1,8 +1,21 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include "ForgeConductor/Manager/ManagerRequestDispatcher.h"
+#include "ForgeConductor/Application/ProjectMemoryService.h"
+#include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
+#include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
+#include "ForgeConductor/Persistence/Windows/WindowsProjectMemoryRepository.h"
+#include "../Fakes/DiagnosticsFakes.h"
+#include "../Fakes/PlatformPathFakes.h"
+#include "../Persistence/PersistenceTestSupport.h"
 #include "../Fakes/ProjectRepositoryFakes.h"
 #include "../Fakes/RecordingProjectMemoryService.h"
 #include "../Fakes/RecordingContinuityCoordinator.h"
 #include "../Fakes/DeterministicWorkspaceAuthority.h"
+#include "../Fakes/ExternalServiceFakes.h"
+#include "../Fakes/ToolServiceFakes.h"
 #include <nlohmann/json.hpp>
 
 #ifndef NOMINMAX
@@ -1293,6 +1306,388 @@ void testProjectWorkflowKeepsExactProjectIdentity()
             "recent project-memory reads forward the continuation cursor");
 }
 
+template <typename T>
+[[nodiscard]] T requireQueueResult(Domain::Result<T> result)
+{
+    if (!result) fail(result.error().code + ": " + result.error().message);
+    return std::move(result).value();
+}
+
+struct PersistentInstructionQueueFixture final {
+    ForgeConductor::Tests::PersistenceSupport::ScopedTestDirectory directory{
+        L"instruction-queue"};
+    Domain::ProjectId project{Domain::ProjectId::parse(uuidText(9'000U)).value()};
+    std::shared_ptr<FakeClock> clock{std::make_shared<FakeClock>()};
+    TestFakes::ProjectRegistryRepositoryFake registry{
+        8U, std::chrono::steady_clock::now()};
+    std::shared_ptr<TestFakes::RecordingApplicationPathsFake> paths{
+        std::make_shared<TestFakes::RecordingApplicationPathsFake>()};
+    std::shared_ptr<TestFakes::RuntimeDiagnosticsFake> diagnostics;
+    std::shared_ptr<ForgeConductor::Infrastructure::Windows::BCryptSha256Hasher>
+        hasher{std::make_shared<ForgeConductor::Infrastructure::Windows::BCryptSha256Hasher>()};
+    std::shared_ptr<ForgeConductor::Infrastructure::Windows::SecretRedactor>
+        redactor{std::make_shared<ForgeConductor::Infrastructure::Windows::SecretRedactor>()};
+    std::shared_ptr<TestFakes::SequenceUuidGenerator> uuids;
+    std::shared_ptr<ForgeConductor::Persistence::Windows::WindowsProjectMemoryRepository>
+        repository;
+    std::unique_ptr<TestFakes::ProjectMemoryRepositoryFactoryFake> factory;
+    std::unique_ptr<ForgeConductor::Application::ProjectMemoryService> memory;
+    std::unique_ptr<Manager::ManagerRequestDispatcher> dispatcher;
+    std::uint32_t nextRequest{10'000U};
+    bool advanceClock{true};
+
+    PersistentInstructionQueueFixture()
+    {
+        clock->monotonic = std::chrono::steady_clock::now();
+        clock->utc = std::chrono::time_point_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now());
+        diagnostics = std::make_shared<TestFakes::RuntimeDiagnosticsFake>(
+            clock->monotonic);
+        paths->setNow(clock->monotonic);
+        paths->projectRootResult.set(Domain::Result<Domain::PathText>::success(
+            ForgeConductor::Tests::PersistenceSupport::pathText(directory.path() / L"memory")));
+        require(static_cast<bool>(registry.seedDescriptor(
+            Domain::ProjectMemoryDescriptor{project, "Durable queue", std::nullopt,
+                {ForgeConductor::Tests::PersistenceSupport::pathText(directory.path())}})),
+            "seed durable queue project");
+        std::vector<Domain::Uuid> sequence;
+        for (std::uint32_t index = 20'000U; index < 20'512U; ++index) {
+            sequence.push_back(Domain::Uuid::parse(uuidText(index)).value());
+        }
+        uuids = std::make_shared<TestFakes::SequenceUuidGenerator>(std::move(sequence));
+        reopen();
+    }
+
+    [[nodiscard]] Domain::OperationContext context()
+    {
+        const auto suffix = nextRequest++;
+        return Domain::OperationContext{operationId(suffix),
+            std::chrono::steady_clock::now() + 30s, {}, correlationId(suffix)};
+    }
+
+    void reopen()
+    {
+        dispatcher.reset();
+        memory.reset();
+        factory.reset();
+        repository.reset();
+        repository = requireQueueResult(
+            ForgeConductor::Persistence::Windows::WindowsProjectMemoryRepository::open(
+                project, paths, diagnostics, redactor, hasher, uuids, clock, {}, context()));
+        factory = std::make_unique<TestFakes::ProjectMemoryRepositoryFactoryFake>(
+            1U, 1U, clock->monotonic);
+        require(static_cast<bool>(factory->addRepository(repository)),
+            "register durable queue repository");
+        memory = std::make_unique<ForgeConductor::Application::ProjectMemoryService>(
+            registry, *factory, *redactor, Domain::ProjectMemoryLimits{});
+        Manager::ManagerTelemetrySources sources;
+        sources.projects = &registry;
+        sources.projectMemory = memory.get();
+        sources.evidenceHasher = hasher.get();
+        dispatcher = std::make_unique<Manager::ManagerRequestDispatcher>(
+            std::make_shared<FakeController>(), clock,
+            Manager::ManagerTransportLimits{}, std::shared_ptr<Contracts::IManagedRunService>{}, sources);
+    }
+
+    [[nodiscard]] Manager::ManagerResponse dispatch(Manager::ManagerRequestPayload payload)
+    {
+        if (advanceClock) clock->utc += 1s;
+        return dispatcher->dispatch(request(*clock, nextRequest++, std::move(payload)));
+    }
+
+    [[nodiscard]] Manager::ManagerInstructionPackageQueueSnapshot queue(
+        Manager::ManagerInstructionPackageQueueAction action =
+            Manager::ManagerInstructionPackageQueueAction::List,
+        std::optional<std::string> rowId = {}, std::optional<std::size_t> target = {})
+    {
+        const auto response = dispatch(Manager::ManagerInstructionPackageQueueRequest{
+            project, action, std::move(rowId), target});
+        const auto* value = responseValue<Manager::ManagerInstructionPackageQueueSnapshot>(response);
+        require(value != nullptr, std::string{"durable queue operation: "} +
+            (responseError(response) ? responseError(response)->message : "wrong response type"));
+        return *value;
+    }
+
+    [[nodiscard]] Domain::MemoryRecordId remember(
+        std::string kind, std::string title, nlohmann::json body)
+    {
+        Domain::ProjectMemoryWrite write;
+        write.kind = std::move(kind);
+        write.title = std::move(title);
+        write.summary = "durable instruction queue fixture";
+        write.body = body.dump();
+        write.sourceKind = "instruction_queue_test";
+        return requireQueueResult(memory->remember(
+            Domain::RememberProjectMemoryRequest{project, std::move(write)}, context())).recordId;
+    }
+
+    [[nodiscard]] Domain::MemoryRecordId seedRow(
+        const std::string& id, const std::string& state, std::uint64_t order)
+    {
+        return remember("instruction_package_queue", id, nlohmann::json{
+            {"schema", "forge-instruction-package-queue-v2"},
+            {"project_id", project.value()}, {"queue_row_id", id},
+            {"package_id", "package-" + id}, {"package_name", id},
+            {"package_path", (directory.path() / id).string()},
+            {"revision", std::string(64U, 'a')}, {"order", order}, {"state", state},
+            {"cursor", {{"entry", 3U}, {"byte_offset", 9U}}},
+            {"entry_count", 4U}, {"content_bytes", 64U},
+            {"coverage_gap_count", 1U}, {"attempts", 2U},
+            {"last_error", state == "failed" || state == "interrupted"
+                ? nlohmann::json("previous interruption") : nlohmann::json(nullptr)}});
+    }
+};
+
+void testInstructionQueueRemovalIsImmediateForEveryState()
+{
+    PersistentInstructionQueueFixture fixture;
+    for (const auto* state : {"active", "ready", "failed", "interrupted"}) {
+        const auto id = fixture.seedRow(state, state, 1024U);
+        const auto removed = fixture.queue(
+            Manager::ManagerInstructionPackageQueueAction::Remove, std::string{state});
+        require(removed.rows.empty(), std::string{state} + " package removes immediately");
+        fixture.reopen();
+        require(fixture.queue().rows.empty(), std::string{state} + " removal survives reopen");
+        const auto oldRecord = fixture.memory->get(
+            Domain::GetProjectMemoryRequest{fixture.project, {id}, true}, fixture.context());
+        require(oldRecord && oldRecord.value().records.empty(),
+            "removed queue record is tombstoned");
+    }
+    static_cast<void>(fixture.seedRow("only", "active", 1024U));
+    requireError(fixture.dispatch(Manager::ManagerInstructionPackageQueueRequest{
+        fixture.project, Manager::ManagerInstructionPackageQueueAction::Move,
+        std::string{"only"}, 1U}), Domain::ErrorCodes::InvalidRequest,
+        "out-of-range package move");
+    requireError(fixture.dispatch(Manager::ManagerInstructionPackageQueueRequest{
+        fixture.project, Manager::ManagerInstructionPackageQueueAction::Remove,
+        std::string{"missing"}}), Domain::ErrorCodes::RecordNotFound,
+        "missing package removal");
+    requireError(fixture.dispatch(Manager::ManagerInstructionPackageQueueRequest{
+        Domain::ProjectId::parse(uuidText(9'001U)).value(),
+        Manager::ManagerInstructionPackageQueueAction::Remove, std::string{"only"}}),
+        Domain::ErrorCodes::ProjectNotFound, "unregistered project removal");
+    require(fixture.queue().rows.size() == 1U,
+        "invalid mutations preserve the selected project's queue");
+}
+
+void testInstructionQueueRepeatedOrderSurvivesRepositoryReopen()
+{
+    PersistentInstructionQueueFixture fixture;
+    static_cast<void>(fixture.seedRow("A", "active", 1024U));
+    static_cast<void>(fixture.seedRow("B", "ready", 2048U));
+    const auto seedOrder = [&](const std::string& first, const std::string& second) {
+        fixture.clock->utc += 1s;
+        Domain::ProjectMemoryWrite write;
+        write.kind = "instruction_package_queue_order";
+        write.title = "Instruction package execution order";
+        write.summary = "2 ordered package rows";
+        write.body = nlohmann::json{{"schema", "forge-instruction-package-order-v1"},
+            {"project_id", fixture.project.value()},
+            {"rows", nlohmann::json::array({first, second})}}.dump();
+        write.tags = {"instruction-package-queue-order"};
+        write.importance = 1.0;
+        write.confidence = 1.0;
+        write.sourceKind = "manager_instruction_package";
+        const auto identity = first + "\n" + second + "\n";
+        const auto digest = requireQueueResult(fixture.hasher->sha256(
+            std::as_bytes(std::span{identity.data(), identity.size()})));
+        write.idempotencyKey = Domain::IdempotencyKey::create(
+            "instruction-order:" + digest.value()).value();
+        static_cast<void>(requireQueueResult(fixture.memory->remember(
+            Domain::RememberProjectMemoryRequest{fixture.project, std::move(write)},
+            fixture.context())));
+    };
+    seedOrder("A", "B");
+    seedOrder("B", "A");
+    const auto requireOrder = [&](const std::string& first, const std::string& second) {
+        const auto listed = fixture.queue();
+        require(listed.rows.size() == 2U && listed.rows[0].queueRowId == first &&
+            listed.rows[1].queueRowId == second, "durable queue has requested order " + first + second);
+    };
+    fixture.reopen();
+    requireOrder("B", "A");
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Move,
+        std::string{"A"}, 0U));
+    fixture.reopen();
+    requireOrder("A", "B");
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Move,
+        std::string{"B"}, 0U));
+    fixture.reopen();
+    requireOrder("B", "A");
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Move,
+        std::string{"A"}, 0U));
+    fixture.reopen();
+    requireOrder("A", "B");
+    fixture.advanceClock = false;
+    const auto sameSecond = fixture.clock->utc;
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Move,
+        std::string{"B"}, 0U));
+    fixture.reopen();
+    requireOrder("B", "A");
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Move,
+        std::string{"A"}, 0U));
+    fixture.reopen();
+    requireOrder("A", "B");
+    require(fixture.clock->utc == sameSecond,
+        "opposite order mutations and readback occurred within one persisted second");
+    const auto removed = fixture.queue(Manager::ManagerInstructionPackageQueueAction::Remove,
+        std::string{"A"});
+    require(removed.rows.size() == 1U && removed.rows.front().queueRowId == "B" && removed.rows.front().order == 1024U,
+        "removing active row preserves its neighbor");
+    fixture.reopen();
+    const auto remaining = fixture.queue();
+    require(remaining.rows.size() == 1U && remaining.rows.front().queueRowId == "B" &&
+        remaining.rows.front().order == 1024U, "remaining compacted order survives reopen");
+}
+
+void testInstructionQueueLegacyDeletionAndReadoptionAreDurable()
+{
+    PersistentInstructionQueueFixture fixture;
+    const auto folder = fixture.directory.path() / L"source";
+    std::filesystem::create_directories(folder);
+    {
+        std::ofstream output{folder / L"START-HERE.md", std::ios::binary};
+        output << "Follow this project contract.\n";
+    }
+    const auto legacyFile = fixture.remember("instruction_package_file", "START-HERE.md",
+        nlohmann::json("legacy text"));
+    static_cast<void>(fixture.remember("instruction_package", "Legacy package", nlohmann::json{
+        {"schema", "forge-instruction-package-v1"}, {"package_name", "Legacy package"},
+        {"package_path", folder.string()}, {"revision", std::string(64U, 'd')},
+        {"files", nlohmann::json::array({{{"path", "START-HERE.md"},
+            {"record_id", legacyFile.value()}}})}}));
+    const auto migrated = fixture.queue();
+    require(migrated.rows.size() == 1U && migrated.rows.front().state == "active",
+        "legacy fixture migrates active queue row");
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Remove,
+        migrated.rows.front().queueRowId));
+    fixture.reopen();
+    require(fixture.queue().rows.empty(), "last removed legacy row does not remigrate");
+    require(fixture.queue().rows.empty(), "repeated empty listing does not recreate legacy row");
+    const auto path = ForgeConductor::Tests::PersistenceSupport::pathText(folder);
+    const auto preview = fixture.dispatch(Manager::ManagerInstructionPackageRequest{
+        fixture.project, path, false, std::nullopt});
+    const auto* inspected = responseValue<Manager::ManagerInstructionPackageSnapshot>(preview);
+    require(inspected != nullptr, "source folder remains available after removal");
+    const auto revision = inspected->revision;
+    const auto add = [&] {
+        const auto response = fixture.dispatch(Manager::ManagerInstructionPackageRequest{
+            fixture.project, path, true, revision});
+        const auto* added = responseValue<Manager::ManagerInstructionPackageSnapshot>(response);
+        require(added != nullptr && added->activated && added->queueRowId,
+            "same source revision can be adopted");
+        return *added;
+    };
+    const auto firstId = *add().queueRowId;
+    require(add().queueRowId == firstId && fixture.queue().rows.size() == 1U,
+        "repeated live add does not duplicate queue row");
+    static_cast<void>(fixture.seedRow("neighbor", "ready", 2048U));
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Move,
+        firstId, 1U));
+    const auto duplicate = add();
+    require(duplicate.queueRowId == firstId && duplicate.queueOrder == 2048U &&
+        fixture.queue().rows.size() == 2U,
+        "duplicate live adoption returns effective moved order without duplicating rows");
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Remove,
+        std::string{"neighbor"}));
+    static_cast<void>(fixture.queue(Manager::ManagerInstructionPackageQueueAction::Remove, firstId));
+    fixture.reopen();
+    require(fixture.queue().rows.empty(), "new row removal survives reopen");
+    const auto nextId = *add().queueRowId;
+    fixture.reopen();
+    const auto readopted = fixture.queue();
+    require(readopted.rows.size() == 1U && readopted.rows.front().queueRowId == nextId,
+        "removed source revision can be re-added as a visible durable queue row");
+    require(ForgeConductor::Tests::PersistenceSupport::readFixture(folder / L"START-HERE.md") ==
+        "Follow this project contract.\n", "queue removal never deletes source files");
+}
+void testInstructionQueueMutationFailuresRemainVisible()
+{
+    auto clock = std::make_shared<FakeClock>();
+    const auto project = Domain::ProjectId::parse(uuidText(9'100U)).value();
+    const auto rowId = Domain::MemoryRecordId::parse(uuidText(9'101U)).value();
+    const auto orderId = Domain::MemoryRecordId::parse(uuidText(9'102U)).value();
+    const auto revision = Domain::Sha256Digest::parse(std::string(64U, 'e')).value();
+    FixedHasher hasher{revision};
+    TestFakes::ProjectRegistryRepositoryFake registry{1U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(Domain::ProjectMemoryDescriptor{
+        project, "Queue failures", std::nullopt,
+        {Domain::PathText::create("D:\\QueueFailures").value()}})), "seed queue failure project");
+    TestFakes::RecordingProjectMemoryService memory;
+    const auto makeRecord = [&](const Domain::MemoryRecordId& id,
+                                std::string kind, nlohmann::json body) {
+        return Domain::ProjectMemoryRecord{id, project, 1U, std::move(kind),
+            "Queue failure", "Queue failure", body.dump(), {}, 1.0, 1.0,
+            "queue_failure_test", std::nullopt, std::nullopt,
+            clock->utc, clock->utc, clock->utc, std::nullopt, revision, false,
+            Domain::ProjectMemorySchemaVersion};
+    };
+    const auto row = makeRecord(rowId, "instruction_package_queue", nlohmann::json{
+        {"schema", "forge-instruction-package-queue-v2"}, {"project_id", project.value()},
+        {"queue_row_id", "queue-failure"}, {"package_id", "package-failure"},
+        {"package_name", "Queue failure"}, {"package_path", "D:\\QueueFailures"},
+        {"revision", revision.value()}, {"order", 1024U}, {"state", "active"},
+        {"cursor", {{"entry", 0U}, {"byte_offset", 0U}}}});
+    auto empty = Domain::MemoryPage{project, {}, std::nullopt, false, 0U,
+        64U * 1024U, Domain::ProjectMemorySchemaVersion, Domain::ProjectMemoryCapabilityVersion};
+    auto queuePage = empty;
+    queuePage.records.push_back(Domain::MemorySearchHit{row, 1.0});
+    memory.listRecentByKind["instruction_package_queue"].set(
+        Domain::Result<Domain::MemoryPage>::success(queuePage));
+    memory.listRecentByKind["instruction_package_queue_order"].set(
+        Domain::Result<Domain::MemoryPage>::success(empty));
+    memory.rememberResult.set(Domain::Result<Domain::MemoryWriteOutcome>::failure(
+        Domain::makeError(Domain::ErrorCodes::IntegrityFailure, "order write failed")));
+    Manager::ManagerTelemetrySources sources;
+    sources.projects = &registry;
+    sources.projectMemory = &memory;
+    sources.evidenceHasher = &hasher;
+    Manager::ManagerRequestDispatcher dispatcher{
+        std::make_shared<FakeController>(), clock, Manager::ManagerTransportLimits{}, {}, sources};
+    const auto move = [&](std::uint32_t suffix) {
+        return dispatcher.dispatch(request(*clock, suffix,
+            Manager::ManagerInstructionPackageQueueRequest{project,
+                Manager::ManagerInstructionPackageQueueAction::Move,
+                std::string{"queue-failure"}, 0U}));
+    };
+    const auto remove = [&](std::uint32_t suffix) {
+        return dispatcher.dispatch(request(*clock, suffix,
+            Manager::ManagerInstructionPackageQueueRequest{project,
+                Manager::ManagerInstructionPackageQueueAction::Remove,
+                std::string{"queue-failure"}}));
+    };
+    requireError(move(9'110U), Domain::ErrorCodes::IntegrityFailure, "queue order insert failure");
+    const auto failedRemoval = remove(9'111U);
+    requireError(failedRemoval, Domain::ErrorCodes::IntegrityFailure, "removal order insert failure");
+    require(responseError(failedRemoval)->message == "order write failed" &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Forget) == 0U,
+        "failed removal marker is reported before forgetting a row");
+    memory.rememberResult.set(Domain::Result<Domain::MemoryWriteOutcome>::success(
+        Domain::MemoryWriteOutcome{project, orderId, 1U, Domain::MemoryWriteDisposition::Inserted,
+            revision, Domain::ProjectMemorySchemaVersion, Domain::ProjectMemoryCapabilityVersion}));
+    memory.forgetResult.set(Domain::Result<Domain::ForgetOutcome>::failure(
+        Domain::makeError(Domain::ErrorCodes::IntegrityFailure, "forget failed")));
+    const auto forgetFailed = remove(9'112U);
+    requireError(forgetFailed, Domain::ErrorCodes::IntegrityFailure, "queue forget failure");
+    require(responseError(forgetFailed)->message == "forget failed" &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Forget) == 1U,
+        "forget error reaches the caller");
+    auto orderPage = empty;
+    orderPage.records.push_back(Domain::MemorySearchHit{makeRecord(orderId,
+        "instruction_package_queue_order", nlohmann::json{
+            {"schema", "forge-instruction-package-order-v1"}, {"project_id", project.value()},
+            {"rows", nlohmann::json::array({"queue-failure"})}}), 1.0});
+    memory.listRecentByKind["instruction_package_queue_order"].set(
+        Domain::Result<Domain::MemoryPage>::success(orderPage));
+    memory.updateResult.set(Domain::Result<Domain::ProjectMemoryRecord>::failure(
+        Domain::makeError(Domain::ErrorCodes::IntegrityFailure, "order update failed")));
+    requireError(move(9'113U), Domain::ErrorCodes::IntegrityFailure, "queue order update failure");
+    const auto updateFailed = remove(9'114U);
+    requireError(updateFailed, Domain::ErrorCodes::IntegrityFailure, "removal order update failure");
+    require(responseError(updateFailed)->message == "order update failed" &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Forget) == 1U,
+        "failed order update leaves queue row unforgotten");
+}
 void testInstructionPackagePreviewAndActivationStayProjectBound()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -1591,6 +1986,56 @@ void testInstructionPackagePreviewAndActivationStayProjectBound()
     require(managedRuns->startCalls == 0U, "package queue does not create a run");
 }
 
+void testLmStudioBindingUsesRegisteredAuthorizedProject()
+{
+    auto clock = std::make_shared<FakeClock>();
+    const auto project = Domain::ProjectId::parse(uuidText(840U)).value();
+    const auto root = Domain::PathText::create("D:\\Projects\\Selected").value();
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(Domain::ProjectMemoryDescriptor{
+        project, "Selected", std::nullopt, {root}})), "seed project binding test");
+    TestFakes::DeterministicWorkspaceAuthority access{
+        Domain::AuthorityId::parse(uuidText(841U)).value(),
+        Domain::ClientId::parse(uuidText(842U)).value(), {root},
+        Domain::FileAccess::Read, {Domain::FileAccess::Read}, {}, false, 1U};
+    const Domain::OperationContext context{operationId(843U), clock->monotonic + 1min, {}, correlationId(843U)};
+    auto authority = access.authorityFor(project, context).value();
+    TestFakes::DeterministicToolAuthorizerFake authorizer{
+        "install-lmstudio-plugin", Domain::ToolEffect::Write, clock->monotonic};
+    TestFakes::RecordingLMStudioDeploymentServiceFake deployment;
+    deployment.setNow(clock->monotonic);
+    deployment.statusResult.set(Domain::Result<Domain::LMStudioPluginStatus>::failure(
+        Domain::makeError(Domain::ErrorCodes::InternalFailure, "captured selected binding")));
+    Manager::ManagerTelemetrySources sources;
+    sources.projects = &registry;
+    sources.projectWorkspaceAuthority = &access;
+    sources.lmStudioDeployment = &deployment;
+    sources.lmStudioReadAuthority = &authority;
+    sources.lmStudioWriteAuthority = &authority;
+    sources.toolAuthorizer = &authorizer;
+    Manager::ManagerRequestDispatcher dispatcher{
+        std::make_shared<FakeController>(), clock, Manager::ManagerTransportLimits{}, {}, sources};
+    const auto selected = dispatcher.dispatch(request(*clock, 844U,
+        Manager::ManagerLmStudioStatusRequest{project}));
+    require(responseError(selected) && responseError(selected)->message == "captured selected binding" &&
+        deployment.lastDeploymentRequest() &&
+        deployment.lastDeploymentRequest()->projectId == project &&
+        deployment.lastDeploymentRequest()->projectRoot == root,
+        "LM Studio requests must resolve the exact registered and authorized workspace");
+    const auto callsBeforeUnknown = deployment.statusCalls();
+    const auto unknown = dispatcher.dispatch(request(*clock, 845U,
+        Manager::ManagerLmStudioRepairRequest{Domain::ProjectId::parse(uuidText(846U)).value()}));
+    require(responseError(unknown) && deployment.statusCalls() == callsBeforeUnknown &&
+        deployment.deployCalls() == 0U,
+        "An unregistered selected project must fail before inspection or deployment");
+    const auto legacy = dispatcher.dispatch(request(*clock, 847U,
+        Manager::ManagerLmStudioStatusRequest{}));
+    require(responseError(legacy) && deployment.lastDeploymentRequest() &&
+        !deployment.lastDeploymentRequest()->projectId &&
+        !deployment.lastDeploymentRequest()->projectRoot,
+        "Legacy projectless clients retain their current registration behavior");
+}
+
 void testLegacyInstructionManifestMigratesToStableQueue()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -1686,6 +2131,120 @@ void testLegacyInstructionManifestMigratesToStableQueue()
         secondQueue->rows.front().queueRowId == stableRowId &&
         memory.lastRememberRequest()->write.idempotencyKey.value() == firstKey,
         "legacy migration is idempotent and preserves a stable queue identity");
+
+    memory.getResult.set(Domain::Result<Domain::MemoryRecords>::success(
+        Domain::MemoryRecords{project, {}, 0U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    const auto missingFile = dispatcher.dispatch(request(*clock, 836U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    const auto* incomplete = responseValue<Manager::ManagerInstructionPackageQueueSnapshot>(missingFile);
+    require(incomplete && incomplete->rows.size() == 1U &&
+        incomplete->rows.front().state == "needs_attention" &&
+        incomplete->rows.front().coverageGapCount == 1U,
+        "a missing pinned legacy file remains an explicit coverage gap");
+    const auto missingEntry = nlohmann::json::parse(
+        *memory.rememberBatchRequests().back().writes.front().body);
+    require(missingEntry.at("interpretation") == "unreadable" &&
+        missingEntry.at("derived_text").is_null() &&
+        missingEntry.at("content_hash").is_null(),
+        "migration does not fabricate interpreted empty text for a missing file");
+
+    auto emptyOrder = record(migratedId, "instruction_package_queue_order",
+        nlohmann::json{{"schema", "forge-instruction-package-order-v1"},
+            {"project_id", project.value()}, {"rows", nlohmann::json::array()}}.dump());
+    memory.listRecentByKind["instruction_package_queue_order"].set(
+        Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
+            project, {{emptyOrder, 1.0}}, std::nullopt, false, 1024U,
+            256U * 1024U, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    const auto writesBeforeRemoval = memory.callCount(TestFakes::ProjectMemoryCall::Remember);
+    const auto removed = dispatcher.dispatch(request(*clock, 837U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    const auto* removedQueue = responseValue<Manager::ManagerInstructionPackageQueueSnapshot>(removed);
+    require(removedQueue && removedQueue->rows.empty() &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Remember) == writesBeforeRemoval,
+        "a saved empty queue order suppresses resurrection of removed legacy instructions");
+
+    memory.listRecentByKind.erase("instruction_package_queue_order");
+    memory.rememberBatchResult.set(Domain::Result<Domain::MemoryBatchOutcome>::failure(
+        Domain::makeError(Domain::ErrorCodes::InternalFailure, "fixture migration write failure")));
+    const auto failed = dispatcher.dispatch(request(*clock, 838U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    require(responseError(failed) && responseError(failed)->message == "fixture migration write failure",
+        "migration persistence failures are surfaced instead of reporting no package");
+
+    auto largeManifest = nlohmann::json::parse(legacyBody);
+    largeManifest["files"] = nlohmann::json::array();
+    for (std::size_t index{}; index < 101U; ++index) {
+        largeManifest["files"].push_back({
+            {"path", "instruction-" + std::to_string(index) + ".md"},
+            {"record_id", legacyFileId.value()}});
+    }
+    legacyRecord.body = largeManifest.dump();
+    memory.listRecentResult.set(Domain::Result<Domain::MemoryPage>::success(
+        Domain::MemoryPage{project, {{legacyRecord, 1.0}}, std::nullopt,
+            false, 1024U, 256U * 1024U, Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.getResult.set(Domain::Result<Domain::MemoryRecords>::success(
+        Domain::MemoryRecords{project, {legacyFile}, 1024U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    memory.rememberBatchResult.set(Domain::Result<Domain::MemoryBatchOutcome>::success(
+        Domain::MemoryBatchOutcome{project, {outcome(legacyFileId)},
+            Domain::ProjectMemorySchemaVersion,
+            Domain::ProjectMemoryCapabilityVersion}));
+    const auto readsBeforeLarge = memory.callCount(TestFakes::ProjectMemoryCall::Get);
+    const auto batchesBeforeLarge = memory.rememberBatchRequests().size();
+    const auto large = dispatcher.dispatch(request(*clock, 839U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    const auto* largeQueue = responseValue<Manager::ManagerInstructionPackageQueueSnapshot>(large);
+    require(largeQueue && largeQueue->rows.size() == 1U &&
+        largeQueue->rows.front().entryCount == 101U &&
+        memory.callCount(TestFakes::ProjectMemoryCall::Get) - readsBeforeLarge == 101U,
+        "legacy reads stay below the project-memory ID and aggregate response limits");
+    require(memory.rememberBatchRequests().size() - batchesBeforeLarge == 21U,
+        "legacy migration persists entries in bounded batches");
+    for (auto index = batchesBeforeLarge; index < memory.rememberBatchRequests().size(); ++index) {
+        require(memory.rememberBatchRequests()[index].writes.size() <= 5U,
+            "each migration batch stays inside the persistence page bound");
+    }
+
+    auto updatedBody = nlohmann::json::parse(*memory.lastRememberRequest()->write.body);
+    updatedBody["cursor"] = {{"entry", 7U}, {"byte_offset", 99U}};
+    updatedBody["state"] = "paused";
+    updatedBody["order"] = 2048U;
+    updatedBody["last_error"] = nullptr;
+    auto updatedRecord = record(migratedId, "instruction_package_queue", updatedBody.dump());
+    auto deduplicated = outcome(migratedId);
+    deduplicated.disposition = Domain::MemoryWriteDisposition::Deduplicated;
+    memory.rememberResult.set(Domain::Result<Domain::MemoryWriteOutcome>::success(deduplicated));
+    memory.getById[migratedId.value()].set(Domain::Result<Domain::MemoryRecords>::success(
+        Domain::MemoryRecords{project, {updatedRecord}, 1024U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion, Domain::ProjectMemoryCapabilityVersion}));
+    const auto concurrent = dispatcher.dispatch(request(*clock, 840U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    const auto* persistedQueue = responseValue<Manager::ManagerInstructionPackageQueueSnapshot>(concurrent);
+    require(persistedQueue && persistedQueue->rows.size() == 1U &&
+        persistedQueue->rows.front().cursorEntry == 7U &&
+        persistedQueue->rows.front().cursorByteOffset == 99U &&
+        persistedQueue->rows.front().order == 2048U &&
+        persistedQueue->rows.front().state == "paused",
+        "A concurrent deduplicated migration reads the persisted cursor and queue state");
+    memory.getById[migratedId.value()].set(Domain::Result<Domain::MemoryRecords>::success(
+        Domain::MemoryRecords{project, {}, 0U, 256U * 1024U,
+            Domain::ProjectMemorySchemaVersion, Domain::ProjectMemoryCapabilityVersion}));
+    const auto tombstoned = dispatcher.dispatch(request(*clock, 841U,
+        Manager::ManagerInstructionPackageQueueRequest{
+            project, Manager::ManagerInstructionPackageQueueAction::List}));
+    const auto* tombstonedQueue = responseValue<Manager::ManagerInstructionPackageQueueSnapshot>(tombstoned);
+    require(tombstonedQueue && tombstonedQueue->rows.empty(),
+        "A concurrently tombstoned deduplicated queue is never fabricated as active");
 }
 
 void testMaintenanceRequiresExactScopeAndCoordinatesStores()
@@ -2056,8 +2615,13 @@ int main()
         testDurableEvidenceIsRedactedAndProjectBound();
         testNativeTaskCheckRequiresExactVerifiedRunAndPersistsReceipt();
         testProjectWorkflowKeepsExactProjectIdentity();
+        testInstructionQueueRepeatedOrderSurvivesRepositoryReopen();
+        testInstructionQueueRemovalIsImmediateForEveryState();
+        testInstructionQueueLegacyDeletionAndReadoptionAreDurable();
+        testInstructionQueueMutationFailuresRemainVisible();
         testInstructionPackagePreviewAndActivationStayProjectBound();
         testLegacyInstructionManifestMigratesToStableQueue();
+        testLmStudioBindingUsesRegisteredAuthorizedProject();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetryCannotReadRemovedManagedRuns();
         testDuplicateCapacityAndCancellationBypass();
@@ -2066,7 +2630,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 18 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 23 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

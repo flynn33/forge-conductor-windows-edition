@@ -559,7 +559,9 @@ public:
     budgetHandoff(
         const Domain::ClientId&,
         const std::string_view,
-        const Domain::OperationContext&) noexcept override
+        const Domain::OperationContext&,
+        const Domain::LegacyContinuityPatch&,
+        std::optional<Domain::LegacyHandoffId>) noexcept override
     {
         effects_.record("legacy_continuity.budget_handoff");
         return persistResult(true);
@@ -947,6 +949,7 @@ public:
                 forgeStatus_,
                 clock_,
                 uuidGenerator_,
+                hasher_,
                 projectMemoryLimits_,
                 std::chrono::seconds{30},
                 shellExecutable,

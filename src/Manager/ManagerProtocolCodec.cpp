@@ -1329,12 +1329,15 @@ void validateSettingsUpdateOutcome(
             } else if constexpr (
                 std::is_same_v<Payload, ManagerLmStudioStatusRequest>) {
                 method = "lmstudio.status";
+                if (payload.projectId) params["project_id"] = payload.projectId->value();
             } else if constexpr (
                 std::is_same_v<Payload, ManagerLmStudioRepairRequest>) {
                 method = "lmstudio.repair";
+                if (payload.projectId) params["project_id"] = payload.projectId->value();
             } else if constexpr (
                 std::is_same_v<Payload, ManagerLmStudioActivateRequest>) {
                 method = "lmstudio.activate";
+                if (payload.projectId) params["project_id"] = payload.projectId->value();
             } else if constexpr (
                 std::is_same_v<Payload, ManagerToolsRequest>) {
                 method = "tools.list";
@@ -1585,14 +1588,32 @@ void validateSettingsUpdateOutcome(
             static_cast<Contracts::ProjectPolicyAction>(action.get<int>()), stringMember(params, "source"),
             stringMember(params, "expected_revision"), stringMember(params, "details_json")};
     } else if (method == "lmstudio.status") {
-        requireExactFields(params, {}, "lmstudio.status params");
-        payload = ManagerLmStudioStatusRequest{};
+        if (params.contains("project_id")) {
+            requireExactFields(params, {"project_id"}, "lmstudio.status params");
+            payload = ManagerLmStudioStatusRequest{
+                identifierMember<Domain::ProjectId>(params, "project_id")};
+        } else {
+            requireExactFields(params, {}, "lmstudio.status params");
+            payload = ManagerLmStudioStatusRequest{};
+        }
     } else if (method == "lmstudio.repair") {
-        requireExactFields(params, {}, "lmstudio.repair params");
-        payload = ManagerLmStudioRepairRequest{};
+        if (params.contains("project_id")) {
+            requireExactFields(params, {"project_id"}, "lmstudio.repair params");
+            payload = ManagerLmStudioRepairRequest{
+                identifierMember<Domain::ProjectId>(params, "project_id")};
+        } else {
+            requireExactFields(params, {}, "lmstudio.repair params");
+            payload = ManagerLmStudioRepairRequest{};
+        }
     } else if (method == "lmstudio.activate") {
-        requireExactFields(params, {}, "lmstudio.activate params");
-        payload = ManagerLmStudioActivateRequest{};
+        if (params.contains("project_id")) {
+            requireExactFields(params, {"project_id"}, "lmstudio.activate params");
+            payload = ManagerLmStudioActivateRequest{
+                identifierMember<Domain::ProjectId>(params, "project_id")};
+        } else {
+            requireExactFields(params, {}, "lmstudio.activate params");
+            payload = ManagerLmStudioActivateRequest{};
+        }
     } else if (method == "tools.list") {
         requireExactFields(params, {}, "tools.list params");
         payload = ManagerToolsRequest{};

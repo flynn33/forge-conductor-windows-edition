@@ -78,6 +78,11 @@ template <typename T>
     return matches(tool, Values);
 }
 
+[[nodiscard]] bool isModelContinuityWrite(const std::string_view tool) noexcept
+{
+    return tool == "session_checkpoint" || tool == "session_handoff";
+}
+
 [[nodiscard]] bool isProgressTool(const std::string_view tool) noexcept
 {
     constexpr std::string_view Values[]{
@@ -500,10 +505,12 @@ public:
                     }
                     std::optional<StateToken> continuityState;
                     if (legacyContinuityPolicy &&
-                        (progressTool || request.toolName == "context_get")) {
+                        (!continuityTool || request.toolName == "context_get" ||
+                         isModelContinuityWrite(request.toolName))) {
                         auto reserved = reserveContinuityStateLocked(
                             request.metadata.clientId,
-                            request.toolName == "context_get");
+                            request.toolName == "context_get" ||
+                                isModelContinuityWrite(request.toolName));
                         if (!reserved) {
                             return Domain::Result<
                                 Domain::ToolInvocationAdmission>::failure(
@@ -619,6 +626,22 @@ public:
                               recoveryDecision.cleared}});
                 }
             }
+            if (succeeded && finalOutcome.value().contextPersistence) {
+                if (!isModelContinuityWrite(pending->toolName)) {
+                    return failure<Domain::ToolCallOutcome>(
+                        Domain::ErrorCodes::IntegrityFailure,
+                        "The persisted continuity receipt has no matching model write.");
+                }
+                if (usesLegacyContinuityPolicy(request)) {
+                    if (!stateLease.token()) {
+                        return failure<Domain::ToolCallOutcome>(
+                            Domain::ErrorCodes::IntegrityFailure,
+                            "The persisted continuity receipt has no legacy state lease.");
+                    }
+                    recordExplicitPersistence(*stateLease.token(),
+                        *finalOutcome.value().contextPersistence);
+                }
+            }
             const auto observation = finalOutcome
                 ? finalOutcome.value().continuityObservation
                 : std::optional<Domain::ToolContinuityObservation>{};
@@ -628,11 +651,13 @@ public:
             }
             if (!pending->continuityTool &&
                 pending->loopCount == policy_.softIdenticalCallCount) {
+                const auto inferred = inferredBudgetPatch(stateLease.token());
                 auto persisted = continuity_.budgetHandoff(
                     pending->clientId,
                     "soft_budget identical " + pending->toolName +
                         " count=" + std::to_string(pending->loopCount),
-                    context);
+                    context,
+                    inferred.patch, inferred.handoffId);
                 if (persisted) {
                     auto receipt = validatePersistedHandoff(
                         persisted.value(), true);
@@ -674,7 +699,7 @@ public:
                             : "lifecycle_checkpoint";
                         auto persisted = continuity_.automaticPersist(
                             Domain::LegacyContinuityAutomaticRequest{
-                                std::move(patch), reason, progress.finalize},
+                                std::move(patch), reason, progress.finalize, progress.handoffId},
                             pending->clientId,
                             context);
                         bool persistedProgress{};
@@ -824,6 +849,7 @@ private:
         std::vector<std::string> recentTools;
         std::vector<std::string> recentPaths;
         std::optional<std::string> workingDirectory;
+        std::optional<Domain::LegacyHandoffId> recoveredHandoffId;
         std::vector<Domain::PathText> implicitRoots;
         bool blocked{};
         std::optional<std::string> handoffId;
@@ -855,6 +881,7 @@ private:
         std::vector<std::string> recentPaths;
         std::optional<std::string> workingDirectory;
         std::uint64_t persistenceGeneration{};
+        std::optional<Domain::LegacyHandoffId> handoffId;
     };
 
     template <typename Map>
@@ -972,6 +999,23 @@ private:
         }
     }
 
+    [[nodiscard]] Domain::LegacyContinuityWriteRequest inferredBudgetPatch(
+        const StateToken* token)
+    {
+        Domain::LegacyContinuityWriteRequest inferred;
+        if (token == nullptr) return inferred;
+        std::lock_guard lock{mutex_};
+        const auto* state = findContinuityStateLocked(*token);
+        if (state == nullptr) return inferred;
+        inferred.handoffId = state->recoveredHandoffId;
+        inferred.patch.workingDirectory = state->workingDirectory;
+        inferred.patch.keyFiles = inferredKeyFiles(state->recentPaths);
+        if (!state->recentTools.empty()) {
+            inferred.patch.narrative = "Observed tools: " + joinRecentTools(state->recentTools) + ".";
+        }
+        return inferred;
+    }
+
     [[nodiscard]] Domain::ToolCallOutcome hardLoopOutcome(
         const Domain::ToolCallRequest& request,
         const std::uint64_t loopCount,
@@ -981,8 +1025,10 @@ private:
         const std::string reason =
             "identical_call_loop tool=" + request.toolName +
             " count=" + std::to_string(loopCount);
+        const auto inferred = inferredBudgetPatch(&stateToken);
         auto persisted = continuity_.budgetHandoff(
-            request.metadata.clientId, reason, context);
+            request.metadata.clientId, reason, context,
+            inferred.patch, inferred.handoffId);
         if (persisted) {
             auto receipt = validatePersistedHandoff(persisted.value(), true);
             if (receipt) {
@@ -1101,7 +1147,8 @@ private:
             state->recentTools,
             state->recentPaths,
             state->workingDirectory,
-            0U};
+            0U,
+            state->recoveredHandoffId};
         if (!state->blocked && !state->persistenceInFlight &&
             pending.forcePersist) {
             if (nextPersistenceGeneration_ ==
@@ -1170,7 +1217,7 @@ private:
                 }
             }
         }
-        if (roots.empty()) {
+        if (roots.empty() && !observation.baseDirectory) {
             return;
         }
 
@@ -1180,10 +1227,24 @@ private:
         }
         auto* const state = findContinuityStateLocked(token);
         if (state != nullptr) {
+            if (observation.workingDirectory) {
+                state->workingDirectory = observation.workingDirectory->value();
+            } else if (!state->workingDirectory && observation.baseDirectory) {
+                state->workingDirectory = observation.baseDirectory->value();
+            }
             for (const auto& root : roots) {
                 appendImplicitRoot(*state, root);
             }
         }
+    }
+
+    void recordExplicitPersistence(
+        const StateToken& token,
+        const Domain::LegacyHandoffId& handoffId)
+    {
+        std::lock_guard lock{mutex_};
+        auto* state = findContinuityStateLocked(token);
+        if (state != nullptr) state->recoveredHandoffId = handoffId;
     }
 
     [[nodiscard]] RecoveryDecision recordRecoveredContext(
@@ -1224,6 +1285,7 @@ private:
             return RecoveryDecision{};
         }
         const bool cleared = state->blocked;
+        state->recoveredHandoffId = recovery.handoffId;
         if (recovery.workingDirectory) {
             state->workingDirectory = recovery.workingDirectory->value();
         }

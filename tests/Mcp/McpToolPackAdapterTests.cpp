@@ -102,6 +102,10 @@ public:
         const Contracts::ProjectPolicyRequest& request,
         const Domain::OperationContext&) noexcept override
     {
+        if (captureEvidence && request.action == Contracts::ProjectPolicyAction::Evaluate) {
+            evidence.push_back(request.detailsJson);
+            return Domain::Result<std::string>::success("{}");
+        }
         if (request.action != Contracts::ProjectPolicyAction::Inspect) {
             return Domain::Result<std::string>::failure(Domain::makeError(
                 Domain::ErrorCodes::InvalidRequest,
@@ -117,6 +121,10 @@ public:
     {
         return Domain::Result<void>::success();
     }
+
+    void setInspection(std::string inspection) { inspection_ = std::move(inspection); }
+    bool captureEvidence{};
+    std::vector<std::string> evidence;
 
 private:
     std::string inspection_;
@@ -196,7 +204,9 @@ public:
     budgetHandoff(
         const Domain::ClientId& clientId,
         const std::string_view reason,
-        const Domain::OperationContext&) noexcept override
+        const Domain::OperationContext&,
+        const Domain::LegacyContinuityPatch&,
+        std::optional<Domain::LegacyHandoffId>) noexcept override
     {
         ++budgetCalls_;
         lastBudgetClientId_ = clientId;
@@ -210,9 +220,10 @@ public:
     }
 
     [[nodiscard]] Domain::Result<Domain::LegacyContinuityGetOutcome> get(
-        const Domain::LegacyContinuityGetRequest&,
+        const Domain::LegacyContinuityGetRequest& request,
         const Domain::OperationContext&) noexcept override
     {
+        lastGetRequest_ = request;
         if (getOutcome_) {
             return Domain::Result<Domain::LegacyContinuityGetOutcome>::success(
                 *getOutcome_);
@@ -254,6 +265,11 @@ public:
     }
 
     void shutdown() noexcept override {}
+
+    [[nodiscard]] const std::optional<Domain::LegacyContinuityGetRequest>& lastGetRequest() const noexcept
+    {
+        return lastGetRequest_;
+    }
 
     [[nodiscard]] std::size_t handoffCalls() const noexcept
     {
@@ -297,6 +313,7 @@ private:
     static constexpr const char* message_ =
         "Legacy continuity is not configured for this test.";
     std::optional<Domain::LegacyContinuityGetOutcome> getOutcome_;
+    std::optional<Domain::LegacyContinuityGetRequest> lastGetRequest_;
     std::optional<Domain::LegacyContinuityStatusSummary> statusSummary_;
     std::optional<Domain::LegacyContinuityPersistOutcome> automaticOutcome_;
     std::size_t handoffCalls_{};
@@ -642,6 +659,7 @@ void testRuntimeDispatchAndSchemaPolicy()
         {"revision", packageRevision.value()},
         {"order", 1024U},
         {"state", "ready"}}.dump();
+    Fakes::ScriptedHasher hasher{packageRevision};
     const auto packageTime = Domain::UtcTimePoint{1'700'000'000s};
     projectMemory.listRecentResult.set(
         Domain::Result<Domain::MemoryPage>::success(Domain::MemoryPage{
@@ -748,6 +766,7 @@ void testRuntimeDispatchAndSchemaPolicy()
             forgeStatus,
             clock,
             uuidGenerator,
+            hasher,
             Domain::ProjectMemoryLimits{},
             std::chrono::seconds{37},
             shellExecutable,
@@ -882,6 +901,52 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto lastPage = Json::parse(take(adapter->handle(nextPackage, authority, context)).canonicalPayload);
     REQUIRE(lastPage.at("entries").at(0).at("content") == longText.substr(16U * 1024U));
     REQUIRE(lastPage.at("entries").at(0).at("complete") == true);
+
+    const auto savedInspection = Json{{"active", true}, {"state", "enforcing"},
+        {"source", "A:/development-policy"}, {"revision", packageRevision.value()},
+        {"entry_count", 7U}, {"coverage_gap_count", 1U}};
+    const std::string multibyte = "\xe6\xb8\xac";
+    auto evidenceIndex = savedInspection;
+    evidenceIndex["coverage"] = Json::array();
+    evidenceIndex["agent_guidance"] = Json::array();
+    evidenceIndex["agent_guidance"].push_back(Json{{"evidence", ""}});
+    auto encodedEvidence = evidenceIndex.dump();
+    const auto contentStart = encodedEvidence.find("\"evidence\":\"\"") + std::string{"\"evidence\":\""}.size();
+    REQUIRE(contentStart < encodedEvidence.size());
+    evidenceIndex["agent_guidance"][0]["evidence"] =
+        std::string(32U * 1024U - contentStart - 1U, 'x') + multibyte;
+    projectPolicy.setInspection(evidenceIndex.dump());
+    projectPolicy.captureEvidence = true;
+    auto evidenceRead = authorize("project_policy.read", Domain::ToolEffect::Read, "{}", "policy-utf8-evidence");
+    auto utf8EvidenceResult = adapter->handle(evidenceRead, authority, context);
+    REQUIRE(!utf8EvidenceResult);
+    REQUIRE(utf8EvidenceResult.error().code == Domain::ErrorCodes::PayloadTooLarge);
+    REQUIRE(!projectPolicy.evidence.empty());
+    const auto evidencePayload = Json::parse(projectPolicy.evidence.back());
+    REQUIRE(evidencePayload.at("result").get<std::string>().size() < 32U * 1024U);
+    REQUIRE(evidencePayload.at("result").get<std::string>().ends_with('x'));
+    projectPolicy.captureEvidence = false;
+    projectPolicy.setInspection(savedInspection.dump());
+    auto smallPolicyRead = authorize("project_policy.read", Domain::ToolEffect::Read, "{}", "policy-small-index");
+    const auto smallPolicy = Json::parse(take(adapter->handle(smallPolicyRead, authority, context)).canonicalPayload);
+    REQUIRE(smallPolicy.at("entry_count") == 7U);
+    REQUIRE(smallPolicy.at("complete") == true);
+    REQUIRE(smallPolicy.at("next_cursor").is_null());
+    REQUIRE(smallPolicy.at("clu_governance_notifications_deferred") == true);
+    auto oversizedBase = savedInspection;
+    oversizedBase["source"] = std::string(33U * 1024U, 'x');
+    projectPolicy.setInspection(oversizedBase.dump());
+    auto oversizedPolicy = adapter->handle(smallPolicyRead, authority, context);
+    REQUIRE(!oversizedPolicy && oversizedPolicy.error().code == Domain::ErrorCodes::PayloadTooLarge);
+    projectPolicy.setInspection(savedInspection.dump());
+    auto oversizedEntryPage = entryPage;
+    auto oversizedEntry = Json::parse(*oversizedEntryPage.records.front().record.body);
+    oversizedEntry["coverage_detail"] = std::string(33U * 1024U, 'x');
+    oversizedEntryPage.records.front().record.body = oversizedEntry.dump();
+    projectMemory.searchResult.set(Domain::Result<Domain::MemoryPage>::success(oversizedEntryPage));
+    auto oversizedPackage = adapter->handle(readPackage, authority, context);
+    REQUIRE(!oversizedPackage && oversizedPackage.error().code == Domain::ErrorCodes::PayloadTooLarge);
+    projectMemory.searchResult.set(Domain::Result<Domain::MemoryPage>::success(entryPage));
     REQUIRE(forgeStatusPayload.at("instruction_packages").at("count") == 1U);
     REQUIRE(forgeStatusPayload.at("instruction_packages").at("read_in_order") ==
             true);
@@ -904,6 +969,110 @@ void testRuntimeDispatchAndSchemaPolicy()
             std::string::npos);
     REQUIRE(bootstrap.find("Read and follow the development policy") !=
             std::string::npos);
+    const auto verifyQueueEditsReachStatusBootstrapAndReads = [&] {
+        const auto statusCallsBeforeQueueEdits = forgeStatus.calls();
+        auto queuePage = projectMemory.listRecentResult.get().value();
+        auto firstBody = Json::parse(*queuePage.records.front().record.body);
+        firstBody["state"] = "active";
+        queuePage.records.front().record.body = firstBody.dump();
+        auto secondRecord = queuePage.records.front().record;
+        secondRecord.id = parse<Domain::MemoryRecordId>(
+            "dddddddd-dddd-4ddd-8ddd-dddddddddddd");
+        secondRecord.title = "Second instructions";
+        auto secondBody = firstBody;
+        secondBody["queue_row_id"] = "queue-second-adapter";
+        secondBody["package_id"] = "package-second-adapter";
+        secondBody["package_name"] = "Second instructions";
+        secondBody["package_path"] = "D:/instructions/second";
+        secondBody["order"] = 2048U;
+        secondRecord.body = secondBody.dump();
+        queuePage.records.push_back(Domain::MemorySearchHit{secondRecord, 1.0});
+        projectMemory.listRecentByKind["instruction_package_queue"].set(
+            Domain::Result<Domain::MemoryPage>::success(queuePage));
+
+        auto currentOrderPage = orderPage;
+        auto orderRecord = secondRecord;
+        orderRecord.id = parse<Domain::MemoryRecordId>(
+            "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
+        orderRecord.kind = "instruction_package_queue_order";
+        const auto publishOrder = [&](const Json& rowIds) {
+            orderRecord.body = Json{
+                {"schema", "forge-instruction-package-order-v1"},
+                {"project_id", projectId.value()}, {"rows", rowIds}}.dump();
+            currentOrderPage.records = {
+                Domain::MemorySearchHit{orderRecord, 1.0}};
+            projectMemory.listRecentByKind["instruction_package_queue_order"].set(
+                Domain::Result<Domain::MemoryPage>::success(currentOrderPage));
+        };
+        const auto currentPackages = [&] {
+            return Json::parse(take(adapter->handle(
+                aliasCall, authority, context)).canonicalPayload)
+                .at("instruction_packages");
+        };
+        const auto assertOrder = [&](const Json& rowIds) {
+            publishOrder(rowIds);
+            const auto packages = currentPackages();
+            REQUIRE(packages.at("count") == rowIds.size());
+            REQUIRE(packages.at("packages").at(0).at("queue_row_id") == rowIds.at(0));
+            REQUIRE(packages.at("packages").at(1).at("queue_row_id") == rowIds.at(1));
+            REQUIRE(packages.at("packages").at(0).at("order") == 1024U);
+            REQUIRE(packages.at("packages").at(1).at("order") == 2048U);
+            const auto currentBootstrap = take(adapter->bootstrapInstructions(
+                projectId, root, context));
+            const auto firstPath = packages.at("packages").at(0).at("path")
+                .get<std::string>();
+            const auto secondPath = packages.at("packages").at(1).at("path")
+                .get<std::string>();
+            REQUIRE(currentBootstrap.find(firstPath) != std::string::npos);
+            REQUIRE(currentBootstrap.find(secondPath) != std::string::npos);
+            REQUIRE(currentBootstrap.find(firstPath) < currentBootstrap.find(secondPath));
+        };
+        assertOrder(Json::array({"queue-second-adapter", "queue-runtime-adapter"}));
+        assertOrder(Json::array({"queue-runtime-adapter", "queue-second-adapter"}));
+        assertOrder(Json::array({"queue-second-adapter", "queue-runtime-adapter"}));
+
+        queuePage.records.erase(queuePage.records.begin());
+        projectMemory.listRecentByKind["instruction_package_queue"].set(
+            Domain::Result<Domain::MemoryPage>::success(queuePage));
+        const auto afterRemoval = currentPackages();
+        REQUIRE(afterRemoval.at("count") == 1U);
+        REQUIRE(afterRemoval.at("packages").at(0).at("queue_row_id") ==
+                "queue-second-adapter");
+        const auto afterRemovalBootstrap = take(adapter->bootstrapInstructions(
+            projectId, root, context));
+        REQUIRE(afterRemovalBootstrap.find("D:/instructions/runtime") ==
+                std::string::npos);
+        REQUIRE(afterRemovalBootstrap.find("D:/instructions/second") !=
+                std::string::npos);
+        const auto searchesBeforeRemovalRead = projectMemory.callCount(
+            Fakes::ProjectMemoryCall::Search);
+        const auto removedRead = adapter->handle(
+            authorize("instruction_package.read", Domain::ToolEffect::Read,
+                R"({"queue_row_id":"queue-runtime-adapter"})", "removed-package-read"),
+            authority, context);
+        REQUIRE(!removedRead);
+        REQUIRE(removedRead.error().code == Domain::ErrorCodes::RecordNotFound);
+        REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Search) ==
+                searchesBeforeRemovalRead);
+
+        queuePage.records.clear();
+        projectMemory.listRecentByKind["instruction_package_queue"].set(
+            Domain::Result<Domain::MemoryPage>::success(queuePage));
+        publishOrder(Json::array());
+        const auto emptyQueue = currentPackages();
+        REQUIRE(emptyQueue.at("count") == 0U);
+        REQUIRE(emptyQueue.at("packages").empty());
+        const auto emptyBootstrap = take(adapter->bootstrapInstructions(
+            projectId, root, context));
+        REQUIRE(emptyBootstrap.find("D:/instructions/runtime") == std::string::npos);
+        REQUIRE(emptyBootstrap.find("D:/instructions/second") == std::string::npos);
+        REQUIRE(emptyBootstrap.find("Instruction package folders (ordered): none configured") !=
+                std::string::npos);
+        REQUIRE(forgeStatus.calls() == statusCallsBeforeQueueEdits + 5U);
+        projectMemory.listRecentByKind.erase("instruction_package_queue");
+        projectMemory.listRecentByKind["instruction_package_queue_order"].set(
+            Domain::Result<Domain::MemoryPage>::success(orderPage));
+    };
     REQUIRE((forgeStatusPayload.at("continuity") == Json{
         {"latest_id", "status-latest-handoff"},
         {"latest_updated_at", "2023-11-14T22:13:20.000Z"},
@@ -949,6 +1118,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(forgeStatus.calls() == 3U);
     forgeStatus.setProjection(Domain::ForgeStatusProjection{
         3U, {firstOpenSession, secondOpenSession}});
+    verifyQueueEditsReachStatusBootstrapAndReads();
 
     // Optional UI diagnostics must not invalidate a completed Forge tool.
     throwToolObservation = true;
@@ -1025,6 +1195,26 @@ void testRuntimeDispatchAndSchemaPolicy()
     const auto unboundBootstrap = take(adapter->bootstrapInstructions(projectId, root, context));
     REQUIRE(unboundBootstrap.find("Recovered context") == std::string::npos);
     const std::string resumePointer = "continuity/project/" + projectId.value();
+    const auto beforeScopedRecovery = continuityAutomation.snapshot(clientId);
+    continuityAutomation.setSnapshot({});
+    auto otherProjectRecord = recoveredRecord;
+    otherProjectRecord.packet.workingDirectory = "E:/unrelated/project";
+    otherProjectRecord.packet.keyFiles = {"E:/unrelated/project/file.cpp"};
+    legacyContinuity.setGetOutcome({otherProjectRecord, false});
+    auto unrelatedCall = authorize("context_get", Domain::ToolEffect::Read, "{}", "unrelated-default-context");
+    auto unrelatedResult = take(adapter->handle(unrelatedCall, authority, context));
+    REQUIRE(Json::parse(unrelatedResult.canonicalPayload).at("found") == false);
+    REQUIRE(!unrelatedResult.contextRecovery);
+    REQUIRE(clientWorkspaceContext.adoptCalls() == 0U);
+    auto pathlessRecord = recoveredRecord;
+    pathlessRecord.packet.workingDirectory.reset();
+    pathlessRecord.packet.keyFiles.clear();
+    legacyContinuity.setGetOutcome({pathlessRecord, false});
+    auto pathlessCall = authorize("context_get", Domain::ToolEffect::Read, "{}", "pathless-default-context");
+    REQUIRE(Json::parse(take(adapter->handle(pathlessCall, authority, context)).canonicalPayload).at("found") == false);
+    REQUIRE(clientWorkspaceContext.adoptCalls() == 0U);
+    legacyContinuity.setGetOutcome({recoveredRecord, false});
+    continuityAutomation.setSnapshot(beforeScopedRecovery);
     auto pendingRecord = recoveredRecord;
     pendingRecord.packet.id = parse<Domain::LegacyHandoffId>("fresh-checkpoint");
     pendingRecord.packet.resumeReady = false;
@@ -1032,7 +1222,8 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto initialCheckpointCall = authorize(
         "session_checkpoint", Domain::ToolEffect::Write,
         R"({"goal":"Work before handoff"})", "initial-checkpoint");
-    REQUIRE(adapter->handle(initialCheckpointCall, authority, context));
+    const auto initialCheckpointResult = take(adapter->handle(initialCheckpointCall, authority, context));
+    REQUIRE(initialCheckpointResult.contextPersistence == pendingRecord.packet.id);
     REQUIRE(!take(legacyMemory.get({resumePointer}, context)).note);
 
     const auto handoffCallsBeforeAuto = legacyContinuity.handoffCalls();
@@ -1280,7 +1471,8 @@ void testRuntimeDispatchAndSchemaPolicy()
         "session_handoff", Domain::ToolEffect::Write,
         R"({"goal":"Continue the adapter test","narrative":"Recovered context","next_actions":["Run the recovered tool"]})",
         "publish-handoff");
-    REQUIRE(adapter->handle(publishHandoffCall, authority, context));
+    const auto publishedHandoffResult = take(adapter->handle(publishHandoffCall, authority, context));
+    REQUIRE(publishedHandoffResult.contextPersistence == handoffId);
     REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == handoffId.value());
 
     const auto manualHandoffCalls = legacyContinuity.handoffCalls();
@@ -1366,6 +1558,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     const auto contextPayload = Json::parse(
         contextGetResult.value().canonicalPayload);
     REQUIRE(contextPayload.at("found") == true);
+    REQUIRE(legacyContinuity.lastGetRequest()->handoffId == handoffId);
     REQUIRE(contextPayload.at("successor_session_id") == clientId.value());
     REQUIRE(contextPayload.at("session_kind") == "mcp_connection");
     REQUIRE(contextPayload.at("workspace_adopted") == secondaryRoot.value());
@@ -1594,8 +1787,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto largeReadResult = adapter->handle(
         largeReadCall, authority, context);
     REQUIRE(largeReadResult);
-    REQUIRE(largeReadResult.value().canonicalPayload.size() <
-            Mcp::McpJsonCodec::MaximumDocumentBytes);
+    REQUIRE(largeReadResult.value().canonicalPayload.size() <= 32U * 1024U);
     const auto largeReadPayload = Json::parse(
         largeReadResult.value().canonicalPayload);
     REQUIRE(largeReadPayload.at("has_more") == true);
@@ -1619,6 +1811,10 @@ void testRuntimeDispatchAndSchemaPolicy()
     const auto continuedPayload = Json::parse(
         continuedReadResult.value().canonicalPayload);
     REQUIRE(continuedPayload.at("byte_offset") == nextByteOffset);
+    REQUIRE(continuedReadResult.value().canonicalPayload.size() <= 32U * 1024U);
+    REQUIRE(largeReadPayload.at("start_line") == 1U);
+    REQUIRE(largeReadPayload.at("end_line") == 1U);
+    REQUIRE(largeReadPayload.at("line_count") == 1U);
     REQUIRE(continuedPayload.at("content").get<std::string>().size() <=
             96U * 1024U);
 
@@ -1706,7 +1902,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto normalizedSearch = adapter->handle(
         normalizedSearchCall, authority, context);
     REQUIRE(normalizedSearch);
-    REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Search) == 3U);
+    REQUIRE(projectMemory.callCount(Fakes::ProjectMemoryCall::Search) == 4U);
     REQUIRE(projectMemory.lastContext().has_value());
     REQUIRE(projectMemory.lastContext()->deadline ==
             Domain::MonotonicTimePoint{} +
@@ -2387,6 +2583,7 @@ void testRealRouterContinuityIntegration()
             forgeStatus,
             clock,
             uuidGenerator,
+            hasher,
             Domain::ProjectMemoryLimits{},
             std::chrono::seconds{30},
             shellExecutable,

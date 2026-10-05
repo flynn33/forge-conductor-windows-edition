@@ -423,6 +423,14 @@ void testEveryRequestMethodRoundTripsDeterministically()
         identifier<Domain::ProjectId>("20000000-0000-4000-8000-000000000002"),
         ForgeConductor::Contracts::ProjectPolicyAction::Bind,
         "https://github.com/flynn33/raven-forge-development", {}, {}});
+    const auto selectedPluginProject = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    payloads.emplace_back(Manager::ManagerLmStudioStatusRequest{});
+    payloads.emplace_back(Manager::ManagerLmStudioRepairRequest{});
+    payloads.emplace_back(Manager::ManagerLmStudioActivateRequest{});
+    payloads.emplace_back(Manager::ManagerLmStudioStatusRequest{selectedPluginProject});
+    payloads.emplace_back(Manager::ManagerLmStudioRepairRequest{selectedPluginProject});
+    payloads.emplace_back(Manager::ManagerLmStudioActivateRequest{selectedPluginProject});
     payloads.emplace_back(Manager::ManagerMaintenanceRequest{
         Manager::ManagerMaintenanceScope::ProjectAllData,
         identifier<Domain::ProjectId>(
@@ -470,6 +478,12 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "projects.instructions",
         "projects.instruction_queue",
         "projects.policy",
+        "lmstudio.status",
+        "lmstudio.repair",
+        "lmstudio.activate",
+        "lmstudio.status",
+        "lmstudio.repair",
+        "lmstudio.activate",
         "maintenance.reset",
         "manager.control",
         "manager.settings.update",
@@ -481,6 +495,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "manager.cancel",
         "manager.shutdown"};
 
+    REQUIRE(payloads.size() == methods.size());
     for (std::size_t index = 0; index < payloads.size(); ++index) {
         const auto original = request(payloads[index]);
         const auto first = take(

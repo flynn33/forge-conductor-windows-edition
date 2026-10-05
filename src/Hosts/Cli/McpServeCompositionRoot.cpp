@@ -890,6 +890,7 @@ private:
                 *forgeStatusRepository_,
                 *clock_,
                 *uuidGenerator_,
+                *hasher_,
                 projectMemoryLimits_,
                 configuration_.shell.defaultTimeout,
                 powerShellExecutable,
