@@ -1,6 +1,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WinHttpLocalModelSessionTransport.h"
 
 #include "Detail/UtfConversion.h"
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Domain/Utf8.h"
 
 #include <Windows.h>
@@ -440,8 +441,10 @@ public:
     explicit Impl(WinHttpLocalModelSessionTransportConfiguration configuration)
         : configuration_{validatedConfiguration(std::move(configuration))},
           host_{requireUtf16(configuration_.loopbackHost, "host")},
+          userAgent_{requireUtf16(std::string{"Forge Conductor/"} +
+              std::string{Domain::ProductVersion}, "user agent")},
           session_{std::make_shared<AtomicInternetHandle>(WinHttpOpen(
-              L"Forge Conductor/1.1.43",
+              userAgent_.c_str(),
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,
@@ -1261,6 +1264,7 @@ private:
 
     const WinHttpLocalModelSessionTransportConfiguration configuration_;
     const std::wstring host_;
+    const std::wstring userAgent_;
     std::shared_ptr<AtomicInternetHandle> session_;
     std::atomic_bool shutdownRequested_{};
     mutable std::mutex activityMutex_;

@@ -2,6 +2,7 @@
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsModelPreparation.h"
 #include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
+#include "ForgeConductor/Domain/ProductIdentity.h"
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -127,6 +128,7 @@ struct HttpRequest final {
     std::string method;
     std::string path;
     std::string body;
+    std::string headers;
 };
 
 struct ResponseScript final {
@@ -338,7 +340,8 @@ private:
             std::string{line.substr(0U, firstSpace)},
             std::string{line.substr(
                 firstSpace + 1U, secondSpace - firstSpace - 1U)},
-            encoded.substr(*headerEnd, contentLength)};
+            encoded.substr(*headerEnd, contentLength),
+            encoded.substr(0U, *headerEnd)};
     }
 
     [[nodiscard]] static std::size_t parseContentLength(
@@ -774,6 +777,8 @@ void createBootstrapAndQueryUseExactRoutes()
             std::string::npos);
     REQUIRE(requests[0].body.find("winhttp-transport-test") !=
             std::string::npos);
+    REQUIRE(lowercase(requests[0].headers).find("user-agent: forge conductor/" +
+            std::string{Domain::ProductVersion} + "\r\n") != std::string::npos);
     REQUIRE(requests[1].body.find(std::string{HandoffIdText}) !=
             std::string::npos);
     REQUIRE(requests[1].body.find(std::string(64U, 'a')) !=
@@ -836,6 +841,8 @@ void lmStudioResponsesUsesFreshRootToolOutputAndActualResponseId()
     const auto requests = server.requests();
     REQUIRE(requests.size() == 3U);
     const auto first = Json::parse(requests[1].body);
+    REQUIRE(lowercase(requests[1].headers).find("user-agent: forge conductor lm studio responses/" +
+            std::string{Domain::ProductVersion} + "\r\n") != std::string::npos);
     REQUIRE(!first.contains("previous_response_id"));
     REQUIRE(first.at("model") == "fixture-model");
     REQUIRE(first.at("tools").at(0).at("name") == "context_get");

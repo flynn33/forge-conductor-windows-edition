@@ -12,6 +12,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$expectedProductVersion = (Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot '..\..\VERSION')).Trim()
+if ($expectedProductVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'The repository VERSION is invalid.' }
 
 function Start-McpSession {
     param([string]$WorkingDirectory)
@@ -65,8 +67,8 @@ function Initialize-Session {
         }
     }
     $initialized = Read-Response $Process 1
-    if ($initialized.result.serverInfo.version -ne '1.1.43') {
-        throw 'The MCP server version was not 1.1.43.'
+    if ($initialized.result.serverInfo.version -ne $expectedProductVersion) {
+        throw "The MCP server version was not $expectedProductVersion."
     }
     Send-Frame $Process @{jsonrpc='2.0';method='notifications/initialized';params=@{}}
     Send-Frame $Process @{jsonrpc='2.0';id=2;method='tools/list';params=@{}}

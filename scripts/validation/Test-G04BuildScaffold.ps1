@@ -150,11 +150,13 @@ $rootCMakePath = Join-Path $WorkspaceRoot 'CMakeLists.txt'
 $externalCMakePath = Join-Path $WorkspaceRoot 'cmake\ForgeForsettiExternal.cmake'
 $policyCMakePath = Join-Path $WorkspaceRoot 'cmake\ForsettiExternalPolicy.cmake'
 $rootCMake = Get-Content -Raw -LiteralPath $rootCMakePath
+$productVersion = (Get-Content -Raw -LiteralPath (Join-Path $WorkspaceRoot 'VERSION')).Trim()
+if ($productVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'The repository VERSION is invalid.' }
 $externalCMake = Get-Content -Raw -LiteralPath $externalCMakePath
 $policyCMake = Get-Content -Raw -LiteralPath $policyCMakePath
 
 Assert-Match $rootCMake 'cmake_minimum_required\s*\(\s*VERSION\s+3\.28\s*\)' 'root CMake minimum version'
-Assert-Match $rootCMake 'VERSION\s+1\.1\.43' 'project version 1.1.43'
+Assert-Match $rootCMake ('VERSION\s+' + [regex]::Escape($productVersion) + '(?=\s|\))') "project version $productVersion"
 Assert-Match $rootCMake 'Visual Studio 17 2022' 'VS17 generator pin'
 Assert-Match $rootCMake '\bv143\b' 'v143 toolset pin'
 Assert-Match $rootCMake '10\.0\.26100\.0' 'Windows SDK pin'

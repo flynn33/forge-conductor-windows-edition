@@ -1,6 +1,7 @@
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 
 #include "Detail/UtfConversion.h"
+#include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Domain/Utf8.h"
 
 #include <Windows.h>
@@ -543,8 +544,10 @@ public:
     explicit Impl(LMStudioResponsesTransportConfiguration configuration)
         : configuration_{validateConfiguration(std::move(configuration))},
           host_{Detail::strictUtf8ToUtf16(configuration_.loopbackHost).value()},
+          userAgent_{Detail::strictUtf8ToUtf16(std::string{"Forge Conductor LM Studio Responses/"} +
+              std::string{Domain::ProductVersion}).value()},
           session_{std::make_shared<InternetHandle>(WinHttpOpen(
-              L"Forge Conductor LM Studio Responses/1.1.43",
+              userAgent_.c_str(),
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,
@@ -1384,6 +1387,7 @@ private:
 
     const LMStudioResponsesTransportConfiguration configuration_;
     const std::wstring host_;
+    const std::wstring userAgent_;
     std::shared_ptr<InternetHandle> session_;
     std::atomic_bool stopping_{};
     mutable std::mutex stateMutex_;

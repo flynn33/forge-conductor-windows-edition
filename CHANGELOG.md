@@ -2,6 +2,8 @@
 
 ## 1.3.13 - Reliable local-model reviews and evidence workflows
 
+- Derive both local-provider HTTP User-Agent versions and active workflow/scaffold expectations from the shared product version.
+
 - Make each independent review's provider receive budget configurable from 1 to 3,600 seconds, defaulting to 600 seconds. Persist the selected timeout in the verified receipt and expose it with infrastructure-failure classification; retain transport-operation deadline and cancellation checks during response-body reads.
 - Authorize opening-file paths locally before Manager dispatch; accept either an authorized opening-message file or up to 64 KiB of inline UTF-8. Keep read-only tools as the default and add explicit `text_only` mode for reviews of supplied text.
 - Retain explicitly activated owner-configured evidence roots through continuity recovery. Resolve explicit root activation through the owning authority while preserving deliberately removed grants, denied paths, and strict allowlist checks.

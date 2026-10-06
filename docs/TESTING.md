@@ -26,7 +26,7 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 
 ## 1.3.13 local-model workflow verification
 
-The complete x64 Release graph was rebuilt by `scripts/test.ps1 -Configuration Release -Architecture x64 -Parallel 4` and passed **156/156 configured CTest entries** in **49.13 seconds**, exit code 0. This run includes the asynchronous Responses transport deadlines, partial-body cancellation, shutdown, provider-cancel POST, reviewer source/receipt compatibility, recovered workspace bindings, consistent cwd authorization, real filesystem ACL denials, and bounded UTF-8 PowerShell stdin regressions. Direct comparisons also matched the original PowerShell command exit behavior in 38 cases across PowerShell 7 and Windows PowerShell 5.1.
+The complete x64 Release graph was rebuilt by `scripts/test.ps1 -Configuration Release -Architecture x64 -Parallel 4` and passed **156/156 configured CTest entries** in **46.21 seconds**, exit code 0. This run includes the asynchronous Responses transport deadlines, partial-body cancellation, shutdown, provider-cancel POST, reviewer source/receipt compatibility, recovered workspace bindings, consistent cwd authorization, real filesystem ACL denials, and bounded UTF-8 PowerShell stdin regressions. Direct comparisons also matched the original PowerShell command exit behavior in 38 cases across PowerShell 7 and Windows PowerShell 5.1.
 
 Live provider runs and final installed artifact checks have separate identities and limits in the [1.3.13 repair record](validation/LM-STUDIO-ISSUE-REPAIRS-1.3.13.md). The published `release-verification.json` and executable provenance record bind final package qualification to the actual release payload; earlier source-probe hashes remain historical evidence.
 
