@@ -740,7 +740,7 @@ void shellUsesFixedPowerShellAndClampedBudgets()
     require(
         supervisor->requests().size() == 1U,
         "Shell did not make exactly one process call");
-    const auto& normalized = supervisor->requests().front();
+    const auto normalized = supervisor->requests().front();
     require(
         normalized.executable == fixture.powerShellExecutable &&
             normalized.arguments == std::vector<std::string>{
@@ -749,7 +749,11 @@ void shellUsesFixedPowerShellAndClampedBudgets()
                 "-NonInteractive",
                 "-Command",
                 "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);"
-                "$OutputEncoding=[Console]::OutputEncoding;Write-Output 'ok'"},
+                "$OutputEncoding=[Console]::OutputEncoding;"
+                "[Console]::InputEncoding=[System.Text.UTF8Encoding]::new($false);"
+                "& ([scriptblock]::Create([Console]::In.ReadToEnd()))"} &&
+            normalized.stdinUtf8 == "Write-Output 'ok'\n"
+                "if (!$?) {if ($LASTEXITCODE) {exit $LASTEXITCODE}; exit 1}",
         "Shell did not own the exact PowerShell argv");
     const auto environmentValue = [](
                                       const std::vector<Domain::EnvironmentVariable>& environment,
@@ -863,6 +867,18 @@ void shellUsesFixedPowerShellAndClampedBudgets()
     require(
         supervisor->requests().back().timeout == 120s,
         "Shell did not clamp timeout to 120 seconds");
+
+    auto maximumCommand = shellRequest(fixture,
+        std::string(WindowsShellService::MaximumCommandBytes, 'x'));
+    supervisor->enqueue(processResult());
+    static_cast<void>(take(shell.execute(maximumCommand, callerAuthority, context(43U))));
+    const auto& maximumNormalized = supervisor->requests().back();
+    require(maximumNormalized.arguments == normalized.arguments &&
+                maximumNormalized.stdinUtf8.starts_with(maximumCommand.arguments.front()) &&
+                maximumNormalized.stdinUtf8.size() > WindowsShellService::MaximumCommandBytes,
+            "The maximum shell script was copied into argv or lost during stdin delivery");
+    static_cast<void>(take(Domain::validateProcessRequest(maximumNormalized,
+        Domain::budgetsForProfile(Domain::ResourceProfile::Constrained8GiB))));
 
     auto multibyte = processResult(0, "\xE2\x82\xACx");
     supervisor->enqueue(std::move(multibyte));
@@ -994,6 +1010,12 @@ void shellPolicyAuthorityCancellationAndShutdownFailClosed()
         shell.execute(oversized, fixture.authority, context(52U)),
         Domain::ErrorCodes::PayloadTooLarge,
         "Shell accepted an oversized command");
+    auto malformed = shellRequest(fixture, std::string{"\xc3\x28", 2U});
+    requireError(shell.execute(malformed, fixture.authority, context(54U)),
+        Domain::ErrorCodes::InvalidRequest, "Shell accepted malformed script UTF-8");
+    auto embeddedNul = shellRequest(fixture, std::string{"a\0b", 3U});
+    requireError(shell.execute(embeddedNul, fixture.authority, context(55U)),
+        Domain::ErrorCodes::InvalidRequest, "Shell accepted a NUL in script text");
     auto outside = shellRequest(fixture, "Get-Location");
     outside.workingDirectory = path("C:\\outside");
     requireError(

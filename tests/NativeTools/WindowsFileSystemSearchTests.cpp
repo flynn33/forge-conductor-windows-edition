@@ -6,10 +6,13 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsPathGlobService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsTextSearchService.h"
 #include "Infrastructure/Windows/Detail/UniqueHandle.h"
+#include "Infrastructure/Windows/Detail/UniqueLocalAllocation.h"
 #include "Infrastructure/Windows/Detail/UtfConversion.h"
 #include "NativeTools/Windows/NativeFileOperations.h"
 
 #include <Windows.h>
+#include <aclapi.h>
+#include <sddl.h>
 #include <winioctl.h>
 
 #include <chrono>
@@ -661,6 +664,155 @@ void authorizedOpenPinsAncestorsAgainstRename() {
           "the authorized open did not release its ancestor anchors");
 }
 
+void nestedWritesRequireCreationWithoutDirectoryDeleteChild() {
+  ScopedDirectory temporary;
+  const auto root = temporary.path() / L"workspace";
+  const auto existingParent = root / L"docs";
+  require(std::filesystem::create_directories(existingParent),
+          "the restricted-parent write fixture could not be created");
+  writeFixture(existingParent / L"existing.txt", "old\n");
+
+  // Modify permission permits per-file DELETE but need not grant the distinct
+  // directory FILE_DELETE_CHILD right. Pin that distinction on both parents.
+  PSECURITY_DESCRIPTOR descriptor{};
+  require(::ConvertStringSecurityDescriptorToSecurityDescriptorW(
+              L"D:(D;CI;0x40;;;WD)(A;OICI;FA;;;WD)", SDDL_REVISION_1,
+              &descriptor, nullptr) != FALSE,
+          "the restricted-parent DACL could not be created");
+  PACL dacl{};
+  BOOL present{};
+  BOOL defaulted{};
+  const bool daclValid = ::GetSecurityDescriptorDacl(
+      descriptor, &present, &dacl, &defaulted) != FALSE && present;
+  require(daclValid, "the restricted-parent DACL could not be read");
+  for (const auto& directory : {root, existingParent}) {
+    auto native = directory.native();
+    const auto applied = ::SetNamedSecurityInfoW(
+        native.data(), SE_FILE_OBJECT,
+        DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+        nullptr, nullptr, dacl, nullptr);
+    if (applied != ERROR_SUCCESS) {
+      ::LocalFree(descriptor);
+      require(false, "the restricted-parent DACL could not be applied");
+    }
+  }
+  ::LocalFree(descriptor);
+
+  InfrastructureDetail::UniqueHandle forbidden{::CreateFileW(
+      root.c_str(), FILE_DELETE_CHILD, FILE_SHARE_READ | FILE_SHARE_WRITE,
+      nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr)};
+  require(!forbidden && ::GetLastError() == ERROR_ACCESS_DENIED,
+          "the write fixture did not deny directory delete-child access");
+  const auto denied = NativeDetail::openCanonicalDirectory(
+      root.native(), FILE_DELETE_CHILD, FILE_SHARE_READ | FILE_SHARE_WRITE,
+      activeContext());
+  requireError(denied, Domain::ErrorCodes::FilesystemAccessDenied,
+               "OS access denial was classified as workspace policy denial");
+  require(denied.error().message.find(pathText(root).value()) != std::string::npos &&
+              denied.error().message.find("Win32 error 5") != std::string::npos,
+          "OS filesystem access denial omitted its path or native error");
+  const auto contention = NativeDetail::nativeFileError(
+      "Open test path", ERROR_SHARING_VIOLATION, root.native());
+  require(contention.code == Domain::ErrorCodes::Conflict && contention.retryable,
+          "sharing contention was classified as access denial");
+  TestAuthority authority{pathText(root)};
+  WindowsFileSystem fileSystem{
+      std::make_shared<Infrastructure::Windows::WindowsAtomicFileStore>()};
+  auto reader = take(NativeDetail::openAuthorizedObject(
+      authority.path(existingParent / L"existing.txt", Domain::FileAccess::Read),
+      Domain::FileAccess::Read, InfrastructureDetail::MissingPathPolicy::Reject,
+      activeContext()));
+  take(fileSystem.createDirectory(
+      authority.path(existingParent / L"manual" / L"child", Domain::FileAccess::Create),
+      activeContext()));
+  for (const auto& target : {root / L"root.txt", existingParent / L"new.txt",
+                             existingParent / L"nested" / L"deep" / L"new.txt"}) {
+    take(fileSystem.writeFile(authority.path(target, Domain::FileAccess::Create),
+                             bytes("created\n"), activeContext()));
+    require(text(take(fileSystem.readFile(
+                authority.path(target, Domain::FileAccess::Read), 1'024U,
+                activeContext()))) == "created\n",
+            "the native write did not publish its full nested content");
+  }
+  require(reader.handle && text(take(NativeDetail::readOpenedFile(
+              reader.handle.get(), 1'024U, activeContext()))) == "old\n",
+          "a sibling write disturbed the retained reader");
+}
+
+void atomicWriteAccessDenialReportsFilesystemOperationAndPath() {
+  ScopedDirectory temporary;
+  const auto root = temporary.path() / L"workspace";
+  require(std::filesystem::create_directory(root), "the atomic denial fixture root could not be created");
+  const auto target = root / L"protected.txt";
+  writeFixture(target, "original\n");
+  auto nativePath = target.native();
+  PSECURITY_DESCRIPTOR originalDescriptor{};
+  PACL originalDacl{};
+  require(::GetNamedSecurityInfoW(nativePath.data(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+      nullptr, nullptr, &originalDacl, nullptr, &originalDescriptor) == ERROR_SUCCESS,
+      "the atomic denial fixture original DACL could not be captured");
+  InfrastructureDetail::UniqueLocalAllocation<void> originalOwner{originalDescriptor};
+  SECURITY_DESCRIPTOR_CONTROL control{};
+  DWORD revision{};
+  require(::GetSecurityDescriptorControl(originalDescriptor, &control, &revision) != FALSE,
+      "the atomic denial fixture DACL control could not be captured");
+  struct DaclRestorer final {
+    std::wstring path;
+    PACL acl;
+    SECURITY_INFORMATION flags;
+    DWORD restore() noexcept {
+      return ::SetNamedSecurityInfoW(path.data(), SE_FILE_OBJECT, flags,
+          nullptr, nullptr, acl, nullptr);
+    }
+    ~DaclRestorer() noexcept { static_cast<void>(restore()); }
+  } restore{nativePath, originalDacl, DACL_SECURITY_INFORMATION |
+      ((control & SE_DACL_PROTECTED) != 0U ? PROTECTED_DACL_SECURITY_INFORMATION : UNPROTECTED_DACL_SECURITY_INFORMATION)};
+  PSECURITY_DESCRIPTOR deniedDescriptor{};
+  require(::ConvertStringSecurityDescriptorToSecurityDescriptorW(
+      L"D:(D;;0x8;;;WD)(A;;FA;;;WD)", SDDL_REVISION_1, &deniedDescriptor, nullptr) != FALSE,
+      "the atomic denial fixture DACL could not be created");
+  InfrastructureDetail::UniqueLocalAllocation<void> deniedOwner{deniedDescriptor};
+  PACL deniedDacl{};
+  BOOL present{}, defaulted{};
+  require(::GetSecurityDescriptorDacl(deniedDescriptor, &present, &deniedDacl, &defaulted) != FALSE && present,
+      "the atomic denial fixture DACL could not be read");
+  require(::SetNamedSecurityInfoW(nativePath.data(), SE_FILE_OBJECT,
+      DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+      nullptr, nullptr, deniedDacl, nullptr) == ERROR_SUCCESS,
+      "the atomic denial fixture DACL could not be applied");
+  // Atomic replacement opens the existing target's extended attributes before
+  // publication. Pin that exact OS denial rather than a workspace policy error.
+  InfrastructureDetail::UniqueHandle forbidden{::CreateFileW(target.c_str(), FILE_READ_EA,
+      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0U, nullptr)};
+  require(!forbidden && ::GetLastError() == ERROR_ACCESS_DENIED,
+      "the atomic denial fixture did not reject the exact metadata access");
+  TestAuthority authority{pathText(root)};
+  auto store = std::make_shared<Infrastructure::Windows::WindowsAtomicFileStore>();
+  WindowsFileSystem fileSystem{store};
+  const auto writePath = authority.path(target, Domain::FileAccess::Write);
+  const auto sharedFailure = store->replace(writePath, bytes("replacement\n"), false, activeContext());
+  const auto nativeFailure = fileSystem.writeFile(writePath, bytes("replacement\n"), activeContext());
+  require(restore.restore() == ERROR_SUCCESS, "the atomic denial fixture DACL could not be restored");
+  requireError(sharedFailure, Domain::ErrorCodes::Unauthorized,
+      "the shared storage error policy changed while fixing native filesystem diagnostics");
+  requireError(nativeFailure, Domain::ErrorCodes::FilesystemAccessDenied,
+      "an atomic filesystem OS denial was reported as a workspace policy denial");
+  require(!nativeFailure.error().retryable &&
+      nativeFailure.error().message.find("fs_write atomic replacement") != std::string::npos &&
+      nativeFailure.error().message.find(pathText(target).value()) != std::string::npos &&
+      nativeFailure.error().message.find("Win32 error 5") != std::string::npos,
+      "the atomic filesystem OS denial omitted its operation, target path or native error");
+  require(text(take(fileSystem.readFile(authority.path(target, Domain::FileAccess::Read),
+      1'024U, activeContext()))) == "original\n", "a denied atomic write changed the original file");
+  const auto policyFailure = fileSystem.writeFile(authority.path(target, Domain::FileAccess::Create),
+      bytes("replacement\n"), activeContext());
+  requireError(policyFailure, Domain::ErrorCodes::Unauthorized,
+      "create-authority overwrite denial was mislabeled as an OS filesystem denial");
+  take(fileSystem.writeFile(writePath, bytes("replacement\n"), activeContext()));
+  require(text(take(fileSystem.readFile(authority.path(target, Domain::FileAccess::Read),
+      1'024U, activeContext()))) == "replacement\n", "a restored ACL did not permit the authorized write");
+}
+
 } // namespace
 } // namespace ForgeConductor::Tests
 
@@ -677,6 +829,10 @@ int main() {
           boundsUtf8CancellationAndDeadline);
   addTest(tests, "native-tools.authorized-open-pins-ancestors",
           authorizedOpenPinsAncestorsAgainstRename);
+  addTest(tests, "native-tools.nested-write-modify-permissions-retained-reader",
+          nestedWritesRequireCreationWithoutDirectoryDeleteChild);
+  addTest(tests, "native-tools.atomic-write-os-denial-diagnostics",
+          atomicWriteAccessDenialReportsFilesystemOperationAndPath);
 
   std::size_t passed{};
   for (const auto &[name, run] : tests) {

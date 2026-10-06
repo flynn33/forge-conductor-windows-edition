@@ -31,6 +31,12 @@ constexpr std::string_view Utf8OutputPrefix =
     "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);"
     "$OutputEncoding=[Console]::OutputEncoding;";
 
+constexpr std::string_view StdinCommandLoader =
+    "[Console]::InputEncoding=[System.Text.UTF8Encoding]::new($false);"
+    "& ([scriptblock]::Create([Console]::In.ReadToEnd()))";
+constexpr std::string_view CommandExitStatus =
+    "\nif (!$?) {if ($LASTEXITCODE) {exit $LASTEXITCODE}; exit 1}";
+
 constexpr std::size_t MaximumShellPathBytes = 4'000U;
 constexpr wchar_t MachineEnvironmentKey[] =
     L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment";
@@ -358,7 +364,7 @@ void ensureShellToolchainEnvironment(
         if (command.size() > WindowsShellService::MaximumCommandBytes) {
             return Domain::Result<void>::failure(Domain::makeError(
                 Domain::ErrorCodes::PayloadTooLarge,
-                "The PowerShell command exceeds 4096 UTF-8 bytes."));
+                "The PowerShell command exceeds 65536 UTF-8 bytes."));
         }
         if (command.find('\0') != std::string::npos ||
             !Domain::isValidUtf8(command)) {
@@ -699,15 +705,21 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::executeInternal(
 
         Domain::ProcessRequest normalized{
             directProcess ? request.executable : implementation->powerShellExecutable};
-        std::string encodedCommand{Utf8OutputPrefix};
-        encodedCommand.append(directProcess ? std::string{} : request.arguments.front());
-        normalized.arguments = {
-            "-NoLogo",
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            std::move(encodedCommand)};
-        if (directProcess) normalized.arguments = request.arguments;
+        if (directProcess) {
+            normalized.arguments = request.arguments;
+            normalized.stdinUtf8 = request.stdinUtf8;
+        } else {
+            // The supervisor's bounded stdin writer owns script delivery and EOF.
+            // Keep argv fixed below the Windows command-line and argument limits.
+            std::string loader{Utf8OutputPrefix};
+            loader.append(StdinCommandLoader);
+            normalized.arguments = {"-NoLogo", "-NoProfile", "-NonInteractive",
+                                    "-Command", std::move(loader)};
+            normalized.stdinUtf8 = request.arguments.front();
+            // Test the final user statement inside its script block; testing the
+            // invocation outside it loses native/nonterminating failure status.
+            normalized.stdinUtf8.append(CommandExitStatus);
+        }
         normalized.outputObserver = request.outputObserver;
         normalized.workingDirectory = request.workingDirectory;
         normalized.environment = request.environment;

@@ -15,7 +15,7 @@ class WindowsShellService final : public Contracts::IShellService {
 public:
     static constexpr std::chrono::milliseconds DefaultTimeout{30'000};
     static constexpr std::chrono::milliseconds MaximumTimeout{120'000};
-    static constexpr std::size_t MaximumCommandBytes = 4U * 1024U;
+    static constexpr std::size_t MaximumCommandBytes = 64U * 1024U;
     static constexpr std::size_t MaximumOutputBytes = 80'000U;
     static constexpr std::size_t MaximumErrorBytes = 20'000U;
     static constexpr std::chrono::milliseconds MaximumJobTimeout{3'600'000};

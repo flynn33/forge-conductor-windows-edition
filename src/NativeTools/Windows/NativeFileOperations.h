@@ -75,7 +75,8 @@ struct NativeWalkOptions final {
 };
 
 [[nodiscard]] Domain::Error nativeFileError(std::string_view action,
-                                            DWORD nativeCode) noexcept;
+                                            DWORD nativeCode,
+                                            std::wstring_view canonicalPath = {}) noexcept;
 
 [[nodiscard]] bool samePath(std::wstring_view left,
                             std::wstring_view right) noexcept;

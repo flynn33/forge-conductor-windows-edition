@@ -29,6 +29,7 @@ inline constexpr std::string_view MigrationFailed = "migration_failed";
 inline constexpr std::string_view IntegrityFailure = "integrity_failure";
 inline constexpr std::string_view RedactionRejected = "redaction_rejected";
 inline constexpr std::string_view Unauthorized = "unauthorized";
+inline constexpr std::string_view FilesystemAccessDenied = "filesystem_access_denied";
 inline constexpr std::string_view PathOutsideAuthority = "path_outside_authority";
 inline constexpr std::string_view ShellDisabled = "shell_disabled";
 inline constexpr std::string_view ProcessLaunchFailed = "process_launch_failed";

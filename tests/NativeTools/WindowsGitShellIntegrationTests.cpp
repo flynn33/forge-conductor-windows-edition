@@ -487,6 +487,40 @@ void exerciseGitAndShell(
                 shellResult.stderrUtf8.find('\0') == std::string::npos,
             "PowerShell adapter returned embedded NUL bytes");
 
+    // A real report-sized here-string crosses both the per-argument bound and
+    // CreateProcess's command-line bound. CRLF, Unicode and quotes stay literal.
+    const std::string unicode{"\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e \xe2\x82\xac"};
+    const std::string reportSuffix = "\r\n" + unicode + " 'quotes' `$literal";
+    const std::string scriptPrefix = "$report=@'\r\n";
+    const std::string scriptSuffix = reportSuffix + "\r\n'@\r\n"
+        "if (!$report.EndsWith('" + unicode + " ''quotes'' `$literal')) {throw 'report corrupted'}\r\n"
+        "Write-Output ([System.Text.Encoding]::UTF8.GetByteCount($report))\r\n# trailing comment";
+    const auto paddingBytes = NativeTools::WindowsShellService::MaximumCommandBytes -
+        scriptPrefix.size() - scriptSuffix.size();
+    const auto largeScript = scriptPrefix + std::string(paddingBytes, 'x') + scriptSuffix;
+    require(largeScript.size() == NativeTools::WindowsShellService::MaximumCommandBytes,
+            "The real shell boundary fixture must contain exactly 65536 UTF-8 bytes");
+    shellRequest.arguments = {largeScript};
+    const auto largeResult = take(shell.execute(shellRequest, shellAuthority, context(62U)));
+    const auto expectedReportBytes = std::to_string(paddingBytes + reportSuffix.size());
+    require(largeResult.exitCode == 0 &&
+                largeResult.stdoutUtf8.find(expectedReportBytes) != std::string::npos,
+            "A maximum-size multiline Unicode report did not execute intact via stdin");
+    shellRequest.arguments = {largeScript + "x"};
+    const auto oversizedScript = shell.execute(shellRequest, shellAuthority, context(63U));
+    require(!oversizedScript && oversizedScript.error().code == Domain::ErrorCodes::PayloadTooLarge,
+            "A real shell accepted a script over 64 KiB");
+    for (const auto& [command, exitCode] : std::vector<std::pair<std::string, std::int32_t>>{
+             {"exit 23 # explicit exit", 23}, {"throw 'script failure'", 1},
+             {"Write-Error 'script failure'\r\n\r\n# comment", 1},
+             {"cmd /c exit 7 # native error", 7},
+             {"cmd /c exit 7; Write-Output 'recovered'", 0}}) {
+      shellRequest.arguments = {command};
+      const auto failureResult = take(shell.execute(shellRequest, shellAuthority, context(64U)));
+      require(failureResult.exitCode == exitCode,
+              "Script stdin delivery changed explicit, native or PowerShell error status");
+    }
+
     shellRequest.arguments = {"Start-Sleep -Seconds 2"};
     shellRequest.timeout = 100ms;
     const auto timedOut = take(shell.execute(
@@ -511,6 +545,14 @@ void exerciseGitAndShell(
         } while (std::chrono::steady_clock::now() < jobDeadline);
         throw std::runtime_error{"Real tracked PowerShell job did not complete"};
     };
+    shellRequest.arguments = {largeScript};
+    shellRequest.maximumStdoutBytes = 1'024U;
+    const auto largeJob = take(shell.startJob(shellRequest, shellAuthority, context(65U)));
+    const auto largeJobResult = waitForJob(largeJob.jobId);
+    require(largeJobResult.state == Domain::ShellJobState::Completed && largeJobResult.result &&
+                largeJobResult.result->exitCode == 0 &&
+                largeJobResult.result->stdoutUtf8.find(expectedReportBytes) != std::string::npos,
+            "A tracked maximum-size script did not preserve report content and completion");
     shellRequest.arguments = {"Start-Sleep -Milliseconds 200; Write-Output 'tracked-job-ok'"};
     shellRequest.timeout = 10s;
     shellRequest.maximumStdoutBytes = 1'024U;
@@ -555,11 +597,14 @@ void exerciseGitAndShell(
     };
     Domain::ProcessRequest direct{powerShellExecutable};
     direct.arguments = {"-NoProfile", "-NonInteractive", "-Command",
-        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); Write-Output 'live-log'; "
+        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); "
+        "[Console]::InputEncoding=[Text.UTF8Encoding]::new($false); "
+        "[Console]::Write([Console]::In.ReadToEnd()); Write-Output 'live-log'; "
         "Start-Sleep -Milliseconds 800; Write-Output ('z' * 100000); Write-Output $env:FORGE_JOB_VALUE; "
         "[Console]::Error.WriteLine('stderr-proof')"};
     direct.workingDirectory = workspacePath;
     direct.environment = {{"FORGE_JOB_VALUE", "explicit-env-proof"}};
+    direct.stdinUtf8 = "direct-stdin \xe2\x82\xac\n";
     direct.timeout = 10s;
     direct.maximumStdoutBytes = 1'024U; direct.maximumStderrBytes = 1'024U;
     const auto directJob = take(durable.startProcess(direct, shellAuthority, context(41U)));
@@ -589,6 +634,9 @@ void exerciseGitAndShell(
     require(firstPage.text.size() == 32U * 1024U && firstPage.hasMore && firstPage.totalBytes > 100'000U &&
                 firstPage.nextOffset == firstPage.text.size() && !firstPage.textLossy,
             "durable logs did not retain output beyond the bounded result capture or page it correctly");
+    require(firstPage.text.starts_with(direct.stdinUtf8),
+            "Direct process normalization dropped or changed the UTF-8 stdin payload");
+    direct.stdinUtf8.clear();
     const auto lastLines = take(durable.readJobLog(directJob.jobId, false, std::nullopt, 1U, shellAuthority, context(45U)));
     require(lastLines.text.find("explicit-env-proof") != std::string::npos,
             "direct process launch did not preserve explicit environment variables");

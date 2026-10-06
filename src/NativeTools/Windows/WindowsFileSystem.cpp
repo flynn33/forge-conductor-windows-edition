@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <charconv>
 #include <cstddef>
 #include <cstring>
 #include <limits>
@@ -56,6 +57,31 @@ sameAuthorizedObject(const Contracts::AuthorizedPath &left,
   return left.authorityId() == right.authorityId() &&
          left.authorityRoot() == right.authorityRoot() &&
          left.canonicalPath() == right.canonicalPath();
+}
+
+[[nodiscard]] Domain::Error
+atomicWriteError(Domain::Error error, const Domain::PathText &canonicalPath) {
+  if (error.code != Domain::ErrorCodes::Unauthorized) {
+    return error;
+  }
+  constexpr std::string_view marker = " failed with Win32 error ";
+  const auto position = error.message.rfind(marker);
+  if (position == std::string::npos) {
+    return error;
+  }
+  const auto *first = error.message.data() + position + marker.size();
+  const auto *end = error.message.data() + error.message.size();
+  DWORD nativeCode{};
+  const auto parsed = std::from_chars(first, end, nativeCode);
+  if (parsed.ec != std::errc{} || parsed.ptr == end ||
+      (*parsed.ptr != '.' && *parsed.ptr != ' ') ||
+      (nativeCode != ERROR_ACCESS_DENIED && nativeCode != ERROR_PRIVILEGE_NOT_HELD)) {
+    return error;
+  }
+  error.code = Domain::ErrorCodes::FilesystemAccessDenied;
+  error.message = "fs_write atomic replacement [path: " + canonicalPath.value() +
+      "]: " + error.message;
+  return error;
 }
 
 [[nodiscard]] Domain::Result<void>
@@ -412,8 +438,13 @@ WindowsFileSystem::writeFile(const Contracts::AuthorizedPath &path,
     if (!parents) {
       return parents;
     }
-    return implementation_->atomicFileStore->replace(
+    auto written = implementation_->atomicFileStore->replace(
         path, content, false, context);
+    if (!written) {
+      return Domain::Result<void>::failure(atomicWriteError(
+          std::move(written).error(), path.canonicalPath()));
+    }
+    return written;
   } catch (...) {
     return Domain::Result<void>::failure(
         Domain::makeError(Domain::ErrorCodes::InternalFailure,
@@ -506,7 +537,7 @@ Domain::Result<void> WindowsFileSystem::createDirectory(
     auto current = Detail::openCanonicalDirectory(
         root.value(),
         FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
-            FILE_ADD_SUBDIRECTORY | FILE_ADD_FILE | FILE_DELETE_CHILD,
+            FILE_ADD_SUBDIRECTORY,
         FILE_SHARE_READ, context);
     if (!current) {
       return Domain::Result<void>::failure(std::move(current).error());

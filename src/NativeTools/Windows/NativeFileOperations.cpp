@@ -245,31 +245,50 @@ walkDirectory(const HANDLE directory,
 } // namespace
 
 Domain::Error nativeFileError(const std::string_view action,
-                              const DWORD nativeCode) noexcept {
+                              const DWORD nativeCode,
+                              const std::wstring_view canonicalPath) noexcept {
+  std::string_view code = Domain::ErrorCodes::InternalFailure;
+  bool retryable{};
   switch (nativeCode) {
   case ERROR_FILE_NOT_FOUND:
   case ERROR_PATH_NOT_FOUND:
   case ERROR_NO_MORE_FILES:
-    return InfrastructureDetail::makeWin32Error(
-        action, nativeCode, Domain::ErrorCodes::RecordNotFound);
+    code = Domain::ErrorCodes::RecordNotFound;
+    break;
   case ERROR_ACCESS_DENIED:
   case ERROR_PRIVILEGE_NOT_HELD:
-    return InfrastructureDetail::makeWin32Error(
-        action, nativeCode, Domain::ErrorCodes::Unauthorized);
+    code = Domain::ErrorCodes::FilesystemAccessDenied;
+    break;
   case ERROR_DISK_FULL:
   case ERROR_HANDLE_DISK_FULL:
-    return InfrastructureDetail::makeWin32Error(
-        action, nativeCode, Domain::ErrorCodes::StorageFull);
+    code = Domain::ErrorCodes::StorageFull;
+    break;
   case ERROR_ALREADY_EXISTS:
   case ERROR_FILE_EXISTS:
   case ERROR_SHARING_VIOLATION:
   case ERROR_LOCK_VIOLATION:
   case ERROR_DIR_NOT_EMPTY:
   case ERROR_NOT_SAME_DEVICE:
-    return InfrastructureDetail::makeWin32Error(
-        action, nativeCode, Domain::ErrorCodes::Conflict, true);
+    code = Domain::ErrorCodes::Conflict;
+    retryable = true;
+    break;
   default:
-    return InfrastructureDetail::makeWin32Error(action, nativeCode);
+    break;
+  }
+  try {
+    std::string diagnosticAction{action};
+    if (!canonicalPath.empty()) {
+      auto converted = InfrastructureDetail::strictUtf16ToUtf8(canonicalPath);
+      if (converted) {
+        diagnosticAction.append(" [path: ");
+        diagnosticAction.append(converted.value());
+        diagnosticAction.push_back(']');
+      }
+    }
+    return InfrastructureDetail::makeWin32Error(diagnosticAction, nativeCode,
+                                                code, retryable);
+  } catch (...) {
+    return InfrastructureDetail::makeWin32Error(action, nativeCode, code, retryable);
   }
 }
 
@@ -330,7 +349,8 @@ Domain::Result<OpenedNativeObject> openAuthorizedObject(
                                   name, desiredAccess, shareAccess, directory);
     if (!opened) {
       return Domain::Result<OpenedNativeObject>::failure(nativeFileError(
-          "Open an authorized native tool path", opened.win32Error));
+          "Open an authorized native tool path", opened.win32Error,
+          anchored.value().canonicalPath()));
     }
     auto attributes = verifyOpenedObject(
         opened.handle.get(), anchored.value().canonicalPath(), std::nullopt);
@@ -386,7 +406,7 @@ openChildObject(const HANDLE parentDirectory, const std::wstring_view childName,
                                   shareAccess, directory);
     if (!opened) {
       return Domain::Result<OpenedNativeObject>::failure(nativeFileError(
-          "Open a bounded native directory entry", opened.win32Error));
+          "Open a bounded native directory entry", opened.win32Error, expectedPath));
     }
     auto attributes =
         verifyOpenedObject(opened.handle.get(), expectedPath, std::nullopt);
@@ -423,7 +443,7 @@ openCanonicalDirectory(const std::wstring_view canonicalPath,
         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
     if (!handle) {
       return Domain::Result<OpenedNativeObject>::failure(nativeFileError(
-          "Open an authority root directory", ::GetLastError()));
+          "Open an authority root directory", ::GetLastError(), canonicalPath));
     }
     auto attributes = verifyOpenedObject(handle.get(), canonicalPath, true);
     if (!attributes) {
@@ -454,8 +474,7 @@ openOrCreateChildDirectory(const HANDLE parentDirectory,
     }
     InfrastructureDetail::RelativeOpenOptions options{};
     options.desiredAccess = FILE_LIST_DIRECTORY | FILE_TRAVERSE |
-                            FILE_READ_ATTRIBUTES | FILE_ADD_SUBDIRECTORY |
-                            FILE_ADD_FILE | FILE_DELETE_CHILD;
+                            FILE_READ_ATTRIBUTES | FILE_ADD_SUBDIRECTORY;
     options.shareAccess = FILE_SHARE_READ;
     options.disposition =
         InfrastructureDetail::RelativeOpenDisposition::OpenOrCreate;
@@ -464,7 +483,8 @@ openOrCreateChildDirectory(const HANDLE parentDirectory,
         InfrastructureDetail::openRelative(parentDirectory, childName, options);
     if (!opened) {
       return Domain::Result<OpenedNativeObject>::failure(
-          nativeFileError("Create an authorized directory", opened.win32Error));
+          nativeFileError("Create an authorized directory", opened.win32Error,
+                          expectedPath));
     }
     auto attributes =
         verifyOpenedObject(opened.handle.get(), expectedPath, true);
@@ -532,7 +552,7 @@ Domain::Result<void> ensureAuthorizedParentDirectories(
     auto rootDirectory = openCanonicalDirectory(
         root.value(),
         FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
-            FILE_ADD_SUBDIRECTORY | FILE_ADD_FILE | FILE_DELETE_CHILD,
+            FILE_ADD_SUBDIRECTORY,
         FILE_SHARE_READ, context);
     if (!rootDirectory) {
       return Domain::Result<void>::failure(std::move(rootDirectory).error());
