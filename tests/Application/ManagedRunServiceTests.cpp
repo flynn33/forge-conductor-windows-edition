@@ -255,6 +255,7 @@ public:
             lastRun = request.runId.value();
             lastGeneration = request.authorityGeneration;
             lastToolCount = request.tools.size();
+            lastReceiveTimeout = request.providerReceiveTimeoutSeconds;
         }
         if (mode == Mode::Block) {
             std::unique_lock lock{mutex_};
@@ -393,6 +394,7 @@ public:
     std::string lastRun;
     std::uint64_t lastGeneration{};
     std::size_t lastToolCount{};
+    std::optional<std::uint32_t> lastReceiveTimeout;
     bool sawToolDescriptor{};
     bool sawToolOutput{};
     bool sawSuccessorPrompt{};
@@ -1165,6 +1167,7 @@ int main()
         "acacacac-acac-4cac-8cac-acacacacacac", "Independent opening message");
     review.readOnlyTools = true;
     review.automaticContinuity = false;
+    review.providerReceiveTimeoutSeconds = 1800U;
     WorkspaceAuthority reviewerAuthority{review.projectId, review.clientId};
     Application::ManagedRunService reviewerService{reviewerTransport, reviewerStore, clock,
         {&reviewerCatalog, &reviewerRouter, &reviewerAuthority}};
@@ -1172,6 +1175,8 @@ int main()
     const auto reviewed = waitForTerminal(reviewerService, review.runId);
     assert(reviewed.record.state == Domain::ManagedRunState::Completed);
     assert(reviewed.record.readOnlyTools);
+    assert(reviewed.record.providerReceiveTimeoutSeconds == 1800U);
+    assert(reviewerTransport.lastReceiveTimeout == 1800U);
     assert(reviewerTransport.sawFreshContext);
     assert(reviewerTransport.sawToolDescriptor);
     assert(reviewerTransport.sawDeniedWrite);
@@ -1192,6 +1197,7 @@ int main()
         context("afafafaf-afaf-4faf-8faf-afafafafafaf", "reviewer-load"));
     assert(restoredReview && restoredReview.value());
     assert(restoredReview.value()->readOnlyTools);
+    assert(restoredReview.value()->providerReceiveTimeoutSeconds == 1800U);
     assert(restoredReview.value()->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified);
     return 0;
 }

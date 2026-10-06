@@ -9,8 +9,10 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
@@ -23,6 +25,7 @@
 #include <stop_token>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -68,6 +71,11 @@ public:
         return value_.load(std::memory_order_acquire);
     }
 
+    [[nodiscard]] HINTERNET release() noexcept
+    {
+        return value_.exchange(nullptr, std::memory_order_acq_rel);
+    }
+
     void close() noexcept
     {
         const auto value = value_.exchange(nullptr, std::memory_order_acq_rel);
@@ -78,6 +86,136 @@ public:
 
 private:
     std::atomic<HINTERNET> value_;
+};
+
+// The public transport waits for each async operation. Cancellation may close
+// a pending request only after its submitting API has returned. Keep callback
+// context and all WinHTTP buffers alive until the final HANDLE_CLOSING notice.
+class AsyncRequest final {
+public:
+    explicit AsyncRequest(const HINTERNET value, std::string body)
+        : value_{value}, body_{std::move(body)}
+    {
+        if (!value_) { initializationError_ = GetLastError(); return; }
+        DWORD_PTR context = reinterpret_cast<DWORD_PTR>(this);
+        if (!WinHttpSetOption(value_, WINHTTP_OPTION_CONTEXT_VALUE, &context, sizeof(context))) {
+            initializationError_ = GetLastError(); return;
+        }
+        if (WinHttpSetStatusCallback(value_, callback,
+                WINHTTP_CALLBACK_FLAG_ALL_COMPLETIONS | WINHTTP_CALLBACK_FLAG_HANDLES, 0U) ==
+            WINHTTP_INVALID_STATUS_CALLBACK) {
+            initializationError_ = GetLastError(); return;
+        }
+        callbackInstalled_ = true;
+    }
+
+    ~AsyncRequest() noexcept
+    {
+        close();
+        if (callbackInstalled_) {
+            std::unique_lock lock{stateMutex_};
+            changed_.wait(lock, [&] { return closed_; });
+        }
+    }
+    AsyncRequest(const AsyncRequest&) = delete;
+    AsyncRequest& operator=(const AsyncRequest&) = delete;
+
+    [[nodiscard]] DWORD initializationError() const noexcept { return initializationError_; }
+
+    template <typename Operation>
+    [[nodiscard]] DWORD invoke(Operation operation)
+    {
+        std::lock_guard lock{apiMutex_};
+        if (!value_) return ERROR_WINHTTP_OPERATION_CANCELLED;
+        return operation(value_) ? ERROR_SUCCESS : GetLastError();
+    }
+
+    void close() noexcept
+    {
+        std::lock_guard lock{apiMutex_};
+        const auto value = std::exchange(value_, nullptr);
+        if (value) static_cast<void>(WinHttpCloseHandle(value));
+    }
+
+    [[nodiscard]] DWORD send(std::wstring headers)
+    {
+        headers_ = std::move(headers);
+        return submit(WINHTTP_CALLBACK_STATUS_SENDREQUEST_COMPLETE, [&](const HINTERNET handle) {
+            return WinHttpSendRequest(handle, headers_.c_str(), static_cast<DWORD>(-1L),
+                body_.empty() ? WINHTTP_NO_REQUEST_DATA : body_.data(),
+                static_cast<DWORD>(body_.size()), static_cast<DWORD>(body_.size()),
+                reinterpret_cast<DWORD_PTR>(this));
+        }).error;
+    }
+
+    [[nodiscard]] DWORD receive()
+    {
+        return submit(WINHTTP_CALLBACK_STATUS_HEADERS_AVAILABLE,
+            [](const HINTERNET handle) { return WinHttpReceiveResponse(handle, nullptr); }).error;
+    }
+
+    struct ReadResult final { DWORD error{}; DWORD bytes{}; };
+    [[nodiscard]] ReadResult read()
+    {
+        return submit(WINHTTP_CALLBACK_STATUS_READ_COMPLETE, [&](const HINTERNET handle) {
+            return WinHttpReadData(handle, readBuffer_.data(), static_cast<DWORD>(readBuffer_.size()), nullptr);
+        });
+    }
+    [[nodiscard]] const char* readData() const noexcept { return readBuffer_.data(); }
+
+private:
+    template <typename Operation>
+    [[nodiscard]] ReadResult submit(const DWORD completion, Operation operation)
+    {
+        {
+            std::lock_guard apiLock{apiMutex_};
+            if (!value_) return {ERROR_WINHTTP_OPERATION_CANCELLED, 0U};
+            {
+                std::lock_guard stateLock{stateMutex_};
+                expectedCompletion_ = completion;
+                completed_ = false;
+                result_ = {};
+            }
+            // A callback may run inline: it uses only stateMutex_, never apiMutex_.
+            if (!operation(value_)) return {GetLastError(), 0U};
+        }
+        std::unique_lock lock{stateMutex_};
+        changed_.wait(lock, [&] { return completed_ || closed_; });
+        return completed_ ? result_ : ReadResult{ERROR_WINHTTP_OPERATION_CANCELLED, 0U};
+    }
+
+    static void CALLBACK callback(HINTERNET, const DWORD_PTR context, const DWORD status,
+        void* information, const DWORD length) noexcept
+    {
+        if (!context) return;
+        auto& request = *reinterpret_cast<AsyncRequest*>(context);
+        std::lock_guard lock{request.stateMutex_};
+        if (status == WINHTTP_CALLBACK_STATUS_HANDLE_CLOSING) {
+            request.closed_ = true;
+        } else if (status == WINHTTP_CALLBACK_STATUS_REQUEST_ERROR) {
+            request.result_.error = information && length >= sizeof(WINHTTP_ASYNC_RESULT)
+                ? static_cast<WINHTTP_ASYNC_RESULT*>(information)->dwError : ERROR_WINHTTP_INTERNAL_ERROR;
+            request.completed_ = true;
+        } else if (status == request.expectedCompletion_) {
+            request.result_.bytes = status == WINHTTP_CALLBACK_STATUS_READ_COMPLETE ? length : 0U;
+            request.completed_ = true;
+        }
+        request.changed_.notify_all();
+    }
+
+    HINTERNET value_{};
+    DWORD initializationError_{};
+    bool callbackInstalled_{};
+    std::mutex apiMutex_;
+    std::mutex stateMutex_;
+    std::condition_variable changed_;
+    DWORD expectedCompletion_{};
+    ReadResult result_;
+    bool completed_{};
+    bool closed_{};
+    std::wstring headers_;
+    std::string body_;
+    std::array<char, 8192U> readBuffer_{};
 };
 
 struct HttpResponse final {
@@ -410,7 +548,7 @@ public:
               WINHTTP_ACCESS_TYPE_NO_PROXY,
               WINHTTP_NO_PROXY_NAME,
               WINHTTP_NO_PROXY_BYPASS,
-              0U))}
+              WINHTTP_FLAG_ASYNC))}
     {
         if (session_->get() == nullptr) {
             throw std::runtime_error("WinHTTP could not open the LM Studio session.");
@@ -651,6 +789,13 @@ public:
                     Domain::ErrorCodes::InvalidRequest,
                     "The ordinary LM Studio request is invalid.");
             }
+            if (request.providerReceiveTimeoutSeconds &&
+                (*request.providerReceiveTimeoutSeconds == 0U ||
+                 *request.providerReceiveTimeoutSeconds > Domain::MaximumManagedProviderReceiveTimeoutSeconds)) {
+                return failure<Domain::ManagedProviderTurnResult>(
+                    Domain::ErrorCodes::InvalidRequest,
+                    "The provider receive timeout must be within 1 through 3600 seconds.");
+            }
             auto selected = discoverModel(context);
             if (!selected) {
                 return failure<Domain::ManagedProviderTurnResult>(
@@ -699,7 +844,7 @@ public:
                 body["previous_response_id"] =
                     request.previousResponseId->value();
             }
-            auto response = postResponses(body, context);
+            auto response = postResponses(body, context, request.providerReceiveTimeoutSeconds);
             if (!response) {
                 return failure<Domain::ManagedProviderTurnResult>(
                     response.error().code,
@@ -770,7 +915,7 @@ public:
         const std::optional<Domain::ProviderSessionId>& providerId) noexcept
     {
         try {
-            std::shared_ptr<InternetHandle> active;
+            std::shared_ptr<AsyncRequest> active;
             {
                 std::lock_guard lock{stateMutex_};
                 rememberCancelled(operationId.value());
@@ -783,6 +928,8 @@ public:
                 active->close();
             }
             if (providerId && !providerId->value().starts_with("forge-pending-")) {
+                // The provider cancellation must still be sent after the original
+                // operation has been marked locally cancelled.
                 const Json body{{"response_id", providerId->value()}};
                 const Domain::OperationContext cancellationContext{
                     operationId,
@@ -792,7 +939,7 @@ public:
                         "lm-studio-response-cancel").value()};
                 static_cast<void>(perform(
                     L"POST", responsePath(providerId->value()) + "/cancel",
-                    body.dump(), cancellationContext, false));
+                    body.dump(), cancellationContext, false, std::nullopt, true));
             }
         } catch (...) {
         }
@@ -817,7 +964,7 @@ public:
             if (stopping_.exchange(true, std::memory_order_acq_rel)) {
                 return;
             }
-            std::vector<std::shared_ptr<InternetHandle>> handles;
+            std::vector<std::shared_ptr<AsyncRequest>> handles;
             {
                 std::lock_guard lock{stateMutex_};
                 for (auto& [operation, weak] : active_) {
@@ -831,7 +978,6 @@ public:
             for (const auto& handle : handles) {
                 handle->close();
             }
-            session_->close();
         } catch (...) {
         }
     }
@@ -912,7 +1058,8 @@ private:
 
     [[nodiscard]] Domain::Result<Json> postResponses(
         const Json& body,
-        const Domain::OperationContext& context)
+        const Domain::OperationContext& context,
+        const std::optional<std::uint32_t> receiveTimeoutSeconds = std::nullopt)
     {
         const auto encoded = body.dump();
         if (encoded.size() > MaximumRequestBytes) {
@@ -920,7 +1067,7 @@ private:
                 Domain::ErrorCodes::PayloadTooLarge,
                 "The LM Studio Responses request exceeds its bound.");
         }
-        auto response = perform(L"POST", responsesPath(), encoded, context);
+        auto response = perform(L"POST", responsesPath(), encoded, context, true, receiveTimeoutSeconds);
         if (!response) {
             return failure<Json>(
                 response.error().code, response.error().message,
@@ -966,18 +1113,20 @@ private:
         const std::string& path,
         const std::string& body,
         const Domain::OperationContext& context,
-        const bool track = true)
+        const bool track = true,
+        const std::optional<std::uint32_t> receiveTimeoutSeconds = std::nullopt,
+        const bool ignoreRememberedCancellation = false)
     {
+        if (context.isCancellationRequested() ||
+            (!ignoreRememberedCancellation && wasCancelled(context.operationId.value()))) {
+            return failure<HttpResponse>(
+                Domain::ErrorCodes::Cancelled,
+                "The LM Studio Responses request was cancelled.");
+        }
         if (stopping_.load(std::memory_order_acquire)) {
             return failure<HttpResponse>(
                 Domain::ErrorCodes::TransportClosed,
                 "The LM Studio Responses transport is closed.");
-        }
-        if (context.isCancellationRequested() ||
-            wasCancelled(context.operationId.value())) {
-            return failure<HttpResponse>(
-                Domain::ErrorCodes::Cancelled,
-                "The LM Studio Responses request was cancelled.");
         }
         const auto now = std::chrono::steady_clock::now();
         if (context.deadline <= now) {
@@ -991,31 +1140,65 @@ private:
                 Domain::ErrorCodes::InvalidRequest,
                 "The LM Studio request path is invalid.");
         }
+        auto requestDeadline = context.deadline;
+        const auto receiveTimeout = receiveTimeoutSeconds
+            ? std::chrono::milliseconds{std::chrono::seconds{*receiveTimeoutSeconds}}
+            : configuration_.receiveTimeout;
+        const auto interruption = [&]() -> std::optional<Domain::Error> {
+            if (context.isCancellationRequested() ||
+                (!ignoreRememberedCancellation && wasCancelled(context.operationId.value())))
+                return Domain::makeError(Domain::ErrorCodes::Cancelled,
+                    "The LM Studio Responses request was cancelled.");
+            if (std::chrono::steady_clock::now() >= context.deadline)
+                return Domain::makeError(Domain::ErrorCodes::DeadlineExceeded,
+                    "The LM Studio Responses request exceeded its deadline.", true);
+            if (std::chrono::steady_clock::now() >= requestDeadline)
+                return Domain::makeError(Domain::ErrorCodes::DeadlineExceeded,
+                    "The LM Studio Responses provider request exceeded its receive budget (receive_timeout_ms=" +
+                        std::to_string(receiveTimeout.count()) + ").", true);
+            if (stopping_.load(std::memory_order_acquire))
+                return Domain::makeError(Domain::ErrorCodes::TransportClosed,
+                    "The LM Studio Responses transport is closed.");
+            return std::nullopt;
+        };
         InternetHandle connection{WinHttpConnect(
             session_->get(), host_.c_str(), configuration_.port, 0U)};
         if (connection.get() == nullptr) {
+            if (auto interrupted = interruption())
+                return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
             return failure<HttpResponse>(
                 Domain::ErrorCodes::InternalFailure,
                 "Could not connect to the LM Studio local server.", true);
         }
         const wchar_t* accept[]{L"application/json", nullptr};
-        auto request = std::make_shared<InternetHandle>(WinHttpOpenRequest(
+        InternetHandle unregisteredRequest{WinHttpOpenRequest(
             connection.get(), method, widePath.value().c_str(), nullptr,
             WINHTTP_NO_REFERER, accept,
-            configuration_.secure ? WINHTTP_FLAG_SECURE : 0U));
-        if (request->get() == nullptr) {
+            configuration_.secure ? WINHTTP_FLAG_SECURE : 0U)};
+        auto request = std::make_shared<AsyncRequest>(unregisteredRequest.get(), body);
+        static_cast<void>(unregisteredRequest.release());
+        if (request->initializationError() != ERROR_SUCCESS) {
+            if (auto interrupted = interruption())
+                return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
             return failure<HttpResponse>(
                 Domain::ErrorCodes::InternalFailure,
                 "Could not create the LM Studio HTTP request.", true);
         }
-        if (track) {
+        {
             std::lock_guard lock{stateMutex_};
-            if (active_.contains(context.operationId.value())) {
+            if (context.isCancellationRequested() ||
+                (!ignoreRememberedCancellation && cancelled_.contains(context.operationId.value())))
+                return failure<HttpResponse>(Domain::ErrorCodes::Cancelled,
+                    "The LM Studio Responses request was cancelled.");
+            if (stopping_.load(std::memory_order_acquire))
+                return failure<HttpResponse>(Domain::ErrorCodes::TransportClosed,
+                    "The LM Studio Responses transport is closed.");
+            if (track && active_.contains(context.operationId.value())) {
                 return failure<HttpResponse>(
                     Domain::ErrorCodes::OwnershipConflict,
                     "An LM Studio request already owns this operation id.");
             }
-            active_.emplace(context.operationId.value(), request);
+            if (track) active_.emplace(context.operationId.value(), request);
         }
         const auto untrack = [this, &context, track]() noexcept {
             if (track) {
@@ -1034,17 +1217,25 @@ private:
             request->close();
         }};
 
-        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-            context.deadline - now);
-        const auto bounded = [remaining](const std::chrono::milliseconds configured) {
+        const auto bounded = [&requestDeadline](const std::chrono::milliseconds configured) {
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                requestDeadline - std::chrono::steady_clock::now());
             return static_cast<int>(std::max<std::int64_t>(
                 1LL, std::min(configured, remaining).count()));
         };
-        if (!WinHttpSetTimeouts(
-                request->get(), bounded(configuration_.connectTimeout),
-                bounded(configuration_.connectTimeout),
-                bounded(configuration_.sendTimeout),
-                bounded(configuration_.receiveTimeout))) {
+        const auto setTimeouts = [&] {
+            DWORD responseTimeout = static_cast<DWORD>(bounded(receiveTimeout));
+            return request->invoke([&](const HINTERNET handle) {
+                return WinHttpSetTimeouts(handle, bounded(configuration_.connectTimeout),
+                    bounded(configuration_.connectTimeout), bounded(configuration_.sendTimeout),
+                    bounded(receiveTimeout)) != FALSE &&
+                    WinHttpSetOption(handle, WINHTTP_OPTION_RECEIVE_RESPONSE_TIMEOUT,
+                        &responseTimeout, sizeof(responseTimeout)) != FALSE;
+            });
+        };
+        if (setTimeouts() != ERROR_SUCCESS) {
+            if (auto interrupted = interruption())
+                return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
             return failure<HttpResponse>(
                 Domain::ErrorCodes::InternalFailure,
                 "Could not configure LM Studio request timeouts.", true);
@@ -1060,21 +1251,32 @@ private:
             }
             headers += L"Authorization: Bearer " + token.value() + L"\r\n";
         }
-        void* payload = body.empty()
-            ? WINHTTP_NO_REQUEST_DATA
-            : const_cast<char*>(body.data());
-        const bool sent = WinHttpSendRequest(
-            request->get(), headers.c_str(), static_cast<DWORD>(-1L),
-            payload, static_cast<DWORD>(body.size()),
-            static_cast<DWORD>(body.size()), 0U) != 0;
-        const DWORD sendError = sent ? ERROR_SUCCESS : GetLastError();
-        const bool received = sent &&
-            WinHttpReceiveResponse(request->get(), nullptr) != 0;
-        const DWORD exchangeError = sent
-            ? (received ? ERROR_SUCCESS : GetLastError()) : sendError;
+        requestDeadline = std::min(context.deadline, std::chrono::steady_clock::now() + receiveTimeout);
+        // Stage timers do not establish a complete provider request deadline.
+        std::jthread deadlineGuard{[request, deadline = requestDeadline](std::stop_token guardStop) noexcept {
+            try {
+                std::mutex mutex;
+                std::condition_variable_any changed;
+                std::unique_lock lock{mutex};
+                static_cast<void>(changed.wait_until(lock, guardStop, deadline, [] { return false; }));
+                if (!guardStop.stop_requested()) request->close();
+            } catch (...) { request->close(); }
+        }};
+        const DWORD sendError = request->send(std::move(headers));
+        const bool sent = sendError == ERROR_SUCCESS;
+        if (auto interrupted = interruption())
+            return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
+        DWORD exchangeError = sendError;
+        if (sent) {
+            exchangeError = setTimeouts();
+            if (exchangeError == ERROR_SUCCESS) exchangeError = request->receive();
+        }
+        const bool received = exchangeError == ERROR_SUCCESS;
+        if (auto interrupted = interruption())
+            return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
         if (!received) {
             if (context.isCancellationRequested() ||
-                wasCancelled(context.operationId.value())) {
+                (!ignoreRememberedCancellation && wasCancelled(context.operationId.value()))) {
                 return failure<HttpResponse>(
                     Domain::ErrorCodes::Cancelled,
                     "The LM Studio Responses request was cancelled.");
@@ -1089,7 +1291,8 @@ private:
                 return failure<HttpResponse>(
                     Domain::ErrorCodes::DeadlineExceeded,
                     "The LM Studio Responses " + stage +
-                        " timed out before a provider response (WinHTTP 12002).",
+                        " timed out before a provider response (WinHTTP 12002; receive_timeout_ms=" +
+                        std::to_string(bounded(receiveTimeout)) + ").",
                     true);
             }
             return failure<HttpResponse>(
@@ -1100,41 +1303,54 @@ private:
         }
         DWORD status{};
         DWORD statusBytes = sizeof(status);
-        if (!WinHttpQueryHeaders(
-                request->get(),
-                WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-                WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusBytes,
-                WINHTTP_NO_HEADER_INDEX)) {
+        if (request->invoke([&](const HINTERNET handle) {
+                return WinHttpQueryHeaders(handle, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusBytes, WINHTTP_NO_HEADER_INDEX);
+            }) != ERROR_SUCCESS) {
+            if (auto interrupted = interruption())
+                return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
             return failure<HttpResponse>(
                 Domain::ErrorCodes::MalformedMessage,
                 "LM Studio returned no HTTP status.");
         }
+        if (auto interrupted = interruption())
+            return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
         std::string responseBody;
+        const auto readFailure = [&](const DWORD error, const char* const stage) {
+            if (auto interrupted = interruption())
+                return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
+            if (error == ERROR_WINHTTP_TIMEOUT)
+                return failure<HttpResponse>(Domain::ErrorCodes::DeadlineExceeded,
+                    std::string{"The LM Studio Responses "} + stage +
+                        " timed out (WinHTTP " + std::to_string(error) + "; receive_timeout_ms=" +
+                        std::to_string(bounded(receiveTimeout)) + ").", true);
+            return failure<HttpResponse>(Domain::ErrorCodes::InternalFailure,
+                std::string{"The LM Studio Responses "} + stage +
+                    " failed (WinHTTP " + std::to_string(error) + ").", true);
+        };
         for (;;) {
-            DWORD available{};
-            if (!WinHttpQueryDataAvailable(request->get(), &available)) {
-                return failure<HttpResponse>(
-                    Domain::ErrorCodes::InternalFailure,
-                    "Could not read the LM Studio response.", true);
-            }
-            if (available == 0U) {
+            if (auto interrupted = interruption())
+                return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
+            const auto timeoutError = setTimeouts();
+            if (timeoutError != ERROR_SUCCESS)
+                return readFailure(timeoutError, "response timeout update");
+            const auto read = request->read();
+            if (read.error != ERROR_SUCCESS)
+                return readFailure(read.error, "response body read");
+            if (auto interrupted = interruption())
+                return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
+            if (read.bytes == 0U) {
                 break;
             }
-            if (available > MaximumHttpBodyBytes || responseBody.size() > MaximumHttpBodyBytes - available) {
+            if (read.bytes > MaximumHttpBodyBytes || responseBody.size() > MaximumHttpBodyBytes - read.bytes) {
                 return failure<HttpResponse>(
                     Domain::ErrorCodes::PayloadTooLarge,
                     "The LM Studio response exceeds its bound.");
             }
-            std::vector<char> buffer(available);
-            DWORD read{};
-            if (!WinHttpReadData(
-                    request->get(), buffer.data(), available, &read)) {
-                return failure<HttpResponse>(
-                    Domain::ErrorCodes::InternalFailure,
-                    "Could not read the LM Studio response body.", true);
-            }
-            responseBody.append(buffer.data(), read);
+            responseBody.append(request->readData(), read.bytes);
         }
+        if (auto interrupted = interruption())
+            return Domain::Result<HttpResponse>::failure(std::move(*interrupted));
         if (status >= 200U && status < 300U) {
             return Domain::Result<HttpResponse>::success(
                 {status, std::move(responseBody)});
@@ -1171,7 +1387,7 @@ private:
     std::shared_ptr<InternetHandle> session_;
     std::atomic_bool stopping_{};
     mutable std::mutex stateMutex_;
-    std::unordered_map<std::string, std::weak_ptr<InternetHandle>> active_;
+    std::unordered_map<std::string, std::weak_ptr<AsyncRequest>> active_;
     std::unordered_set<std::string> cancelled_;
     std::deque<std::string> cancelledOrder_;
     std::unordered_set<std::string> readyResponses_;

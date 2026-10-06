@@ -131,6 +131,23 @@ public:
         state_.setNow(now);
     }
 
+    void setBoundConfiguredRoots(std::vector<Domain::PathText> roots)
+    {
+        boundRoots_ = std::move(roots);
+    }
+
+    [[nodiscard]] Domain::Result<std::vector<Domain::PathText>> boundConfiguredRoots(
+        const Domain::ProjectId&, const Domain::OperationContext& context) noexcept override
+    {
+        try {
+            auto gate = state_.begin(context);
+            if (!gate) return Domain::Result<std::vector<Domain::PathText>>::failure(std::move(gate).error());
+            return Domain::Result<std::vector<Domain::PathText>>::success(boundRoots_);
+        } catch (...) {
+            return Domain::Result<std::vector<Domain::PathText>>::failure(internalFailure());
+        }
+    }
+
     [[nodiscard]] std::size_t calls() const noexcept { return state_.calls(); }
 
     [[nodiscard]] const std::optional<Domain::OperationContext>&
@@ -207,6 +224,7 @@ private:
     Domain::AuthorityId authorityId_;
     Domain::ClientId callerId_;
     std::vector<Domain::PathText> trustedRoots_;
+    std::vector<Domain::PathText> boundRoots_;
     Domain::FileAccess intent_;
     std::vector<Domain::FileAccess> grants_;
     std::vector<Domain::FileAccess> denials_;

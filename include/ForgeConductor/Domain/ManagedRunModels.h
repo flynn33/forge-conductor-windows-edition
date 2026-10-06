@@ -13,6 +13,9 @@ namespace ForgeConductor::Domain {
 
 inline constexpr std::size_t MaximumManagedRunTaskBytes = 128U * 1024U;
 inline constexpr std::size_t MaximumManagedRunOutputBytes = 256U * 1024U;
+inline constexpr std::uint32_t DefaultReviewerReceiveTimeoutSeconds = 600U;
+inline constexpr std::uint32_t MaximumManagedProviderReceiveTimeoutSeconds = 3600U;
+inline constexpr std::size_t MaximumReviewerOpeningMessageBytes = 64U * 1024U;
 
 enum class ManagedRunState {
     Running,
@@ -62,6 +65,7 @@ struct ManagedProviderTurnRequest final {
     std::optional<ProviderSessionId> previousResponseId;
     std::vector<McpToolDescriptor> tools;
     std::vector<ManagedFunctionCallOutput> toolOutputs;
+    std::optional<std::uint32_t> providerReceiveTimeoutSeconds;
 };
 
 struct ManagedProviderTurnResult final {
@@ -96,6 +100,7 @@ struct ManagedRunRecord final {
     std::vector<ManagedNativeTaskCheck> nativeTaskChecks;
     bool readOnlyTools{};
     bool outputTruncated{};
+    std::optional<std::uint32_t> providerReceiveTimeoutSeconds;
 };
 
 struct ManagedRunStartRequest final {
@@ -109,6 +114,7 @@ struct ManagedRunStartRequest final {
     bool allowTools{true};
     bool automaticContinuity{true};
     bool readOnlyTools{};
+    std::optional<std::uint32_t> providerReceiveTimeoutSeconds;
 };
 
 struct ManagedRunSnapshot final {

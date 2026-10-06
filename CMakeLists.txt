@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.12
+    VERSION 1.3.13
     LANGUAGES CXX RC
 )
 
@@ -2239,11 +2239,12 @@ if(BUILD_TESTING)
 
     add_executable(ForgeConductor.Mcp.ServeProcessSnapshotTests
         tests/Mcp/McpServeProcessSnapshotTests.cpp)
+    add_dependencies(ForgeConductor.Mcp.ServeProcessSnapshotTests ForgeConductor.Manager)
     forge_configure_native_target(
         ForgeConductor.Mcp.ServeProcessSnapshotTests)
     target_link_libraries(
         ForgeConductor.Mcp.ServeProcessSnapshotTests PRIVATE
-        nlohmann_json::nlohmann_json)
+        nlohmann_json::nlohmann_json ws2_32)
     add_dependencies(
         ForgeConductor.Mcp.ServeProcessSnapshotTests
         ForgeConductor.Cli)
@@ -3516,7 +3517,8 @@ if(BUILD_TESTING)
         "${PROJECT_SOURCE_DIR}/tests")
     target_link_libraries(
         ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests PRIVATE
-        ForgeConductor::Infrastructure.Windows)
+        ForgeConductor::Infrastructure.Windows
+        ForgeConductor::Mcp)
     add_test(
         NAME ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests
         COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.ProjectWorkspaceAuthorityTests>

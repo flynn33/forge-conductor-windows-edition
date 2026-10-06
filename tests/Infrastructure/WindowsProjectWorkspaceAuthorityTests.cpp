@@ -5,6 +5,7 @@
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
+#include "ForgeConductor/Mcp/McpExecutionServices.h"
 #include "Infrastructure/Windows/Detail/UniqueHandle.h"
 #include "Infrastructure/Windows/Detail/UtfConversion.h"
 
@@ -718,6 +719,8 @@ void bindsOnlyExactConfiguredExistingRoots()
     WindowsProjectWorkspaceAuthority authority{registry, uuids, serveClient(), false,
         {pathText(tree.outside()), pathText(tree.first() / L"child")}};
     auto before = take(authority.authorityFor(projectId(), activeContext()));
+    require(take(authority.boundConfiguredRoots(projectId(), activeContext())).empty(),
+        "An owner-configured root became active before explicit binding.");
     require(take(authority.configuredRootAllowlist(activeContext())).size() == 2U,
         "The owner allowlist was not exposed accurately.");
     requireError(authority.bindConfiguredRoot(before, pathText(tree.base()), activeContext()),
@@ -725,12 +728,17 @@ void bindsOnlyExactConfiguredExistingRoots()
     requireError(authority.bindConfiguredRoot(before, pathText(tree.outside() / L"missing"), activeContext()),
         Domain::ErrorCodes::Unauthorized, "A missing/subdirectory root was accepted.");
     auto bound = take(authority.bindConfiguredRoot(before, pathText(tree.outside()), activeContext()));
+    require(take(authority.boundConfiguredRoots(projectId(), activeContext())) ==
+        std::vector<Domain::PathText>{pathText(tree.outside())},
+        "The explicit root binding was not available for recovered MCP calls.");
     require(bound.trustedRoots().size() == 2U && before.trustedRoots().size() == 1U,
         "Binding did not preserve the original immutable capability.");
     require(static_cast<bool>(authority.authorize(bound, {pathText(tree.outside() / L"evidence.txt"),
         std::nullopt, Domain::FileAccess::Create, true}, activeContext())),
         "The configured evidence root did not permit an authorized output.");
     auto other = take(authority.authorityFor(projectId(2U), activeContext()));
+    require(take(authority.boundConfiguredRoots(projectId(2U), activeContext())).empty(),
+        "An explicit root binding leaked into another project's recovery roots.");
     require(other.trustedRoots().size() == 1U, "A root binding leaked to another project.");
     auto repeated = take(authority.bindConfiguredRoot(bound, pathText(tree.outside()), activeContext()));
     require(repeated.trustedRoots().size() == 2U, "An idempotent root bind added a duplicate.");
@@ -742,6 +750,76 @@ void bindsOnlyExactConfiguredExistingRoots()
         false, bound.generation() + 1U, activeContext()));
     requireError(authority.bindConfiguredRoot(narrowed, pathText(tree.outside()), activeContext()),
         Domain::ErrorCodes::Unauthorized, "A narrowed capability regained its removed permissions by binding a root.");
+    auto rootNarrowed = take(authority.narrow(bound, {pathText(tree.first())}, bound.grants(),
+        bound.shellEnabled(), bound.generation() + 1U, activeContext()));
+    requireError(authority.bindConfiguredRoot(rootNarrowed, pathText(tree.outside()), activeContext()),
+        Domain::ErrorCodes::Unauthorized, "A directly narrowed capability regained an excluded root.");
+    WindowsProjectWorkspaceAuthority reconnected{registry, uuids, serveClient(), false,
+        {pathText(tree.outside())}};
+    auto fresh = take(reconnected.authorityFor(projectId(), activeContext()));
+    require(fresh.trustedRoots().size() == 1U,
+        "An unbound additional root became active on connector reconnect.");
+    auto rebound = take(reconnected.bindConfiguredRoot(fresh, pathText(tree.outside()), activeContext()));
+    require(rebound.trustedRoots().size() == 2U &&
+        take(reconnected.boundConfiguredRoots(projectId(), activeContext())).size() == 1U,
+        "A fresh connector could not activate the saved owner allowlist root.");
+}
+
+void recoveredMcpCallsRetainBoundRootsWithoutRestoringOtherAliases()
+{
+    ScopedTestTree tree;
+    CountingUuidGenerator uuids;
+    RegistryFake registry;
+    const auto selected = pathText(tree.first());
+    const auto evidence = pathText(tree.outside());
+    registry.seed(projectId(), {selected, pathText(tree.second())});
+    WindowsProjectWorkspaceAuthority authority{registry, uuids, serveClient(), true, {evidence}};
+    class Clock final : public Contracts::IClock {
+    public:
+        Domain::UtcTimePoint utcNow() const noexcept override { return std::chrono::system_clock::now(); }
+        Domain::MonotonicTimePoint monotonicNow() const noexcept override { return std::chrono::steady_clock::now(); }
+    } clock;
+    class Recovery final : public Contracts::IMcpClientWorkspaceContext {
+    public:
+        explicit Recovery(Domain::ClientWorkspaceSnapshot value) : value_{std::move(value)} {}
+        Domain::Result<Domain::ClientWorkspaceAdoption> adopt(const Domain::ClientId&,
+            const Domain::LegacyContinuityRecord&, const Domain::OperationContext&) noexcept override
+        { return Domain::Result<Domain::ClientWorkspaceAdoption>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable, "The test supplies an existing recovery snapshot.")); }
+        Domain::Result<std::optional<Domain::ClientWorkspaceSnapshot>> snapshot(const Domain::ClientId&,
+            const Domain::OperationContext&) noexcept override
+        { return Domain::Result<std::optional<Domain::ClientWorkspaceSnapshot>>::success(value_); }
+        void clear(const Domain::ClientId&) noexcept override {}
+        void shutdown() noexcept override {}
+    private:
+        Domain::ClientWorkspaceSnapshot value_;
+    } recovery{Domain::ClientWorkspaceSnapshot{serveClient(), projectId(), selected,
+        take(Domain::LegacyHandoffId::parse("native-bound-roots")), 1U, 2U}};
+    Mcp::McpExecutionContextResolver resolver{authority, projectId(), clock, &recovery};
+    const auto context = activeContext();
+    Domain::ToolCallRequest call{Domain::McpRequestMetadata{take(Domain::RequestId::parse("native-bind")),
+        context.correlationId, serveClient(), std::nullopt, "2025-06-18"}, "fs_read", "{}"};
+    const auto before = take(resolver.resolve(call, Domain::ToolEffect::Read, context));
+    require(before.trustedRoots() == std::vector<Domain::PathText>{selected},
+        "Continuity recovery did not restrict the selected project alias before binding.");
+    requireError(authority.bindConfiguredRoot(before, evidence, context), Domain::ErrorCodes::Unauthorized,
+        "The direct issuer permitted a deliberately narrowed capability to widen itself.");
+    call.toolName = "workspace_authority_bind";
+    const auto bindingScope = take(resolver.resolve(call, Domain::ToolEffect::Write, context));
+    const auto bound = take(authority.bindConfiguredRoot(bindingScope, evidence, context));
+    require(bound.trustedRoots().size() == 3U, "Owner-approved root activation failed for the recovered session.");
+    for (const auto name : {"fs_read", "fs_write", "forge_status", "shell_exec", "shell_job_start", "process_launch"}) {
+        call.toolName = name;
+        const auto retained = take(resolver.resolve(call, Domain::ToolEffect::Read, context));
+        require(retained.trustedRoots() == (std::vector<Domain::PathText>{selected, evidence}),
+            "A subsequent recovered MCP call discarded explicit bindings or restored unrelated aliases.");
+        require(static_cast<bool>(authority.authorize(retained, {evidence, std::nullopt,
+            Domain::FileAccess::Execute, false}, context)), "The bound evidence cwd was rejected after recovery.");
+    }
+    call.toolName = "workspace_authority_bind";
+    const auto repeatedScope = take(resolver.resolve(call, Domain::ToolEffect::Write, context));
+    require(static_cast<bool>(authority.bindConfiguredRoot(repeatedScope, evidence, context)),
+        "An idempotent bind failed after the issuer baseline gained the evidence root.");
 }
 
 } // namespace
@@ -752,6 +830,7 @@ int main()
     using namespace ForgeConductor::Tests;
     TestRegistry tests;
     addTest(tests, "dynamic_authority.configured_roots", bindsOnlyExactConfiguredExistingRoots);
+    addTest(tests, "dynamic_authority.recovered_mcp_bindings", recoveredMcpCallsRetainBoundRootsWithoutRestoringOtherAliases);
     addTest(tests, "dynamic_authority.stored_project_unavailable_folder", readsStoredProjectWithUnavailableFolder);
     addTest(tests, "dynamic_authority.registry_refresh", discoversProjectsAndRefreshesAliases);
     addTest(tests, "dynamic_authority.concurrent_first_issue", publishesOneStableIdDuringConcurrentFirstIssuance);

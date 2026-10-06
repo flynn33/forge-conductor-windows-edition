@@ -126,7 +126,7 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "cc0cabadf2b9da2ec14036d91c89015492511959164aba6c36a7d2c272f0324b";
+    "9ee42020e1c1e66fd28b71fcbd445d86eb602e1250c97f32381aa67bc821bd51";
 constexpr std::array<std::string_view, 5U> CluToolNames{
     "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
     "project_policy.read"};

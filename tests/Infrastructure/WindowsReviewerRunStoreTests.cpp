@@ -90,6 +90,7 @@ void preservesLongTaskFullOutputAndTypedFields() {
     record.task = "opening\xE2\x9C\x93"; record.task.resize(64U * 1024U, '\x01');
     record.outputText = "report\xF0\x9F\xA7\xAA"; record.outputText->resize(Domain::MaximumManagedRunOutputBytes, '\x02');
     record.outputTruncated = true;
+    record.providerReceiveTimeoutSeconds = 1800U;
     record.lastError = Domain::makeError("fixture_diagnostic", "A preserved diagnostic\xE2\x9C\x93", true, "actual-evidence-reference");
     const auto digest = parse<Domain::Sha256Digest>(std::string(64U, 'a'));
     record.nativeTaskChecks.push_back({digest, digest, digest, 0, true, false, false, true, 981U, record.updatedAt});
@@ -107,11 +108,20 @@ void preservesLongTaskFullOutputAndTypedFields() {
         && loaded->createdAt == record.createdAt && loaded->updatedAt == record.updatedAt,
         "Reviewer actual usage or timestamps were changed.");
     require(loaded->lastError == record.lastError && loaded->readOnlyTools && loaded->allowTools
+        && loaded->providerReceiveTimeoutSeconds == 1800U
         && loaded->nativeTaskChecks.size() == 1U && loaded->nativeTaskChecks[0].commandDigest == digest
         && loaded->nativeTaskChecks[0].checkedAt == record.nativeTaskChecks[0].checkedAt,
         "Reviewer diagnostics, read-only state or native evidence were changed.");
     require(loaded->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified && loaded->evidenceSeal.has_value(),
         "Completed reviewer receipt has no verified integrity envelope.");
+    auto changedTimeout = record; changedTimeout.providerReceiveTimeoutSeconds = 600U;
+    requireError(store->save(changedTimeout, context()), Domain::ErrorCodes::OwnershipConflict,
+        "An admitted reviewer receive timeout was changed.");
+    auto envelope = Json::parse(read(fixture.path(record.runId)));
+    envelope["record"]["provider_receive_timeout_sec"] = 600U;
+    write(fixture.path(record.runId), envelope.dump());
+    requireError(store->load(record.runId, context()), Domain::ErrorCodes::IntegrityFailure,
+        "An altered reviewer receive timeout passed the integrity seal.");
 }
 void rejectsTamperedWrongKindAndNonReadonly() {
     Fixture fixture; auto store = fixture.store(); auto record = fixture.record();

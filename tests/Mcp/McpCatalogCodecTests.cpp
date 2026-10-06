@@ -186,6 +186,12 @@ void testCanonicalCatalog()
     REQUIRE(descriptor(tools, "shell_exec").tool.description.find("PowerShell") !=
         std::string::npos);
     REQUIRE(descriptor(tools, "shell_exec").tool.requiresShell);
+    const auto reviewerSchema = Json::parse(descriptor(tools, "reviewer_start").inputSchema);
+    REQUIRE(reviewerSchema.at("required") == Json::array({"authorization"}));
+    REQUIRE(reviewerSchema.at("oneOf").size() == 2U);
+    REQUIRE(reviewerSchema.at("properties").at("opening_message").at("maxLength") == 65536);
+    REQUIRE(reviewerSchema.at("properties").at("receive_timeout_sec").at("default") == 600);
+    REQUIRE(reviewerSchema.at("properties").at("receive_timeout_sec").at("maximum") == 3600);
 }
 
 void testSourceSchemasAndWindowsDelta()

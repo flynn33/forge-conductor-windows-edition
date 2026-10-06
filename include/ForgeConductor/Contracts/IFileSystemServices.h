@@ -59,6 +59,11 @@ public:
         const Domain::OperationContext&) noexcept
     { return Domain::Result<std::vector<Domain::PathText>>::success({}); }
 
+    // Only roots explicitly activated for this project, never the entire owner allowlist.
+    [[nodiscard]] virtual Domain::Result<std::vector<Domain::PathText>> boundConfiguredRoots(
+        const Domain::ProjectId&, const Domain::OperationContext&) noexcept
+    { return Domain::Result<std::vector<Domain::PathText>>::success({}); }
+
     // Activates an existing owner-configured root; it never modifies that allowlist.
     [[nodiscard]] virtual Domain::Result<WorkspaceAuthority> bindConfiguredRoot(
         const WorkspaceAuthority&, const Domain::PathText&,

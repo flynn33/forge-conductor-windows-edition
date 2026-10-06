@@ -138,6 +138,7 @@ struct ResponseScript final {
     std::chrono::milliseconds delay{};
     bool blockUntilReleased{};
     bool allowClientDisconnect{};
+    bool delayBodyOnly{};
 };
 
 [[nodiscard]] std::string lowercase(std::string value)
@@ -247,6 +248,15 @@ public:
     {
         std::lock_guard lock{stateMutex_};
         return requests_;
+    }
+
+    [[nodiscard]] bool waitForBodyResponses(const std::size_t count,
+        const std::chrono::milliseconds timeout)
+    {
+        std::unique_lock lock{stateMutex_};
+        return stateChanged_.wait_for(lock, timeout, [&] {
+            return startedBodyResponses_ >= count || !failure_.empty();
+        }) && failure_.empty() && startedBodyResponses_ >= count;
     }
 
     void releaseBlockedResponses() noexcept
@@ -396,7 +406,7 @@ private:
         return true;
     }
 
-    [[nodiscard]] static bool sendResponse(
+    [[nodiscard]] bool sendResponse(
         const SOCKET client,
         const ResponseScript& script) noexcept
     {
@@ -411,6 +421,22 @@ private:
                 headers += name + ": " + value + "\r\n";
             }
             headers += "\r\n";
+            if (script.delayBodyOnly) {
+                const auto prefixBytes = std::min<std::size_t>(8192U, script.body.size());
+                if (!sendAll(client, headers) || !sendAll(client, std::string_view{script.body}.substr(0U, prefixBytes)))
+                    return false;
+                {
+                    std::unique_lock lock{stateMutex_};
+                    ++startedBodyResponses_;
+                    stateChanged_.notify_all();
+                    if (script.blockUntilReleased)
+                        stateChanged_.wait(lock, [&] { return releaseResponses_ || stopping_; });
+                    else
+                        static_cast<void>(stateChanged_.wait_for(lock, script.delay, [&] { return stopping_; }));
+                    if (stopping_) return false;
+                }
+                return sendAll(client, std::string_view{script.body}.substr(prefixBytes));
+            }
             return sendAll(client, headers) && sendAll(client, script.body);
         } catch (...) {
             return false;
@@ -467,12 +493,12 @@ private:
                         requests_.push_back(std::move(request));
                         stateChanged_.notify_all();
                     }
-                    if (script.blockUntilReleased) {
+                    if (script.blockUntilReleased && !script.delayBodyOnly) {
                         std::unique_lock lock{stateMutex_};
                         stateChanged_.wait(lock, [&]() noexcept {
                             return releaseResponses_ || stopping_;
                         });
-                    } else if (script.delay > 0ms) {
+                    } else if (script.delay > 0ms && !script.delayBodyOnly) {
                         std::unique_lock lock{stateMutex_};
                         static_cast<void>(stateChanged_.wait_for(
                             lock, script.delay,
@@ -559,6 +585,7 @@ private:
     std::condition_variable stateChanged_;
     std::vector<HttpRequest> requests_;
     std::size_t handledRequests_{};
+    std::size_t startedBodyResponses_{};
     std::string failure_;
     bool releaseResponses_{};
     bool stopping_{};
@@ -1073,7 +1100,8 @@ template <typename ResultType, typename Start, typename Interrupt>
 [[nodiscard]] ResultType runInterruptedRequest(
     LoopbackHttpServer& server,
     Start start,
-    Interrupt interrupt)
+    Interrupt interrupt,
+    const std::size_t expectedRequests = 1U)
 {
     std::mutex mutex;
     std::condition_variable changed;
@@ -1086,7 +1114,7 @@ template <typename ResultType, typename Start, typename Interrupt>
         }
         changed.notify_all();
     }};
-    const bool requestObserved = server.waitForRequests(1U, 5s);
+    const bool requestObserved = server.waitForRequests(expectedRequests, 5s);
     if (!requestObserved) {
         interrupt();
         server.releaseBlockedResponses();
@@ -1234,6 +1262,153 @@ void providerSettingsApplyToNewRunsAndPreserveExistingRuns()
     REQUIRE(Json::parse(first.requests()[2].body).at("model") == "first-model");
     REQUIRE(Json::parse(second.requests()[1].body).at("model") == "second-model");
     first.requireHealthy(); second.requireHealthy();
+}
+
+void managedReceiveTimeoutOverridesConfiguredWaitAndHonorsCancellation()
+{
+    const auto delayedReply = [] {
+        ResponseScript script{"POST", "/v1/responses", 200U,
+            R"({"id":"slow-review-response","status":"completed","output_text":"Reviewed","usage":{"input_tokens":5,"output_tokens":2}})"};
+        script.delay = 2500ms;
+        script.allowClientDisconnect = true;
+        return script;
+    };
+    const auto inventory = ResponseScript{"GET", "/v1/models", 200U,
+        R"({"data":[{"id":"review-model"}]})"};
+    const auto makeRequest = [] {
+        return Domain::ManagedProviderTurnRequest{parse<Domain::ProjectId>(ProjectIdText),
+            parse<Domain::SessionId>(SuccessorSessionIdText), 1U, "Review supplied evidence", std::nullopt, {}, {}};
+    };
+    LoopbackHttpServer server{{inventory, delayedReply(), delayedReply(), delayedReply()}};
+    auto config = responsesConfiguration(server.port());
+    config.receiveTimeout = 1s;
+    InfrastructureWindows::LMStudioResponsesTransport transport{config};
+    auto request = makeRequest();
+    const auto timeoutBegan = std::chrono::steady_clock::now();
+    const auto timedOut = transport.complete(request,
+        operationContext("34343434-3434-4434-8434-343434343431", 5s));
+    REQUIRE(!timedOut);
+    REQUIRE(timedOut.error().code == Domain::ErrorCodes::DeadlineExceeded);
+    REQUIRE(std::chrono::steady_clock::now() - timeoutBegan < 2s);
+    REQUIRE(timedOut.error().message.find("receive_timeout_ms=1000") != std::string::npos);
+    request.providerReceiveTimeoutSeconds = 6U;
+    const auto completed = take(transport.complete(request,
+        operationContext("34343434-3434-4434-8434-343434343432", 10s)));
+    REQUIRE(completed.responseId.value() == "slow-review-response");
+    REQUIRE(completed.inputTokens == 5U);
+    const auto callerBegan = std::chrono::steady_clock::now();
+    const auto callerExpired = transport.complete(request,
+        operationContext("34343434-3434-4434-8434-343434343433", 50ms));
+    REQUIRE(!callerExpired);
+    REQUIRE(callerExpired.error().code == Domain::ErrorCodes::DeadlineExceeded);
+    REQUIRE(std::chrono::steady_clock::now() - callerBegan < 1s);
+    request.providerReceiveTimeoutSeconds = 0U;
+    requireError(transport.complete(request,
+        operationContext("34343434-3434-4434-8434-343434343434", 5s)), Domain::ErrorCodes::InvalidRequest);
+    request.providerReceiveTimeoutSeconds = Domain::MaximumManagedProviderReceiveTimeoutSeconds + 1U;
+    requireError(transport.complete(request,
+        operationContext("34343434-3434-4434-8434-343434343435", 5s)), Domain::ErrorCodes::InvalidRequest);
+    REQUIRE(server.waitUntilHandled(4U, 5s));
+    server.requireHealthy();
+
+    auto blocked = delayedReply();
+    blocked.delay = 0ms;
+    blocked.blockUntilReleased = true;
+    LoopbackHttpServer cancellationServer{{inventory, blocked}};
+    InfrastructureWindows::LMStudioResponsesTransport cancellationTransport{
+        responsesConfiguration(cancellationServer.port())};
+    request.providerReceiveTimeoutSeconds = Domain::MaximumManagedProviderReceiveTimeoutSeconds;
+    std::stop_source stop;
+    const auto cancellable = operationContext("34343434-3434-4434-8434-343434343437", 5s, stop.get_token());
+    const auto cancelled = runInterruptedRequest<Domain::Result<Domain::ManagedProviderTurnResult>>(
+        cancellationServer,
+        [&] { return cancellationTransport.complete(request, cancellable); },
+        [&] { stop.request_stop(); }, 2U);
+    REQUIRE(!cancelled);
+    REQUIRE(cancelled.error().code == Domain::ErrorCodes::Cancelled);
+    cancellationServer.requireHealthy();
+
+    LoopbackHttpServer shutdownServer{{inventory, blocked}};
+    InfrastructureWindows::LMStudioResponsesTransport shutdownTransport{
+        responsesConfiguration(shutdownServer.port())};
+    const auto closed = runInterruptedRequest<Domain::Result<Domain::ManagedProviderTurnResult>>(
+        shutdownServer,
+        [&] { return shutdownTransport.complete(request,
+            operationContext("34343434-3434-4434-8434-343434343438", 5s)); },
+        [&] { shutdownTransport.shutdown(); }, 2U);
+    REQUIRE(!closed);
+    REQUIRE(closed.error().code == Domain::ErrorCodes::TransportClosed);
+    requireError(shutdownTransport.complete(request,
+        operationContext("34343434-3434-4434-8434-343434343439", 5s)), Domain::ErrorCodes::TransportClosed);
+    std::stop_source alreadyCancelled;
+    alreadyCancelled.request_stop();
+    requireError(shutdownTransport.complete(request,
+        operationContext("34343434-3434-4434-8434-34343434343d", 5s, alreadyCancelled.get_token())),
+        Domain::ErrorCodes::Cancelled);
+    shutdownServer.requireHealthy();
+
+    auto partial = delayedReply();
+    partial.body = Json{{"id", "partial-body-review"}, {"status", "completed"},
+        {"output_text", std::string(20000U, 'r')},
+        {"usage", {{"input_tokens", 5}, {"output_tokens", 2}}}}.dump();
+    partial.delayBodyOnly = true;
+    LoopbackHttpServer bodyTimeoutServer{{inventory, partial}};
+    auto bodyConfiguration = responsesConfiguration(bodyTimeoutServer.port());
+    bodyConfiguration.receiveTimeout = 1s;
+    InfrastructureWindows::LMStudioResponsesTransport bodyTransport{bodyConfiguration};
+    request.providerReceiveTimeoutSeconds = std::nullopt;
+    const auto bodyBegan = std::chrono::steady_clock::now();
+    const auto bodyTimedOut = bodyTransport.complete(request,
+        operationContext("34343434-3434-4434-8434-34343434343a", 5s));
+    REQUIRE(!bodyTimedOut);
+    REQUIRE(bodyTimedOut.error().code == Domain::ErrorCodes::DeadlineExceeded);
+    REQUIRE(std::chrono::steady_clock::now() - bodyBegan < 2s);
+    REQUIRE(bodyTimeoutServer.waitForBodyResponses(1U, 2s));
+    bodyTimeoutServer.requireHealthy();
+
+    // Exercise direct operation cancellation after headers and a full first
+    // read buffer arrived. Repeated destruction must drain the closing callback
+    // before the pending read buffer or callback context can be released.
+    partial.delay = 0ms;
+    partial.blockUntilReleased = true;
+    for (unsigned iteration{}; iteration < 8U; ++iteration) {
+        LoopbackHttpServer bodyCancellationServer{{inventory, partial}};
+        InfrastructureWindows::LMStudioResponsesTransport bodyCancellationTransport{
+            responsesConfiguration(bodyCancellationServer.port())};
+        const auto bodyContext = operationContext("34343434-3434-4434-8434-34343434343b", 5s);
+        request.providerReceiveTimeoutSeconds = Domain::MaximumManagedProviderReceiveTimeoutSeconds;
+        const auto bodyCancelled = runInterruptedRequest<Domain::Result<Domain::ManagedProviderTurnResult>>(
+            bodyCancellationServer,
+            [&] { return bodyCancellationTransport.complete(request, bodyContext); },
+            [&] {
+                REQUIRE(bodyCancellationServer.waitForBodyResponses(1U, 2s));
+                bodyCancellationTransport.cancel(bodyContext.operationId, std::nullopt);
+            }, 2U);
+        REQUIRE(!bodyCancelled);
+        REQUIRE(bodyCancelled.error().code == Domain::ErrorCodes::Cancelled);
+        // A remembered cancellation also prevents publishing a new request.
+        const auto repeated = bodyCancellationTransport.complete(request, bodyContext);
+        REQUIRE(!repeated);
+        REQUIRE(repeated.error().code == Domain::ErrorCodes::Cancelled);
+        REQUIRE(bodyCancellationServer.requests().size() == 2U);
+        bodyCancellationServer.requireHealthy();
+    }
+
+    const auto remoteReply = ResponseScript{"POST", "/v1/responses", 200U,
+        R"({"id":"remote-cancel-review","status":"completed","output_text":"Reviewed","usage":{"input_tokens":5,"output_tokens":2}})"};
+    LoopbackHttpServer remoteCancellationServer{{inventory, remoteReply,
+        {"POST", "/v1/responses/remote-cancel-review/cancel", 200U, R"({"status":"cancelled"})"}}};
+    InfrastructureWindows::LMStudioResponsesTransport remoteCancellationTransport{
+        responsesConfiguration(remoteCancellationServer.port())};
+    const auto remoteContext = operationContext("34343434-3434-4434-8434-34343434343c", 5s);
+    const auto remoteCompleted = take(remoteCancellationTransport.complete(request, remoteContext));
+    remoteCancellationTransport.cancel(remoteContext.operationId, remoteCompleted.responseId);
+    REQUIRE(remoteCancellationServer.waitUntilHandled(3U, 3s));
+    const auto remoteRequests = remoteCancellationServer.requests();
+    REQUIRE(remoteRequests.size() == 3U);
+    REQUIRE(remoteRequests.back().path == "/v1/responses/remote-cancel-review/cancel");
+    REQUIRE(Json::parse(remoteRequests.back().body).at("response_id") == "remote-cancel-review");
+    remoteCancellationServer.requireHealthy();
 }
 
 void automaticModelPreparationUsesVerifiedInventory()
@@ -1614,6 +1789,8 @@ int main()
         std::cout << "PASS lmstudio_responses.fresh_root_tool_ack\n";
         lmStudioResponsesCompletesAnOrdinaryManagedTurn();
         std::cout << "PASS lmstudio_responses.ordinary_managed_turn\n";
+        managedReceiveTimeoutOverridesConfiguredWaitAndHonorsCancellation();
+        std::cout << "PASS lmstudio_responses.managed_receive_timeout\n";
         lmStudioResponsesCorrelatesManagedFunctionOutput();
         std::cout << "PASS lmstudio_responses.managed_function_output\n";
         malformedAndOversizedResponsesFailClosed();
@@ -1624,7 +1801,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=16 failed=0 assertions="
+        std::cout << "SUMMARY passed=17 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

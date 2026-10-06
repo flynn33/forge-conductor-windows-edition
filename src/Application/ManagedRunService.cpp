@@ -48,6 +48,13 @@ namespace {
             Domain::ErrorCodes::InvalidRequest,
             "The managed run task is empty, invalid, or exceeds its bound."));
     }
+    if (request.providerReceiveTimeoutSeconds &&
+        (*request.providerReceiveTimeoutSeconds == 0U ||
+         *request.providerReceiveTimeoutSeconds > Domain::MaximumManagedProviderReceiveTimeoutSeconds)) {
+        return Domain::Result<void>::failure(failure(
+            Domain::ErrorCodes::InvalidRequest,
+            "The provider receive timeout must be within 1 through 3600 seconds."));
+    }
     return Domain::Result<void>::success();
 }
 
@@ -140,7 +147,8 @@ public:
                     persisted.value()->authorityGeneration ==
                         request.authorityGeneration &&
                     persisted.value()->allowTools == request.allowTools &&
-                    persisted.value()->readOnlyTools == request.readOnlyTools) {
+                    persisted.value()->readOnlyTools == request.readOnlyTools &&
+                    persisted.value()->providerReceiveTimeoutSeconds == request.providerReceiveTimeoutSeconds) {
                     return Domain::Result<Domain::ManagedRunSnapshot>::success(
                         snapshot(*persisted.value(), false));
                 }
@@ -169,6 +177,7 @@ public:
                 now,
                 request.allowTools};
             record.readOnlyTools = request.readOnlyTools;
+            record.providerReceiveTimeoutSeconds = request.providerReceiveTimeoutSeconds;
             if (auto saved = store_.save(record, context); !saved) {
                 return Domain::Result<Domain::ManagedRunSnapshot>::failure(
                     std::move(saved).error());
@@ -429,7 +438,8 @@ private:
             left.authorityGeneration == right.authorityGeneration &&
             left.task == right.task &&
             left.allowTools == right.allowTools &&
-            left.readOnlyTools == right.readOnlyTools;
+            left.readOnlyTools == right.readOnlyTools &&
+            left.providerReceiveTimeoutSeconds == right.providerReceiveTimeoutSeconds;
     }
 
     void publishActive(const Domain::ManagedRunRecord& record) noexcept
@@ -734,7 +744,7 @@ private:
                 std::move(input),
                 record.providerResponseId,
                 descriptors,
-                std::move(toolOutputs)};
+                std::move(toolOutputs), request.providerReceiveTimeoutSeconds};
             auto outcome = transport_.complete(turn, providerContext);
             record.updatedAt = clock_.utcNow();
             if (!outcome) {

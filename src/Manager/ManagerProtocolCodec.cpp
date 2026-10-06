@@ -1823,6 +1823,7 @@ void validateSettingsUpdateOutcome(
     value["authority_generation"] = record.authorityGeneration;
     value["allow_tools"] = record.allowTools;
     value["read_only_tools"] = record.readOnlyTools;
+    if (record.providerReceiveTimeoutSeconds) value["provider_receive_timeout_sec"] = *record.providerReceiveTimeoutSeconds;
     value["output_truncated"] = record.outputTruncated;
     value["cancellation_requested"] = snapshot.cancellationRequested;
     value["client_id"] = record.clientId.value();
@@ -1865,6 +1866,16 @@ void validateSettingsUpdateOutcome(
 [[nodiscard]] Domain::ManagedRunSnapshot parseManagedRunSnapshot(
     const Json& value)
 {
+    if (value.contains("provider_receive_timeout_sec")) {
+        const auto timeout = uint32Member(value, "provider_receive_timeout_sec");
+        if (timeout == 0U || timeout > Domain::MaximumManagedProviderReceiveTimeoutSeconds)
+            reject(Domain::ErrorCodes::InvalidRequest, "The provider receive timeout is invalid.");
+        auto compatible = value;
+        compatible.erase("provider_receive_timeout_sec");
+        auto result = parseManagedRunSnapshot(compatible);
+        result.record.providerReceiveTimeoutSeconds = timeout;
+        return result;
+    }
     if (value.contains("output_truncated")) {
         const bool truncated = booleanMember(value, "output_truncated");
         auto compatible = value;

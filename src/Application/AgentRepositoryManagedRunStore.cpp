@@ -83,6 +83,7 @@ namespace {
         {"pending_count", record.pendingFunctionCalls.size()},
         {"state", static_cast<std::uint32_t>(record.state)},
         {"version", 1U}};
+    if (record.providerReceiveTimeoutSeconds) value["provider_receive_timeout_sec"] = *record.providerReceiveTimeoutSeconds;
     if (record.providerResponseId) {
         value["provider_response_id"] = record.providerResponseId->value();
     } else {
@@ -165,6 +166,12 @@ void applySummary(
             value.value("authority_generation", 0ULL);
         record.allowTools = value.value("allow_tools", true);
         record.readOnlyTools = value.value("read_only_tools", false);
+        if (value.contains("provider_receive_timeout_sec")) {
+            const auto timeout = value.at("provider_receive_timeout_sec").get<std::uint64_t>();
+            if (timeout == 0U || timeout > Domain::MaximumManagedProviderReceiveTimeoutSeconds)
+                throw std::runtime_error{"Persisted provider receive timeout is invalid."};
+            record.providerReceiveTimeoutSeconds = static_cast<std::uint32_t>(timeout);
+        }
         record.outputTruncated = value.value("output_truncated", false);
         record.inputTokens = value.value("input_tokens", 0ULL);
         record.outputTokens = value.value("output_tokens", 0ULL);

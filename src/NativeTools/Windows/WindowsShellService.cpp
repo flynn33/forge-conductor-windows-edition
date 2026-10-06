@@ -35,7 +35,7 @@ constexpr std::string_view StdinCommandLoader =
     "[Console]::InputEncoding=[System.Text.UTF8Encoding]::new($false);"
     "& ([scriptblock]::Create([Console]::In.ReadToEnd()))";
 constexpr std::string_view CommandExitStatus =
-    "\nif (!$?) {if ($LASTEXITCODE) {exit $LASTEXITCODE}; exit 1}";
+    "\nif (!$?) {exit 1}";
 
 constexpr std::size_t MaximumShellPathBytes = 4'000U;
 constexpr wchar_t MachineEnvironmentKey[] =
@@ -716,8 +716,7 @@ Domain::Result<Domain::ProcessResult> WindowsShellService::executeInternal(
             normalized.arguments = {"-NoLogo", "-NoProfile", "-NonInteractive",
                                     "-Command", std::move(loader)};
             normalized.stdinUtf8 = request.arguments.front();
-            // Test the final user statement inside its script block; testing the
-            // invocation outside it loses native/nonterminating failure status.
+            // Match -Command's final statement status inside the script block.
             normalized.stdinUtf8.append(CommandExitStatus);
         }
         normalized.outputObserver = request.outputObserver;

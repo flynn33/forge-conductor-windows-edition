@@ -410,4 +410,21 @@ WindowsProjectWorkspaceAuthority::bindConfiguredRoot(
     }
 }
 
+Domain::Result<std::vector<Domain::PathText>>
+WindowsProjectWorkspaceAuthority::boundConfiguredRoots(
+    const Domain::ProjectId& projectId,
+    const Domain::OperationContext& context) noexcept
+{
+    try {
+        auto descriptor = currentDescriptor(projectId, context);
+        if (!descriptor) return Domain::Result<std::vector<Domain::PathText>>::failure(descriptor.error());
+        std::lock_guard lock{authorityIdsMutex_};
+        const auto roots = boundRoots_.find(projectId);
+        return Domain::Result<std::vector<Domain::PathText>>::success(
+            roots == boundRoots_.end() ? std::vector<Domain::PathText>{} : roots->second);
+    } catch (...) {
+        return internalFailure<std::vector<Domain::PathText>>("Bound workspace roots could not be read.");
+    }
+}
+
 } // namespace ForgeConductor::Infrastructure::Windows

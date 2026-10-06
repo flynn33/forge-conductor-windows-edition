@@ -581,11 +581,12 @@ void testManagedRunResultRoundTrips()
     auto expected = sampleManagedRun();
     expected.record.readOnlyTools = true;
     expected.record.outputTruncated = true;
+    expected.record.providerReceiveTimeoutSeconds = 1800U;
     const auto frame = take(Manager::ManagerProtocolCodec::encodeResponse(
         response(Manager::ManagerResult{expected})));
     const auto root = Json::parse(payloadText(frame));
     REQUIRE(root.at("result").at("type") == "managed_run");
-    REQUIRE(root.at("result").at("value").size() == 21U);
+    REQUIRE(root.at("result").at("value").size() == 22U);
     REQUIRE(root.at("result").at("value").at("allow_tools") == false);
     REQUIRE(root.at("result").at("value").at("read_only_tools").is_boolean());
     REQUIRE(root.at("result").at("value").at("read_only_tools") == true);
@@ -605,10 +606,20 @@ void testManagedRunResultRoundTrips()
     REQUIRE(!actual.record.allowTools);
     REQUIRE(actual.record.readOnlyTools);
     REQUIRE(actual.record.outputTruncated);
+    REQUIRE(actual.record.providerReceiveTimeoutSeconds == 1800U);
     REQUIRE(actual.managerOwned);
     REQUIRE(!actual.cancellationRequested);
     REQUIRE(!actual.pauseRequested);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == frame);
+    auto legacyTimeout = root;
+    legacyTimeout.at("result").at("value").erase("provider_receive_timeout_sec");
+    const auto oldTimeout = take(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(legacyTimeout)));
+    REQUIRE(!std::get<Domain::ManagedRunSnapshot>(std::get<Manager::ManagerResult>(oldTimeout.body)).record.providerReceiveTimeoutSeconds);
+    for (const auto& invalid : {Json(0), Json(3601), Json("600"), Json(nullptr)}) {
+        auto malformed = root;
+        malformed.at("result").at("value")["provider_receive_timeout_sec"] = invalid;
+        REQUIRE(!Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(malformed)));
+    }
 
     // Both fields are optional for receipts produced by older Managers. Each
     // must default independently without weakening the strict boolean contract.

@@ -753,7 +753,7 @@ void shellUsesFixedPowerShellAndClampedBudgets()
                 "[Console]::InputEncoding=[System.Text.UTF8Encoding]::new($false);"
                 "& ([scriptblock]::Create([Console]::In.ReadToEnd()))"} &&
             normalized.stdinUtf8 == "Write-Output 'ok'\n"
-                "if (!$?) {if ($LASTEXITCODE) {exit $LASTEXITCODE}; exit 1}",
+                "if (!$?) {exit 1}",
         "Shell did not own the exact PowerShell argv");
     const auto environmentValue = [](
                                       const std::vector<Domain::EnvironmentVariable>& environment,

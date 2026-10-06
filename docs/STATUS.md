@@ -1,6 +1,8 @@
 # Product status
 
-Version 1.3.12 expands Primary/Fallback to 80 tools for owned long-running processes, live output and reconnect adoption, host/provider/GitHub inspection, authorized external evidence roots, binary evidence capture, pinned verification dependencies, and separate read-only reviewer runs. Release scope and current verification are in [1.3.12 release notes](releases/1.3.12.md) and the [workflow investigation](validation/LM-STUDIO-SHELL-JOBS-1.3.12.md). Earlier records retain their original artifact provenance and limits.
+Version 1.3.13 retains Primary/Fallback's 80 tools and ten specialist playbooks plus CLU's five tools. It repairs reviewer deadlines/opening inputs, recovery of activated evidence roots, process cwd authority, nested file creation, and 64 KiB PowerShell script delivery. Release scope and current verification are in [1.3.13 release notes](releases/1.3.13.md) and the [local-model repair checks](validation/LM-STUDIO-ISSUE-REPAIRS-1.3.13.md). Earlier records below retain their original artifact provenance and limits.
+
+## Historical 1.3.12 qualification
 
 <!-- qualification-1.3.12 -->
 
@@ -22,8 +24,8 @@ The installed 1.3.11 Release suite passed 153/153; signed installation, all thre
 | Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
 | Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |
 | MCP | The same Primary, Fallback, and CLU integrations; exact 180-second deadline; no fourth plugin or new Forge credential. |
-| Shell/process jobs | Primary/Fallback lifecycle, live named logs, bounded waits and verified adoption; maximum 3,600 seconds, two active jobs, sixteen results in memory and thirty-two durable jobs per project. Manager-backed work survives MCP reconnect; owner shutdown terminates active work. |
-| Review/evidence | Separate read-only reviewer contexts and full SHA-256-verified receipts; sixteen-record admission cap and 256 KiB report cap. Exact verification pins, authorized external roots and a durable capture chain preserve observed evidence. |
+| Shell/process jobs | Primary/Fallback lifecycle, live named logs, bounded waits and verified adoption; 65,536-byte UTF-8 PowerShell scripts, maximum job lifetime 3,600 seconds, two active jobs, sixteen results in memory and thirty-two durable jobs per project. All cwd routes validate locally before Manager dispatch. Manager-backed work survives MCP reconnect; owner shutdown terminates active work. |
+| Review/evidence | Separate read-only reviewer contexts, optional supplied-text mode, file/inline opening sources and 1–3,600-second per-turn receive waits; full SHA-256-verified receipts, sixteen-record admission cap and 256 KiB report cap. Exact verification pins, activated external roots retained through recovery, and a durable capture chain preserve observed evidence. |
 | Context/readback | Latest-provider-generation telemetry retains sample provenance/unknowns; status distinguishes current packet retrieval through `context_get` from packet storage and job memory attachment. |
 | Agents | Ten specialist playbooks and baseline agent-session tools remain callable. |
 | Persistence/package | Existing per-user project/memory/policy stores and stable ForgeConductor.Windows MSIX identity. |

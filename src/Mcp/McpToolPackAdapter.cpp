@@ -2670,8 +2670,8 @@ private:
                 if (managerBound) error.message =
                     "The persistent Manager bound owner-configured root " + Json(root.value().value()).dump() +
                     " (manager_bound=true; local_bound=false), but local MCP authority binding failed: " +
-                    error.message + ". Reconnect the MCP connector and reread the saved root allowlist "
-                    "before retrying local binding. Manager binding remains active.";
+                    error.message + ". Inspect workspace_authority.configured_additional_roots and "
+                    "the local host's root-binding capability before retrying. Manager binding remains active.";
                 return Domain::Result<Json>::failure(std::move(error));
             }
             Json roots = Json::array();
@@ -2702,7 +2702,22 @@ private:
         if (name.starts_with("process_") || name.starts_with("reviewer_") ||
             name.starts_with("verification_env_") || name.starts_with("shell_job_")) {
             if (dependencies_.durableToolBroker) {
-                auto brokered = dependencies_.durableToolBroker(name, arguments.dump(), authority.projectId(), context);
+                auto brokerArguments = arguments;
+                if (name == "process_launch" || name == "shell_job_start") {
+                    auto cwd = authorizePath(dependencies_.workspaceAuthority, authority,
+                        arguments.value("cwd", defaultRoot(authority)), Domain::FileAccess::Execute,
+                        false, context, &observation, ContinuityPathRole::WorkingDirectory);
+                    if (!cwd) return propagate<Json>(std::move(cwd));
+                    brokerArguments["cwd"] = cwd.value().canonicalPath().value();
+                }
+                if (name == "reviewer_start" && arguments.contains("opening_message_path")) {
+                    auto openingPath = authorizePath(dependencies_.workspaceAuthority, authority,
+                        arguments.at("opening_message_path").get<std::string>(), Domain::FileAccess::Read,
+                        false, context, &observation, ContinuityPathRole::Path);
+                    if (!openingPath) return propagate<Json>(std::move(openingPath));
+                    brokerArguments["opening_message_path"] = openingPath.value().canonicalPath().value();
+                }
+                auto brokered = dependencies_.durableToolBroker(name, brokerArguments.dump(), authority.projectId(), context);
                 if (!brokered) return propagate<Json>(std::move(brokered));
                 auto result = Json::parse(brokered.value());
                 result["broker"] = "persistent_manager";
@@ -3034,6 +3049,7 @@ private:
                 {"agent_count", agents.size()},
                 {"tool_count", tools.size()},
                 {"shell_execution", Json{{"enabled", authority.shellEnabled()},
+                    {"maximum_command_bytes", 65'536U},
                     {"synchronous_timeout_sec_max", 120},
                     {"synchronous_default_timeout_sec", dependencies_.shellDefaultTimeout.count()},
                     {"detached_processes_survive", false},
@@ -3057,6 +3073,12 @@ private:
                 {"visible_chat_continuity", visibleChat},
                 {"reviewer_execution", Json{{"manager_required", true},
                     {"read_only_tools_enforced", true}, {"executor_history_included", false},
+                    {"receive_timeout_sec_default", Domain::DefaultReviewerReceiveTimeoutSeconds},
+                    {"receive_timeout_sec_max", Domain::MaximumManagedProviderReceiveTimeoutSeconds},
+                    {"maximum_opening_message_bytes", Domain::MaximumReviewerOpeningMessageBytes},
+                    {"opening_message_sources", Json::array({"authorized_file", "inline"})},
+                    {"modes", Json::array({"tools", "text_only"})},
+                    {"deadline_exceeded_disposition", "infrastructure_blocked"},
                     {"maximum_persisted_reviews", 16}, {"maximum_output_bytes", Domain::MaximumManagedRunOutputBytes},
                     {"retention_policy", "preserve_receipts_refuse_when_full_owner_archives_explicitly"}}},
                 {"context_telemetry", visibleChat.contains("context_telemetry")
@@ -3064,6 +3086,9 @@ private:
                         {"reason", "No completed provider generation observation is available."}}},
                 {"workspace_authority", Json{{"configured_additional_roots", std::move(configuredRoots)},
                     {"active_roots", std::move(activeRoots)}, {"bind_tool", "workspace_authority_bind"},
+                    {"cwd_policy", "shell_exec_shell_job_start_and_process_launch_require_locally_active_execute_authority"},
+                    {"recovered_workspace_policy", "selected_project_alias_plus_explicitly_bound_owner_configured_roots"},
+                    {"configured_roots_active_by_default", false},
                     {"file_write_limit_bytes", 2U * 1024U * 1024U}}},
                 {"workspace", std::move(projectContext.value().at("workspace"))},
                 {"instruction_packages",
@@ -4124,24 +4149,43 @@ private:
             "Independent review requires the authenticated persistent Manager; start Forge Manager and reconnect.");
         auto result = [&]() -> Domain::Result<Domain::ManagedRunSnapshot> {
             if (name == "reviewer_start") {
-                auto openingPath = authorizePath(dependencies_.workspaceAuthority, authority,
-                    arguments.at("opening_message_path").get<std::string>(), Domain::FileAccess::Read,
-                    false, context, &observation, ContinuityPathRole::Path);
-                if (!openingPath) return propagate<Domain::ManagedRunSnapshot>(std::move(openingPath));
-                auto opening = dependencies_.fileSystem.readFile(openingPath.value(), 64U * 1024U, context);
-                if (!opening) return propagate<Domain::ManagedRunSnapshot>(std::move(opening));
-                const std::string text{reinterpret_cast<const char*>(opening.value().data()), opening.value().size()};
-                if (text.empty() || text.size() > 64U * 1024U)
+                if (arguments.contains("opening_message_path") == arguments.contains("opening_message"))
+                    return failure<Domain::ManagedRunSnapshot>(Domain::ErrorCodes::InvalidRequest,
+                        "Provide exactly one of opening_message_path or opening_message.");
+                std::string text;
+                std::string source{"inline tool argument"};
+                if (arguments.contains("opening_message_path")) {
+                    auto openingPath = authorizePath(dependencies_.workspaceAuthority, authority,
+                        arguments.at("opening_message_path").get<std::string>(), Domain::FileAccess::Read,
+                        false, context, &observation, ContinuityPathRole::Path);
+                    if (!openingPath) return propagate<Domain::ManagedRunSnapshot>(std::move(openingPath));
+                    auto opening = dependencies_.fileSystem.readFile(openingPath.value(), Domain::MaximumReviewerOpeningMessageBytes, context);
+                    if (!opening) return propagate<Domain::ManagedRunSnapshot>(std::move(opening));
+                    text.assign(reinterpret_cast<const char*>(opening.value().data()), opening.value().size());
+                    source = openingPath.value().canonicalPath().value();
+                } else {
+                    text = arguments.at("opening_message").get<std::string>();
+                }
+                if (text.empty() || text.size() > Domain::MaximumReviewerOpeningMessageBytes)
                     return failure<Domain::ManagedRunSnapshot>(Domain::ErrorCodes::LimitExceeded,
                         "Reviewer opening message must be nonempty and at most 64 KiB.");
+                if (text.find('\0') != std::string::npos || !Domain::isValidUtf8(text))
+                    return failure<Domain::ManagedRunSnapshot>(Domain::ErrorCodes::InvalidRequest,
+                        "Reviewer opening message must contain valid UTF-8 without NUL bytes.");
+                const auto mode = arguments.value("mode", std::string{"tools"});
+                if (mode != "tools" && mode != "text_only")
+                    return failure<Domain::ManagedRunSnapshot>(Domain::ErrorCodes::InvalidRequest,
+                        "Reviewer mode must be tools or text_only.");
                 auto uuid = dependencies_.uuidGenerator.next();
                 if (!uuid) return propagate<Domain::ManagedRunSnapshot>(std::move(uuid));
                 Domain::ManagedRunStartRequest request{Domain::SessionId{uuid.value()}, authority.projectId(),
                     authority.callerId(), context.operationId, context.correlationId, authority.generation(),
                     "Independent read-only reviewer. Use only read tools; report findings and unresolved gates honestly. "
                     "You have no executor conversation history. Authorization reference: " + arguments.at("authorization").get<std::string>() +
-                    "\nOpening message source: " + openingPath.value().canonicalPath().value() + "\n" + text +
-                    "\nReview task: " + arguments.value("task", std::string{}), true, false, true};
+                    (mode == "text_only" ? "\nText-only review: no tools are available. Review only supplied text; identify any missing external evidence as unverified." : "") +
+                    "\nOpening message source: " + source + "\n" + text +
+                    "\nReview task: " + arguments.value("task", std::string{}), mode == "tools", false, true,
+                    arguments.value("receive_timeout_sec", Domain::DefaultReviewerReceiveTimeoutSeconds)};
                 return service->start(request, context);
             }
             auto id = Domain::SessionId::parse(arguments.at("run_id").get<std::string>());
@@ -4169,6 +4213,7 @@ private:
             const auto& message = record.lastError->message;
             const auto messageEnd = boundedUtf8End(message, 0U, 4U * 1024U);
             error = Json{{"code", record.lastError->code}, {"message", message.substr(0U, messageEnd)},
+                {"retryable", record.lastError->retryable},
                 {"message_total_bytes", message.size()}, {"message_truncated", messageEnd < message.size()}};
         }
         const auto state = record.state == Domain::ManagedRunState::Completed ? "completed"
@@ -4176,6 +4221,10 @@ private:
             : record.state == Domain::ManagedRunState::Cancelled ? "cancelled"
             : record.state == Domain::ManagedRunState::Paused ? "paused"
             : record.state == Domain::ManagedRunState::Cancelling ? "cancelling" : "running";
+        const bool infrastructureBlocked = record.state == Domain::ManagedRunState::Failed && record.lastError &&
+            (record.lastError->code == Domain::ErrorCodes::DeadlineExceeded ||
+             record.lastError->code == Domain::ErrorCodes::TransportClosed ||
+             record.lastError->code == Domain::ErrorCodes::HostCapabilityUnavailable);
         return Domain::Result<Json>::success(Json{{"ok", true}, {"run_id", record.runId.value()},
             {"project_id", record.projectId.value()}, {"state", state}, {"read_only", record.readOnlyTools},
             {"fresh_provider_context", true}, {"executor_history_included", false}, {"manager_owned", true},
@@ -4183,6 +4232,10 @@ private:
             {"authorization_reference_is_human_proof", false},
             {"provider_response_id", record.providerResponseId ? Json(record.providerResponseId->value()) : Json(nullptr)},
             {"input_tokens", record.inputTokens}, {"output_tokens", record.outputTokens},
+            {"receive_timeout_sec", record.providerReceiveTimeoutSeconds ? Json(*record.providerReceiveTimeoutSeconds) : Json(nullptr)},
+            {"mode", record.allowTools ? "tools" : "text_only"},
+            {"infrastructure_blocked", infrastructureBlocked},
+            {"failure_category", infrastructureBlocked ? "infrastructure" : record.lastError ? "run_error" : "none"},
             {"output", record.outputText ? Json(output.substr(offset, end - offset)) : Json(nullptr)},
             {"output_offset", offset}, {"output_bytes_returned", end - offset},
             {"output_total_bytes", output.size()}, {"output_has_more", hasMore},

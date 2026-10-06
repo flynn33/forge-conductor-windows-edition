@@ -513,9 +513,11 @@ class StaticReviewerRuns final : public Contracts::IManagedRunService {
 public:
     explicit StaticReviewerRuns(Domain::ManagedRunRecord initial) : record{std::move(initial)} {}
     Domain::ManagedRunRecord record;
+    std::optional<Domain::ManagedRunStartRequest> lastStart;
     [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> start(
-        const Domain::ManagedRunStartRequest&, const Domain::OperationContext&) noexcept override
-    { return snapshot(); }
+        const Domain::ManagedRunStartRequest& request, const Domain::OperationContext&) noexcept override
+    { lastStart = request; record.allowTools = request.allowTools;
+      record.providerReceiveTimeoutSeconds = request.providerReceiveTimeoutSeconds; return snapshot(); }
     [[nodiscard]] Domain::Result<Domain::ManagedRunSnapshot> status(
         const Domain::SessionId&, const Domain::OperationContext&) noexcept override
     { return snapshot(); }
@@ -767,7 +769,8 @@ void testRuntimeDispatchAndSchemaPolicy()
     Fakes::FakeClock clock{
         Domain::UtcTimePoint{}, Domain::MonotonicTimePoint{}};
     Fakes::SequenceUuidGenerator uuidGenerator{
-        std::vector<Domain::Uuid>{}};
+        std::vector<Domain::Uuid>{parse<Domain::Uuid>("34343434-3434-4434-8434-343434343431"),
+            parse<Domain::Uuid>("34343434-3434-4434-8434-343434343432")}};
     const auto shellExecutable = take(Domain::PathText::create(
         "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"));
 
@@ -839,6 +842,7 @@ void testRuntimeDispatchAndSchemaPolicy()
             }};
     adapterDependencies.reviewerRuns = [&]() -> Contracts::IManagedRunService* { return &reviewerRuns; };
     auto brokeredBindingDependencies = adapterDependencies;
+    auto brokeredExecutionDependencies = adapterDependencies;
     auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
     REQUIRE(adapter->tools().size() == 80U);
 
@@ -909,7 +913,7 @@ void testRuntimeDispatchAndSchemaPolicy()
         REQUIRE(partial.error().message.find("manager_bound=true; local_bound=false") != std::string::npos);
         REQUIRE(partial.error().message.find(
             "This host does not support binding configured workspace roots.") != std::string::npos);
-        REQUIRE(partial.error().message.find("Reconnect the MCP connector") != std::string::npos);
+        REQUIRE(partial.error().message.find("local host's root-binding capability") != std::string::npos);
         REQUIRE(partial.error().message.find("Manager binding remains active") != std::string::npos);
         REQUIRE(!partial.error().retryable);
         REQUIRE(!partial.error().evidenceId);
@@ -948,6 +952,66 @@ void testRuntimeDispatchAndSchemaPolicy()
         REQUIRE(localOnly.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
         REQUIRE(localOnly.error().message ==
             "This host does not support binding configured workspace roots.");
+    }
+
+    {
+        std::size_t executionBrokerCalls{};
+        Json brokeredArguments;
+        brokeredExecutionDependencies.durableToolBroker = [&](const std::string_view name,
+            const std::string_view arguments, const Domain::ProjectId& project,
+            const Domain::OperationContext&) -> Domain::Result<std::string> {
+            REQUIRE(name == "process_launch" || name == "shell_job_start" || name == "reviewer_start");
+            REQUIRE(project == projectId);
+            ++executionBrokerCalls;
+            brokeredArguments = Json::parse(arguments);
+            return Domain::Result<std::string>::success(Json{{"ok", true}, {"job_id", "broker-job"}}.dump());
+        };
+        auto executionAdapter = take(Mcp::McpToolPackAdapter::create(std::move(brokeredExecutionDependencies)));
+        const auto narrowed = take(shellAuthorityIssuer.narrow(shellAuthority, {root},
+            shellAuthority.grants(), true, shellAuthority.generation() + 1U, context));
+        for (const auto name : {"process_launch", "shell_job_start", "shell_exec"}) {
+            const auto arguments = Json{{"command", "test"}, {"cwd", secondaryRoot.value()}}.dump();
+            const auto denied = executionAdapter->handle(authorizeFor(name, Domain::ToolEffect::Write,
+                arguments, std::string{"restricted-cwd-"} + name, narrowed), narrowed, context);
+            REQUIRE(!denied);
+            REQUIRE(denied.error().code == Domain::ErrorCodes::Unauthorized);
+            REQUIRE(executionBrokerCalls == 0U);
+        }
+        for (const auto name : {"process_launch", "shell_job_start"}) {
+            const auto arguments = Json{{"command", "test"}, {"cwd", secondaryRoot.value()}}.dump();
+            const auto accepted = take(executionAdapter->handle(authorizeFor(name, Domain::ToolEffect::Write,
+                arguments, std::string{"active-cwd-"} + name, shellAuthority), shellAuthority, context));
+            REQUIRE(accepted.receipt.ok);
+            REQUIRE(brokeredArguments.at("cwd") == secondaryRoot.value());
+            REQUIRE(accepted.continuityObservation->workingDirectory == secondaryRoot);
+        }
+        REQUIRE(executionBrokerCalls == 2U);
+        const auto implicit = take(executionAdapter->handle(authorizeFor("process_launch", Domain::ToolEffect::Write,
+            R"({"command":"test"})", "broker-selected-default-cwd", narrowed), narrowed, context));
+        REQUIRE(implicit.receipt.ok);
+        REQUIRE(brokeredArguments.at("cwd") == root.value());
+        REQUIRE(executionBrokerCalls == 3U);
+
+        const auto reviewerOpening = [&](const std::string& path, const auto& selectedAuthority) {
+            return executionAdapter->handle(authorizeFor("reviewer_start", Domain::ToolEffect::Write,
+                Json{{"opening_message_path", path}, {"authorization", "human:opening-test"}}.dump(),
+                "broker-opening-path", selectedAuthority), selectedAuthority, context);
+        };
+        const auto unselectedOpening = reviewerOpening(secondaryRoot.value() + "/opening.txt", narrowed);
+        REQUIRE(!unselectedOpening);
+        REQUIRE(unselectedOpening.error().code == Domain::ErrorCodes::Unauthorized);
+        REQUIRE(executionBrokerCalls == 3U);
+        const auto outsideOpening = reviewerOpening("Z:/outside/opening.txt", shellAuthority);
+        REQUIRE(!outsideOpening);
+        REQUIRE(outsideOpening.error().code == Domain::ErrorCodes::Unauthorized);
+        REQUIRE(executionBrokerCalls == 3U);
+        const auto selectedOpening = take(reviewerOpening(root.value() + "/opening.txt", narrowed));
+        REQUIRE(selectedOpening.receipt.ok);
+        REQUIRE(brokeredArguments.at("opening_message_path") == root.value() + "/opening.txt");
+        const auto boundOpening = take(reviewerOpening(secondaryRoot.value() + "/opening.txt", shellAuthority));
+        REQUIRE(boundOpening.receipt.ok);
+        REQUIRE(brokeredArguments.at("opening_message_path") == secondaryRoot.value() + "/opening.txt");
+        REQUIRE(executionBrokerCalls == 5U);
     }
 
     // A full valid control-character report expands sixfold in JSON. Every
@@ -1033,6 +1097,55 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(noOutput.at("output").is_null());
     REQUIRE(noOutput.at("output_total_bytes") == 0);
 
+    const auto startReview = [&](const Json& args) {
+        return adapter->handle(authorize("reviewer_start", Domain::ToolEffect::Write,
+            args.dump(), "reviewer-opening-test"), authority, context);
+    };
+    const auto callsBeforeOpening = fileSystem.calls();
+    auto inlineReview = Json{{"opening_message", "Review this supplied evidence."}, {"authorization", "Owner requested"}};
+    const auto inlineStarted = Json::parse(take(startReview(inlineReview)).canonicalPayload);
+    REQUIRE(reviewerRuns.lastStart.has_value());
+    REQUIRE(reviewerRuns.lastStart->readOnlyTools && reviewerRuns.lastStart->allowTools);
+    REQUIRE(!reviewerRuns.lastStart->automaticContinuity);
+    REQUIRE(reviewerRuns.lastStart->providerReceiveTimeoutSeconds == Domain::DefaultReviewerReceiveTimeoutSeconds);
+    REQUIRE(reviewerRuns.lastStart->task.find("Opening message source: inline tool argument") != std::string::npos);
+    REQUIRE(inlineStarted.at("receive_timeout_sec") == 600U);
+    REQUIRE(fileSystem.calls() == callsBeforeOpening);
+    inlineReview["opening_message"] = std::string(Domain::MaximumReviewerOpeningMessageBytes, 'a');
+    inlineReview["mode"] = "text_only";
+    inlineReview["receive_timeout_sec"] = 1800U;
+    const auto textOnly = Json::parse(take(startReview(inlineReview)).canonicalPayload);
+    REQUIRE(textOnly.at("mode") == "text_only");
+    REQUIRE(textOnly.at("receive_timeout_sec") == 1800U);
+    REQUIRE(!reviewerRuns.lastStart->allowTools && reviewerRuns.lastStart->readOnlyTools);
+    REQUIRE(reviewerRuns.lastStart->task.find("identify any missing external evidence as unverified") != std::string::npos);
+    const auto startsConsumed = uuidGenerator.consumed();
+    for (const auto& invalidOpening : {
+            Json{{"authorization", "Owner requested"}},
+            Json{{"authorization", "Owner requested"}, {"opening_message", "inline"}, {"opening_message_path", "D:/workspace/opening.txt"}},
+            Json{{"authorization", "Owner requested"}, {"opening_message", ""}},
+            Json{{"authorization", "Owner requested"}, {"opening_message", std::string(Domain::MaximumReviewerOpeningMessageBytes + 1U, 'a')}},
+            Json{{"authorization", "Owner requested"}, {"opening_message", std::string("invalid\0text", 12U)}},
+            Json{{"authorization", "Owner requested"}, {"opening_message", "inline"}, {"mode", "invalid"}},
+            Json{{"authorization", "Owner requested"}, {"opening_message", "inline"}, {"receive_timeout_sec", 0}},
+            Json{{"authorization", "Owner requested"}, {"opening_message", "inline"}, {"receive_timeout_sec", 3601}},
+            Json{{"authorization", "Owner requested"}, {"opening_message_path", "Z:/outside/opening.txt"}}}) {
+        REQUIRE(!startReview(invalidOpening));
+    }
+    REQUIRE(uuidGenerator.consumed() == startsConsumed);
+    REQUIRE(fileSystem.calls() == callsBeforeOpening);
+    reviewerRuns.record.state = Domain::ManagedRunState::Failed;
+    reviewerRuns.record.lastError = Domain::makeError(Domain::ErrorCodes::DeadlineExceeded, "Controlled provider timeout", true);
+    const auto infrastructureFailure = Json::parse(take(review(Json::object())).canonicalPayload);
+    REQUIRE(infrastructureFailure.at("state") == "failed");
+    REQUIRE(infrastructureFailure.at("infrastructure_blocked") == true);
+    REQUIRE(infrastructureFailure.at("failure_category") == "infrastructure");
+    REQUIRE(infrastructureFailure.at("gate_approved") == false);
+    REQUIRE(infrastructureFailure.at("error").at("retryable") == true);
+    reviewerRuns.record.lastError = Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Controlled request rejection");
+    REQUIRE(Json::parse(take(review(Json::object())).canonicalPayload).at("infrastructure_blocked") == false);
+    reviewerRuns.record.lastError.reset();
+
     auto cluFindingsCall = authorize(
         "clu.findings",
         Domain::ToolEffect::Read,
@@ -1062,9 +1175,13 @@ void testRuntimeDispatchAndSchemaPolicy()
         forgeStatusResult.value().canonicalPayload);
     REQUIRE(forgeStatusPayload.at("ok") == true);
     REQUIRE(forgeStatusPayload.at("shell_execution").at("synchronous_timeout_sec_max") == 120);
+    REQUIRE(forgeStatusPayload.at("shell_execution").at("maximum_command_bytes") == 65'536U);
     REQUIRE(forgeStatusPayload.at("shell_execution").at("jobs_available") == true);
     REQUIRE(forgeStatusPayload.at("shell_execution").at("detached_processes_survive") == false);
     REQUIRE(forgeStatusPayload.at("shell_execution").at("job_timeout_sec_max") == 3600);
+    REQUIRE(forgeStatusPayload.at("workspace_authority").at("configured_roots_active_by_default") == false);
+    REQUIRE(forgeStatusPayload.at("workspace_authority").at("cwd_policy") ==
+        "shell_exec_shell_job_start_and_process_launch_require_locally_active_execute_authority");
     REQUIRE(forgeStatusPayload.at("home") == root.value());
     REQUIRE(forgeStatusPayload.at("presence_count") == 3U);
     REQUIRE(forgeStatusPayload.at("open_sessions") == 2U);

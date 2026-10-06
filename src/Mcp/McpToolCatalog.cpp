@@ -104,7 +104,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"project_policy.read", "Read the adopted policy index or an exact pinned document. Follow next_cursor for every index page; supply path and next_offset as offset for every document part. This tool cannot adopt policy or approve reviews.", "ProjectPolicyToolPack", Read, true, false},
         {"provider_status", "Inspect actually loaded LM Studio models and configured context/reserves. Missing file, revision or version facts remain null with provenance and reasons.", "HostInspectionToolPack", Read, false, false},
         {"reviewer_cancel", "Cancel one independently started read-only reviewer run for this project.", "ReviewerToolPack", Write, true, false},
-        {"reviewer_start", "Start a fresh Manager-owned reviewer provider session with an authorized opening-message file and no executor conversation history. Requires explicit review authorization; read-only tools are enforced.", "ReviewerToolPack", Write, true, false},
+        {"reviewer_start", "Start a fresh Manager-owned reviewer with exactly one authorized opening_message_path or bounded inline opening_message and no executor history. Requires explicit review authorization; read-only tools are enforced. receive_timeout_sec budgets each provider Responses request from send through response body, defaults to 600 (1...3600), and remains bounded by its caller deadline; mode=text_only omits tools and reviews only supplied text.", "ReviewerToolPack", Write, true, false},
         {"reviewer_status", "Read the separate reviewer run's actual state, provider response, token usage and bounded UTF-8 output page; follow next_output_offset for more. A running or failed review is not an approved gate.", "ReviewerToolPack", Read, true, false},
         {"search_text", "Recursive text search (grep).", "SearchToolPack", Read, true, false},
         {"session_checkpoint", "Soft-save context + open agent sessions for continuity (continue working).", "ContinuityToolPack", Write, false, false},
@@ -305,10 +305,20 @@ using Property = std::pair<std::string_view, Json>;
                 {"additionalProperties", Json{{"type", "string"}, {"maxLength", 4096}}}}},
             {"timeout_sec", Json{{"type", "number"}, {"exclusiveMinimum", 0}, {"maximum", 3600}}}},
             {"command"}, AdditionalProperties::Denied);
-    if (name == "reviewer_start")
-        return objectSchema({{"opening_message_path", string}, {"task", Json{{"type", "string"}, {"maxLength", 32768}}},
-            {"authorization", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 1024}}}},
-            {"opening_message_path", "authorization"}, AdditionalProperties::Denied);
+    if (name == "reviewer_start") {
+        auto schema = objectSchema({{"opening_message_path", string},
+            {"opening_message", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 65536},
+                {"description", "Inline UTF-8 opening message, at most 65536 bytes; mutually exclusive with opening_message_path."}}},
+            {"task", Json{{"type", "string"}, {"maxLength", 32768}}},
+            {"authorization", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 1024}}},
+            {"receive_timeout_sec", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 3600}, {"default", 600},
+                {"description", "Per-provider Responses request budget from send through complete response body; caller deadline may shorten it. This is not the total reviewer lifetime."}}},
+            {"mode", Json{{"type", "string"}, {"enum", {"tools", "text_only"}}, {"default", "tools"}}}},
+            {"authorization"}, AdditionalProperties::Denied);
+        schema["oneOf"] = Json::array({Json{{"required", {"opening_message_path"}}},
+            Json{{"required", {"opening_message"}}}});
+        return schema;
+    }
     if (name == "reviewer_status")
         return objectSchema({{"run_id", jobId},
             {"output_offset", Json{{"type", "integer"}, {"minimum", 0}, {"maximum", 262144}}},
@@ -325,7 +335,7 @@ using Property = std::pair<std::string_view, Json>;
         return objectSchema({{"path", string}}, {"path"}, AdditionalProperties::Denied);
     if (name == "shell_job_start") {
         return objectSchema(
-            {{"command", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 4096}}},
+            {{"command", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 65536}}},
              {"cwd", string},
              {"timeout_sec", Json{{"type", "number"}, {"exclusiveMinimum", 0}, {"maximum", 3600}}}},
             {"command"}, AdditionalProperties::Denied);
@@ -339,7 +349,7 @@ using Property = std::pair<std::string_view, Json>;
     }
     if (name == "shell_exec") {
         return objectSchema(
-            {{"command", string},
+            {{"command", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 65536}}},
              {"cwd", string},
              {"timeout_sec", Json{{"type", "number"}, {"exclusiveMinimum", 0}, {"maximum", 120}}}},
             {"command"});

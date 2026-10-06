@@ -53,6 +53,9 @@ public:
 
     [[nodiscard]] Domain::Result<std::vector<Domain::PathText>> configuredRootAllowlist(
         const Domain::OperationContext& context) noexcept override;
+    [[nodiscard]] Domain::Result<std::vector<Domain::PathText>> boundConfiguredRoots(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context) noexcept override;
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> bindConfiguredRoot(
         const Contracts::WorkspaceAuthority& authority, const Domain::PathText& root,
         const Domain::OperationContext& context) noexcept override;

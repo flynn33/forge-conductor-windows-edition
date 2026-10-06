@@ -195,6 +195,26 @@ McpExecutionContextResolver::resolve(
                     Domain::ErrorCodes::Unauthorized,
                     "The recovered MCP workspace is no longer a trusted project root.");
             }
+            // Root activation needs the owning issuer's current capability. The
+            // issuer still rejects removed grants and unconfigured roots.
+            if (request.toolName == "workspace_authority_bind" && effect == Domain::ToolEffect::Write) {
+                auto binding = validateAuthority(request, effect, authority);
+                if (!binding) return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                    std::move(binding).error());
+                return Domain::Result<Contracts::WorkspaceAuthority>::success(std::move(authority));
+            }
+            auto boundRoots = workspaceAuthority_.boundConfiguredRoots(projectId, context);
+            if (!boundRoots) return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                std::move(boundRoots).error());
+            std::vector<Domain::PathText> recoveredRoots{adoptedWorkspace->authorityRoot};
+            for (const auto& root : boundRoots.value()) {
+                // Intersect bindings with this issuer's capability so a read-only
+                // or otherwise restricted route never inherits a broader root.
+                if (std::find(authority.trustedRoots().begin(), authority.trustedRoots().end(), root)
+                        != authority.trustedRoots().end() &&
+                    std::find(recoveredRoots.begin(), recoveredRoots.end(), root) == recoveredRoots.end())
+                    recoveredRoots.push_back(root);
+            }
             const auto generation = (std::max)(
                 authority.generation(), adoptedWorkspace->generation);
             if (generation ==
@@ -205,8 +225,7 @@ McpExecutionContextResolver::resolve(
             }
             auto narrowed = workspaceAuthority_.narrow(
                 authority,
-                std::vector<Domain::PathText>{
-                    adoptedWorkspace->authorityRoot},
+                recoveredRoots,
                 authority.grants(),
                 authority.shellEnabled(),
                 generation + 1U,

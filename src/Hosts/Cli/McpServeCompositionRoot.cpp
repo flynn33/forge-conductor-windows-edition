@@ -4,6 +4,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerAuthentication.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 
 
 #include "ForgeConductor/Application/AgentCatalog.h"
@@ -490,25 +491,35 @@ connectDurableManager(const Domain::PathText& home, const Domain::OperationConte
     const std::shared_ptr<InfrastructureWindows::SystemClock>& clock) noexcept
 {
     try {
-        const Domain::OperationContext context{parent.operationId,
-            (std::min)(parent.deadline, clock->monotonicNow() + std::chrono::seconds{2}),
-            parent.cancellation, parent.correlationId};
         auto identity = InfrastructureWindows::WindowsCurrentUserIdentity::load();
         if (!identity) return {};
-        auto names = InfrastructureWindows::WindowsManagerInstanceLease::namesFor(identity.value());
-        if (!names) return {};
-        InfrastructureWindows::DpapiSecureStorage secure{std::wstring{InfrastructureWindows::DpapiSecureStorage::DefaultRegistrySubkey}};
-        InfrastructureWindows::WindowsManagerAuthenticationTokenGenerator generator;
-        InfrastructureWindows::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
-        auto nonce = tokens.load(context);
-        if (!nonce || !nonce.value()) return {};
-        auto client = InfrastructureWindows::WindowsManagerNamedPipeClient::create(
-            clock, std::wstring{names.value().pipeName()}, *nonce.value());
-        if (!client) return {};
-        auto status = client.value()->status(context);
-        if (!status || !status.value().isManager || status.value().version != ProductVersion ||
-            std::filesystem::path(status.value().home.value()) != std::filesystem::path(home.value())) return {};
-        return std::move(client).value();
+        const auto connect = [&](const InfrastructureWindows::WindowsManagerInstanceLeaseOptions& options,
+                                 const std::wstring& registrySubkey) -> std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient> {
+            const Domain::OperationContext context{parent.operationId,
+                (std::min)(parent.deadline, clock->monotonicNow() + std::chrono::seconds{2}),
+                parent.cancellation, parent.correlationId};
+            auto names = InfrastructureWindows::WindowsManagerInstanceLease::namesFor(identity.value(), options);
+            if (!names) return {};
+            InfrastructureWindows::DpapiSecureStorage secure{registrySubkey};
+            InfrastructureWindows::WindowsManagerAuthenticationTokenGenerator generator;
+            InfrastructureWindows::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
+            auto nonce = tokens.load(context);
+            if (!nonce || !nonce.value()) return {};
+            auto client = InfrastructureWindows::WindowsManagerNamedPipeClient::create(
+                clock, std::wstring{names.value().pipeName()}, *nonce.value());
+            if (!client) return {};
+            auto status = client.value()->status(context);
+            if (!status || !status.value().isManager || status.value().version != ProductVersion ||
+                std::filesystem::path(status.value().home.value()) != std::filesystem::path(home.value())) return {};
+            return std::move(client).value();
+        };
+        if (auto persistent = connect({}, std::wstring{InfrastructureWindows::DpapiSecureStorage::DefaultRegistrySubkey}))
+            return persistent;
+        auto profile = InfrastructureWindows::WindowsAlphaManagerProfile::create(home);
+        if (!profile) return {};
+        InfrastructureWindows::WindowsManagerInstanceLeaseOptions options;
+        options.purposeSuffix = profile.value().purposeSuffix();
+        return connect(options, std::wstring{profile.value().secureStorageRegistrySubkey()});
     } catch (...) { return {}; }
 }
 

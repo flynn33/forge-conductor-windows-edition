@@ -511,14 +511,20 @@ void exerciseGitAndShell(
     require(!oversizedScript && oversizedScript.error().code == Domain::ErrorCodes::PayloadTooLarge,
             "A real shell accepted a script over 64 KiB");
     for (const auto& [command, exitCode] : std::vector<std::pair<std::string, std::int32_t>>{
+             {"exit 0 # explicit success", 0},
              {"exit 23 # explicit exit", 23}, {"throw 'script failure'", 1},
              {"Write-Error 'script failure'\r\n\r\n# comment", 1},
-             {"cmd /c exit 7 # native error", 7},
-             {"cmd /c exit 7; Write-Output 'recovered'", 0}}) {
+             {"cmd /c exit 7 # native error", 1},
+             {"cmd /c exit 7; Write-Error 'script failure'", 1},
+             {"cmd /c exit 7; Get-Item -LiteralPath 'missing-shell-item'", 1},
+             {"cmd /c exit 7\r\nWrite-Error 'script failure'\r\n# comment", 1},
+             {"cmd /c exit 7; Write-Output 'recovered'", 0},
+             {"cmd /c exit 7; $value = 123", 0},
+             {"& {Write-Error 'nested failure'}", 0}}) {
       shellRequest.arguments = {command};
       const auto failureResult = take(shell.execute(shellRequest, shellAuthority, context(64U)));
       require(failureResult.exitCode == exitCode,
-              "Script stdin delivery changed explicit, native or PowerShell error status");
+              "Script stdin delivery changed -Command exit status: " + command);
     }
 
     shellRequest.arguments = {"Start-Sleep -Seconds 2"};

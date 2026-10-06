@@ -24,6 +24,12 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 - Simulated lifecycle tests use disposable roots and copied fixtures. Tests and packaging must never mutate the operator's live `%LOCALAPPDATA%\Forge Conductor` store.
 - Provider-dependent productive inference is reported separately when LM Studio and a loaded model are available; provider absence must produce an actionable disconnected state rather than fabricated success.
 
+## 1.3.13 local-model workflow verification
+
+The complete x64 Release graph was rebuilt by `scripts/test.ps1 -Configuration Release -Architecture x64 -Parallel 4` and passed **156/156 configured CTest entries** in **49.13 seconds**, exit code 0. This run includes the asynchronous Responses transport deadlines, partial-body cancellation, shutdown, provider-cancel POST, reviewer source/receipt compatibility, recovered workspace bindings, consistent cwd authorization, real filesystem ACL denials, and bounded UTF-8 PowerShell stdin regressions. Direct comparisons also matched the original PowerShell command exit behavior in 38 cases across PowerShell 7 and Windows PowerShell 5.1.
+
+Live provider runs and final installed artifact checks have separate identities and limits in the [1.3.13 repair record](validation/LM-STUDIO-ISSUE-REPAIRS-1.3.13.md). The published `release-verification.json` and executable provenance record bind final package qualification to the actual release payload; earlier source-probe hashes remain historical evidence.
+
 ## 1.3.6 telemetry-layout verification
 
 The full x64 Release CTest matrix passed 153/153 in 32.36 seconds with exit code 0. Release App/backend/package builds exited 0 and all three static gates passed.

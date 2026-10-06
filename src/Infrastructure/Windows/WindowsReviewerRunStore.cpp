@@ -50,6 +50,8 @@ bool terminal(Domain::ManagedRunState state) {
 Json encodeRecord(const Domain::ManagedRunRecord& record) {
     if (!record.readOnlyTools) reject(Domain::ErrorCodes::Unauthorized, "Only independently started read-only reviewer records may use this store.");
     if (record.task.empty() || record.task.size() > Domain::MaximumManagedRunTaskBytes || record.authorityGeneration == 0U ||
+        (record.providerReceiveTimeoutSeconds && (*record.providerReceiveTimeoutSeconds == 0U ||
+            *record.providerReceiveTimeoutSeconds > Domain::MaximumManagedProviderReceiveTimeoutSeconds)) ||
         (record.outputText && record.outputText->size() > Domain::MaximumManagedRunOutputBytes) ||
         record.pendingFunctionCalls.size() > 64U || record.nativeTaskChecks.size() > 8U ||
         static_cast<std::uint32_t>(record.state) > static_cast<std::uint32_t>(Domain::ManagedRunState::Paused))
@@ -63,6 +65,7 @@ Json encodeRecord(const Domain::ManagedRunRecord& record) {
         {"last_error", nullptr}, {"pending_function_calls", Json::array()}, {"native_task_checks", Json::array()},
         {"created_at_utc_ns", nanoseconds(record.createdAt)}, {"updated_at_utc_ns", nanoseconds(record.updatedAt)},
         {"allow_tools", record.allowTools}, {"read_only_tools", record.readOnlyTools}};
+    if (record.providerReceiveTimeoutSeconds) value["provider_receive_timeout_sec"] = *record.providerReceiveTimeoutSeconds;
     if (record.lastError) value["last_error"] = Json{{"code", record.lastError->code}, {"message", record.lastError->message},
         {"retryable", record.lastError->retryable}, {"evidence_id", record.lastError->evidenceId ? Json(*record.lastError->evidenceId) : Json(nullptr)}};
     for (const auto& call : record.pendingFunctionCalls)
@@ -107,6 +110,12 @@ Domain::ManagedRunRecord decodeRecord(const Json& value) {
         result.at("cancelled").get<bool>(), result.at("termination_confirmed").get<bool>(), unsignedValue(result.at("elapsed_ms")), time(result.at("checked_at_utc_ns"))});
     record.createdAt = time(value.at("created_at_utc_ns")); record.updatedAt = time(value.at("updated_at_utc_ns"));
     record.allowTools = value.at("allow_tools").get<bool>(); record.readOnlyTools = true;
+    if (value.contains("provider_receive_timeout_sec")) {
+        const auto timeout = unsignedValue(value.at("provider_receive_timeout_sec"));
+        if (timeout == 0U || timeout > Domain::MaximumManagedProviderReceiveTimeoutSeconds)
+            reject(Domain::ErrorCodes::IntegrityFailure, "Reviewer receive timeout is invalid.");
+        record.providerReceiveTimeoutSeconds = static_cast<std::uint32_t>(timeout);
+    }
     static_cast<void>(encodeRecord(record));
     return record;
 }
@@ -271,7 +280,8 @@ Domain::Result<void> WindowsReviewerRunStore::save(const Domain::ManagedRunRecor
         check(context); static_cast<void>(encodeRecord(record)); auto& impl = *implementation_; StoreLock lock{impl.lockName(), context};
         const auto paths = impl.paths(record.runId, context); const auto existing = impl.read(record.runId, paths, context);
         if (existing && (existing->projectId != record.projectId || existing->clientId != record.clientId || existing->task != record.task ||
-                existing->authorityGeneration != record.authorityGeneration || existing->allowTools != record.allowTools))
+                existing->authorityGeneration != record.authorityGeneration || existing->allowTools != record.allowTools ||
+                existing->providerReceiveTimeoutSeconds != record.providerReceiveTimeoutSeconds))
             reject(Domain::ErrorCodes::OwnershipConflict, "Reviewer run identity is already bound to another request.");
         if (existing && terminal(existing->state) && !terminal(record.state))
             reject(Domain::ErrorCodes::Conflict, "A terminal reviewer receipt cannot be reopened or replayed.");

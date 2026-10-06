@@ -1,6 +1,7 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#include <winsock2.h>
 #include <Windows.h>
 
 #include <nlohmann/json.hpp>
@@ -982,7 +983,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.12");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.13");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();
@@ -1381,6 +1382,121 @@ void runPopulatedWorkspaceRegression(
     REQUIRE(otherStatus.at("instruction_packages").at("count") == 0U);
     REQUIRE(otherStatus.at("development_policy").at("active") == false);
     unrelated.finish(3U);
+}
+
+void runIsolatedManagerReviewerRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root)
+{
+    const auto home = root / L"home";
+    const auto workspace = root / L"workspace";
+    std::filesystem::create_directories(home / L"config");
+    std::filesystem::create_directories(workspace);
+    std::uint16_t dashboardPort{};
+    {
+        WSADATA data{};
+        REQUIRE(::WSAStartup(MAKEWORD(2, 2), &data) == 0);
+        struct WinsockCleanup final { ~WinsockCleanup() { static_cast<void>(::WSACleanup()); } } cleanup;
+        const SOCKET socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        REQUIRE(socket != INVALID_SOCKET);
+        struct SocketCleanup final { SOCKET value; ~SocketCleanup() { static_cast<void>(::closesocket(value)); } } close{socket};
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        REQUIRE(::bind(socket, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) == 0);
+        int size = sizeof(address);
+        REQUIRE(::getsockname(socket, reinterpret_cast<sockaddr*>(&address), &size) == 0);
+        dashboardPort = ntohs(address.sin_port);
+    }
+    {
+        std::ofstream config{home / L"config" / L"config.json"};
+        // Use an unavailable local endpoint so this process regression cannot
+        // submit inference to the user's loaded model.
+        config << Json{{"schema_version", 1}, {"dashboard", {{"port", dashboardPort}}}, {"local_model", {{"port", 1},
+            {"model", "isolated-regression-model"}}}}.dump();
+    }
+    const auto handshake = handshakeStream();
+    {
+        McpProcessSession bootstrap{executable, home, workspace, L"fallback", L"isolated-reviewer-bootstrap"};
+        bootstrap.send(handshake);
+        static_cast<void>(bootstrap.awaitFrames(2U));
+        bootstrap.finish(2U);
+    }
+    const auto managerExecutable = executable.parent_path() / L"ForgeConductor.Manager.exe";
+    REQUIRE(std::filesystem::is_regular_file(managerExecutable));
+    auto command = quoteWindowsArgument(managerExecutable.native()) + L" --alpha-root " + quoteWindowsArgument(home.native());
+    std::vector<wchar_t> mutableCommand{command.begin(), command.end()};
+    mutableCommand.push_back(L'\0');
+    STARTUPINFOW startup{};
+    startup.cb = sizeof(startup);
+    SECURITY_ATTRIBUTES attributes{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+    const auto managerLogPath = root / L"manager-process.log";
+    UniqueHandle managerLog{::CreateFileW(managerLogPath.native().c_str(), GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, &attributes, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
+    UniqueHandle managerInput{::CreateFileW(L"NUL", GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, &attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+    REQUIRE(managerLog && managerInput);
+    startup.dwFlags = STARTF_USESTDHANDLES;
+    startup.hStdInput = managerInput.get();
+    startup.hStdOutput = managerLog.get();
+    startup.hStdError = managerLog.get();
+    PROCESS_INFORMATION process{};
+    REQUIRE(::CreateProcessW(managerExecutable.native().c_str(), mutableCommand.data(), nullptr,
+        nullptr, TRUE, CREATE_NO_WINDOW, nullptr, workspace.native().c_str(), &startup, &process));
+    UniqueHandle managerProcess{process.hProcess};
+    UniqueHandle managerThread{process.hThread};
+    struct ManagerCleanup final {
+        HANDLE process;
+        ~ManagerCleanup() { static_cast<void>(terminateAndWait(process,
+            std::chrono::duration_cast<std::chrono::milliseconds>(ForcedCleanupTimeout))); }
+    } cleanup{managerProcess.get()};
+    const auto deadline = std::chrono::steady_clock::now() + 25s;
+    std::unique_ptr<McpProcessSession> connected;
+    while (std::chrono::steady_clock::now() < deadline) {
+        DWORD exitCode{};
+        REQUIRE(::GetExitCodeProcess(managerProcess.get(), &exitCode));
+        if (exitCode != STILL_ACTIVE) {
+            std::ifstream log{managerLogPath, std::ios::binary};
+            const std::string details{std::istreambuf_iterator<char>{log}, std::istreambuf_iterator<char>{}};
+            throw std::runtime_error{"The isolated Manager exited with " + std::to_string(exitCode) + ": " + details};
+        }
+        auto candidate = std::make_unique<McpProcessSession>(executable, home, workspace,
+            L"fallback", L"isolated-reviewer-connect");
+        candidate->send(handshake);
+        static_cast<void>(candidate->awaitFrames(2U));
+        candidate->send(statusRequest(3));
+        const auto status = successfulToolPayload(candidate->awaitFrames(3U), 3);
+        if (status.at("shell_execution").at("durable_across_mcp_reconnect").get<bool>()) {
+            connected = std::move(candidate);
+            break;
+        }
+        candidate->finish(3U);
+        std::this_thread::sleep_for(100ms);
+    }
+    REQUIRE(connected);
+    connected->send(toolRequest(4, "reviewer_start", Json{
+        {"opening_message", "Review only this disposable process regression text."},
+        {"authorization", "Authorized isolated process regression"}, {"mode", "text_only"},
+        {"receive_timeout_sec", 1}}));
+    const auto started = successfulToolPayload(connected->awaitFrames(4U), 4);
+    REQUIRE(started.at("broker") == "persistent_manager");
+    REQUIRE(started.at("manager_owned") == true);
+    REQUIRE(started.at("read_only") == true);
+    REQUIRE(started.at("receive_timeout_sec") == 1);
+    const auto runId = started.at("run_id").get<std::string>();
+    connected->finish(4U);
+    McpProcessSession resumed{executable, home, workspace, L"fallback", L"isolated-reviewer-reconnect"};
+    resumed.send(handshake);
+    static_cast<void>(resumed.awaitFrames(2U));
+    resumed.send(toolRequest(3, "reviewer_status", Json{{"run_id", runId}}));
+    const auto restored = successfulToolPayload(resumed.awaitFrames(3U), 3);
+    REQUIRE(restored.at("broker") == "persistent_manager");
+    REQUIRE(restored.at("run_id") == runId);
+    REQUIRE(restored.at("receive_timeout_sec") == 1);
+    REQUIRE(restored.at("gate_approved") == false);
+    resumed.send(toolRequest(4, "reviewer_cancel", Json{{"run_id", runId}}));
+    REQUIRE(successfulToolPayload(resumed.awaitFrames(4U), 4).at("manager_owned") == true);
+    resumed.finish(4U);
 }
 
 void runPolicyPagingRegression(
@@ -2232,6 +2348,7 @@ void run(
     runAgentLifecycleRegression(executable, sharedRoot / L"agent-lifecycle");
     runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
     runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
+    runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer");
 }
 
 } // namespace

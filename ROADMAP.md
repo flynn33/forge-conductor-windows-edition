@@ -1,8 +1,8 @@
 # Roadmap
 
-## Current release: 1.3.11
+## Current release: 1.3.13
 
-Version 1.3.11 repairs selected-project deployment, legacy instruction-package bootstrap, filesystem tool contracts, project-scoped continuity lookup, complete native tool delivery, and Windows request-path authorization. It also includes the direct package-queue and policy-source browsing improvements developed since 1.3.6. The existing telemetry layout repair and three LM Studio integrations remain. See [release notes](docs/releases/1.3.11.md).
+Version 1.3.13 repairs local-model reviewer deadlines and opening inputs, recovered evidence-root bindings, consistent process cwd authorization, nested filesystem writes, and 65,536-byte PowerShell script delivery. Primary/Fallback retain all 80 tools and ten specialist playbooks; CLU retains five tools. Existing deployment, native tool delivery, package/policy browsing, telemetry, persistence, and continuity features remain. See [release notes](docs/releases/1.3.13.md).
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 

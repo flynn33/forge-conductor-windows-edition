@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-Version **1.3.12** adds Manager-owned process jobs with live logs and reconnect adoption, host/provider inspection, GitHub reads, configured external evidence roots, binary evidence digests, pinned verification environments and independent read-only reviewer sessions. Primary and Fallback expose 80 tools; CLU retains five. Shell children receive explicit account/profile information and UTF-8 Python defaults. See the [1.3.12 release notes](docs/releases/1.3.12.md); the earlier public package remains at [download 1.3.11](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.11).
+Version **1.3.13** repairs slow local-model reviews, continuity recovery of explicitly bound evidence roots, inconsistent process working-directory checks, and nested filesystem writes. PowerShell commands now accept up to 64 KiB of UTF-8 through supervised stdin. Independent reviews retain their read-only tools and add configurable receive deadlines, bounded inline opening messages, and an optional text-only mode. Primary and Fallback retain all 80 tools and ten specialist playbooks; CLU retains five tools. See the [1.3.13 release notes](docs/releases/1.3.13.md) and [download 1.3.13](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.13).
 
 ## Product surfaces
 
@@ -35,7 +35,7 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Release verification and its limits are recorded in the [1.3.12 release notes](docs/releases/1.3.12.md) and [shell-job investigation](docs/validation/LM-STUDIO-SHELL-JOBS-1.3.12.md). Each distribution records its exact commit, tree, MSIX hash and payload-manifest hash. Historical installed and native-chat evidence applies to the artifact named in each report.
+Release verification and its limits are recorded in the [1.3.13 release notes](docs/releases/1.3.13.md) and [local-model repair checks](docs/validation/LM-STUDIO-ISSUE-REPAIRS-1.3.13.md). Each distribution records its exact commit, tree, MSIX hash and payload-manifest hash. Historical installed and native-chat evidence applies to the artifact named in each report.
 
 Create the engineering distribution from committed release inputs with `./scripts/package.ps1 -DevelopmentSigning`. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), [Architecture](docs/ARCHITECTURE.md), and [Roadmap](docs/ROADMAP.md).
 

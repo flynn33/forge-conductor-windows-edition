@@ -295,6 +295,50 @@ void cancellationDeadlineAndCorrelationFailClosed()
     REQUIRE(mismatch.error().code == Domain::ErrorCodes::Unauthorized);
 }
 
+void recoveredWorkspaceRetainsOnlyExplicitBindingsAndOwnerActivationScope()
+{
+    FixedClock clock;
+    const auto selected = take(Domain::PathText::create("C:\\workspace"));
+    const auto otherAlias = take(Domain::PathText::create("D:\\other-checkout"));
+    const auto evidence = take(Domain::PathText::create("A:\\evidence"));
+    const auto absent = take(Domain::PathText::create("A:\\unbound"));
+    Fakes::DeterministicWorkspaceAuthority issuer{
+        id<Domain::AuthorityId>("33333333-3333-4333-8333-333333333333"), client(),
+        {selected, otherAlias, evidence}, Domain::FileAccess::Write,
+        {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Execute}, {}, true, 7U};
+    ClientWorkspaceContextFake recovered;
+    recovered.setSnapshot(Domain::ClientWorkspaceSnapshot{client(), defaultProject(), selected,
+        id<Domain::LegacyHandoffId>("bound-root-handoff"), 17U, 9U});
+    Mcp::McpExecutionContextResolver resolver{issuer, defaultProject(), clock, &recovered};
+    const auto scoped = take(resolver.resolve(request(), Domain::ToolEffect::Read, context()));
+    REQUIRE(scoped.trustedRoots() == std::vector<Domain::PathText>{selected});
+    issuer.setBoundConfiguredRoots({evidence, evidence, absent});
+    for (const auto name : {"fs_read", "fs_write", "forge_status", "shell_exec", "shell_job_start", "process_launch"}) {
+        auto call = request();
+        call.toolName = name;
+        const auto retained = take(resolver.resolve(call, Domain::ToolEffect::Read, context()));
+        REQUIRE(retained.trustedRoots() == (std::vector<Domain::PathText>{selected, evidence}));
+        REQUIRE(retained.generation() == 10U);
+    }
+    auto bind = request();
+    bind.toolName = "workspace_authority_bind";
+    const auto owning = take(resolver.resolve(bind, Domain::ToolEffect::Write, context()));
+    REQUIRE(owning.trustedRoots() == (std::vector<Domain::PathText>{selected, otherAlias, evidence}));
+    REQUIRE(owning.grants() == scoped.grants());
+    Fakes::DeterministicWorkspaceAuthority readOnly{
+        owning.authorityId(), client(), {selected}, Domain::FileAccess::Read,
+        {Domain::FileAccess::Read}, {Domain::FileAccess::Write, Domain::FileAccess::Execute}, false, 7U};
+    readOnly.setBoundConfiguredRoots({evidence});
+    Mcp::McpExecutionContextResolver restricted{readOnly, defaultProject(), clock, &recovered};
+    const auto denied = restricted.resolve(bind, Domain::ToolEffect::Write, context());
+    REQUIRE(!denied);
+    REQUIRE(denied.error().code == Domain::ErrorCodes::Unauthorized);
+    const auto restrictedRead = take(restricted.resolve(request(), Domain::ToolEffect::Read, context()));
+    REQUIRE(restrictedRead.trustedRoots() == std::vector<Domain::PathText>{selected});
+    REQUIRE(restrictedRead.grants() == std::vector<Domain::FileAccess>{Domain::FileAccess::Read});
+    REQUIRE(!restrictedRead.shellEnabled());
+}
+
 void authorizerIssuesOnlyBoundCapabilities()
 {
     static_assert(std::is_final_v<Mcp::McpExecutionContextResolver>);
@@ -384,6 +428,7 @@ int main()
         resolvesDefaultAndExplicitProjectScopes();
         resolverRejectsMismatchedOrInsufficientAuthority();
         explicitProjectPrecedesAdoptionWhichPrecedesStartupDefault();
+        recoveredWorkspaceRetainsOnlyExplicitBindingsAndOwnerActivationScope();
         cancellationDeadlineAndCorrelationFailClosed();
         authorizerIssuesOnlyBoundCapabilities();
         adoptedPolicyRunsBeforeReturningCapability();
