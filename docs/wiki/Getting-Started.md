@@ -62,7 +62,7 @@ src/Hosts/Manager/                      per-user Manager process
 src/Hosts/Cli/                          CLI and stdio MCP host
 src/Hosts/SessionHost/                  logical-session host
 src/Manager/                            Manager protocol and dispatcher
-src/Mcp/                                103-tool catalog, protocol, router
+src/Mcp/                                104-tool catalog, protocol, router
 src/Infrastructure/Windows/             native OS services
 src/Persistence/Windows/                winsqlite3 repositories/migrations
 include/ForgeConductor/                 public layer headers

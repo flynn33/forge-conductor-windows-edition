@@ -63,7 +63,7 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 103U> ExpectedNames{
+    constexpr std::array<std::string_view, 104U> ExpectedNames{
         "agent_cancel",
         "agent_context",
         "agent_get",
@@ -115,6 +115,7 @@ void testCanonicalCatalog()
         "github_read",
         "host_capabilities",
         "http_request",
+        "image_analyze",
         "image_read",
         "image_write",
         "instruction_package.read",
@@ -197,7 +198,7 @@ void testCanonicalCatalog()
         }
     }
     REQUIRE(readEffects == 48U);
-    REQUIRE(writeEffects == 55U);
+    REQUIRE(writeEffects == 56U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "agent_run_start").tool.requiresProject);
     REQUIRE(descriptor(tools, "agent_run_status").tool.requiresProject);
@@ -215,6 +216,17 @@ void testCanonicalCatalog()
     REQUIRE(reviewerSchema.at("properties").at("opening_message").at("maxLength") == 65536);
     REQUIRE(reviewerSchema.at("properties").at("receive_timeout_sec").at("default") == 600);
     REQUIRE(reviewerSchema.at("properties").at("receive_timeout_sec").at("maximum") == 3600);
+    const auto analysisSchema = Json::parse(descriptor(tools, "image_analyze").inputSchema);
+    REQUIRE(descriptor(tools, "image_analyze").tool.effect == Domain::ToolEffect::Write);
+    REQUIRE(descriptor(tools, "image_analyze").tool.requiresProject);
+    REQUIRE(!descriptor(tools, "image_analyze").tool.requiresShell);
+    REQUIRE(analysisSchema.at("additionalProperties") == false);
+    REQUIRE(analysisSchema.at("required") == Json::array({"path", "authorization"}));
+    REQUIRE(analysisSchema.at("properties").at("question").at("maxLength") == 4096);
+    REQUIRE(analysisSchema.at("properties").at("authorization").at("maxLength") == 1024);
+    REQUIRE(analysisSchema.at("properties").at("receive_timeout_sec").at("default") == 600);
+    REQUIRE(analysisSchema.at("properties").at("receive_timeout_sec").at("maximum") == 3600);
+    REQUIRE(schema(tools, "image_read").at("required") == Json::array({"path"}));
 }
 
 void testSourceSchemasAndWindowsDelta()

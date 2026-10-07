@@ -7,7 +7,7 @@
 namespace ForgeConductor::Application {
 [[nodiscard]] inline bool isManagedWorkerToolPermitted(std::string_view name) noexcept {
     return name != "agent_spawn" && name != "agent_cancel" &&
-        !name.starts_with("agent_run_") && name != "reviewer_start" && name != "reviewer_cancel" &&
+        !name.starts_with("agent_run_") && name != "reviewer_start" && name != "reviewer_cancel" && name != "image_analyze" &&
         name != "workspace_authority_bind" && name != "clu.evaluate" && name != "clu.resolve" &&
         name != "session_checkpoint" && name != "session_handoff" &&
         (!name.starts_with("project_policy.") || name == "project_policy.read") &&

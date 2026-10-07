@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.15 - Image analysis from the existing LM Studio integrations
+
+- Retain completed sealed reviewer receipts without a lifetime count limit while bounding concurrent independent reviewers to sixteen. Terminal status reloads the durable receipt and reports its seal and integrity state.
+
+- Add `image_analyze` as an authorized asynchronous independent read-only image analysis, increasing Primary/Fallback to 104 tools while preserving the previous 103 and all five CLU tools.
+- Validate and decode the authorized source path before Manager dispatch. Reuse the existing fresh reviewer and Responses image-content path; poll actual output through `reviewer_status` without holding a long MCP call open.
+- Keep `image_read` previews compatible and describe their host-dependent interpretation accurately. Preserve explicit independent-run provenance, actual errors/token usage, read-only enforcement and exclusion of recursive analysis from worker scopes.
+- Include the corrected native-chat continuity and preference readback wording in the higher Windows upgrade package. Preserve project identity, records, native conversations, policy gates and the three existing integrations.
+- Align current native/product/package/documentation identities to 1.3.15 / 1.3.15.0. Retain all earlier engineering-candidate evidence with its original source and executable hashes; final qualification is recorded only after execution.
+
 ## 1.3.14 - Dedicated host workflows for local models
 
 - Expand Primary/Fallback from 80 to 103 tools without removing existing tools, specialist sessions, reviews, memory, continuity, policy, shell/process jobs, or the three LM Studio integrations.
@@ -12,7 +22,7 @@
 - Add owner-selected `filesystem_access: host` for ordinary local volumes and retain `workspace` mode. Preserve the selected project's default relative-path directory and enforce native ACL, reparse, namespace, and authority checks. Models cannot grant new filesystem mode through a tool request.
 - Preserve registered project identity during host-mode continuity recovery by authorizing both the project alias and recovered candidate, then checking their canonical subtree relationship. Host volume roots do not replace the project directory; revoked or unrelated paths remain denied.
 - Expose the existing Ensure manager, Restart service and Stop service actions in Rig's Runtime configuration card, making them accessible from that destination while retaining existing handlers and Settings actions.
-- Correct Rig's continuity wording to show the App's observed native conversation and the Manager's enabled/disabled preference readback. Remove the unconditional unavailable claim and obsolete selected-run label; direct live rollover inspection to Primary MCP's `get_forge_status`. This later App-only change requires its own rebuild and installed readback; earlier artifact evidence retains its original source identity.
+- Correct Rig's continuity wording to show the App's observed native conversation and the Manager's enabled/disabled preference readback. Remove the unconditional unavailable claim and obsolete selected-run label; direct live rollover inspection to Primary MCP's `get_forge_status`. The updated App is built into the signed candidate; installed readback remains separate, and earlier artifact evidence retains its original source identity.
 - Add bounded PNG image content to managed worker/reviewer Responses function outputs while preserving text-only compatibility and original call identity; encoded previews are limited to 512 KiB. Exclude legacy session_checkpoint/session_handoff from independent worker scopes while retaining their existing authorized tools.
 - Remove FILE_ADD_FILE from SQLite's retained directory anchor, retaining traversal/read access and namespace pins so diagnostics can append while WAL/SHM is live without the observed sharing conflict. Creation rights remain checked by native file opens; focused coexistence and creation-denial cases passed.
 - Align active product, package, dependency-manifest and documentation versions to 1.3.14 / 1.3.14.0. Historical release and validation records retain their original versions and artifact identities.

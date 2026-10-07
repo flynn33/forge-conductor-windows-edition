@@ -4,10 +4,8 @@
 #include "Detail/OperationContextGuard.h"
 #include "Detail/UniqueHandle.h"
 #include "Detail/UtfConversion.h"
-#include "Detail/WindowsPathResolver.h"
 #include <Windows.h>
 #include <nlohmann/json.hpp>
-#include <array>
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -194,55 +192,6 @@ private:
     Detail::UniqueHandle handle_;
     bool held_{};
 };
-std::size_t countRecords(const Contracts::AuthorizedPath& directory, const Domain::OperationContext& context) {
-    auto anchored = Detail::WindowsPathResolver::resolveAnchoredAuthorizedPath(directory, Domain::FileAccess::Read,
-        Detail::MissingPathPolicy::Reject, Detail::AnchorSharePolicy::DenyConcurrentWrite);
-    if (!anchored) {
-        if (anchored.error().code == Domain::ErrorCodes::RecordNotFound) return 0U;
-        throw Failure{anchored.error()};
-    }
-    Detail::UniqueHandle handle{::CreateFileW(anchored.value().canonicalPath().c_str(), FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES,
-        FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr)};
-    if (!handle) reject(Domain::ErrorCodes::Unauthorized, "The private reviewer directory could not be safely opened.");
-    FILE_ATTRIBUTE_TAG_INFO attributes{};
-    if (!::GetFileInformationByHandleEx(handle.get(), FileAttributeTagInfo, &attributes, sizeof(attributes)) ||
-        (attributes.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0U || (attributes.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U)
-        reject(Domain::ErrorCodes::Unauthorized, "The private reviewer directory is not a regular directory.");
-    std::size_t records{}, visited{};
-    alignas(FILE_ID_BOTH_DIR_INFO) std::array<std::byte, 64U * 1024U> storage{};
-    bool first = true;
-    for (;;) {
-        check(context);
-        if (!::GetFileInformationByHandleEx(handle.get(), first ? FileIdBothDirectoryRestartInfo : FileIdBothDirectoryInfo,
-                storage.data(), static_cast<DWORD>(storage.size()))) {
-            if (::GetLastError() == ERROR_NO_MORE_FILES) break;
-            reject(Domain::ErrorCodes::InternalFailure, "Private reviewer receipt enumeration failed.");
-        }
-        first = false;
-        std::size_t offset{};
-        for (;;) {
-            const auto* entry = reinterpret_cast<const FILE_ID_BOTH_DIR_INFO*>(storage.data() + offset);
-            if (++visited > 1024U || entry->FileNameLength % sizeof(wchar_t) != 0U ||
-                entry->FileNameLength > storage.size() - offset - offsetof(FILE_ID_BOTH_DIR_INFO, FileName))
-                reject(Domain::ErrorCodes::LimitExceeded, "The private reviewer directory inventory exceeds its bound.");
-            const std::wstring_view name{entry->FileName, entry->FileNameLength / sizeof(wchar_t)};
-            if (name.size() == 41U && name.ends_with(L".json")) {
-                const auto identifier = take(Detail::strictUtf16ToUtf8(name.substr(0U, 36U)));
-                if (Domain::SessionId::parse(identifier)) {
-                    if ((entry->FileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) != 0U)
-                        reject(Domain::ErrorCodes::IntegrityFailure, "A reviewer receipt path is not a regular file.");
-                    ++records;
-                }
-            }
-            if (entry->NextEntryOffset == 0U) break;
-            if (entry->NextEntryOffset < offsetof(FILE_ID_BOTH_DIR_INFO, FileName) || entry->NextEntryOffset > storage.size() - offset - sizeof(FILE_ID_BOTH_DIR_INFO))
-                reject(Domain::ErrorCodes::IntegrityFailure, "Reviewer directory enumeration returned an invalid entry.");
-            offset += entry->NextEntryOffset;
-        }
-    }
-    take(anchored.value().revalidateDirectoryAnchors());
-    return records;
-}
 } // namespace
 
 class WindowsReviewerRunStore::Impl final {
@@ -350,13 +299,6 @@ Domain::Result<void> WindowsReviewerRunStore::save(const Domain::ManagedRunRecor
             reject(Domain::ErrorCodes::OwnershipConflict, "Reviewer run identity is already bound to another request.");
         if (existing && terminal(existing->state) && !terminal(record.state))
             reject(Domain::ErrorCodes::Conflict, "A terminal reviewer receipt cannot be reopened or replayed.");
-        // Reviews retain their explicit sixteen-receipt owner retention rule.
-        // Independent worker receipts are addressed directly by their unique
-        // run ID and remain sealed/bounded per file; recurring schedules must
-        // not exhaust a lifetime admission count or delete earlier results.
-        if (!existing && impl.purpose_ == ManagedReceiptPurpose::ReadOnlyReviewer &&
-            countRecords(impl.directory_, context) >= MaximumRetainedRecords)
-            reject(Domain::ErrorCodes::LimitExceeded, "Reviewer receipt capacity is sixteen records. The owner must archive/delete retained receipts before starting another reviewer.");
         impl.write(record, paths, existing.has_value(), context);
         return Domain::Result<void>::success();
     } catch (Failure& failure) { return Domain::Result<void>::failure(std::move(failure.error)); }

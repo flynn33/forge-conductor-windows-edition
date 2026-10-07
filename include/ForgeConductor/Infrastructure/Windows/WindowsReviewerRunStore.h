@@ -17,7 +17,6 @@ using ReviewerRunStorageResolver = std::function<Domain::Result<ReviewerRunStora
 class WindowsReviewerRunStore final : public Contracts::IManagedRunStore {
 public:
     static constexpr std::size_t MaximumRecordBytes = 4U * 1024U * 1024U;
-    static constexpr std::size_t MaximumRetainedRecords = 16U;
     // The owner creates the private directory before construction; atomic writes
     // may create a receipt leaf but cannot grant or create its parent directories.
     WindowsReviewerRunStore(Contracts::IAtomicFileStore&, Contracts::IHasher&, Contracts::IClock&,

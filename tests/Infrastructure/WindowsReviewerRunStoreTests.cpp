@@ -155,16 +155,49 @@ void recoversInterruptedWithoutReplay() {
         "Repeated recovered readback rewrote the unknown-outcome receipt.");
     requireError(store->save(record, context()), Domain::ErrorCodes::Conflict, "A terminal reviewer was reopened for replay.");
 }
-void boundsRetentionAndHonorsContext() {
-    Fixture fixture; auto store = fixture.store(); auto first = fixture.record(); take(store->save(first, context()));
-    for (std::size_t index = 1U; index < WindowsReviewerRunStore::MaximumRetainedRecords; ++index) take(store->save(fixture.record(), context()));
+void retainsCompletedReviewsAndHonorsContext() {
+    Fixture fixture; auto store = fixture.store();
+    std::vector<Domain::ManagedRunRecord> completed;
+    std::string originalFirst;
+    for (std::size_t index = 0U; index < 48U; ++index) {
+        auto record = fixture.record();
+        record.task = "Authorized independent review " + std::to_string(index);
+        record.outputText = "Verified independent review output " + std::to_string(index);
+        if (index == 47U) {
+            record.task.resize(Domain::MaximumManagedRunTaskBytes, '\x01');
+            record.outputText->resize(Domain::MaximumManagedRunOutputBytes, '\x02');
+        }
+        record.state = Domain::ManagedRunState::Running;
+        take(store->save(record, context()));
+        record.state = Domain::ManagedRunState::Completed;
+        take(store->save(record, context()));
+        completed.push_back(record);
+        if (index == 0U) originalFirst = read(fixture.path(record.runId));
+    }
+    for (std::size_t index = 0U; index < 1025U; ++index)
+        write(fixture.tree.storage / ("owner-retained-" + std::to_string(index) + ".txt"), "retained owner evidence");
     const auto extra = fixture.record();
-    requireError(store->save(extra, context()), Domain::ErrorCodes::LimitExceeded, "The reviewer store exceeded sixteen retained receipts.");
-    require(!std::filesystem::exists(fixture.path(extra.runId)), "Rejected reviewer admission wrote a receipt.");
-    take(store->save(first, context())); require(take(store->load(first.runId, context())).has_value(), "Full retention blocked an existing receipt.");
+    take(store->save(extra, context()));
+    require(read(fixture.path(completed.front().runId)) == originalFirst,
+        "Later reviews deleted or rewrote an earlier sealed receipt.");
+    require(std::filesystem::file_size(fixture.path(completed.back().runId)) > 1024U * 1024U &&
+        std::filesystem::file_size(fixture.path(completed.back().runId)) <= WindowsReviewerRunStore::MaximumRecordBytes,
+        "Full reviewer task/output did not retain the supported encoded receipt bound.");
+    auto restarted = fixture.store();
+    for (const auto& expected : completed) {
+        const auto loaded = take(restarted->load(expected.runId, context()));
+        require(loaded && loaded->state == Domain::ManagedRunState::Completed && loaded->readOnlyTools &&
+            loaded->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified && loaded->evidenceSeal &&
+            loaded->task == expected.task && loaded->outputText == expected.outputText,
+            "A complete sealed reviewer receipt was lost beyond sixteen completed reviews.");
+    }
+    require(take(restarted->load(extra.runId, context())).has_value(),
+        "A large retained directory inventory blocked direct reviewer receipt lookup.");
     TestContext cancelled; cancelled.cancellation.request_stop();
-    requireError(store->save(extra, cancelled.active()), Domain::ErrorCodes::Cancelled, "Reviewer store ignored cancellation.");
-    requireError(store->load(first.runId, TestContext{}.expired()), Domain::ErrorCodes::DeadlineExceeded, "Reviewer store ignored a deadline.");
+    const auto cancelledRecord = fixture.record();
+    requireError(store->save(cancelledRecord, cancelled.active()), Domain::ErrorCodes::Cancelled, "Reviewer store ignored cancellation.");
+    require(!std::filesystem::exists(fixture.path(cancelledRecord.runId)), "Cancelled reviewer persistence wrote a receipt.");
+    requireError(store->load(completed.front().runId, TestContext{}.expired()), Domain::ErrorCodes::DeadlineExceeded, "Reviewer store ignored a deadline.");
 }
 void isolatesWorkerPurposeAndFrozenGrants() {
     Fixture fixture;
@@ -248,7 +281,7 @@ int main() {
     addTest(tests, "reviewer_store.full_text_and_fields", preservesLongTaskFullOutputAndTypedFields);
     addTest(tests, "reviewer_store.tamper_kind_authority", rejectsTamperedWrongKindAndNonReadonly);
     addTest(tests, "reviewer_store.interrupted_recovery", recoversInterruptedWithoutReplay);
-    addTest(tests, "reviewer_store.retention_context", boundsRetentionAndHonorsContext);
+    addTest(tests, "reviewer_store.retention_context", retainsCompletedReviewsAndHonorsContext);
     addTest(tests, "worker_store.purpose_scope_recovery", isolatesWorkerPurposeAndFrozenGrants);
     addTest(tests, "worker_store.recurring_receipt_retention", recurringWorkersRetainEveryReceiptBeyondReviewLifetimeLimit);
     std::size_t passed{};

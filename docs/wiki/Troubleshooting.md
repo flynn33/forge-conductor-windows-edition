@@ -58,7 +58,7 @@ Inspect configured and active roots separately. In workspace mode, activate an e
 
 For native `filesystem_access_denied`, retain the reported operation/path/Win32 code. The repaired parent-creation route no longer requires `FILE_DELETE_CHILD`; actual OS denials remain errors. A 65,536-byte UTF-8 shell command is supported through stdin; larger scripts still exceed the explicit bound.
 
-## Dedicated workflows and schedules in 1.3.14
+## Dedicated workflows and schedules in 1.3.15
 
 Call `host_capabilities` and inspect runtime version/catalog before claiming a category is absent. Repair/reconnect the intended integrations after an upgrade. Dedicated Office writing and native PNG drawing do not require Python or Office; generative image providers and cloud accounts still need configured connections. A browser launch or desktop input receipt requires observing the resulting UI.
 

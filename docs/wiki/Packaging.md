@@ -1,6 +1,12 @@
-# Current release 1.3.14
+# Current candidate 1.3.15
 
-Use [Release 1.3.14](Release-1.3.14) and the [distribution](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.14) for the current source, package identity, checksums, and actual qualification. Product version is 1.3.14 and MSIX version is 1.3.14.0. Current qualification is tied to the exact executed build, signed package and payload hashes; earlier installed evidence is retained below.
+Product/package identities are 1.3.15 / 1.3.15.0. Final source/build, signed payload, installed App, current-chat qualification and publication remain pending until their actual checks execute. See [Release 1.3.15](Release-1.3.15) and the [verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.15.md). Historical checks below apply only to the named earlier binaries; no result is reassigned.
+
+## Historical 1.3.14 engineering evidence
+
+The unpublished 1.3.14 engineering candidates retain product version 1.3.14 and MSIX version 1.3.14.0. Their [investigation record](Release-1.3.14) identifies the actual source, package checksums and qualification scope. They were not tagged or published as a release, and their installed evidence does not qualify the final 1.3.15 package.
+
+Candidate `release-1.3.14.0-20261007-123639` is development-signed with signature status Valid and clean product source `7b3e154d58a2cc21d074541341e9ad4aaa0df914`, tree `0358d85e8281fb3b81032f1348b6fe789da41a20`. Product All and extracted-payload/provenance checks passed. MSIX SHA-256 is `a7019c34e88aeddbf6615fc0f8823ed9cb336e386700d06ea985a63a2c6160c6`; ZIP SHA-256 is `c6b555268c9d435a89107ba7b8e05912cecbcfe6a1a13e4348048b7308c95b37`. The App hash changed for the honest continuity wording; CLI, Manager and SessionHost hashes match the earlier source-767284a candidate. Installation/readback of the new App is pending, and earlier backend acceptance is kept separate from final package/UI qualification.
 
 The records below describe historical artifacts and retain their original test counts and hashes.
 

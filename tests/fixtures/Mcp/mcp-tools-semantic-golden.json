@@ -1381,7 +1381,42 @@
       "name": "http_request"
     },
     {
-      "description": "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a model-visible PNG preview with original dimensions.",
+      "name": "image_analyze",
+      "description": "Start a fresh independent read-only visual review of an authorized decoded image with explicit authorization. Returns an asynchronous run ID; use reviewer_status for the actual model analysis, usage, sealed outcome and infrastructure errors. Use this when LM Studio displays an image preview without supplying pixels to its chat model. No executor history or policy approval is included.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 32768,
+            "minLength": 1
+          },
+          "authorization": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1
+          },
+          "receive_timeout_sec": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600,
+            "default": 600
+          }
+        },
+        "required": [
+          "path",
+          "authorization"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "description": "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Preview display does not prove that the chat model received pixels; use image_analyze and reviewer_status for independent visual interpretation.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {

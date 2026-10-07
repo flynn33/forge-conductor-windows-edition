@@ -738,6 +738,24 @@ Json terminal(std::string id, const Contracts::WorkspaceAuthority& authority, co
         std::this_thread::sleep_for(5ms);
     }
 }
+void excludesManagedImageAnalysisFromWorkerCatalogs() {
+    require(!Application::isManagedWorkerToolPermitted("image_analyze"),
+        "An independent worker could recursively start Manager-owned image analysis.");
+    Catalog catalog;
+    catalog.descriptors.push_back({Domain::ToolDescriptor{"image_analyze", "Analyze an authorized image.", "fixture",
+        Domain::ToolEffect::Write, Domain::ToolAvailability::Available, true, false}, R"({"type":"object"})"});
+    catalog.descriptors.push_back({Domain::ToolDescriptor{"image_read", "Read an authorized image.", "fixture",
+        Domain::ToolEffect::Read, Domain::ToolAvailability::Available, true, false}, R"({"type":"object"})"});
+    for (const bool readOnly : {false, true}) {
+        const auto names = Application::managedWorkerToolNames(catalog, readOnly);
+        require(std::find(names.begin(), names.end(), "image_analyze") == names.end(),
+            "Manager-owned image analysis was advertised to an independent worker.");
+        require(std::find(names.begin(), names.end(), "image_read") != names.end(),
+            "The worker policy removed authorized image reading with Manager-owned analysis.");
+        require((std::find(names.begin(), names.end(), "fs_write") != names.end()) == !readOnly,
+            "Image analysis filtering changed the worker's existing read-only mutation policy.");
+    }
+}
 void dispatchesWorkerWhileParentRouterLeaseRemainsActive() {
     StorageFixture fixture; auto store = fixture.store(); Agents agents; Catalog catalog;
     std::erase_if(catalog.descriptors, [](const auto& descriptor) {
@@ -859,9 +877,12 @@ void nativeImageReadReachesManagedVisionContent() {
         catalog.descriptors = {{Domain::ToolDescriptor{"image_read", "Read an authorized image.", "fixture",
             Domain::ToolEffect::Read, Domain::ToolAvailability::Available, true, false},
             R"({"type":"object","properties":{"path":{"type":"string"}},"required":["path"]})"}};
+        catalog.descriptors.push_back({Domain::ToolDescriptor{"image_analyze", "Start independent image analysis.", "fixture",
+            Domain::ToolEffect::Write, Domain::ToolAvailability::Available, true, false}, R"({"type":"object"})"});
         NativeImageRouter router{images, variant > 1 ? variant - 1 : 0};
         const auto first = Json{{"id", "native-image-tool"}, {"status", "completed"},
-            {"output", Json::array({tool("native-image-call", "image_read", {{"path", imagePath}})})},
+            {"output", Json::array({tool("native-image-call", "image_read", {{"path", imagePath}}),
+                tool("recursive-image-call", "image_analyze", {{"path", imagePath}, {"authorization", "Forged nested analysis"}})})},
             {"usage", {{"input_tokens", 10U}, {"output_tokens", 2U}}}}.dump();
         LoopbackHttpServer server{{modelInventory(), {"POST", "/v1/responses", 200U, first},
             {"POST", "/v1/responses", 200U, reply("native-image-final", "The provider fixture accepted the tool result.")}}};
@@ -884,9 +905,17 @@ void nativeImageReadReachesManagedVisionContent() {
         require(final.record.state == Domain::ManagedRunState::Completed && !final.record.lastError && router.calls == 1U,
             "Native image promotion failed or repeated the tool effect.");
         require(server.waitUntilHandled(3U, 2s), "The image-bearing provider continuation was not received.");
-        const auto followup = Json::parse(server.requests()[2].body);
-        require(followup.at("previous_response_id") == "native-image-tool" && followup.at("input").size() == 1U,
+        const auto requests = server.requests();
+        const auto opening = Json::parse(requests[1].body);
+        require(opening.at("tools").size() == 1U && opening.at("tools").front().at("name") == "image_read",
+            "Independent image analysis was recursively advertised to a managed worker or read-only reviewer.");
+        const auto followup = Json::parse(requests[2].body);
+        require(followup.at("previous_response_id") == "native-image-tool" && followup.at("input").size() == 2U,
             "Managed image output lost its originating provider identity or created an unrelated user message.");
+        const auto& denied = followup.at("input").at(1U);
+        require(denied.at("call_id") == "recursive-image-call" && denied.at("output").is_string() &&
+            Json::parse(denied.at("output").get<std::string>()).at("error").at("code") == std::string{Domain::ErrorCodes::Unauthorized},
+            "A fabricated image analysis call reached the native router or lacked an explicit denied result.");
         const auto& output = followup.at("input").front();
         require(output.at("type") == "function_call_output" && output.at("call_id") == "native-image-call",
             "Managed image output lost its exact function call identity.");
@@ -970,6 +999,7 @@ void enforcesTotalBudgetAndOwnership() {
 } // namespace
 int main() {
     TestRegistry tests;
+    addTest(tests, "workers.image_analysis_policy", excludesManagedImageAnalysisFromWorkerCatalogs);
     addTest(tests, "workers.real_http_mutation_reconnect", mutatesWithFreshContextAndReconnectsSealedOutput);
     addTest(tests, "workers.parent_router_lease_overlap", dispatchesWorkerWhileParentRouterLeaseRemainsActive);
     addTest(tests, "workers.narrowed_native_scope", narrowedReadScopeDoesNotRegainWrite);

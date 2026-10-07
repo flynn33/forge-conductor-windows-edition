@@ -63,6 +63,7 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         const std::lock_guard lock{mutex_};
+        if (loadFailure_) return Domain::Result<std::optional<Domain::ManagedRunRecord>>::failure(*loadFailure_);
         const auto found = records_.find(runId);
         return Domain::Result<
             std::optional<Domain::ManagedRunRecord>>::success(
@@ -83,9 +84,16 @@ public:
 
     std::size_t saves{};
 
+    void failLoads(Domain::Error error)
+    {
+        const std::lock_guard lock{mutex_};
+        loadFailure_ = std::move(error);
+    }
+
 private:
     std::mutex mutex_;
     std::map<Domain::SessionId, Domain::ManagedRunRecord> records_;
+    std::optional<Domain::Error> loadFailure_;
 };
 
 class AdmissionRepository final : public Contracts::IAgentSessionRepository {
@@ -220,13 +228,13 @@ public:
     bool admittedWithBinding{};
     std::size_t sessionSaves{};
 
-    void corruptSealedSummary()
+    void corruptSealedSummary(const std::string& original = "sealed result")
     {
         assert(run_ && run_->session.summary);
         auto& encoded = *run_->session.summary;
-        const auto position = encoded.find("sealed result");
+        const auto position = encoded.find(original);
         assert(position != std::string::npos);
-        encoded.replace(position, std::string{"sealed result"}.size(),
+        encoded.replace(position, original.size(),
             "altered result");
     }
 
@@ -1259,6 +1267,12 @@ int main()
         context("adadadad-adad-4dad-8dad-adadadadadad", "reviewer-conflict"));
     assert(!reviewerConflict && reviewerConflict.error().code == Domain::ErrorCodes::Conflict);
     reviewerService.shutdown();
+    const auto unreadableReceipt = Domain::makeError(Domain::ErrorCodes::IntegrityFailure,
+        "The persisted reviewer receipt was altered.");
+    reviewerStore.failLoads(unreadableReceipt);
+    const auto failedReviewReadback = reviewerService.status(review.runId,
+        context("afafafaf-afaf-4faf-8faf-afafafafafaf", "reviewer-integrity-failure"));
+    assert(!failedReviewReadback && failedReviewReadback.error() == unreadableReceipt);
     AdmissionRepository reviewerRepository;
     Application::AgentRepositoryManagedRunStore reviewerDurableStore{reviewerRepository,
         parsed(Domain::AgentId::parse("forge-managed-run")), hasher};
@@ -1270,6 +1284,72 @@ int main()
     assert(restoredReview.value()->readOnlyTools);
     assert(restoredReview.value()->providerReceiveTimeoutSeconds == 1800U);
     assert(restoredReview.value()->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified);
+
+    AdmissionRepository sealedReviewerRepository;
+    Application::AgentRepositoryManagedRunStore sealedReviewerStore{sealedReviewerRepository,
+        parsed(Domain::AgentId::parse("forge-managed-run")), hasher};
+    Transport sealedReviewerTransport;
+    Application::ManagedRunService sealedReviewerService{sealedReviewerTransport, sealedReviewerStore, clock,
+        {&reviewerCatalog, &reviewerRouter, &reviewerAuthority}};
+    auto sealedReview = review;
+    sealedReview.runId = parsed(Domain::SessionId::parse("87878787-8787-4787-8787-878787878787"));
+    sealedReview.operationId = parsed(Domain::OperationId::parse("89898989-8989-4989-8989-898989898989"));
+    sealedReview.allowTools = false;
+    const auto sealedReviewContext = context("89898989-8989-4989-8989-898989898989", "sealed-reviewer-status");
+    assert(sealedReviewerService.start(sealedReview, sealedReviewContext));
+    const auto sealedReviewResult = waitForTerminal(sealedReviewerService, sealedReview.runId);
+    assert(sealedReviewResult.record.state == Domain::ManagedRunState::Completed);
+    assert(sealedReviewResult.record.evidenceSeal &&
+        sealedReviewResult.record.evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified);
+    sealedReviewerRepository.corruptSealedSummary("ordinary run completed");
+    const auto alteredReview = parsed(sealedReviewerService.status(sealedReview.runId, sealedReviewContext));
+    assert(alteredReview.record.evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Mismatch);
+    assert(alteredReview.record.outputText == "altered result" &&
+        alteredReview.record.evidenceSeal == sealedReviewResult.record.evidenceSeal);
+    assert(parsed(sealedReviewerService.status(sealedReview.runId, sealedReviewContext)).record.evidenceIntegrity ==
+        Domain::ManagedRunEvidenceIntegrity::Mismatch);
+    sealedReviewerService.shutdown();
+    assert(sealedReviewerTransport.cancels == 0U);
+
+    Store retainedReviewerStore;
+    Transport boundedReviewerTransport;
+    Application::ManagedRunService boundedReviewerService{boundedReviewerTransport, retainedReviewerStore, clock,
+        {&reviewerCatalog, &reviewerRouter, &reviewerAuthority}};
+    const auto boundedReview = [&](const unsigned index) {
+        const auto suffix = std::to_string(index);
+        const auto digits = std::string(12U - suffix.size(), '0') + suffix;
+        auto admitted = review;
+        admitted.runId = parsed(Domain::SessionId::parse("70000000-0000-4000-8000-" + digits));
+        admitted.operationId = parsed(Domain::OperationId::parse("80000000-0000-4000-8000-" + digits));
+        admitted.task = "Bounded independent reviewer resource fixture.";
+        admitted.allowTools = false;
+        return admitted;
+    };
+    for (unsigned index = 1U; index <= 48U; ++index) {
+        const auto next = boundedReview(index);
+        assert(boundedReviewerService.start(next, sealedReviewContext));
+        assert(waitForTerminal(boundedReviewerService, next.runId).record.state == Domain::ManagedRunState::Completed);
+    }
+    assert(boundedReviewerTransport.cancels == 0U);
+    boundedReviewerTransport.mode = Transport::Mode::Block;
+    static_assert(Application::ManagedRunService::MaximumConcurrentReviewers == 16U);
+    for (unsigned index = 100U; index < 116U; ++index)
+        assert(boundedReviewerService.start(boundedReview(index), sealedReviewContext));
+    const auto excessiveReview = boundedReview(116U);
+    const auto rejectedReview = boundedReviewerService.start(excessiveReview, sealedReviewContext);
+    assert(!rejectedReview && rejectedReview.error().code == Domain::ErrorCodes::LimitExceeded && rejectedReview.error().retryable);
+    assert(!parsed(retainedReviewerStore.load(excessiveReview.runId, sealedReviewContext)));
+    const auto firstActiveReview = boundedReview(100U);
+    assert(boundedReviewerService.cancel(firstActiveReview.runId, sealedReviewContext));
+    assert(waitForTerminal(boundedReviewerService, firstActiveReview.runId).record.state == Domain::ManagedRunState::Cancelled);
+    assert(boundedReviewerService.start(excessiveReview, sealedReviewContext));
+    boundedReviewerService.shutdown();
+    assert(boundedReviewerTransport.cancels == 17U);
+    for (unsigned index = 1U; index <= 48U; ++index)
+        assert(parsed(boundedReviewerService.status(boundedReview(index).runId, sealedReviewContext)).record.state ==
+            Domain::ManagedRunState::Completed);
+    assert(waitForTerminal(boundedReviewerService, excessiveReview.runId).record.state == Domain::ManagedRunState::Cancelled);
+
     Store workerStore;
     Transport workerTransport; workerTransport.mode = Transport::Mode::WorkerAttack;
     ToolCatalog workerCatalog{true}; ToolRouter workerRouter;

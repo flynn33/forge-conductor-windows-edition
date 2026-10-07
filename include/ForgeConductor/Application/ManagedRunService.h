@@ -36,6 +36,7 @@ struct ManagedRunContinuityDependencies final {
 class ManagedRunService final : public Contracts::IManagedRunService {
 public:
     static constexpr std::size_t MaximumConcurrentWorkers = 16U;
+    static constexpr std::size_t MaximumConcurrentReviewers = 16U;
 
     ManagedRunService(
         Contracts::IManagedResponsesTransport& transport,

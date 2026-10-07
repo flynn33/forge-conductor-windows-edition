@@ -2314,8 +2314,10 @@ public:
             instructions +=
                 "\nCall host_capabilities before claiming that a tool category is missing. "
                 "Native tools include web_search/web_fetch/http_request; document_write (.docx), "
-                "spreadsheet_write (.xlsx), presentation_write (.pptx), PDF, image_read/image_write, "
+                "spreadsheet_write (.xlsx), presentation_write (.pptx), PDF, image_read/image_write/image_analyze, "
                 "desktop_list/read/capture/click/type/key and browser_open. Image writing creates shapes and text; "
+                "Image previews may be displayed without supplying pixels to the chat model; use image_analyze, "
+                "then reviewer_status, for a fresh independent visual interpretation. "
                 "generative artwork and cloud accounts require connected providers. "
                 "agent_spawn/poll/cancel run independent scoped tasks, and schedule_create/list/run_now/cancel persist scheduled work. "
                 "The connector starts or attaches to its matching Manager; inspect durable_manager availability and startup_error. "
@@ -2709,6 +2711,8 @@ private:
             for (const auto& root : authority.trustedRoots()) roots.push_back(root.value());
             const bool hostAccess = dependencies_.workspaceAuthority.fileSystemAccessMode() ==
                 Domain::FileSystemAccessMode::Host;
+            const bool independentReview = static_cast<bool>(dependencies_.durableToolBroker) ||
+                (dependencies_.reviewerRuns && dependencies_.reviewerRuns() != nullptr);
             return Domain::Result<Json>::success(Json{{"ok", true}, {"version", dependencies_.productVersion},
                 {"tool_count", names.size()}, {"tools", std::move(names)},
                 {"durable_manager", durableManagerStatus()},
@@ -2717,8 +2721,9 @@ private:
                     {"word_excel_powerpoint_creation", dependencies_.artifactDocuments != nullptr},
                     {"desktop_accessibility_capture_input", dependencies_.desktopArtifacts != nullptr},
                     {"native_image_drawing_and_vision_preview", dependencies_.desktopArtifacts != nullptr},
+                    {"independent_image_analysis", dependencies_.desktopArtifacts != nullptr && independentReview},
                     {"pdf_creation", true}, {"shell_and_process_execution", authority.shellEnabled()},
-                    {"independent_read_only_review", static_cast<bool>(dependencies_.reviewerRuns || dependencies_.durableToolBroker)}}},
+                    {"independent_read_only_review", independentReview}}},
                 {"execution_permissions", "ordinary_windows_account_permissions_without_elevation"},
                 {"shell_absolute_paths_and_network", "not_sandboxed_by_filesystem_tool_roots"},
                 {"external_connections_required", {"generative_image_model", "cloud_email_calendar_chat_accounts"}},
@@ -2744,6 +2749,72 @@ private:
             auto result = dependencies_.artifactDocuments->execute(name, arguments.dump(), authority, context);
             if (!result) return propagate<Json>(std::move(result));
             return Domain::Result<Json>::success(Json::parse(result.value()));
+        }
+        if (name == "image_analyze") {
+            if (std::find(authority.grants().begin(), authority.grants().end(), Domain::FileAccess::Write) == authority.grants().end() ||
+                std::find(authority.denials().begin(), authority.denials().end(), Domain::FileAccess::Write) != authority.denials().end())
+                return failure<Json>(Domain::ErrorCodes::Unauthorized,
+                    "Starting independent image analysis requires write authority; read-only callers cannot start reviews.");
+            const auto authorization = arguments.at("authorization").get<std::string>();
+            const auto question = arguments.value("question", std::string{
+                "Describe the visible background, colors, shapes, text and positions. Identify details that are unclear."});
+            if (authorization.size() > 1024U) return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                "Image analysis authorization exceeds the reviewer authorization limit of 1024 bytes.");
+            for (const auto* text : {&authorization, &question}) {
+                if (text->empty() || text->size() > 4096U || text->find('\0') != std::string::npos || !Domain::isValidUtf8(*text))
+                    return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                        "Image analysis authorization and question must contain nonempty NUL-free UTF-8 text within 4096 bytes.");
+            }
+            auto path = authorizePath(dependencies_.workspaceAuthority, authority,
+                arguments.at("path").get<std::string>(), Domain::FileAccess::Read, false, context,
+                &observation, ContinuityPathRole::Path);
+            if (!path) return propagate<Json>(std::move(path));
+            if (!dependencies_.desktopArtifacts) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Native image decoding is unavailable in this composition.");
+            const auto imageArguments = Json{{"path", path.value().canonicalPath().value()}};
+            auto decoded = dependencies_.desktopArtifacts->execute("image_read", imageArguments.dump(), authority, context);
+            if (!decoded) return propagate<Json>(std::move(decoded));
+            auto image = Json::parse(decoded.value());
+            if (!image.is_object() || !image.value("ok", false) ||
+                !image.contains("width") || !image.at("width").is_number_integer() ||
+                !image.contains("height") || !image.at("height").is_number_integer() ||
+                image.at("width").get<std::int64_t>() < 1 || image.at("width").get<std::int64_t>() > 4096 ||
+                image.at("height").get<std::int64_t>() < 1 || image.at("height").get<std::int64_t>() > 4096 ||
+                !image.contains("format") || !image.at("format").is_string())
+                return failure<Json>(Domain::ErrorCodes::InternalFailure,
+                "Native image decoding did not confirm the admitted image.");
+            const auto imageAnalysis = Json{{"kind", "fresh_independent_readonly_reviewer"},
+                {"path", path.value().canonicalPath().value()}, {"width", image.at("width")}, {"height", image.at("height")},
+                {"format", image.at("format")}, {"poll_tool", "reviewer_status"}, {"asynchronous", true},
+                {"executor_history_included", false}, {"source_read_policy", "authorized_path_read_at_provider_image_read"},
+                {"tool_scope", "existing_project_authorized_read_only_reviewer_catalog"}};
+            const auto reviewArguments = Json{
+                {"authorization", authorization}, {"mode", "tools"},
+                {"receive_timeout_sec", arguments.value("receive_timeout_sec", Domain::DefaultReviewerReceiveTimeoutSeconds)},
+                {"opening_message", "Independent visual analysis of an authorized local image. Use image_read exactly once with arguments " +
+                    imageArguments.dump() + ". Interpret the actual returned pixels, not the filename or metadata. "
+                    "If pixels are unavailable, report that instead of guessing. The source is read when image_read runs; "
+                    "it is not a frozen copy of the admission preview. Answer this question: " + Json(question).dump()},
+                {"task", "Report the visual observations and uncertainty. Do not alter files or approve policy gates."}};
+            if (reviewArguments.at("opening_message").get_ref<const std::string&>().size() > Domain::MaximumReviewerOpeningMessageBytes)
+                return failure<Json>(Domain::ErrorCodes::PayloadTooLarge,
+                    "The encoded image path and question exceed the 64 KiB reviewer opening-message limit.");
+            auto reviewed = [&]() -> Domain::Result<Json> {
+                if (dependencies_.durableToolBroker) {
+                    auto result = dependencies_.durableToolBroker("reviewer_start", reviewArguments.dump(), authority.projectId(), context);
+                    if (!result) return propagate<Json>(std::move(result));
+                    auto payload = Json::parse(result.value());
+                    payload["broker"] = "persistent_manager";
+                    return Domain::Result<Json>::success(std::move(payload));
+                }
+                return reviewer("reviewer_start", authority, reviewArguments, context, observation);
+            }();
+            if (!reviewed) return propagate<Json>(std::move(reviewed));
+            auto result = std::move(reviewed).value();
+            result["image_analysis"] = imageAnalysis;
+            for (const auto field : {"image_base64", "image_mime_type", "preview_width", "preview_height"})
+                if (image.contains(field)) result[field] = image.at(field);
+            return Domain::Result<Json>::success(std::move(result));
         }
         if (name.starts_with("desktop_") || name == "browser_open" || name == "image_read" || name == "image_write") {
             if (!dependencies_.desktopArtifacts) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
@@ -3207,8 +3278,9 @@ private:
                     {"opening_message_sources", Json::array({"authorized_file", "inline"})},
                     {"modes", Json::array({"tools", "text_only"})},
                     {"deadline_exceeded_disposition", "infrastructure_blocked"},
-                    {"maximum_persisted_reviews", 16}, {"maximum_output_bytes", Domain::MaximumManagedRunOutputBytes},
-                    {"retention_policy", "preserve_receipts_refuse_when_full_owner_archives_explicitly"}}},
+                    {"maximum_persisted_reviews", nullptr}, {"maximum_concurrent_reviews", 16},
+                    {"maximum_output_bytes", Domain::MaximumManagedRunOutputBytes},
+                    {"retention_policy", "sealed_receipts_retained_by_run_id_subject_to_available_disk_space"}}},
                 {"context_telemetry", visibleChat.contains("context_telemetry")
                     ? visibleChat.at("context_telemetry") : Json{{"tokens_used", nullptr},
                         {"reason", "No completed provider generation observation is available."}}},
@@ -4357,6 +4429,15 @@ private:
             (record.lastError->code == Domain::ErrorCodes::DeadlineExceeded ||
              record.lastError->code == Domain::ErrorCodes::TransportClosed ||
              record.lastError->code == Domain::ErrorCodes::HostCapabilityUnavailable);
+        const auto evidenceIntegrity = [&]() -> std::string_view {
+            switch (record.evidenceIntegrity) {
+            case Domain::ManagedRunEvidenceIntegrity::NotTerminal: return "not_terminal";
+            case Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed: return "legacy_unsealed";
+            case Domain::ManagedRunEvidenceIntegrity::Verified: return "verified";
+            case Domain::ManagedRunEvidenceIntegrity::Mismatch: return "mismatch";
+            }
+            return "mismatch";
+        }();
         return Domain::Result<Json>::success(Json{{"ok", true}, {"run_id", record.runId.value()},
             {"project_id", record.projectId.value()}, {"state", state}, {"read_only", record.readOnlyTools},
             {"fresh_provider_context", true}, {"executor_history_included", false}, {"manager_owned", true},
@@ -4364,6 +4445,8 @@ private:
             {"authorization_reference_is_human_proof", false},
             {"provider_response_id", record.providerResponseId ? Json(record.providerResponseId->value()) : Json(nullptr)},
             {"input_tokens", record.inputTokens}, {"output_tokens", record.outputTokens},
+            {"evidence_sha256", record.evidenceSeal ? Json(record.evidenceSeal->value()) : Json(nullptr)},
+            {"evidence_integrity", evidenceIntegrity},
             {"receive_timeout_sec", record.providerReceiveTimeoutSeconds ? Json(*record.providerReceiveTimeoutSeconds) : Json(nullptr)},
             {"mode", record.allowTools ? "tools" : "text_only"},
             {"infrastructure_blocked", infrastructureBlocked},

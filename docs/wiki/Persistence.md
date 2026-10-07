@@ -44,7 +44,7 @@ Released schema history migrates forward in place. Historical audit rows are not
 
 Schedule admission persists a unique run before provider submission. Future triggers restore after Manager restart; uncertain interrupted effects block automatic replay until an explicitly authorized new attempt. Provider failure, notification failure and receipt persistence failure retain their distinct actual outcomes. This scheduler recovery does not establish native chat UI-handoff recovery after worker eviction.
 
-Independent worker receipts retain complete sealed results by run ID beyond the reviewer's sixteen-record lifetime admission limit. Admission bounds simultaneous independent workers to sixteen; finished terminal threads release those slots without removing their receipts. Each serialized file is bounded to 4 MiB, including supported raw output up to 256 KiB and escaped task metadata. Recurring work does not automatically delete earlier human-readable outputs. Retained history needs disk space; actual storage failures remain explicit.
+Independent worker and read-only reviewer receipts retain complete sealed results by run ID. Their services each bound simultaneous runs to sixteen; finished terminal threads release those slots without removing receipts. Version 1.3.15 removes the earlier reviewer sixteen-record lifetime admission limit. Terminal reviewer status reloads the durable receipt and reports actual evidence integrity and SHA-256. Each serialized file is bounded to 4 MiB, including supported raw output up to 256 KiB and escaped task metadata. Recurring work does not automatically delete earlier human-readable outputs. Retained history needs disk space; actual storage failures remain explicit.
 
 ## Configuration and secrets
 

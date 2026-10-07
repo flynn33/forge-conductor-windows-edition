@@ -147,7 +147,7 @@ public:
                 return Domain::Result<Domain::ManagedRunSnapshot>::failure(
                     std::move(valid).error());
             }
-            reapFinishedWorkers();
+            reapFinishedIndependentRuns();
             {
                 std::lock_guard lock{mutex_};
                 if (shutdown_) {
@@ -218,7 +218,7 @@ public:
             record.readOnlyTools = request.readOnlyTools;
             record.providerReceiveTimeoutSeconds = request.providerReceiveTimeoutSeconds;
             record.workerScope = request.workerScope;
-            if (!request.workerScope) {
+            if (!request.workerScope && !request.readOnlyTools) {
                 if (auto saved = store_.save(record, context); !saved) {
                     return Domain::Result<Domain::ManagedRunSnapshot>::failure(std::move(saved).error());
                 }
@@ -243,9 +243,17 @@ public:
                     if (running >= ManagedRunService::MaximumConcurrentWorkers)
                         return Domain::Result<Domain::ManagedRunSnapshot>::failure(failure(
                             Domain::ErrorCodes::LimitExceeded, "The independent worker concurrent limit is 16.", true));
+                } else if (request.readOnlyTools) {
+                    const auto running = static_cast<std::size_t>(std::count_if(active_.begin(), active_.end(), [](const auto& entry) {
+                        return entry.second->record.readOnlyTools && !entry.second->record.workerScope && !terminal(entry.second->record.state);
+                    }));
+                    if (running >= ManagedRunService::MaximumConcurrentReviewers)
+                        return Domain::Result<Domain::ManagedRunSnapshot>::failure(failure(
+                            Domain::ErrorCodes::LimitExceeded, "The independent reviewer concurrent limit is 16.", true));
+                }
+                if (request.workerScope || request.readOnlyTools)
                     if (auto saved = store_.save(record, context); !saved)
                         return Domain::Result<Domain::ManagedRunSnapshot>::failure(std::move(saved).error());
-                }
                 const auto [_, inserted] =
                     active_.emplace(request.runId, active);
                 if (!inserted) {
@@ -286,16 +294,14 @@ public:
         const Domain::OperationContext& context) noexcept
     {
         try {
-            reapFinishedWorkers();
+            reapFinishedIndependentRuns();
             {
                 std::lock_guard lock{mutex_};
                 const auto found = active_.find(runId);
                 if (found != active_.end()) {
                     const auto& record = found->second->record;
-                    const bool terminalWorker = record.workerScope &&
-                        (record.state == Domain::ManagedRunState::Completed || record.state == Domain::ManagedRunState::Failed ||
-                            record.state == Domain::ManagedRunState::Cancelled);
-                    if (!terminalWorker) return Domain::Result<Domain::ManagedRunSnapshot>::success(
+                    const bool terminalIndependent = (record.workerScope || record.readOnlyTools) && terminal(record.state);
+                    if (!terminalIndependent) return Domain::Result<Domain::ManagedRunSnapshot>::success(
                         snapshot(record, found->second->worker.get_stop_token().stop_requested(), found->second->pauseRequested));
                 }
             }
@@ -448,7 +454,7 @@ public:
     {
         std::vector<std::shared_ptr<ActiveRun>> active;
         try {
-            reapFinishedWorkers();
+            reapFinishedIndependentRuns();
             {
                 std::lock_guard lock{mutex_};
                 if (shutdown_) {
@@ -464,7 +470,7 @@ public:
             for (const auto& run : active) {
                 {
                     const std::lock_guard lock{mutex_};
-                    if (run->record.workerScope && terminal(run->record.state)) continue;
+                    if ((run->record.workerScope || run->record.readOnlyTools) && terminal(run->record.state)) continue;
                 }
                 run->worker.request_stop();
                 run->boundaryChanged.notify_all();
@@ -510,14 +516,14 @@ private:
             state == Domain::ManagedRunState::Cancelled;
     }
 
-    void reapFinishedWorkers()
+    void reapFinishedIndependentRuns()
     {
         std::vector<std::shared_ptr<ActiveRun>> retired;
         {
             const std::lock_guard lock{mutex_};
             if (shutdown_) return;
             for (auto current = active_.begin(); current != active_.end();) {
-                if (current->second->record.workerScope && current->second->threadFinished.load() &&
+                if ((current->second->record.workerScope || current->second->record.readOnlyTools) && current->second->threadFinished.load() &&
                     terminal(current->second->record.state)) {
                     retired.push_back(std::move(current->second));
                     current = active_.erase(current);

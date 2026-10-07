@@ -564,6 +564,8 @@ public:
     std::vector<std::string> calls;
     Json lastArguments;
     std::vector<Domain::PathText> lastRoots;
+    std::optional<Json> response;
+    std::optional<Domain::Error> failure;
     Domain::Result<std::string> execute(std::string_view name, std::string_view arguments,
         const Domain::OperationContext&) noexcept override
     { return record(name, arguments); }
@@ -574,6 +576,8 @@ private:
     Domain::Result<std::string> record(std::string_view name, std::string_view arguments) noexcept
     {
         try { calls.emplace_back(name); lastArguments = Json::parse(arguments);
+            if (failure) return Domain::Result<std::string>::failure(*failure);
+            if (response) return Domain::Result<std::string>::success(response->dump());
             return Domain::Result<std::string>::success(Json{{"ok", true}, {"observed_tool", name}}.dump()); }
         catch (...) { return unavailable<std::string>("Capability test recorder failed"); }
     }
@@ -632,7 +636,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 103U);
+    REQUIRE(tools.size() == 104U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 9U},
@@ -651,7 +655,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         {"EvidenceToolPack", 2U}, {"GitHubReadToolPack", 1U}, {"ProcessToolPack", 7U},
         {"HostInspectionToolPack", 3U}, {"ReviewerToolPack", 3U}, {"VerificationToolPack", 2U},
         {"WebAccessToolPack", 3U}, {"OfficeDocumentToolPack", 3U}, {"DesktopToolPack", 7U},
-        {"ImageToolPack", 2U}, {"AgentWorkerToolPack", 3U}, {"ScheduledTaskToolPack", 4U}};
+        {"ImageToolPack", 3U}, {"AgentWorkerToolPack", 3U}, {"ScheduledTaskToolPack", 4U}};
     std::map<std::string_view, std::size_t> actualPackCounts;
     for (const auto& descriptor : tools) {
         ++actualPackCounts[descriptor.tool.pack];
@@ -845,7 +849,8 @@ void testRuntimeDispatchAndSchemaPolicy()
         Domain::UtcTimePoint{}, Domain::MonotonicTimePoint{}};
     Fakes::SequenceUuidGenerator uuidGenerator{
         std::vector<Domain::Uuid>{parse<Domain::Uuid>("34343434-3434-4434-8434-343434343431"),
-            parse<Domain::Uuid>("34343434-3434-4434-8434-343434343432")}};
+            parse<Domain::Uuid>("34343434-3434-4434-8434-343434343432"),
+            parse<Domain::Uuid>("34343434-3434-4434-8434-343434343433")}};
     const auto shellExecutable = take(Domain::PathText::create(
         "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"));
 
@@ -923,8 +928,10 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto workerBrokerDependencies = adapterDependencies;
     auto brokeredBindingDependencies = adapterDependencies;
     auto brokeredExecutionDependencies = adapterDependencies;
+    auto imageAnalysisDependencies = adapterDependencies;
+    auto capabilityDependencies = adapterDependencies;
     auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
-    REQUIRE(adapter->tools().size() == 103U);
+    REQUIRE(adapter->tools().size() == 104U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
@@ -968,10 +975,110 @@ void testRuntimeDispatchAndSchemaPolicy()
     };
 
     {
+        const auto imagePath = root.value() + "/image-\xCE\xA9.png";
+        const Json imageRequest{{"path", imagePath}, {"authorization", "Owner requested visual inspection"},
+            {"question", "Describe the \"actual visible pixels\".\nReport uncertainty."}, {"receive_timeout_sec", 1800}};
+        nativeCapabilities.response = Json{{"ok", true}, {"path", imagePath}, {"width", 256}, {"height", 192},
+            {"format", "png"}, {"image_base64", "iVBORw0KGgo="}, {"image_mime_type", "image/png"}};
+        std::size_t reviewStarts{};
+        Json forwarded;
+        std::optional<Domain::Error> brokerFailure;
+        imageAnalysisDependencies.durableToolBroker = [&](std::string_view name, std::string_view encoded,
+            const Domain::ProjectId& project, const Domain::OperationContext&) {
+            REQUIRE(name == "reviewer_start" && project == projectId);
+            ++reviewStarts;
+            forwarded = Json::parse(encoded);
+            if (brokerFailure) return Domain::Result<std::string>::failure(*brokerFailure);
+            return Domain::Result<std::string>::success(Json{{"ok", true}, {"run_id", firstOpenSession.value()},
+                {"state", "running"}, {"output", nullptr}, {"gate_approved", false}}.dump());
+        };
+        auto imageAdapter = take(Mcp::McpToolPackAdapter::create(std::move(imageAnalysisDependencies)));
+        const auto analyze = [&](const Json& args, const Contracts::WorkspaceAuthority& token) {
+            return imageAdapter->handle(authorizeFor("image_analyze", Domain::ToolEffect::Write,
+                args.dump(), "image-analysis", token), token, context);
+        };
+        const auto analyzed = Json::parse(take(analyze(imageRequest, authority)).canonicalPayload);
+        REQUIRE(reviewStarts == 1U && nativeCapabilities.calls.back() == "image_read");
+        REQUIRE(nativeCapabilities.lastArguments == Json({{"path", imagePath}}));
+        REQUIRE(forwarded.at("mode") == "tools" && forwarded.at("receive_timeout_sec") == 1800);
+        REQUIRE(forwarded.at("opening_message").get<std::string>().find(Json{{"path", imagePath}}.dump()) != std::string::npos);
+        REQUIRE(forwarded.at("opening_message").get<std::string>().find(imageRequest.at("question").dump()) != std::string::npos);
+        REQUIRE(forwarded.at("opening_message").get<std::string>().find("not a frozen copy") != std::string::npos);
+        REQUIRE(analyzed.at("state") == "running" && analyzed.at("output").is_null());
+        REQUIRE(analyzed.at("run_id") == firstOpenSession.value() && analyzed.at("gate_approved") == false);
+        REQUIRE(analyzed.at("image_analysis").at("poll_tool") == "reviewer_status");
+        REQUIRE(analyzed.at("image_analysis").at("executor_history_included") == false);
+        REQUIRE(analyzed.at("image_analysis").at("tool_scope") == "existing_project_authorized_read_only_reviewer_catalog");
+        REQUIRE(analyzed.at("image_analysis").at("width") == 256);
+        REQUIRE(analyzed.at("image_base64") == "iVBORw0KGgo=");
+        auto defaults = imageRequest; defaults.erase("question"); defaults.erase("receive_timeout_sec");
+        REQUIRE(analyze(defaults, authority));
+        REQUIRE(forwarded.at("receive_timeout_sec") == 600);
+        REQUIRE(forwarded.at("opening_message").get<std::string>().find("Describe the visible background") != std::string::npos);
+        const auto startsBeforeInvalid = reviewStarts;
+        const auto readsBeforeInvalid = nativeCapabilities.calls.size();
+        for (const auto& invalid : std::vector<Json>{
+            Json{{"path", imagePath}}, Json{{"path", imagePath}, {"authorization", ""}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"question", ""}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"question", std::string(4097U, 'x')}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"question", std::string(4095U, 'x') + "\xCE\xA9"}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"question", std::string("NUL\0text", 8)}},
+            Json{{"path", imagePath}, {"authorization", std::string(1025U, 'a')}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"receive_timeout_sec", 0}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"receive_timeout_sec", 3601}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"unknown", true}}}) REQUIRE(!analyze(invalid, authority));
+        auto outside = imageRequest; outside["path"] = "Z:/outside/image.png";
+        const auto deniedPath = analyze(outside, authority);
+        REQUIRE(!deniedPath && deniedPath.error().code == Domain::ErrorCodes::Unauthorized);
+        auto readOnly = take(workspaceAuthority.narrow(authority, {root}, {Domain::FileAccess::Read}, false, 12U, context));
+        const auto deniedReadOnly = analyze(imageRequest, readOnly);
+        REQUIRE(!deniedReadOnly && deniedReadOnly.error().code == Domain::ErrorCodes::Unauthorized);
+        REQUIRE(nativeCapabilities.calls.size() == readsBeforeInvalid && reviewStarts == startsBeforeInvalid);
+        auto encodedLimit = imageRequest;
+        encodedLimit["path"] = root.value() + "/" + std::string(32'768U - root.value().size() - 1U, '\x01');
+        const auto oversizedOpening = analyze(encodedLimit, authority);
+        REQUIRE(!oversizedOpening && oversizedOpening.error().code == Domain::ErrorCodes::PayloadTooLarge);
+        REQUIRE(reviewStarts == startsBeforeInvalid);
+        nativeCapabilities.failure = Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Native codec rejected invalid image bytes");
+        const auto badImage = analyze(imageRequest, authority);
+        REQUIRE(!badImage && badImage.error().message == "Native codec rejected invalid image bytes");
+        REQUIRE(reviewStarts == startsBeforeInvalid);
+        nativeCapabilities.failure.reset();
+        for (const auto& malformed : std::vector<Json>{
+                Json{{"ok", true}},
+                Json{{"ok", true}, {"width", 0}, {"height", 192}, {"format", "png"}},
+                Json{{"ok", true}, {"width", 256}, {"height", 4097}, {"format", "png"}},
+                Json{{"ok", true}, {"width", "256"}, {"height", 192}, {"format", "png"}}}) {
+            nativeCapabilities.response = malformed;
+            const auto rejected = analyze(imageRequest, authority);
+            REQUIRE(!rejected && rejected.error().code == Domain::ErrorCodes::InternalFailure);
+            REQUIRE(reviewStarts == startsBeforeInvalid);
+        }
+        nativeCapabilities.response = Json{{"ok", true}, {"width", 256}, {"height", 192}, {"format", "png"}};
+        brokerFailure = Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable, "Controlled unavailable Manager", true);
+        const auto failedBroker = analyze(imageRequest, authority);
+        REQUIRE(!failedBroker && failedBroker.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
+        REQUIRE(failedBroker.error().retryable);
+        nativeCapabilities.response.reset();
+    }
+
+    {
         const auto capabilities = Json::parse(take(adapter->handle(authorize("host_capabilities", Domain::ToolEffect::Read,
             "{}", "native-capability-report"), authority, context)).canonicalPayload);
-        REQUIRE(capabilities.at("tool_count") == 103U);
+        REQUIRE(capabilities.at("tool_count") == 104U);
         REQUIRE(capabilities.at("dedicated").at("word_excel_powerpoint_creation") == true);
+        REQUIRE(capabilities.at("dedicated").at("independent_image_analysis") == true);
+        auto noReviewDependencies = capabilityDependencies;
+        noReviewDependencies.reviewerRuns = []() -> Contracts::IManagedRunService* { return nullptr; };
+        auto noReview = take(Mcp::McpToolPackAdapter::create(std::move(noReviewDependencies)));
+        const auto unavailable = Json::parse(take(noReview->handle(authorize("host_capabilities", Domain::ToolEffect::Read,
+            "{}", "no-image-review-service"), authority, context)).canonicalPayload);
+        REQUIRE(unavailable.at("dedicated").at("independent_image_analysis") == false);
+        capabilityDependencies.desktopArtifacts = nullptr;
+        auto noDecoder = take(Mcp::McpToolPackAdapter::create(std::move(capabilityDependencies)));
+        const auto noDecodeCapabilities = Json::parse(take(noDecoder->handle(authorize("host_capabilities", Domain::ToolEffect::Read,
+            "{}", "no-image-decoder"), authority, context)).canonicalPayload);
+        REQUIRE(noDecodeCapabilities.at("dedicated").at("independent_image_analysis") == false);
         REQUIRE(capabilities.at("filesystem_access") == "workspace");
         for (const auto& [name, arguments] : std::vector<std::pair<std::string, Json>>{
             {"web_fetch", {{"url", "https://example.com"}}},
@@ -1153,6 +1260,21 @@ void testRuntimeDispatchAndSchemaPolicy()
             arguments.dump(), "review-output-page");
         return adapter->handle(call, authority, context);
     };
+    reviewerRuns.record.evidenceSeal = packageRevision;
+    reviewerRuns.record.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Verified;
+    const auto sealedReview = Json::parse(take(review(Json::object())).canonicalPayload);
+    REQUIRE(sealedReview.at("evidence_sha256") == packageRevision.value());
+    REQUIRE(sealedReview.at("evidence_integrity") == "verified");
+    for (const auto& [integrity, expected] : {
+            std::pair{Domain::ManagedRunEvidenceIntegrity::NotTerminal, "not_terminal"},
+            std::pair{Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed, "legacy_unsealed"},
+            std::pair{Domain::ManagedRunEvidenceIntegrity::Mismatch, "mismatch"}}) {
+        reviewerRuns.record.evidenceIntegrity = integrity;
+        REQUIRE(Json::parse(take(review(Json::object())).canonicalPayload).at("evidence_integrity") == expected);
+    }
+    reviewerRuns.record.evidenceSeal.reset();
+    reviewerRuns.record.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::LegacyUnsealed;
+    REQUIRE(Json::parse(take(review(Json::object())).canonicalPayload).at("evidence_sha256").is_null());
     std::string reconstructed;
     std::size_t outputOffset{};
     do {
@@ -1275,6 +1397,24 @@ void testRuntimeDispatchAndSchemaPolicy()
     reviewerRuns.record.lastError = Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Controlled request rejection");
     REQUIRE(Json::parse(take(review(Json::object())).canonicalPayload).at("infrastructure_blocked") == false);
     reviewerRuns.record.lastError.reset();
+
+    {
+        const auto prior = reviewerRuns.record;
+        reviewerRuns.record.state = Domain::ManagedRunState::Running;
+        reviewerRuns.record.outputText.reset();
+        nativeCapabilities.response = Json{{"ok", true}, {"width", 24}, {"height", 16}, {"format", "png"}};
+        const auto request = Json{{"path", root.value() + "/local-image.png"}, {"authorization", "Owner requested image review"}};
+        const auto admitted = Json::parse(take(adapter->handle(authorize("image_analyze", Domain::ToolEffect::Write,
+            request.dump(), "local-image-analysis"), authority, context)).canonicalPayload);
+        REQUIRE(admitted.at("state") == "running" && admitted.at("output").is_null());
+        REQUIRE(reviewerRuns.lastStart->readOnlyTools && reviewerRuns.lastStart->allowTools);
+        REQUIRE(!reviewerRuns.lastStart->automaticContinuity);
+        REQUIRE(reviewerRuns.lastStart->providerReceiveTimeoutSeconds == 600U);
+        REQUIRE(reviewerRuns.lastStart->task.find("You have no executor conversation history") != std::string::npos);
+        REQUIRE(reviewerRuns.lastStart->task.find("Use image_read exactly once") != std::string::npos);
+        nativeCapabilities.response.reset();
+        reviewerRuns.record = prior;
+    }
 
     auto cluFindingsCall = authorize(
         "clu.findings",

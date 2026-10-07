@@ -1,6 +1,7 @@
 #include "ForgeConductor/Mcp/McpToolCatalog.h"
 
 #include "ForgeConductor/Mcp/McpJsonCodec.h"
+#include "ForgeConductor/Domain/ManagedRunModels.h"
 
 #include <nlohmann/json.hpp>
 
@@ -90,7 +91,8 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"github_read", "Read GitHub repository runs, artifacts, refs and pull requests via fixed HTTPS GET routes. Uses configured credentials when available; reports permission and network failures explicitly.", "GitHubReadToolPack", Read, true, false},
         {"host_capabilities", "Report actual dedicated capabilities, tool names, filesystem mode and root authority, and external services needing a connection. Consult before claiming a capability is absent.", "HostInspectionToolPack", Read, false, false},
         {"http_request", "Perform an explicit HTTP/HTTPS GET, HEAD, POST, PUT, PATCH, DELETE or OPTIONS with bounded caller-supplied headers/body. Mutating methods can change remote state and require task authorization; only GET/HEAD follow redirects. No ambient credentials/cookies; report actual HTTP status and truncation.", "WebAccessToolPack", Write, true, false},
-        {"image_read", "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a model-visible PNG preview with original dimensions.", "ImageToolPack", Read, true, false},
+        {"image_analyze", "Start a fresh independent read-only visual review of an authorized decoded image with explicit authorization. Returns an asynchronous run ID; use reviewer_status for the actual model analysis, usage, sealed outcome and infrastructure errors. Use this when LM Studio displays an image preview without supplying pixels to its chat model. No executor history or policy approval is included.", "ImageToolPack", Write, true, false},
+        {"image_read", "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Preview display does not prove that the chat model received pixels; use image_analyze and reviewer_status for independent visual interpretation.", "ImageToolPack", Read, true, false},
         {"image_write", "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Supports diagrams/charts; generative artwork requires a separate image provider.", "ImageToolPack", Write, true, false},
         {"instruction_package.read", "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.", "InstructionPackageToolPack", Read, true, false},
         {"memory_delete", "Delete a durable memory note by key.", "MemoryToolPack", Write, false, false},
@@ -277,6 +279,15 @@ using Property = std::pair<std::string_view, Json>;
         }
         return Json{{"type", "object"}, {"properties", std::move(properties)},
             {"required", std::move(required)}, {"additionalProperties", false}};
+    }
+    if (name == "image_analyze") {
+        auto nonempty = [](Json value) { value["minLength"] = 1; return value; };
+        auto timeout = boundedInteger(1, 3600);
+        timeout["default"] = Domain::DefaultReviewerReceiveTimeoutSeconds;
+        return objectSchema({{"path", nonempty(boundedText(32'768U))},
+            {"authorization", nonempty(boundedText(1024U))},
+            {"question", nonempty(boundedText(4096U))}, {"receive_timeout_sec", std::move(timeout)}},
+            {"path", "authorization"}, AdditionalProperties::Denied);
     }
     if (name == "image_read") return objectSchema({{"path", boundedText(32'768U)}},
         {"path"}, AdditionalProperties::Denied);

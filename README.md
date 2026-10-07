@@ -2,9 +2,11 @@
 
 Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-Version **1.3.14** expands Primary and Fallback to **103 tools**, while retaining ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing and image previews, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.14 release notes](docs/releases/1.3.14.md), and [download 1.3.14](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.14).
+Version **1.3.15** expands Primary and Fallback to **104 tools**, while retaining ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.15 release notes](docs/releases/1.3.15.md), and [download 1.3.15](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.15).
 
 Native Office files and PNG drawings require neither Office nor Python. Scheduled model tasks require Manager to stay running; future schedules restore after restart, while interrupted runs with uncertain effects require explicit authorization before another attempt. Generative artwork and cloud email, calendar, or chat accounts require separately configured providers or authorized APIs. `host_capabilities` reports the implemented tools, current filesystem policy, and these connection requirements.
+
+`image_analyze` starts an authorized independent read-only vision run from a local image. Poll `reviewer_status` for its actual output, errors and token usage. The existing `image_read` preview remains available; LM Studio 0.4.25's stock MCP tool result stores image metadata rather than a model image file part. The analysis route uses Forge's working Responses image path and retains the three existing integrations.
 
 Schedule lists and mutation receipts provide bounded summaries. Retrieve complete task text, frozen scope, history, logs and notification receipts with `schedule_list` using `schedule_id`; concatenate its UTF-8 JSON pages and carry the returned `revision` on continuation requests. A changed revision requires starting the read again.
 
@@ -39,9 +41,9 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Release verification and its limits are recorded in the [1.3.14 release notes](docs/releases/1.3.14.md) and [capability verification record](docs/validation/HOST-CAPABILITIES-1.3.14.md). Each distribution records its exact commit, tree, MSIX hash and payload-manifest hash. Historical installed and native-chat evidence applies to the artifact named in each report.
+Release verification and its limits are recorded in the [1.3.15 release notes](docs/releases/1.3.15.md) and [capability verification record](docs/validation/HOST-CAPABILITIES-1.3.15.md). Each distribution records its exact commit, tree, MSIX hash and payload-manifest hash. Historical installed and native-chat evidence applies to the artifact named in each report.
 
-The fresh x64 Release source test command passed **162/162 CTest entries in 58.10 seconds**, with all three static gates and the package-persistence contract passing. A disposable-profile direct MCP probe passed ten groups and 63 requests, including native Office/images, host continuity and complete worker/schedule/reconnect behavior, using an owned loopback provider. Signed-package installation and acceptance by the current Qwen conversation remain separate and pending.
+Final 1.3.15 build, installation and current-chat acceptance are in progress. The earlier 1.3.14 source, package and current-chat results retain their exact identities in the [investigation record](docs/validation/HOST-CAPABILITIES-1.3.14.md). The new release is qualified separately; a tool catalog or a previous package does not establish its installed behavior.
 
 Create the engineering distribution from committed release inputs with `./scripts/package.ps1 -DevelopmentSigning`. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), [Architecture](docs/ARCHITECTURE.md), and [Roadmap](docs/ROADMAP.md).
 
